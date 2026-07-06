@@ -22,10 +22,13 @@
 // WebGL canvas, so a canvas snapshot would omit them. City points are therefore
 // drawn as a GL `circle` layer here so they are captured.
 import mapboxgl from 'mapbox-gl';
+import { supabase } from '@/api/supabaseClient';
 import { MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
+
+const SHARE_MAPS_BUCKET = 'share-maps';
 
 // Card pixel sizes per format (the map is captured full-bleed at card size;
 // the server crops/places it per template).
@@ -83,7 +86,7 @@ function drawPointLayer(map, ordered) {
 }
 
 /**
- * Capture the trip route map to a PNG data URL.
+ * Capture the trip route map to a PNG blob.
  *
  * @param {object} o
  * @param {Array}  o.visits      city visits (with latitude/longitude/kind)
@@ -95,9 +98,9 @@ function drawPointLayer(map, ordered) {
  * @param {number} o.pitch       0..60
  * @param {number} o.bearing
  * @param {boolean} o.showSE     include start/end anchors
- * @returns {Promise<string|null>} PNG data URL, or null if unavailable
+ * @returns {Promise<Blob|null>} PNG blob, or null if unavailable
  */
-export async function captureRouteMapPng(o) {
+export async function captureRouteMapBlob(o) {
   const {
     visits = [], transfers = [], format = 'story', scheme = 'DARK', lang = 'en',
     projection = 'mercator', pitch = 0, bearing = 0, showSE = false,
@@ -146,12 +149,28 @@ export async function captureRouteMapPng(o) {
     out.width = w;
     out.height = h;
     out.getContext('2d').drawImage(srcCanvas, 0, 0, w, h);
-    return out.toDataURL('image/png');
+    return await new Promise((resolve) => out.toBlob((b) => resolve(b), 'image/png'));
   } catch (e) {
-    console.error('captureRouteMapPng failed', e);
+    console.error('captureRouteMapBlob failed', e);
     return null;
   } finally {
     if (map) map.remove();
     el.remove();
   }
+}
+
+/**
+ * Capture the route map and upload it to `share-maps/{tripId}/{uuid}.png`.
+ * Returns the storage path (for render-share-card's `map_path`), or null if the
+ * capture or upload fails - the caller then falls back to the server map.
+ */
+export async function captureAndUploadRouteMap(tripId, opts) {
+  if (!tripId) return null;
+  const blob = await captureRouteMapBlob(opts);
+  if (!blob) return null;
+  const path = `${tripId}/${crypto.randomUUID()}.png`;
+  const { error } = await supabase.storage.from(SHARE_MAPS_BUCKET)
+    .upload(path, blob, { contentType: 'image/png', upsert: false });
+  if (error) { console.error('share-maps upload failed', error); return null; }
+  return path;
 }

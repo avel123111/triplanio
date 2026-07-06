@@ -82,11 +82,12 @@ Deno.serve(async (req) => {
     }
 
     // Step 3 — storage purge (best-effort, must NOT block the delete). Sweep the
-    // `<tripId>/` prefix in the trips bucket (all trip files) and in share-cards
-    // (TRIP-193 generated cards).
+    // `<tripId>/` prefix in the trips bucket (all trip files), in share-cards
+    // (TRIP-193 generated cards) and in share-maps (transient client uploads).
     try {
       await purgeBucketByPrefix(tripId);
       await purgeBucketByPrefix(tripId, 'share-cards');
+      await purgeBucketByPrefix(tripId, 'share-maps');
     } catch (e) {
       console.error('deleteTrip: storage purge failed', e);
     }

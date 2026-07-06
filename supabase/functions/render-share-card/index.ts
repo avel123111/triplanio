@@ -67,11 +67,26 @@ Deno.serve(async (req) => {
     const tripId = body.trip_id;
     const format: Format = body.format === 'post' ? 'post' : 'story';
     const lang = pickLang(body.lang);
+    // Optional client-captured map snapshot (TRIP-193): a PNG the client uploaded
+    // to the `share-maps` bucket. Must live under this trip's folder, else 403
+    // (stops one trip pulling another trip's uploaded map).
+    const mapPath: string | null = typeof body.map_path === 'string' && body.map_path ? body.map_path : null;
     if (!tripId) return Response.json({ error: 'trip_id required' }, { status: 400, headers: cors });
+    if (mapPath && !mapPath.startsWith(`${tripId}/`)) {
+      return Response.json({ error: 'bad_map_path' }, { status: 403, headers: cors });
+    }
 
     if (!(await isCallerParticipant(tripId, user.id))) {
       return Response.json({ error: 'forbidden' }, { status: 403, headers: cors });
     }
+
+    // The uploaded map snapshot is single-use: drop it once handled (rendered in,
+    // or redundant on a cache hit). Fire-and-forget; an orphan is swept later.
+    const cleanupMap = () => {
+      if (!mapPath) return;
+      supabaseAdmin.storage.from('share-maps').remove([mapPath])
+        .then(({ error }) => { if (error) console.error('share-maps cleanup failed', error.message); });
+    };
 
     // ---- data ----
     const { data: trip } = await supabaseAdmin
@@ -104,7 +119,7 @@ Deno.serve(async (req) => {
 
     // ---- content hash / cache ----
     const hashInput = JSON.stringify({
-      v: TEMPLATE_VERSION, format, lang,
+      v: TEMPLATE_VERSION, format, lang, map: mapPath,
       title: trip.title || '',
       cities: transit.map((c) => [c.geonameid ?? c.city_name_en, c.latitude, c.longitude, c.position]),
       allPts: visits.map((v) => [v.latitude, v.longitude]),
@@ -120,6 +135,7 @@ Deno.serve(async (req) => {
 
     const { data: existing } = await supabaseAdmin.storage.from(BUCKET).list(tripId, { search: `${hash}.png`, limit: 1 });
     if (existing && existing.length > 0) {
+      cleanupMap();
       const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
       return Response.json({ url: pub.publicUrl, cached: true, width: outW, height: outH }, { headers: cors });
     }
@@ -147,14 +163,27 @@ Deno.serve(async (req) => {
       brand: BRAND,
     };
 
-    const mapDims = mapSize(format);
-    const mapToken = Deno.env.get('MAPBOX_TOKEN') || '';
-    const routePts = transit
-      .filter((c) => c.latitude != null && c.longitude != null)
-      .map((c) => ({ lat: Number(c.latitude), lng: Number(c.longitude) }));
-    const mapBin = await fetchStaticMap(buildStaticMapUrl(routePts, mapDims.w, mapDims.h, mapToken));
-    const mapDataUri = mapBin ? `data:image/png;base64,${base64(mapBin)}` : null;
+    let mapDataUri: string | null = null;
+    if (mapPath) {
+      // Client-captured live-map snapshot from the `share-maps` bucket.
+      const { data: mapBlob, error: dlErr } = await supabaseAdmin.storage.from('share-maps').download(mapPath);
+      if (dlErr || !mapBlob) {
+        console.error('share-maps download failed', dlErr?.message);
+      } else {
+        mapDataUri = `data:image/png;base64,${base64(new Uint8Array(await mapBlob.arrayBuffer()))}`;
+      }
+    } else {
+      // Fallback: server-side Mapbox Static (no client capture provided).
+      const mapDims = mapSize(format);
+      const mapToken = Deno.env.get('MAPBOX_TOKEN') || '';
+      const routePts = transit
+        .filter((c) => c.latitude != null && c.longitude != null)
+        .map((c) => ({ lat: Number(c.latitude), lng: Number(c.longitude) }));
+      const mapBin = await fetchStaticMap(buildStaticMapUrl(routePts, mapDims.w, mapDims.h, mapToken));
+      mapDataUri = mapBin ? `data:image/png;base64,${base64(mapBin)}` : null;
+    }
 
+    cleanupMap(); // snapshot bytes are in hand (or download failed) - drop the upload
     const bg = defaultBgDataUri();
     const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format));
     const png = await renderPng(svg, outW);
