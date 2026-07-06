@@ -177,7 +177,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
             <Btn variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl || cardLoading} block>{t('share.card_share')}</Btn>
             <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl || cardLoading} block>{t('share.card_download')}</Btn>
             {/* TEMP (TRIP-193 phase 1): snapshot the live route map at card resolution to check crispness. */}
-            <Btn variant="ghost" icon="map" onClick={captureTestMap} loading={capBusy} block>Тест: снять карту</Btn>
+            <Btn variant="ghost" icon="map" onClick={captureTestMap} loading={capBusy} block>Тест: снять карту</Btn>{/* i18n-ignore: TEMP spike button, removed in phase 2 */}
           </div>
         </div>
 
