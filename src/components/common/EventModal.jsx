@@ -110,13 +110,6 @@ export default function EventModal(props) {
 
         {/* Body */}
         <div className="ev-dlg-body">
-          {warning && (
-            <div className="warn-banner">
-              <span>⚠️</span>
-              <div>{warning}</div>
-            </div>
-          )}
-
           {confirmDel ? (
             <div className="del-confirm">
               <div className="del-confirm-ic"><Trash2 style={{ width: 20, height: 20 }} /></div>
@@ -162,8 +155,9 @@ export default function EventModal(props) {
                 </div>
               )}
               <EventViewSections
-                kind={kind} entity={entity} fromVisit={fromVisit} toVisit={toVisit}
+                kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
                 accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
+                externalWarning={warning}
               />
             </>
           )}

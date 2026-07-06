@@ -103,7 +103,7 @@ const daysBetween = (isoA, isoB) => {
 // the legacy computeTripValidation/*Warnings were removed in Ф5.
 // =====================================================================
 
-export const TRANSFER_DAY_TOLERANCE = 1; // +/-1 calendar day (red-eye / 00:20 flights)
+export const TRANSFER_DAY_TOLERANCE = 0; // departure/arrival must land on the exact leave/enter day; any mismatch is a (non-blocking) warning
 
 const isBlank = (s) => s == null || String(s).trim() === '';
 const _ms = (iso) => (iso ? new Date(iso).getTime() : null);
@@ -164,11 +164,11 @@ function validateTransferSingle(d = {}, ctx = {}) {
   }
   const depGap = daysBetween(cityDay(from.end_date), calDay(d.start, from.timezone));
   if (depGap != null && Math.abs(depGap) > TRANSFER_DAY_TOLERANCE) {
-    out.push(mk('error', 'TR_DEP_DAY', 'entity', { field: 'start', ...ref }));
+    out.push(mk('warning', 'TR_DEP_DAY', 'entity', { field: 'start', ...ref }));
   }
   const arrGap = daysBetween(cityDay(to.start_date), calDay(d.end, to.timezone));
   if (arrGap != null && Math.abs(arrGap) > TRANSFER_DAY_TOLERANCE) {
-    out.push(mk('error', 'TR_ARR_DAY', 'entity', { field: 'end', ...ref }));
+    out.push(mk('warning', 'TR_ARR_DAY', 'entity', { field: 'end', ...ref }));
   }
   return out;
 }
@@ -197,13 +197,13 @@ function validateTransferLayover(d = {}, ctx = {}) {
   if (from && first?.start) {
     const depGap = daysBetween(cityDay(from.end_date), calDay(first.start, from.timezone));
     if (depGap != null && Math.abs(depGap) > TRANSFER_DAY_TOLERANCE) {
-      out.push(mk('error', 'TR_DEP_DAY', 'entity', { field: 'seg0.start', ...ref }));
+      out.push(mk('warning', 'TR_DEP_DAY', 'entity', { field: 'seg0.start', ...ref }));
     }
   }
   if (to && last?.end) {
     const arrGap = daysBetween(cityDay(to.start_date), calDay(last.end, to.timezone));
     if (arrGap != null && Math.abs(arrGap) > TRANSFER_DAY_TOLERANCE) {
-      out.push(mk('error', 'TR_ARR_DAY', 'entity', { field: `seg${segs.length - 1}.end`, ...ref }));
+      out.push(mk('warning', 'TR_ARR_DAY', 'entity', { field: `seg${segs.length - 1}.end`, ...ref }));
     }
   }
   return out;

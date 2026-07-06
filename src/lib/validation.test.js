@@ -54,13 +54,27 @@ test('transfer: same-day departure (gap 0) ok', () => {
   const issues = validateEntity('transfer', { id: 't1', start: '2026-07-10T12:00:00', end: '2026-07-10T15:00:00' }, { fromVisit: FROM, toVisit: TO });
   assert.deepEqual(issues, []);
 });
-test('transfer: +1 day departure within tolerance (00:20 case)', () => {
+test('transfer: +1 day departure -> TR_DEP_DAY warning (tolerance is 0)', () => {
   const issues = validateEntity('transfer', { id: 't1', start: '2026-07-11T00:20:00', end: '2026-07-11T02:00:00' }, { fromVisit: FROM, toVisit: TO });
-  assert.ok(!has(issues, 'TR_DEP_DAY'));
+  const dep = issues.find((i) => i.code === 'TR_DEP_DAY');
+  assert.ok(dep, 'a one-day gap now flags TR_DEP_DAY');
+  assert.equal(dep.level, 'warning', 'day mismatch is advisory, not blocking');
 });
-test('transfer: +3 days departure -> TR_DEP_DAY error', () => {
+test('transfer: +3 days departure -> TR_DEP_DAY warning', () => {
   const issues = validateEntity('transfer', { id: 't1', start: '2026-07-13T12:00:00', end: '2026-07-13T15:00:00' }, { fromVisit: FROM, toVisit: TO });
   assert.ok(has(issues, 'TR_DEP_DAY'));
+});
+test('transfer: wrong date order -> TR_ORDER is a blocking error', () => {
+  const issues = validateEntity('transfer', { id: 't1', start: '2026-07-10T15:00:00', end: '2026-07-10T12:00:00' }, { fromVisit: FROM, toVisit: TO });
+  const ord = issues.find((i) => i.code === 'TR_ORDER');
+  assert.ok(ord);
+  assert.equal(ord.level, 'error');
+});
+test('hotel: wrong date order -> HOTEL_ORDER is a blocking error', () => {
+  const issues = validateEntity('hotel', { id: 'h1', name: 'Memmo', checkIn: '2026-07-10T15:00:00', checkOut: '2026-07-08T10:00:00' }, { visit: VISIT });
+  const ord = issues.find((i) => i.code === 'HOTEL_ORDER');
+  assert.ok(ord);
+  assert.equal(ord.level, 'error');
 });
 
 // ---------- Transfer (layover) ----------

@@ -26,6 +26,7 @@ import { optimisticContentUpdate } from '@/lib/trip-data';
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { cityLabel } from '@/lib/trip-cities';
+import { validateEntity } from '@/lib/validation';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
@@ -800,10 +801,54 @@ export function useEntityDocs(kind, entity, canEdit) {
 //  Section renderer: per-kind body + Documents + Notes (no chrome)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles }) {
-  const { t } = useI18n();
+// View-side verdict: run the SAME validation engine on the SAVED row so the read
+// view shows the same logical warnings as the editor (out-of-bounds vs city
+// dates, transfer day mismatch, wrong date order). Maps DB columns → engine
+// draft exactly like validateTrip does. `*_REQUIRED` and empty-structure codes
+// are dropped — a read pane shouldn't nag "fill the name"; only real logical
+// inconsistencies surface.
+const VIEW_ISSUE_SKIP = /(_REQUIRED$|^SEG_MIN$|^TR_NO_CITY$|^SEG_CITY_)/;
+export function entityViewIssues(kind, entity, { visit, fromVisit, toVisit } = {}) {
+  if (!entity) return [];
+  let raw = [];
+  if (kind === 'hotel') {
+    raw = validateEntity('hotel', { id: entity.id, name: entity.name, checkIn: entity.check_in_datetime, checkOut: entity.check_out_datetime }, { visit });
+  } else if (kind === 'activity') {
+    raw = validateEntity('activity', { id: entity.id, title: entity.title || entity.name, start: entity.start_datetime, end: entity.end_datetime || entity.start_datetime }, { visit });
+  } else if (kind === 'transfer') {
+    raw = validateEntity('transfer', { id: entity.id, start: entity.start_datetime, end: entity.end_datetime }, { fromVisit, toVisit });
+  } else if (kind === 'service') {
+    raw = validateEntity('service', {
+      id: entity.id, service_kind: entity.kind || 'car_rental', name: entity.name, isEdit: true,
+      pickup: entity.pickup_datetime, dropoff: entity.dropoff_datetime,
+      date_start: entity.date_start || null, date_finish: entity.date_finish || null,
+    }, {});
+  }
+  return raw.filter((i) => !VIEW_ISSUE_SKIP.test(i.code));
+}
+
+export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null }) {
+  const { t, lang } = useI18n();
+  // Raw city_visit rows have no `city_name` column (dropped in Phase 6) — resolve
+  // the localized label so verdict messages read "…из Барселона", not
+  // "…из undefined", and so they dedupe against an editor-supplied externalWarning.
+  const withName = (v) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
+  // One banner: an explicit message from the caller (editor structural conflict)
+  // plus the engine verdicts on this saved row, deduped by resolved text.
+  const warnings = [];
+  if (externalWarning) warnings.push(externalWarning);
+  for (const i of entityViewIssues(kind, entity, { visit: withName(visit), fromVisit: withName(fromVisit), toVisit: withName(toVisit) })) {
+    const msg = t(`validation.${i.code}`, i.values);
+    if (msg && !warnings.includes(msg)) warnings.push(msg);
+  }
   return (
     <>
+      {warnings.length > 0 && (
+        <div className="warn-banner">
+          <span>⚠️</span>
+          <div>{warnings.map((w, k) => <div key={k}>{w}</div>)}</div>
+        </div>
+      )}
       {kind === 'hotel' && <HotelBody entity={entity} docs={docs} />}
       {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} docs={docs} />}
       {kind === 'activity' && <ActivityBody entity={entity} docs={docs} />}
