@@ -55,12 +55,21 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     };
     if (map.isStyleLoaded()) draw(); else map.once('style.load', draw);
 
+    // Keep the route ALIVE across style/config churn. Toggling theme/projection
+    // (and Standard's own async style settling) can re-evaluate the style and, in
+    // some states, drop our custom source+layers - which is the "route line
+    // sometimes shows, sometimes doesn't" flicker, on both the preview and the
+    // captured card. On every styledata tick, once the style is ready, redraw if
+    // our layers went missing (idempotent: a no-op while they're present).
+    const heal = () => { if (pts.length && map.isStyleLoaded() && !map.getSource('sc-solid')) draw(); };
+    map.on('styledata', heal);
+
     // The dialog animates open and the hole box resizes with the overlay load, so
     // resize + refit once it settles (until the user takes over).
     const ro = new ResizeObserver(() => { map.resize(); fit(); });
     ro.observe(holderRef.current);
 
-    return () => { ro.disconnect(); map.remove(); mapRef.current = null; };
+    return () => { ro.disconnect(); map.off('styledata', heal); map.remove(); mapRef.current = null; };
     // Create once per mount; visits/transfers are stable for an open dialog.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -72,14 +81,21 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     captureBlob() {
       const m = mapRef.current;
       if (!m) return Promise.resolve(null);
-      const src = m.getCanvas();
-      const w = Math.min(600, src.width);
-      const h = Math.round(src.height * (w / src.width));
-      const out = document.createElement('canvas');
-      out.width = w;
-      out.height = h;
-      out.getContext('2d').drawImage(src, 0, 0, w, h);
-      return new Promise((res) => out.toBlob((b) => res(b), 'image/png'));
+      const grab = () => {
+        const src = m.getCanvas();
+        const w = Math.min(600, src.width);
+        const h = Math.round(src.height * (w / src.width));
+        const out = document.createElement('canvas');
+        out.width = w;
+        out.height = h;
+        out.getContext('2d').drawImage(src, 0, 0, w, h);
+        return new Promise((res) => out.toBlob((b) => res(b), 'image/png'));
+      };
+      // Snapshot only once the map has fully settled (tiles + route painted). The
+      // canvas is read synchronously, so grabbing mid-render is exactly how the
+      // final card ended up with missing / half-drawn route lines - wait for idle.
+      if (m.isStyleLoaded() && m.areTilesLoaded?.()) return grab();
+      return new Promise((res) => { m.once('idle', () => grab().then(res)); });
     },
   }), []);
 
