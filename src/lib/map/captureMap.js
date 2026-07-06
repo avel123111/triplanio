@@ -30,11 +30,15 @@ import { sortVisits } from '@/lib/validation';
 
 const SHARE_MAPS_BUCKET = 'share-maps';
 
-// Card pixel sizes per format (the map is captured full-bleed at card size;
-// the server crops/places it per template).
+// Capture resolution per format (the map keeps the card's aspect but is snapshot
+// at a reduced size). This is DELIBERATELY well below the 1080-wide card: the
+// server rasterizes this map INTO the card via resvg, and a full 1080x1920 map
+// raster pushed the edge function past its CPU/memory limit (HTTP 546). ~600px
+// wide keeps resvg comfortably under budget and is still crisp in the map slot;
+// raise it later if we move the render to more compute / optimize the pipeline.
 const CARD_SIZE = {
-  story: { w: 1080, h: 1920 },
-  post: { w: 1080, h: 1350 },
+  story: { w: 600, h: 1067 },
+  post: { w: 600, h: 750 },
 };
 
 /** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
