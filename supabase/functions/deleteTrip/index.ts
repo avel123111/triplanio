@@ -29,18 +29,18 @@ import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
 const BUCKET = 'trips';
 
-/** Sweep everything under `${prefix}/` in the trips bucket, paginated (best-effort). */
-async function purgeBucketByPrefix(prefix: string): Promise<void> {
+/** Sweep everything under `${prefix}/` in `bucket`, paginated (best-effort). */
+async function purgeBucketByPrefix(prefix: string, bucket: string = BUCKET): Promise<void> {
   const limit = 100;
   let offset = 0;
   for (;;) {
-    const { data: files, error } = await supabaseAdmin.storage.from(BUCKET).list(prefix, { limit, offset });
-    if (error) { console.error(`deleteTrip: list ${BUCKET}/${prefix} failed`, error); return; }
+    const { data: files, error } = await supabaseAdmin.storage.from(bucket).list(prefix, { limit, offset });
+    if (error) { console.error(`deleteTrip: list ${bucket}/${prefix} failed`, error); return; }
     if (!files?.length) return;
     const toRemove = files.filter((f) => f.name).map((f) => `${prefix}/${f.name}`);
     if (toRemove.length) {
-      const { error: rmErr } = await supabaseAdmin.storage.from(BUCKET).remove(toRemove);
-      if (rmErr) console.error(`deleteTrip: remove ${BUCKET}/${prefix} failed`, rmErr);
+      const { error: rmErr } = await supabaseAdmin.storage.from(bucket).remove(toRemove);
+      if (rmErr) console.error(`deleteTrip: remove ${bucket}/${prefix} failed`, rmErr);
     }
     if (files.length < limit) return;
     offset += limit;
@@ -81,10 +81,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 3 — storage purge (best-effort, must NOT block the delete). One sweep
-    // of the `<tripId>/` prefix removes every file the trip owns.
+    // Step 3 — storage purge (best-effort, must NOT block the delete). Sweep the
+    // `<tripId>/` prefix in the trips bucket (all trip files) and in share-cards
+    // (TRIP-193 generated cards).
     try {
       await purgeBucketByPrefix(tripId);
+      await purgeBucketByPrefix(tripId, 'share-cards');
     } catch (e) {
       console.error('deleteTrip: storage purge failed', e);
     }
