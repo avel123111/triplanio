@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
     const mapBin = await fetchStaticMap(buildStaticMapUrl(routePts, mapDims.w, mapDims.h, mapToken));
     const mapDataUri = mapBin ? `data:image/png;base64,${base64(mapBin)}` : null;
 
-    const bg = await defaultBgDataUri();
+    const bg = defaultBgDataUri();
     const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format));
     const png = await renderPng(svg, outW);
 
