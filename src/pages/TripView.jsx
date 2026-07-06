@@ -28,6 +28,8 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import EventDrawerHost from '@/components/common/EventDrawerHost';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
+import AddBookingPanel from '@/components/bookings/AddBookingPanel';
+import { useStay22Bundle } from '@/lib/stay22';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import OverviewLens from './OverviewLens';
 import BudgetLens, { AddExpenseDialog } from './BudgetLens';
@@ -773,25 +775,18 @@ export default function TripView() {
   const lens = searchParams.get('lens') || 'overview';
 
   const { isDark, toggle: toggleTheme } = useTheme();
-  // Choice dialogs (ForkPartnerModal) - sit between the warning button and the
-  // edit form so the user can pick a partner before falling back to manual entry.
-  const [hotelChoice, setHotelChoice] = useState({ open: false, visit: null });
-  const [transferChoice, setTransferChoice] = useState({ open: false, fromVisit: null, toVisit: null });
-  // Manual hotel/transfer create opened in-place (live-edit, TRIP-138) instead
-  // of redirecting into the structure editor.
-  const [manualEvt, setManualEvt] = useState({ open: false, kind: null, visit: null, fromVisit: null, toVisit: null });
   // Right-rail service add - opens ForkPartnerModal for the chosen kind, then
-  // routes to the right edit dialog when the user picks "Manual".
+  // routes to the right edit dialog when the user picks "Manual". Services stay
+  // on the modal (TRIP-195 leaves esim/insurance/car_rental on modals for now).
   const [serviceChoice, setServiceChoice] = useState({ open: false, type: null });
   const [serviceEditCar, setServiceEditCar] = useState({ open: false });
   // serviceSimple: CREATE form for a new esim/insurance (viewing existing ones
   // goes through the unified SourceViewLoader like every other event).
   const [serviceSimple, setServiceSimple] = useState({ open: false, kind: null });
-  // City add/edit/delete moved entirely to the Structure editor (/trip/:id/edit).
-  const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
-  // Activity choice — fork modal (partner chips), opened from the timeline "add
-  // activity" like hotel/transfer; "manual" falls through to the activity form.
-  const [activityChoice, setActivityChoice] = useState({ open: false, visit: null, defaultStart: null });
+  // TRIP-195: creating a hotel / transfer / activity opens the global add-booking
+  // DRAWER (AddBookingPanel — the same find+manual panel the editor uses),
+  // replacing the old ForkPartnerModal → EventEditDialog modal chain.
+  const [bookingCreate, setBookingCreate] = useState({ open: false, kind: null, visit: null, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
   const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
@@ -818,6 +813,17 @@ export default function TripView() {
   // hotel/transfer/activity open the global drawer.
   const serviceViewOpen = eventView.open && eventView.kind === 'service';
   const eventDrawerOpen = eventView.open && !!eventView.kind && eventView.kind !== 'service';
+  // The global drawer hosts EITHER a booking-create panel OR an event view/edit.
+  const drawerOpen = eventDrawerOpen || bookingCreate.open;
+  const closeBookingCreate = () => setBookingCreate((s) => ({ ...s, open: false }));
+  // Hotel "find" list bundle for the add-booking drawer (only when creating a
+  // hotel — transfer/activity "find" tabs are partner chips, no Stay22 pool).
+  const creatingHotel = bookingCreate.open && bookingCreate.kind === 'hotel';
+  const createStay22 = useStay22Bundle({
+    visit: creatingHotel ? bookingCreate.visit : null,
+    currency: trip?.details?.main_currency || 'EUR', lang,
+    enabled: creatingHotel, tripId,
+  }).bundle;
 
   // Wire window.__navigate so Screen components can navigate
   useEffect(() => {
@@ -1058,35 +1064,9 @@ export default function TripView() {
           />
           <div className="trip-content">
             <main ref={screenBodyRef} className={screenBodyClass}>
-          {/* Hotel choice - sits between the warning button and the edit form */}
-          <ForkPartnerModal
-            open={hotelChoice.open}
-            onOpenChange={(o) => setHotelChoice(s => ({ ...s, open: o }))}
-            type="hotel"
-            visit={hotelChoice.visit}
-            tripId={tripId}
-            onManual={() => { setHotelChoice((s) => ({ ...s, open: false })); setManualEvt({ open: true, kind: 'hotel', visit: hotelChoice.visit, fromVisit: null, toVisit: null }); }}
-          />
-          {/* Activity choice - fork (partner chips), like hotel/transfer; manual → activity form */}
-          <ForkPartnerModal
-            open={activityChoice.open}
-            onOpenChange={(o) => setActivityChoice(s => ({ ...s, open: o }))}
-            type="activity"
-            visit={activityChoice.visit}
-            trip={trip}
-            tripId={tripId}
-            onManual={() => { setActivityChoice((s) => ({ ...s, open: false })); setActivityEdit({ open: true, visit: activityChoice.visit, activity: null, defaultStart: activityChoice.defaultStart }); }}
-          />
-          {/* Transfer choice - sits between the warning button and the edit form */}
-          <ForkPartnerModal
-            open={transferChoice.open}
-            onOpenChange={(o) => setTransferChoice(s => ({ ...s, open: o }))}
-            type="transfer"
-            fromVisit={transferChoice.fromVisit}
-            toVisit={transferChoice.toVisit}
-            tripId={tripId}
-            onManual={() => { setTransferChoice((s) => ({ ...s, open: false })); setManualEvt({ open: true, kind: 'transfer', visit: null, fromVisit: transferChoice.fromVisit, toVisit: transferChoice.toVisit }); }}
-          />
+          {/* TRIP-195: hotel / activity / transfer create moved to the global
+              add-booking DRAWER (see EventDrawerHost below). Only services keep
+              the ForkPartnerModal. */}
           {/* Service choice - opened from the right-rail ServicesWidget */}
           <ForkPartnerModal
             open={serviceChoice.open}
@@ -1127,32 +1107,6 @@ export default function TripView() {
               tripId={tripId}
               entity={null}
               initialServiceKind={serviceSimple.kind}
-              defaultCurrency={trip?.details?.main_currency || 'EUR'}
-            />
-          )}
-          {/* Activity - add new activity in edit mode */}
-          {activityEdit.visit && (
-            <EventEditDialog
-              key={`activity-${activityEdit.visit?.id}-${activityEdit.activity?.id || 'new'}`}
-              open={activityEdit.open}
-              onOpenChange={(o) => setActivityEdit(s => ({ ...s, open: o }))}
-              kind="activity"
-              visit={activityEdit.visit}
-              entity={activityEdit.activity}
-              defaultStart={activityEdit.defaultStart}
-              defaultCurrency={trip?.details?.main_currency || 'EUR'}
-            />
-          )}
-          {/* Manual hotel/transfer create opened in-place (TRIP-138) */}
-          {manualEvt.open && (
-            <EventEditDialog
-              open={manualEvt.open}
-              onOpenChange={(o) => setManualEvt((s) => ({ ...s, open: o }))}
-              kind={manualEvt.kind}
-              tripId={tripId}
-              visit={manualEvt.visit}
-              fromVisit={manualEvt.fromVisit}
-              toVisit={manualEvt.toVisit}
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
@@ -1202,10 +1156,10 @@ export default function TripView() {
                   isViewer={myRole === 'viewer'}
                   isLoading={loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
-                    setTransferChoice({ open: true, fromVisit, toVisit })
+                    setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
                   }
                   onAddHotel={(visit) =>
-                    setHotelChoice({ open: true, visit })
+                    setBookingCreate({ open: true, kind: 'hotel', visit, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null })
                   }
                   onOpenEvent={openEventView}
                   onAddActivityForDay={(dayKey) => {
@@ -1218,7 +1172,7 @@ export default function TripView() {
                       const defaultStart = dayKey
                         ? DateTime.fromISO(`${dayKey}T10:00`, { zone: tz }).toUTC().toISO()
                         : null;
-                      setActivityChoice({ open: true, visit: dayVisit, defaultStart });
+                      setBookingCreate({ open: true, kind: 'activity', visit: dayVisit, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart });
                     }
                   }}
                 />
@@ -1303,17 +1257,33 @@ export default function TripView() {
             />
           )}
             </main>
-            {/* TRIP-195: global event drawer for hotel/transfer/activity —
-                anchored to .trip-content (below header, right of menu), left 50%
-                with a scrim. Services keep the modal (above). Opened from the
-                timeline / calendar (openEventView), the overview (onOpenService
-                → service → modal) and the budget (onOpenSource, lifted here). */}
+            {/* TRIP-195: global drawer for hotel/transfer/activity — anchored to
+                .trip-content (below header, right of menu), left 50% with a scrim.
+                Hosts EITHER booking-create (AddBookingPanel — find + manual, the
+                same panel the editor uses) OR event view/edit (EventSourcePanel).
+                Services keep the modal (above). Create is opened from the timeline
+                (onAddTransfer/Hotel/Activity); view/edit from timeline/calendar
+                (openEventView) and the budget (onOpenSource, lifted here). */}
             <EventDrawerHost
-              open={eventDrawerOpen}
-              onClose={() => setEventView(s => ({ ...s, open: false }))}
+              open={drawerOpen}
+              onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
               scrim
             >
-              {eventDrawerOpen && (
+              {bookingCreate.open ? (
+                <AddBookingPanel
+                  kind={bookingCreate.kind}
+                  tripId={tripId}
+                  trip={trip}
+                  visit={bookingCreate.visit}
+                  fromVisit={bookingCreate.fromVisit}
+                  toVisit={bookingCreate.toVisit}
+                  stay22={createStay22}
+                  defaultCurrency={trip?.details?.main_currency || 'EUR'}
+                  defaultStart={bookingCreate.defaultStart}
+                  initialTab={bookingCreate.initialTab}
+                  onClose={closeBookingCreate}
+                />
+              ) : eventDrawerOpen ? (
                 <EventSourcePanel
                   kind={eventView.kind}
                   id={eventView.id}
@@ -1321,7 +1291,7 @@ export default function TripView() {
                   canEdit={canEditMode}
                   onClose={() => setEventView(s => ({ ...s, open: false }))}
                 />
-              )}
+              ) : null}
             </EventDrawerHost>
           </div>
         </div>

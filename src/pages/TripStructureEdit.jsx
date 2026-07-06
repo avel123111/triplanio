@@ -34,8 +34,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
-import { useStay22Pool } from '@/lib/stay22';
-import { usePartnerLogger } from '@/lib/partnerTracking';
+import { useStay22Bundle } from '@/lib/stay22';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
@@ -305,22 +304,13 @@ export default function TripStructureEdit() {
   // editor map is hidden on phones via CSS.
   const hotelPickVisit = leftPanel?.type === 'pick' && leftPanel.kind === 'hotel' ? leftPanel.visit : null;
   const isHotelPick = !!hotelPickVisit;
-  const [stayPage, setStayPage] = useState(1);
-  const [stayApplied, setStayApplied] = useState(null);
-  const [stayHoveredId, setStayHoveredId] = useState(null);
-  const [staySelectedId, setStaySelectedId] = useState(null);
-  // Reset the lifted state whenever the target city changes / the panel closes.
-  const hotelPickVisitId = hotelPickVisit?.id || null;
-  useEffect(() => {
-    setStayPage(1); setStayApplied(null); setStayHoveredId(null); setStaySelectedId(null);
-  }, [hotelPickVisitId]);
-
   const stayCurrency = trip?.details?.main_currency || 'EUR';
-  // TRIP-141: one whole-city pool (all pages, progressive) feeds BOTH the list
-  // (client pagination) and the map (client clustering). No page/pageSize here —
-  // the pool spans every page; stayPage below is a CLIENT page over that pool.
-  const stayQuery = useStay22Pool({
-    visit: hotelPickVisit, currency: stayCurrency, lang, filters: stayApplied, enabled: isHotelPick,
+  // TRIP-141/195: whole-city hotel pool + list state, packaged as the stay22
+  // bundle by the shared useStay22Bundle hook (same hook the timeline's add-
+  // booking drawer uses). Feeds the list (client pagination) here AND the map
+  // pins below (editor only — timeline has no map).
+  const { bundle: stay22Bundle, query: stayQuery, selectedId: staySelectedId, hoveredId: stayHoveredId, setSelectedId: setStaySelectedId, setHoveredId: setStayHoveredId, openHotelLink } = useStay22Bundle({
+    visit: hotelPickVisit, currency: stayCurrency, lang, enabled: isHotelPick, tripId,
   });
   // Map pins: only stays that carry coordinates, with a compact price label (the
   // badge is tiny — long amounts like 252 400 ₽ are shortened to "252K"). While the
@@ -338,30 +328,6 @@ export default function TripStructureEdit() {
         priceLabel: h.price != null ? fmtMoney(h.price, h.currency || cur, { compact: true }) : null,
       }));
   }, [isHotelPick, stayQuery.data, stayQuery.isPlaceholderData, stayCurrency, fmtMoney]);
-  // Open a hotel's supplier link (used by the badge's "second click on the
-  // selected pin" — parity with the list card). Logged like a card open.
-  const logHotelClick = usePartnerLogger(tripId);
-  const openHotelLink = (id) => {
-    const h = (stayQuery.data?.hotels || []).find((x) => String(x.id) === String(id));
-    if (!h?.link) return;
-    logHotelClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
-    window.open(h.link, '_blank', 'noopener,noreferrer');
-  };
-  // Bundle handed to the presentational hotel list (through ForkPartnerModal).
-  const stay22Bundle = isHotelPick ? {
-    data: stayQuery.data, isLoading: stayQuery.isLoading,
-    // Dim the list only on a city/filter switch (placeholder) or first load — NOT
-    // while the background tail pages stream in (the pool just grows under it).
-    isFetching: stayQuery.isPlaceholderData || stayQuery.isLoading,
-    isError: stayQuery.isError, refetch: stayQuery.refetch,
-    page: stayPage, onPageChange: setStayPage,
-    applied: stayApplied,
-    // Filter changes reload the pool → drop any stale selection/hover + reset page.
-    onApply: (snap) => { setStayApplied(snap); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
-    onResetAll: () => { setStayApplied(null); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
-    hoveredId: stayHoveredId, selectedId: staySelectedId,
-    onHover: setStayHoveredId, onSelect: setStaySelectedId,
-  } : null;
   // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
   // entity (anti-pile). Adapt to the shape this screen already consumes
   // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).
