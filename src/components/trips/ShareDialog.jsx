@@ -24,6 +24,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   const [cardLoading, setCardLoading] = useState(false);
   const [cardCode, setCardCode] = useState(''); // '', 'error', 'rate_limited', 'no_transit_cities'
   const [stage, setStage] = useState('edit'); // 'edit' (compose map) | 'card' (final)
+  const [overlay, setOverlay] = useState(null); // frame preview: { url, slot, w, h }
   const mapPreviewRef = useRef(null);
 
   useEffect(() => {
@@ -58,10 +59,14 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     setCardCode('');
     setCardUrl('');
     const state = mapPreviewRef.current?.getState?.() || {};
+    // Capture at the map-window (slot) aspect, capped for the edge render budget.
+    const slot = overlay?.slot;
+    const capW = slot ? Math.min(600, slot.w) : 600;
+    const size = slot ? { w: Math.round(capW), h: Math.round(capW * slot.h / slot.w) } : null;
     let mapPath = null;
     try {
       mapPath = await captureAndUploadRouteMap(trip.id, {
-        visits, transfers, format, lang,
+        visits, transfers, format, lang, size,
         scheme: state.scheme, projection: state.projection, camera: state.camera,
       });
     } catch (e) { console.error('map capture/upload failed', e); }
@@ -84,6 +89,21 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   useEffect(() => {
     if (open) { setStage('edit'); setCardUrl(''); setCardCode(''); }
   }, [open]);
+
+  // Fetch the card FRAME (chrome with a transparent map hole) for the compose
+  // stage - it's laid over the live map so the preview matches the final card.
+  useEffect(() => {
+    if (!open || !trip?.id || stage !== 'edit') return undefined;
+    let cancelled = false;
+    setOverlay(null);
+    supabase.functions.invoke('render-share-card', { body: { trip_id: trip.id, format, lang, mode: 'overlay' } })
+      .then(({ data, error: invokeErr }) => {
+        if (cancelled || invokeErr || !data?.url) return;
+        setOverlay({ url: data.url, slot: data.slot, w: data.width, h: data.height });
+      })
+      .catch((e) => { if (!cancelled) console.error('overlay fetch failed', e); });
+    return () => { cancelled = true; };
+  }, [open, trip?.id, format, lang, stage]);
 
   function copyLink() {
     if (!shareUrl) return;
@@ -161,7 +181,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <div style={{ height: 'min(48vh, 420px)', aspectRatio: ratio, borderRadius: 14, overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)' }}>
-                <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} />
+                <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} overlayUrl={overlay?.url} slot={overlay?.slot} cardW={overlay?.w} cardH={overlay?.h} />
               </div>
             </div>
             <Btn variant="primary" icon="map" loading={cardLoading} onClick={buildCard} block>{t('share.card_build')}</Btn>

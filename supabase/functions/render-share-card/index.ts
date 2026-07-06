@@ -28,7 +28,7 @@ import {
   uniqueCityCount, uniqueCountryCount, uniqueTransitCities, type Visit,
 } from './stats.ts';
 import { buildStaticMapUrl, fetchStaticMap } from './mapbox.ts';
-import { buildCardSvg, mapSize, TEMPLATE_VERSION, type Format } from './template.ts';
+import { buildCardSvg, cardSize, mapSize, mapSlot, TEMPLATE_VERSION, type Format } from './template.ts';
 import { base64, defaultBgDataUri, renderPng } from './render.ts';
 
 const BUCKET = 'share-cards';
@@ -67,6 +67,10 @@ Deno.serve(async (req) => {
     const tripId = body.trip_id;
     const format: Format = body.format === 'post' ? 'post' : 'story';
     const lang = pickLang(body.lang);
+    // 'overlay' = the frame ONLY (transparent hole where the map goes), shown in
+    // the client preview over the live interactive map. 'card' = the final render
+    // with the captured map baked in. Overlay is cheap (no map) and not rate-limited.
+    const mode: 'overlay' | 'card' = body.mode === 'overlay' ? 'overlay' : 'card';
     // Optional client-captured map snapshot (TRIP-193): a PNG the client uploaded
     // to the `share-maps` bucket. Must live under this trip's folder, else 403
     // (stops one trip pulling another trip's uploaded map).
@@ -119,7 +123,7 @@ Deno.serve(async (req) => {
 
     // ---- content hash / cache ----
     const hashInput = JSON.stringify({
-      v: TEMPLATE_VERSION, format, lang, map: mapPath,
+      v: TEMPLATE_VERSION, mode, format, lang, map: mapPath,
       title: trip.title || '',
       cities: transit.map((c) => [c.geonameid ?? c.city_name_en, c.latitude, c.longitude, c.position]),
       allPts: visits.map((v) => [v.latitude, v.longitude]),
@@ -127,22 +131,19 @@ Deno.serve(async (req) => {
     });
     const hash = await sha1Hex(hashInput);
     const path = `${tripId}/${hash}.png`;
-    const OUT_SIZE: Record<Format, { w: number; h: number }> = {
-      story: { w: 1080, h: 1920 },
-      post: { w: 1080, h: 1350 },
-    };
-    const { w: outW, h: outH } = OUT_SIZE[format];
+    const { w: outW, h: outH } = cardSize(format);
+    const slot = mapSlot(format); // map window rect within the card (for the client)
 
     const { data: existing } = await supabaseAdmin.storage.from(BUCKET).list(tripId, { search: `${hash}.png`, limit: 1 });
     if (existing && existing.length > 0) {
       cleanupMap();
       const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-      return Response.json({ url: pub.publicUrl, cached: true, width: outW, height: outH }, { headers: cors });
+      return Response.json({ url: pub.publicUrl, cached: true, width: outW, height: outH, slot }, { headers: cors });
     }
 
     // ---- rate limit: CHECK only here; the hit is recorded AFTER a successful
     // render+upload (below), so a failed render never burns the user's quota. ----
-    if (RATE_LIMIT_ENABLED && !(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
+    if (mode === 'card' && RATE_LIMIT_ENABLED && !(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
       return Response.json({ code: 'rate_limited', retry_after_seconds: RATE_WINDOW }, { headers: cors });
     }
 
@@ -164,7 +165,9 @@ Deno.serve(async (req) => {
     };
 
     let mapDataUri: string | null = null;
-    if (mapPath) {
+    if (mode === 'overlay') {
+      // Frame only - no map (the client shows the live map through the hole).
+    } else if (mapPath) {
       // Client-captured live-map snapshot from the `share-maps` bucket.
       const { data: mapBlob, error: dlErr } = await supabaseAdmin.storage.from('share-maps').download(mapPath);
       if (dlErr || !mapBlob) {
@@ -185,7 +188,7 @@ Deno.serve(async (req) => {
 
     cleanupMap(); // snapshot bytes are in hand (or download failed) - drop the upload
     const bg = defaultBgDataUri();
-    const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format));
+    const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format), mode === 'overlay');
     const png = await renderPng(svg, outW);
 
     const { error: upErr } = await supabaseAdmin.storage.from(BUCKET)
@@ -194,9 +197,9 @@ Deno.serve(async (req) => {
       console.error('share-card upload failed', upErr.message);
       return Response.json({ error: 'storage_failed' }, { status: 500, headers: cors });
     }
-    if (RATE_LIMIT_ENABLED) await recordHit('share_card', user.id); // count only a genuinely rendered card
+    if (mode === 'card' && RATE_LIMIT_ENABLED) await recordHit('share_card', user.id); // count only a genuinely rendered card
     const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-    return Response.json({ url: pub.publicUrl, cached: false, width: outW, height: outH }, { headers: cors });
+    return Response.json({ url: pub.publicUrl, cached: false, width: outW, height: outH, slot }, { headers: cors });
   } catch (e) {
     console.error('render-share-card error', (e as Error).message);
     return Response.json({ error: 'internal' }, { status: 500, headers: cors });

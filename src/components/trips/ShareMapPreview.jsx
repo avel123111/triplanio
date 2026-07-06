@@ -6,13 +6,20 @@ import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
-// Interactive live map for the share card (TRIP-193). The user composes the shot
-// with native gestures (drag = pan, pinch/scroll = zoom, two-finger / right-drag
-// = rotate + tilt/3D) - NO on-screen movement buttons. Only two toggles: theme
-// (light/dark, Standard lightPreset) and projection (flat map / globe). The
-// parent reads the composed camera via the imperative `getState()` and hands it
-// to captureRouteMapBlob so the snapshot mirrors exactly this view.
-const ShareMapPreview = forwardRef(function ShareMapPreview({ visits = [], transfers = [], lang, showSE = false }, ref) {
+// Interactive live map for the share card (TRIP-193). The map sits in the card
+// frame's "hole" and the frame PNG (server-rendered, transparent where the map
+// goes) is laid on top with pointer-events:none, so the map spins behind while
+// the frame owns all the framing (rounding/border/shape). The user composes the
+// shot with native gestures (drag/pinch/rotate/tilt) - NO movement buttons; only
+// theme (light/dark) and projection (flat/globe) toggles. The parent reads the
+// composed camera via getState() and captures the same view.
+//
+// slot/cardW/cardH come from the overlay render (source of truth for the hole
+// geometry); until they arrive the map fills the whole box.
+const ShareMapPreview = forwardRef(function ShareMapPreview(
+  { visits = [], transfers = [], lang, showSE = false, overlayUrl, slot, cardW = 1080, cardH = 1920 },
+  ref,
+) {
   const { t } = useI18n();
   const holderRef = useRef(null);
   const mapRef = useRef(null);
@@ -35,8 +42,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview({ visits = [], trans
     });
     mapRef.current = map;
 
-    // Auto-fit until the user composes their own view (a resize otherwise fights
-    // their pan/zoom).
     let userMoved = false;
     ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((e) => map.on(e, () => { userMoved = true; }));
     const fit = () => { if (!userMoved && pts.length) fitToPoints(map, pts, { padding: 40, maxZoom: 9 }); };
@@ -49,8 +54,8 @@ const ShareMapPreview = forwardRef(function ShareMapPreview({ visits = [], trans
     };
     if (map.isStyleLoaded()) draw(); else map.once('style.load', draw);
 
-    // The dialog animates open, so the container is often mis-sized when the map
-    // is created - resize + refit once it settles (until the user takes over).
+    // The dialog animates open and the hole box resizes with the overlay load, so
+    // resize + refit once it settles (until the user takes over).
     const ro = new ResizeObserver(() => { map.resize(); fit(); });
     ro.observe(holderRef.current);
 
@@ -59,7 +64,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview({ visits = [], trans
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Expose the composed camera + look so the parent can capture the same view.
   useImperativeHandle(ref, () => ({
     getState() {
       const m = mapRef.current;
@@ -87,11 +91,18 @@ const ShareMapPreview = forwardRef(function ShareMapPreview({ visits = [], trans
     }
   }
 
+  const pct = (v, total) => `${(v / total) * 100}%`;
+  const holeStyle = slot
+    ? { left: pct(slot.x, cardW), top: pct(slot.y, cardH), width: pct(slot.w, cardW), height: pct(slot.h, cardH) }
+    : { inset: 0 };
   const btnStyle = { background: 'var(--surface)', boxShadow: 'var(--shadow-1, 0 1px 4px rgba(0,0,0,.2))' };
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div ref={holderRef} style={{ position: 'absolute', inset: 0 }} />
+      <div ref={holderRef} style={{ position: 'absolute', overflow: 'hidden', ...holeStyle }} />
+      {overlayUrl && (
+        <img src={overlayUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+      )}
       <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <Btn variant="ghost" size="sm" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
         <Btn variant="ghost" size="sm" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />

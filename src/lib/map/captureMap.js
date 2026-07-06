@@ -113,11 +113,13 @@ export function drawTripRoute(map, ordered, legs) {
 export async function captureRouteMapBlob(o) {
   const {
     visits = [], transfers = [], format = 'story', scheme = 'DARK', lang = 'en',
-    projection = 'mercator', pitch = 0, bearing = 0, showSE = false, camera = null,
+    projection = 'mercator', pitch = 0, bearing = 0, showSE = false, camera = null, size = null,
   } = o || {};
   if (!MAPBOX_TOKEN) return null;
 
-  const { w, h } = CARD_SIZE[format] || CARD_SIZE.story;
+  // Capture at the map-window size (from the template slot) when given, else the
+  // whole-card fallback. Keeping it modest keeps the server resvg render light.
+  const { w, h } = (size && size.w && size.h) ? size : (CARD_SIZE[format] || CARD_SIZE.story);
   const { ordered, legs } = buildRoute(visits, transfers, showSE);
   if (ordered.length === 0) return null;
 
