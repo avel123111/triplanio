@@ -29,7 +29,7 @@ import { toMain as toMainCur } from '@/lib/budget/money';
 import { currencySymbol } from '@/lib/budget/currencies';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
 import { getActiveLocale } from '@/lib/i18n/format';
-import { countTripMembers } from '@/lib/members';
+import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate, CurrencyCombobox } from '../design/index';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
@@ -493,7 +493,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const loc = getActiveLocale();
   // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
   // UI прячет мутации, чтобы прямые записи не падали молчаливым 403.
-  const readOnly = role === 'viewer';
+  const readOnly = !roleCanEdit(role);
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
   const [hoveredSeg, setHoveredSeg] = useState(null);
@@ -860,7 +860,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         id={sourceView.id}
         open={sourceView.open}
         onOpenChange={(o) => setSourceView(s => ({ ...s, open: o }))}
-        canEdit={true}
+        canEdit={!readOnly}
       />
 
       {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expenseModal.existing ?? null} onSaved={refresh} />}

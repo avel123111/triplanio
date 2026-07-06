@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import { roleCanEdit } from '@/lib/members';
 
 /**
  * Returns { loading, allowed } for the current user on a given trip.
@@ -34,6 +35,6 @@ export function useTripAccess(trip) {
     loading: false,
     allowed: !!membership,
     role,
-    canEdit: role === 'admin',
+    canEdit: roleCanEdit(role),
   };
 }

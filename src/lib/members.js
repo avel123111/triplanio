@@ -34,6 +34,18 @@ export function resolveMyRole(members = [], trip = null, user = null) {
   return mine?.role || 'viewer';
 }
 
+// roleCanEdit — the SINGLE frontend edit-permission rule, mirroring the backend
+// whitelist `_can_edit_trip` (owner via trips.created_by, OR a member whose role
+// is not 'viewer'). Takes an already-resolved role (see resolveMyRole). EVERY
+// surface that gates create/edit/delete of trip content (event view/edit,
+// budget system-expense edit, structure editor, header edit/share/members
+// affordances) MUST route through this instead of re-deriving `role !== 'viewer'`
+// / `role === 'admin'` / hardcoding `true`, so the UI can't drift from the server
+// (which returns 403 on mismatch). (TRIP-195)
+export function roleCanEdit(role) {
+  return !!role && role !== 'viewer';
+}
+
 // countTripMembers — how many people are actually "on" a trip, for the
 // "N members" subtitle and the per-person budget split. It counts:
 //   • the trip OWNER (always, even when they have no trip_members row —

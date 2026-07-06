@@ -36,7 +36,7 @@ import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole } from '@/lib/members';
+import { resolveMyRole, roleCanEdit } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -890,7 +890,7 @@ export default function TripView() {
   const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
   // Edit Mode (structure editor) gate: anyone but a viewer. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
-  const canEditMode = myRole !== 'viewer';
+  const canEditMode = roleCanEdit(myRole);
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
@@ -982,13 +982,13 @@ export default function TripView() {
 
   const heroActions = (
     <>
-      {myRole !== 'viewer' && (
+      {canEditMode && (
         <button className="app-header__act" onClick={() => setShareOpen(true)}>
           <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
         </button>
       )}
-      {myRole !== 'viewer' && (
-        <button className="app-header__act" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="app-header__act-text">{t('trip.edit_trip')}</span></button>
+      {canEditMode && (
+        <button className="app-header__act" onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="app-header__act-text">{t('trip.edit_trip')}</span></button>
       )}
       <ActionMenu
         align="end"
@@ -1000,7 +1000,7 @@ export default function TripView() {
         }
         items={[
           { icon: 'settings', label: t('trip.settings_title'), onSelect: () => window.__navigate?.('settings') },
-          myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => window.__navigate?.('members') },
+          canEditMode && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => window.__navigate?.('members') },
           { separator: true },
           { icon: 'copy', label: t('trip.copy'), disabled: copying, onSelect: () => startCopy(trip.id) },
           { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
@@ -1155,7 +1155,7 @@ export default function TripView() {
             id={eventView.id}
             open={eventView.open}
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
-            canEdit={myRole !== 'viewer'}
+            canEdit={canEditMode}
             warning={eventView.warning}
           />
 
@@ -1172,7 +1172,7 @@ export default function TripView() {
               user={user}
               contentLoading={loadingContent}
               active={shownLens === 'overview'}
-              canManage={myRole !== 'viewer'}
+              canManage={canEditMode}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
               onOpenMap={() => setLens('map')}
               onOpenBudget={() => setLens('budget')}
