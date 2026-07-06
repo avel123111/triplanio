@@ -1,4 +1,6 @@
 {
+  "card_back": "Edit",
+  "card_build": "Build card",
   "card_desc": "A ready story with your trip route - show friends where you are headed",
   "card_download": "Download",
   "card_error": "Could not build the image. Try again.",
@@ -14,5 +16,7 @@
   "description": "The recipient sees the timeline and map. No chat, budget or documents.",
   "dialog_title": "Share trip",
   "generating": "Generating link…",
-  "link_label": "Public link · Read-only"
+  "link_label": "Public link · Read-only",
+  "map_projection": "Projection",
+  "map_theme": "Theme"
 }

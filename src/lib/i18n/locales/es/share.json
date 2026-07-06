@@ -1,4 +1,6 @@
 {
+  "card_back": "Editar",
+  "card_build": "Crear tarjeta",
   "card_desc": "Una historia lista con la ruta de tu viaje - muestra a tus amigos a donde vas",
   "card_download": "Descargar",
   "card_error": "No se pudo crear la imagen. Intentalo de nuevo.",
@@ -14,5 +16,7 @@
   "description": "El destinatario ve la cronología y el mapa. Sin chat, presupuesto ni documentos.",
   "dialog_title": "Compartir viaje",
   "generating": "Generando enlace…",
-  "link_label": "Enlace público · Solo lectura"
+  "link_label": "Enlace público · Solo lectura",
+  "map_projection": "Proyeccion",
+  "map_theme": "Tema"
 }

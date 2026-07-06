@@ -38,7 +38,7 @@ const CARD_SIZE = {
 };
 
 /** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
-function buildRoute(visits, transfers, showSE) {
+export function buildRoute(visits, transfers, showSE) {
   const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
   const ordered = showSE ? all : all.filter((v) => v.kind !== 'start' && v.kind !== 'end');
   const byPair = new globalThis.Map();
@@ -85,6 +85,12 @@ function drawPointLayer(map, ordered) {
   }
 }
 
+/** Draw the route line + city points on a map (shared by capture + live preview). */
+export function drawTripRoute(map, ordered, legs) {
+  drawRouteLinesCached(map, 'sc-route', legs, { dashedId: 'sc-dashed', solidId: 'sc-solid' });
+  drawPointLayer(map, ordered);
+}
+
 /**
  * Capture the trip route map to a PNG blob.
  *
@@ -103,7 +109,7 @@ function drawPointLayer(map, ordered) {
 export async function captureRouteMapBlob(o) {
   const {
     visits = [], transfers = [], format = 'story', scheme = 'DARK', lang = 'en',
-    projection = 'mercator', pitch = 0, bearing = 0, showSE = false,
+    projection = 'mercator', pitch = 0, bearing = 0, showSE = false, camera = null,
   } = o || {};
   if (!MAPBOX_TOKEN) return null;
 
@@ -136,9 +142,13 @@ export async function captureRouteMapBlob(o) {
 
     await new Promise((res) => map.once('load', res));
 
-    drawRouteLinesCached(map, `sc:${format}`, legs, { dashedId: 'sc-dashed', solidId: 'sc-solid' });
-    drawPointLayer(map, ordered);
-    fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 90, maxZoom: 9, animate: false });
+    drawTripRoute(map, ordered, legs);
+    if (camera && Array.isArray(camera.center)) {
+      // Mirror the exact view the user composed in the interactive preview.
+      map.jumpTo({ center: camera.center, zoom: camera.zoom, bearing: camera.bearing || 0, pitch: camera.pitch || 0 });
+    } else {
+      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 90, maxZoom: 9, animate: false });
+    }
 
     // Wait until tiles + route are fully rendered.
     await new Promise((res) => map.once('idle', res));
