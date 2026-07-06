@@ -34,6 +34,9 @@ import { base64, defaultBgDataUri, renderPng } from './render.ts';
 const BUCKET = 'share-cards';
 const RATE_MAX = 10;
 const RATE_WINDOW = 3600;
+// TEMP (TRIP-193): rate limit disabled for testing. Flip back to `true` before
+// launch - the check/record logic below is kept intact, just gated by this flag.
+const RATE_LIMIT_ENABLED = false;
 
 const LANDING = 'https://www.triplanio.com/';
 
@@ -123,7 +126,7 @@ Deno.serve(async (req) => {
 
     // ---- rate limit: CHECK only here; the hit is recorded AFTER a successful
     // render+upload (below), so a failed render never burns the user's quota. ----
-    if (!(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
+    if (RATE_LIMIT_ENABLED && !(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
       return Response.json({ code: 'rate_limited', retry_after_seconds: RATE_WINDOW }, { headers: cors });
     }
 
@@ -162,7 +165,7 @@ Deno.serve(async (req) => {
       console.error('share-card upload failed', upErr.message);
       return Response.json({ error: 'storage_failed' }, { status: 500, headers: cors });
     }
-    await recordHit('share_card', user.id); // count only a genuinely rendered card
+    if (RATE_LIMIT_ENABLED) await recordHit('share_card', user.id); // count only a genuinely rendered card
     const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
     return Response.json({ url: pub.publicUrl, cached: false, width: outW, height: outH }, { headers: cors });
   } catch (e) {
