@@ -18,7 +18,7 @@
 import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
-import { aiFlowLimited } from '../_shared/rateLimit.ts';
+import { recordHit, underLimit } from '../_shared/rateLimit.ts';
 import { pickLang } from '../_shared/tgLang.ts';
 import {
   BRAND, cardStrings, dateRangeLabel, factsLine, formatNumber,
@@ -121,8 +121,9 @@ Deno.serve(async (req) => {
       return Response.json({ url: pub.publicUrl, cached: true, width: outW, height: outH }, { headers: cors });
     }
 
-    // ---- rate limit (only real renders count) ----
-    if (await aiFlowLimited('share_card', user.id, RATE_MAX, RATE_WINDOW)) {
+    // ---- rate limit: CHECK only here; the hit is recorded AFTER a successful
+    // render+upload (below), so a failed render never burns the user's quota. ----
+    if (!(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
       return Response.json({ code: 'rate_limited', retry_after_seconds: RATE_WINDOW }, { headers: cors });
     }
 
@@ -161,6 +162,7 @@ Deno.serve(async (req) => {
       console.error('share-card upload failed', upErr.message);
       return Response.json({ error: 'storage_failed' }, { status: 500, headers: cors });
     }
+    await recordHit('share_card', user.id); // count only a genuinely rendered card
     const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
     return Response.json({ url: pub.publicUrl, cached: false, width: outW, height: outH }, { headers: cors });
   } catch (e) {

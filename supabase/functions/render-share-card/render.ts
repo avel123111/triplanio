@@ -1,46 +1,27 @@
 /**
  * SVG -> PNG rasterization via resvg-wasm (TRIP-193).
  *
- * Asset delivery is deliberately NOT via bundled static files: Supabase edge
- * does not serve files read through Deno.readFile(import.meta.url) (eszip ships
- * the module graph, not arbitrary files). So:
- *   - fonts + default background are embedded as base64 (assets_b64.ts),
- *   - the larger resvg wasm is fetched from a CDN once per isolate.
- * Everything is cached in module scope, so warm invocations skip all setup.
- * Local spike measured ~530ms warm for a full 1080x1920 card - well under the
- * 2s edge CPU limit (the wasm fetch is I/O, not CPU).
+ * All binary assets (resvg wasm, fonts, default background) are embedded as
+ * base64 in assets_b64.ts and decoded once per isolate. This is deliberate:
+ * Supabase edge does not serve files read through Deno.readFile(import.meta.url)
+ * (eszip ships the module graph, not arbitrary files), and embedding the wasm
+ * rather than fetching it from a CDN keeps rendering fully self-contained - zero
+ * network (only the optional Mapbox map is fetched). Everything is cached in
+ * module scope, so warm invocations skip all setup. Local spike measured ~530ms
+ * for a full 1080x1920 card - well under the 2s edge CPU limit.
  *
  * Fonts ship BOTH latin and cyrillic subsets per family - digits and latin
  * glyphs live in the latin subset, so cyrillic-only files render them as tofu
  * (found during the TRIP-193 spike).
  */
 import { initWasm, Resvg } from 'npm:@resvg/resvg-wasm@2.6.2';
-import { b64ToBytes, BG_DEFAULT_B64, FONT_B64 } from './assets_b64.ts';
-
-const WASM_URLS = [
-  'https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.6.2/index_bg.wasm',
-  'https://esm.sh/@resvg/resvg-wasm@2.6.2/index_bg.wasm',
-];
+import { b64ToBytes, BG_DEFAULT_B64, FONT_B64, RESVG_WASM_B64 } from './assets_b64.ts';
 
 let wasmReady: Promise<void> | null = null;
 let fontBuffers: Uint8Array[] | null = null;
 
-async function initResvgOnce(): Promise<void> {
-  let lastErr: unknown;
-  for (const url of WASM_URLS) {
-    try {
-      await initWasm(fetch(url));
-      return;
-    } catch (e) {
-      lastErr = e;
-      console.error('resvg initWasm failed for', url, (e as Error).message);
-    }
-  }
-  throw lastErr instanceof Error ? lastErr : new Error('resvg initWasm failed');
-}
-
 async function ensureReady(): Promise<Uint8Array[]> {
-  if (!wasmReady) wasmReady = initResvgOnce();
+  if (!wasmReady) wasmReady = initWasm(b64ToBytes(RESVG_WASM_B64));
   await wasmReady;
   if (!fontBuffers) fontBuffers = FONT_B64.map(b64ToBytes);
   return fontBuffers;
