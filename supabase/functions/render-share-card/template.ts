@@ -36,6 +36,16 @@ export function mapSize(format: Format): { w: number; h: number } {
   return { w: LAYOUTS[format].map.w, h: LAYOUTS[format].map.h };
 }
 
+/** The card canvas size (single source of truth; index.ts renders to this). */
+export function cardSize(format: Format): { w: number; h: number } {
+  return { w: LAYOUTS[format].w, h: LAYOUTS[format].h };
+}
+
+/** The map "window" rect within the card (where the live map shows through). */
+export function mapSlot(format: Format): { x: number; y: number; w: number; h: number; rx: number } {
+  return { ...LAYOUTS[format].map, rx: 26 };
+}
+
 function escapeXml(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c] as string));
@@ -59,6 +69,7 @@ export function buildCardSvg(
   bgDataUri: string,
   mapDataUri: string | null,
   qrUrl: string,
+  overlay = false,
 ): string {
   const L = LAYOUTS[format];
   const { w: W, h: H, map: M } = L;
@@ -66,19 +77,30 @@ export function buildCardSvg(
   const footY = H - (format === 'story' ? 150 : 130);
   const qrMarkup = qrSvg(qrUrl, W - 260, footY - 80, 150);
 
-  const mapLayer = mapDataUri
-    ? `<image href="${mapDataUri}" x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" preserveAspectRatio="xMidYMid slice" clip-path="url(#mapclip)"/>`
-    : `<rect x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" fill="#dbe6ef" clip-path="url(#mapclip)"/>`;
+  // `overlay` mode renders the frame ONLY: the background is punched through at
+  // the map slot (transparent hole) and the sticker is drawn as a border with no
+  // fill, so the client can lay this PNG over the live interactive map (which
+  // shows through the hole). Normal mode bakes the captured map into the slot.
+  const bgFill = `<image href="${bgDataUri}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>` +
+    `<rect x="0" y="0" width="${W}" height="${Math.round(H * 0.38)}" fill="url(#top)"/>` +
+    `<rect x="0" y="${Math.round(H * 0.62)}" width="${W}" height="${Math.round(H * 0.38)}" fill="url(#bot)"/>`;
+  const bg = overlay ? `<g mask="url(#slothole)">${bgFill}</g>` : bgFill;
+
+  const sticker = `<rect x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" rx="26" fill="${overlay ? 'none' : '#e8edf2'}" stroke="#fff" stroke-width="14"/>`;
+  const mapLayer = overlay
+    ? ''
+    : (mapDataUri
+      ? `<image href="${mapDataUri}" x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" preserveAspectRatio="xMidYMid slice" clip-path="url(#mapclip)"/>`
+      : `<rect x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" fill="#dbe6ef" clip-path="url(#mapclip)"/>`);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
  <linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1e3a" stop-opacity="0.55"/><stop offset="0.42" stop-color="#0b1e3a" stop-opacity="0"/></linearGradient>
  <linearGradient id="bot" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#06122a" stop-opacity="0.64"/><stop offset="0.45" stop-color="#06122a" stop-opacity="0"/></linearGradient>
  <clipPath id="mapclip"><rect x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" rx="26"/></clipPath>
+ <mask id="slothole"><rect x="0" y="0" width="${W}" height="${H}" fill="white"/><rect x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" rx="26" fill="black"/></mask>
 </defs>
-<image href="${bgDataUri}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>
-<rect x="0" y="0" width="${W}" height="${Math.round(H * 0.38)}" fill="url(#top)"/>
-<rect x="0" y="${Math.round(H * 0.62)}" width="${W}" height="${Math.round(H * 0.38)}" fill="url(#bot)"/>
+${bg}
 <path d="M0 0 L360 0 L300 46 L150 30 L60 70 L0 54 Z" fill="#2267E2"/>
 <path d="M${W} ${H} L${W - 360} ${H} L${W - 300} ${H - 46} L${W - 150} ${H - 30} L${W - 60} ${H - 70} L${W} ${H - 54} Z" fill="#2267E2"/>
 <text x="70" y="230" font-family="Caveat" font-weight="700" font-size="${tSize}" fill="#fff">${escapeXml(data.title)}</text>
@@ -86,7 +108,7 @@ export function buildCardSvg(
 <rect x="70" y="332" width="${Math.max(150, data.dateLabel.length * 20)}" height="54" rx="12" fill="#ffffff" opacity="0.16"/>
 <text x="86" y="370" font-family="Montserrat" font-weight="700" font-size="32" fill="#fff">${escapeXml(data.dateLabel)}</text>
 <text x="74" y="418" font-family="Montserrat" font-weight="400" font-size="30" fill="#e9eefc">${escapeXml(data.facts)}</text>
-<rect x="${M.x}" y="${M.y}" width="${M.w}" height="${M.h}" rx="26" fill="#e8edf2" stroke="#fff" stroke-width="14"/>
+${sticker}
 ${mapLayer}
 <rect x="${M.x}" y="${M.y + M.h + 22}" width="${Math.max(340, data.distanceStr.length * 26 + 220)}" height="76" rx="38" fill="#fff"/>
 <text x="${M.x + 32}" y="${M.y + M.h + 70}" font-family="Montserrat" font-weight="700" font-size="36" fill="#12203a">${escapeXml(data.distanceStr)} ${escapeXml(data.distanceLabel)}</text>
