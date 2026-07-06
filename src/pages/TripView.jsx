@@ -1304,7 +1304,7 @@ export default function TripView() {
         ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
       />
 
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
 
       {/* Add bottom-sheet — opened by the mobile bottom-nav "+". Each item opens
           a trip-level create dialog (addModal) IN PLACE, without navigating to the
