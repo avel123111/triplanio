@@ -1306,7 +1306,8 @@ h4,
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
 .nonext,                   /* /trips — пусто «следующий трип» */
-.tr {                      /* /trips — строка трипа (list-view) */
+.tr,                       /* /trips — строка трипа (list-view) */
+.tl3-card {                /* таймлайн трипа — карточки эвентов (TRIP-199) */
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
   border-radius: var(--r-xl);
@@ -3280,8 +3281,9 @@ h4,
 
 .tl3-ev { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
-.tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--sh-1); cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
-@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-199); тут только раскладка */
+.tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
+@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-glass); } }
 .tl3-card .tile { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
 .tl3-card .tile svg { width: 20px; height: 20px; }
 /* body keeps a real min-width so the meta (price + partner pill) wraps to a new
