@@ -27,8 +27,16 @@ export function hostnameFromUrl(url) {
   }
 }
 
-/** Favicon URL (via Google's favicon service) for any domain or full URL. */
+/**
+ * Favicon URL (via Google's favicon service) for a domain or full URL — the
+ * SINGLE owner of "favicon URL for a host" (PartnerLogo composes this too).
+ * Returns null unless the host looks like a real public domain (has a dot and a
+ * 2+ letter TLD). A half-typed host ("n", "book") yields no URL, so we never
+ * fire the request that redirected to `t1.gstatic.com/faviconV2?url=http://n`
+ * → 404 on every keystroke. (TRIP-202)
+ */
 export function faviconUrl(urlOrDomain) {
   const host = hostnameFromUrl(urlOrDomain);
-  return host ? `https://www.google.com/s2/favicons?domain=${host}&sz=64` : null;
+  if (!host || !/\.[a-z]{2,}$/i.test(host)) return null;
+  return `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
 }

@@ -9,7 +9,9 @@
     <link rel="manifest" href="/manifest.json" />
     <title>Triplanio — Your whole trip. One beautiful plan.</title>
     <meta name="description" content="Triplanio is a travel-planning app for complex multi-city trips. Build itineraries, plan together, track budgets in any currency, and get smart reminders." />
-    <link rel="preload" href="/landing.css" as="style" />
+    <!-- landing.css is owned by SiteChrome (injected only on marketing/public routes).
+         No global preload here: index.html is one file for ALL SPA routes, so a static
+         preload leaked onto /trips, /stats, /trip/* → "preloaded but not used" warning. (TRIP-202) -->
     <!-- Self-hosted Golos Text — preload основных весов (латиница+кириллица) для скорости первого экрана (TRIP-165) -->
     <link rel="preload" href="/fonts/golos/golos-text-400-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/golos/golos-text-400-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
