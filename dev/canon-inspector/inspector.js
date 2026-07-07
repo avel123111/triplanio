@@ -174,7 +174,7 @@ function build() {
   const root = h(ROOT_CLASS);
 
   els.launcher = h('ci-launch', 'button');
-  els.launcher.title = 'Каноны — инспектор типографики';
+  els.launcher.title = 'Каноны — инспектор типографики (Alt+клик — действие в приложении: открыть модалку / навигация)';
   els.launcher.innerHTML = `<span class="ci-dot"></span>`;
   els.launcher.onclick = () => (active ? disable() : enable());
 
@@ -219,12 +219,23 @@ function onMove(e) {
   const el = e.target;
   if (isOurs(el)) { els.hi.style.display = 'none'; return; }
   const r = el.getBoundingClientRect();
-  Object.assign(els.hi.style, { display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  // Alt held → the next click passes through to the app (open a modal, navigate)
+  // instead of selecting; tint the highlight green to signal it (TRIP-203).
+  const pass = e.altKey;
+  Object.assign(els.hi.style, {
+    display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+    borderColor: pass ? '#22c55e' : '#2563eb',
+    background: pass ? 'rgba(34,197,94,.10)' : 'rgba(37,99,235,.10)',
+  });
 }
 
 function onClick(e) {
   if (dragging) return;         // trailing click after a drag — ignore
   if (isOurs(e.target)) return; // let our own UI work normally
+  // Alt-click passes through to the app instead of selecting — so you can open a
+  // modal / navigate to the state you want to inspect without leaving inspect
+  // mode. Plain click still selects. Pairs with the modal shield below (TRIP-203).
+  if (e.altKey) return;
   e.preventDefault();
   e.stopPropagation();
   selectEl(e.target);
