@@ -190,7 +190,6 @@ Deno.serve(async (req) => {
       mapDataUri = mapBin ? `data:image/png;base64,${base64(mapBin)}` : null;
     }
 
-    cleanupMap(); // snapshot bytes are in hand (or download failed) - drop the upload
     const bg = defaultBgDataUri();
     const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format), mode === 'overlay');
     const png = await renderPng(svg, outW);
@@ -201,6 +200,11 @@ Deno.serve(async (req) => {
       console.error('share-card upload failed', upErr.message);
       return Response.json({ error: 'storage_failed' }, { status: 500, headers: cors });
     }
+    // Drop the single-use map snapshot only now that the render succeeded. If the
+    // render exceeds the edge CPU limit (546) the isolate is killed here, so NOT
+    // deleting earlier is what lets the client's retry reuse the same snapshot
+    // instead of losing the map. An unswept orphan is cleaned up later.
+    cleanupMap();
     if (mode === 'card' && RATE_LIMIT_ENABLED) await recordHit('share_card', user.id); // count only a genuinely rendered card
     const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
     return Response.json({ url: pub.publicUrl, cached: false, width: outW, height: outH, slot }, { headers: cors });
