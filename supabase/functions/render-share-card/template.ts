@@ -199,18 +199,22 @@ function advance(text: string, size: number, factor = 0.6): number {
   return text.length * size * factor;
 }
 
-type TextOpts = { anchor?: 'start' | 'middle' | 'end'; ls?: number; weight?: number };
+type TextOpts = { anchor?: 'start' | 'middle' | 'end'; ls?: number; weight?: number; opacity?: number };
 
 /** A text element (no shadow). */
 function textEl(x: number, y: number, font: string, size: number, fill: string, text: string, o: TextOpts = {}): string {
   const a = o.anchor ? ` text-anchor="${o.anchor}"` : '';
   const ls = o.ls ? ` letter-spacing="${o.ls}"` : '';
-  return `<text x="${x}" y="${y}" font-family="${font}" font-weight="${o.weight ?? 700}" font-size="${size}" fill="${fill}"${a}${ls}>${escapeXml(text)}</text>`;
+  const op = o.opacity != null ? ` opacity="${o.opacity}"` : '';
+  return `<text x="${x}" y="${y}" font-family="${font}" font-weight="${o.weight ?? 700}" font-size="${size}" fill="${fill}"${a}${ls}${op}>${escapeXml(text)}</text>`;
 }
 
-/** Shadowed white text: a blurred dark copy 3px below, then the white text. */
+/** Shadowed white text: a dark copy offset down/right, then the white text. The
+ *  shadow is a plain offset (NOT a gaussian blur) - blur filters are what pushed
+ *  the edge resvg render over its CPU limit (HTTP 546); a hard offset reads the
+ *  same for legibility over the photo and is essentially free. */
 function label(x: number, y: number, font: string, size: number, text: string, o: TextOpts = {}): string {
-  const shadow = `<g filter="url(#blur4)" opacity="0.5">${textEl(x, y + 3, font, size, '#14161A', text, o)}</g>`;
+  const shadow = textEl(x + 1, y + 3, font, size, '#14161A', text, { ...o, opacity: 0.55 });
   return shadow + textEl(x, y, font, size, '#fff', text, o);
 }
 
@@ -235,17 +239,18 @@ export function buildCardSvg(
     `<rect x="0" y="${L.botFadeY}" width="${W}" height="${L.botFadeH}" fill="url(#botfade)"/>`;
   const bg = overlay ? `<g mask="url(#slothole)">${bgFill}</g>` : bgFill;
 
-  // Corner ribbons (shadow + cream + blue), then the map frame.
+  // Corner ribbons (shadow + cream + blue), then the map frame. Shadows are the
+  // ribbon's own offset dark path (no blur - see label()).
   const br = RIBBON_BR[format];
   const ribbons =
-    `<g filter="url(#blur4)" opacity="0.35"><path d="${RIBBON_TL.shadow}" fill="#000"/></g>` +
+    `<path d="${RIBBON_TL.shadow}" fill="#000" opacity="0.3"/>` +
     `<path d="${RIBBON_TL.cream}" fill="#F5EFE2"/><path d="${RIBBON_TL.blue}" fill="#2267E2"/>` +
-    `<g filter="url(#blur4)" opacity="0.35"><path d="${br.shadow}" fill="#000"/></g>` +
+    `<path d="${br.shadow}" fill="#000" opacity="0.3"/>` +
     `<path d="${br.cream}" fill="#F5EFE2"/><path d="${br.blue}" fill="#2267E2"/>`;
 
-  // Map: soft drop-shadow blob, then the map (baked, blob-clipped) or nothing
-  // (overlay - live map shows through the hole), then the white blob border.
-  const blobShadow = `<g transform="${xf}"><g filter="url(#blur14)" opacity="0.45"><path d="${BLOB_D}" fill="#000" transform="translate(10,16)"/></g></g>`;
+  // Map: drop-shadow blob (offset, no blur), then the map (baked, blob-clipped)
+  // or nothing (overlay - live map shows through the hole), then white border.
+  const blobShadow = `<g transform="${xf}"><path d="${BLOB_D}" fill="#000" opacity="0.28" transform="translate(10,16)"/></g>`;
   const mapImg = overlay
     ? ''
     : (mapDataUri
@@ -257,12 +262,12 @@ export function buildCardSvg(
   const tSize = Math.min(L.titleSizeBase, Math.round((W - 140) / (advance(data.title, 1, 0.5) || 1)));
   const rot = (y: number) => `transform="rotate(-2 ${W / 2} ${y})"`;
   const title =
-    `<g filter="url(#blur4)" opacity="0.5"><text x="${W / 2}" y="${L.titleY + 3}" font-family="Caveat" font-weight="700" font-size="${tSize}" fill="#14161A" text-anchor="middle" ${rot(L.titleY + 3)}>${escapeXml(data.title)}</text></g>` +
+    `<text x="${W / 2 + 1}" y="${L.titleY + 3}" font-family="Caveat" font-weight="700" font-size="${tSize}" fill="#14161A" text-anchor="middle" opacity="0.5" ${rot(L.titleY + 3)}>${escapeXml(data.title)}</text>` +
     `<text x="${W / 2}" y="${L.titleY}" font-family="Caveat" font-weight="700" font-size="${tSize}" fill="#fff" text-anchor="middle" ${rot(L.titleY)}>${escapeXml(data.title)}</text>`;
 
-  // Hand-drawn arrow (shadow + white) + arrowhead.
+  // Hand-drawn arrow (offset shadow + white) + arrowhead.
   const arrow =
-    `<g filter="url(#blur4)" opacity="0.5"><path d="${L.arrow}" stroke="#14161A" stroke-width="9" fill="none" stroke-linecap="round" transform="translate(2,4)"/></g>` +
+    `<path d="${L.arrow}" stroke="#14161A" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.5" transform="translate(2,4)"/>` +
     `<path d="${L.arrow}" stroke="#FFFFFF" stroke-width="9" fill="none" stroke-linecap="round"/>` +
     `<path d="${L.arrowHead}" fill="#FFFFFF"/>`;
 
@@ -300,7 +305,7 @@ export function buildCardSvg(
   const distW = Math.max(L.dist.w, Math.round(advance(distText, L.dist.size, 0.58) + 64));
   const dp = L.dist;
   const distPill =
-    `<g filter="url(#blur4)" opacity="0.4"><g transform="translate(3,5)"><rect x="${dp.x}" y="${dp.y}" width="${distW}" height="${dp.h}" rx="${dp.rx}" fill="#14161A"/></g></g>` +
+    `<rect x="${dp.x + 3}" y="${dp.y + 5}" width="${distW}" height="${dp.h}" rx="${dp.rx}" fill="#14161A" opacity="0.28"/>` +
     `<path d="M${dp.x + 60},${dp.y} L${dp.x + 88},${dp.y - 26} L${dp.x + 108},${dp.y} Z" fill="#FFFFFF"/>` +
     `<rect x="${dp.x}" y="${dp.y}" width="${distW}" height="${dp.h}" rx="${dp.rx}" fill="#FFFFFF"/>` +
     textEl(dp.x + distW / 2, dp.y + dp.h / 2 + dp.size * 0.36, 'Montserrat', dp.size, '#22252A', distText, { weight: 700, anchor: 'middle' });
@@ -310,7 +315,7 @@ export function buildCardSvg(
   const ctaW = Math.max(cp.w, Math.round(advance(data.cta, cp.size, 0.42) + 60));
   const ctaX = Math.min(cp.x, W - 40 - ctaW); // keep it on-canvas if widened
   const ctaPill =
-    `<g filter="url(#blur4)" opacity="0.4"><g transform="translate(3,5)"><rect x="${ctaX}" y="${cp.y}" width="${ctaW}" height="${cp.h}" rx="${cp.rx}" fill="#14161A"/></g></g>` +
+    `<rect x="${ctaX + 3}" y="${cp.y + 5}" width="${ctaW}" height="${cp.h}" rx="${cp.rx}" fill="#14161A" opacity="0.28"/>` +
     `<rect x="${ctaX}" y="${cp.y}" width="${ctaW}" height="${cp.h}" rx="${cp.rx}" fill="#FFFFFF"/>` +
     textEl(ctaX + ctaW / 2, cp.y + cp.h / 2 + cp.size * 0.34, 'Caveat', cp.size, '#22252A', data.cta, { weight: 700, anchor: 'middle' });
 
@@ -333,8 +338,6 @@ export function buildCardSvg(
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
- <filter id="blur4" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4"/></filter>
- <filter id="blur14" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
  <linearGradient id="topfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101820" stop-opacity="0.45"/><stop offset="1" stop-color="#101820" stop-opacity="0"/></linearGradient>
  <linearGradient id="botfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101820" stop-opacity="0"/><stop offset="1" stop-color="#101820" stop-opacity="0.5"/></linearGradient>
  <clipPath id="mapclip"><path d="${BLOB_D}" transform="${xf}"/></clipPath>
