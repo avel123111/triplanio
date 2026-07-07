@@ -29,6 +29,7 @@ import {
 } from './stats.ts';
 import { buildStaticMapUrl, fetchStaticMap } from './mapbox.ts';
 import { buildCardSvg, cardSize, mapSize, mapSlot, TEMPLATE_VERSION, type Format } from './template.ts';
+import { fontFaceStyle } from './fontFaces.ts';
 import { base64, defaultBgDataUri, renderPng } from './render.ts';
 
 const BUCKET = 'share-cards';
@@ -150,7 +151,9 @@ Deno.serve(async (req) => {
     // preview a bare map - the frame is a plain SVG the browser draws natively.
     // The final downloadable card (mode 'card') is still rasterised below. ----
     if (mode === 'overlay') {
-      const svg = buildCardSvg(format, data, defaultBgDataUri(), null, qrUrlFor(tripId, format), true);
+      // Embed the fonts (@font-face) so the browser draws the frame with the SAME
+      // glyphs as the final render - device-invariant, no dependence on page fonts.
+      const svg = buildCardSvg(format, data, defaultBgDataUri(), null, qrUrlFor(tripId, format), true, fontFaceStyle());
       return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
     }
 

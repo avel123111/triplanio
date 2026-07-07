@@ -25,6 +25,19 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   const mapRef = useRef(null);
   const [scheme, setScheme] = useState('DARK');
   const [projection, setProjection] = useState('mercator');
+  const [fontTick, setFontTick] = useState(0);
+
+  // The frame SVG carries its fonts as @font-face (embedded data URIs). They load
+  // from the data URI ~instantly, but font-display:block hides the text until the
+  // face is ready; nudge a repaint once fonts settle so the frame paints with the
+  // real glyphs (never a device fallback) - this is what keeps it identical across
+  // devices instead of "разъезжается".
+  useEffect(() => {
+    if (!overlaySvg || !document?.fonts?.ready) return undefined;
+    let alive = true;
+    document.fonts.ready.then(() => { if (alive) setFontTick((n) => n + 1); });
+    return () => { alive = false; };
+  }, [overlaySvg]);
 
   useEffect(() => {
     if (!MAPBOX_TOKEN || !holderRef.current || mapRef.current) return undefined;
@@ -137,6 +150,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       <div ref={holderRef} style={{ position: 'absolute', overflow: 'hidden', ...holeStyle }} />
       {frameSvg && (
         <div
+          key={`frame-${fontTick}`}
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: frameSvg }}
