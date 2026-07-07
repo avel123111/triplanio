@@ -121,33 +121,7 @@ Deno.serve(async (req) => {
     const distanceKm = routeDistanceKm(visits);
     const participants = activeMembers + 1; // + creator (matches app travel-stats rule)
 
-    // ---- content hash / cache ----
-    const hashInput = JSON.stringify({
-      v: TEMPLATE_VERSION, mode, format, lang, map: mapPath,
-      title: trip.title || '',
-      cities: transit.map((c) => [c.geonameid ?? c.city_name_en, c.latitude, c.longitude, c.position]),
-      allPts: visits.map((v) => [v.latitude, v.longitude]),
-      dates: [startISO, endISO], participants,
-    });
-    const hash = await sha1Hex(hashInput);
-    const path = `${tripId}/${hash}.png`;
-    const { w: outW, h: outH } = cardSize(format);
-    const slot = mapSlot(format); // map window rect within the card (for the client)
-
-    const { data: existing } = await supabaseAdmin.storage.from(BUCKET).list(tripId, { search: `${hash}.png`, limit: 1 });
-    if (existing && existing.length > 0) {
-      cleanupMap();
-      const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-      return Response.json({ url: pub.publicUrl, cached: true, width: outW, height: outH, slot }, { headers: cors });
-    }
-
-    // ---- rate limit: CHECK only here; the hit is recorded AFTER a successful
-    // render+upload (below), so a failed render never burns the user's quota. ----
-    if (mode === 'card' && RATE_LIMIT_ENABLED && !(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
-      return Response.json({ code: 'rate_limited', retry_after_seconds: RATE_WINDOW }, { headers: cors });
-    }
-
-    // ---- render ----
+    // ---- card text/data ----
     const s = cardStrings(lang);
     const from = cityLabel(transit[0], lang);
     const to = cityLabel(transit[transit.length - 1], lang);
@@ -167,11 +141,46 @@ Deno.serve(async (req) => {
       site: s.site,
       brand: BRAND,
     };
+    const { w: outW, h: outH } = cardSize(format);
+    const slot = mapSlot(format); // map window rect within the card (for the client)
 
-    let mapDataUri: string | null = null;
+    // ---- overlay mode: return the frame SVG for the CLIENT to render in the
+    // browser (no resvg). Rasterising the frame in the edge isolate is what
+    // intermittently blew the CPU limit (HTTP 546, cold isolate) and left the
+    // preview a bare map - the frame is a plain SVG the browser draws natively.
+    // The final downloadable card (mode 'card') is still rasterised below. ----
     if (mode === 'overlay') {
-      // Frame only - no map (the client shows the live map through the hole).
-    } else if (mapPath) {
+      const svg = buildCardSvg(format, data, defaultBgDataUri(), null, qrUrlFor(tripId, format), true);
+      return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
+    }
+
+    // ---- content hash / cache (card mode) ----
+    const hashInput = JSON.stringify({
+      v: TEMPLATE_VERSION, mode, format, lang, map: mapPath,
+      title: trip.title || '',
+      cities: transit.map((c) => [c.geonameid ?? c.city_name_en, c.latitude, c.longitude, c.position]),
+      allPts: visits.map((v) => [v.latitude, v.longitude]),
+      dates: [startISO, endISO], participants,
+    });
+    const hash = await sha1Hex(hashInput);
+    const path = `${tripId}/${hash}.png`;
+
+    const { data: existing } = await supabaseAdmin.storage.from(BUCKET).list(tripId, { search: `${hash}.png`, limit: 1 });
+    if (existing && existing.length > 0) {
+      cleanupMap();
+      const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
+      return Response.json({ url: pub.publicUrl, cached: true, width: outW, height: outH, slot }, { headers: cors });
+    }
+
+    // ---- rate limit: CHECK only here; the hit is recorded AFTER a successful
+    // render+upload (below), so a failed render never burns the user's quota. ----
+    if (mode === 'card' && RATE_LIMIT_ENABLED && !(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
+      return Response.json({ code: 'rate_limited', retry_after_seconds: RATE_WINDOW }, { headers: cors });
+    }
+
+    // ---- render (card mode) ----
+    let mapDataUri: string | null = null;
+    if (mapPath) {
       // Client-captured live-map snapshot from the `share-maps` bucket.
       const { data: mapBlob, error: dlErr } = await supabaseAdmin.storage.from('share-maps').download(mapPath);
       if (dlErr || !mapBlob) {
@@ -191,7 +200,7 @@ Deno.serve(async (req) => {
     }
 
     const bg = defaultBgDataUri();
-    const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format), mode === 'overlay');
+    const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format), false);
     const png = await renderPng(svg, outW);
 
     const { error: upErr } = await supabaseAdmin.storage.from(BUCKET)
