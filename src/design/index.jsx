@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog as UIDialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -285,7 +285,12 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
   const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
   return (
     <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className={size ? `dlg--${size}` : ''}>
+      {/* a11y contract lives HERE — the one wrapper every app dialog uses. The
+          visible <h2>/subtitle ARE the Radix Title/Description (asChild → native,
+          no hidden duplicate, zero visual change). With no subtitle we opt out of
+          the description explicitly (aria-describedby={undefined}) so Radix stays
+          quiet without a bogus empty node. (TRIP-202) */}
+      <DialogContent className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
         <div className="dlg__head">
           {icon && (
             <div style={{ width: 36, height: 36, borderRadius: 9, background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -293,8 +298,8 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
             </div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2>{title}</h2>
-            {subtitle && <div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div>}
+            <DialogTitle asChild><h2>{title}</h2></DialogTitle>
+            {subtitle && <DialogDescription asChild><div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div></DialogDescription>}
           </div>
           <button className="icon-btn" onClick={handleClose}>
             <Icon name="close" size={16} />

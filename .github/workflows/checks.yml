@@ -79,6 +79,7 @@ jobs:
   #   2b check-destructive-migrations — DROP/RENAME/ALTER…DROP without opt-in marker
   #   2c check-verify-jwt            — new externally-callable fn missing config.toml pin
   #   2d check-i18n                  — duplicate keys + new hardcoded UI strings
+  #   2f check-dialog-radix          — raw Radix dialog import outside the shell whitelist
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -116,6 +117,9 @@ jobs:
       - name: 2e — security tiers (manifest self-consistency)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-security-tiers.mjs
+      - name: 2f — dialog radix confinement (a11y contract)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-dialog-radix.mjs
 
   deno:
     name: Deno typecheck (edge functions)

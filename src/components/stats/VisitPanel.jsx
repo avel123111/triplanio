@@ -2,6 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { pointType, TONE } from '@/lib/travel-stats';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { useSheetSwipe } from '@/lib/useSheetSwipe';
+import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { Icon } from '@/design/icons';
 
 // Visit panel for the "My statistics" screen — opens when a country/city/pin is
@@ -160,7 +161,7 @@ export default function VisitPanel({
           ref={elRef}
           className="vpanel"
           aria-describedby={undefined}
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          onOpenAutoFocus={keepFocusInDialog}
         >
           <div className="vp-grip" {...gripProps} />
           <div className={`vp-h${isCity ? ' city' : ''}`}>
