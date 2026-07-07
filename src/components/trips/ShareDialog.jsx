@@ -5,6 +5,24 @@ import { Btn, Dialog, Severity, Skeleton } from '@/design/index';
 import { uploadMapBlob } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
 
+// render-share-card runs resvg in an edge isolate; a COLD isolate can exceed the
+// CPU limit and return HTTP 546 (invoke → error) intermittently - that is why the
+// card "loads every other time, mostly a bare map". A successful render is cached
+// forever by content hash, so a short retry is enough to land one good render and
+// stabilise that card. We retry only transient failures - a definitive app-level
+// code (rate_limited / no_transit_cities) or a success returns immediately.
+async function invokeCard(body, tries = 3) {
+  let last;
+  for (let attempt = 0; attempt < tries; attempt++) {
+    // eslint-disable-next-line no-await-in-loop
+    last = await supabase.functions.invoke('render-share-card', { body });
+    if (last?.data?.url || last?.data?.code) return last;
+    // eslint-disable-next-line no-await-in-loop
+    if (attempt < tries - 1) await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+  }
+  return last;
+}
+
 // Shared trip "Share" dialog. Two parts:
 //   1. Public read-only link (ensureShareToken) — unchanged.
 //   2. Social share card (TRIP-193) — a server-rendered story/post PNG with the
@@ -64,9 +82,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       if (blob) mapPath = await uploadMapBlob(trip.id, blob);
     } catch (e) { console.error('map capture/upload failed', e); }
     try {
-      const { data, error: invokeErr } = await supabase.functions.invoke(
-        'render-share-card', { body: { trip_id: trip.id, format, lang, map_path: mapPath } },
-      );
+      const { data, error: invokeErr } = await invokeCard({ trip_id: trip.id, format, lang, map_path: mapPath });
       if (invokeErr) { console.error('render-share-card error:', invokeErr); setCardCode('error'); }
       else if (data?.code) setCardCode(data.code);
       else if (data?.url) { setCardUrl(data.url); setStage('card'); }
@@ -89,7 +105,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     if (!open || !trip?.id || stage !== 'edit') return undefined;
     let cancelled = false;
     setOverlay(null);
-    supabase.functions.invoke('render-share-card', { body: { trip_id: trip.id, format, lang, mode: 'overlay' } })
+    invokeCard({ trip_id: trip.id, format, lang, mode: 'overlay' })
       .then(({ data, error: invokeErr }) => {
         if (cancelled || invokeErr || !data?.url) return;
         setOverlay({ url: data.url, slot: data.slot, w: data.width, h: data.height });
