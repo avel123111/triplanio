@@ -1,8 +1,22 @@
 {
+  "card_back": "Editar",
+  "card_build": "Crear tarjeta",
+  "card_desc": "Una historia lista con la ruta de tu viaje - muestra a tus amigos a donde vas",
+  "card_download": "Descargar",
+  "card_error": "No se pudo crear la imagen. Intentalo de nuevo.",
+  "card_generating": "Creando la imagen…",
+  "card_no_cities": "Anade ciudades a la ruta para crear una tarjeta.",
+  "card_post": "Post 4:5",
+  "card_rate_limited": "Suficiente por ahora - demasiadas tarjetas esta hora. Intentalo mas tarde.",
+  "card_share": "Compartir",
+  "card_story": "Historia 9:16",
+  "card_title": "Imagen para redes",
   "copied": "¡Copiado!",
   "copy": "Copiar",
   "description": "El destinatario ve la cronología y el mapa. Sin chat, presupuesto ni documentos.",
   "dialog_title": "Compartir viaje",
   "generating": "Generando enlace…",
-  "link_label": "Enlace público · Solo lectura"
+  "link_label": "Enlace público · Solo lectura",
+  "map_projection": "Proyeccion",
+  "map_theme": "Tema"
 }

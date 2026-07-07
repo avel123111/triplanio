@@ -1306,7 +1306,8 @@ h4,
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
 .nonext,                   /* /trips — пусто «следующий трип» */
-.tr {                      /* /trips — строка трипа (list-view) */
+.tr,                       /* /trips — строка трипа (list-view) */
+.tl3-card {                /* таймлайн трипа — карточки эвентов (TRIP-199) */
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
   border-radius: var(--r-xl);
@@ -3056,7 +3057,26 @@ h4,
 .trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
 /* Inside the shell the sidebar scrolls within its own row instead of the page. */
 .trip-shell .app-side { position: static; top: auto; height: auto; min-height: 0; overflow-y: auto; align-self: stretch; }
-.trip-content { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.trip-content { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+
+/* ---- TRIP-195: global event/city drawer host (EventDrawerHost) ----
+   Used OUTSIDE the structure editor (timeline / calendar / budget / overview).
+   Anchored to .trip-content (relative + overflow:hidden, already below the header
+   and right of the menu) so it never covers the header or the menu. Sibling of
+   the scrolling <main>, so it does NOT scroll with the content. Mirrors the
+   editor's `.ts-pdrawer`, but 50%-wide with an optional scrim (variable shading).
+   The ≤640 sheet reuses `.lp-sheet` / `.sheet-backdrop`. */
+.evd-scrim { position: absolute; inset: 0; z-index: 40; background: var(--scrim); animation: fadeIn .2s var(--ease-out) both; }
+.evd-drawer {
+  position: absolute; top: 0; left: 0; bottom: 0; z-index: 41;
+  width: 50%; min-width: 320px;
+  display: flex; flex-direction: column;
+  background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2);
+  outline: none; animation: evdDrawerIn .24s var(--ease-out) both;
+}
+.evd-drawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
+@keyframes evdDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .evd-drawer, .evd-scrim { animation: none; } }
 
 /* ---- Scrollable screen body ---- */
 .trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
@@ -3261,8 +3281,9 @@ h4,
 
 .tl3-ev { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
-.tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--sh-1); cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
-@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-199); тут только раскладка */
+.tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
+@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-glass); } }
 .tl3-card .tile { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
 .tl3-card .tile svg { width: 20px; height: 20px; }
 /* body keeps a real min-width so the meta (price + partner pill) wraps to a new

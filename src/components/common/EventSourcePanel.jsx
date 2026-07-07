@@ -148,12 +148,6 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
         </>
       )}
     >
-      {warning && (
-        <div className="warn-banner">
-          <span>⚠️</span>
-          <div>{warning}</div>
-        </div>
-      )}
       {confirmDel ? (
         <div className="del-confirm">
           <div className="del-confirm-ic"><Icon name="trash" size={18} /></div>
@@ -164,9 +158,10 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
         </div>
       ) : (
         <EventViewSections
-          kind={kind} entity={data} fromVisit={fromVisit} toVisit={toVisit}
+          kind={kind} entity={data} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
           accent={eventTheme(kind, data).color}
           docs={docs} canEdit={false} uploading={uploading} uploadFiles={uploadFiles}
+          externalWarning={warning}
         />
       )}
     </PanelShell>

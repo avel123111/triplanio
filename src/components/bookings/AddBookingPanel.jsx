@@ -28,6 +28,8 @@ export default function AddBookingPanel({
   toVisit,
   stay22,
   defaultCurrency = 'EUR',
+  // Prefill for an activity created on a specific day (timeline "add activity").
+  defaultStart = null,
   // 'find' (partners, default) | 'manual' (I have a booking)
   initialTab = 'find',
   onPreviewTransfer,
@@ -96,7 +98,7 @@ export default function AddBookingPanel({
         <EventEditDialog
           embedded open variant="panel" kind={kind} tripId={tripId}
           visit={visit} fromVisit={fromVisit} toVisit={toVisit}
-          defaultCurrency={defaultCurrency}
+          defaultCurrency={defaultCurrency} defaultStart={defaultStart}
           onPreviewTransfer={onPreviewTransfer}
           onOpenChange={(o) => { if (!o) { onPreviewTransfer?.(null); close(); } }}
         />
