@@ -232,6 +232,33 @@ function onClick(e) {
 
 function onKey(e) { if (e.key === 'Escape') disable(); }
 
+// ── modal shield (make the inspector usable over Radix dialogs) ─────────────
+// App modals are Radix @radix-ui/react-dialog (modal). While one is open Radix
+// puts bubble-phase listeners on `document`: DismissableLayer (`pointerdown`
+// outside → onOpenChange(false)) and FocusScope (`focusin`/`focusout` trap).
+// Our panel/tray/launcher live in `.ci-root`, which Radix treats as "outside" —
+// so any click on the inspector would slam the modal shut and steal focus.
+//
+// Fix: a bubble-phase guard on `document`, installed at init (BEFORE any modal
+// mounts, so it is registered first and fires first for the same node+phase).
+// When the event belongs to our own UI we stopImmediatePropagation() so Radix's
+// document listeners never run. Bubble phase (not capture) is deliberate: the
+// inspector's own listeners live on descendants (header drag `mousedown`, button
+// `onclick`) and fire earlier in the bubble, before `document` — so they still
+// work; only Radix's document-level handlers are cut off.
+function installOutsideShield() {
+  const shield = (e) => {
+    // focusout carries the element GAINING focus in relatedTarget — guard it too
+    // so the focus trap doesn't yank focus back when you tab into our panel.
+    if (isOurs(e.target) || (e.relatedTarget && isOurs(e.relatedTarget))) {
+      e.stopImmediatePropagation();
+    }
+  };
+  for (const type of ['pointerdown', 'mousedown', 'focusin', 'focusout']) {
+    document.addEventListener(type, shield);   // bubble phase, on purpose
+  }
+}
+
 // ── draggable panels ───────────────────────────────────────────────────────
 // Drag a floating element by a handle (its header). Buttons inside the handle
 // keep working (drag ignores mousedown that starts on a button).
@@ -651,4 +678,5 @@ export function initCanonInspector() {
   load();
   injectStyles();
   build();
+  installOutsideShield();
 }
