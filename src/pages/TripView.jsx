@@ -40,7 +40,7 @@ import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit } from '@/lib/members';
+import { resolveMyRole, roleCanEdit, canShareTrip } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -996,7 +996,7 @@ export default function TripView() {
 
   const heroActions = (
     <>
-      {canEditMode && (
+      {canShareTrip(myRole) && (
         <button className="app-header__act" onClick={() => setShareOpen(true)}>
           <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
         </button>

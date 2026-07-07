@@ -4,12 +4,15 @@
  * POST body: { tripId }
  *
  * Returns the trip's share_token. If not yet set, generates and saves one.
- * Caller must be the trip owner (created_by === user.id).
+ * Caller must be an active participant of the trip (creator OR active member of
+ * any role, including viewer). The share token yields a read-only public view
+ * (getPublicTrip), which every participant already sees — so minting it grants
+ * no escalation. (TRIP-202)
  */
 
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { isCallerAdmin } from '../_shared/tripAccess.ts';
+import { isCallerParticipant } from '../_shared/tripAccess.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -22,9 +25,10 @@ Deno.serve(async (req) => {
     const { tripId } = await req.json();
     if (!tripId) return Response.json({ error: 'tripId is required' }, { status: 400, headers: corsHeaders });
 
-    // Only trip owner (admin) can manage share tokens
-    const isAdmin = await isCallerAdmin(tripId, user.id);
-    if (!isAdmin) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    // Any active participant (creator or member of any role) can mint the
+    // read-only public share link — mirrors the frontend `canShareTrip` gate.
+    const isParticipant = await isCallerParticipant(tripId, user.id);
+    if (!isParticipant) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
 
     // Fetch current share_token
     const { data: trip, error: fetchErr } = await supabaseAdmin
