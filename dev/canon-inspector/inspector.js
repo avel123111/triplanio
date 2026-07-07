@@ -530,10 +530,16 @@ function setScope(el, mode) {
   render(el);
 }
 // Colour axis — SAVED to the worklist (unlike the preview-only states). Click the
-// active swatch again to clear the choice.
+// active swatch again to reset to the DEFAULT text colour (Основной / --ink).
+// Deselecting means "back to default", not "no inline colour": text always has a
+// colour, and with no override a compound preset keeps painting its own — e.g.
+// `.tp-caption` sets color:var(--brand), so the text stayed brand-blue. Resetting
+// to 'ink' lays down inline var(--ink), overriding the class. (`null` remains only
+// as the seeded state for off-palette text we never touched, so selecting such an
+// element doesn't force-recolour it.) (TRIP-203)
 function pickColor(el, key) {
   const cur = pendingColor.get(el) ?? null;
-  pendingColor.set(el, cur === key ? null : key);
+  pendingColor.set(el, cur === key ? 'ink' : key);
   applyPreview(el);
   render(el);
 }
