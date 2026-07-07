@@ -47,29 +47,36 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((e) => map.on(e, () => { userMoved = true; }));
     const fit = () => { if (!userMoved && pts.length) fitToPoints(map, pts, { padding: 40, maxZoom: 9 }); };
 
-    const draw = () => {
+    // Draw the route only once the map is FULLY ready to accept sources+layers.
+    // On the Mapbox Standard style, 'style.load' (and even isStyleLoaded()===true)
+    // can be reached BEFORE the style is ready - addLayer then silently does
+    // nothing and the preview route never appears. The main app map avoids this
+    // by waiting for 'load'/'idle'; mirror that here. Idempotent: once sc-solid
+    // exists we only refit, and 'idle'/'styledata' re-add it if a later style
+    // re-eval (theme/projection toggle) drops it.
+    const drawIfNeeded = () => {
       if (!pts.length) return;
+      if (map.getSource('sc-solid')) { fit(); return; }
       try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
       prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
       fit();
     };
-    if (map.isStyleLoaded()) draw(); else map.once('style.load', draw);
-
-    // Keep the route ALIVE across style/config churn. Toggling theme/projection
-    // (and Standard's own async style settling) can re-evaluate the style and, in
-    // some states, drop our custom source+layers - which is the "route line
-    // sometimes shows, sometimes doesn't" flicker, on both the preview and the
-    // captured card. On every styledata tick, once the style is ready, redraw if
-    // our layers went missing (idempotent: a no-op while they're present).
-    const heal = () => { if (pts.length && map.isStyleLoaded() && !map.getSource('sc-solid')) draw(); };
-    map.on('styledata', heal);
+    map.once('load', drawIfNeeded);
+    map.on('idle', drawIfNeeded);
+    map.on('styledata', drawIfNeeded);
 
     // The dialog animates open and the hole box resizes with the overlay load, so
     // resize + refit once it settles (until the user takes over).
     const ro = new ResizeObserver(() => { map.resize(); fit(); });
     ro.observe(holderRef.current);
 
-    return () => { ro.disconnect(); map.off('styledata', heal); map.remove(); mapRef.current = null; };
+    return () => {
+      ro.disconnect();
+      map.off('idle', drawIfNeeded);
+      map.off('styledata', drawIfNeeded);
+      map.remove();
+      mapRef.current = null;
+    };
     // Create once per mount; visits/transfers are stable for an open dialog.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
