@@ -72,6 +72,13 @@ function injectStyles() {
   const s = document.createElement('style');
   s.textContent = `
   .${ROOT_CLASS}, .${ROOT_CLASS} * { box-sizing: border-box; font-family: ui-sans-serif, system-ui, sans-serif; }
+  /* A modal Radix dialog sets body{pointer-events:none} (disableOutsidePointerEvents)
+     and only re-enables its own layer — our root is a body child and would inherit
+     "none", making the whole inspector unclickable (clicks fall through to the page
+     and dismiss the modal). Force it back on the root ONLY; descendants inherit auto,
+     while .ci-hi keeps its own explicit "none" (own rule beats inheritance) so the
+     hover overlay still never blocks pointer events. (TRIP-203) */
+  .${ROOT_CLASS} { pointer-events: auto; }
   .ci-launch { position: fixed; left: 16px; bottom: 16px; z-index: 2147483000; width: 44px; height: 44px; padding: 0;
     display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid #334155;
     background: #0f172a; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
