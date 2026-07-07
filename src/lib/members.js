@@ -38,12 +38,26 @@ export function resolveMyRole(members = [], trip = null, user = null) {
 // whitelist `_can_edit_trip` (owner via trips.created_by, OR a member whose role
 // is not 'viewer'). Takes an already-resolved role (see resolveMyRole). EVERY
 // surface that gates create/edit/delete of trip content (event view/edit,
-// budget system-expense edit, structure editor, header edit/share/members
+// budget system-expense edit, structure editor, header edit/members
 // affordances) MUST route through this instead of re-deriving `role !== 'viewer'`
 // / `role === 'admin'` / hardcoding `true`, so the UI can't drift from the server
 // (which returns 403 on mismatch). (TRIP-195)
+// NOTE: sharing is NOT an edit affordance — it routes through `canShareTrip`
+// below (any participant, including viewer), not this predicate. (TRIP-202)
 export function roleCanEdit(role) {
   return !!role && role !== 'viewer';
+}
+
+// canShareTrip — the SINGLE frontend rule for who may open "Share" / mint the
+// public read-only link, mirroring the backend `ensureShareToken` gate
+// (`isCallerParticipant`). ANY active participant, including a viewer, may share:
+// the link only exposes the read-only public view they already see, so it grants
+// no escalation. Takes an already-resolved role (see resolveMyRole); a non-member
+// resolves to null → cannot share. EVERY share affordance MUST route through this
+// instead of re-deriving `role !== 'viewer'`, so the UI can't drift from the
+// server. (TRIP-202)
+export function canShareTrip(role) {
+  return !!role;
 }
 
 // countTripMembers — how many people are actually "on" a trip, for the

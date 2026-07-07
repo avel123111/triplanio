@@ -4,6 +4,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Badge, Btn, Sheet } from '@/design/index';
 import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
+import { canShareTrip } from '@/lib/members';
 import { useUnreadChatCount } from '@/lib/chat';
 
 // Shared menu BODY (groups + upgrade card). Rendered identically by:
@@ -22,7 +23,7 @@ function SidebarBody({
   // Viewers see Settings (read-only, to leave the trip) but not Members. (TRIP-137)
   const mgmtItems = MGMT_ITEMS.filter((item) =>
     !(myRole === 'viewer' && item.id === 'members'));
-  const canShare = myRole !== 'viewer';
+  const canShare = canShareTrip(myRole);
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro;
   const chatUnread = useUnreadChatCount(tripId);

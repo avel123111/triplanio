@@ -14,7 +14,7 @@ import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit } from '@/lib/members';
+import { resolveMyRole, roleCanEdit, canShareTrip } from '@/lib/members';
 import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Btn, Skeleton, useToast, ActionMenu } from '../design/index';
@@ -819,7 +819,7 @@ export default function TripStructureEdit() {
   // navigate to a trip lens exit the editor first via leaveNow.
   const editorHeaderActions = (
     <>
-      {myRole !== 'viewer' && (
+      {canShareTrip(myRole) && (
         <button className="app-header__act" onClick={() => setShareOpen(true)}>
           <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
         </button>
