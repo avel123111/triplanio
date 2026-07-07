@@ -1162,7 +1162,7 @@ export default function TripStructureEdit() {
         }
       `}</style>
       {/* Unsaved-changes guard when leaving the editor (menu / logo / back). */}
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={draft?.nodes || []} transfers={liveTransfers} />
 
       {/* TRIP-63 №1: reuse the shared Pro info modal (same as TripView) so a
           non-owner who taps the "enabled by owner" lock gets an explanation
