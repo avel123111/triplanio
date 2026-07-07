@@ -25,10 +25,19 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   const sharedMap = useSharedMap();
   const { lang } = useI18n();
   const mapRef = useRef(null);
+  // `ready` = the STYLE is loaded → hide the loading overlay / fade the map in.
+  // Seeded from a reused singleton's style so revisits don't flash a spinner.
   const [ready, setReady] = useState(() => {
     const m = sharedMap?.getMap?.();
     return !!(m && m.isStyleLoaded && m.isStyleLoaded());
   });
+  // `canFit` = style loaded AND the slot is MEASURED (non-zero box). Consumers
+  // gate every camera fit-by-bounds on this (not `ready`), so a fit can no longer
+  // run against a zero-size slot — the ROOT fix for "Map cannot fit within canvas"
+  // (fresh mount / singleton re-parent / a collapsed lens). Kept separate from
+  // `ready` so the overlay still hides on style-load without waiting for layout
+  // (no spinner flash), while the camera waits for a real container. (TRIP-202)
+  const [canFit, setCanFit] = useState(false);
   const [error, setError] = useState(MAPBOX_TOKEN ? null : 'No Mapbox token');
 
   // Latest scheme/projection/lang captured for the one-time acquire below.
@@ -54,19 +63,39 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     if (!map) { setError('No map'); return undefined; }
     mapRef.current = map;
 
+    // Two readiness halves: styleOK (style loaded → overlay) and sizeOK (slot
+    // measured). `ready` latches on style; `canFit` latches only when BOTH hold.
+    let styleOK = map.isStyleLoaded();
+    let sizeOK = false;
+    const slotSized = () => {
+      const el = map.getContainer();
+      return !!el && el.clientWidth > 0 && el.clientHeight > 0;
+    };
+    const settle = () => {
+      if (styleOK) setReady(true);
+      if (styleOK && sizeOK) setCanFit(true);
+    };
     // 'style.load' only fires on the instance's first life; on reuse the style is
-    // already loaded, so check synchronously and fall back to the event.
-    const markReady = () => setReady(true);
-    if (map.isStyleLoaded()) markReady();
+    // already loaded (styleOK true synchronously). 'idle' is a reliable fallback
+    // if isStyleLoaded() read false transiently right after a re-parent.
+    const markStyle = () => { styleOK = true; settle(); };
+    if (styleOK) markStyle();
     else {
-      // Reused instance: the style is already loaded, so 'style.load' may never
-      // fire again. If isStyleLoaded() read false transiently right after the
-      // re-parent, waiting only on 'style.load' hangs the map under the loading
-      // overlay until a remount. 'idle' fires once rendering settles → reliable
-      // fallback that also covers the first-ever (truly loading) instance.
-      map.once('style.load', markReady);
-      map.once('idle', markReady);
+      map.once('style.load', markStyle);
+      map.once('idle', markStyle);
     }
+    // ResizeObserver drives the "measured" half AND resizes the canvas when the
+    // slot appears / changes size (fresh slot after a re-parent, or a collapsed
+    // lens becoming visible) — one owner of "the map follows its slot's size".
+    const ro = new ResizeObserver(() => {
+      if (!slotSized()) return;
+      sizeOK = true;
+      try { map.resize(); } catch { /* ignore */ }
+      settle();
+    });
+    ro.observe(slot);
+    sizeOK = slotSized();
+    settle();
 
     // Re-assert this screen's view state on a reused instance (the live effects
     // below only fire on a later change, not on a fresh mount).
@@ -85,9 +114,12 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // e.g. the stats screen whose .mapwrap sizes via min-height).
     requestAnimationFrame(() => requestAnimationFrame(() => {
       try { map.resize(); } catch { /* ignore */ }
-      // Reused instance has settled into the new slot — leave the loading overlay
-      // even if isStyleLoaded() read false at acquire time (no later 'style.load').
-      if (map.isStyleLoaded && map.isStyleLoaded()) setReady(true);
+      // Reused instance has settled into the new slot — re-check both readiness
+      // halves after the canvas resizes (no later 'style.load'). Backstop for
+      // environments/tests without ResizeObserver delivery.
+      if (map.isStyleLoaded && map.isStyleLoaded()) styleOK = true;
+      if (slotSized()) sizeOK = true;
+      settle();
       // Re-assert this screen's basemap theme/preset after the canvas settles in
       // its new slot. The synchronous applyBasemapConfig above can be dropped while
       // the singleton is mid re-parent (the previous screen's variant — e.g. the
@@ -116,6 +148,7 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     map.on('error', onErr);
 
     return () => {
+      try { ro.disconnect(); } catch { /* ignore */ }
       try { map.off('idle', applyThemeOnIdle); } catch { /* ignore */ }
       map.off('error', onErr);
       // Hand the singleton back with the guard ON (the protected default) so a
@@ -131,6 +164,7 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
       sharedMap.release(slot);
       mapRef.current = null;
       setReady(false);
+      setCanFit(false);
     };
   }, []);
 
@@ -165,5 +199,5 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     }
   }, [active, ready]);
 
-  return { mapRef, ready, error };
+  return { mapRef, ready, canFit, error };
 }

@@ -46,7 +46,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // marker cleanup on unmount).
-  const { mapRef, ready } = useMapSurface(containerRef, { markersRef, scheme, projection });
+  const { mapRef, ready, canFit } = useMapSurface(containerRef, { markersRef, scheme, projection });
 
   // Unified with the trip MapView: home → start flag, return → finish flag,
   // transit cities numbered 1..N (icons/flags come from the shared renderer).
@@ -78,9 +78,11 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });
-    if (positions.length) calmFit(map, positions, { padding: 48, maxZoom: 7, singleZoom: 8 });
+    // Fit only when the slot is measured (canFit) — deferred otherwise; the effect
+    // re-runs when canFit flips. Markers above draw on `ready`. (TRIP-202)
+    if (canFit && positions.length) calmFit(map, positions, { padding: 48, maxZoom: 7, singleZoom: 8 });
     return undefined;
-  }, [ready, ptsKey]);
+  }, [ready, canFit, ptsKey]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).

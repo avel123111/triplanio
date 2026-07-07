@@ -4,6 +4,7 @@ import { Icon } from './icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
+import { faviconUrl } from '@/lib/booking-platforms';
 
 // =====================================================================
 // Primitive layer (Radix-backed) — single import surface.
@@ -336,13 +337,10 @@ export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);
   // Real favicon of the booking site (same source as the event view/edit dialogs)
   // instead of a letter monogram. Falls back to the letter/link icon if the
-  // favicon can't load or the URL has no host.
-  let host = "";
-  try {
-    const s = String(url || "").trim();
-    if (s) host = new URL(s.startsWith("http") ? s : `https://${s}`).hostname;
-  } catch { /* ignore */ }
-  const favicon = host ? `https://www.google.com/s2/favicons?domain=${host}&sz=64` : null;
+  // favicon can't load or the URL has no plausible host. Single owner of the
+  // favicon URL + host-validity is `faviconUrl` (no dup, no request for a
+  // half-typed host). (TRIP-202)
+  const favicon = faviconUrl(url);
   const [imgFailed, setImgFailed] = React.useState(false);
 
   if (favicon && !imgFailed) {
