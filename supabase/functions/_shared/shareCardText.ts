@@ -17,6 +17,7 @@ type CardStrings = {
   distance: string; // "<n> km ..." suffix, e.g. "км в пути"
   cta: string; // handwritten hook, e.g. "а куда рванёшь ты?"
   tagline: string; // "спланируй свой трип"
+  promo: string; // footer promo, e.g. "бесплатно за пару минут"
   site: string; // "triplanio.com"
   day: PluralForms;
   country: PluralForms;
@@ -32,6 +33,7 @@ const STRINGS: Record<Lang, CardStrings> = {
     distance: 'км в пути',
     cta: 'а куда рванёшь ты?',
     tagline: 'спланируй свой трип',
+    promo: 'бесплатно за пару минут',
     site: 'triplanio.com',
     day: { one: 'день', few: 'дня', many: 'дней' },
     country: { one: 'страна', few: 'страны', many: 'стран' },
@@ -43,6 +45,7 @@ const STRINGS: Record<Lang, CardStrings> = {
     distance: 'km on the road',
     cta: 'where will you go?',
     tagline: 'plan your trip',
+    promo: 'free in a couple of minutes',
     site: 'triplanio.com',
     day: { one: 'day', few: 'days', many: 'days' },
     country: { one: 'country', few: 'countries', many: 'countries' },
@@ -54,6 +57,7 @@ const STRINGS: Record<Lang, CardStrings> = {
     distance: 'km de viaje',
     cta: 'y tu, ¿a donde vas?',
     tagline: 'planifica tu viaje',
+    promo: 'gratis en un par de minutos',
     site: 'triplanio.com',
     day: { one: 'dia', few: 'dias', many: 'dias' },
     country: { one: 'pais', few: 'paises', many: 'paises' },
@@ -100,17 +104,21 @@ export function formatNumber(n: number): string {
 }
 
 /**
- * Date range label, e.g. "СЕН. 11 - 3 ОКТ 2026". Same month/year collapse to a
- * compact form. Dates are ISO (YYYY-MM-DD); parsed as UTC to avoid tz drift.
+ * Structured date parts for the Journey card's date row, where the START DAY is
+ * shown in a yellow chip: `month` ("СЕН."), `day` ("11"), `rest` ("- 3 ОКТ 2026").
+ * Dates are ISO (YYYY-MM-DD); parsed as UTC to avoid tz drift.
  */
-export function dateRangeLabel(lang: Lang, startISO: string, endISO: string): string {
+export function dateParts(
+  lang: Lang,
+  startISO: string,
+  endISO: string,
+): { month: string; day: string; rest: string } {
   const s = cardStrings(lang);
   const a = new Date(startISO);
   const b = new Date(endISO);
-  const mA = s.months[a.getUTCMonth()];
-  const mB = s.months[b.getUTCMonth()];
-  const dA = a.getUTCDate();
-  const dB = b.getUTCDate();
-  const year = b.getUTCFullYear();
-  return `${mA}. ${dA} - ${dB} ${mB} ${year}`;
+  return {
+    month: `${s.months[a.getUTCMonth()]}.`,
+    day: String(a.getUTCDate()),
+    rest: `- ${b.getUTCDate()} ${s.months[b.getUTCMonth()]} ${b.getUTCFullYear()}`,
+  };
 }

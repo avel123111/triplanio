@@ -21,7 +21,7 @@ import { isCallerParticipant } from '../_shared/tripAccess.ts';
 import { recordHit, underLimit } from '../_shared/rateLimit.ts';
 import { pickLang } from '../_shared/tgLang.ts';
 import {
-  BRAND, cardStrings, dateRangeLabel, factsLine, formatNumber,
+  BRAND, cardStrings, dateParts, factsLine, formatNumber,
 } from '../_shared/shareCardText.ts';
 import {
   cityLabel, dateSpan, routeDistanceKm, tripDays,
@@ -151,15 +151,19 @@ Deno.serve(async (req) => {
     const s = cardStrings(lang);
     const from = cityLabel(transit[0], lang);
     const to = cityLabel(transit[transit.length - 1], lang);
+    const dp = startISO && endISO ? dateParts(lang, startISO, endISO) : { month: '', day: '', rest: '' };
     const data = {
       title: trip.title || from,
       route: transit.length > 1 ? `${from} - ${to}` : from,
-      dateLabel: startISO && endISO ? dateRangeLabel(lang, startISO, endISO) : '',
+      dateMonth: dp.month,
+      dateDay: dp.day,
+      dateRest: dp.rest,
       facts: factsLine(lang, { days, countries, cities, friends: participants }), // "friends" slot = participants (members + creator)
       distanceStr: formatNumber(distanceKm),
       distanceLabel: s.distance,
       cta: s.cta,
       tagline: s.tagline,
+      promo: s.promo,
       site: s.site,
       brand: BRAND,
     };
