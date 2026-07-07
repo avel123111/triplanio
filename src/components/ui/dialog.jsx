@@ -4,6 +4,7 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { cn } from "@/lib/utils"
 import { useSheetSwipe } from "@/lib/useSheetSwipe"
+import { keepFocusInDialog } from "@/lib/dialogFocus"
 
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
@@ -35,10 +36,11 @@ const DialogContent = React.forwardRef(({ className, style, children, ...props }
   return (
     <DialogPortal>
       <DialogOverlay />
-      {/* Don't pull focus into the dialog on open — on mobile that pops the keyboard
-          and makes the bottom-sheet jump/zoom. Focus on user tap instead. Callers can
-          override by passing their own onOpenAutoFocus. */}
-      <DialogPrimitive.Content ref={setRefs} className="dlg-modal" onOpenAutoFocus={(e) => e.preventDefault()} {...props}>
+      {/* Focus lands on the dialog CONTENT container (not an input) so the mobile
+          keyboard doesn't pop and the bottom-sheet doesn't jump/zoom, while focus
+          stays INSIDE the dialog (no aria-hidden-on-focused warning). Shared owner:
+          keepFocusInDialog. Callers can still override via their own onOpenAutoFocus. */}
+      <DialogPrimitive.Content ref={setRefs} className="dlg-modal" onOpenAutoFocus={keepFocusInDialog} {...props}>
         <div className={cn("dlg", className)} style={style}>
           {/* Drag handle ("бровь") — visible only as a bottom sheet (≤640px). */}
           <div className="dlg-grip" {...gripProps}><i /></div>

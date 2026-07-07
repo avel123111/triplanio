@@ -21,6 +21,7 @@ import { Btn, Skeleton, useToast, ActionMenu } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { keepFocusInDialog } from '@/lib/dialogFocus';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
@@ -1019,7 +1020,7 @@ export default function TripStructureEdit() {
                 <DialogPrimitive.Overlay className="sheet-backdrop" />
                 <DialogPrimitive.Content
                   className="lp-sheet"
-                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  onOpenAutoFocus={keepFocusInDialog}
                   aria-describedby={undefined}
                 >
                   <DialogPrimitive.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('trip.edit_structure')}</DialogPrimitive.Title>

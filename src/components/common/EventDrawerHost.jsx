@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { keepFocusInDialog } from '@/lib/dialogFocus';
 
 /**
  * Global host for the event / city side panels — the same "drawer" panels the
@@ -51,7 +52,7 @@ export default function EventDrawerHost({ open, onClose, scrim = false, title = 
           <DialogPrimitive.Overlay className="sheet-backdrop" />
           <DialogPrimitive.Content
             className="lp-sheet"
-            onOpenAutoFocus={(e) => e.preventDefault()}
+            onOpenAutoFocus={keepFocusInDialog}
             aria-describedby={undefined}
           >
             <DialogPrimitive.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
