@@ -251,22 +251,22 @@ function onClick(e) {
 function onKey(e) { if (e.key === 'Escape') disable(); }
 
 // ── modal shield (make the inspector usable over Radix dialogs) ─────────────
-// App modals are Radix @radix-ui/react-dialog (modal). While one is open Radix's
-// DismissableLayer closes it whenever a `pointerdown` lands OUTSIDE the dialog's
-// React tree (verified in @radix-ui/react-dismissable-layer: a `pointerdown`
-// listener on `document` dispatches POINTER_DOWN_OUTSIDE → onOpenChange(false)),
-// and FocusScope traps focus via `focusin`. Our panel/tray/launcher live in
-// `.ci-root`, which Radix treats as "outside" — so clicking a canon in the
-// inspector slammed the modal shut.
+// App modals are Radix @radix-ui/react-dialog (modal). While one is open Radix
+// puts several bubble-phase listeners on `document` that fight our floating UI
+// (`.ci-root`), which it treats as "outside" the dialog:
+//   • DismissableLayer — a `pointerdown` outside dispatches POINTER_DOWN_OUTSIDE
+//     → onOpenChange(false): clicking a canon slammed the modal shut.
+//   • FocusScope — traps focus via `focusin`/`focusout`.
+//   • react-remove-scroll — `wheel`/`touchmove` listeners preventDefault every
+//     scroll outside the locked dialog: our panel body wouldn't scroll.
 //
 // Fix: a CAPTURE-phase guard on `document`. Capture runs before the bubble phase
-// where Radix's `pointerdown` handler lives, so ours always fires first and
-// stopImmediatePropagation() keeps that handler (and any other document listener)
-// from ever seeing the event — no reliance on registration order. We guard ONLY
-// pointer/focus events, NOT mouse/click: the inspector's own header-drag runs on
-// `mousedown` and its buttons on `click`, both of which must still reach their
-// descendant listeners. Blocking `pointerdown` is enough — Radix's mousedown/
-// click interceptors are inert unless a pointerdown-outside already armed them.
+// where all of those handlers live, so ours always fires first and
+// stopImmediatePropagation() keeps them from ever seeing the event — no reliance
+// on registration order. (Blocking propagation does NOT preventDefault, so native
+// scrolling inside our panel still happens.) We guard ONLY pointer/focus/scroll
+// events, NOT mouse/click: the inspector's own header-drag runs on `mousedown`
+// and its buttons on `click`, both of which must still reach descendant listeners.
 function installOutsideShield() {
   const shield = (e) => {
     // focusout carries the element GAINING focus in relatedTarget — guard it too
@@ -275,8 +275,8 @@ function installOutsideShield() {
       e.stopImmediatePropagation();
     }
   };
-  for (const type of ['pointerdown', 'focusin', 'focusout']) {
-    document.addEventListener(type, shield, true);   // capture — beats Radix's bubble handler
+  for (const type of ['pointerdown', 'focusin', 'focusout', 'wheel', 'touchmove']) {
+    document.addEventListener(type, shield, true);   // capture — beats Radix's bubble handlers
   }
 }
 
@@ -495,9 +495,13 @@ function positionPanel(el) {
 
 // ── preview (ephemeral inline style; never queued) ─────────────────────────
 function pickCanon(el, id) {
-  const cur = pendingCanon.get(el);
-  pendingCanon.set(el, { id, mods: cur ? cur.mods : [] });
-  previewMod.delete(el);                   // модификаторы поканонны — сбрасываем при смене канона
+  // Fresh canon → drop any carried detection-modifiers (mods). Those (strong/
+  // flush/caption in MODIFIERS) come only from detecting the element's ORIGINAL
+  // canon and aren't user-selectable, so carrying them onto a newly picked canon
+  // is pure downside — e.g. an element detected as t-mono+caption keeps `caption`
+  // (which is CAPS), so every other canon you pick renders UPPERCASE too (TRIP-203).
+  pendingCanon.set(el, { id, mods: [] });
+  previewMod.delete(el);                   // поканонные модификаторы тоже сбрасываем при смене канона
   applyPreview(el);
   render(el);
 }
