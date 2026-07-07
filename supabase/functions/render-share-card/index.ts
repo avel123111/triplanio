@@ -2,16 +2,26 @@
  * render-share-card (TRIP-193)
  *
  * Generates a shareable story/post image for a trip: branded background, a map
- * sticker with the real route, key numbers, QR to the landing page. Rendered
- * server-side (resvg-wasm) and cached in the `share-cards` bucket by a content
- * hash, so repeat shares are free and the 10/hour limit only counts real renders.
+ * sticker with the real route, key numbers, QR to the landing page.
  *
- * POST { trip_id, format?: 'story'|'post', lang?: 'ru'|'en'|'es' }
+ * Three modes (body.mode):
+ *   'overlay'  -> the frame SVG only (transparent map hole), drawn by the client
+ *                 over the live preview map. No map, not rate-limited.
+ *   'card_svg' -> the full card SVG with fonts embedded and the map left as a
+ *                 placeholder; the client injects its high-res map and rasterises
+ *                 to PNG in the browser (TRIP-193 Ф2). No resvg here.
+ *   'card'     -> (legacy/fallback) render the PNG server-side (resvg-wasm) and
+ *                 cache it in the `share-cards` bucket by content hash, so repeat
+ *                 shares are free and the 10/hour limit only counts real renders.
+ *
+ * POST { trip_id, format?: 'story'|'post', lang?: 'ru'|'en'|'es',
+ *        mode?: 'overlay'|'card_svg'|'card', map_path? }
  *   auth: JWT; caller must be an active participant of the trip.
- * 200 { url, cached, width, height }
+ * 200 (card)              { url, cached, width, height, slot }
+ *   | (overlay/card_svg)  { svg, width, height, slot }
  *   | { code: 'rate_limited', retry_after_seconds }
  *   | { code: 'no_transit_cities' }
- * 4xx: Unauthorized / trip_not_found / forbidden
+ * 4xx: Unauthorized / trip_not_found / forbidden / bad_map_path
  *
  * verify_jwt: defaults to TRUE (user function; NOT listed in config.toml).
  */
@@ -33,6 +43,8 @@ import { fontFaceStyle } from './fontFaces.ts';
 import { base64, defaultBgDataUri, renderPng } from './render.ts';
 
 const BUCKET = 'share-cards';
+// Token the client swaps for its own high-res map data URI in card_svg mode.
+const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 const RATE_MAX = 10;
 const RATE_WINDOW = 3600;
 // TEMP (TRIP-193): rate limit disabled for testing. Flip back to `true` before
@@ -71,7 +83,9 @@ Deno.serve(async (req) => {
     // 'overlay' = the frame ONLY (transparent hole where the map goes), shown in
     // the client preview over the live interactive map. 'card' = the final render
     // with the captured map baked in. Overlay is cheap (no map) and not rate-limited.
-    const mode: 'overlay' | 'card' = body.mode === 'overlay' ? 'overlay' : 'card';
+    const mode: 'overlay' | 'card' | 'card_svg' = body.mode === 'overlay'
+      ? 'overlay'
+      : (body.mode === 'card_svg' ? 'card_svg' : 'card');
     // Optional client-captured map snapshot (TRIP-193): a PNG the client uploaded
     // to the `share-maps` bucket. Must live under this trip's folder, else 403
     // (stops one trip pulling another trip's uploaded map).
@@ -154,6 +168,18 @@ Deno.serve(async (req) => {
       // Embed the fonts (@font-face) so the browser draws the frame with the SAME
       // glyphs as the final render - device-invariant, no dependence on page fonts.
       const svg = buildCardSvg(format, data, defaultBgDataUri(), null, qrUrlFor(tripId, format), true, fontFaceStyle());
+      return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
+    }
+
+    // ---- card_svg mode (TRIP-193 Ф2): return the FULL card SVG (fonts embedded,
+    // map left as the "__MAP__" placeholder) for the CLIENT to rasterise in the
+    // browser. The client injects its own high-res map snapshot into the
+    // placeholder, then draws SVG -> canvas -> PNG. No resvg, no map download, no
+    // upload here -> the edge CPU limit (HTTP 546) cannot bite the final card, and
+    // the map is no longer capped to fit that limit. Layout stays authored in ONE
+    // place (buildCardSvg), the client only paints. ----
+    if (mode === 'card_svg') {
+      const svg = buildCardSvg(format, data, defaultBgDataUri(), MAP_PLACEHOLDER, qrUrlFor(tripId, format), false, fontFaceStyle());
       return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
     }
 

@@ -117,7 +117,23 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       if (m.isStyleLoaded() && m.areTilesLoaded?.()) return grab();
       return new Promise((res) => { m.once('idle', () => grab().then(res)); });
     },
-  }), []);
+    // Camera + theme the user composed, so the final card can re-render the route
+    // map at full card resolution with the SAME framing (see renderCardMapPng).
+    getComposition() {
+      const m = mapRef.current;
+      if (!m) return null;
+      const c = m.getCenter();
+      return {
+        center: [c.lng, c.lat],
+        zoom: m.getZoom(),
+        bearing: m.getBearing(),
+        pitch: m.getPitch(),
+        projection,
+        scheme,
+        previewCssWidth: m.getContainer()?.clientWidth || 0,
+      };
+    },
+  }), [scheme, projection]);
 
   function toggleTheme() {
     const next = scheme === 'DARK' ? 'LIGHT' : 'DARK';
