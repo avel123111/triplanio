@@ -16,7 +16,8 @@ async function invokeCard(body, tries = 3) {
   for (let attempt = 0; attempt < tries; attempt++) {
     // eslint-disable-next-line no-await-in-loop
     last = await supabase.functions.invoke('render-share-card', { body });
-    if (last?.data?.url || last?.data?.code) return last;
+    // success (final card url OR overlay svg) or a definitive app code → done
+    if (last?.data?.url || last?.data?.svg || last?.data?.code) return last;
     // eslint-disable-next-line no-await-in-loop
     if (attempt < tries - 1) await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
   }
@@ -99,16 +100,17 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     if (open) { setStage('edit'); setCardUrl(''); setCardCode(''); }
   }, [open]);
 
-  // Fetch the card FRAME (chrome with a transparent map hole) for the compose
-  // stage - it's laid over the live map so the preview matches the final card.
+  // Fetch the card FRAME as an SVG and render it IN THE BROWSER over the live map
+  // (no server rasterisation - that intermittently blew the edge CPU limit and
+  // left the preview a bare map). The frame's transparent hole reveals the map.
   useEffect(() => {
     if (!open || !trip?.id || stage !== 'edit') return undefined;
     let cancelled = false;
     setOverlay(null);
     invokeCard({ trip_id: trip.id, format, lang, mode: 'overlay' })
       .then(({ data, error: invokeErr }) => {
-        if (cancelled || invokeErr || !data?.url) return;
-        setOverlay({ url: data.url, slot: data.slot, w: data.width, h: data.height });
+        if (cancelled || invokeErr || !data?.svg) return;
+        setOverlay({ svg: data.svg, slot: data.slot, w: data.width, h: data.height });
       })
       .catch((e) => { if (!cancelled) console.error('overlay fetch failed', e); });
     return () => { cancelled = true; };
@@ -190,7 +192,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <div style={{ height: 'min(48vh, 420px)', aspectRatio: ratio, borderRadius: 14, overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)' }}>
-                <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} overlayUrl={overlay?.url} slot={overlay?.slot} cardW={overlay?.w} cardH={overlay?.h} />
+                <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} overlaySvg={overlay?.svg} slot={overlay?.slot} cardW={overlay?.w} cardH={overlay?.h} />
               </div>
             </div>
             <Btn variant="primary" icon="map" loading={cardLoading} onClick={buildCard} block>{t('share.card_build')}</Btn>

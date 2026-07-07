@@ -17,7 +17,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 // slot/cardW/cardH come from the overlay render (source of truth for the hole
 // geometry); until they arrive the map fills the whole box.
 const ShareMapPreview = forwardRef(function ShareMapPreview(
-  { visits = [], transfers = [], lang, showSE = false, overlayUrl, slot, cardW = 1080, cardH = 1920 },
+  { visits = [], transfers = [], lang, showSE = false, overlaySvg, slot, cardW = 1080, cardH = 1920 },
   ref,
 ) {
   const { t } = useI18n();
@@ -118,12 +118,22 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     ? { left: pct(slot.x, cardW), top: pct(slot.y, cardH), width: pct(slot.w, cardW), height: pct(slot.h, cardH) }
     : { inset: 0 };
   const btnStyle = { background: 'var(--surface)', boxShadow: 'var(--shadow-1, 0 1px 4px rgba(0,0,0,.2))' };
+  // The frame SVG comes from the edge function as markup; render it inline (so it
+  // uses the app's loaded fonts) and stretch it to fill the box. Its transparent
+  // blob hole reveals the live map behind. pointer-events:none lets gestures pass.
+  const frameSvg = overlaySvg
+    ? overlaySvg.replace('<svg ', '<svg preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block" ')
+    : null;
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={holderRef} style={{ position: 'absolute', overflow: 'hidden', ...holeStyle }} />
-      {overlayUrl && (
-        <img src={overlayUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+      {frameSvg && (
+        <div
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: frameSvg }}
+        />
       )}
       <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <Btn variant="ghost" size="sm" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
