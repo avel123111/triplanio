@@ -67,6 +67,10 @@ function loadFlagImage(cc) {
   });
 }
 
+// Normalised ISO2 country code of a visit (lowercased), '' when absent — the flag
+// filename + the label feature's `cc` both key off this one form.
+const cityCc = (v) => (v.country_code || '').trim().toLowerCase();
+
 // Add every route city's flag image to the map (idempotent). Returns a promise the
 // capture path awaits so the snapshot isn't taken before the flags paint.
 function ensureFlagImages(map, ccs) {
@@ -89,10 +93,7 @@ function drawPointLayer(map, ordered) {
     features: ordered.map((v) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
-      properties: {
-        name: v.city_name || '',
-        cc: (v.country_code || '').trim().toLowerCase(),
-      },
+      properties: { name: v.city_name || '', cc: cityCc(v) },
     })),
   };
   if (map.getSource(src)) {
@@ -143,7 +144,7 @@ function drawCityLabels(map, ordered, scheme) {
     const paint = labelPaint(scheme);
     Object.entries(paint).forEach(([k, v]) => map.setPaintProperty(id, k, v));
   }
-  return ensureFlagImages(map, ordered.map((v) => (v.country_code || '').trim().toLowerCase()));
+  return ensureFlagImages(map, ordered.map(cityCc));
 }
 
 /** Draw the route line + city points on a map (shared by capture + live preview). */
