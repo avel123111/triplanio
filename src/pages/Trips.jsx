@@ -15,6 +15,7 @@ import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import { useQueryGate } from '@/lib/useQueryGate';
+import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import StatsMap from '@/components/views/StatsMap';
 import {
@@ -618,16 +619,19 @@ export default function Trips() {
     { isPending: tripsPending, fetchStatus: tripsFetchStatus, error: tripsError },
     allTrips.length > 0,
   );
-  if (tripsGate === 'temporary' || tripsGate === 'access') {
-    const isAccess = tripsGate === 'access';
+  if (tripsGate === 'temporary' || tripsGate === 'access' || tripsGate === 'not_found') {
+    const stub = gateStubProps(tripsGate);
+    const isTemporary = tripsGate === 'temporary';
     return (
       <div style={{ minHeight: '100vh' }}>
         <SystemStub
-          icon={isAccess ? 'lock' : 'warning'}
-          tone={isAccess ? 'warm' : 'warning'}
-          title={t(isAccess ? 'sys.no_access_title' : 'sys.load_error_title')}
-          body={t(isAccess ? 'sys.no_access_body' : 'sys.load_error_desc')}
-          primary={{ label: t('sys.retry'), onClick: () => refetchTrips() }}
+          icon={stub.icon}
+          tone={stub.tone}
+          title={t(stub.title)}
+          body={t(stub.body)}
+          primary={isTemporary
+            ? { label: t('sys.retry'), onClick: () => refetchTrips() }
+            : { label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
         />
       </div>
     );
