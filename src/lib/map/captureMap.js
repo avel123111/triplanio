@@ -137,64 +137,50 @@ export async function buildBadgeImages(map, ordered, scheme) {
   map.__scBadge = sizes;
 }
 
-// Bounding box (container px) a badge would occupy on a given side of the dot.
-function badgeBox(side, p, wd, hd, gap) {
-  switch (side) {
-    case 'left': return { x0: p.x - gap - wd, y0: p.y - hd / 2, x1: p.x - gap, y1: p.y + hd / 2 };
-    case 'top': return { x0: p.x - wd / 2, y0: p.y - gap - hd, x1: p.x + wd / 2, y1: p.y - gap };
-    case 'bottom': return { x0: p.x - wd / 2, y0: p.y + gap, x1: p.x + wd / 2, y1: p.y + gap + hd };
-    default: return { x0: p.x + gap, y0: p.y - hd / 2, x1: p.x + gap + wd, y1: p.y + hd / 2 }; // right
-  }
-}
-
-// icon-offset (icon-units, for icon-anchor:'center') that puts the badge on `side`
-// clear of the dot. Multiplied by icon-size at render, so it scales with the badge.
-function badgeOffset(side, sz) {
-  const hw = sz.w / 2;
-  const hh = sz.h / 2;
-  switch (side) {
-    case 'left': return [-(SC_DOT_GAP_UNITS + hw), 0];
-    case 'top': return [0, -(SC_DOT_GAP_UNITS + hh)];
-    case 'bottom': return [0, SC_DOT_GAP_UNITS + hh];
-    default: return [SC_DOT_GAP_UNITS + hw, 0]; // right
-  }
+// icon-offset (icon-units, icon-anchor:'center') that sits the badge ABOVE the dot,
+// centred, and clamped horizontally so a long name near an edge stays inside the
+// safe area; it flips BELOW only when there isn't room above. Deliberately has NO
+// left/right decision keyed on the map centre — that knife-edge is what made a
+// near-centre badge flip sides ("jump") on every camera settle. Above-centred is
+// stable for centre cities and only reacts near the top/side edges.
+// p = projected dot px, sz = logical badge size, iconScale = current icon-size.
+function badgeOffset(p, sz, iconScale, cw, ch, margin) {
+  const halfW = sz.w / 2;
+  const halfH = sz.h / 2;
+  const reach = (SC_DOT_GAP_UNITS + sz.h) * iconScale; // dot centre → far badge edge (px)
+  // Vertical: above by default; below only if above clips the top AND below fits.
+  let offY = -(SC_DOT_GAP_UNITS + halfH);
+  if (p.y - reach < margin && p.y + reach <= ch - margin) offY = SC_DOT_GAP_UNITS + halfH;
+  // Horizontal: centred on the dot, nudged the minimum needed to keep both edges in
+  // [margin, cw-margin]. Bounds are in icon-units (÷iconScale) to match `off`.
+  const leftBound = (margin - p.x) / iconScale + halfW; // ≥ this clears the left edge
+  const rightBound = (cw - margin - p.x) / iconScale - halfW; // ≤ this clears the right edge
+  let offX = Math.min(Math.max(0, leftBound), rightBound);
+  if (leftBound > rightBound) offX = (leftBound + rightBound) / 2; // wider than safe area → centre it
+  return [offX, offY];
 }
 
 /**
- * Adaptive placement (TRIP-193): pick each badge's side so it leans INWARD (toward
- * the map centre) and stays inside the frame. The card clips the map to an organic
- * blob, so a badge spilling past the edge would vanish under the white border; by
- * projecting each city to pixels and preferring the side that points at the centre
- * — falling back through the other three until one fits the safe area — badges near
- * an edge flip away from it instead of hiding under the frame. Rewrites the shared
- * sc-points data with each feature's chosen `off` (icon-offset). `iconScale` = the
- * badge's current icon-size (base on the card, base×s in the shrunk preview).
+ * Adaptive placement (TRIP-193): keep every badge inside the frame. The card clips
+ * the map to an organic blob, so a badge spilling past the edge vanishes under the
+ * white border. Each city is projected to pixels and its badge is placed above the
+ * dot, centred, clamped to the safe area (flipping below near the top) — see
+ * badgeOffset. Rewrites the shared sc-points data with each feature's `off`
+ * (icon-offset). `iconScale` = the badge's current icon-size (base on the card,
+ * base×s in the shrunk preview).
  */
 export function placeCityBadges(map, ordered, { cw, ch, iconScale }) {
   const src = map.getSource('sc-points');
   if (!src || !cw || !ch) return;
   const sizes = map.__scBadge || [];
-  const margin = Math.max(10, Math.min(cw, ch) * 0.06); // keep clear of the blob edge/border
-  const cx = cw / 2;
-  const cy = ch / 2;
-  const gap = SC_DOT_GAP_UNITS * iconScale;
+  const margin = Math.max(14, Math.min(cw, ch) * 0.05); // keep clear of the blob edge/border
   const features = ordered.map((v, i) => {
     const sz = sizes[i] || { w: 64, h: 28 };
-    const wd = sz.w * iconScale;
-    const hd = sz.h * iconScale;
     const p = map.project([v.longitude, v.latitude]);
-    const horiz = p.x <= cx ? 'right' : 'left';
-    const vert = p.y <= cy ? 'bottom' : 'top';
-    const order = [horiz, vert, vert === 'bottom' ? 'top' : 'bottom', horiz === 'right' ? 'left' : 'right'];
-    let side = horiz;
-    for (const s of order) {
-      const b = badgeBox(s, p, wd, hd, gap);
-      if (b.x0 >= margin && b.y0 >= margin && b.x1 <= cw - margin && b.y1 <= ch - margin) { side = s; break; }
-    }
     return {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
-      properties: { badge: `sc-badge-${i}`, off: badgeOffset(side, sz) },
+      properties: { badge: `sc-badge-${i}`, off: badgeOffset(p, sz, iconScale, cw, ch, margin) },
     };
   });
   src.setData({ type: 'FeatureCollection', features });
@@ -210,8 +196,8 @@ function drawPointLayer(map, ordered) {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
       // `off` is refined by placeCityBadges once badge sizes are known; a plain
-      // right-side default avoids a first-frame jump before that runs.
-      properties: { badge: `sc-badge-${i}`, off: [SC_DOT_GAP_UNITS, 0] },
+      // above-the-dot default avoids a first-frame jump before that runs.
+      properties: { badge: `sc-badge-${i}`, off: [0, -(SC_DOT_GAP_UNITS + 14)] },
     })),
   };
   if (map.getSource(src)) {
