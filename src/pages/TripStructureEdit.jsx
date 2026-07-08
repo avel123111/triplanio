@@ -127,14 +127,16 @@ function buildDraft(shell, transfers = [], lang) {
   });
   // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
   // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
-  // Chain anchor = the DEPARTURE day (UTC) of the first leg leaving the `start` city,
-  // so an overnight start->first leg lays the first city on its arrival day and stays
-  // idempotent (mirrors server _trip_anchor_date / 0043). Fallback: first city's start.
+  // Trip base = the START anchor's own start_date — the single source of truth the
+  // server writes via recompute_trip / set_trip_start_date. Mirrors the server's
+  // _trip_anchor_date (which now prioritizes the same value). We must NOT derive it
+  // from the start→first-leg transfer's departure datetime: recompute never updates
+  // that datetime, so after a start-date shift it stays stale and the selector +
+  // start-row would snap back to the old day while the cities show the new one
+  // (TRIP-209). Fallback: first city's start.
   const firstTransit = nodes.find((n) => !isAnchor(n));
   const startAnchor = visits.find((v) => v.kind === 'start');
-  const startLeg = startAnchor ? (transfers || []).find((t) => t.from_city_visit_id === startAnchor.id) : null;
-  const anchorDate = startLeg?.start_datetime ? (dayOf(startLeg.start_datetime)?.toISODate() || null) : null;
-  const startDate = anchorDate || firstTransit?.start_date || null;
+  const startDate = startAnchor?.start_date || firstTransit?.start_date || null;
   return { nodes, startDate };
 }
 

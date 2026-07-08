@@ -12,7 +12,7 @@
  * + footer vs PanelShell back-button + footer) stays in each shell; the shared
  * view-model exposes the derived values both shells need to build it.
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/design/index';
@@ -27,6 +27,11 @@ import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { cityLabel } from '@/lib/trip-cities';
 import { validateEntity } from '@/lib/validation';
+
+// Raw city_visits rows carry no `city_name` column (dropped in Phase 6). Resolve the
+// localized label into an in-memory `city_name` slot so verdict text reads "…в Барселона"
+// not "…в undefined". One helper reused at every seam (load + display).
+const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
@@ -683,6 +688,7 @@ export async function getEntityRow(table, id) {
 }
 
 export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0 } = {}) {
+  const { lang } = useI18n();
   // State is TAGGED with the id it belongs to. A persistently-mounted consumer
   // (SourceViewLoader lives for the whole TripView) keeps this state between
   // opens, so without the tag the next open would briefly render the PREVIOUS
@@ -728,12 +734,15 @@ export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0
   // Only expose data once it belongs to the currently-requested id; otherwise the
   // consumer would render the stale previous entity until the effect resolves.
   const fresh = src.id === id;
-  return {
-    data:      fresh ? src.data : null,
-    visit:     fresh ? src.visit : null,
-    fromVisit: fresh ? src.fromVisit : null,
-    toVisit:   fresh ? src.toVisit : null,
-  };
+  // Resolve the localized `city_name` ONCE here, at the load seam, so every consumer
+  // (view body AND the edit dialog reached via EventSourcePanel) gets a named visit —
+  // without it, transfer validation rendered "…въезда в undefined" in edit mode.
+  // Memoized per source object so the returned visits keep a stable reference across
+  // unrelated re-renders (safe to use in consumer effect deps).
+  const visit = useMemo(() => (fresh ? withCityName(src.visit, lang) : null), [fresh, src.visit, lang]);
+  const fromVisit = useMemo(() => (fresh ? withCityName(src.fromVisit, lang) : null), [fresh, src.fromVisit, lang]);
+  const toVisit = useMemo(() => (fresh ? withCityName(src.toVisit, lang) : null), [fresh, src.toVisit, lang]);
+  return { data: fresh ? src.data : null, visit, fromVisit, toVisit };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -829,15 +838,12 @@ export function entityViewIssues(kind, entity, { visit, fromVisit, toVisit } = {
 
 export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null }) {
   const { t, lang } = useI18n();
-  // Raw city_visit rows have no `city_name` column (dropped in Phase 6) — resolve
-  // the localized label so verdict messages read "…из Барселона", not
-  // "…из undefined", and so they dedupe against an editor-supplied externalWarning.
-  const withName = (v) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
   // One banner: an explicit message from the caller (editor structural conflict)
-  // plus the engine verdicts on this saved row, deduped by resolved text.
+  // plus the engine verdicts on this saved row, deduped by resolved text. Visits are
+  // run through withCityName so verdicts read "…из Барселона", not "…из undefined".
   const warnings = [];
   if (externalWarning) warnings.push(externalWarning);
-  for (const i of entityViewIssues(kind, entity, { visit: withName(visit), fromVisit: withName(fromVisit), toVisit: withName(toVisit) })) {
+  for (const i of entityViewIssues(kind, entity, { visit: withCityName(visit, lang), fromVisit: withCityName(fromVisit, lang), toVisit: withCityName(toVisit, lang) })) {
     const msg = t(`validation.${i.code}`, i.values);
     if (msg && !warnings.includes(msg)) warnings.push(msg);
   }
