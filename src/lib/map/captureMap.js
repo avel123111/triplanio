@@ -31,29 +31,34 @@ export function buildRoute(visits, transfers, showSE) {
   return { ordered, legs };
 }
 
-// Share-card-only map weights (TRIP-193). Bolder than the app maps so the route
-// reads at story/post scale. Kept in ONE place because the live preview scales
-// these same base values (ShareMapPreview.applyWeights) to keep preview == final.
-// `dot` is a red marker (Pavel's request) — distinct from the app maps' brand pin.
-// `label` = city-name text size; `flag` = icon-size for the flag image (see
-// FLAG_LOGICAL_H below — display height ≈ FLAG_LOGICAL_H × flag ≈ 12px, a touch
-// under the text cap so the flag reads as a peer of the name, like .cbadge).
-export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, label: 14, flag: 0.6 };
-export const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
-
 // Flag raster height (px). Registered at pixelRatio 2, so its LOGICAL height (what
 // icon-size multiplies) is half this. Rasterised big for crispness on the full-res
 // card; the on-screen size is controlled purely by icon-size, never this.
-const FLAG_RASTER_H = 40;
+const FLAG_RASTER_H = 48;
 const FLAG_LOGICAL_H = FLAG_RASTER_H / 2;
+
+// Share-card-only map weights (TRIP-193). Bolder than the app maps so the route
+// reads at story/post scale. Kept in ONE place because the live preview scales
+// these same base values (ShareMapPreview.applyWeights) to keep preview == final.
+// `dot` is a red marker (Pavel's request). `label` = city-name text size (px);
+// `flag` = icon-size so the flag's display height (FLAG_LOGICAL_H × flag) lands
+// ~0.8× the text — a peer of the name, like .cbadge. Label bumped for readability
+// on the full-res card (was unreadable at 14).
+const SC_LABEL_PX = 24;
+export const SC_WEIGHTS = {
+  solid: 6, dashed: 4, dot: 7.5, halo: 11,
+  label: SC_LABEL_PX,
+  flag: (SC_LABEL_PX * 0.8) / FLAG_LOGICAL_H,
+};
+export const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
 
 // Text colour + halo for the city-name label, per basemap scheme. No pill/plate
 // (Pavel: "пока без плашки"), so the halo alone carries legibility over the map —
 // dark ink + light halo on the light basemap, inverted on the dark one.
 export function labelPaint(scheme = 'LIGHT') {
   return scheme === 'DARK'
-    ? { 'text-color': '#ffffff', 'text-halo-color': 'rgba(10,12,28,.85)', 'text-halo-width': 2, 'text-halo-blur': 0.4 }
-    : { 'text-color': '#14152a', 'text-halo-color': 'rgba(255,255,255,.92)', 'text-halo-width': 2, 'text-halo-blur': 0.4 };
+    ? { 'text-color': '#ffffff', 'text-halo-color': 'rgba(10,12,28,.85)', 'text-halo-width': 2.4, 'text-halo-blur': 0.4 }
+    : { 'text-color': '#14152a', 'text-halo-color': 'rgba(255,255,255,.95)', 'text-halo-width': 2.4, 'text-halo-blur': 0.4 };
 }
 
 // Rasterise a /flags/<cc>.svg into an ImageData once and register it on the map as
@@ -124,15 +129,25 @@ function drawPointLayer(map, ordered) {
   }
 }
 
+// Gap (px) from the marker centre to where the flag starts — clears the red dot +
+// halo. Applied in each unit's own space (icon-offset ×icon-size, text-offset ×em)
+// so it scales together with the label when the preview downscales.
+const SC_LABEL_GAP = SC_WEIGHTS.halo + 6;
+// Horizontal room (in ems of the text) reserved for the flag + its gap, so the
+// name starts just to the RIGHT of the flag rather than on top of it.
+const SC_FLAG_ADVANCE_EM = 1.55;
+
 /**
  * City-name label per city — a captured GL symbol layer (flag icon + name, no
- * plate), mirroring the lens-map badge minus dates. The flag is an `icon-image`
- * with an explicit `icon-size` (NOT inlined in the text — inline images ignore
- * text-size and render huge); icon anchors 'right' and text 'left' at the same
- * point so their vertical centres line up, and both drop below the red dot by the
- * same pixel amount (icon-offset ×icon-size == text-offset ×text-size). Reuses the
- * sc-points source. Flags load async (ensureFlagImages) and pop in on a repaint;
- * the returned promise lets the capture wait for them before snapshotting.
+ * plate), mirroring the lens-map badge minus dates. Laid out as a "marker + label"
+ * unit: flag then name sit to the RIGHT of the red dot, both anchored 'left' and
+ * vertically centred on it (icon and text share the marker's y), so the pair reads
+ * as one horizontal badge attached to the pin. The flag is an `icon-image` with an
+ * explicit `icon-size` (NOT inlined in text — inline images ignore text-size and
+ * render huge). Overlapping labels are hidden (allow-overlap:false) so a dense
+ * route stays legible; the dots always remain. Reuses the sc-points source. Flags
+ * load async (ensureFlagImages) and pop in on a repaint; the returned promise lets
+ * the capture wait for them before snapshotting.
  */
 function drawCityLabels(map, ordered, scheme) {
   const src = 'sc-points';
@@ -145,14 +160,15 @@ function drawCityLabels(map, ordered, scheme) {
       layout: {
         'icon-image': ['concat', 'flag-', ['get', 'cc']],
         'icon-size': SC_WEIGHTS.flag,
-        'icon-anchor': 'right',
-        'icon-offset': [-4, 25], // ×icon-size(0.6): ~-2px gap left, ~15px below the dot
+        'icon-anchor': 'left',
+        'icon-offset': [SC_LABEL_GAP / SC_WEIGHTS.flag, 0], // ×icon-size → SC_LABEL_GAP px right of the dot
         'icon-allow-overlap': false,
+        'icon-optional': false,
         'text-field': ['get', 'name'],
         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
         'text-size': SC_WEIGHTS.label,
         'text-anchor': 'left',
-        'text-offset': [0.35, 1.07], // ×text-size(14): ~5px gap right, ~15px below the dot
+        'text-offset': [SC_LABEL_GAP / SC_WEIGHTS.label + SC_FLAG_ADVANCE_EM, 0], // em → past the dot + flag
         'text-allow-overlap': false, // collide → hide the whole label (dots stay)
       },
       paint: labelPaint(scheme),
