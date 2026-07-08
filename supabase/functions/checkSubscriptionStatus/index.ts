@@ -7,6 +7,7 @@ import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile, reconcileTripEntitlement } from '../_shared/reconcileEntitlement.ts';
+import { isNotFound } from '../_shared/classifyDbError.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -39,8 +40,9 @@ Deno.serve(async (req) => {
       .from('trips').select('created_by, is_pro_trip')
       .eq('id', tripId).single();
     // Transient read failure must not read as "no pro_trip" (false Free). Genuine
-    // missing trip (PGRST116) → non-pro; any other error → 5xx "retry". TRIP-208.
-    if (tripErr && (tripErr as { code?: string }).code !== 'PGRST116') throw tripErr;
+    // missing/unusable trip id (not_found) → non-pro; any other error → 5xx "retry".
+    // TRIP-208 (taxonomy: _shared/classifyDbError.ts).
+    if (tripErr && !isNotFound(tripErr)) throw tripErr;
     if (!trip) return Response.json({ isPro: false, isOwner: false, reason: null }, { headers: corsHeaders });
 
     const isOwner = trip.created_by === user.id;

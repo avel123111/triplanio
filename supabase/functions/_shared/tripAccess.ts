@@ -14,6 +14,7 @@
  */
 
 import { supabaseAdmin } from './supabaseAdmin.ts';
+import { isNotFound } from './classifyDbError.ts';
 
 /** Thrown when an access check can't be completed because a downstream query
  *  failed (transient/infra), as opposed to a definitive allow/deny answer. */
@@ -26,12 +27,8 @@ export class TripAccessError extends Error {
   }
 }
 
-// PostgREST returns this code from .single() when zero rows match — that is a
-// genuine "not found", NOT an infrastructure failure.
-const NO_ROWS = 'PGRST116';
-
 /** Trip creator id, or null when the trip genuinely does not exist.
- *  Throws TripAccessError on any non-"no rows" query error. */
+ *  Throws TripAccessError on a transient/infra query error. */
 async function fetchTripCreator(tripId: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from('trips')
@@ -40,8 +37,10 @@ async function fetchTripCreator(tripId: string): Promise<string | null> {
     .single();
 
   if (error) {
-    if ((error as { code?: string }).code === NO_ROWS) return null; // real: no such trip
-    throw new TripAccessError(error);                                // infra: fail LOUD → 5xx
+    // not_found = zero rows OR an unusable id (bad uuid) → genuine "no such trip".
+    // Anything else (timeout/deadlock/connection) → fail LOUD → 5xx. TRIP-208.
+    if (isNotFound(error)) return null;
+    throw new TripAccessError(error);
   }
   return (data?.created_by as string | null) ?? null;
 }

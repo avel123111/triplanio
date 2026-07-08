@@ -9,6 +9,7 @@ import { isProActive } from '@/lib/subscription';
 import { cityKey, localizeVisits } from '@/lib/trip-cities';
 import { continentOf, COUNTRIES_PER_CONTINENT } from '@/lib/continents';
 import { useQueryGate } from '@/lib/useQueryGate';
+import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import {
   statisticsBundle, availableYears, filterByYear, dominantTone, TONE, countVisitUnits,
@@ -284,17 +285,21 @@ export default function Statistics() {
     { isPending: statsPending, fetchStatus: statsFetchStatus, error: statsError },
     !!travelStats,
   );
-  if (statsGate === 'temporary' || statsGate === 'access') {
-    const isAccess = statsGate === 'access';
+  if (statsGate === 'temporary' || statsGate === 'access' || statsGate === 'not_found') {
+    const stub = gateStubProps(statsGate);
+    const isTemporary = statsGate === 'temporary';
     return (
       <div style={{ minHeight: '100vh' }}>
         <SystemStub
-          icon={isAccess ? 'lock' : 'warning'}
-          tone={isAccess ? 'warm' : 'warning'}
-          title={t(isAccess ? 'sys.no_access_title' : 'sys.load_error_title')}
-          body={t(isAccess ? 'sys.no_access_body' : 'sys.load_error_desc')}
-          primary={{ label: t('sys.retry'), onClick: () => refetchStats() }}
-          secondary={{ label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
+          icon={stub.icon}
+          tone={stub.tone}
+          title={t(stub.title)}
+          body={t(stub.body)}
+          // 'temporary' invites a retry; 'access'/'not_found' are dead ends → home.
+          primary={isTemporary
+            ? { label: t('sys.retry'), onClick: () => refetchStats() }
+            : { label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
+          secondary={isTemporary ? { label: t('sys.to_my_trips'), onClick: () => nav('/trips') } : undefined}
         />
       </div>
     );

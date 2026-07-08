@@ -7,6 +7,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
+import PageNotFound from '@/lib/PageNotFound';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
@@ -958,6 +959,9 @@ export default function TripView() {
   // 'auth' shows the same loading placeholder while useQueryGate's effect redirects to /login.
   if (shellGate === 'loading' || shellGate === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
+  // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
+  // exist" page, NOT the accusatory "no access". Split from 'access' in TRIP-208.
+  if (shellGate === 'not_found') return <PageNotFound />;
   if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
 
   // ── Global trip header: cover, subtitle and the right-hand hero actions ──

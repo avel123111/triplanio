@@ -23,6 +23,7 @@
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { isNotFound } from '../_shared/classifyDbError.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -68,10 +69,12 @@ Deno.serve(async (req) => {
       .eq('id', tripId)
       .single();
 
-    // Distinguish a genuine "no such trip" (PGRST116 = zero rows → 404) from a
-    // transient downstream failure (any other error → 5xx "retry"). A DB blip must
-    // NOT masquerade as "Trip not found". TRIP-208.
-    if (tripError && (tripError as { code?: string }).code !== 'PGRST116') {
+    // Distinguish a genuine "no such trip" from a transient downstream failure.
+    // not_found = zero rows (PGRST116) OR an unusable id (22P02 bad uuid, etc.) → 404;
+    // any other error (timeout/deadlock/connection) → 5xx "retry". A DB blip must NOT
+    // masquerade as "Trip not found", and a broken id must NOT masquerade as a blip.
+    // TRIP-208 (taxonomy: _shared/classifyDbError.ts).
+    if (tripError && !isNotFound(tripError)) {
       throw tripError;
     }
     if (!trip) {

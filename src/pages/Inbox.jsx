@@ -13,6 +13,7 @@ import { Btn, Badge, Skeleton, EmptyState } from '../design/index';
 import AppHeader from '@/components/AppHeader';
 import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
 import { useQueryGate } from '@/lib/useQueryGate';
+import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import '../design/app.css';
 
@@ -123,17 +124,20 @@ export default function Inbox() {
     { isPending: notifPending, fetchStatus: notifFetchStatus, error: notifError },
     notifications.length > 0,
   );
-  if (inboxGate === 'temporary' || inboxGate === 'access') {
-    const isAccess = inboxGate === 'access';
+  if (inboxGate === 'temporary' || inboxGate === 'access' || inboxGate === 'not_found') {
+    const stub = gateStubProps(inboxGate);
+    const isTemporary = inboxGate === 'temporary';
     return (
       <div style={{ minHeight: '100vh' }}>
         <SystemStub
-          icon={isAccess ? 'lock' : 'warning'}
-          tone={isAccess ? 'warm' : 'warning'}
-          title={t(isAccess ? 'sys.no_access_title' : 'sys.load_error_title')}
-          body={t(isAccess ? 'sys.no_access_body' : 'sys.load_error_desc')}
-          primary={{ label: t('sys.retry'), onClick: () => refetchNotifs() }}
-          secondary={{ label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
+          icon={stub.icon}
+          tone={stub.tone}
+          title={t(stub.title)}
+          body={t(stub.body)}
+          primary={isTemporary
+            ? { label: t('sys.retry'), onClick: () => refetchNotifs() }
+            : { label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
+          secondary={isTemporary ? { label: t('sys.to_my_trips'), onClick: () => nav('/trips') } : undefined}
         />
       </div>
     );

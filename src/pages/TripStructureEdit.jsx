@@ -6,6 +6,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
+import PageNotFound from '@/lib/PageNotFound';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -583,11 +584,14 @@ export default function TripStructureEdit() {
   const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!content);
   if (shellGate === 'auth' || contentGate === 'auth') return <>{headerEl}</>;
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
+  // not_found = no such trip / broken id (404) → neutral "doesn't exist", not
+  // "no access". Split from 'access' in TRIP-208 (mirrors TripView).
+  if (shellGate === 'not_found') return <PageNotFound />;
   if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
   // Shell is fine but content can't be loaded (offline with nothing cached) →
   // the draft would never build → show the retry screen, not a forever-skeleton.
   // (content has no perms of its own, so any non-loadable state → retry.)
-  if (contentGate === 'temporary' || contentGate === 'access') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
+  if (contentGate === 'temporary' || contentGate === 'access' || contentGate === 'not_found') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (shellGate === 'loading' || contentGate === 'loading' || !draft) {
     return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
