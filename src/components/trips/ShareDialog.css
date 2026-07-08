@@ -1,0 +1,50 @@
+/* Share dialog — social share-card section (TRIP-193, mockup v1.4). The mockup has
+   two DISTINCT layouts, not one that wraps:
+     desktop → map on the LEFT, [title, hint] and controls stacked on the RIGHT;
+     mobile (≤640) → title, hint, map, controls stacked top-to-bottom.
+   A CSS grid with named areas gives both from one DOM: the map spans both rows on
+   desktop, and the head sits ABOVE the map on mobile (not beside/under it). */
+.sc-wrap { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 18px; }
+
+.sc-card {
+  display: grid;
+  gap: 6px 20px;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "preview head"
+    "preview controls";
+}
+.sc-head { grid-area: head; }
+.sc-preview { grid-area: preview; align-self: start; }
+.sc-controls { grid-area: controls; align-self: start; margin-top: 12px; }
+.sc-hint { margin: 6px 0 0; }
+
+/* edit stage: build button keeps its natural width on desktop */
+.btn.sc-build { margin-top: 4px; }
+
+/* card stage: one row on desktop — Edit, Download, Share (Share pushed to the end
+   via order so the DOM can keep Share first for the mobile stack). */
+.sc-actions { display: flex; gap: 8px; align-items: center; }
+.sc-actions-sec { display: contents; }
+.btn.sc-share { order: 3; }
+
+@media (max-width: 640px) {
+  .sc-card {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-template-areas:
+      "head"
+      "preview"
+      "controls";
+    gap: 12px 0;
+  }
+  .sc-preview { justify-self: center; }
+  .sc-controls { margin-top: 0; }
+  .btn.sc-build { width: 100%; }
+  /* stacked: Share full-width first, then Edit | Download as a half row */
+  .sc-actions { flex-direction: column; align-items: stretch; }
+  .sc-actions-sec { display: flex; gap: 8px; }
+  .sc-actions-sec > .btn { flex: 1; }
+  .btn.sc-share { order: 0; width: 100%; }
+}

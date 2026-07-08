@@ -7,6 +7,7 @@ import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile, reconcileTripEntitlement } from '../_shared/reconcileEntitlement.ts';
+import { isNotFound } from '../_shared/classifyDbError.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -27,14 +28,21 @@ Deno.serve(async (req) => {
         await reconcileEntitlement(admin, user.id);
       // Verdict from the single SQL source (is_user_pro, migration 0055) — reads the
       // post-reconcile state, so no manual re-select needed.
-      const { data: isProRpc } = await admin.rpc('is_user_pro', { p_uid: user.id });
+      const { data: isProRpc, error: isProErr } = await admin.rpc('is_user_pro', { p_uid: user.id });
+      // A failed verdict must NOT silently downgrade a paying user to Free.
+      // Fail LOUD → 5xx; the client keeps its cached Pro and retries. TRIP-208.
+      if (isProErr) throw isProErr;
       const isPro = isProRpc === true;
       return Response.json({ isPro, reason: isPro ? 'subscription' : null }, { headers: corsHeaders });
     }
 
-    const { data: trip } = await admin
+    const { data: trip, error: tripErr } = await admin
       .from('trips').select('created_by, is_pro_trip')
       .eq('id', tripId).single();
+    // Transient read failure must not read as "no pro_trip" (false Free). Genuine
+    // missing/unusable trip id (not_found) → non-pro; any other error → 5xx "retry".
+    // TRIP-208 (taxonomy: _shared/classifyDbError.ts).
+    if (tripErr && !isNotFound(tripErr)) throw tripErr;
     if (!trip) return Response.json({ isPro: false, isOwner: false, reason: null }, { headers: corsHeaders });
 
     const isOwner = trip.created_by === user.id;
@@ -63,7 +71,8 @@ Deno.serve(async (req) => {
         await reconcileEntitlement(admin, trip.created_by);
       // Verdict from the single SQL source (is_user_pro, migration 0055) — reads the
       // owner's post-reconcile state, so no manual re-select needed.
-      const { data: ownerProRpc } = await admin.rpc('is_user_pro', { p_uid: trip.created_by });
+      const { data: ownerProRpc, error: ownerProErr } = await admin.rpc('is_user_pro', { p_uid: trip.created_by });
+      if (ownerProErr) throw ownerProErr;
       if (ownerProRpc === true) {
         return Response.json({ isPro: true, isOwner, reason: 'owner_subscription' }, { headers: corsHeaders });
       }

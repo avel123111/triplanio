@@ -8,12 +8,15 @@ import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { pluralize } from '@/lib/i18n/format';
+import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
+import { useQueryGate } from '@/lib/useQueryGate';
+import { gateStubProps } from '@/lib/loadStateClassify';
+import { SystemStub } from '@/lib/PageNotFound';
 import StatsMap from '@/components/views/StatsMap';
 import {
   Greeting, StatBar, WorldMini, AllStatsCta,
@@ -430,7 +433,10 @@ export default function Trips() {
   const greetName = displayName(user?.email, user?.full_name);
 
   // ── Fetch trips ─────────────────────────────────────────────────────────────
-  const { data: allTrips = [], isLoading } = useQuery({
+  const {
+    data: allTrips = [], isLoading,
+    error: tripsError, isPending: tripsPending, fetchStatus: tripsFetchStatus, refetch: refetchTrips,
+  } = useQuery({
     queryKey: ['trips', user?.id],
     queryFn: async () => {
       // Select only the columns the cards / role / search / cover actually read —
@@ -531,10 +537,37 @@ export default function Trips() {
     return me.is_owner ? 'owner' : (me.role || 'member');
   };
 
+  // ── Search haystack ──────────────────────────────────────────────────────────
+  // One lowercased blob per trip: title + description + its cities + countries.
+  // Cities use the same deduped transit set shown on the card, in every locale we
+  // hold (name_i18n en/es/ru + the en-fallback city_name), so "париж"/"paris" both
+  // match. Countries are localized from country_code via localizeCountry (current
+  // UI language + English fallback + the raw ISO code). No backend change — all of
+  // this already arrives from get_user_travel_stats.
+  const haystackByTrip = useMemo(() => {
+    const out = {};
+    for (const tr of allTrips) {
+      const parts = [tr.title, tr.description];
+      for (const v of uniqueTransitCities(visitsByTrip[tr.id] || [])) {
+        const i18n = v.name_i18n || {};
+        parts.push(v.city_name, i18n.en, i18n.es, i18n.ru);
+        if (v.country_code) {
+          parts.push(
+            localizeCountry(v.country_code, lang),
+            localizeCountry(v.country_code, 'en'),
+            v.country_code,
+          );
+        }
+      }
+      out[tr.id] = parts.filter(Boolean).join('   ').toLowerCase();
+    }
+    return out;
+  }, [allTrips, visitsByTrip, lang]);
+
   // ── Partition ────────────────────────────────────────────────────────────────
   const matches = (tr) => {
     const q = search.trim().toLowerCase();
-    return !q || tr.title?.toLowerCase().includes(q) || tr.description?.toLowerCase().includes(q);
+    return !q || (haystackByTrip[tr.id] || '').includes(q);
   };
 
   // Trip date range comes from the same computeTripRange used everywhere else:
@@ -603,6 +636,33 @@ export default function Trips() {
         pluralize(t, home.cities,    'stats.sum_cities',    lang, { count: home.cities }),
       ].join(' · ')
     : t('stats.home_sub_empty');
+
+  // ── Load gate (TRIP-208) ──────────────────────────────────────────────────────
+  // A failed PRIMARY trips load must surface an error + retry, not silently fall
+  // through to the "no trips yet" empty state. Only the trips list gates the
+  // screen; travel-stats/participants are enrichment and degrade silently. Cached
+  // list wins (hasData) — a background refetch error never blanks a shown list.
+  const tripsGate = useQueryGate(
+    { isPending: tripsPending, fetchStatus: tripsFetchStatus, error: tripsError },
+    allTrips.length > 0,
+  );
+  if (tripsGate === 'temporary' || tripsGate === 'access' || tripsGate === 'not_found') {
+    const stub = gateStubProps(tripsGate);
+    const isTemporary = tripsGate === 'temporary';
+    return (
+      <div style={{ minHeight: '100vh' }}>
+        <SystemStub
+          icon={stub.icon}
+          tone={stub.tone}
+          title={t(stub.title)}
+          body={t(stub.body)}
+          primary={isTemporary
+            ? { label: t('sys.retry'), onClick: () => refetchTrips() }
+            : { label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
+        />
+      </div>
+    );
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (

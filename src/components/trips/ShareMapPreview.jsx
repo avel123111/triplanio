@@ -1,18 +1,18 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
-import { buildRoute, drawTripRoute } from '@/lib/map/captureMap';
+import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
+import { buildRoute, drawTripRoute, SC_WEIGHTS, buildBadgeImages, placeCityBadges } from '@/lib/map/captureMap';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
-import { Btn } from '@/design/index';
+import { Btn, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 // Interactive live map for the share card (TRIP-193). The map sits in the card
-// frame's "hole" and the frame PNG (server-rendered, transparent where the map
-// goes) is laid on top with pointer-events:none, so the map spins behind while
-// the frame owns all the framing (rounding/border/shape). The user composes the
-// shot with native gestures (drag/pinch/rotate/tilt) - NO movement buttons; only
-// theme (light/dark) and projection (flat/globe) toggles. The parent snapshots
-// this exact live canvas via captureBlob() (WYSIWYG) - no camera transfer.
+// frame's "hole" and the frame SVG (transparent where the map goes) is laid on
+// top with pointer-events:none, so the map spins behind while the frame owns all
+// the framing (rounding/border/shape). The user composes the shot with native
+// gestures (drag/pinch/rotate/tilt) - NO movement buttons; only theme (light/dark)
+// and projection (flat/globe) toggles. getComposition() hands the composed camera
+// to renderCardMapPng, which re-renders the map at full card resolution.
 //
 // slot/cardW/cardH come from the overlay render (source of truth for the hole
 // geometry); until they arrive the map fills the whole box.
@@ -23,7 +23,26 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   const { t } = useI18n();
   const holderRef = useRef(null);
   const mapRef = useRef(null);
-  const [scheme, setScheme] = useState('DARK');
+  // Latest slot/card geometry, read inside the create-once map effect (whose
+  // closure would otherwise see only the first render's values).
+  const slotRef = useRef(slot);
+  slotRef.current = slot;
+  const cardWRef = useRef(cardW);
+  cardWRef.current = cardW;
+  // Route cities, so the theme toggle + placement can reach them outside the
+  // create-once map effect.
+  const orderedRef = useRef([]);
+  // Preview shrink factor: the preview canvas is far smaller than the full card,
+  // so fixed-px markers/lines/badges are scaled by (preview width / card width) to
+  // keep preview == final. Returns the container size too (for badge placement).
+  const currentScale = () => {
+    const cw = holderRef.current?.clientWidth || 0;
+    const ch = holderRef.current?.clientHeight || 0;
+    const sw = slotRef.current?.w || cardWRef.current || 0;
+    const s = cw && sw ? Math.min(1.5, Math.max(0.15, cw / sw)) : 1;
+    return { cw, ch, s };
+  };
+  const [scheme, setScheme] = useState('LIGHT');
   const [projection, setProjection] = useState('mercator');
   const [fontTick, setFontTick] = useState(0);
 
@@ -42,17 +61,17 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   useEffect(() => {
     if (!MAPBOX_TOKEN || !holderRef.current || mapRef.current) return undefined;
     const { ordered, legs } = buildRoute(visits, transfers, showSE);
+    orderedRef.current = ordered;
     const pts = ordered.map((v) => [v.longitude, v.latitude]);
     const map = new mapboxgl.Map({
       container: holderRef.current,
-      style: MAP_STYLE,
+      style: SHARE_MAP_STYLE,
       config: baseConfig(scheme),
       ...(lang ? { language: lang } : {}),
       projection,
       center: ordered[0] ? [ordered[0].longitude, ordered[0].latitude] : [0, 20],
       zoom: 2,
       attributionControl: false,
-      preserveDrawingBuffer: true, // so captureBlob() can read the canvas
     });
     mapRef.current = map;
 
@@ -67,16 +86,38 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     // by waiting for 'load'/'idle'; mirror that here. Idempotent: once sc-solid
     // exists we only refit, and 'idle'/'styledata' re-add it if a later style
     // re-eval (theme/projection toggle) drops it.
+    // Scale the fixed-px markers/lines/badge for the small preview so it matches the
+    // full-res card (TRIP-193). Re-applied on every settle so it self-corrects once
+    // the slot geometry arrives after the overlay loads (hole resizes → idle → here).
+    const applyWeights = () => {
+      const { cw, s } = currentScale();
+      if (!cw) return;
+      if (map.getLayer('sc-points-halo')) map.setPaintProperty('sc-points-halo', 'circle-radius', SC_WEIGHTS.halo * s);
+      if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
+      if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
+      if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
+      if (map.getLayer('sc-labels')) map.setLayoutProperty('sc-labels', 'icon-size', SC_WEIGHTS.badge * s);
+    };
+    // Re-run adaptive badge placement for the current camera. Kept OFF the 'idle'
+    // path (placement calls setData → idle; re-placing there would loop) — 'moveend'
+    // (user gesture or programmatic fit) is the cue. No-op until images exist.
+    const placeNow = () => {
+      const { cw, ch, s } = currentScale();
+      if (cw && map.__scBadge) placeCityBadges(map, orderedRef.current, { cw, ch, iconScale: SC_WEIGHTS.badge * s });
+    };
     const drawIfNeeded = () => {
       if (!pts.length) return;
-      if (map.getSource('sc-solid')) { fit(); return; }
-      try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
+      if (map.getSource('sc-solid')) { applyWeights(); fit(); return; }
+      const { cw, ch, s } = currentScale();
+      try { drawTripRoute(map, ordered, legs, { scheme, cw, ch, iconScale: SC_WEIGHTS.badge * s }); } catch (err) { console.error('share preview draw failed', err); }
+      applyWeights();
       prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
       fit();
     };
     map.once('load', drawIfNeeded);
     map.on('idle', drawIfNeeded);
     map.on('styledata', drawIfNeeded);
+    map.on('moveend', placeNow);
 
     // The dialog animates open and the hole box resizes with the overlay load, so
     // resize + refit once it settles (until the user takes over).
@@ -87,6 +128,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       ro.disconnect();
       map.off('idle', drawIfNeeded);
       map.off('styledata', drawIfNeeded);
+      map.off('moveend', placeNow);
       map.remove();
       mapRef.current = null;
     };
@@ -95,28 +137,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   }, []);
 
   useImperativeHandle(ref, () => ({
-    // Snapshot the map EXACTLY as composed (WYSIWYG) - captures this live canvas,
-    // no camera transfer to a second instance. Bounded to <=600px wide to keep
-    // the server resvg render under the edge limit.
-    captureBlob() {
-      const m = mapRef.current;
-      if (!m) return Promise.resolve(null);
-      const grab = () => {
-        const src = m.getCanvas();
-        const w = Math.min(600, src.width);
-        const h = Math.round(src.height * (w / src.width));
-        const out = document.createElement('canvas');
-        out.width = w;
-        out.height = h;
-        out.getContext('2d').drawImage(src, 0, 0, w, h);
-        return new Promise((res) => out.toBlob((b) => res(b), 'image/png'));
-      };
-      // Snapshot only once the map has fully settled (tiles + route painted). The
-      // canvas is read synchronously, so grabbing mid-render is exactly how the
-      // final card ended up with missing / half-drawn route lines - wait for idle.
-      if (m.isStyleLoaded() && m.areTilesLoaded?.()) return grab();
-      return new Promise((res) => { m.once('idle', () => grab().then(res)); });
-    },
     // Camera + theme the user composed, so the final card can re-render the route
     // map at full card resolution with the SAME framing (see renderCardMapPng).
     getComposition() {
@@ -138,7 +158,15 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   function toggleTheme() {
     const next = scheme === 'DARK' ? 'LIGHT' : 'DARK';
     setScheme(next);
-    if (mapRef.current) applyBasemapConfig(mapRef.current, next);
+    const m = mapRef.current;
+    if (!m) return;
+    applyBasemapConfig(m, next);
+    // Badge colours are baked into the image, so re-composite them for the flipped
+    // basemap (dark ink/light halo ⇄ light ink/dark halo), then re-place.
+    buildBadgeImages(m, orderedRef.current, next).then(() => {
+      const { cw, ch, s } = currentScale();
+      if (cw) placeCityBadges(m, orderedRef.current, { cw, ch, iconScale: SC_WEIGHTS.badge * s });
+    }).catch(() => { /* keep old badges on failure */ });
   }
 
   function toggleProjection() {
@@ -172,10 +200,19 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
           dangerouslySetInnerHTML={{ __html: frameSvg }}
         />
       )}
-      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <Btn variant="ghost" size="sm" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
-        <Btn variant="ghost" size="sm" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />
-      </div>
+      {/* Until the frame SVG arrives the map would sit BARE in the box; cover it
+          with a loader so the user never sees a frameless map (TRIP-193). */}
+      {!frameSvg && (
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <Skeleton w="100%" h="100%" r={0} />
+        </div>
+      )}
+      {frameSvg && (
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Btn variant="ghost" size="sm" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
+          <Btn variant="ghost" size="sm" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />
+        </div>
+      )}
     </div>
   );
 });

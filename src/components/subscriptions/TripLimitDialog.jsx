@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
+import { Badge, Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isActiveTripCapReached } from '@/lib/limits';
@@ -68,7 +68,9 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
   if (open && state.status !== 'ready') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="dlg--sm">
+        <DialogContent className="dlg--sm" aria-describedby={undefined}>
+          {/* Transient loading state has no visible heading — sr-only Title carries the name. */}
+          <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('sub.limit_hero_title')}</DialogTitle>
           <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
             <div className="animate-spin" style={{ width: 24, height: 24, border: '3px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
           </div>
@@ -95,15 +97,17 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dlg--wide">
+      <DialogContent className="dlg--wide" aria-describedby={undefined}>
         <div style={{ padding: 20, overflowY: 'auto', maxHeight: 'calc(90vh - 32px)', WebkitOverflowScrolling: 'touch' }}>
           {/* Hero */}
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
             background: 'linear-gradient(110deg, var(--brand-ink) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 55%, white) 120%)', color: 'white' }}>
             <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>PRO</Badge>
-            <div className="t-heading" style={{ marginBottom: 6 }}>
-              {t('sub.limit_hero_title')}
-            </div>
+            <DialogTitle asChild>
+              <div className="t-heading" style={{ marginBottom: 6 }}>
+                {t('sub.limit_hero_title')}
+              </div>
+            </DialogTitle>
             <div className="t-body" style={{ color: 'rgba(255,255,255,.9)' }}>
               {t('sub.limit_hero_sub', { count: state.activeCount })}
             </div>

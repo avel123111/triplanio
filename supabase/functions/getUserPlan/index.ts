@@ -100,7 +100,10 @@ Deno.serve(async (req) => {
     // columns above are still read for the reconcile trigger + the response
     // (subscriptionEnd / email); this is one extra indexed read, negligible next to
     // the Stripe call in readActualPrice.
-    const { data: isProRpc } = await supabaseAdmin.rpc('is_user_pro', { p_uid: user.id });
+    const { data: isProRpc, error: isProErr } = await supabaseAdmin.rpc('is_user_pro', { p_uid: user.id });
+    // A failed verdict must NOT silently downgrade a paying user to Free.
+    // Fail LOUD → 5xx; the client keeps its cached plan and retries. TRIP-208.
+    if (isProErr) throw isProErr;
     const hasProSubscription = isProRpc === true;
 
     if (hasProSubscription) {

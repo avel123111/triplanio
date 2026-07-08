@@ -10,6 +10,10 @@ if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 // `lightPreset` config (day/night), switched in place - the map is NOT
 // re-created on theme change. `theme: 'default'`.
 export const MAP_STYLE = 'mapbox://styles/avel1231/cmqogtezo001s01qzal5699es';
+// Dedicated Standard-based style for the share card map only (TRIP-193). Same
+// `lightPreset` day/night config as MAP_STYLE, so the card's light/dark toggle
+// keeps working; the in-app map surfaces stay on MAP_STYLE.
+export const SHARE_MAP_STYLE = 'mapbox://styles/avel1231/cmr9qqc7u001801r1923v90fn';
 export const lightPresetFor = (scheme) => (scheme === 'DARK' ? 'night' : 'day');
 
 // Initial style config - passed to `new mapboxgl.Map({ config })` to avoid a flash.
@@ -33,6 +37,28 @@ export function applyBasemapConfig(map, scheme, theme = 'default') {
   if (map.isStyleLoaded()) set(); else map.once('style.load', set);
 }
 
+// Clamp a numeric bounds-fit padding to the map's current canvas so a fit is always
+// geometrically possible. Mapbox's cameraForBounds (used by fitBounds AND directly)
+// emits warnOnce("Map cannot fit within canvas with the given bounds, padding, and/or
+// offset.") and silently refuses the fit whenever the padding meets/exceeds the canvas
+// on either axis. The `canFit` gate (useMapSurface) already blocks a ZERO-size slot;
+// this closes the SMALL-but-nonzero slot (a mini-map, a short lens) where e.g.
+// padding 110 needs a >220px axis. On a normal-size canvas the clamp is a no-op, so
+// the common path is unchanged — it only ever shrinks padding that literally cannot
+// fit, making the illegal camera command unrepresentable rather than papering over it.
+export function clampPadding(map, padding = 0) {
+  if (!map || typeof padding !== 'number' || !(padding > 0)) return padding;
+  let smaller = 0;
+  try {
+    const el = map.getContainer();
+    smaller = Math.min(el?.clientWidth || 0, el?.clientHeight || 0);
+  } catch { return padding; }
+  if (!smaller) return padding; // unmeasured — the canFit gate should have prevented this
+  // Leave ≥16px of canvas between the two paddings so the fit stays valid.
+  const maxPad = Math.max(0, Math.floor(smaller / 2) - 8);
+  return Math.min(padding, maxPad);
+}
+
 // Fit the map to a set of [lng, lat] points. Single point → centered; empty → no-op.
 // Pass opts.animate (or opts.duration) to ease the camera to the new bounds
 // instead of jumping - used while the route is being edited so the map glides
@@ -46,7 +72,7 @@ export function fitToPoints(map, points, opts = {}) {
   }
   const b = new mapboxgl.LngLatBounds();
   points.forEach((p) => b.extend(p));
-  map.fitBounds(b, { padding: opts.padding ?? 48, maxZoom: opts.maxZoom ?? 8, duration });
+  map.fitBounds(b, { padding: clampPadding(map, opts.padding ?? 48), maxZoom: opts.maxZoom ?? 8, duration });
 }
 
 // GeoJSON LineString feature from [[lng,lat], ...].

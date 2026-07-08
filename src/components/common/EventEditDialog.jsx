@@ -16,7 +16,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
@@ -86,7 +86,7 @@ function makeSegment(defCur = 'EUR') {
     // no map point) — same rule as the hotel / single-leg transfer.
     from_latitude: null, from_longitude: null, to_latitude: null, to_longitude: null,
     carrier: '', flight_number: '', booking_reference: '',
-    price: '', currency: defCur, toCity: null, day_change: false,
+    price: '', currency: defCur, toCity: null,
   };
 }
 
@@ -109,6 +109,18 @@ import './EventEditDialog.css';
 // (downgraded to 'warn' below). Only the logical date-ORDER family qualifies —
 // a booking whose end precedes its start is nonsense to persist.
 const BLOCKING_CODES = new Set(['HOTEL_ORDER', 'ACT_ORDER', 'TR_ORDER', 'SVC_ORDER', 'SEG_ORDER', 'SEG_BACKSTEP']);
+
+// A transfer is "overnight" (day_change) IFF its arrival lands on a later calendar
+// day than its departure — nothing else. day_change is therefore fully DERIVED from
+// the dates, never an independent user flag: it is the single bit the server's
+// recompute_trip reads to add a +1 gap to the arrival city, so storing anything
+// other than (arrivalDay > departureDay) would desync the city layout from the
+// actual travel dates. Compares the wall-clock date parts (the "YYYY-MM-DD" slice
+// of the local datetime), matching validation.calDay and the server's day math.
+const isOvernightLocal = (startLocal, endLocal) => {
+  const sd = (startLocal || '').slice(0, 10), ed = (endLocal || '').slice(0, 10);
+  return !!(sd && ed && ed > sd);
+};
 
 // Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
 // browser treats it as relative and prepends the current app path → /trip/.../booking.com).
@@ -248,9 +260,6 @@ function emptyTransferForm(defCur = 'EUR') {
     booking_url: '',
     price: '', currency: defCur,
     documents: [], notes: '',
-    // Overnight / day-change: this leg crosses into the next day, so the
-    // destination city (and all following) shift +1 in the trip editor.
-    day_change: false,
     // Layover (multi-leg) support - create mode only. When hasLayovers is on,
     // `segments` is the source of truth and the flat fields above are ignored.
     hasLayovers: false,
@@ -315,7 +324,6 @@ function transferToForm(tr, startTz, endTz) {
   return {
     ...emptyTransferForm(),
     transport_type: tr.transport_type || 'plane',
-    day_change: !!tr.day_change,
     startLocal: utcToLocalInput(tr.start_datetime, startTz) || '',
     endLocal: utcToLocalInput(tr.end_datetime, endTz) || '',
     from_address: tr.from_address || '',
@@ -712,14 +720,9 @@ export default function EventEditDialog({
   );
   const hasBlockingError = useMemo(() => issues.some((i) => i.level === 'error'), [issues]);
 
-  // Auto-mark a single transfer as overnight when its arrival calendar day is
-  // after its departure day (raise-only — the user can still switch it off).
-  useEffect(() => {
-    if (currentKind !== 'transfer' || form.hasLayovers || form.day_change) return;
-    const sd = (form.startLocal || '').slice(0, 10), ed = (form.endLocal || '').slice(0, 10);
-    if (sd && ed && ed > sd) setForm((f) => ({ ...f, day_change: true }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentKind, form.hasLayovers, form.startLocal, form.endLocal]);
+  // day_change is no longer a form field the user toggles: it is derived from the
+  // dates at every seam (badge display + buildTransferPayload / layover segments via
+  // isOvernightLocal), so there is nothing to auto-raise here anymore.
 
   // Live map route preview while creating a transfer (shaped by transport type).
   useEffect(() => {
@@ -967,8 +970,6 @@ export default function EventEditDialog({
         to_address: s.to_address || '',
         startLocal: s.departure_date ? combine(s.departure_date, s.departure_time) : '',
         endLocal: s.arrival_date ? combine(s.arrival_date, s.arrival_time) : '',
-        // Auto-flag overnight per segment: AI gave an arrival date later than departure.
-        day_change: !!(s.departure_date && s.arrival_date && s.arrival_date > s.departure_date),
         carrier: s.carrier || '',
         flight_number: s.flight_number || '',
         booking_reference: s.booking_reference || '',
@@ -1076,9 +1077,6 @@ export default function EventEditDialog({
     if (sDep) { upd.startLocal = sDep; filled.add('startLocal'); }
     const sArr = combine(first.arrival_date, first.arrival_time);
     if (sArr) { upd.endLocal = sArr; filled.add('endLocal'); }
-    // Overnight: AI parsed an arrival date later than the departure date → flag it
-    // explicitly at parse time (the form effect is a backup for manual date entry).
-    if (first.departure_date && first.arrival_date && first.arrival_date > first.departure_date) upd.day_change = true;
     if (docs.length) { upd.documents = [...(upd.documents || []), ...docs].slice(0, 50); filled.add('documents'); }
     if (first.transport_type && TRANSPORT_KINDS.some((k) => k.id === first.transport_type)) {
       upd.transport_type = first.transport_type;
@@ -1293,7 +1291,11 @@ export default function EventEditDialog({
         </div>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="dlg--wide ev-dlg" style={{ ...evVars, padding: 0 }}>
+          <DialogContent className="dlg--wide ev-dlg" aria-describedby={undefined} style={{ ...evVars, padding: 0 }}>
+            {/* Accessible name for the dialog. The visible <h2> lives inside the shared
+                `inner` (also used by the non-dialog panel variant), so a dedicated
+                sr-only Title carries the contract only in this Radix-dialog branch. */}
+            <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{title}</DialogTitle>
             {inner}
           </DialogContent>
         </Dialog>
@@ -1357,7 +1359,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     from_city_visit_id: fromVisit?.id,
     to_city_visit_id: toVisit?.id,
     transport_type: form.transport_type,
-    day_change: !!form.day_change,
+    day_change: isOvernightLocal(form.startLocal, form.endLocal),
     start_datetime: localToUtc(form.startLocal, startTz),
     end_datetime: localToUtc(form.endLocal, endTz),
     carrier: form.carrier || undefined,
@@ -1413,7 +1415,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
   // One leg per segment. Booking link is shared; documents/notes ride the first leg.
   const segments = segs.map((s, i) => ({
     transport_type: s.transport_type,
-    day_change: !!s.day_change,
+    day_change: isOvernightLocal(s.startLocal, s.endLocal),
     start_datetime: localToUtc(s.startLocal, 'UTC'),
     end_datetime: localToUtc(s.endLocal, 'UTC'),
     carrier: s.carrier || null,
@@ -1868,15 +1870,18 @@ function TransferLegCard({
           endLabel={t('event.arrival_req')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz}
           midText={durMin != null ? fmtDur(durMin, t) : null}
         />
-        {/* Overnight — separate card (design). TRIP-186: порядок свитч · иконка ·
-            текст, всё прижато влево. */}
-        <div className="eed-nightrow">
-          <Toggle on={!!leg.day_change} onChange={(v) => patch({ day_change: !!v })} label={t('event.overnight_label')} />
-          <span className="eed-nightrow__l">
-            <Moon size={16} />
-            <span className="t-ui">{t('event.overnight_label')}</span>
-          </span>
-        </div>
+        {/* Overnight — DERIVED from the dates, not a user toggle. day_change is a pure
+            function of (arrival day > departure day): the single bit recompute_trip
+            reads to add the +1 arrival-day gap, so it must always equal the actual
+            dates. Shown as a passive badge the moment the arrival date is a later day. */}
+        {isOvernightLocal(leg.startLocal, leg.endLocal) && (
+          <div className="eed-nightrow">
+            <span className="eed-nightrow__l">
+              <Moon size={16} />
+              <span className="t-ui">{t('event.overnight_label')}</span>
+            </span>
+          </div>
+        )}
 
         {/* Carrier / flight no. */}
         <div className="fld-grid" style={{ marginTop: 14 }}>
@@ -2085,12 +2090,6 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
     setForm((prev) => ({ ...prev, segments: prev.segments.map((s, idx) => {
       if (idx !== i) return s;
       const merged = { ...s, ...partial };
-      // Auto-mark this segment overnight when its arrival day moves past its
-      // departure day (raise-only — the per-segment toggle can switch it back off).
-      if ('startLocal' in partial || 'endLocal' in partial) {
-        const sd = (merged.startLocal || '').slice(0, 10), ed = (merged.endLocal || '').slice(0, 10);
-        if (sd && ed && ed > sd) merged.day_change = true;
-      }
       return merged;
     }) }));
     // Editing a field clears its AI highlight (mirrors single-leg setField).

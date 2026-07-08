@@ -1,23 +1,17 @@
 // Share-card map helpers (TRIP-193).
 //
 // The share card's map is the LIVE Mapbox map the user composes in the dialog
-// (ShareMapPreview): the branded frame is laid over it and the parent snapshots
-// that exact canvas (WYSIWYG) via ShareMapPreview.captureBlob(). This module owns
-// the shared pieces of that flow: building the ordered route + legs, drawing the
-// route line + city points onto a map, and uploading a captured PNG to
-// `share-maps`.
+// (ShareMapPreview). This module owns the shared pieces: building the ordered
+// route + legs, drawing the route line + city points onto a map, and rendering
+// the composed map to a PNG for the browser-rasterised card.
 //
 // NOTE: HTML markers (mapboxgl.Marker) are DOM overlays and are NOT part of the
 // WebGL canvas, so a canvas snapshot would omit them. City points are therefore
 // drawn as a GL `circle` layer here so they are captured.
 import mapboxgl from 'mapbox-gl';
-import { supabase } from '@/api/supabaseClient';
-import { MAPBOX_TOKEN, MAP_STYLE, baseConfig } from '@/lib/mapbox';
+import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
-import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
-
-const SHARE_MAPS_BUCKET = 'share-maps';
 
 /** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
 export function buildRoute(visits, transfers, showSE) {
@@ -37,15 +31,173 @@ export function buildRoute(visits, transfers, showSE) {
   return { ordered, legs };
 }
 
-/** Draw city points as a captured GL layer (HTML markers wouldn't snapshot). */
+// Share-card-only map weights (TRIP-193). Bolder than the app maps so the route
+// reads at story/post scale. Kept in ONE place because the live preview scales
+// these same base values (ShareMapPreview.applyWeights) to keep preview == final.
+// `dot` is a red marker (Pavel's request). `badge` = base icon-size for the city
+// label image (1 = its native pixels; the preview downscales it by the same `s`).
+export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, badge: 1 };
+export const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
+
+// City-label badge geometry (all logical px). The badge is composited to ONE image
+// (flag + name), so alignment is pixel-exact and the name size is whatever we draw
+// here — no Mapbox inline-image quirks. Bigger than the first pass (was unreadable).
+const SC_LABEL_PX = 26; // city-name font size
+const SC_FLAG_H = Math.round(SC_LABEL_PX * 0.86); // flag height, a peer of the name
+const SC_BADGE_PAD = 5; // padding around the content (room for the halo)
+const SC_BADGE_FLAG_GAP = 7; // gap between flag and name
+const SC_BADGE_HALO = 2.6; // halo stroke half-width (lineWidth = 2×)
+const SC_BADGE_DPR = 2; // raster scale so the baked text stays crisp
+const SC_BADGE_FONT = `700 ${SC_LABEL_PX}px "Montserrat", "Golos Text", system-ui, sans-serif`;
+// Gap (icon-units) from the dot centre to the nearest badge edge — clears the red
+// dot + halo. In icon space, so it scales with the badge when the preview shrinks.
+const SC_DOT_GAP_UNITS = SC_WEIGHTS.halo + 7;
+
+// Text + halo colours per basemap scheme (no plate — Pavel: "без плашки" — so the
+// halo alone carries legibility): dark ink + light halo on the light basemap,
+// inverted on the dark one. Baked into the badge image, so a theme flip rebuilds it.
+function badgeColors(scheme = 'LIGHT') {
+  return scheme === 'DARK'
+    ? { text: '#ffffff', halo: 'rgba(10,12,28,.9)' }
+    : { text: '#14152a', halo: 'rgba(255,255,255,.96)' };
+}
+
+// Normalised ISO2 country code of a visit (lowercased), '' when absent.
+const cityCc = (v) => (v.country_code || '').trim().toLowerCase();
+
+// Decoded /flags/<cc>.svg <img> for drawImage (same flag source as .cbadge).
+function loadFlagImg(cc) {
+  return new Promise((resolve, reject) => {
+    const im = new globalThis.Image();
+    im.onload = () => resolve(im);
+    im.onerror = reject;
+    im.src = `/flags/${cc}.svg`;
+  });
+}
+
+// Shared throwaway 2D context for measuring text advance (no DOM churn per call).
+let _measureCtx;
+function measureCtx() {
+  if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+  return _measureCtx;
+}
+
+// Composite one city badge (flag + name, halo, no plate) to an ImageData + its
+// logical w/h. A single image ⇒ the flag and name are aligned exactly and move as
+// one unit; the map only has to place this one icon. `flagImg` null ⇒ name-only.
+function composeBadge(name, flagImg, scheme) {
+  const { text, halo } = badgeColors(scheme);
+  const m = measureCtx();
+  m.font = SC_BADGE_FONT;
+  const textW = Math.ceil(m.measureText(name).width);
+  const flagH = flagImg ? SC_FLAG_H : 0;
+  const flagW = flagImg ? Math.max(1, Math.round(flagH * (flagImg.width / flagImg.height || 4 / 3))) : 0;
+  const gap = flagImg ? SC_BADGE_FLAG_GAP : 0;
+  const w = flagW + gap + textW + SC_BADGE_PAD * 2;
+  const h = Math.max(flagH, SC_LABEL_PX) + SC_BADGE_PAD * 2;
+
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * SC_BADGE_DPR);
+  c.height = Math.round(h * SC_BADGE_DPR);
+  const ctx = c.getContext('2d');
+  ctx.scale(SC_BADGE_DPR, SC_BADGE_DPR);
+  if (flagImg) ctx.drawImage(flagImg, SC_BADGE_PAD, (h - flagH) / 2, flagW, flagH);
+  ctx.font = SC_BADGE_FONT;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.lineJoin = 'round';
+  const tx = SC_BADGE_PAD + flagW + gap;
+  const ty = h / 2 + 1;
+  ctx.strokeStyle = halo;
+  ctx.lineWidth = SC_BADGE_HALO * 2;
+  ctx.strokeText(name, tx, ty);
+  ctx.fillStyle = text;
+  ctx.fillText(name, tx, ty);
+  return { imageData: ctx.getImageData(0, 0, c.width, c.height), w, h };
+}
+
+// Build/refresh every city's badge image on the map (id `sc-badge-<i>`) and record
+// its logical size in map.__scBadge (placement reads it). Awaits fonts first so the
+// baked text uses Montserrat, not a fallback. Per-flag failure ⇒ name-only badge.
+export async function buildBadgeImages(map, ordered, scheme) {
+  if (document?.fonts?.ready) { try { await document.fonts.ready; } catch { /* ignore */ } }
+  const sizes = [];
+  for (let i = 0; i < ordered.length; i++) {
+    const v = ordered[i];
+    const cc = cityCc(v);
+    let flagImg = null;
+    // eslint-disable-next-line no-await-in-loop
+    if (cc.length === 2) { try { flagImg = await loadFlagImg(cc); } catch { /* name-only */ } }
+    const { imageData, w, h } = composeBadge(v.city_name || '', flagImg, scheme);
+    const id = `sc-badge-${i}`;
+    if (map.hasImage(id)) map.updateImage(id, imageData);
+    else map.addImage(id, imageData, { pixelRatio: SC_BADGE_DPR });
+    sizes[i] = { w, h };
+  }
+  map.__scBadge = sizes;
+}
+
+// icon-offset (icon-units, icon-anchor:'center') that sits the badge ABOVE the dot,
+// centred, and clamped horizontally so a long name near an edge stays inside the
+// safe area; it flips BELOW only when there isn't room above. Deliberately has NO
+// left/right decision keyed on the map centre — that knife-edge is what made a
+// near-centre badge flip sides ("jump") on every camera settle. Above-centred is
+// stable for centre cities and only reacts near the top/side edges.
+// p = projected dot px, sz = logical badge size, iconScale = current icon-size.
+function badgeOffset(p, sz, iconScale, cw, ch, margin) {
+  const halfW = sz.w / 2;
+  const halfH = sz.h / 2;
+  const reach = (SC_DOT_GAP_UNITS + sz.h) * iconScale; // dot centre → far badge edge (px)
+  // Vertical: above by default; below only if above clips the top AND below fits.
+  let offY = -(SC_DOT_GAP_UNITS + halfH);
+  if (p.y - reach < margin && p.y + reach <= ch - margin) offY = SC_DOT_GAP_UNITS + halfH;
+  // Horizontal: centred on the dot, nudged the minimum needed to keep both edges in
+  // [margin, cw-margin]. Bounds are in icon-units (÷iconScale) to match `off`.
+  const leftBound = (margin - p.x) / iconScale + halfW; // ≥ this clears the left edge
+  const rightBound = (cw - margin - p.x) / iconScale - halfW; // ≤ this clears the right edge
+  let offX = Math.min(Math.max(0, leftBound), rightBound);
+  if (leftBound > rightBound) offX = (leftBound + rightBound) / 2; // wider than safe area → centre it
+  return [offX, offY];
+}
+
+/**
+ * Adaptive placement (TRIP-193): keep every badge inside the frame. The card clips
+ * the map to an organic blob, so a badge spilling past the edge vanishes under the
+ * white border. Each city is projected to pixels and its badge is placed above the
+ * dot, centred, clamped to the safe area (flipping below near the top) — see
+ * badgeOffset. Rewrites the shared sc-points data with each feature's `off`
+ * (icon-offset). `iconScale` = the badge's current icon-size (base on the card,
+ * base×s in the shrunk preview).
+ */
+export function placeCityBadges(map, ordered, { cw, ch, iconScale }) {
+  const src = map.getSource('sc-points');
+  if (!src || !cw || !ch) return;
+  const sizes = map.__scBadge || [];
+  const margin = Math.max(14, Math.min(cw, ch) * 0.05); // keep clear of the blob edge/border
+  const features = ordered.map((v, i) => {
+    const sz = sizes[i] || { w: 64, h: 28 };
+    const p = map.project([v.longitude, v.latitude]);
+    return {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
+      properties: { badge: `sc-badge-${i}`, off: badgeOffset(p, sz, iconScale, cw, ch, margin) },
+    };
+  });
+  src.setData({ type: 'FeatureCollection', features });
+}
+
+/** Draw city dots as a captured GL layer (HTML markers wouldn't snapshot). Seeds
+ *  the sc-points source that both the dots and the badge symbols read. */
 function drawPointLayer(map, ordered) {
   const src = 'sc-points';
   const data = {
     type: 'FeatureCollection',
-    features: ordered.map((v) => ({
+    features: ordered.map((v, i) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
-      properties: {},
+      // `off` is refined by placeCityBadges once badge sizes are known; a plain
+      // above-the-dot default avoids a first-frame jump before that runs.
+      properties: { badge: `sc-badge-${i}`, off: [0, -(SC_DOT_GAP_UNITS + 14)] },
     })),
   };
   if (map.getSource(src)) {
@@ -56,31 +208,56 @@ function drawPointLayer(map, ordered) {
       id: 'sc-points-halo',
       type: 'circle',
       source: src,
-      paint: { 'circle-radius': 9, 'circle-color': '#ffffff' },
+      paint: { 'circle-radius': SC_WEIGHTS.halo, 'circle-color': '#ffffff' },
     });
     map.addLayer({
       id: 'sc-points-dot',
       type: 'circle',
       source: src,
-      paint: { 'circle-radius': 5.5, 'circle-color': routeColor() },
+      paint: { 'circle-radius': SC_WEIGHTS.dot, 'circle-color': SC_DOT_COLOR },
     });
   }
 }
 
-/** Draw the route line + city points on a map (shared by capture + live preview). */
-export function drawTripRoute(map, ordered, legs) {
-  drawRouteLinesCached(map, 'sc-route', legs, { dashedId: 'sc-dashed', solidId: 'sc-solid' });
-  drawPointLayer(map, ordered);
+// Add the city-badge symbol layer once. One icon per city (the composited badge),
+// placed by a data-driven icon-offset; overlapping badges are hidden so a dense
+// route stays legible (the dots always remain).
+function ensureBadgeLayer(map) {
+  if (map.getLayer('sc-labels')) return;
+  map.addLayer({
+    id: 'sc-labels',
+    type: 'symbol',
+    source: 'sc-points',
+    layout: {
+      'icon-image': ['get', 'badge'],
+      'icon-size': SC_WEIGHTS.badge,
+      'icon-anchor': 'center',
+      'icon-offset': ['get', 'off'],
+      'icon-allow-overlap': false,
+      'icon-optional': false,
+    },
+  });
 }
 
-/** Upload a captured map PNG to share-maps/{tripId}/{uuid}.png; returns the path. */
-export async function uploadMapBlob(tripId, blob) {
-  if (!tripId || !blob) return null;
-  const path = `${tripId}/${crypto.randomUUID()}.png`;
-  const { error } = await supabase.storage.from(SHARE_MAPS_BUCKET)
-    .upload(path, blob, { contentType: 'image/png', upsert: false });
-  if (error) { console.error('share-maps upload failed', error); return null; }
-  return path;
+/**
+ * Draw the route line + city dots + city-name badges on a map (shared by capture +
+ * live preview). Badge images build async (fonts + flags); once ready they are
+ * placed adaptively. The returned promise (map.__scLabels) lets the capture wait
+ * for images + placement before snapshotting. `cw`/`ch` = map container px,
+ * `iconScale` = current badge icon-size (for the fit maths).
+ */
+export function drawTripRoute(map, ordered, legs, opts = {}) {
+  const { scheme = 'LIGHT', cw = 0, ch = 0, iconScale = SC_WEIGHTS.badge } = opts;
+  drawRouteLinesCached(map, 'sc-route', legs, {
+    dashedId: 'sc-dashed', solidId: 'sc-solid',
+    solidWidth: SC_WEIGHTS.solid, dashedWidth: SC_WEIGHTS.dashed,
+  });
+  drawPointLayer(map, ordered);
+  ensureBadgeLayer(map);
+  map.__scLabels = (async () => {
+    await buildBadgeImages(map, ordered, scheme);
+    placeCityBadges(map, ordered, { cw, ch, iconScale });
+  })();
 }
 
 // ---- browser-side card rendering (TRIP-193 Ф2) ------------------------------
@@ -95,7 +272,7 @@ export async function uploadMapBlob(tripId, blob) {
  * we can render at the card's real resolution instead of the tiny on-screen
  * preview - this is what makes the map sharp. Zoom is compensated for the larger
  * pixel size (`+log2(width/previewCssWidth)`) so the FRAMING matches the preview.
- * Resolves null if the map can't be produced (caller falls back to the edge path).
+ * Resolves null if the map can't be produced (caller surfaces an error).
  */
 export function renderCardMapPng({
   visits, transfers, showSE = false,
@@ -114,7 +291,7 @@ export function renderCardMapPng({
     const zoomAdj = previewCssWidth > 0 ? zoom + Math.log2(width / previewCssWidth) : zoom;
     const map = new mapboxgl.Map({
       container: holder,
-      style: MAP_STYLE,
+      style: SHARE_MAP_STYLE,
       config: baseConfig(scheme),
       center,
       zoom: zoomAdj,
@@ -151,9 +328,15 @@ export function renderCardMapPng({
     // AFTER the route has been added and repainted.
     const tryDraw = () => {
       if (drew || !map.isStyleLoaded()) return;
-      try { drawTripRoute(map, ordered, legs); drew = true; } catch { /* retry next idle */ }
+      try {
+        drawTripRoute(map, ordered, legs, { scheme, cw: width, ch: height, iconScale: SC_WEIGHTS.badge });
+        drew = true;
+        // Snapshot only AFTER the badge images build + place (or fail) so the labels
+        // are painted; a repaint on resolve gives the idle handler its cue.
+        (map.__scLabels || Promise.resolve()).then(() => { map.__scLabelsDone = true; try { map.triggerRepaint(); } catch { /* gone */ } });
+      } catch { /* retry next idle */ }
     };
-    const onIdle = () => { if (!drew) tryDraw(); else snapshot(); };
+    const onIdle = () => { if (!drew) tryDraw(); else if (map.__scLabelsDone) snapshot(); };
     map.once('load', tryDraw);
     map.on('idle', onIdle);
     // Safety net: never hang the "build card" button if 'idle' never settles.

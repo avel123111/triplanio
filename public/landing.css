@@ -184,8 +184,8 @@ h1, h2, h3, h4 {
   text-wrap: balance;
 }
 
-/* TRIP-165 — заголовки лендинга на КАНОН-ТОКЕНЫ (--fs-*), без clamp/сырых px.
-   Адаптив — ступеньками через @media на тех же токенах. */
+/* TRIP-165 — заголовки лендинга на КАНОН-ТОКЕНЫ (--fs-*), без сырых px.
+   TRIP-203 — адаптив несут сами fluid-токены (clamp), без ручных @media-ступенек. */
 h1 {
   font-size: var(--fs-display);   /* 54 — крупнейший */
   line-height: 1.02;
@@ -203,14 +203,8 @@ h3 {
   letter-spacing: var(--display-tracking);
 }
 
-@media (max-width: 900px) {
-  h1 { font-size: var(--fs-h1); }   /* 54 → 40 */
-  h2 { font-size: var(--fs-h2); }   /* 40 → 26 */
-  h3 { font-size: var(--fs-h3); }   /* 26 → 19 */
-}
-@media (max-width: 560px) {
-  h1 { font-size: var(--fs-h2); }   /* 40 → 26 */
-}
+/* TRIP-203: заголовки лендинга (h1→display, h2→h1, h3→h2) шринкуются сами —
+   каноны --fs-display/--fs-h1/--fs-h2 теперь fluid (clamp). Ручные @media-ступеньки убраны. */
 
 .lede {
   font-size: var(--fs-h3);        /* 19 — канон t-subheading */
@@ -1062,9 +1056,7 @@ h3 {
 }
 /* Финальный CTA-баннер — крупнейший заголовок вне hero → канон t-display,
    с адаптивной ступенькой на токенах (TRIP-165). */
-.banner h2 { color: #fff; max-width: 18ch; margin: 0 auto; font-size: var(--fs-display); }   /* 54 */
-@media (max-width: 900px) { .banner h2 { font-size: var(--fs-h1); } }   /* 54 → 40 */
-@media (max-width: 560px) { .banner h2 { font-size: var(--fs-h2); } }   /* 40 → 26 */
+.banner h2 { color: #fff; max-width: 18ch; margin: 0 auto; font-size: var(--fs-display); }   /* TRIP-203: fluid --fs-display шринкует сам */
 .banner p { color: rgba(255,255,255,.78); margin: 18px auto 0; max-width: 36ch; }
 .banner .btn--white { margin-top: 32px; }
 

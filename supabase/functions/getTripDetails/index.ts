@@ -23,6 +23,7 @@
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { isNotFound } from '../_shared/classifyDbError.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -68,7 +69,15 @@ Deno.serve(async (req) => {
       .eq('id', tripId)
       .single();
 
-    if (tripError || !trip) {
+    // Distinguish a genuine "no such trip" from a transient downstream failure.
+    // not_found = zero rows (PGRST116) OR an unusable id (22P02 bad uuid, etc.) → 404;
+    // any other error (timeout/deadlock/connection) → 5xx "retry". A DB blip must NOT
+    // masquerade as "Trip not found", and a broken id must NOT masquerade as a blip.
+    // TRIP-208 (taxonomy: _shared/classifyDbError.ts).
+    if (tripError && !isNotFound(tripError)) {
+      throw tripError;
+    }
+    if (!trip) {
       return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
     }
 
@@ -76,13 +85,17 @@ Deno.serve(async (req) => {
     // Caller must be the trip creator or an active member.
     const isCreator = trip.created_by === user.id;
     if (!isCreator) {
-      const { data: memberRows } = await supabaseAdmin
+      const { data: memberRows, error: memberError } = await supabaseAdmin
         .from('trip_members')
         .select('id')
         .eq('trip_id', tripId)
         .eq('user_id', user.id)
         .eq('status', 'active')
         .limit(1);
+
+      // A failed membership query must NOT read as "not a member" (false 403).
+      // Fail LOUD → 5xx so the client retries instead of showing "No access". TRIP-208.
+      if (memberError) throw memberError;
 
       const isMember = (memberRows ?? []).length > 0;
 

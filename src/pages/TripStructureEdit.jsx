@@ -6,6 +6,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
+import PageNotFound from '@/lib/PageNotFound';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -126,14 +127,16 @@ function buildDraft(shell, transfers = [], lang) {
   });
   // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
   // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
-  // Chain anchor = the DEPARTURE day (UTC) of the first leg leaving the `start` city,
-  // so an overnight start->first leg lays the first city on its arrival day and stays
-  // idempotent (mirrors server _trip_anchor_date / 0043). Fallback: first city's start.
+  // Trip base = the START anchor's own start_date — the single source of truth the
+  // server writes via recompute_trip / set_trip_start_date. Mirrors the server's
+  // _trip_anchor_date (which now prioritizes the same value). We must NOT derive it
+  // from the start→first-leg transfer's departure datetime: recompute never updates
+  // that datetime, so after a start-date shift it stays stale and the selector +
+  // start-row would snap back to the old day while the cities show the new one
+  // (TRIP-209). Fallback: first city's start.
   const firstTransit = nodes.find((n) => !isAnchor(n));
   const startAnchor = visits.find((v) => v.kind === 'start');
-  const startLeg = startAnchor ? (transfers || []).find((t) => t.from_city_visit_id === startAnchor.id) : null;
-  const anchorDate = startLeg?.start_datetime ? (dayOf(startLeg.start_datetime)?.toISODate() || null) : null;
-  const startDate = anchorDate || firstTransit?.start_date || null;
+  const startDate = startAnchor?.start_date || firstTransit?.start_date || null;
   return { nodes, startDate };
 }
 
@@ -441,7 +444,7 @@ export default function TripStructureEdit() {
   // Bookings are stashed on the node so Restore brings them back.
   const removeCity = async (id) => {
     const n = draft.nodes.find((x) => x.id === id);
-    if (!n || isAnchor(n)) return;
+    if (!n) return;
     const ok = await confirm({
       title: t('tse.delete_city_q', { city: n.city_name }),
       description: t('tse.delete_city_desc'),
@@ -472,8 +475,6 @@ export default function TripStructureEdit() {
     ].flatMap((e) => collectDocPaths(e.documents));
     runAction(() => rpcRemoveCity(id), () => removeTripFiles(orphanPaths));
   };
-  // Start/finish anchors go through the same confirm dialog as regular cities.
-  const removeEndpoint = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n) setConfirmDel(n); };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
       toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
@@ -583,11 +584,14 @@ export default function TripStructureEdit() {
   const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!content);
   if (shellGate === 'auth' || contentGate === 'auth') return <>{headerEl}</>;
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
+  // not_found = no such trip / broken id (404) → neutral "doesn't exist", not
+  // "no access". Split from 'access' in TRIP-208 (mirrors TripView).
+  if (shellGate === 'not_found') return <PageNotFound />;
   if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
   // Shell is fine but content can't be loaded (offline with nothing cached) →
   // the draft would never build → show the retry screen, not a forever-skeleton.
   // (content has no perms of its own, so any non-loadable state → retry.)
-  if (contentGate === 'temporary' || contentGate === 'access') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
+  if (contentGate === 'temporary' || contentGate === 'access' || contentGate === 'not_found') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (shellGate === 'loading' || contentGate === 'loading' || !draft) {
     return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
@@ -950,7 +954,7 @@ export default function TripStructureEdit() {
               };
               let body;
               if (isAnchor(n)) {
-                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeEndpoint(n.id)} />;
+                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeCity(n.id)} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
                 body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}

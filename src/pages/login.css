@@ -624,7 +624,6 @@
 @media (max-width: 1024px) {
   .auth { grid-template-columns: 1fr; }
   .auth__brand-col { min-height: auto; padding: 28px 32px; order: -1; }
-  .brand-col__tag { font-size: var(--fs-h2); }
   .preview { display: none; }
   .brand-col__inner { gap: 16px; }
   .auth__form-col { min-height: auto; padding: 28px 28px 48px; }
@@ -642,9 +641,7 @@
   .auth__foot { margin-top: 32px; }
 }
 @media (max-width: 540px) {
-  .auth__h1 { font-size: var(--fs-h2); }
   .auth__brand-col { padding: 28px 24px 32px; }
-  .brand-col__tag { font-size: var(--fs-h2); }
   .socials { grid-template-columns: 1fr; }
   .confirm__actions { grid-template-columns: 1fr; }
   .auth__form-col { padding: 28px 22px 40px; }

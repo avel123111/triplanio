@@ -81,7 +81,8 @@ export const CANON_MODS = {
   8: [ // t-meta ← meta
     { label: '.c-mute · базовый',                   css: { color: 'var(--muted)' } },
     { label: '.c-dim · значения дат/времени',        css: { color: 'var(--ink-2)' } },
-    { label: '+ Golos (не моно)',                   css: { fontFamily: 'var(--font-ui)' } },
+    // TRIP-203: «+ Golos (не моно)» переехал из эфемерного превью в санкционированный
+    // СОХРАНЯЕМЫЙ модификатор `.t-sans` (см. MODIFIERS ниже + app.css `.t-sans`).
   ],
   9: [ // t-micro ← label
     { label: 'базовый · track-2',                   css: { letterSpacing: '0.14em' } },
@@ -105,6 +106,10 @@ export const CANON_MODS = {
 export const MODIFIERS = [
   { key: 'strong',  cls: 't-strong',   label: 'strong'  },
   { key: 'flush',   cls: 't-flush',    label: 'flush'   },
+  // TRIP-203: ось «шрифт» — Golos поверх любого канона (снимает моно у t-meta/
+  // t-mono/t-micro). В ОТЛИЧИЕ от strong/flush/caption (detection-only), этот
+  // модификатор ПОКАЗЫВАЕТСЯ в UI (секция «Шрифт») и СОХРАНЯЕТСЯ в mods → в экспорт.
+  { key: 'sans',    cls: 't-sans',     label: 'Golos'   },
   // TRIP-188: caption-пресет `.tp-caption` (канон 10 t-mono + CAPS + track .2em +
   // var(--brand)) теперь ПОСТОЯННЫЙ класс в коде (эйбрау /trips, «Маршрут»,
   // «Мир исследован»), а не только эфемерное превью. Добавлен сюда, чтобы детекция

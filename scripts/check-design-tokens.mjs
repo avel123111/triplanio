@@ -36,6 +36,7 @@ const COLOR_WHITELIST = [
   'src/pages/BudgetLens.jsx',                           // CAT_COLORS data-viz; pending Lumo --cat-*
   'src/design/index.jsx',                              // weather palette; pending Lumo
   'src/lib/map/mapStyle.js',                            // Mapbox paint needs concrete hex (route/marker colours)
+  'src/lib/map/captureMap.js',                          // canvas map-capture (share image) needs concrete hex — as mapStyle.js
   'src/lib/map/markers.js',                             // marker DOM uses #fff border/text
   'src/pages/ManualPlanner.jsx',                        // planner accent hex defaults
   'src/lib/booking-platforms.js',                       // external partner brand classes

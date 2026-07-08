@@ -18,16 +18,13 @@
  * final agree. The footer brand uses family "Rubik ExtraBold" (the actual name in
  * the font file); referencing plain "Rubik" made resvg silently fall back to
  * Montserrat. On the browser path the same bytes are attached via @font-face (see
- * fontFaces.ts) so text is device-invariant. Bump TEMPLATE_VERSION on any visual
- * change so the cache invalidates.
+ * fontFaces.ts) so text is device-invariant.
  *
  * Per project content rule: hyphen "-", never the em dash "—".
  */
 
 import { qrSvg } from './qr.ts';
 import { PLANE_DATA_URI } from './journeyAssets.ts';
-
-export const TEMPLATE_VERSION = 'v4-journey';
 
 export type Format = 'story' | 'post';
 
@@ -178,11 +175,6 @@ const LAYOUTS: Record<Format, Layout> = {
   },
 };
 
-export function mapSize(format: Format): { w: number; h: number } {
-  const b = cutoutBBox(format);
-  return { w: Math.round(b.w), h: Math.round(b.h) };
-}
-
 export function cardSize(format: Format): { w: number; h: number } {
   return { w: LAYOUTS[format].w, h: LAYOUTS[format].h };
 }
@@ -255,7 +247,13 @@ export function buildCardSvg(
 
   // Map: drop-shadow blob (offset, no blur), then the map (baked, blob-clipped)
   // or nothing (overlay - live map shows through the hole), then white border.
-  const blobShadow = `<g transform="${xf}"><path d="${BLOB_D}" fill="#000" opacity="0.28" transform="translate(10,16)"/></g>`;
+  // In overlay (preview) mode the map is a transparent hole with the LIVE map
+  // behind, so this drop-shadow would otherwise tint ~the whole map area 28% and
+  // make the preview look darker than the final (where the baked map image hides
+  // the same region). Mask it with the slot hole so only the outer crescent shows
+  // - exactly what the final card composites - keeping preview == final (TRIP-193).
+  const blobShadowRaw = `<g transform="${xf}"><path d="${BLOB_D}" fill="#000" opacity="0.28" transform="translate(10,16)"/></g>`;
+  const blobShadow = overlay ? `<g mask="url(#slothole)">${blobShadowRaw}</g>` : blobShadowRaw;
   const mapImg = overlay
     ? ''
     : (mapDataUri

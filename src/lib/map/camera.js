@@ -12,7 +12,7 @@
 // Pairs with ./cluster.js — together they are the reusable clustering + zoom-behaviour
 // core for any future map surface. The pure duration math lives in ./calmDuration.js
 // (dependency-free → unit-testable).
-import { mapboxgl, fitToPoints } from '@/lib/mapbox';
+import { mapboxgl, fitToPoints, clampPadding } from '@/lib/mapbox';
 import { calmDuration } from '@/lib/map/calmDuration';
 
 export { calmDuration };
@@ -54,7 +54,7 @@ export function calmFit(map, points, opts = {}) {
     try {
       const b = new mapboxgl.LngLatBounds(points[0], points[0]);
       points.forEach((p) => b.extend(p));
-      const cam = map.cameraForBounds(b, { padding, maxZoom });
+      const cam = map.cameraForBounds(b, { padding: clampPadding(map, padding), maxZoom });
       if (cam?.zoom != null) { toZoom = Math.min(cam.zoom, maxZoom); center = [cam.center.lng, cam.center.lat]; }
     } catch { /* fall back to current zoom for the estimate */ }
   }
