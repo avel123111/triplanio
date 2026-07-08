@@ -9,9 +9,10 @@
 //
 // Formula (no special cases):
 //   start = previousEnd + gap;  end = start + nights;  cursor = end
-//   • baseISO is the chain anchor = the DEPARTURE day (UTC) of the first leg leaving
-//     the `start` city (mirrors server _trip_anchor_date); callers pass it in. A
-//     stable external anchor — so applying a gap to the first city stays idempotent.
+//   • baseISO is the chain anchor = the trip base date = the START anchor's own
+//     start_date (mirrors server _trip_anchor_date since TRIP-209; callers pass it
+//     in). A stable, server-owned value — NOT re-derived from a transfer datetime —
+//     so applying a gap to the first city stays idempotent.
 //   • EVERY non-anchor (the first one too) uses its own gap: an overnight start->first
 //     leg pushes the first city +1 (arrival day). No special-casing of the first node.
 //   • a 'waypoint' is a single-date transit point (consumes no nights)
@@ -45,8 +46,8 @@ export function layoutDates(nodes, baseISO) {
       return { ...n, start_date: d, end_date: d, nights: null, position: i };
     }
     // No first-node special case: the first non-anchor's gap applies too, so an
-    // overnight start->first leg lands the city on its arrival day. baseISO already
-    // points at the start-leg departure day, so this stays idempotent.
+    // overnight start->first leg lands the city on its arrival day. baseISO is the
+    // start anchor's own start_date, so this stays idempotent.
     const gap = Number.isFinite(n.gap) ? n.gap : 0;
     const startDay = cursor.plus({ days: gap });
     if (n.kind === 'waypoint') { // single-date transit point - consumes no nights
