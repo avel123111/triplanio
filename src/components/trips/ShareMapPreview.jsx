@@ -86,7 +86,12 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
       if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
       if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
-      if (map.getLayer('sc-labels')) map.setLayoutProperty('sc-labels', 'text-size', SC_WEIGHTS.label * s);
+      if (map.getLayer('sc-labels')) {
+        // Scale text + flag together so the label stays proportional and its
+        // offsets (which multiply by these) scale with it → preview == final.
+        map.setLayoutProperty('sc-labels', 'text-size', SC_WEIGHTS.label * s);
+        map.setLayoutProperty('sc-labels', 'icon-size', SC_WEIGHTS.flag * s);
+      }
     };
     const drawIfNeeded = () => {
       if (!pts.length) return;

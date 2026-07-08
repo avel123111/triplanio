@@ -35,8 +35,17 @@ export function buildRoute(visits, transfers, showSE) {
 // reads at story/post scale. Kept in ONE place because the live preview scales
 // these same base values (ShareMapPreview.applyWeights) to keep preview == final.
 // `dot` is a red marker (Pavel's request) — distinct from the app maps' brand pin.
-export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, label: 14 };
+// `label` = city-name text size; `flag` = icon-size for the flag image (see
+// FLAG_LOGICAL_H below — display height ≈ FLAG_LOGICAL_H × flag ≈ 12px, a touch
+// under the text cap so the flag reads as a peer of the name, like .cbadge).
+export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, label: 14, flag: 0.6 };
 export const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
+
+// Flag raster height (px). Registered at pixelRatio 2, so its LOGICAL height (what
+// icon-size multiplies) is half this. Rasterised big for crispness on the full-res
+// card; the on-screen size is controlled purely by icon-size, never this.
+const FLAG_RASTER_H = 40;
+const FLAG_LOGICAL_H = FLAG_RASTER_H / 2;
 
 // Text colour + halo for the city-name label, per basemap scheme. No pill/plate
 // (Pavel: "пока без плашки"), so the halo alone carries legibility over the map —
@@ -48,13 +57,13 @@ export function labelPaint(scheme = 'LIGHT') {
 }
 
 // Rasterise a /flags/<cc>.svg into an ImageData once and register it on the map as
-// `flag-<cc>` so the label symbol can inline it before the city name (same flag
+// `flag-<cc>` so the label symbol's icon can show it beside the city name (same flag
 // source as CountryFlag/.cbadge). Per-flag failures degrade to a name-only label.
 function loadFlagImage(cc) {
   return new Promise((resolve, reject) => {
     const im = new globalThis.Image();
     im.onload = () => {
-      const h = 24;
+      const h = FLAG_RASTER_H;
       const w = Math.max(1, Math.round(h * (im.width / im.height || 4 / 3)));
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
@@ -116,10 +125,14 @@ function drawPointLayer(map, ordered) {
 }
 
 /**
- * City-name label per city — a captured GL symbol layer (flag + name, no plate),
- * mirroring the lens-map badge minus dates. Reuses the sc-points source; sits below
- * the red dot. Flags load async (ensureFlagImages) and pop in on a repaint; the
- * returned promise lets the capture wait for them before snapshotting.
+ * City-name label per city — a captured GL symbol layer (flag icon + name, no
+ * plate), mirroring the lens-map badge minus dates. The flag is an `icon-image`
+ * with an explicit `icon-size` (NOT inlined in the text — inline images ignore
+ * text-size and render huge); icon anchors 'right' and text 'left' at the same
+ * point so their vertical centres line up, and both drop below the red dot by the
+ * same pixel amount (icon-offset ×icon-size == text-offset ×text-size). Reuses the
+ * sc-points source. Flags load async (ensureFlagImages) and pop in on a repaint;
+ * the returned promise lets the capture wait for them before snapshotting.
  */
 function drawCityLabels(map, ordered, scheme) {
   const src = 'sc-points';
@@ -130,13 +143,17 @@ function drawCityLabels(map, ordered, scheme) {
       type: 'symbol',
       source: src,
       layout: {
-        'text-field': ['format', ['image', ['concat', 'flag-', ['get', 'cc']]], '  ', ['get', 'name']],
+        'icon-image': ['concat', 'flag-', ['get', 'cc']],
+        'icon-size': SC_WEIGHTS.flag,
+        'icon-anchor': 'right',
+        'icon-offset': [-4, 25], // ×icon-size(0.6): ~-2px gap left, ~15px below the dot
+        'icon-allow-overlap': false,
+        'text-field': ['get', 'name'],
         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
         'text-size': SC_WEIGHTS.label,
-        'text-anchor': 'top',
-        'text-offset': [0, 0.9],
-        'text-allow-overlap': false, // collide → hide the overlapping label (dots stay)
-        'text-optional': true,
+        'text-anchor': 'left',
+        'text-offset': [0.35, 1.07], // ×text-size(14): ~5px gap right, ~15px below the dot
+        'text-allow-overlap': false, // collide → hide the whole label (dots stay)
       },
       paint: labelPaint(scheme),
     });
