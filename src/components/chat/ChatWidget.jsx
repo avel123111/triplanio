@@ -11,7 +11,7 @@ import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { useChatId, useUnreadChatCount, chatParticipants, pluralPeople } from '@/lib/chat';
+import { useChatId, useUnreadChatCount, useChatInserts, chatParticipants, pluralPeople } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
@@ -61,25 +61,19 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     enabled: !!chatId && open,
   });
 
-  // ── Realtime ──
-  useEffect(() => {
-    if (!chatId) return;
-    const ch = supabase.channel('chat-widget-' + chatId + '-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatId}` },
-        (payload) => {
-          const msg = payload.new;
-          qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
-            if (old.find((m) => m.id === msg.id)) return old;
-            const filtered = old.filter((m) =>
-              !(String(m.id).startsWith('opt-') && m.user_id === msg.user_id),
-            );
-            return [...filtered, msg];
-          });
-          qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
-        })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [chatId, qc, tripId]);
+  // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): append
+  // the new message to this widget's own cache + refresh unread. No standalone
+  // channel anymore, so the widget no longer duplicates the sidebar/lens ones.
+  useChatInserts(chatId, (msg) => {
+    qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
+      if (old.find((m) => m.id === msg.id)) return old;
+      const filtered = old.filter((m) =>
+        !(String(m.id).startsWith('opt-') && m.user_id === msg.user_id),
+      );
+      return [...filtered, msg];
+    });
+    qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+  });
 
   // ── Auto-scroll ──
   useEffect(() => {

@@ -26,7 +26,10 @@ function SidebarBody({
   const canShare = canShareTrip(myRole);
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro;
-  const chatUnread = useUnreadChatCount(tripId);
+  // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
+  // the badge only renders under a visible chat item, so a chat-off trip holds
+  // zero realtime subscriptions instead of a live one that can never show.
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isLensVisible(trip, 'chat') });
   return (
     <>
       <div className="app-side__group">
