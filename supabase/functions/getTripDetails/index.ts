@@ -68,7 +68,13 @@ Deno.serve(async (req) => {
       .eq('id', tripId)
       .single();
 
-    if (tripError || !trip) {
+    // Distinguish a genuine "no such trip" (PGRST116 = zero rows → 404) from a
+    // transient downstream failure (any other error → 5xx "retry"). A DB blip must
+    // NOT masquerade as "Trip not found". TRIP-208.
+    if (tripError && (tripError as { code?: string }).code !== 'PGRST116') {
+      throw tripError;
+    }
+    if (!trip) {
       return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
     }
 
@@ -76,13 +82,17 @@ Deno.serve(async (req) => {
     // Caller must be the trip creator or an active member.
     const isCreator = trip.created_by === user.id;
     if (!isCreator) {
-      const { data: memberRows } = await supabaseAdmin
+      const { data: memberRows, error: memberError } = await supabaseAdmin
         .from('trip_members')
         .select('id')
         .eq('trip_id', tripId)
         .eq('user_id', user.id)
         .eq('status', 'active')
         .limit(1);
+
+      // A failed membership query must NOT read as "not a member" (false 403).
+      // Fail LOUD → 5xx so the client retries instead of showing "No access". TRIP-208.
+      if (memberError) throw memberError;
 
       const isMember = (memberRows ?? []).length > 0;
 
