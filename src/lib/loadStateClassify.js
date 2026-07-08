@@ -5,13 +5,33 @@
 // client's fetch layer (createAuthRetryFetch), so a 401 that still reaches here
 // means the session is genuinely dead → redirect to /login.
 
-// Pull the HTTP status out of a supabase-js functions.invoke error. On a non-2xx
-// response supabase-js rejects with a FunctionsHttpError whose `.context` is the
-// raw Response, so `.context.status` is the code. Network / relay failures
-// (FunctionsFetchError / FunctionsRelayError) carry no `.context.status` → null.
+// Normalize the HTTP status out of a supabase-js error, REGARDLESS of transport
+// (TRIP-208). The app talks to Supabase two ways and each rejects with a
+// different error shape:
+//   1. functions.invoke (edge) → FunctionsHttpError whose `.context` is the raw
+//      Response, so `.context.status` is the code.
+//   2. PostgREST direct (.from()/.rpc()) → PostgrestError with NO `.context`; it
+//      carries a `.code` (SQLSTATE / PostgREST code), not an HTTP status.
+//   3. Auth/Storage errors carry a numeric `.status` directly.
+// Without this, a real 403/401 from a direct REST call had no status → fell
+// through to 'temporary', so the "no access" / login-redirect screens only ever
+// fired for edge calls. Map the auth-relevant PostgREST codes so both transports
+// classify identically. Network / relay failures carry no status → null.
 export function statusOf(error) {
-  const s = error?.context?.status;
-  return typeof s === 'number' ? s : null;
+  if (!error) return null;
+  // 1. Edge invoke (FunctionsHttpError)
+  const ctx = error.context?.status;
+  if (typeof ctx === 'number') return ctx;
+  // 2. Auth/Storage errors expose a numeric status directly
+  if (typeof error.status === 'number') return error.status;
+  // 3. PostgREST error codes → HTTP-equivalent status (only the ones that change
+  //    the screen; everything else stays null → 'temporary').
+  switch (error.code) {
+    case '42501':      return 403; // insufficient_privilege (RLS deny) → forbidden
+    case 'PGRST301':               // JWT expired
+    case 'PGRST302':   return 401; // anonymous/invalid JWT
+    default:           return null;
+  }
 }
 
 /**

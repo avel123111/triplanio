@@ -1,9 +1,12 @@
 {
+  "load_error_desc": "Algo salió mal temporalmente. Revisa tu conexión e inténtalo de nuevo",
+  "load_error_title": "No se pudo cargar",
   "login_other": "Iniciar sesión con otra cuenta",
   "no_access_body": "Puede que no estés en la lista de participantes, que se haya revocado la invitación o que el viaje se haya eliminado",
   "no_access_title": "Sin acceso a este viaje",
   "not_found_body": "Puede que el enlace esté desactualizado o tenga un error. Vuelve a tus viajes: desde ahí es fácil encontrar lo que necesitas.",
   "not_found_title": "Esta página no existe",
+  "retry": "Reintentar",
   "to_home": "Al inicio",
   "to_my_trips": "A mis viajes"
 }

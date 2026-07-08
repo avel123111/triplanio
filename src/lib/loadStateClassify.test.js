@@ -7,12 +7,34 @@ import { statusOf, loadErrorKind, queryGateKind } from './loadStateClassify.js';
 // carries the raw fetch error → no `.context.status`.
 const httpErr = (status) => Object.assign(new Error('http'), { context: { status } });
 const fetchErr = () => Object.assign(new Error('Failed to fetch'), { name: 'FunctionsFetchError', context: new TypeError('Failed to fetch') });
+// PostgREST direct-call shapes (.from()/.rpc()): PostgrestError carries a `.code`
+// (SQLSTATE / PostgREST code) and NO `.context`. Auth/Storage carry `.status`.
+const pgErr = (code) => Object.assign(new Error('pg'), { code, details: null, hint: null });
+const statusErr = (status) => Object.assign(new Error('auth'), { status });
 
 // ── statusOf ──────────────────────────────────────────────────────────────────
 test('statusOf: reads numeric .context.status, else null', () => {
   assert.equal(statusOf(httpErr(403)), 403);
   assert.equal(statusOf(fetchErr()), null);
   assert.equal(statusOf(undefined), null);
+});
+
+test('statusOf: transport-agnostic — PostgREST codes + direct .status (TRIP-208)', () => {
+  // RLS deny from a direct REST call must resolve to 403 (was null → mis-classified
+  // as "temporary" before TRIP-208).
+  assert.equal(statusOf(pgErr('42501')), 403);
+  assert.equal(statusOf(pgErr('PGRST301')), 401); // JWT expired
+  assert.equal(statusOf(pgErr('PGRST302')), 401); // anonymous/invalid JWT
+  assert.equal(statusOf(pgErr('PGRST116')), null); // no-rows → not an access status
+  assert.equal(statusOf(pgErr('23505')), null);    // unrelated code → temporary
+  assert.equal(statusOf(statusErr(401)), 401);     // AuthError-style numeric status
+  assert.equal(statusOf(statusErr(403)), 403);
+});
+
+test('loadErrorKind: direct PostgREST 403/401 classify like edge (TRIP-208)', () => {
+  assert.equal(loadErrorKind(pgErr('42501')), 'access');   // RLS deny → no-access screen
+  assert.equal(loadErrorKind(pgErr('PGRST301')), 'auth');  // dead session → login
+  assert.equal(loadErrorKind(pgErr('PGRST116')), 'temporary');
 });
 
 // ── loadErrorKind ─────────────────────────────────────────────────────────────

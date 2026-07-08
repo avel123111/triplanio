@@ -30,12 +30,16 @@ async function getRequestUser(req: Request) {
 }
 
 async function isCallerAdmin(tripId: string, userId: string): Promise<boolean> {
-  const { data: trip } = await supabaseAdmin.from('trips').select('created_by').eq('id', tripId).single();
+  const { data: trip, error: tripErr } = await supabaseAdmin.from('trips').select('created_by').eq('id', tripId).single();
+  // Transient query failure must fail LOUD (→ 5xx via terminal catch), never read
+  // as "not admin" (false 403). PGRST116 = genuine no-such-trip → false. TRIP-208.
+  if (tripErr && (tripErr as { code?: string }).code !== 'PGRST116') throw tripErr;
   if (!trip) return false;
   if (trip.created_by === userId) return true;
-  const { data: members } = await supabaseAdmin
+  const { data: members, error: memErr } = await supabaseAdmin
     .from('trip_members').select('role')
     .eq('trip_id', tripId).eq('user_id', userId).eq('status', 'active').limit(1);
+  if (memErr) throw memErr;
   const role = members?.[0]?.role;
   return role === 'admin' || role === 'owner';
 }
