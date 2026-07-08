@@ -190,10 +190,10 @@
   --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
   --fs-strong:  var(--fs-base);  /* база body + эмфаз-текст (НЕ канон) — алиас на base, единый источник 13px (TRIP-183 аудит: убран дубль-литерал) */
   --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, statcard, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
-  --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; было 17 */
-  --fs-h2:      calc(16.5px * var(--fd-k));               /* h2 макета → канон .t-heading; было 23 */
-  --fs-h1:      calc(clamp(21px, 2.6vw, 26px) * var(--fd-k)); /* h1 макета → канон .t-title; было 32 */
-  --fs-display: calc(clamp(30px, 4vw, 44px) * var(--fd-k));   /* hero макета → канон .t-display; было 47 */
+  --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; фикс (мельче не опускаем) */
+  --fs-h2:      calc(clamp(15px, 2.1vw, 16.5px) * var(--fd-k));   /* h2 макета → канон .t-heading; TRIP-203: fluid (16.5 деск → 15 фон), заменяет ручные @media-понижения */
+  --fs-h1:      calc(clamp(19px, 2.6vw, 26px) * var(--fd-k)); /* h1 макета → канон .t-title; TRIP-203: min 21→19 (единое понижение на фоне) */
+  --fs-display: calc(clamp(26px, 4vw, 44px) * var(--fd-k));   /* hero макета → канон .t-display; TRIP-203: min 30→26 (герои шринкуются токеном, а не оверрайдами) */
 }
 
 /* Dark theme */
@@ -1937,7 +1937,6 @@ h4,
 .eroute__create { position: relative; z-index: 1; width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) {
   .eroute { padding: 28px 18px 24px; }
-  .eroute h3 { font-size: var(--fs-h3); }
   .eroute__create { grid-template-columns: 1fr; }
 }
 
@@ -2026,11 +2025,10 @@ h4,
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 .flow-lp-b { padding: 20px; position: relative; }
-/* Step title: 32px in the half-width panel (the 40px page-h1 dwarfed the column);
-   on phones a fluid clamp instead of the global hard 26px !important shrink.
-   Scoped to the create-flow panel so the global h1 is untouched. */
-@media (max-width: 720px) { .flow-lp-b h1 { font-size: var(--fs-h2) !important; } }
-/* Section sub-heading — the missing mid-tier between the 32px title and the
+/* The step-title h1 in this half-width panel is bound to the t-heading canon
+   (--fs-h2, see the .t-heading group above) and used to get a scoped mobile
+   shrink; --fs-h2 is now fluid (clamp), so it shrinks via the token, no @media. */
+/* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
 .flow-lp-b .section-sub { color: var(--ink); margin: 0 0 12px; }
 /* Step footer reuses .lp-f; on phones it stacks to full-width buttons so long
@@ -2212,8 +2210,8 @@ h4,
      (e.g. 3-way "Остаться / Выйти без сохранения / Сохранить"). Primary on top. */
   .dlg__foot { padding: 12px 16px; flex-direction: column-reverse; gap: 8px; align-items: stretch; }
   .dlg__foot .btn { flex: none; width: 100%; justify-content: center; }
-  h1 { font-size: var(--fs-h2) !important; }
-  h2 { font-size: var(--fs-h3); }
+  /* TRIP-203: голые h1/h2 больше НЕ понижаются вручную — каноны --fs-h1/--fs-h2
+     теперь fluid (clamp) и шринкуются токеном единообразно на всех экранах. */
   /* Stack 2-column grids to 1 on small screens */
   .field-row.cols-2, .field-row.cols-3, .field-row.cols-4 { grid-template-columns: 1fr !important; }
 }
@@ -3919,7 +3917,6 @@ h4,
   .tc-grid { grid-template-columns: 1fr; gap: 14px; }
   .tc { min-height: 220px; }
   .tc__in { min-height: 220px; }
-  .tc__title { font-size: var(--fs-h3); }
   .tc-add { min-height: 220px; }
   .limitcard { padding: 16px; gap: 12px 14px; }
   /* icon + text share row 1; CTA drops to its own full-width row 2 */
@@ -4713,12 +4710,11 @@ h4,
 .sec-actions .seg { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
 .sec-actions .seg::-webkit-scrollbar { display: none; }
 @media (max-width: 640px) {
-  .sec-head h2 { font-size: var(--fs-h3); }
   .sec-actions { width: 100%; }
 }
 .head__av { position: relative; overflow: hidden; width: 60px; height: 60px; border-radius: 50%; flex: none; box-shadow: var(--sh-1), inset 0 0 0 2px rgba(255,255,255,.6); }
 .head__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-@media (max-width: 640px) { .head h1 { font-size: var(--fs-h2); } .head__av { width: 48px; height: 48px; } }
+@media (max-width: 640px) { .head__av { width: 48px; height: 48px; } }
 
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
 .statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
