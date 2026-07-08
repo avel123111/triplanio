@@ -29,7 +29,7 @@
   "role_admin": "Админ",
   "role_owner": "Владелец",
   "role_viewer": "Наблюдатель",
-  "search_placeholder": "Поиск по названию, городу, описанию",
+  "search_placeholder": "Поиск по названию, стране, городу, описанию",
   "shared_badge": "Совместный",
   "start_manual": "Собрать руками",
   "start_with_ai": "Начать с ИИ",
