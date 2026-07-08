@@ -442,7 +442,7 @@ export default function TripStructureEdit() {
   // Bookings are stashed on the node so Restore brings them back.
   const removeCity = async (id) => {
     const n = draft.nodes.find((x) => x.id === id);
-    if (!n || isAnchor(n)) return;
+    if (!n) return;
     const ok = await confirm({
       title: t('tse.delete_city_q', { city: n.city_name }),
       description: t('tse.delete_city_desc'),
@@ -473,8 +473,6 @@ export default function TripStructureEdit() {
     ].flatMap((e) => collectDocPaths(e.documents));
     runAction(() => rpcRemoveCity(id), () => removeTripFiles(orphanPaths));
   };
-  // Start/finish anchors go through the same confirm dialog as regular cities.
-  const removeEndpoint = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n) setConfirmDel(n); };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
       toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
@@ -954,7 +952,7 @@ export default function TripStructureEdit() {
               };
               let body;
               if (isAnchor(n)) {
-                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeEndpoint(n.id)} />;
+                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeCity(n.id)} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
                 body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
