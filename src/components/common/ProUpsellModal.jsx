@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
+import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -45,7 +45,7 @@ export default function ProUpsellModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dlg--sm">
+      <DialogContent className="dlg--sm" aria-describedby={undefined}>
 
             {/* ── Header ── */}
             <div className="dlg__head">
@@ -53,12 +53,14 @@ export default function ProUpsellModal({
               <div className="pi">
                 <Icon name="pro" size={17} />
               </div>
-              <h2>
-                {isInfo
-                  ? (feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_heading'))
-                  : (feature ? t('sub.locked_feature_named', { feature }) : t('sub.locked_heading'))
-                }
-              </h2>
+              <DialogTitle asChild>
+                <h2>
+                  {isInfo
+                    ? (feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_heading'))
+                    : (feature ? t('sub.locked_feature_named', { feature }) : t('sub.locked_heading'))
+                  }
+                </h2>
+              </DialogTitle>
               <button className="icon-btn" onClick={close}>
                 <Icon name="close" size={16} />
               </button>

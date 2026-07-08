@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ArrowLeft, ChevronRight } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
+import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -272,12 +272,12 @@ export default function ForkPartnerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <div className="dlg__head">
           <span style={{ width: 36, height: 36, borderRadius: 9, background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <ManualIcon style={{ width: 17, height: 17 }} />
           </span>
-          <h2>{t(meta.titleKey)}</h2>
+          <DialogTitle asChild><h2>{t(meta.titleKey)}</h2></DialogTitle>
         </div>
         <div className="dlg__body">{body}</div>
         <div className="dlg__foot">

@@ -23,6 +23,16 @@ import { join } from 'node:path';
 const ROOT = 'src';
 const RADIX_IMPORT = /from\s+['"]@radix-ui\/react-(alert-)?dialog['"]/;
 
+// Second invariant (TRIP-202): a composed <DialogContent> (the design-system content
+// from ui/dialog, re-exported via @/design) must be NAMED — a <DialogTitle> has to
+// appear in the same file (visible-`asChild` or sr-only). This closes the gap that
+// let hand-rolled dialogs (EventModal, EventEditDialog, ProUpsellModal, …) render a
+// nameless DialogContent while still passing the raw-import check above: they import
+// DialogContent from @/design, not from radix, so the whitelist never saw them. With
+// this, "a DialogContent without an accessible name" is structurally unrepresentable.
+const CONTENT_USE = /<DialogContent[\s>/]/;
+const TITLE_PRESENT = /<DialogTitle[\s>]/;
+
 // The ONLY files allowed to import the raw Radix dialog primitives. Each owns the
 // a11y contract for its surface (Title + Description opt-out + keepFocusInDialog).
 const ALLOW = new Set([
@@ -46,11 +56,13 @@ function walk(dir, out = []) {
 
 try {
   const offenders = [];
+  const nameless = [];
   for (const file of walk(ROOT)) {
     const rel = file.split('\\').join('/');
-    if (ALLOW.has(rel)) continue;
     const src = readFileSync(file, 'utf8');
-    if (RADIX_IMPORT.test(src)) offenders.push(rel);
+    if (!ALLOW.has(rel) && RADIX_IMPORT.test(src)) offenders.push(rel);
+    // Any file that renders <DialogContent> must also carry a <DialogTitle>.
+    if (CONTENT_USE.test(src) && !TITLE_PRESENT.test(src)) nameless.push(rel);
   }
 
   if (offenders.length) {
@@ -63,7 +75,17 @@ try {
     process.exit(1);
   }
 
-  console.log(`✓ 2f dialog-radix guard: raw Radix dialog import confined to ${ALLOW.size} shells`);
+  if (nameless.length) {
+    console.error('✗ 2f dialog-radix guard: <DialogContent> without a <DialogTitle> (no accessible name):');
+    for (const f of nameless) console.error(`    ${f}`);
+    console.error('\nEvery DialogContent needs a Radix Title. Either use the design-system <Dialog title=…>');
+    console.error('wrapper (which supplies it), or add a <DialogTitle> — wrap the visible heading with');
+    console.error('<DialogTitle asChild> (best), or an sr-only <DialogTitle> when there is no heading.');
+    console.error('Also pass aria-describedby={undefined} on the content when there is no Description.');
+    process.exit(1);
+  }
+
+  console.log(`✓ 2f dialog-radix guard: raw Radix import confined to ${ALLOW.size} shells; every DialogContent is named`);
   process.exit(0);
 } catch (e) {
   console.error('2f dialog-radix guard: internal error', e);
