@@ -458,6 +458,7 @@ h3,
 .visit .dt,        /* TRIP-175 инсп.: UI→Subheading (город визита) */
 .acct-subhead,     /* TRIP-175 инсп.: UI→Subheading (подзаголовок карточки аккаунта) */
 .invite-banner__title, /* TRIP-175 инсп.: off-canon→Subheading (заголовок инвайт-баннера) */
+.bell-dd__head .t-ui, /* TRIP-175 инсп.: UI→Subheading (заголовок «Уведомления» в колокольчике; перебивает класс .t-ui) */
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
@@ -479,6 +480,8 @@ h4,
 .acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
 .acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
+.brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
+.nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
@@ -507,6 +510,8 @@ h4,
 .langdd__item,
 .ts-in,
 .s22f-field input,
+.brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
+.nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
 .ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-183: .t-body ← body макета (Golos 400/13/1.55); был --fs-strong 15/lh1.6 */
 .t-ui,
 .trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
@@ -525,7 +530,6 @@ h4,
 .ts-cal__title,
 .chat-mention__row b,
 .dock-panel__tab,
-.nrow__title,
 .te-row__num,
 .te-actchip,
 .bt b,
@@ -598,6 +602,7 @@ h4,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
 .bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
 .visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
+.bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
@@ -636,13 +641,9 @@ h4,
 .dock__count,
 .dock-panel__head .nm,
 .bell-dd__mark,
-.bell-dd__more,
 .fpill,
 .fpill__c,
-.nrow__msg,
 .nrow__meta,
-.brow__title,
-.brow__msg,
 .brow__time,
 .brow__ok,
 .brow__link,
