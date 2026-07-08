@@ -387,6 +387,10 @@ h1, h2, h3, h4 {
 h1,
 .plan-price__amount,
 .auth__h1,
+.statcard .v,      /* TRIP-175 инсп.: Label→Title (число статкарты) */
+.bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
+.tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
+.bgt-donut__c .v,  /* TRIP-175 инсп.: Heading→Title (центр доната бюджета; .t-flush сохранён) */
 .budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: var(--fd-w); line-height: 1.14;  letter-spacing: var(--track-h); }   /* TRIP-183: .t-title ← h1 макета (Exo --fd-w/26/1.14/--track-h) */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
@@ -395,19 +399,22 @@ h2,
 .eroute h3,
 .flow-lp-b h1,
 .lph-name,
-.bud-total,
 .acct-hero__av,
 .acct-hero__name,
 .acct-plan__v,
 .pro-hero__title,
 .sec-head h2,
 .sfig .v,
-.bgt-donut__c .v,
 .bgt-stat__v,
 .bgt-detail__amt .v,
 .tcp__ph,
 .ncal-wdc-num,
 .pt-mm .n,
+.tl3-dh .wd,       /* TRIP-175 инсп.: off-canon→Heading (день недели хронологии) */
+.dlg__head h2,     /* TRIP-175 инсп.: Subheading→Heading (заголовки модалок .dlg__head) */
+.addon-card__title,/* TRIP-175 инсп.: Label→Heading (тайтл карточки аддона) */
+.card h3,          /* TRIP-175 инсп.: Subheading→Heading (заголовок карточки) */
+.bgt-head__title,  /* TRIP-175 инсп.: Subheading→Heading (заголовок экрана бюджета) */
 .ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* TRIP-183: .t-heading ← h2 макета (Exo --fd-w/16.5/1.2/--track-h; вес 700→--fd-w) */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
@@ -418,11 +425,9 @@ h3,
 .avatar--xl,
 .invite__tx h3,
 .flow-lp-b .section-sub,
-.dlg__head h2,
 .ti b,
 .stepper button,
 .route .rt,
-.tl3-dh .datechip .d,
 .acct-sectitle,
 .sheet-h h3,
 .ev-dlg-info h2,
@@ -431,7 +436,6 @@ h3,
 .rec .v,
 .vp-h h3,
 .bgt-detail__n,
-.bgt-head__title,
 .pt-cstop__num,
 .auth__brand-link,
 .brand-col__logo,
@@ -440,19 +444,20 @@ h3,
 .app-main__title,
 .step__num,
 .faq__q,
-.card h3,
 .step h3,
 .drawer li a,
+.wdg-h h4,         /* TRIP-175 инсп.: Label→Subheading (заголовки виджетов обзора) */
+.cr-item .cr-nm,   /* TRIP-175 инсп.: UI→Subheading (название города в рейле) */
+.tl3-card .body b, /* TRIP-175 инсп.: UI→Subheading (акцент в теле карточки события) */
+.tl3-card--tr .rv-end b, /* TRIP-175 инсп.: UI→Subheading (город назначения переезда) */
+.mbrow__name,      /* TRIP-175 инсп.: UI→Subheading (имя участника) */
+.map-route__name.t-ui, /* TRIP-175 инсп.: UI→Subheading (город в списке карты; перебивает класс .t-ui) */
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
 .choice-card__ttl,
 .chat-head h3,
 .te-step,
-.wdg-h h4,
-.statcard .v,
-.tl3-dh .wd,
-.addon-card__title,
 .sheet .ss-search input,
 .plan-card__name,
 .nonext b,
@@ -513,7 +518,6 @@ h4,
 .chat-mention__row b,
 .dock-panel__tab,
 .nrow__title,
-.mbrow__name,
 .te-row__num,
 .te-actchip,
 .bt b,
@@ -521,14 +525,11 @@ h4,
 .route .rc,
 .lp-warn b,
 .mrow .mn,
-.tl3-card .body b,
 .tl3-card .meta,
-.tl3-card--tr .rv-end b,
 .tl3-card--tr .rv-mode,
 .tl3-warn b,
 .tl3-warn button,
 .tl3-empty,
-.cr-item .cr-nm,
 .settings-identity .field__label,
 .acct-content,
 .acct-nav a,
@@ -591,6 +592,8 @@ h4,
 .s22f-poptx b,
 .s22f-cur,
 .fork-manual__tx b,
+.bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
+.bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
@@ -673,7 +676,6 @@ h4,
 .tl3-card--tr .rv-end span,
 .tl3-warn span,
 .cr-item .cr-dt,
-.addon-card__desc,
 .acct-sectitle small,
 .acct-divrow__s,
 .acct-hero__av .ov,
@@ -843,6 +845,7 @@ h4,
 .fork-partner__mid b,
 .va-sub, .s22-sub, .va-flag,
 .fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
+.statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
 .t-micro,
 .badge,
@@ -859,7 +862,6 @@ h4,
 .lph-fc,
 .lph-mk,
 .sl2,
-.statcard .k,
 .tl3-dh .datechip .m,
 .tl3-today,
 .cityrail .cr-h,
@@ -910,6 +912,9 @@ h4,
 .tl3-ev .time,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
+.addon-card__desc, /* TRIP-175 инсп.: Meta→Mono (описание аддона) */
+.settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta→Mono (описание в настройках; перебивает класс .t-meta) */
+.card .muted.t-meta, /* TRIP-175 инсп.: Meta→Mono (описание в карточке; перебивает класс .t-meta) */
 .confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
