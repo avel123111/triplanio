@@ -8,7 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { pluralize } from '@/lib/i18n/format';
+import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
@@ -537,10 +537,37 @@ export default function Trips() {
     return me.is_owner ? 'owner' : (me.role || 'member');
   };
 
+  // ── Search haystack ──────────────────────────────────────────────────────────
+  // One lowercased blob per trip: title + description + its cities + countries.
+  // Cities use the same deduped transit set shown on the card, in every locale we
+  // hold (name_i18n en/es/ru + the en-fallback city_name), so "париж"/"paris" both
+  // match. Countries are localized from country_code via localizeCountry (current
+  // UI language + English fallback + the raw ISO code). No backend change — all of
+  // this already arrives from get_user_travel_stats.
+  const haystackByTrip = useMemo(() => {
+    const out = {};
+    for (const tr of allTrips) {
+      const parts = [tr.title, tr.description];
+      for (const v of uniqueTransitCities(visitsByTrip[tr.id] || [])) {
+        const i18n = v.name_i18n || {};
+        parts.push(v.city_name, i18n.en, i18n.es, i18n.ru);
+        if (v.country_code) {
+          parts.push(
+            localizeCountry(v.country_code, lang),
+            localizeCountry(v.country_code, 'en'),
+            v.country_code,
+          );
+        }
+      }
+      out[tr.id] = parts.filter(Boolean).join('   ').toLowerCase();
+    }
+    return out;
+  }, [allTrips, visitsByTrip, lang]);
+
   // ── Partition ────────────────────────────────────────────────────────────────
   const matches = (tr) => {
     const q = search.trim().toLowerCase();
-    return !q || tr.title?.toLowerCase().includes(q) || tr.description?.toLowerCase().includes(q);
+    return !q || (haystackByTrip[tr.id] || '').includes(q);
   };
 
   // Trip date range comes from the same computeTripRange used everywhere else:
