@@ -4,6 +4,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Badge, Btn, Dialog, Severity, Skeleton } from '@/design/index';
 import { uploadMapBlob, renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
+import './ShareDialog.css';
 
 // Must match MAP_PLACEHOLDER in the render-share-card edge function (card_svg mode).
 const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
@@ -203,10 +204,11 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     : cardCode === 'no_transit_cities' ? t('share.card_no_cities')
     : cardCode === 'error' ? t('share.card_error') : '';
 
-  // Preview column: fixed-height card in the chosen aspect ratio (left column on
-  // desktop, wraps to the top on mobile). The status badge overlays its corner.
+  // Preview card in the chosen aspect ratio. Placement (left column on desktop,
+  // under the title on mobile) is owned by .sc-preview in ShareDialog.css; the
+  // status badge overlays its corner.
   const previewBox = {
-    position: 'relative', flex: 'none',
+    position: 'relative',
     height: 'min(46vh, 400px)', aspectRatio: ratio,
     borderRadius: 14, overflow: 'hidden',
     background: 'var(--surface)', border: '1px solid var(--line)',
@@ -235,55 +237,63 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       </div>
       {error && <div style={{ marginTop: 10 }}><Severity level="error">{error}</Severity></div>}
 
-      {/* 2. Social share card (TRIP-193): preview | controls, wraps on mobile. */}
-      <div style={{ marginTop: 20, borderTop: '1px solid var(--line)', paddingTop: 18, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <div style={previewBox}>
-          {stage === 'edit'
-            ? <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} overlaySvg={overlay?.svg} slot={overlay?.slot} cardW={overlay?.w} cardH={overlay?.h} />
-            : (cardUrl
-              ? <img src={cardUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <Skeleton w="100%" h="100%" r={14} />)}
-          <Badge style={statusBadgeStyle}>{stage === 'edit' ? t('share.card_preview') : t('share.card_ready_badge')}</Badge>
-        </div>
-
-        <div style={{ flex: 1, minWidth: 240 }}>
-          <div className="t-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {t('share.card_title')}
-            <Badge style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>{t('share.card_new')}</Badge>
+      {/* 2. Social share card (TRIP-193). Layout owned by ShareDialog.css:
+          desktop = map | [title, controls]; mobile = title, map, controls. */}
+      <div className="sc-wrap">
+        <div className="sc-card">
+          <div className="sc-head">
+            <div className="t-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {t('share.card_title')}
+              <Badge style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>{t('share.card_new')}</Badge>
+            </div>
+            <div className="muted t-body sc-hint">
+              {stage === 'edit' ? t('share.card_map_hint') : t('share.card_ready_desc')}
+            </div>
           </div>
 
-          {stage === 'edit' ? (
-            <>
-              <div className="muted t-body" style={{ margin: '6px 0 12px' }}>{t('share.card_map_hint')}</div>
-              <div className="seg seg--fill" role="group" aria-label={t('share.card_title')} style={{ marginBottom: 14 }}>
-                <button type="button" aria-pressed={format === 'story'} onClick={() => setFormat('story')}>{t('share.card_story')}</button>
-                <button type="button" aria-pressed={format === 'post'} onClick={() => setFormat('post')}>{t('share.card_post')}</button>
-              </div>
-              <div className="t-label" style={{ marginBottom: 7 }}>{t('share.card_bg')}</div>
-              {/* Only the Standard background for now; more styles land here later. */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 13, overflow: 'hidden', border: '2.5px solid var(--brand)', boxShadow: '0 0 0 3px var(--brand-soft)', background: 'var(--primary-soft)' }}>
-                  <span className="t-nano" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'rgba(20,25,35,.55)', color: '#fff', textAlign: 'center', padding: '2px 0' }}>{t('share.card_bg_standard')}</span>
+          <div className="sc-preview">
+            <div style={previewBox}>
+              {stage === 'edit'
+                ? <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} overlaySvg={overlay?.svg} slot={overlay?.slot} cardW={overlay?.w} cardH={overlay?.h} />
+                : (cardUrl
+                  ? <img src={cardUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <Skeleton w="100%" h="100%" r={14} />)}
+              <Badge style={statusBadgeStyle}>{stage === 'edit' ? t('share.card_preview') : t('share.card_ready_badge')}</Badge>
+            </div>
+          </div>
+
+          <div className="sc-controls">
+            {stage === 'edit' ? (
+              <>
+                <div className="seg seg--fill" role="group" aria-label={t('share.card_title')} style={{ marginBottom: 14 }}>
+                  <button type="button" aria-pressed={format === 'story'} onClick={() => setFormat('story')}>{t('share.card_story')}</button>
+                  <button type="button" aria-pressed={format === 'post'} onClick={() => setFormat('post')}>{t('share.card_post')}</button>
+                </div>
+                <div className="t-label" style={{ marginBottom: 7 }}>{t('share.card_bg')}</div>
+                {/* Only the Standard background for now; more styles land here later. */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 13, overflow: 'hidden', border: '2.5px solid var(--brand)', boxShadow: '0 0 0 3px var(--brand-soft)', background: 'var(--primary-soft)' }}>
+                    <span className="t-nano" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'rgba(20,25,35,.55)', color: '#fff', textAlign: 'center', padding: '2px 0' }}>{t('share.card_bg_standard')}</span>
+                  </div>
+                </div>
+                <Btn className="sc-build" variant="primary" icon="map" loading={cardLoading} onClick={buildCard}>{t('share.card_build')}</Btn>
+              </>
+            ) : (
+              <div className="sc-actions">
+                <Btn className="sc-share" variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl}>{t('share.card_share')}</Btn>
+                <div className="sc-actions-sec">
+                  <Btn variant="ghost" icon="edit" onClick={() => setStage('edit')}>{t('share.card_back')}</Btn>
+                  <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl}>{t('share.card_download')}</Btn>
                 </div>
               </div>
-              <Btn variant="primary" icon="map" loading={cardLoading} onClick={buildCard} block>{t('share.card_build')}</Btn>
-            </>
-          ) : (
-            <>
-              <div className="muted t-body" style={{ margin: '6px 0 14px' }}>{t('share.card_ready_desc')}</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Btn variant="ghost" icon="edit" onClick={() => setStage('edit')}>{t('share.card_back')}</Btn>
-                <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl}>{t('share.card_download')}</Btn>
-                <Btn variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl}>{t('share.card_share')}</Btn>
-              </div>
-            </>
-          )}
+            )}
 
-          {cardErrorMsg && (
-            <div style={{ marginTop: 12 }}>
-              <Severity level={cardCode === 'rate_limited' ? 'warning' : 'error'}>{cardErrorMsg}</Severity>
-            </div>
-          )}
+            {cardErrorMsg && (
+              <div style={{ marginTop: 12 }}>
+                <Severity level={cardCode === 'rate_limited' ? 'warning' : 'error'}>{cardErrorMsg}</Severity>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Dialog>
