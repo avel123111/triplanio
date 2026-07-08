@@ -376,7 +376,6 @@ h1, h2, h3, h4 {
      .t-mono        ← meta-md   JetBrains 700/11/1.25
    ================================================================= */
 .t-display,
-.statbar .v,   /* TRIP-188: инспектор канонов — числа статбара дашборда Heading→Display */
 .head h1,   /* TRIP-175: решение инспектора — hero-заголовок «шапки» (приветствие/титул экрана) → t-display */
 .ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fd-w); line-height: 1.08; letter-spacing: var(--track-hero); }   /* TRIP-183: .t-display ← hero макета (Exo --fd-w/44/1.08/--track-hero) */
 .t-title,
@@ -391,6 +390,9 @@ h1,
 .bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
 .bgt-donut__c .v,  /* TRIP-175 инсп.: Heading→Title (центр доната бюджета; .t-flush сохранён) */
+.statbar .v,       /* TRIP-175 инсп.: Display→Title (числа статбара дашборда) */
+.sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
+.rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
 .budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: var(--fd-w); line-height: 1.14;  letter-spacing: var(--track-h); }   /* TRIP-183: .t-title ← h1 макета (Exo --fd-w/26/1.14/--track-h) */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
@@ -404,7 +406,6 @@ h2,
 .acct-plan__v,
 .pro-hero__title,
 .sec-head h2,
-.sfig .v,
 .bgt-stat__v,
 .bgt-detail__amt .v,
 .tcp__ph,
@@ -415,6 +416,9 @@ h2,
 .addon-card__title,/* TRIP-175 инсп.: Label→Heading (тайтл карточки аддона) */
 .card h3,          /* TRIP-175 инсп.: Subheading→Heading (заголовок карточки) */
 .bgt-head__title,  /* TRIP-175 инсп.: Subheading→Heading (заголовок экрана бюджета) */
+.visit .when .yr,  /* TRIP-175 инсп.: Label→Heading (год визита) */
+.cbar .yr,         /* TRIP-175 инсп.: Meta→Heading (год столбца графика) */
+.acct-sectitle,    /* TRIP-175 инсп.: Subheading→Heading (заголовки секций аккаунта) */
 .ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* TRIP-183: .t-heading ← h2 макета (Exo --fd-w/16.5/1.2/--track-h; вес 700→--fd-w) */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
@@ -428,12 +432,10 @@ h3,
 .ti b,
 .stepper button,
 .route .rt,
-.acct-sectitle,
 .sheet-h h3,
 .ev-dlg-info h2,
 .ev-dlg-price .amt,
 .head__av,
-.rec .v,
 .vp-h h3,
 .bgt-detail__n,
 .pt-cstop__num,
@@ -452,6 +454,10 @@ h3,
 .tl3-card--tr .rv-end b, /* TRIP-175 инсп.: UI→Subheading (город назначения переезда) */
 .mbrow__name,      /* TRIP-175 инсп.: UI→Subheading (имя участника) */
 .map-route__name.t-ui, /* TRIP-175 инсп.: UI→Subheading (город в списке карты; перебивает класс .t-ui) */
+.vrow .nm,         /* TRIP-175 инсп.: UI→Subheading (страна/город в списке) */
+.visit .dt,        /* TRIP-175 инсп.: UI→Subheading (город визита) */
+.acct-subhead,     /* TRIP-175 инсп.: UI→Subheading (подзаголовок карточки аккаунта) */
+.invite-banner__title, /* TRIP-175 инсп.: off-canon→Subheading (заголовок инвайт-баннера) */
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
@@ -461,7 +467,6 @@ h4,
 .sheet .ss-search input,
 .plan-card__name,
 .nonext b,
-.visit .when .yr,
 .bgt-donutcard__h b,
 .dl-card__title,
 .dl-empty b,
@@ -471,6 +476,9 @@ h4,
 .banner p,
 .va-ti b, .s22-ti b,
 .va-price b, .s22-price b,
+.acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
+.acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
+.acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
@@ -533,12 +541,8 @@ h4,
 .settings-identity .field__label,
 .acct-content,
 .acct-nav a,
-.acct-divrow__t,
 .acct-plan__line,
-.acct-chan__t,
-.acct-inbox__t,
 .acct-tgrow__t,
-.acct-subhead,
 .menu .mi,
 .toast__body b,
 .sheet-row,
@@ -556,7 +560,6 @@ h4,
 .ch-row .cr-b b,
 .pcard__name,
 .crow .nm,
-.vrow .nm,
 .cbar .val,
 .empty-note .en-tx b,
 .visit .info .dt,
@@ -594,6 +597,7 @@ h4,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
 .bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
+.visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
@@ -741,7 +745,6 @@ h4,
 .vrow .c,
 .list-empty,
 .rec .s,
-.cbar .yr,
 .chart__cap,
 .empty-note .en-tx span,
 .map-legend .c,
@@ -846,6 +849,7 @@ h4,
 .va-sub, .s22-sub, .va-flag,
 .fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
+.addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
 .t-micro,
 .badge,
@@ -912,9 +916,8 @@ h4,
 .tl3-ev .time,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
-.addon-card__desc, /* TRIP-175 инсп.: Meta→Mono (описание аддона) */
-.settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta→Mono (описание в настройках; перебивает класс .t-meta) */
-.card .muted.t-meta, /* TRIP-175 инсп.: Meta→Mono (описание в карточке; перебивает класс .t-meta) */
+.mbrow .badge--warning, /* TRIP-175 инсп.: Micro→Mono (бейдж роли «Владелец»; Pro-бейдж .badge--pro НЕ затронут) */
+.mbrow .badge--brand,   /* TRIP-175 инсп.: Micro→Mono (бейдж роли «Админ») */
 .confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
@@ -976,7 +979,19 @@ h4,
    единственное легальное место, кроме канонов, где переопределяется font-family.
    Применяется классом `t-sans` рядом с каноном ИЛИ co-selector'ом в этом правиле.
    Заводится/детектится канон-инспектором (ось mods='sans'). */
-.t-sans { font-family: var(--font-ui); }
+.t-sans,
+.mrow .me,               /* TRIP-175 инсп.: Meta+Golos (email участника) */
+.mbrow__email,           /* TRIP-175 инсп.: Meta+Golos (email участника) */
+.invite-banner__desc,    /* TRIP-175 инсп.: Meta+Golos (описание инвайт-баннера) */
+.ov-empty-line,          /* TRIP-175 инсп.: Meta+Golos (пустая строка обзора) */
+.gadd span,              /* TRIP-175 инсп.: Meta+Golos (подпись ghost-add сервиса) */
+.acct-hero__mail,        /* TRIP-175 инсп.: Meta+Golos (email в шапке аккаунта) */
+.acct-note span,         /* TRIP-175 инсп.: Meta+Golos (примечание аккаунта) */
+.acct-divrow__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
+.acct-chan__s,           /* TRIP-175 инсп.: Meta+Golos (подпись канала уведомлений) */
+.addon-card__desc,       /* TRIP-175 инсп.: Meta+Golos (описание аддона; канон meta выше) */
+.settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta+Golos (описания в настройках; из #446-Mono) */
+.card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
 
 /* =================================================================
    OUTER PROTOTYPE CHROME (frame list + viewport)
