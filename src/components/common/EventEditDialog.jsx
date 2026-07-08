@@ -16,7 +16,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
@@ -1293,7 +1293,11 @@ export default function EventEditDialog({
         </div>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="dlg--wide ev-dlg" style={{ ...evVars, padding: 0 }}>
+          <DialogContent className="dlg--wide ev-dlg" aria-describedby={undefined} style={{ ...evVars, padding: 0 }}>
+            {/* Accessible name for the dialog. The visible <h2> lives inside the shared
+                `inner` (also used by the non-dialog panel variant), so a dedicated
+                sr-only Title carries the contract only in this Radix-dialog branch. */}
+            <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{title}</DialogTitle>
             {inner}
           </DialogContent>
         </Dialog>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
+import { Badge, Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -37,7 +37,7 @@ export default function PaymentResultDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dlg--sm">
+      <DialogContent className="dlg--sm" aria-describedby={undefined}>
 
             {/* ── Body: centred icon + title + desc (P5 .modal--confirm style) ── */}
             <div className="dlg__body" style={{ textAlign: 'center', padding: '32px 24px 8px' }}>
@@ -52,9 +52,11 @@ export default function PaymentResultDialog({
                 <Icon name={isSuccess ? 'check' : 'error'} size={26} />
               </div>
 
-              <h2 className="t-subheading" style={{ marginBottom: 8 }}>
-                {isSuccess ? t(isTrip ? 'sub.success_title_trip' : 'sub.success_title') : t('sub.fail_title')}
-              </h2>
+              <DialogTitle asChild>
+                <h2 className="t-subheading" style={{ marginBottom: 8 }}>
+                  {isSuccess ? t(isTrip ? 'sub.success_title_trip' : 'sub.success_title') : t('sub.fail_title')}
+                </h2>
+              </DialogTitle>
 
               <div className="muted t-body" style={{ maxWidth: 340, margin: '0 auto 14px' }}>
                 {isSuccess

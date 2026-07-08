@@ -14,7 +14,7 @@
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
+import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
   Edit2, Trash2, ExternalLink, MapPin, X,
@@ -83,6 +83,7 @@ export default function EventModal(props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         className={`${kind === 'service' ? 'dlg--sm' : 'dlg--wide'} ev-dlg`}
+        aria-describedby={undefined}
         style={{
           '--ev-color': theme.color,
           '--ev-soft': theme.soft,
@@ -95,7 +96,7 @@ export default function EventModal(props) {
           <div className="ev-dlg-ic"><theme.Icon /></div>
           <div className="ev-dlg-info">
             <div className="ev-dlg-eyebrow">{eyebrow}</div>
-            <h2>{title || themeLabel}</h2>
+            <DialogTitle asChild><h2>{title || themeLabel}</h2></DialogTitle>
           </div>
           {priceText && (
             <div className="ev-dlg-price">
