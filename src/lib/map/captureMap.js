@@ -12,7 +12,7 @@
 // drawn as a GL `circle` layer here so they are captured.
 import mapboxgl from 'mapbox-gl';
 import { supabase } from '@/api/supabaseClient';
-import { MAPBOX_TOKEN, MAP_STYLE, baseConfig } from '@/lib/mapbox';
+import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
@@ -114,7 +114,7 @@ export function renderCardMapPng({
     const zoomAdj = previewCssWidth > 0 ? zoom + Math.log2(width / previewCssWidth) : zoom;
     const map = new mapboxgl.Map({
       container: holder,
-      style: MAP_STYLE,
+      style: SHARE_MAP_STYLE,
       config: baseConfig(scheme),
       center,
       zoom: zoomAdj,

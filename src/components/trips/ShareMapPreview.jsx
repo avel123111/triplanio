@@ -1,9 +1,9 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
+import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
 import { buildRoute, drawTripRoute } from '@/lib/map/captureMap';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
-import { Btn } from '@/design/index';
+import { Btn, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 // Interactive live map for the share card (TRIP-193). The map sits in the card
@@ -23,7 +23,13 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   const { t } = useI18n();
   const holderRef = useRef(null);
   const mapRef = useRef(null);
-  const [scheme, setScheme] = useState('DARK');
+  // Latest slot/card geometry, read inside the create-once map effect (whose
+  // closure would otherwise see only the first render's values).
+  const slotRef = useRef(slot);
+  slotRef.current = slot;
+  const cardWRef = useRef(cardW);
+  cardWRef.current = cardW;
+  const [scheme, setScheme] = useState('LIGHT');
   const [projection, setProjection] = useState('mercator');
   const [fontTick, setFontTick] = useState(0);
 
@@ -45,7 +51,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     const pts = ordered.map((v) => [v.longitude, v.latitude]);
     const map = new mapboxgl.Map({
       container: holderRef.current,
-      style: MAP_STYLE,
+      style: SHARE_MAP_STYLE,
       config: baseConfig(scheme),
       ...(lang ? { language: lang } : {}),
       projection,
@@ -67,10 +73,26 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
     // by waiting for 'load'/'idle'; mirror that here. Idempotent: once sc-solid
     // exists we only refit, and 'idle'/'styledata' re-add it if a later style
     // re-eval (theme/projection toggle) drops it.
+    // The preview canvas is far smaller than the final card canvas, so the fixed-px
+    // markers/lines look proportionally THICKER here than in the rasterised card
+    // (TRIP-193). Scale them by (preview css width / card slot width) so preview ==
+    // final. Re-applied on every settle so it self-corrects once the slot geometry
+    // arrives after the overlay loads (the hole resizes → idle → this runs again).
+    const applyWeights = () => {
+      const cw = holderRef.current?.clientWidth || 0;
+      const sw = slotRef.current?.w || cardWRef.current || 0;
+      if (!cw || !sw) return;
+      const s = Math.min(1.5, Math.max(0.15, cw / sw));
+      if (map.getLayer('sc-points-halo')) map.setPaintProperty('sc-points-halo', 'circle-radius', 9 * s);
+      if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', 5.5 * s);
+      if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', 3.5 * s);
+      if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', 2 * s);
+    };
     const drawIfNeeded = () => {
       if (!pts.length) return;
-      if (map.getSource('sc-solid')) { fit(); return; }
+      if (map.getSource('sc-solid')) { applyWeights(); fit(); return; }
       try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
+      applyWeights();
       prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
       fit();
     };
@@ -172,10 +194,19 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
           dangerouslySetInnerHTML={{ __html: frameSvg }}
         />
       )}
-      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <Btn variant="ghost" size="sm" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
-        <Btn variant="ghost" size="sm" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />
-      </div>
+      {/* Until the frame SVG arrives the map would sit BARE in the box; cover it
+          with a loader so the user never sees a frameless map (TRIP-193). */}
+      {!frameSvg && (
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <Skeleton w="100%" h="100%" r={0} />
+        </div>
+      )}
+      {frameSvg && (
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Btn variant="ghost" size="sm" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
+          <Btn variant="ghost" size="sm" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />
+        </div>
+      )}
     </div>
   );
 });
