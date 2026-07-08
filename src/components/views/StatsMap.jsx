@@ -41,7 +41,7 @@ export default function StatsMap({
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, resize,
   // marker cleanup on unmount). projection follows the map/globe toggle.
-  const { mapRef, ready, error } = useMapSurface(containerRef, {
+  const { mapRef, ready, canFit, error } = useMapSurface(containerRef, {
     markersRef, scheme: colorScheme, projection, basemapTheme: 'monochrome',
   });
 
@@ -135,7 +135,9 @@ export default function StatsMap({
       });
     }
 
-    if (drawable.length > 0 && fittedSigRef.current !== pointsSig) {
+    // Fit only when the slot is measured (canFit); deferred otherwise — the effect
+    // re-runs when canFit flips. Pins above draw on `ready`, never blank. (TRIP-202)
+    if (canFit && drawable.length > 0 && fittedSigRef.current !== pointsSig) {
       const pts = drawable.map((p) => [+p.lng, +p.lat]);
       // First fit after load snaps; later changes glide with the shared adaptive
       // calm tempo (same as every other non-public map).
@@ -144,7 +146,7 @@ export default function StatsMap({
       fittedSigRef.current = pointsSig;
     }
     return undefined;
-  }, [ready, drawable, pointsSig, pins]);
+  }, [ready, canFit, drawable, pointsSig, pins]);
 
   // Country fill click → onCountryClick(isoAlpha2). The fill layer covers every
   // country (visited or not); the consumer decides whether the clicked code is in

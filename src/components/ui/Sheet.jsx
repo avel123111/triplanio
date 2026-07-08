@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { useSheetSwipe } from '@/lib/useSheetSwipe';
+import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
@@ -25,7 +26,7 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
         {/* Don't auto-focus into the sheet on open: on mobile that pops the
             keyboard for a search field, which yanks the fixed sheet up the
             screen and triggers iOS zoom. Focus is taken on user tap instead. */}
-        <Dialog.Content ref={elRef} className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onOpenAutoFocus={(e) => e.preventDefault()}>
+        <Dialog.Content ref={elRef} className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onOpenAutoFocus={keepFocusInDialog}>
           <div className="sheet-grip" {...gripProps}><i /></div>
           {title ? (
             <div className="sheet-h">

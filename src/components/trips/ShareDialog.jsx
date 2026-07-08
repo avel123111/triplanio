@@ -2,8 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Dialog, Severity, Skeleton } from '@/design/index';
-import { uploadMapBlob } from '@/lib/map/captureMap';
+import { uploadMapBlob, renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
+
+// Must match MAP_PLACEHOLDER in the render-share-card edge function (card_svg mode).
+const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 
 // render-share-card runs resvg in an edge isolate; a COLD isolate can exceed the
 // CPU limit and return HTTP 546 (invoke → error) intermittently - that is why the
@@ -45,6 +48,11 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   const [stage, setStage] = useState('edit'); // 'edit' (compose map) | 'card' (final)
   const [overlay, setOverlay] = useState(null); // frame preview: { url, slot, w, h }
   const mapPreviewRef = useRef(null);
+  const cardBlobUrlRef = useRef(null); // object URL of the browser-rendered PNG (revoke on replace)
+
+  function revokeCardUrl() {
+    if (cardBlobUrlRef.current) { URL.revokeObjectURL(cardBlobUrlRef.current); cardBlobUrlRef.current = null; }
+  }
 
   useEffect(() => {
     if (!trip?.id) return;
@@ -67,16 +75,49 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     return () => { cancelled = true; };
   }, [trip?.id]);
 
-  // Build the card from the CURRENTLY composed map view: snapshot the preview's
-  // live canvas AS-IS (WYSIWYG), upload it to share-maps, then render the card
-  // server-side. If capture/upload fails, map_path is null and the server falls
-  // back to its own map, so a card is always produced.
+  // Build the final card IN THE BROWSER (TRIP-193 Ф2): render the composed route
+  // map at the card's real resolution, ask the edge only for the card SVG (fonts
+  // embedded, map left as a placeholder), inject the map, rasterise SVG -> PNG.
+  // No edge resvg -> the HTTP 546 cold-isolate failure cannot happen, and the map
+  // is no longer capped to 600px. Falls back to the legacy edge render if any
+  // browser step fails (e.g. an older Safari that can't rasterise the SVG).
   async function buildCard() {
     if (!trip?.id) return;
     setCardLoading(true);
     setCardCode('');
+    revokeCardUrl();
     setCardUrl('');
-    // Snapshot the composed preview map AS-IS (WYSIWYG) and upload it.
+    try {
+      const comp = mapPreviewRef.current?.getComposition?.();
+      const slot = overlay?.slot;
+      const cardW = overlay?.w;
+      const cardH = overlay?.h;
+      if (!comp || !slot || !cardW || !cardH) throw new Error('preview not ready');
+
+      const mapBlob = await renderCardMapPng({ visits, transfers, ...comp, width: slot.w, height: slot.h });
+      if (!mapBlob) throw new Error('map render failed');
+      const mapDataUri = await blobToDataUri(mapBlob);
+
+      const { data, error: invokeErr } = await invokeCard({ trip_id: trip.id, format, lang, mode: 'card_svg' });
+      if (invokeErr || !data?.svg) throw new Error('card svg failed');
+
+      const svg = data.svg.split(MAP_PLACEHOLDER).join(mapDataUri);
+      const pngBlob = await rasterizeSvgToPng(svg, data.width || cardW, data.height || cardH);
+      const objUrl = URL.createObjectURL(pngBlob);
+      cardBlobUrlRef.current = objUrl;
+      setCardUrl(objUrl);
+      setStage('card');
+    } catch (e) {
+      console.error('browser card build failed, falling back to edge', e);
+      await buildCardViaEdge();
+    } finally {
+      setCardLoading(false);
+    }
+  }
+
+  // Legacy path (fallback): snapshot the preview map, upload it, and let the edge
+  // rasterise the card with resvg. Kept as a safety net until Ф3 retires resvg.
+  async function buildCardViaEdge() {
     let mapPath = null;
     try {
       const blob = await mapPreviewRef.current?.captureBlob?.();
@@ -90,15 +131,16 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       else setCardCode('error');
     } catch (err) {
       console.error('render-share-card error:', err); setCardCode('error');
-    } finally {
-      setCardLoading(false);
     }
   }
 
-  // Reset to the compose stage each time the dialog (re)opens.
+  // Reset to the compose stage each time the dialog (re)opens; free any prior PNG.
   useEffect(() => {
-    if (open) { setStage('edit'); setCardUrl(''); setCardCode(''); }
+    if (open) { setStage('edit'); revokeCardUrl(); setCardUrl(''); setCardCode(''); }
   }, [open]);
+
+  // Free the last browser-rendered PNG object URL on unmount.
+  useEffect(() => () => revokeCardUrl(), []);
 
   // Fetch the card FRAME as an SVG and render it IN THE BROWSER over the live map
   // (no server rasterisation - that intermittently blew the edge CPU limit and

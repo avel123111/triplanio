@@ -12,10 +12,14 @@
  * The decorative red pin + Google-style map chips from the mockup are NOT baked
  * here: our map is the live Mapbox map, which draws its own route + city points.
  *
- * Fonts: the design uses Montserrat 600/800 which are not embedded yet - resvg
- * maps them to the nearest bundled weight (700). Weights are kept as-designed so
- * the port is faithful once the extra weights land. Bump TEMPLATE_VERSION on any
- * visual change so the cache invalidates.
+ * Fonts: the embedded set is Caveat 700, Montserrat 700 and Rubik ExtraBold 800
+ * (both latin + cyrillic subsets). The design also asks Montserrat 600/800 - those
+ * nearest-match to the bundled 700 in BOTH resvg and the browser, so preview and
+ * final agree. The footer brand uses family "Rubik ExtraBold" (the actual name in
+ * the font file); referencing plain "Rubik" made resvg silently fall back to
+ * Montserrat. On the browser path the same bytes are attached via @font-face (see
+ * fontFaces.ts) so text is device-invariant. Bump TEMPLATE_VERSION on any visual
+ * change so the cache invalidates.
  *
  * Per project content rule: hyphen "-", never the em dash "—".
  */
@@ -23,7 +27,7 @@
 import { qrSvg } from './qr.ts';
 import { PLANE_DATA_URI } from './journeyAssets.ts';
 
-export const TEMPLATE_VERSION = 'v3-journey';
+export const TEMPLATE_VERSION = 'v4-journey';
 
 export type Format = 'story' | 'post';
 
@@ -226,6 +230,7 @@ export function buildCardSvg(
   mapDataUri: string | null,
   qrUrl: string,
   overlay = false,
+  fontCss = '',
 ): string {
   const L = LAYOUTS[format];
   const { w: W, h: H } = L;
@@ -326,7 +331,7 @@ export function buildCardSvg(
   const brandText = f.oneLine ? `${data.brand} - ${data.tagline}` : data.brand;
   const footer =
     footerPlane +
-    label(f.x, f.brandY, 'Rubik', f.brandSize, brandText, { weight: 800, ls: f.brandLetter }) +
+    label(f.x, f.brandY, 'Rubik ExtraBold', f.brandSize, brandText, { weight: 800, ls: f.brandLetter }) +
     (f.oneLine ? '' : label(f.x, f.taglineY, 'Montserrat', f.taglineSize, data.tagline, { weight: 600 })) +
     label(f.siteX, f.siteY, 'Montserrat', f.siteSize, `${data.site} · ${data.promo}`, { weight: 600 });
 
@@ -338,6 +343,7 @@ export function buildCardSvg(
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
+ ${fontCss}
  <linearGradient id="topfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101820" stop-opacity="0.45"/><stop offset="1" stop-color="#101820" stop-opacity="0"/></linearGradient>
  <linearGradient id="botfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101820" stop-opacity="0"/><stop offset="1" stop-color="#101820" stop-opacity="0.5"/></linearGradient>
  <clipPath id="mapclip"><path d="${BLOB_D}" transform="${xf}"/></clipPath>

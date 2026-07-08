@@ -183,7 +183,7 @@ export default function MapView({
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // resize, marker cleanup on unmount).
-  const { mapRef, ready, error } = useMapSurface(containerRef, {
+  const { mapRef, ready, canFit, error } = useMapSurface(containerRef, {
     markersRef, scheme: mapScheme, projection, active, basemapTheme, cooperativeGestures,
   });
 
@@ -356,7 +356,7 @@ export default function MapView({
       revealStateRef.current = { animLeg: -1, animProg: 0, fullLegs: 0, markerMax: -1, revealing: false };
       drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
       applyMarkerVisibility(markersRef.current, orderIndexById, -1, false);
-      if (leaving && ordered.length > 0) {
+      if (canFit && leaving && ordered.length > 0) {
         fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
       }
       return undefined;
@@ -389,13 +389,17 @@ export default function MapView({
         // Mid-flight zoom-out amount: long legs dip further out so the whole leg
         // is visible, short legs stay near the city zoom (dip ≈ 0).
         let dip = 0;
-        try {
-          const cam = map.cameraForBounds(
-            new mapboxgl.LngLatBounds([from.longitude, from.latitude], [to.longitude, to.latitude]),
-            { padding: 80 },
-          );
-          if (cam && typeof cam.zoom === 'number') dip = Math.max(0, REVEAL_CITY_ZOOM - cam.zoom);
-        } catch { /* ignore */ }
+        // cameraForBounds is a bounds op → only run it on a measured slot (canFit),
+        // else it warns "cannot fit". dip=0 is the correct fallback. (TRIP-202)
+        if (canFit) {
+          try {
+            const cam = map.cameraForBounds(
+              new mapboxgl.LngLatBounds([from.longitude, from.latitude], [to.longitude, to.latitude]),
+              { padding: 80 },
+            );
+            if (cam && typeof cam.zoom === 'number') dip = Math.max(0, REVEAL_CITY_ZOOM - cam.zoom);
+          } catch { /* ignore */ }
+        }
         const dur = revealLegDuration(from, to);
         const t0 = performance.now();
         revealStateRef.current = { animLeg: L, animProg: 0, fullLegs: L, markerMax: L, revealing: true };
@@ -441,7 +445,7 @@ export default function MapView({
     // equal index — make sure the static draw is correct.
     if (!pumpingRef.current) settle(reachedRef.current < 0 ? 0 : reachedRef.current);
     return undefined;
-  }, [ready, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered, hideRoute]);
+  }, [ready, canFit, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered, hideRoute]);
 
   // Abort any in-flight reveal pump on unmount (the scroll effect intentionally
   // does NOT cancel on every re-render, so the queue can run across re-renders).
@@ -500,16 +504,16 @@ export default function MapView({
       hadFocusRef.current = true;
       if (focus.length === 1) {
         calmFlyTo(map, { center: focus[0], zoom: focusZoom });
-      } else {
+      } else if (canFit) {
         calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
-      if (ordered.length > 0) {
+      if (canFit && ordered.length > 0) {
         calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
       }
     }
-  }, [ready, focusSig, revealActiveId]);
+  }, [ready, canFit, focusSig, revealActiveId]);
 
   // --- Draw markers + route lines whenever the data changes ---
   useEffect(() => {
@@ -576,7 +580,10 @@ export default function MapView({
     // First fit (after load / style reload) is instant; later changes ease.
     // BUT don't override an active parent focus (e.g. landing straight on a city/
     // transfer via a create-intent) — the focus effect owns the camera then.
-    if (ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
+    // Fit only once the slot is MEASURED (canFit) — never into a zero-size
+    // container (fit is deferred; the effect re-runs when canFit flips). Markers/
+    // lines above still draw on `ready`, so the map is never blank. (TRIP-202)
+    if (canFit && ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       const pts = ordered.map((v) => [v.longitude, v.latitude]);
       if (fittedSigRef.current === '') {
         fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 }); // first frame after load: snap
@@ -589,7 +596,7 @@ export default function MapView({
     }
 
     return undefined;
-  }, [ready, ordered, transfers, visitsSignature, hideRoute]);
+  }, [ready, canFit, ordered, transfers, visitsSignature, hideRoute]);
 
   // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
   // Owns the hotel markers while the overlay is open: builds a moveend listener
@@ -703,7 +710,7 @@ export default function MapView({
 
     // First paint for this city → fit the camera to the WHOLE pool once. Later pool
     // growth (tail pages) must NOT jump the camera, so guard with hadHotelPinsRef.
-    if (!hadHotelPinsRef.current) {
+    if (!hadHotelPinsRef.current && canFit) {
       hadHotelPinsRef.current = true;
       const pts = (hotelPins2 || []).filter((h) => h.lat != null && h.lng != null).map((h) => [h.lng, h.lat]);
       if (pts.length) calmFit(map, pts, { padding: 80, maxZoom: 15 });
@@ -717,7 +724,7 @@ export default function MapView({
         hotelMoveHandlerRef.current = null;
       }
     };
-  }, [ready, hideRoute, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
+  }, [ready, canFit, hideRoute, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
 
   // Hotel selection + hover highlight (no rebuild) + Способ A. Hover/selection just
   // re-toggle classes; a NEW selection buried in a cluster (or off the current

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Dialog as UIDialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
+import { faviconUrl } from '@/lib/booking-platforms';
 
 // =====================================================================
 // Primitive layer (Radix-backed) — single import surface.
@@ -285,7 +286,12 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
   const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
   return (
     <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className={size ? `dlg--${size}` : ''}>
+      {/* a11y contract lives HERE — the one wrapper every app dialog uses. The
+          visible <h2>/subtitle ARE the Radix Title/Description (asChild → native,
+          no hidden duplicate, zero visual change). With no subtitle we opt out of
+          the description explicitly (aria-describedby={undefined}) so Radix stays
+          quiet without a bogus empty node. (TRIP-202) */}
+      <DialogContent className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
         <div className="dlg__head">
           {icon && (
             <div style={{ width: 36, height: 36, borderRadius: 9, background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -293,8 +299,8 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
             </div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2>{title}</h2>
-            {subtitle && <div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div>}
+            <DialogTitle asChild><h2>{title}</h2></DialogTitle>
+            {subtitle && <DialogDescription asChild><div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div></DialogDescription>}
           </div>
           <button className="icon-btn" onClick={handleClose}>
             <Icon name="close" size={16} />
@@ -336,13 +342,10 @@ export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);
   // Real favicon of the booking site (same source as the event view/edit dialogs)
   // instead of a letter monogram. Falls back to the letter/link icon if the
-  // favicon can't load or the URL has no host.
-  let host = "";
-  try {
-    const s = String(url || "").trim();
-    if (s) host = new URL(s.startsWith("http") ? s : `https://${s}`).hostname;
-  } catch { /* ignore */ }
-  const favicon = host ? `https://www.google.com/s2/favicons?domain=${host}&sz=64` : null;
+  // favicon can't load or the URL has no plausible host. Single owner of the
+  // favicon URL + host-validity is `faviconUrl` (no dup, no request for a
+  // half-typed host). (TRIP-202)
+  const favicon = faviconUrl(url);
   const [imgFailed, setImgFailed] = React.useState(false);
 
   if (favicon && !imgFailed) {

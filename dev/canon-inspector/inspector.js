@@ -72,6 +72,13 @@ function injectStyles() {
   const s = document.createElement('style');
   s.textContent = `
   .${ROOT_CLASS}, .${ROOT_CLASS} * { box-sizing: border-box; font-family: ui-sans-serif, system-ui, sans-serif; }
+  /* A modal Radix dialog sets body{pointer-events:none} (disableOutsidePointerEvents)
+     and only re-enables its own layer — our root is a body child and would inherit
+     "none", making the whole inspector unclickable (clicks fall through to the page
+     and dismiss the modal). Force it back on the root ONLY; descendants inherit auto,
+     while .ci-hi keeps its own explicit "none" (own rule beats inheritance) so the
+     hover overlay still never blocks pointer events. (TRIP-203) */
+  .${ROOT_CLASS} { pointer-events: auto; }
   .ci-launch { position: fixed; left: 16px; bottom: 16px; z-index: 2147483000; width: 44px; height: 44px; padding: 0;
     display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid #334155;
     background: #0f172a; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
@@ -174,7 +181,7 @@ function build() {
   const root = h(ROOT_CLASS);
 
   els.launcher = h('ci-launch', 'button');
-  els.launcher.title = 'Каноны — инспектор типографики';
+  els.launcher.title = 'Каноны — инспектор типографики (Alt+клик — действие в приложении: открыть модалку / навигация)';
   els.launcher.innerHTML = `<span class="ci-dot"></span>`;
   els.launcher.onclick = () => (active ? disable() : enable());
 
@@ -219,18 +226,59 @@ function onMove(e) {
   const el = e.target;
   if (isOurs(el)) { els.hi.style.display = 'none'; return; }
   const r = el.getBoundingClientRect();
-  Object.assign(els.hi.style, { display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  // Alt held → the next click passes through to the app (open a modal, navigate)
+  // instead of selecting; tint the highlight green to signal it (TRIP-203).
+  const pass = e.altKey;
+  Object.assign(els.hi.style, {
+    display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+    borderColor: pass ? '#22c55e' : '#2563eb',
+    background: pass ? 'rgba(34,197,94,.10)' : 'rgba(37,99,235,.10)',
+  });
 }
 
 function onClick(e) {
   if (dragging) return;         // trailing click after a drag — ignore
   if (isOurs(e.target)) return; // let our own UI work normally
+  // Alt-click passes through to the app instead of selecting — so you can open a
+  // modal / navigate to the state you want to inspect without leaving inspect
+  // mode. Plain click still selects. Pairs with the modal shield below (TRIP-203).
+  if (e.altKey) return;
   e.preventDefault();
   e.stopPropagation();
   selectEl(e.target);
 }
 
 function onKey(e) { if (e.key === 'Escape') disable(); }
+
+// ── modal shield (make the inspector usable over Radix dialogs) ─────────────
+// App modals are Radix @radix-ui/react-dialog (modal). While one is open Radix
+// puts several bubble-phase listeners on `document` that fight our floating UI
+// (`.ci-root`), which it treats as "outside" the dialog:
+//   • DismissableLayer — a `pointerdown` outside dispatches POINTER_DOWN_OUTSIDE
+//     → onOpenChange(false): clicking a canon slammed the modal shut.
+//   • FocusScope — traps focus via `focusin`/`focusout`.
+//   • react-remove-scroll — `wheel`/`touchmove` listeners preventDefault every
+//     scroll outside the locked dialog: our panel body wouldn't scroll.
+//
+// Fix: a CAPTURE-phase guard on `document`. Capture runs before the bubble phase
+// where all of those handlers live, so ours always fires first and
+// stopImmediatePropagation() keeps them from ever seeing the event — no reliance
+// on registration order. (Blocking propagation does NOT preventDefault, so native
+// scrolling inside our panel still happens.) We guard ONLY pointer/focus/scroll
+// events, NOT mouse/click: the inspector's own header-drag runs on `mousedown`
+// and its buttons on `click`, both of which must still reach descendant listeners.
+function installOutsideShield() {
+  const shield = (e) => {
+    // focusout carries the element GAINING focus in relatedTarget — guard it too
+    // so the focus trap doesn't yank focus back when you click into our panel.
+    if (isOurs(e.target) || (e.relatedTarget && isOurs(e.relatedTarget))) {
+      e.stopImmediatePropagation();
+    }
+  };
+  for (const type of ['pointerdown', 'focusin', 'focusout', 'wheel', 'touchmove']) {
+    document.addEventListener(type, shield, true);   // capture — beats Radix's bubble handlers
+  }
+}
 
 // ── draggable panels ───────────────────────────────────────────────────────
 // Drag a floating element by a handle (its header). Buttons inside the handle
@@ -447,9 +495,13 @@ function positionPanel(el) {
 
 // ── preview (ephemeral inline style; never queued) ─────────────────────────
 function pickCanon(el, id) {
-  const cur = pendingCanon.get(el);
-  pendingCanon.set(el, { id, mods: cur ? cur.mods : [] });
-  previewMod.delete(el);                   // модификаторы поканонны — сбрасываем при смене канона
+  // Fresh canon → drop any carried detection-modifiers (mods). Those (strong/
+  // flush/caption in MODIFIERS) come only from detecting the element's ORIGINAL
+  // canon and aren't user-selectable, so carrying them onto a newly picked canon
+  // is pure downside — e.g. an element detected as t-mono+caption keeps `caption`
+  // (which is CAPS), so every other canon you pick renders UPPERCASE too (TRIP-203).
+  pendingCanon.set(el, { id, mods: [] });
+  previewMod.delete(el);                   // поканонные модификаторы тоже сбрасываем при смене канона
   applyPreview(el);
   render(el);
 }
@@ -478,10 +530,16 @@ function setScope(el, mode) {
   render(el);
 }
 // Colour axis — SAVED to the worklist (unlike the preview-only states). Click the
-// active swatch again to clear the choice.
+// active swatch again to reset to the DEFAULT text colour (Основной / --ink).
+// Deselecting means "back to default", not "no inline colour": text always has a
+// colour, and with no override a compound preset keeps painting its own — e.g.
+// `.tp-caption` sets color:var(--brand), so the text stayed brand-blue. Resetting
+// to 'ink' lays down inline var(--ink), overriding the class. (`null` remains only
+// as the seeded state for off-palette text we never touched, so selecting such an
+// element doesn't force-recolour it.) (TRIP-203)
 function pickColor(el, key) {
   const cur = pendingColor.get(el) ?? null;
-  pendingColor.set(el, cur === key ? null : key);
+  pendingColor.set(el, cur === key ? 'ink' : key);
   applyPreview(el);
   render(el);
 }
@@ -651,4 +709,5 @@ export function initCanonInspector() {
   load();
   injectStyles();
   build();
+  installOutsideShield();
 }
