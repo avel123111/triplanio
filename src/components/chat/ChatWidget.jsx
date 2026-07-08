@@ -6,12 +6,12 @@
  */
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { useChatId, useUnreadChatCount, useChatInserts, chatParticipants, pluralPeople } from '@/lib/chat';
+import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
@@ -19,8 +19,6 @@ import { Avatar, EmptyState, Sheet } from '@/design/index';
 import { displayName } from '@/lib/displayName';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-const MSGS_KEY = (cid) => ['chat-widget-msgs', cid];
 
 function highlightMentions(val) {
   // Bold look WITHOUT a font-weight change (which would widen the run and drift
@@ -50,30 +48,19 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const unread = useUnreadChatCount(tripId);
   const { data: chatId } = useChatId(tripId);
 
-  // ── Load messages (only when open) ──
-  const { data: msgs = [] } = useQuery({
-    queryKey: MSGS_KEY(chatId),
-    queryFn: async () => {
-      const { data } = await supabase.from('chat_messages').select('*')
-        .eq('chat_id', chatId).order('created_at', { ascending: true }).limit(100);
-      return data || [];
-    },
-    enabled: !!chatId && open,
-  });
+  // ── Load messages (only when open) ── shared cache with the chat lens.
+  const { data: msgs = [] } = useChatMessages(chatId, { enabled: open });
 
   // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): append
   // the new message to this widget's own cache + refresh unread. No standalone
   // channel anymore, so the widget no longer duplicates the sidebar/lens ones.
+  // Only maintain the message cache while OPEN: a closed widget doesn't render
+  // messages, and priming the shared cache with a partial list would flash on
+  // next open. Unread stays live regardless via useUnreadChatCount's own sub.
   useChatInserts(chatId, (msg) => {
-    qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
-      if (old.find((m) => m.id === msg.id)) return old;
-      const filtered = old.filter((m) =>
-        !(String(m.id).startsWith('opt-') && m.user_id === msg.user_id),
-      );
-      return [...filtered, msg];
-    });
+    appendChatMessage(qc, chatId, msg);
     qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
-  });
+  }, { enabled: open });
 
   // ── Auto-scroll ──
   useEffect(() => {
@@ -127,7 +114,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     setSending(true);
 
     const optId = 'opt-' + Date.now();
-    qc.setQueryData(MSGS_KEY(chatId), (old = []) => [...old, {
+    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, {
       id: optId, chat_id: chatId, trip_id: tripId,
       user_id: user?.id,
       user_full_name: myName, text: content,
@@ -145,7 +132,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     setSending(false);
     if (error) {
       console.error('ChatWidget send error', error);
-      qc.setQueryData(MSGS_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
+      qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
       return;
     }
 
@@ -161,8 +148,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
 
   const activeMembers = chatParticipants(members, ownerId);
 
-  // Active @token being typed, and the helper that completes it on select.
-  const mentionToken = (/(^|\s)@(\w*)$/.exec(text)?.[2] || '').toLowerCase();
+  // Helper that completes an @mention on select.
   function applyMention(handle) {
     setText((t) => t.replace(/@(\w*)$/, '@' + handle + ' '));
     setShowMention(false);
@@ -189,10 +175,6 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     ta.addEventListener('scroll', sync);
     return () => ta.removeEventListener('scroll', sync);
   }, [open]);
-  const mentionMembers = mentionToken
-    ? activeMembers.filter((m) => (nameFor(m.user_id) || '').toLowerCase().startsWith(mentionToken))
-    : activeMembers;
-  const triplanioMatches = !mentionToken || 'triplanio'.startsWith(mentionToken);
 
   // Memoized message elements - typing in the composer (same component) must
   // NOT rebuild every bubble on each keystroke (that caused the typing lag).

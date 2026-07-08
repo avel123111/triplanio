@@ -10,7 +10,7 @@
  *   myRole  - string
  */
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { useAuth } from '@/lib/AuthContext';
@@ -23,12 +23,8 @@ import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, Card, EmptyState, Severity, Btn } from '../design/index';
 import { Icon } from '../design/icons';
-import { chatParticipants, pluralPeople, useChatInserts } from '@/lib/chat';
+import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY } from '@/lib/chat';
 
-// ─── Query keys ───────────────────────────────────────────────────────────────
-
-const CHAT_ID_KEY = (tripId) => ['chat-id', tripId];
-const MSGS_KEY    = (chatId)  => ['chat-messages-lens', chatId];
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -142,22 +138,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
   const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
 
-  // ── Resolve chatId for this trip ──
-  const { data: chatId } = useQuery({
-    queryKey: CHAT_ID_KEY(tripId),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('chats')
-        .select('id')
-        .eq('trip_id', tripId)
-        .eq('type', 'group')
-        .single();
-      if (error) throw error;
-      return data?.id || null;
-    },
-    enabled: !!tripId,
-    staleTime: Infinity,
-  });
+  // ── Resolve chatId for this trip ── (shared hook; same ['chat-id', tripId] cache)
+  const { data: chatId } = useChatId(tripId);
 
   // ── Resolve participant display names ──
   const profileIds = [
@@ -181,37 +163,13 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     return displayName(email, real);
   };
 
-  // ── Load messages ──
-  const { data: msgs = [], isLoading, error: msgsError, refetch: refetchMsgs } = useQuery({
-    queryKey: MSGS_KEY(chatId),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true })
-        .limit(200);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!chatId,
-  });
+  // ── Load messages ── shared cache with the chat widget.
+  const { data: msgs = [], isLoading, error: msgsError, refetch: refetchMsgs } = useChatMessages(chatId);
 
   // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): append
   // the new message to the lens cache. One channel per chat_id is now shared with
   // the sidebar badge + widget instead of each opening its own.
-  useChatInserts(chatId, (msg) => {
-    qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
-      // already present
-      if (old.find((m) => m.id === msg.id)) return old;
-      // remove optimistic from same user
-      const filtered = old.filter((m) => {
-        if (!String(m.id).startsWith('opt-')) return true;
-        return m.user_id !== msg.user_id;
-      });
-      return [...filtered, msg];
-    });
-  });
+  useChatInserts(chatId, (msg) => appendChatMessage(qc, chatId, msg));
 
   // ── Auto-scroll ──
   useEffect(() => {
@@ -259,7 +217,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       created_at:     new Date().toISOString(),
       __pending:      true,
     };
-    qc.setQueryData(MSGS_KEY(chatId), (old = []) => [...old, optimistic]);
+    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, optimistic]);
 
     const { data: created, error } = await supabase
       .from('chat_messages')
@@ -278,7 +236,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
     if (error) {
       console.error('Chat send error:', error);
-      qc.setQueryData(MSGS_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
+      qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
       return;
     }
 
@@ -315,9 +273,6 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     setShowMention(/(^|\s)@(\w*)$/.test(v));
   }
 
-  // Active @token being typed (used to filter + replace on select).
-  const mentionToken = (/(^|\s)@(\w*)$/.exec(text)?.[2] || '').toLowerCase();
-
   function applyMention(handle) {
     // Replace the trailing @token (even a partial one like "@tri") with the
     // full handle, so picking the suggestion always completes the name.
@@ -345,24 +300,6 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     ta.addEventListener('scroll', sync);
     return () => ta.removeEventListener('scroll', sync);
   }, []);
-
-  // Mention list - Triplanio first, then participants (owner + admins + viewers)
-  const mentionList = [
-    { name: 'Triplanio', desc: t('chat.mention_all_hint'), ai: true, handle: 'Triplanio' },
-    ...chatParticipants(members, ownerId).map((m) => {
-      const resolved = nameFor(m.user_id);
-      return {
-        name:   resolved,
-        desc:   m.role === 'owner' ? t('members.role_owner') : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer'),
-        handle: resolved.split(/[\s@]/)[0],
-        ai:     false,
-      };
-    }),
-  ];
-  const filteredMentionList = mentionToken
-    ? mentionList.filter((m) =>
-        m.handle.toLowerCase().startsWith(mentionToken) || m.name.toLowerCase().startsWith(mentionToken))
-    : mentionList;
 
   // Build message rows with date dividers. Memoized on [msgs, profiles, user]
   // so typing in the composer (which lives in this same component) does NOT
