@@ -165,31 +165,80 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
   return q.data || 0;
 }
 
-// ── Live subscription ─────────────────────────────────────────────────────────
+// ── Shared realtime: ONE channel per chat_id per client (TRIP-208 Ф2-2b) ──────
+//
+// Every chat consumer needs the SAME event: "a row was INSERTed into
+// chat_messages for this chat". Previously each consumer opened its own
+// supabase.channel(), so a single trip screen held THREE duplicate channels to
+// one chat_id (sidebar badge + widget unread + widget's own) and every message
+// was WAL-decoded / RLS-checked / delivered 3× to the same browser. Consumers
+// keep their own message caches, so we can't collapse the caches - but we can
+// collapse the transport: this registry keeps exactly ONE channel per chat_id
+// and fans each payload out to all local subscribers. The channel is closed when
+// the LAST subscriber leaves (ref-counted → no dangling subscription). Because
+// only the registry ever calls .subscribe() for a given chat_id, a stable
+// channel name is safe (the old random suffix existed only to dodge the
+// "can't add callbacks after subscribe()" throw from two .subscribe() calls
+// sharing a name - which no longer happens).
+const chatInsertRegistry = new Map(); // chatId -> { channel, subscribers:Set<fn> }
 
-export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
-  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
-  const qc = useQueryClient();
-  // Unique per hook instance - two consumers (e.g. sidebar badge + widget) must
-  // NOT share a Realtime topic name, or the 2nd .subscribe() throws
-  // "cannot add postgres_changes callbacks ... after subscribe()".
-  const uidRef = useRef(Math.random().toString(36).slice(2));
-  useEffect(() => {
-    if (!chatId || !enabled) return undefined;
+export function subscribeChatInserts(chatId, onInsert) {
+  if (!chatId) return () => {};
+  let entry = chatInsertRegistry.get(chatId);
+  if (!entry) {
+    const subscribers = new Set();
     const channel = supabase
-      .channel(`chat-lib-${chatId}-${uidRef.current}`)
+      .channel(`chat-inserts-${chatId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'chat_messages',
         filter: `chat_id=eq.${chatId}`,
-      }, () => {
-        qc.invalidateQueries({ queryKey: CHAT_MESSAGES_KEY(tripId) });
-        qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+      }, (payload) => {
+        for (const fn of subscribers) fn(payload.new);
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [chatId, tripId, enabled, qc]);
+    entry = { channel, subscribers };
+    chatInsertRegistry.set(chatId, entry);
+  }
+  entry.subscribers.add(onInsert);
+  return () => {
+    entry.subscribers.delete(onInsert);
+    if (entry.subscribers.size === 0) {
+      supabase.removeChannel(entry.channel);
+      chatInsertRegistry.delete(chatId);
+    }
+  };
+}
+
+/** Register `onInsert(newRow)` for a chat's inserts for the life of the
+ *  component, sharing one underlying channel per chat_id (see registry above).
+ *  `onInsert` may change every render without re-subscribing (held in a ref). */
+export function useChatInserts(chatId, onInsert, { enabled = true } = {}) {
+  const cbRef = useRef(onInsert);
+  cbRef.current = onInsert;
+  // Deps are ONLY [chatId, enabled] by design: onInsert is read through cbRef, so
+  // a caller passing a fresh inline callback (closing over tripId/qc) every render
+  // does NOT re-subscribe. Don't add onInsert here. `enabled` is destructured to a
+  // primitive, so the options-object identity never triggers a re-subscribe.
+  useEffect(() => {
+    if (!chatId || !enabled) return undefined;
+    return subscribeChatInserts(chatId, (msg) => cbRef.current?.(msg));
+  }, [chatId, enabled]);
+}
+
+// ── Live subscription (badge engine) ──────────────────────────────────────────
+//
+// Keeps the unread badge + any mounted message list live by invalidating on a
+// new message. Rides the shared channel above, so mounting it in both the
+// sidebar and the widget no longer opens two channels.
+export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
+  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
+  const qc = useQueryClient();
+  useChatInserts(chatId, () => {
+    qc.invalidateQueries({ queryKey: CHAT_MESSAGES_KEY(tripId) });
+    qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+  }, { enabled: !!chatId && enabled });
 }
 
 // ── Mark read ─────────────────────────────────────────────────────────────────

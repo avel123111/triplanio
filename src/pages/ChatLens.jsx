@@ -23,7 +23,7 @@ import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, Card, EmptyState, Severity, Btn } from '../design/index';
 import { Icon } from '../design/icons';
-import { chatParticipants, pluralPeople } from '@/lib/chat';
+import { chatParticipants, pluralPeople, useChatInserts } from '@/lib/chat';
 
 // ─── Query keys ───────────────────────────────────────────────────────────────
 
@@ -132,7 +132,6 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const scrollRef  = useRef(null);
-  const channelRef = useRef(null);
   const taRef      = useRef(null);
   const ovRef      = useRef(null);
 
@@ -198,32 +197,21 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     enabled: !!chatId,
   });
 
-  // ── Realtime subscription (deduplicated) ──
-  useEffect(() => {
-    if (!chatId) return;
-    const channel = supabase
-      .channel('chat-lens-' + chatId + '-' + Math.random().toString(36).slice(2))
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatId}` },
-        (payload) => {
-          const msg = payload.new;
-          qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
-            // already present
-            if (old.find((m) => m.id === msg.id)) return old;
-            // remove optimistic from same user
-            const filtered = old.filter((m) => {
-              if (!String(m.id).startsWith('opt-')) return true;
-              return m.user_id !== msg.user_id;
-            });
-            return [...filtered, msg];
-          });
-        },
-      )
-      .subscribe();
-    channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
-  }, [chatId, qc]);
+  // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): append
+  // the new message to the lens cache. One channel per chat_id is now shared with
+  // the sidebar badge + widget instead of each opening its own.
+  useChatInserts(chatId, (msg) => {
+    qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
+      // already present
+      if (old.find((m) => m.id === msg.id)) return old;
+      // remove optimistic from same user
+      const filtered = old.filter((m) => {
+        if (!String(m.id).startsWith('opt-')) return true;
+        return m.user_id !== msg.user_id;
+      });
+      return [...filtered, msg];
+    });
+  });
 
   // ── Auto-scroll ──
   useEffect(() => {
