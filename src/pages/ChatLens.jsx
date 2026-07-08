@@ -21,7 +21,7 @@ import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
-import { Avatar, Card, EmptyState } from '../design/index';
+import { Avatar, Card, EmptyState, Severity, Btn } from '../design/index';
 import { Icon } from '../design/icons';
 import { chatParticipants, pluralPeople } from '@/lib/chat';
 
@@ -183,7 +183,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   };
 
   // ── Load messages ──
-  const { data: msgs = [], isLoading } = useQuery({
+  const { data: msgs = [], isLoading, error: msgsError, refetch: refetchMsgs } = useQuery({
     queryKey: MSGS_KEY(chatId),
     queryFn: async () => {
       const { data, error } = await supabase
@@ -452,6 +452,17 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         <div ref={scrollRef} className="chat-msgs scrollbar-thin">
           {isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>{t('chat.loading_messages')}</div>
+          ) : (msgsError && msgs.length === 0) ? (
+            /* TRIP-208: a failed load shows retry, not a false "no messages yet". */
+            <div style={{ margin: 'auto', maxWidth: 420, padding: 16 }}>
+              <Severity
+                level="error"
+                title={t('sys.load_error_title')}
+                action={<Btn variant="ghost" size="sm" onClick={() => refetchMsgs()}>{t('sys.retry')}</Btn>}
+              >
+                {t('sys.load_error_desc')}
+              </Severity>
+            </div>
           ) : msgs.length === 0 ? (
             <div style={{ margin: 'auto' }}>
               <EmptyState icon="chat" title={t('chat.empty_title')} body={t('chat.empty_desc')} />

@@ -8,6 +8,8 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
 import { cityKey, localizeVisits } from '@/lib/trip-cities';
 import { continentOf, COUNTRIES_PER_CONTINENT } from '@/lib/continents';
+import { useQueryGate } from '@/lib/useQueryGate';
+import { SystemStub } from '@/lib/PageNotFound';
 import {
   statisticsBundle, availableYears, filterByYear, dominantTone, TONE, countVisitUnits,
 } from '@/lib/travel-stats';
@@ -89,7 +91,10 @@ export default function Statistics() {
   }, [locale]);
 
   // ── data ────────────────────────────────────────────────────────────────────
-  const { data: travelStats, isLoading } = useQuery({
+  const {
+    data: travelStats, isLoading,
+    error: statsError, isPending: statsPending, fetchStatus: statsFetchStatus, refetch: refetchStats,
+  } = useQuery({
     queryKey: ['travel-stats', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_user_travel_stats');
@@ -270,6 +275,30 @@ export default function Statistics() {
   }, [panel, points, regionName, t]);
 
   const headSub = t('stats.stats_sub', { countries: bundle.countries, cities: bundle.cities, continents: bundle.continents });
+
+  // ── Load gate (TRIP-208) ──────────────────────────────────────────────────────
+  // A failed stats load must surface an error + retry, not silently render an
+  // "empty" (zero) statistics screen. Cached data wins (hasData) — a background
+  // refetch error never blanks already-shown stats.
+  const statsGate = useQueryGate(
+    { isPending: statsPending, fetchStatus: statsFetchStatus, error: statsError },
+    !!travelStats,
+  );
+  if (statsGate === 'temporary' || statsGate === 'access') {
+    const isAccess = statsGate === 'access';
+    return (
+      <div style={{ minHeight: '100vh' }}>
+        <SystemStub
+          icon={isAccess ? 'lock' : 'warning'}
+          tone={isAccess ? 'warm' : 'warning'}
+          title={t(isAccess ? 'sys.no_access_title' : 'sys.load_error_title')}
+          body={t(isAccess ? 'sys.no_access_body' : 'sys.load_error_desc')}
+          primary={{ label: t('sys.retry'), onClick: () => refetchStats() }}
+          secondary={{ label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
+        />
+      </div>
+    );
+  }
 
   // ── render ──────────────────────────────────────────────────────────────────
   return (

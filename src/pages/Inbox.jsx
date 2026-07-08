@@ -12,6 +12,8 @@ import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton, EmptyState } from '../design/index';
 import AppHeader from '@/components/AppHeader';
 import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
+import { useQueryGate } from '@/lib/useQueryGate';
+import { SystemStub } from '@/lib/PageNotFound';
 import '../design/app.css';
 
 const DATE_LOCALES = { ru, es, en: enUS };
@@ -43,7 +45,10 @@ export default function Inbox() {
 
   const [filter, setFilter] = useState('all');
 
-  const { data: notifications = [], isLoading } = useQuery({
+  const {
+    data: notifications = [], isLoading,
+    error: notifError, isPending: notifPending, fetchStatus: notifFetchStatus, refetch: refetchNotifs,
+  } = useQuery({
     queryKey: ['notifications', user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
@@ -109,6 +114,30 @@ export default function Inbox() {
     ['unread', t('notif.unread'), unreadCount],
     ['invites', t('notif.invitations'), inviteCount],
   ];
+
+  // ── Load gate (TRIP-208) ──────────────────────────────────────────────────────
+  // A failed notifications load must surface an error + retry, not silently render
+  // the "inbox empty" screen. Cached list wins (hasData) — a background refetch
+  // error never blanks an already-shown inbox.
+  const inboxGate = useQueryGate(
+    { isPending: notifPending, fetchStatus: notifFetchStatus, error: notifError },
+    notifications.length > 0,
+  );
+  if (inboxGate === 'temporary' || inboxGate === 'access') {
+    const isAccess = inboxGate === 'access';
+    return (
+      <div style={{ minHeight: '100vh' }}>
+        <SystemStub
+          icon={isAccess ? 'lock' : 'warning'}
+          tone={isAccess ? 'warm' : 'warning'}
+          title={t(isAccess ? 'sys.no_access_title' : 'sys.load_error_title')}
+          body={t(isAccess ? 'sys.no_access_body' : 'sys.load_error_desc')}
+          primary={{ label: t('sys.retry'), onClick: () => refetchNotifs() }}
+          secondary={{ label: t('sys.to_my_trips'), onClick: () => nav('/trips') }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>

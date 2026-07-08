@@ -14,6 +14,8 @@ import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
+import { useQueryGate } from '@/lib/useQueryGate';
+import { SystemStub } from '@/lib/PageNotFound';
 import StatsMap from '@/components/views/StatsMap';
 import {
   Greeting, StatBar, WorldMini, AllStatsCta,
@@ -430,7 +432,10 @@ export default function Trips() {
   const greetName = displayName(user?.email, user?.full_name);
 
   // ── Fetch trips ─────────────────────────────────────────────────────────────
-  const { data: allTrips = [], isLoading } = useQuery({
+  const {
+    data: allTrips = [], isLoading,
+    error: tripsError, isPending: tripsPending, fetchStatus: tripsFetchStatus, refetch: refetchTrips,
+  } = useQuery({
     queryKey: ['trips', user?.id],
     queryFn: async () => {
       // Select only the columns the cards / role / search / cover actually read —
@@ -603,6 +608,30 @@ export default function Trips() {
         pluralize(t, home.cities,    'stats.sum_cities',    lang, { count: home.cities }),
       ].join(' · ')
     : t('stats.home_sub_empty');
+
+  // ── Load gate (TRIP-208) ──────────────────────────────────────────────────────
+  // A failed PRIMARY trips load must surface an error + retry, not silently fall
+  // through to the "no trips yet" empty state. Only the trips list gates the
+  // screen; travel-stats/participants are enrichment and degrade silently. Cached
+  // list wins (hasData) — a background refetch error never blanks a shown list.
+  const tripsGate = useQueryGate(
+    { isPending: tripsPending, fetchStatus: tripsFetchStatus, error: tripsError },
+    allTrips.length > 0,
+  );
+  if (tripsGate === 'temporary' || tripsGate === 'access') {
+    const isAccess = tripsGate === 'access';
+    return (
+      <div style={{ minHeight: '100vh' }}>
+        <SystemStub
+          icon={isAccess ? 'lock' : 'warning'}
+          tone={isAccess ? 'warm' : 'warning'}
+          title={t(isAccess ? 'sys.no_access_title' : 'sys.load_error_title')}
+          body={t(isAccess ? 'sys.no_access_body' : 'sys.load_error_desc')}
+          primary={{ label: t('sys.retry'), onClick: () => refetchTrips() }}
+        />
+      </div>
+    );
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (

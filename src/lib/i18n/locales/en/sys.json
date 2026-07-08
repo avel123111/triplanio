@@ -1,9 +1,12 @@
 {
+  "load_error_desc": "Something went wrong temporarily. Check your connection and try again",
+  "load_error_title": "Couldn't load",
   "login_other": "Sign in with another account",
   "no_access_body": "You may not be on the member list, the invitation was revoked, or the trip was deleted",
   "no_access_title": "No access to this trip",
   "not_found_body": "The link may be outdated or contain an error. Go back to your trips: it's easy to find what you need from there.",
   "not_found_title": "This page does not exist",
+  "retry": "Retry",
   "to_home": "To home",
   "to_my_trips": "To my trips"
 }
