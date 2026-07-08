@@ -1,34 +1,29 @@
 /**
  * render-share-card (TRIP-193)
  *
- * Generates a shareable story/post image for a trip: branded background, a map
- * sticker with the real route, key numbers, QR to the landing page.
+ * Returns the shareable story/post card as an SVG for the CLIENT to render in the
+ * browser (branded background, a map sticker with the real route, key numbers, QR
+ * to the landing page). No server-side rasterisation - rasterising in the edge
+ * isolate is what intermittently blew the CPU limit (HTTP 546, cold isolate).
  *
- * Three modes (body.mode):
+ * Two modes (body.mode):
  *   'overlay'  -> the frame SVG only (transparent map hole), drawn by the client
- *                 over the live preview map. No map, not rate-limited.
+ *                 over the live preview map.
  *   'card_svg' -> the full card SVG with fonts embedded and the map left as a
- *                 placeholder; the client injects its high-res map and rasterises
- *                 to PNG in the browser (TRIP-193 Ф2). No resvg here.
- *   'card'     -> (legacy/fallback) render the PNG server-side (resvg-wasm) and
- *                 cache it in the `share-cards` bucket by content hash, so repeat
- *                 shares are free and the 10/hour limit only counts real renders.
+ *                 placeholder; the client injects its own high-res map snapshot
+ *                 and rasterises SVG -> PNG in the browser (default).
  *
  * POST { trip_id, format?: 'story'|'post', lang?: 'ru'|'en'|'es',
- *        mode?: 'overlay'|'card_svg'|'card', map_path? }
+ *        mode?: 'overlay'|'card_svg' }
  *   auth: JWT; caller must be an active participant of the trip.
- * 200 (card)              { url, cached, width, height, slot }
- *   | (overlay/card_svg)  { svg, width, height, slot }
- *   | { code: 'rate_limited', retry_after_seconds }
- *   | { code: 'no_transit_cities' }
- * 4xx: Unauthorized / trip_not_found / forbidden / bad_map_path
+ * 200 { svg, width, height, slot } | { code: 'no_transit_cities' }
+ * 4xx: Unauthorized / trip_not_found / forbidden
  *
  * verify_jwt: defaults to TRUE (user function; NOT listed in config.toml).
  */
 import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
-import { recordHit, underLimit } from '../_shared/rateLimit.ts';
 import { pickLang } from '../_shared/tgLang.ts';
 import {
   BRAND, cardStrings, dateParts, factsLine, formatNumber,
@@ -37,19 +32,12 @@ import {
   cityLabel, dateSpan, routeDistanceKm, tripDays,
   uniqueCityCount, uniqueCountryCount, uniqueTransitCities, type Visit,
 } from './stats.ts';
-import { buildStaticMapUrl, fetchStaticMap } from './mapbox.ts';
-import { buildCardSvg, cardSize, mapSize, mapSlot, TEMPLATE_VERSION, type Format } from './template.ts';
+import { buildCardSvg, cardSize, mapSlot, type Format } from './template.ts';
 import { fontFaceStyle } from './fontFaces.ts';
-import { base64, defaultBgDataUri, renderPng } from './render.ts';
+import { defaultBgDataUri } from './render.ts';
 
-const BUCKET = 'share-cards';
 // Token the client swaps for its own high-res map data URI in card_svg mode.
 const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
-const RATE_MAX = 10;
-const RATE_WINDOW = 3600;
-// TEMP (TRIP-193): rate limit disabled for testing. Flip back to `true` before
-// launch - the check/record logic below is kept intact, just gated by this flag.
-const RATE_LIMIT_ENABLED = false;
 
 const LANDING = 'https://www.triplanio.com/';
 
@@ -61,11 +49,6 @@ function qrUrlFor(tripId: string, format: Format): string {
     utm_content: tripId,
   });
   return `${LANDING}?${p.toString()}`;
-}
-
-async function sha1Hex(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 Deno.serve(async (req) => {
@@ -81,31 +64,14 @@ Deno.serve(async (req) => {
     const format: Format = body.format === 'post' ? 'post' : 'story';
     const lang = pickLang(body.lang);
     // 'overlay' = the frame ONLY (transparent hole where the map goes), shown in
-    // the client preview over the live interactive map. 'card' = the final render
-    // with the captured map baked in. Overlay is cheap (no map) and not rate-limited.
-    const mode: 'overlay' | 'card' | 'card_svg' = body.mode === 'overlay'
-      ? 'overlay'
-      : (body.mode === 'card_svg' ? 'card_svg' : 'card');
-    // Optional client-captured map snapshot (TRIP-193): a PNG the client uploaded
-    // to the `share-maps` bucket. Must live under this trip's folder, else 403
-    // (stops one trip pulling another trip's uploaded map).
-    const mapPath: string | null = typeof body.map_path === 'string' && body.map_path ? body.map_path : null;
+    // the client preview over the live interactive map. 'card_svg' = the full card
+    // SVG with the map placeholder, which the client rasterises in the browser.
+    const mode: 'overlay' | 'card_svg' = body.mode === 'overlay' ? 'overlay' : 'card_svg';
     if (!tripId) return Response.json({ error: 'trip_id required' }, { status: 400, headers: cors });
-    if (mapPath && !mapPath.startsWith(`${tripId}/`)) {
-      return Response.json({ error: 'bad_map_path' }, { status: 403, headers: cors });
-    }
 
     if (!(await isCallerParticipant(tripId, user.id))) {
       return Response.json({ error: 'forbidden' }, { status: 403, headers: cors });
     }
-
-    // The uploaded map snapshot is single-use: drop it once handled (rendered in,
-    // or redundant on a cache hit). Fire-and-forget; an orphan is swept later.
-    const cleanupMap = () => {
-      if (!mapPath) return;
-      supabaseAdmin.storage.from('share-maps').remove([mapPath])
-        .then(({ error }) => { if (error) console.error('share-maps cleanup failed', error.message); });
-    };
 
     // ---- data ----
     const { data: trip } = await supabaseAdmin
@@ -159,93 +125,22 @@ Deno.serve(async (req) => {
     const { w: outW, h: outH } = cardSize(format);
     const slot = mapSlot(format); // map window rect within the card (for the client)
 
-    // ---- overlay mode: return the frame SVG for the CLIENT to render in the
-    // browser (no resvg). Rasterising the frame in the edge isolate is what
-    // intermittently blew the CPU limit (HTTP 546, cold isolate) and left the
-    // preview a bare map - the frame is a plain SVG the browser draws natively.
-    // The final downloadable card (mode 'card') is still rasterised below. ----
+    // ---- overlay mode: the frame SVG only (transparent map hole), drawn by the
+    // client over the live interactive preview map. Fonts are embedded (@font-face)
+    // so the browser draws the frame with the SAME glyphs as the final render -
+    // device-invariant, no dependence on page fonts. ----
     if (mode === 'overlay') {
-      // Embed the fonts (@font-face) so the browser draws the frame with the SAME
-      // glyphs as the final render - device-invariant, no dependence on page fonts.
       const svg = buildCardSvg(format, data, defaultBgDataUri(), null, qrUrlFor(tripId, format), true, fontFaceStyle());
       return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
     }
 
-    // ---- card_svg mode (TRIP-193 Ф2): return the FULL card SVG (fonts embedded,
-    // map left as the "__MAP__" placeholder) for the CLIENT to rasterise in the
-    // browser. The client injects its own high-res map snapshot into the
-    // placeholder, then draws SVG -> canvas -> PNG. No resvg, no map download, no
-    // upload here -> the edge CPU limit (HTTP 546) cannot bite the final card, and
-    // the map is no longer capped to fit that limit. Layout stays authored in ONE
-    // place (buildCardSvg), the client only paints. ----
-    if (mode === 'card_svg') {
-      const svg = buildCardSvg(format, data, defaultBgDataUri(), MAP_PLACEHOLDER, qrUrlFor(tripId, format), false, fontFaceStyle());
-      return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
-    }
-
-    // ---- content hash / cache (card mode) ----
-    const hashInput = JSON.stringify({
-      v: TEMPLATE_VERSION, mode, format, lang, map: mapPath,
-      title: trip.title || '',
-      cities: transit.map((c) => [c.geonameid ?? c.city_name_en, c.latitude, c.longitude, c.position]),
-      allPts: visits.map((v) => [v.latitude, v.longitude]),
-      dates: [startISO, endISO], participants,
-    });
-    const hash = await sha1Hex(hashInput);
-    const path = `${tripId}/${hash}.png`;
-
-    const { data: existing } = await supabaseAdmin.storage.from(BUCKET).list(tripId, { search: `${hash}.png`, limit: 1 });
-    if (existing && existing.length > 0) {
-      cleanupMap();
-      const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-      return Response.json({ url: pub.publicUrl, cached: true, width: outW, height: outH, slot }, { headers: cors });
-    }
-
-    // ---- rate limit: CHECK only here; the hit is recorded AFTER a successful
-    // render+upload (below), so a failed render never burns the user's quota. ----
-    if (mode === 'card' && RATE_LIMIT_ENABLED && !(await underLimit('share_card', user.id, RATE_MAX, RATE_WINDOW))) {
-      return Response.json({ code: 'rate_limited', retry_after_seconds: RATE_WINDOW }, { headers: cors });
-    }
-
-    // ---- render (card mode) ----
-    let mapDataUri: string | null = null;
-    if (mapPath) {
-      // Client-captured live-map snapshot from the `share-maps` bucket.
-      const { data: mapBlob, error: dlErr } = await supabaseAdmin.storage.from('share-maps').download(mapPath);
-      if (dlErr || !mapBlob) {
-        console.error('share-maps download failed', dlErr?.message);
-      } else {
-        mapDataUri = `data:image/png;base64,${base64(new Uint8Array(await mapBlob.arrayBuffer()))}`;
-      }
-    } else {
-      // Fallback: server-side Mapbox Static (no client capture provided).
-      const mapDims = mapSize(format);
-      const mapToken = Deno.env.get('MAPBOX_TOKEN') || '';
-      const routePts = transit
-        .filter((c) => c.latitude != null && c.longitude != null)
-        .map((c) => ({ lat: Number(c.latitude), lng: Number(c.longitude) }));
-      const mapBin = await fetchStaticMap(buildStaticMapUrl(routePts, mapDims.w, mapDims.h, mapToken));
-      mapDataUri = mapBin ? `data:image/png;base64,${base64(mapBin)}` : null;
-    }
-
-    const bg = defaultBgDataUri();
-    const svg = buildCardSvg(format, data, bg, mapDataUri, qrUrlFor(tripId, format), false);
-    const png = await renderPng(svg, outW);
-
-    const { error: upErr } = await supabaseAdmin.storage.from(BUCKET)
-      .upload(path, png, { contentType: 'image/png', upsert: true });
-    if (upErr) {
-      console.error('share-card upload failed', upErr.message);
-      return Response.json({ error: 'storage_failed' }, { status: 500, headers: cors });
-    }
-    // Drop the single-use map snapshot only now that the render succeeded. If the
-    // render exceeds the edge CPU limit (546) the isolate is killed here, so NOT
-    // deleting earlier is what lets the client's retry reuse the same snapshot
-    // instead of losing the map. An unswept orphan is cleaned up later.
-    cleanupMap();
-    if (mode === 'card' && RATE_LIMIT_ENABLED) await recordHit('share_card', user.id); // count only a genuinely rendered card
-    const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-    return Response.json({ url: pub.publicUrl, cached: false, width: outW, height: outH, slot }, { headers: cors });
+    // ---- card_svg mode (default): the FULL card SVG (fonts embedded, map left as
+    // the "__MAP__" placeholder) for the client to rasterise in the browser. The
+    // client injects its own high-res map snapshot into the placeholder, then draws
+    // SVG -> canvas -> PNG. Layout stays authored in ONE place (buildCardSvg); the
+    // client only paints. ----
+    const svg = buildCardSvg(format, data, defaultBgDataUri(), MAP_PLACEHOLDER, qrUrlFor(tripId, format), false, fontFaceStyle());
+    return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
   } catch (e) {
     console.error('render-share-card error', (e as Error).message);
     return Response.json({ error: 'internal' }, { status: 500, headers: cors });

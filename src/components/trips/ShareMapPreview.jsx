@@ -7,12 +7,12 @@ import { Btn, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 // Interactive live map for the share card (TRIP-193). The map sits in the card
-// frame's "hole" and the frame PNG (server-rendered, transparent where the map
-// goes) is laid on top with pointer-events:none, so the map spins behind while
-// the frame owns all the framing (rounding/border/shape). The user composes the
-// shot with native gestures (drag/pinch/rotate/tilt) - NO movement buttons; only
-// theme (light/dark) and projection (flat/globe) toggles. The parent snapshots
-// this exact live canvas via captureBlob() (WYSIWYG) - no camera transfer.
+// frame's "hole" and the frame SVG (transparent where the map goes) is laid on
+// top with pointer-events:none, so the map spins behind while the frame owns all
+// the framing (rounding/border/shape). The user composes the shot with native
+// gestures (drag/pinch/rotate/tilt) - NO movement buttons; only theme (light/dark)
+// and projection (flat/globe) toggles. getComposition() hands the composed camera
+// to renderCardMapPng, which re-renders the map at full card resolution.
 //
 // slot/cardW/cardH come from the overlay render (source of truth for the hole
 // geometry); until they arrive the map fills the whole box.
@@ -58,7 +58,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       center: ordered[0] ? [ordered[0].longitude, ordered[0].latitude] : [0, 20],
       zoom: 2,
       attributionControl: false,
-      preserveDrawingBuffer: true, // so captureBlob() can read the canvas
     });
     mapRef.current = map;
 
@@ -117,28 +116,6 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   }, []);
 
   useImperativeHandle(ref, () => ({
-    // Snapshot the map EXACTLY as composed (WYSIWYG) - captures this live canvas,
-    // no camera transfer to a second instance. Bounded to <=600px wide to keep
-    // the server resvg render under the edge limit.
-    captureBlob() {
-      const m = mapRef.current;
-      if (!m) return Promise.resolve(null);
-      const grab = () => {
-        const src = m.getCanvas();
-        const w = Math.min(600, src.width);
-        const h = Math.round(src.height * (w / src.width));
-        const out = document.createElement('canvas');
-        out.width = w;
-        out.height = h;
-        out.getContext('2d').drawImage(src, 0, 0, w, h);
-        return new Promise((res) => out.toBlob((b) => res(b), 'image/png'));
-      };
-      // Snapshot only once the map has fully settled (tiles + route painted). The
-      // canvas is read synchronously, so grabbing mid-render is exactly how the
-      // final card ended up with missing / half-drawn route lines - wait for idle.
-      if (m.isStyleLoaded() && m.areTilesLoaded?.()) return grab();
-      return new Promise((res) => { m.once('idle', () => grab().then(res)); });
-    },
     // Camera + theme the user composed, so the final card can re-render the route
     // map at full card resolution with the SAME framing (see renderCardMapPng).
     getComposition() {
