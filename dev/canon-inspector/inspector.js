@@ -11,8 +11,12 @@
 // element that looks like it ("Все похожие", by shared class) — e.g. all the
 // sidebar menu items at once, not a single word.
 
-import { CANONS, CANON_MODS, COLORS, probeCanons, detectCanon, comboApply, probeColors, detectColor, colorByKey } from './canons.js';
+import { CANONS, CANON_MODS, MODIFIERS, COLORS, probeCanons, detectCanon, comboApply, probeColors, detectColor, colorByKey } from './canons.js';
 import { describe, groupSelector } from './describe.js';
+
+// TRIP-203: моно-каноны, для которых ось «Шрифт» (Golos, .t-sans) имеет смысл —
+// t-meta(8)/t-micro(9)/t-mono(10). На Golos-канонах модификатор был бы no-op.
+const MONO_CANONS = [8, 9, 10];
 
 const LS_KEY = 'ci:canon-changes';
 const ROOT_CLASS = 'ci-root';
@@ -41,10 +45,12 @@ const offCanon = new Set();    // elements currently flagged off-canon (red high
 // ── canon/modifier helpers ─────────────────────────────────────────────────
 const sameSet = (a, b) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
 const sameCanon = (a, b) => (!a && !b) || (!!a && !!b && a.id === b.id && sameSet(a.mods, b.mods));
+// Человекочитаемый лейбл модификатора по ключу (mods хранит ключи: 'sans'→'Golos').
+const modLabel = (k) => (MODIFIERS.find((m) => m.key === k)?.label || k);
 function canonLabel(info) {
   if (!info) return 'off-canon';
   const c = CANONS[info.id - 1];
-  const mods = info.mods.length ? ' + ' + info.mods.join(' + ') : '';
+  const mods = info.mods.length ? ' + ' + info.mods.map(modLabel).join(' + ') : '';
   const mk = c.mockup && c.mockup !== '—' ? ` (макет: ${c.mockup})` : '';
   return `${info.id} · ${c.name}${mk}${mods}`;
 }
@@ -447,6 +453,19 @@ function render(el) {
   });
   body.appendChild(section('Модификаторы', pending ? `${mods.length}` : '', pending ? modWrap : hintNode('Выбери канон, чтобы увидеть его модификаторы')));
 
+  // font axis — sanctioned .t-sans modifier (Golos поверх канона; SAVED to worklist).
+  // Показываем только для моно-канонов (meta/micro/mono), где Golos реально меняет шрифт.
+  if (pending && MONO_CANONS.includes(pending.id)) {
+    const sansOn = pending.mods.includes('sans');
+    const sansWrap = h('ci-wrap');
+    const sansBtn = h('ci-chip', 'button');
+    sansBtn.textContent = 'Golos (не моно)';
+    if (sansOn) sansBtn.classList.add('is-on');
+    sansBtn.onclick = () => toggleSans(el);
+    sansWrap.appendChild(sansBtn);
+    body.appendChild(section('Шрифт', '', sansWrap));
+  }
+
   // colour — sanctioned text colours (SAVED to the worklist)
   const curColor = pendingColor.get(el) ?? null;
   const colWrap = h('ci-wrap');
@@ -500,8 +519,22 @@ function pickCanon(el, id) {
   // canon and aren't user-selectable, so carrying them onto a newly picked canon
   // is pure downside — e.g. an element detected as t-mono+caption keeps `caption`
   // (which is CAPS), so every other canon you pick renders UPPERCASE too (TRIP-203).
-  pendingCanon.set(el, { id, mods: [] });
+  // TRIP-203: ось «Шрифт» (.t-sans) — user-intent, сохраняем при смене канона,
+  // но только если новый канон моно (иначе Golos = no-op, не тащим мусор в mods).
+  const keepSans = !!pendingCanon.get(el)?.mods.includes('sans') && MONO_CANONS.includes(id);
+  pendingCanon.set(el, { id, mods: keepSans ? ['sans'] : [] });
   previewMod.delete(el);                   // поканонные модификаторы тоже сбрасываем при смене канона
+  applyPreview(el);
+  render(el);
+}
+// TRIP-203: тоггл оси «Шрифт» — .t-sans (Golos поверх канона). В ОТЛИЧИЕ от
+// эфемерных CANON_MODS, живёт в pendingCanon.mods → сохраняется и уходит в экспорт.
+function toggleSans(el) {
+  const pending = pendingCanon.get(el);
+  if (!pending) return;
+  const has = pending.mods.includes('sans');
+  const mods = has ? pending.mods.filter((k) => k !== 'sans') : [...pending.mods, 'sans'];
+  pendingCanon.set(el, { id: pending.id, mods });
   applyPreview(el);
   render(el);
 }
