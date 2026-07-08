@@ -376,8 +376,7 @@ h1, h2, h3, h4 {
      .t-mono        ← meta-md   JetBrains 700/11/1.25
    ================================================================= */
 .t-display,
-.head h1,   /* TRIP-175: решение инспектора — hero-заголовок «шапки» (приветствие/титул экрана) → t-display */
-.ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fd-w); line-height: 1.08; letter-spacing: var(--track-hero); }   /* TRIP-183: .t-display ← hero макета (Exo --fd-w/44/1.08/--track-hero) */
+.head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fd-w); line-height: 1.08; letter-spacing: var(--track-hero); }   /* .t-display ← hero (карьер .head h1); TRIP-175 инсп.: .ncal-month-lbl → Title */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
 .nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
@@ -393,6 +392,7 @@ h1,
 .statbar .v,       /* TRIP-175 инсп.: Display→Title (числа статбара дашборда) */
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
+.ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
 .budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: var(--fd-w); line-height: 1.14;  letter-spacing: var(--track-h); }   /* TRIP-183: .t-title ← h1 макета (Exo --fd-w/26/1.14/--track-h) */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
@@ -418,14 +418,14 @@ h2,
 .bgt-head__title,  /* TRIP-175 инсп.: Subheading→Heading (заголовок экрана бюджета) */
 .visit .when .yr,  /* TRIP-175 инсп.: Label→Heading (год визита) */
 .cbar .yr,         /* TRIP-175 инсп.: Meta→Heading (год столбца графика) */
-.acct-sectitle,    /* TRIP-175 инсп.: Subheading→Heading (заголовки секций аккаунта) */
-.ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* TRIP-183: .t-heading ← h2 макета (Exo --fd-w/16.5/1.2/--track-h; вес 700→--fd-w) */
+.app-header__trip-title, /* TRIP-175 инсп.: Subheading→Heading (заголовок трипа в шапке) */
+.app-header__brand-name, /* TRIP-175 инсп.: Subheading→Heading (вордмарк Triplanio) */
+.chat-head h3,     /* TRIP-175 инсп.: Label→Heading (заголовок «Групповой чат») */
+.acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* .t-heading ← h2 (карьер .acct-sectitle); TRIP-175 инсп.: .ncal-year-lbl → Subheading */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
 h3,
-.app-header__brand-name,
-.app-header__trip-title,
 .avatar--xl,
 .invite__tx h3,
 .flow-lp-b .section-sub,
@@ -459,11 +459,12 @@ h3,
 .acct-subhead,     /* TRIP-175 инсп.: UI→Subheading (подзаголовок карточки аккаунта) */
 .invite-banner__title, /* TRIP-175 инсп.: off-canon→Subheading (заголовок инвайт-баннера) */
 .bell-dd__head .t-ui, /* TRIP-175 инсп.: UI→Subheading (заголовок «Уведомления» в колокольчике; перебивает класс .t-ui) */
+.ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
+.dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
 .choice-card__ttl,
-.chat-head h3,
 .te-step,
 .sheet .ss-search input,
 .plan-card__name,
@@ -482,6 +483,7 @@ h4,
 .acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
+.ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
@@ -556,7 +558,6 @@ h4,
 .tr--add b,
 .plan-feature,
 .plan-select-btn,
-.ai-blk-ti b,
 .ai-file b,
 .kv .v,
 .warn-banner b,
@@ -603,6 +604,7 @@ h4,
 .bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
 .visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
 .bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
+.fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
@@ -846,7 +848,6 @@ h4,
 .s22f-chip, .s22f-plbl, .s22f-val,
 .s22-count, .s22-sc, .s22-pg,
 .va-state p, .s22-state p,
-.fork-partner__mid b,
 .va-sub, .s22-sub, .va-flag,
 .fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
@@ -992,6 +993,11 @@ h4,
 .acct-chan__s,           /* TRIP-175 инсп.: Meta+Golos (подпись канала уведомлений) */
 .addon-card__desc,       /* TRIP-175 инсп.: Meta+Golos (описание аддона; канон meta выше) */
 .settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta+Golos (описания в настройках; из #446-Mono) */
+.acct-inbox__s,          /* TRIP-175 инсп.: Meta+Golos (подпись «Входящие») */
+.app-header__trip-meta,  /* TRIP-175 инсп.: Meta+Golos (мета трипа в шапке) */
+.fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
+.ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
+.chat-rail .card li,     /* TRIP-175 инсп.: Meta+Golos (пункты списка в чат-рейле) */
 .card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
 
 /* =================================================================
