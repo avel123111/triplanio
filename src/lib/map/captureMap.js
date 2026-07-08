@@ -11,7 +11,6 @@
 import mapboxgl from 'mapbox-gl';
 import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
-import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
 
 /** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
@@ -32,6 +31,56 @@ export function buildRoute(visits, transfers, showSE) {
   return { ordered, legs };
 }
 
+// Share-card-only map weights (TRIP-193). Bolder than the app maps so the route
+// reads at story/post scale. Kept in ONE place because the live preview scales
+// these same base values (ShareMapPreview.applyWeights) to keep preview == final.
+// `dot` is a red marker (Pavel's request) — distinct from the app maps' brand pin.
+export const SC_WEIGHTS = { solid: 6, dashed: 4, dot: 7.5, halo: 11, label: 14 };
+export const SC_DOT_COLOR = '#E11D48'; // rose-600 — the "red dot" marker
+
+// Text colour + halo for the city-name label, per basemap scheme. No pill/plate
+// (Pavel: "пока без плашки"), so the halo alone carries legibility over the map —
+// dark ink + light halo on the light basemap, inverted on the dark one.
+export function labelPaint(scheme = 'LIGHT') {
+  return scheme === 'DARK'
+    ? { 'text-color': '#ffffff', 'text-halo-color': 'rgba(10,12,28,.85)', 'text-halo-width': 2, 'text-halo-blur': 0.4 }
+    : { 'text-color': '#14152a', 'text-halo-color': 'rgba(255,255,255,.92)', 'text-halo-width': 2, 'text-halo-blur': 0.4 };
+}
+
+// Rasterise a /flags/<cc>.svg into an ImageData once and register it on the map as
+// `flag-<cc>` so the label symbol can inline it before the city name (same flag
+// source as CountryFlag/.cbadge). Per-flag failures degrade to a name-only label.
+function loadFlagImage(cc) {
+  return new Promise((resolve, reject) => {
+    const im = new globalThis.Image();
+    im.onload = () => {
+      const h = 24;
+      const w = Math.max(1, Math.round(h * (im.width / im.height || 4 / 3)));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(im, 0, 0, w, h);
+      resolve(ctx.getImageData(0, 0, w, h));
+    };
+    im.onerror = reject;
+    im.src = `/flags/${cc}.svg`;
+  });
+}
+
+// Add every route city's flag image to the map (idempotent). Returns a promise the
+// capture path awaits so the snapshot isn't taken before the flags paint.
+function ensureFlagImages(map, ccs) {
+  const uniq = [...new Set(ccs)].filter((cc) => cc && cc.length === 2);
+  return Promise.all(uniq.map(async (cc) => {
+    const id = `flag-${cc}`;
+    if (map.hasImage(id)) return;
+    try {
+      const data = await loadFlagImage(cc);
+      if (!map.hasImage(id)) map.addImage(id, data, { pixelRatio: 2 });
+    } catch { /* name-only label for this city */ }
+  }));
+}
+
 /** Draw city points as a captured GL layer (HTML markers wouldn't snapshot). */
 function drawPointLayer(map, ordered) {
   const src = 'sc-points';
@@ -40,7 +89,10 @@ function drawPointLayer(map, ordered) {
     features: ordered.map((v) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
-      properties: {},
+      properties: {
+        name: v.city_name || '',
+        cc: (v.country_code || '').trim().toLowerCase(),
+      },
     })),
   };
   if (map.getSource(src)) {
@@ -51,21 +103,58 @@ function drawPointLayer(map, ordered) {
       id: 'sc-points-halo',
       type: 'circle',
       source: src,
-      paint: { 'circle-radius': 9, 'circle-color': '#ffffff' },
+      paint: { 'circle-radius': SC_WEIGHTS.halo, 'circle-color': '#ffffff' },
     });
     map.addLayer({
       id: 'sc-points-dot',
       type: 'circle',
       source: src,
-      paint: { 'circle-radius': 5.5, 'circle-color': routeColor() },
+      paint: { 'circle-radius': SC_WEIGHTS.dot, 'circle-color': SC_DOT_COLOR },
     });
   }
 }
 
+/**
+ * City-name label per city — a captured GL symbol layer (flag + name, no plate),
+ * mirroring the lens-map badge minus dates. Reuses the sc-points source; sits below
+ * the red dot. Flags load async (ensureFlagImages) and pop in on a repaint; the
+ * returned promise lets the capture wait for them before snapshotting.
+ */
+function drawCityLabels(map, ordered, scheme) {
+  const src = 'sc-points';
+  const id = 'sc-labels';
+  if (!map.getLayer(id)) {
+    map.addLayer({
+      id,
+      type: 'symbol',
+      source: src,
+      layout: {
+        'text-field': ['format', ['image', ['concat', 'flag-', ['get', 'cc']]], '  ', ['get', 'name']],
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': SC_WEIGHTS.label,
+        'text-anchor': 'top',
+        'text-offset': [0, 0.9],
+        'text-allow-overlap': false, // collide → hide the overlapping label (dots stay)
+        'text-optional': true,
+      },
+      paint: labelPaint(scheme),
+    });
+  } else {
+    const paint = labelPaint(scheme);
+    Object.entries(paint).forEach(([k, v]) => map.setPaintProperty(id, k, v));
+  }
+  return ensureFlagImages(map, ordered.map((v) => (v.country_code || '').trim().toLowerCase()));
+}
+
 /** Draw the route line + city points on a map (shared by capture + live preview). */
-export function drawTripRoute(map, ordered, legs) {
-  drawRouteLinesCached(map, 'sc-route', legs, { dashedId: 'sc-dashed', solidId: 'sc-solid' });
+export function drawTripRoute(map, ordered, legs, { scheme = 'LIGHT' } = {}) {
+  drawRouteLinesCached(map, 'sc-route', legs, {
+    dashedId: 'sc-dashed', solidId: 'sc-solid',
+    solidWidth: SC_WEIGHTS.solid, dashedWidth: SC_WEIGHTS.dashed,
+  });
   drawPointLayer(map, ordered);
+  // Promise resolves when flag images are registered; capture awaits it.
+  map.__scLabels = drawCityLabels(map, ordered, scheme);
 }
 
 // ---- browser-side card rendering (TRIP-193 Ф2) ------------------------------
@@ -136,9 +225,15 @@ export function renderCardMapPng({
     // AFTER the route has been added and repainted.
     const tryDraw = () => {
       if (drew || !map.isStyleLoaded()) return;
-      try { drawTripRoute(map, ordered, legs); drew = true; } catch { /* retry next idle */ }
+      try {
+        drawTripRoute(map, ordered, legs, { scheme });
+        drew = true;
+        // Snapshot only AFTER the flag images register (or fail) so the labels'
+        // flags are painted; a repaint on resolve gives the idle handler its cue.
+        (map.__scLabels || Promise.resolve()).then(() => { map.__scLabelsDone = true; try { map.triggerRepaint(); } catch { /* gone */ } });
+      } catch { /* retry next idle */ }
     };
-    const onIdle = () => { if (!drew) tryDraw(); else snapshot(); };
+    const onIdle = () => { if (!drew) tryDraw(); else if (map.__scLabelsDone) snapshot(); };
     map.once('load', tryDraw);
     map.on('idle', onIdle);
     // Safety net: never hang the "build card" button if 'idle' never settles.

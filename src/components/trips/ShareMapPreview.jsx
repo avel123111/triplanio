@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
-import { buildRoute, drawTripRoute } from '@/lib/map/captureMap';
+import { buildRoute, drawTripRoute, SC_WEIGHTS, labelPaint } from '@/lib/map/captureMap';
 import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Btn, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -82,15 +82,16 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       const sw = slotRef.current?.w || cardWRef.current || 0;
       if (!cw || !sw) return;
       const s = Math.min(1.5, Math.max(0.15, cw / sw));
-      if (map.getLayer('sc-points-halo')) map.setPaintProperty('sc-points-halo', 'circle-radius', 9 * s);
-      if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', 5.5 * s);
-      if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', 3.5 * s);
-      if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', 2 * s);
+      if (map.getLayer('sc-points-halo')) map.setPaintProperty('sc-points-halo', 'circle-radius', SC_WEIGHTS.halo * s);
+      if (map.getLayer('sc-points-dot')) map.setPaintProperty('sc-points-dot', 'circle-radius', SC_WEIGHTS.dot * s);
+      if (map.getLayer('sc-solid')) map.setPaintProperty('sc-solid', 'line-width', SC_WEIGHTS.solid * s);
+      if (map.getLayer('sc-dashed')) map.setPaintProperty('sc-dashed', 'line-width', SC_WEIGHTS.dashed * s);
+      if (map.getLayer('sc-labels')) map.setLayoutProperty('sc-labels', 'text-size', SC_WEIGHTS.label * s);
     };
     const drawIfNeeded = () => {
       if (!pts.length) return;
       if (map.getSource('sc-solid')) { applyWeights(); fit(); return; }
-      try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
+      try { drawTripRoute(map, ordered, legs, { scheme }); } catch (err) { console.error('share preview draw failed', err); }
       applyWeights();
       prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
       fit();
@@ -137,7 +138,13 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   function toggleTheme() {
     const next = scheme === 'DARK' ? 'LIGHT' : 'DARK';
     setScheme(next);
-    if (mapRef.current) applyBasemapConfig(mapRef.current, next);
+    const m = mapRef.current;
+    if (!m) return;
+    applyBasemapConfig(m, next);
+    // Re-tint the city labels so they stay legible over the flipped basemap.
+    if (m.getLayer('sc-labels')) {
+      Object.entries(labelPaint(next)).forEach(([k, v]) => m.setPaintProperty('sc-labels', k, v));
+    }
   }
 
   function toggleProjection() {
