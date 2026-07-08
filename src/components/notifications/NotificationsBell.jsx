@@ -71,7 +71,15 @@ export default function NotificationsBell({ triggerClassName }) {
       return data || [];
     },
     enabled: !!user?.email,
-    refetchInterval: 60_000,
+    // No background polling (TRIP-208 Ф2-2a). Each screen renders its own
+    // AppHeader, so navigating remounts this bell → React Query refetches the
+    // (staleTime-gated) notifications automatically. The old refetchInterval:60s
+    // only ever did work for a user parked on ONE screen without navigating, at
+    // the cost of a `SELECT * limit 30` on every open tab every 60s, 24/7. Drop
+    // the timer and instead refetch on window focus (overriding the global
+    // refetchOnWindowFocus:false) so a returning tab is fresh; mutations already
+    // invalidate ['notifications']. Zero background egress, zero realtime.
+    refetchOnWindowFocus: true,
   });
 
   const unread = notifications.filter(n => !n.read).length;
