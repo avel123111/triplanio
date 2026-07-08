@@ -18,16 +18,13 @@
  * final agree. The footer brand uses family "Rubik ExtraBold" (the actual name in
  * the font file); referencing plain "Rubik" made resvg silently fall back to
  * Montserrat. On the browser path the same bytes are attached via @font-face (see
- * fontFaces.ts) so text is device-invariant. Bump TEMPLATE_VERSION on any visual
- * change so the cache invalidates.
+ * fontFaces.ts) so text is device-invariant.
  *
  * Per project content rule: hyphen "-", never the em dash "—".
  */
 
 import { qrSvg } from './qr.ts';
 import { PLANE_DATA_URI } from './journeyAssets.ts';
-
-export const TEMPLATE_VERSION = 'v4-journey';
 
 export type Format = 'story' | 'post';
 
@@ -177,11 +174,6 @@ const LAYOUTS: Record<Format, Layout> = {
     qr: { box: 102, x: 904, y: 1228, rx: 14, inset: 12 },
   },
 };
-
-export function mapSize(format: Format): { w: number; h: number } {
-  const b = cutoutBBox(format);
-  return { w: Math.round(b.w), h: Math.round(b.h) };
-}
 
 export function cardSize(format: Format): { w: number; h: number } {
   return { w: LAYOUTS[format].w, h: LAYOUTS[format].h };

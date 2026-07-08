@@ -2,19 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Badge, Btn, Dialog, Severity, Skeleton } from '@/design/index';
-import { uploadMapBlob, renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
+import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareDialog.css';
 
 // Must match MAP_PLACEHOLDER in the render-share-card edge function (card_svg mode).
 const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 
-// render-share-card runs resvg in an edge isolate; a COLD isolate can exceed the
-// CPU limit and return HTTP 546 (invoke → error) intermittently - that is why the
-// card "loads every other time, mostly a bare map". A successful render is cached
-// forever by content hash, so a short retry is enough to land one good render and
-// stabilise that card. We retry only transient failures - a definitive app-level
-// code (rate_limited / no_transit_cities) or a success returns immediately.
+// A short retry to ride out a transient invoke failure (network / cold isolate).
+// overlay and card_svg both return an SVG string; we retry only transient failures
+// - a definitive app code (no_transit_cities) or a success returns immediately.
 async function invokeCard(body, tries = 3) {
   let last;
   for (let attempt = 0; attempt < tries; attempt++) {
@@ -45,7 +42,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   const [format, setFormat] = useState('story');
   const [cardUrl, setCardUrl] = useState('');
   const [cardLoading, setCardLoading] = useState(false);
-  const [cardCode, setCardCode] = useState(''); // '', 'error', 'rate_limited', 'no_transit_cities'
+  const [cardCode, setCardCode] = useState(''); // '', 'error', 'no_transit_cities'
   const [stage, setStage] = useState('edit'); // 'edit' (compose map) | 'card' (final)
   const [overlay, setOverlay] = useState(null); // frame preview: { url, slot, w, h }
   const mapPreviewRef = useRef(null);
@@ -80,8 +77,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   // map at the card's real resolution, ask the edge only for the card SVG (fonts
   // embedded, map left as a placeholder), inject the map, rasterise SVG -> PNG.
   // No edge resvg -> the HTTP 546 cold-isolate failure cannot happen, and the map
-  // is no longer capped to 600px. Falls back to the legacy edge render if any
-  // browser step fails (e.g. an older Safari that can't rasterise the SVG).
+  // is no longer capped to 600px.
   async function buildCard() {
     if (!trip?.id) return;
     setCardLoading(true);
@@ -109,29 +105,10 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       setCardUrl(objUrl);
       setStage('card');
     } catch (e) {
-      console.error('browser card build failed, falling back to edge', e);
-      await buildCardViaEdge();
+      console.error('card build failed', e);
+      setCardCode('error');
     } finally {
       setCardLoading(false);
-    }
-  }
-
-  // Legacy path (fallback): snapshot the preview map, upload it, and let the edge
-  // rasterise the card with resvg. Kept as a safety net until Ф3 retires resvg.
-  async function buildCardViaEdge() {
-    let mapPath = null;
-    try {
-      const blob = await mapPreviewRef.current?.captureBlob?.();
-      if (blob) mapPath = await uploadMapBlob(trip.id, blob);
-    } catch (e) { console.error('map capture/upload failed', e); }
-    try {
-      const { data, error: invokeErr } = await invokeCard({ trip_id: trip.id, format, lang, map_path: mapPath });
-      if (invokeErr) { console.error('render-share-card error:', invokeErr); setCardCode('error'); }
-      else if (data?.code) setCardCode(data.code);
-      else if (data?.url) { setCardUrl(data.url); setStage('card'); }
-      else setCardCode('error');
-    } catch (err) {
-      console.error('render-share-card error:', err); setCardCode('error');
     }
   }
 
@@ -200,8 +177,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   }
 
   const ratio = format === 'story' ? '9 / 16' : '4 / 5';
-  const cardErrorMsg = cardCode === 'rate_limited' ? t('share.card_rate_limited')
-    : cardCode === 'no_transit_cities' ? t('share.card_no_cities')
+  const cardErrorMsg = cardCode === 'no_transit_cities' ? t('share.card_no_cities')
     : cardCode === 'error' ? t('share.card_error') : '';
 
   // Preview card in the chosen aspect ratio. Placement (left column on desktop,
@@ -290,7 +266,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
 
             {cardErrorMsg && (
               <div style={{ marginTop: 12 }}>
-                <Severity level={cardCode === 'rate_limited' ? 'warning' : 'error'}>{cardErrorMsg}</Severity>
+                <Severity level="error">{cardErrorMsg}</Severity>
               </div>
             )}
           </div>

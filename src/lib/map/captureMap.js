@@ -1,23 +1,18 @@
 // Share-card map helpers (TRIP-193).
 //
 // The share card's map is the LIVE Mapbox map the user composes in the dialog
-// (ShareMapPreview): the branded frame is laid over it and the parent snapshots
-// that exact canvas (WYSIWYG) via ShareMapPreview.captureBlob(). This module owns
-// the shared pieces of that flow: building the ordered route + legs, drawing the
-// route line + city points onto a map, and uploading a captured PNG to
-// `share-maps`.
+// (ShareMapPreview). This module owns the shared pieces: building the ordered
+// route + legs, drawing the route line + city points onto a map, and rendering
+// the composed map to a PNG for the browser-rasterised card.
 //
 // NOTE: HTML markers (mapboxgl.Marker) are DOM overlays and are NOT part of the
 // WebGL canvas, so a canvas snapshot would omit them. City points are therefore
 // drawn as a GL `circle` layer here so they are captured.
 import mapboxgl from 'mapbox-gl';
-import { supabase } from '@/api/supabaseClient';
 import { MAPBOX_TOKEN, SHARE_MAP_STYLE, baseConfig } from '@/lib/mapbox';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
-
-const SHARE_MAPS_BUCKET = 'share-maps';
 
 /** Ordered geo points + route legs for the trip, mirroring MapView's rule. */
 export function buildRoute(visits, transfers, showSE) {
@@ -73,16 +68,6 @@ export function drawTripRoute(map, ordered, legs) {
   drawPointLayer(map, ordered);
 }
 
-/** Upload a captured map PNG to share-maps/{tripId}/{uuid}.png; returns the path. */
-export async function uploadMapBlob(tripId, blob) {
-  if (!tripId || !blob) return null;
-  const path = `${tripId}/${crypto.randomUUID()}.png`;
-  const { error } = await supabase.storage.from(SHARE_MAPS_BUCKET)
-    .upload(path, blob, { contentType: 'image/png', upsert: false });
-  if (error) { console.error('share-maps upload failed', error); return null; }
-  return path;
-}
-
 // ---- browser-side card rendering (TRIP-193 Ф2) ------------------------------
 // The final card is rasterised in the browser now (no edge resvg -> no HTTP 546,
 // no 600px map cap). Two pieces live here: render the composed route map at the
@@ -95,7 +80,7 @@ export async function uploadMapBlob(tripId, blob) {
  * we can render at the card's real resolution instead of the tiny on-screen
  * preview - this is what makes the map sharp. Zoom is compensated for the larger
  * pixel size (`+log2(width/previewCssWidth)`) so the FRAMING matches the preview.
- * Resolves null if the map can't be produced (caller falls back to the edge path).
+ * Resolves null if the map can't be produced (caller surfaces an error).
  */
 export function renderCardMapPng({
   visits, transfers, showSE = false,
