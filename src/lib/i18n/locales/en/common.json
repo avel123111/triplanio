@@ -43,6 +43,7 @@
   "tz_detected": "{tz}",
   "upload": "Upload",
   "uploading": "Uploading…",
+  "write_failed": "Couldn't save your change. Refresh and try again.",
   "yes": "Yes",
   "yesterday": "Yesterday"
 }

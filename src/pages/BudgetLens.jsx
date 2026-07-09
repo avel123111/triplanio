@@ -21,6 +21,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -156,16 +157,18 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       spent_on: date || null,
       city_name: cityName || null,
     };
-    let error;
-    if (isEdit) {
-      ({ error } = await supabase.from('budget_expenses').update(row).eq('id', existing.id));
-    } else {
-      ({ error } = await supabase.from('budget_expenses').insert({
-        ...row, trip_id: tripId, source_kind: 'manual', source_id: null, created_by: user?.id,
-      }));
+    try {
+      await writeRows(isEdit
+        ? supabase.from('budget_expenses').update(row).eq('id', existing.id)
+        : supabase.from('budget_expenses').insert({
+            ...row, trip_id: tripId, source_kind: 'manual', source_id: null, created_by: user?.id,
+          }));
+    } catch (e) {
+      setSaving(false);
+      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      return;
     }
     setSaving(false);
-    if (error) { setErr(error.message); return; }
     onSaved?.();
     close();
   }
@@ -173,9 +176,14 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   async function remove() {
     if (!isEdit) return;
     setDeleting(true);
-    const { error } = await supabase.from('budget_expenses').delete().eq('id', existing.id);
+    try {
+      await writeRows(supabase.from('budget_expenses').delete().eq('id', existing.id), { expectRow: false });
+    } catch (e) {
+      setDeleting(false);
+      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      return;
+    }
     setDeleting(false);
-    if (error) { setErr(error.message); return; }
     onSaved?.();
     close();
   }
@@ -246,9 +254,14 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
   const [err, setErr] = useState('');
   async function remove() {
     setDeleting(true);
-    const { error } = await supabase.from('budget_expenses').delete().eq('id', expense.id);
+    try {
+      await writeRows(supabase.from('budget_expenses').delete().eq('id', expense.id), { expectRow: false });
+    } catch (e) {
+      setDeleting(false);
+      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      return;
+    }
     setDeleting(false);
-    if (error) { setErr(error.message); return; }
     onSaved?.();
     close();
   }
@@ -307,9 +320,14 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       // actually changed it - otherwise auto rates would get frozen.
       if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
     });
-    const { error } = await supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId);
+    try {
+      await writeRows(supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId));
+    } catch (e) {
+      setSaving(false);
+      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      return;
+    }
     setSaving(false);
-    if (error) { setErr(error.message); return; }
     onSaved?.();
     close();
   }
@@ -380,23 +398,25 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   async function save() {
     setSaving(true);
     setErr('');
-    let error;
-    if (existing) {
-      ({ error } = await supabase.from('budget_categories').update({ name: name.trim(), color, icon }).eq('id', existing.id));
-    } else {
-      ({ error } = await supabase.from('budget_categories').insert({
-        trip_id: tripId,
-        kind: 'custom',
-        name: name.trim(),
-        system_key: null,
-        icon,
-        color,
-        order_index: 99,
-        created_by: user?.id,
-      }));
+    try {
+      await writeRows(existing
+        ? supabase.from('budget_categories').update({ name: name.trim(), color, icon }).eq('id', existing.id)
+        : supabase.from('budget_categories').insert({
+            trip_id: tripId,
+            kind: 'custom',
+            name: name.trim(),
+            system_key: null,
+            icon,
+            color,
+            order_index: 99,
+            created_by: user?.id,
+          }));
+    } catch (e) {
+      setSaving(false);
+      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      return;
     }
     setSaving(false);
-    if (error) { setErr(error.message); return; }
     onSaved?.();
     close();
   }
