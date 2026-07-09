@@ -800,19 +800,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
     const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
 
-    // Resolve ALL cities in ONE batch edge call (TRIP-145 P2): the edge dedups
-    // identical queries and shares the 'search' cache, replacing the old N
-    // sequential lookups (faster apply, fewer invocations, no per-city burst).
-    // Order: [start?, end?, ...transit]. Background priority yields to
-    // interactive geocoding under the rate limit.
+    // Resolve ALL cities in ONE `search_gazetteer_batch` RPC (TRIP-214): the
+    // gazetteer resolves the whole list server-side in a single round-trip/plan,
+    // replacing the old per-city Promise.all burst (no concurrency limit → pool
+    // storm on a long AI route). Order: [start?, end?, ...transit].
     const order = [];
     if (startSrc) order.push(startSrc);
     if (endSrc) order.push(endSrc);
     transitSrc.forEach((c) => order.push(c));
-    // Resolve by English name + country_code: the edge hits the local `cities`
-    // directory by name first (skips LocationIQ for known cities) and falls back
-    // to an English geocoder query for the rest (small towns that 404 in
-    // Cyrillic). The Russian city_name from the AI is what we display/save.
+    // Resolve by English name + country_code: the gazetteer matches the English
+    // name first (small towns that miss in Cyrillic still resolve) and keeps
+    // same-country matches. The Russian city_name from the AI is what we
+    // display/save.
     const lists = await resolveCities(
       order.map((c) => ({
         city_name: c.city_name,
