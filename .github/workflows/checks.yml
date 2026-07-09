@@ -80,6 +80,7 @@ jobs:
   #   2c check-verify-jwt            — new externally-callable fn missing config.toml pin
   #   2d check-i18n                  — duplicate keys + new hardcoded UI strings
   #   2f check-dialog-radix          — raw Radix dialog import outside the shell whitelist
+  #   2g check-column-caps           — new user text column without a length cap (domain/CHECK)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -120,6 +121,10 @@ jobs:
       - name: 2f — dialog radix confinement (a11y contract)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-dialog-radix.mjs
+      - name: 2g — column caps (new text columns must be bounded)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-column-caps.mjs
 
   deno:
     name: Deno typecheck (edge functions)
