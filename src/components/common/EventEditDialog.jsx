@@ -795,8 +795,7 @@ export default function EventEditDialog({
     onOpenChange(false);
     (async () => {
       try {
-        const { error } = await supabase.from(table).insert({ ...payload, created_by: user?.id });
-        if (error) throw error;
+        await writeRows(supabase.from(table).insert({ ...payload, created_by: user?.id }));
         invalidateTripData(qc, tripId);
       } catch (err) {
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);

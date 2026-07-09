@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
+import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
@@ -1075,8 +1076,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         // position = array index: visitsToInsert is built in itinerary order, so
         // (start_datetime, position) reproduces it.
         const withPos = visitsToInsert.map((v, i) => ({ ...v, position: i }));
-        const { error: visitErr } = await supabase.from('city_visits').insert(withPos).select('id');
-        if (visitErr) throw visitErr;
+        await writeRows(supabase.from('city_visits').insert(withPos));
       }
 
       // Transfers and activities are intentionally NOT created at trip-creation
