@@ -101,7 +101,7 @@ import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
-import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -1317,14 +1317,14 @@ export default function EventEditDialog({
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function upsert(table, entity, payload, user) {
-  if (entity) {
-    const { data, error } = await supabase.from(table).update(payload).eq('id', entity.id).select().single();
-    if (error) throw error;
-    return data;
-  }
-  const { data, error } = await supabase.from(table).insert({ ...payload, created_by: user?.id }).select().single();
-  if (error) throw error;
-  return data;
+  // Single write contract (writeRows): throws on error AND on a silent 0-row
+  // RLS reject. By-id update / insert always affects exactly one row, so we
+  // return the first (was .select().single()).
+  const builder = entity
+    ? supabase.from(table).update(payload).eq('id', entity.id)
+    : supabase.from(table).insert({ ...payload, created_by: user?.id });
+  const [row] = await writeRows(builder);
+  return row;
 }
 
 function buildHotelPayload(form, visit, tz) {
