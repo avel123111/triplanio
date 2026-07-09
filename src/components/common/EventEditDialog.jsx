@@ -979,9 +979,10 @@ export default function EventEditDialog({
       }));
       // Resolve the intermediate layover cities (to_city of all but the last leg)
       // to full city objects (coords + tz) so saveLayoverChain can create
-      // waypoints. ONE batch call (TRIP-145 P2): dedup + shared cache + token-
-      // bucket safe. Names that don't resolve surface as an advisory instead of a
-      // silent null — the user then picks the layover city manually.
+      // waypoints. ONE `search_gazetteer_batch` RPC (TRIP-214): the whole chain
+      // resolves server-side in a single round-trip, no per-city burst. Names
+      // that don't resolve surface as an advisory instead of a silent null — the
+      // user then picks the layover city manually.
       const lvIdx = [];
       const lvQ = [];
       for (let i = 0; i < formSegs.length - 1; i++) {
