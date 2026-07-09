@@ -17,14 +17,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
-import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { optimisticContentUpdate } from '@/lib/trip-data';
+import { optimisticContentUpdate, invalidateTripData } from '@/lib/trip-data';
+import { uploadTripFiles, persistEntityDocuments } from '@/lib/documentMutations';
+import { removeTripFiles } from '@/lib/storageCleanup';
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
-import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { cityLabel } from '@/lib/trip-cities';
 import { validateEntity } from '@/lib/validation';
 
@@ -771,33 +771,46 @@ export function useEntityDocs(kind, entity, canEdit) {
     if (tooBig) { toast({ description: t('event.file_too_big10'), variant: 'warning' }); return; }
     setUploading(true);
     try {
-      const uploaded = [];
-      for (const file of files) {
-        const path = tripStoragePath(entity.trip_id, file.name);
-        const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
-        if (upErr) { console.error('upload error', upErr); continue; }
-        const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
-        uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
+      // Upload never returns a doc with an empty file_url (was `|| ''`); failed
+      // uploads / missing URLs come back as errors and are surfaced, not masked.
+      const { uploaded, errors } = await uploadTripFiles(entity.trip_id, files);
+      for (const e of errors) {
+        toast({ description: t('doc.upload_failed', { name: e.file.name }), variant: 'destructive' });
       }
-      if (uploaded.length) {
-        const next = [...docs, ...uploaded];
-        setDocs(next);
-        const table = ENTITY_TABLE_BY_KIND[kind];
-        if (table && entity.id) {
-          if (kind === 'service') {
-            await supabase.from(table).update({ details: { ...(entity.details || {}), documents: next } }).eq('id', entity.id);
-          } else {
-            await supabase.from(table).update({ documents: next }).eq('id', entity.id);
-          }
-          if (entity.trip_id) {
-            const COLL = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' }[kind];
-            const patch = kind === 'service'
-              ? { id: entity.id, details: { ...(entity.details || {}), documents: next } }
-              : { id: entity.id, documents: next };
-            if (COLL) optimisticContentUpdate(qc, entity.trip_id, COLL, 'update', patch);
-          }
+      if (!uploaded.length) return;
+
+      const COLL = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' }[kind];
+      const prevDocs = docs;
+      const next = [...docs, ...uploaded];
+
+      // Optimistic: local state AND the trip-content cache. Both must roll back
+      // together on failure, else they diverge (this is the whole risk here).
+      setDocs(next);
+      if (entity.trip_id && COLL) {
+        const patch = kind === 'service'
+          ? { id: entity.id, details: { ...(entity.details || {}), documents: next } }
+          : { id: entity.id, documents: next };
+        optimisticContentUpdate(qc, entity.trip_id, COLL, 'update', patch);
+      }
+
+      try {
+        // Throws on a real error OR a silent 0-row RLS reject.
+        await persistEntityDocuments(kind, entity, next);
+      } catch {
+        // Roll back BOTH optimistic sources, sweep the just-uploaded orphans,
+        // and tell the user — never leave a phantom attachment in the UI.
+        setDocs(prevDocs);
+        if (entity.trip_id && COLL) {
+          const revert = kind === 'service'
+            ? { id: entity.id, details: { ...(entity.details || {}), documents: prevDocs } }
+            : { id: entity.id, documents: prevDocs };
+          optimisticContentUpdate(qc, entity.trip_id, COLL, 'update', revert);
         }
+        removeTripFiles(uploaded.map((u) => u.storage_path));
+        toast({ description: t('doc.attach_failed'), variant: 'destructive' });
+        return;
       }
+      if (entity.trip_id) invalidateTripData(qc, entity.trip_id);
     } finally {
       setUploading(false);
     }

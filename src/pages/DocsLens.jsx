@@ -18,11 +18,11 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
+import { uploadTripFiles, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Severity, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle } from '../design/index';
+import { Avatar, Badge, Btn, Field, Severity, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
@@ -32,9 +32,7 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 import './DocsLens.css';
 
-// ─── query key ────────────────────────────────────────────────────────────────
-
-const DOCS_KEY = (tripId) => ['trip-docs', tripId];
+// ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -100,17 +98,15 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     if (!files?.length) return;
     setUploading(true); setErr('');
     try {
-      const uploaded = [];
-      for (const file of Array.from(files)) {
-        if (file.size > 10 * 1024 * 1024) {
-          setErr(t('doc.file_too_big', { name: file.name }));
-          continue;
-        }
-        const path = tripStoragePath(tripId, file.name);
-        const { error: uploadErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
-        if (uploadErr) { setErr(uploadErr.message); continue; }
-        const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
-        uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
+      const okSize = Array.from(files).filter((f) => {
+        if (f.size > 10 * 1024 * 1024) { setErr(t('doc.file_too_big', { name: f.name })); return false; }
+        return true;
+      });
+      // Shared upload: never yields a doc with an empty file_url (was `|| ''`);
+      // a failed upload / missing signed URL surfaces as an error instead.
+      const { uploaded, errors } = await uploadTripFiles(tripId, okSize);
+      for (const e of errors) {
+        setErr(e.reason === 'upload' && e.message ? e.message : t('doc.upload_failed', { name: e.file.name }));
       }
       if (uploaded.length) setDocuments(prev => [...prev, ...uploaded]);
     } finally {
@@ -121,21 +117,26 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
   async function save() {
     setSaving(true); setErr('');
-    const { error } = await supabase.from('trip_documents').insert({
-      trip_id:    tripId,
-      title:      title.trim(),
-      notes:      notes.trim()   || null,
-      link_url:   linkUrl.trim() || null,
-      documents:  documents.length ? documents : null,
-      visibility,
-      created_by: user?.id ?? null,
-      // Author-name snapshot — mirrors chat_messages.user_full_name so the
-      // uploader's name survives them leaving the trip (their trip_members /
-      // active-profile row is gone). resolveAuthor() reads this as the fallback.
-      created_by_name: (user?.full_name || '').trim() || null,
-    });
+    try {
+      await insertTripDocument({
+        trip_id:    tripId,
+        title:      title.trim(),
+        notes:      notes.trim()   || null,
+        link_url:   linkUrl.trim() || null,
+        documents:  documents.length ? documents : null,
+        visibility,
+        created_by: user?.id ?? null,
+        // Author-name snapshot — mirrors chat_messages.user_full_name so the
+        // uploader's name survives them leaving the trip (their trip_members /
+        // active-profile row is gone). resolveAuthor() reads this as the fallback.
+        created_by_name: (user?.full_name || '').trim() || null,
+      });
+    } catch (e) {
+      setSaving(false);
+      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('doc.save_failed'));
+      return;
+    }
     setSaving(false);
-    if (error) { setErr(error.message); return; }
     // Saved → the staged files are now referenced by the row; the close sweep
     // must skip them.
     savedRef.current = true;
@@ -342,12 +343,28 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
   const confirm  = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const qc = useQueryClient();
+  const { toast } = useToast();
 
   async function handleDelete() {
     if (!(await confirm({ title: t('doc.delete_confirm', { name: doc.title }), variant: 'destructive' }))) return;
     setDeleting(true);
-    const { error } = await supabase.from('trip_documents').delete().eq('id', doc.id);
-    if (error) { setDeleting(false); return; }
+    let deleted;
+    try {
+      deleted = await deleteTripDocument(doc.id); // false = nothing removed (RLS/gone), not success
+    } catch {
+      setDeleting(false);
+      toast({ description: t('doc.delete_failed'), variant: 'destructive' });
+      return; // real error → keep dialog open
+    }
+    if (!deleted) {
+      // Nothing was deleted: RLS hid the row (session expired / removed from
+      // trip) or another member already deleted it. Don't sweep files, don't
+      // claim success — refresh so the user sees the real state.
+      setDeleting(false);
+      qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
+      toast({ description: t('doc.delete_failed'), variant: 'destructive' });
+      return;
+    }
     // Row gone → its files are now orphaned (unique uuid keys, single reference).
     // Best-effort sweep; never blocks the delete (TRIP-117).
     await removeTripFiles(collectDocPaths(doc.documents, doc.file_url));
