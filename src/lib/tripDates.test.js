@@ -68,6 +68,24 @@ test('waypoint between start and city1 keeps single date; anchors still material
   assert.equal(laid[3].start_date, '2026-09-13'); // finish = last checkout
 });
 
+test('reorder re-anchors on base, not on the first node\'s stale date (TRIP-216)', () => {
+  // The planner's recomputeDates wrapper lays out a flat transit chain from the
+  // FIXED trip start. Simulate a reorder: the node dragged to the top still carries
+  // its old (later) start_date, but with `base` fixed the whole chain must re-anchor
+  // on `base` — NOT on that stale first-node date.
+  const reordered = [
+    { id: 'c3', kind: 'transit', nights: 3, gap: 0, start_date: '2026-09-20', end_date: null }, // was last, dragged to top
+    { id: 'c1', kind: 'transit', nights: 3, gap: 0, start_date: '2026-09-11', end_date: null },
+    { id: 'c2', kind: 'transit', nights: 3, gap: 0, start_date: '2026-09-14', end_date: null },
+  ];
+  const laid = layoutDates(reordered, BASE);
+  assert.equal(laid[0].start_date, '2026-09-11'); // anchored on BASE, not 09-20
+  assert.equal(laid[0].end_date, '2026-09-14');
+  assert.equal(laid[1].start_date, '2026-09-14');
+  assert.equal(laid[2].start_date, '2026-09-17');
+  assert.equal(laid[2].end_date, '2026-09-20');
+});
+
 test('idempotent: a second pass over laid-out nodes reproduces the same dates', () => {
   const nodes = [
     { id: 's', kind: 'start' },

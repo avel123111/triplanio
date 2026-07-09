@@ -10,6 +10,7 @@
 // Returns: { external_city_id, city_name, country, country_code, latitude, longitude }
 import { supabase } from '@/api/supabaseClient';
 import { liqRetryDelayMs } from './geo-retry.js';
+import { mapGazCity, buildResolvePayload, expandBatchRows } from './geo-cities.js';
 
 // Thin call into the geoLocationiq edge proxy. Returns the LocationIQ result
 // array (Nominatim-shaped) or [] on any error.
@@ -45,28 +46,6 @@ function normLang(lang) {
   return (l === 'es' || l === 'ru') ? l : 'en';
 }
 
-// Map one search_gazetteer RPC row → the app's city shape (TRIP-146). `geonameid`
-// is the v2 identity key; `name_i18n` is the hot-path localized snapshot (en/es/ru)
-// the caller bakes onto the visit at save time so trip/stats rendering never
-// joins the gazetteer. Display name = snapshot for the active locale, falling
-// back to the RPC's localized `display`. Country name is NOT carried — partner
-// builders derive it from country_code (countryNameEn).
-function mapGazCity(g, lk) {
-  const i18n = g.name_i18n || {};
-  return {
-    geonameid: g.geonameid,
-    external_city_id: g.geonameid != null ? String(g.geonameid) : null,
-    city_name: i18n[lk] || g.display || '',
-    city_name_en: i18n.en || g.display || '',
-    name_i18n: i18n,
-    country: null,
-    country_code: (g.country_code || '').toUpperCase(),
-    latitude: g.lat,
-    longitude: g.lng,
-    display_name: g.subtitle || '',
-  };
-}
-
 // City typeahead via the local GeoNames gazetteer (TRIP-146): one stable RPC
 // `search_gazetteer`, no LocationIQ. Rows come back already filtered + ranked
 // server-side (one per geonameid), mapped to the shared city shape. `lang`
@@ -79,32 +58,28 @@ export async function searchCities(query, lang) {
   return (data || []).map((g) => mapGazCity(g, lk));
 }
 
-// Batch-resolve many city names → geonameid via the gazetteer RPC (TRIP-146;
-// replaces the LocationIQ edge path). `items` is an array of EITHER plain query
-// strings OR objects `{ city_name, name_en, country, country_code }`. For objects
-// we query by the English name (small towns that miss in Cyrillic resolve in
-// English) and, when a country_code is given, keep only same-country matches.
-// Returns an array aligned to `items`, each a refined list (best = [0]) so callers
-// pick result[0] as before. The displayed/saved name stays the caller's — we
-// supply geonameid + coords + the name_i18n snapshot.
+// Batch-resolve many city names → geonameid via the gazetteer (TRIP-146/214).
+// `items` is an array of EITHER plain query strings OR objects
+// `{ city_name, name_en, country, country_code }`. For objects we query by the
+// English name (small towns that miss in Cyrillic resolve in English) and, when
+// a country_code is given, prefer same-country matches.
+//
+// ONE `search_gazetteer_batch` RPC resolves the whole list server-side — one
+// round-trip, one plan, one pooled connection (TRIP-214). This replaces the old
+// `Promise.all(items.map(rpc))`, which fired N concurrent search_gazetteer calls
+// with no concurrency limit and could storm the shared connection pool on a
+// long AI route. Returns an array aligned to `items`, each a (0- or 1-length)
+// list so callers pick result[0] as before. The displayed/saved name stays the
+// caller's — we supply geonameid + coords + the name_i18n snapshot.
 export async function resolveCities(items, lang) {
   if (!Array.isArray(items) || items.length === 0) return [];
   const lk = normLang(lang);
-  return Promise.all(items.map(async (it) => {
-    const isStr = typeof it === 'string';
-    const nameEn = isStr ? '' : (it.name_en || it.city_name_en || '').trim();
-    const cc = isStr ? '' : (it.country_code || '').trim().toUpperCase();
-    const q = isStr ? it : (nameEn || it.city_name || it.q || '');
-    if (!q) return [];
-    const { data, error } = await supabase.rpc('search_gazetteer', { q, lang: nameEn ? 'en' : lk, lim: 10 });
-    if (error) return [];
-    let rows = data || [];
-    if (cc) {
-      const inCc = rows.filter((g) => (g.country_code || '').toUpperCase() === cc);
-      if (inCc.length) rows = inCc;
-    }
-    return rows.map((g) => mapGazCity(g, lk));
-  }));
+  const { data, error } = await supabase.rpc('search_gazetteer_batch', {
+    items: buildResolvePayload(items, lk),
+    lang: lk,
+  });
+  if (error) return items.map(() => []);
+  return expandBatchRows(data, items.length, lk);
 }
 
 // Reverse geocode lat/lon → city object.

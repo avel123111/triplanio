@@ -25,6 +25,7 @@ directory.
 | ui-ux-pro-max | github.com/nextlevelbuilder/ui-ux-pro-max-skill | `bdf1179` | MIT | ui-ux-pro-max (+ data/ + scripts/ reference assets) |
 | example-skills | github.com/anthropics/skills | `5754626` | Apache-2.0 | example-frontend-design (ships its own LICENSE.txt) |
 | marketingskills (Corey Haines) | github.com/coreyhaines31/marketingskills | `8bfcdff` | MIT | marketing-* (45 skills, see section below) |
+| ponytail (TRIP-218) | github.com/DietrichGebert/ponytail | `523e9dc` | MIT | ponytail, ponytail-review, ponytail-audit, ponytail-debt (see section below) |
 
 Apache-2.0 sources (`design`, `engineering`, `example-frontend-design`) retain
 their license/notice: `example-frontend-design` includes upstream `LICENSE.txt`;
@@ -93,6 +94,42 @@ marketing-video.
 original bare names (e.g. "For page-level conversion optimization, see cro."). With
 the `marketing-` prefix these stay as prose — the agent resolves "cro" to
 `marketing-cro` by description, same caveat as the ECC commands above.
+
+## ponytail — lazy-dev code-minimization ladder (TRIP-218)
+
+`ponytail` (github.com/DietrichGebert/ponytail @ `523e9dc`, MIT) is a "lazy senior
+dev" ruleset that forces the minimal solution that actually works: a 7-rung
+decision ladder (YAGNI → reuse → stdlib → native → existing dep → one line →
+minimum) plus "deletion over addition / root-cause not symptom". It ships upstream
+as a Claude Code **plugin** (skills + Node lifecycle hooks + a marketplace manifest)
+with parallel rule files for ~15 other agents.
+
+**Why vendored, not `/plugin install`-ed:** in self-hosted Cyrus (no dashboard),
+`/plugin marketplace add` / `/plugin install` are unavailable, and even run they'd
+land in the local `~/.claude` config — never in the repo, so invisible to every
+Cyrus worktree session. The only channel that reaches sessions is the repo
+`.claude/` tree (same lesson as TRIP-23). See `memory/triplanio-cyrus-skills-loading.md`.
+
+**Vendored (4 skills):** `ponytail` (core ladder + lite/full/ultra), `ponytail-review`
+(over-engineering review of a diff), `ponytail-audit` (repo-wide bloat scan),
+`ponytail-debt` (harvest `ponytail:` shortcut comments). Verbatim `SKILL.md`, inline
+provenance after frontmatter.
+
+**Deliberately dropped** (ponytail rung 1 — "does this need to exist?"):
+- **Node lifecycle hooks** (`hooks/*.js`, always-on ruleset injection every turn) —
+  not on the Cyrus carried-over list, won't fire, and running arbitrary Node each
+  turn is an unneeded attack surface. The mandate lives in `CLAUDE.md` rule #6 instead,
+  which IS auto-loaded.
+- **`ponytail-gain`** (benchmark scoreboard) + **`ponytail-help`** (references modes /
+  hooks / `/plugin` we didn't vendor) — promo/plugin-mechanic content that would be
+  dead/misleading here.
+- **`AGENTS.md` + `.cursor/.windsurf/.kiro/.qoder/.clinerules` + plugin manifests** —
+  other-agent formats, irrelevant to Cyrus.
+
+**Not a second source of truth:** ponytail is the named step-by-step form of the
+already-forced reuse-first gate (rule #6) + the mandatory `code-simplifier` pass
+(rule #14). On conflict, rules #6/#9 and the approval gate win. To refresh: re-copy
+the four `skills/ponytail*/SKILL.md` from the pinned commit.
 
 ## Caveat: does Cyrus load `.claude/skills/`?
 

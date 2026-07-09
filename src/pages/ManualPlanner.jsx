@@ -98,16 +98,27 @@ function computeAutoTitle(home, cities, t) {
   return startName || lastName || t('trips.new');
 }
 
-function recomputeDates(list) {
-  // Only recompute if the first city has an anchor date - otherwise leave dates alone.
-  if (list.length === 0 || !list[0].startDate) return list;
+function recomputeDates(list, anchorISO) {
+  // Chain anchor = the STABLE trip-start date (the top "Старт" control), NOT the
+  // current first element's date. Mirrors the editor, which anchors on the start
+  // anchor's own start_date (TripStructureEdit: layoutDates(..., d.startDate)) —
+  // a value independent of city order. Deriving the anchor from list[0] re-anchored
+  // the whole chain to whatever city was dragged to the top / left after deleting
+  // the first one (TRIP-216). Fallback to list[0].startDate keeps callers that don't
+  // yet have a trip start working; bail only when there's no anchor at all.
+  const base = anchorISO || list[0]?.startDate;
+  if (list.length === 0 || !base) return list;
   // Pre-creation planner cities are a flat nights-only chain (no transfers yet → no
   // gap, no waypoints/anchors). Adapt to the shared canonical layout (lib/tripDates,
   // mirroring server recompute_trip) so the planner and the editor produce identical
   // dates on identical input — one date engine, no second implementation.
-  const nodes = list.map((c) => ({ kind: 'transit', nights: +c.nights || 0, gap: 0, start_date: c.startDate || null, end_date: null }));
-  const laid = layoutDates(nodes, list[0].startDate);
-  return list.map((c, i) => (i === 0 ? c : { ...c, startDate: laid[i].start_date }));
+  // Dates come purely from `base` + each city's nights (layoutDates walks a cursor);
+  // the per-node start_date seed is unused here, so it's omitted.
+  const nodes = list.map((c) => ({ kind: 'transit', nights: +c.nights || 0, gap: 0 }));
+  const laid = layoutDates(nodes, base);
+  // Lay out EVERY city (index 0 too) from the anchor: layoutDates puts city 0 back
+  // on `base`, so no stale first-city date can leak through after a reorder.
+  return list.map((c, i) => ({ ...c, startDate: laid[i].start_date }));
 }
 
 // CityPicker + CityAnchorRow live in ./create/anchors (shared by the planner
@@ -331,15 +342,15 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
   const t = useT();
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
-    setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || startDate || '', nights: preset?.nights || 3 }]));
+    setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || startDate || '', nights: preset?.nights || 3 }], startDate));
   };
 
-  const remove = (id) => setCities(cs => recomputeDates(cs.filter(c => c.id !== id)));
+  const remove = (id) => setCities(cs => recomputeDates(cs.filter(c => c.id !== id), startDate));
 
   // Cities are laid contiguously from the FIXED trip start (city N starts where
   // N-1 ends), so any nights / order change re-cascades - but the trip start
   // itself never moves (only the top date control changes it).
-  const update = (id, patch) => setCities(cs => recomputeDates(cs.map(c => c.id === id ? { ...c, ...patch } : c)));
+  const update = (id, patch) => setCities(cs => recomputeDates(cs.map(c => c.id === id ? { ...c, ...patch } : c), startDate));
 
   // Reorder via the SAME engine as the structural editor (useRouteDnD): pointer
   // drag (mouse-immediate / touch-long-press), FLIP slide, keyboard a11y — one
@@ -351,7 +362,7 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
     isAnchor: () => false,
     onCommitOrder: (ids) => setCities(cs => {
       const byId = new Map(cs.map(c => [c.id, c]));
-      return recomputeDates(ids.map(id => byId.get(id)).filter(Boolean));
+      return recomputeDates(ids.map(id => byId.get(id)).filter(Boolean), startDate);
     }),
   });
 
@@ -742,11 +753,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const setStartDate = (dateStr) => {
     if (!dateStr) return;
     setStartDateRaw(dateStr);
-    setCities(cs => {
-      if (cs.length === 0) return cs;
-      const next = cs.map((c, i) => i === 0 ? { ...c, startDate: dateStr } : c);
-      return recomputeDates(next);
-    });
+    // Re-anchor the whole chain on the new trip start (recomputeDates forces city 0
+    // onto the anchor, so no manual first-city patch is needed).
+    setCities(cs => (cs.length === 0 ? cs : recomputeDates(cs, dateStr)));
   };
 
   // ── AI draft → shared skeleton ─────────────────────────────────────────────
@@ -791,19 +800,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
     const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
 
-    // Resolve ALL cities in ONE batch edge call (TRIP-145 P2): the edge dedups
-    // identical queries and shares the 'search' cache, replacing the old N
-    // sequential lookups (faster apply, fewer invocations, no per-city burst).
-    // Order: [start?, end?, ...transit]. Background priority yields to
-    // interactive geocoding under the rate limit.
+    // Resolve ALL cities in ONE `search_gazetteer_batch` RPC (TRIP-214): the
+    // gazetteer resolves the whole list server-side in a single round-trip/plan,
+    // replacing the old per-city Promise.all burst (no concurrency limit → pool
+    // storm on a long AI route). Order: [start?, end?, ...transit].
     const order = [];
     if (startSrc) order.push(startSrc);
     if (endSrc) order.push(endSrc);
     transitSrc.forEach((c) => order.push(c));
-    // Resolve by English name + country_code: the edge hits the local `cities`
-    // directory by name first (skips LocationIQ for known cities) and falls back
-    // to an English geocoder query for the rest (small towns that 404 in
-    // Cyrillic). The Russian city_name from the AI is what we display/save.
+    // Resolve by English name + country_code: the gazetteer matches the English
+    // name first (small towns that miss in Cyrillic still resolve) and keeps
+    // same-country matches. The Russian city_name from the AI is what we
+    // display/save.
     const lists = await resolveCities(
       order.map((c) => ({
         city_name: c.city_name,
@@ -847,8 +855,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
     // Transit cities anchored to the first city's start_date (or default).
     const anchor = finalCities[0]?.startDate || defaultStartISO();
-    if (finalCities[0]) finalCities[0].startDate = anchor;
-    setCities(recomputeDates(finalCities));
+    setCities(recomputeDates(finalCities, anchor));
     setStartDateRaw(anchor);
 
     setFinalPoint(oneWayEnd);
