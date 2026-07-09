@@ -49,7 +49,7 @@ export function expandBatchRows(rows, count, lk) {
   const out = Array.from({ length: count }, () => []);
   for (const g of rows || []) {
     const idx = (Number(g.ord) | 0) - 1;
-    if (idx >= 0 && idx < count) out[idx] = [mapGazCity(g, lk)];
+    if (idx < count && idx >= 0) out[idx] = [mapGazCity(g, lk)];
   }
   return out;
 }
