@@ -22,9 +22,11 @@ import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { stripeEnv, isProductCode, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode } from '../_shared/payments/catalog.ts';
+import { isFullyRefunded } from '../_shared/payments/refund.ts';
+import { stripeEnv, isProductCode, billingIntervalForProduct, type ProductCode } from '../_shared/payments/catalog.ts';
 import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
-import { buildSubscriptionUpsertRow } from '../_shared/payments/subscriptionRow.ts';
+import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from '../_shared/payments/subscriptionRow.ts';
+import { isDuplicateEntitlingSub } from '../_shared/payments/subscriptionDedup.ts';
 import { buildPurchaseRow } from '../_shared/payments/purchaseRow.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
 
@@ -89,13 +91,6 @@ async function findSubRow(subId: string) {
     .eq('provider_subscription_id', subId)
     .limit(1);
   return data && data.length > 0 ? data[0] : null;
-}
-
-// Есть ли у юзера ДРУГАЯ энтайтлинг-подписка (для детекта дубля).
-async function hasOtherEntitlingSub(userId: string, exceptSubId: string | null): Promise<boolean> {
-  const { data } = await supabaseAdmin
-    .from('subscription').select('provider_subscription_id').eq('user_id', userId).in('status', [...ENTITLING_STATUSES]);
-  return (data ?? []).some((r) => r.provider_subscription_id !== exceptSubId);
 }
 
 // { userId, productCode } для подписки: из существующей строки, иначе из metadata.
@@ -224,14 +219,13 @@ Deno.serve(async (req) => {
           // Тот же sub уже записан → идемпотентный апдейт.
           const existing = subId ? await findSubRow(subId) : null;
           if (existing) {
-            await ensureWrite('subscription update (checkout)', supabaseAdmin.from('subscription').update({
-              status, cancel_at_period_end: cancelAtPeriodEnd,
-              ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
-            }).eq('id', existing.id));
+            await ensureWrite('subscription update (checkout)', supabaseAdmin.from('subscription')
+              .update(buildSubscriptionRefreshPatch({ status, cancelAtPeriodEnd, currentPeriodEnd: periodEndIso }))
+              .eq('id', existing.id));
             await recomputeUser(user_id);
           } else {
             // Новая подписка. Есть ли уже энтайтлинг у юзера → дубль.
-            const isDup = await hasOtherEntitlingSub(user_id, subId);
+            const isDup = await isDuplicateEntitlingSub(supabaseAdmin, user_id, subId, status);
             if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id, sub_id: subId, session_id: session.id }, 'error');
             // upsert по provider_subscription_id — гонко-безопасно: конкурентная
             // доставка invoice.paid для той же подписки станет апдейтом, не 500.
@@ -273,12 +267,14 @@ Deno.serve(async (req) => {
         const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
         if (existing) {
-          await ensureWrite('invoice.paid update', supabaseAdmin.from('subscription').update({
-            status: sub.status, cancel_at_period_end: sub.cancel_at_period_end === true, provider_meta: null,
-            ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
-          }).eq('id', existing.id));
+          await ensureWrite('invoice.paid update', supabaseAdmin.from('subscription')
+            .update({
+              ...buildSubscriptionRefreshPatch({ status: sub.status, cancelAtPeriodEnd: sub.cancel_at_period_end === true, currentPeriodEnd: periodEndIso }),
+              provider_meta: null, // сброс грейса после успешной оплаты — остаётся явным на call-site
+            })
+            .eq('id', existing.id));
         } else {
-          const isDup = await hasOtherEntitlingSub(resolved.userId, subId);
+          const isDup = await isDuplicateEntitlingSub(supabaseAdmin, resolved.userId, subId, sub.status);
           // upsert: гонка checkout.session.completed ↔ invoice.paid для той же
           // подписки больше не даёт unique-violation/500 (была причина 500 на dev).
           await ensureWrite('invoice.paid upsert', supabaseAdmin.from('subscription').upsert(
@@ -423,9 +419,7 @@ Deno.serve(async (req) => {
 
         // Частичный рефанд НЕ снимает Pro; диспут снимает всегда.
         if (!isDispute) {
-          const fullyRefunded = charge?.refunded === true
-            || (typeof charge?.amount === 'number' && typeof charge?.amount_refunded === 'number'
-                && charge.amount > 0 && charge.amount_refunded >= charge.amount);
+          const fullyRefunded = charge != null && isFullyRefunded(charge);
           if (!fullyRefunded) { console.log('Partial refund — Pro not revoked'); break; }
         }
 

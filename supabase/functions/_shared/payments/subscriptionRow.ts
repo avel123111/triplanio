@@ -23,10 +23,15 @@
  * onConflict ('provider_subscription_id') и выбор .upsert vs .update остаются у
  * вызывающего — это решение про операцию, не про форму строки.
  *
- * НЕ покрывает (осознанно): партиал-UPDATE'ы (checkout-existing, invoice.paid-existing,
- * customer.subscription.updated/deleted) — у них слишком разные узкие наборы полей,
- * прогон через общий билдер раздул бы его в god-функцию без снятия реального дубля.
- * Сброс грейса (`provider_meta: null`) в invoice.paid-existing остаётся явным инлайном.
+ * Общий 3-полевой refresh (status / cancel_at_period_end / current_period_end?)
+ * вынесен в buildSubscriptionRefreshPatch (ниже) — его слово-в-слово повторяли
+ * checkout-existing, invoice.paid-existing и обе ветки reconcileEntitlement.
+ *
+ * Через билдеры осознанно НЕ гоним широкие партиал-UPDATE'ы
+ * (customer.subscription.updated/deleted) — у них слишком разные узкие наборы полей
+ * (product_code / provider_event_at / canceled_at), это раздуло бы билдер в
+ * god-функцию. Сброс грейса (`provider_meta: null`) в invoice.paid-existing тоже
+ * остаётся явным инлайном на call-site (в refresh-хелпер не заносится).
  */
 
 import type { ProductCode } from './catalog.ts';
@@ -101,4 +106,26 @@ export function buildSubscriptionUpsertRow(input: SubscriptionUpsertInput): Reco
   }
 
   return row;
+}
+
+/**
+ * Общий партиал-патч «освежить подписку из Stripe»: ровно три поля, которые
+ * checkout-existing / invoice.paid-existing / reconcileEntitlement (обе ветки)
+ * писали руками одинаково. Вход — объект из примитивов (НЕ Stripe.Subscription:
+ * модуль остаётся чистым и без рантайм-импортов; объект, а не позиционные
+ * аргументы — status и currentPeriodEnd оба строковые, перестановку ловим по имени).
+ *
+ * current_period_end пишем ТОЛЬКО когда дата известна — null'ом не затираем
+ * «оплачено до» (тот же безопасный паттерн, что в buildSubscriptionUpsertRow).
+ * provider_meta НЕ трогаем: сброс грейса в invoice.paid остаётся явным на call-site.
+ */
+export function buildSubscriptionRefreshPatch(
+  input: { status: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null },
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {
+    status: input.status,
+    cancel_at_period_end: input.cancelAtPeriodEnd,
+  };
+  if (input.currentPeriodEnd !== null) patch.current_period_end = input.currentPeriodEnd;
+  return patch;
 }
