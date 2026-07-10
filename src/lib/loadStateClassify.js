@@ -98,12 +98,18 @@ export function loadErrorKind(error) {
  *    FAIL-SAFE 'ok' (TRIP-220):
  *      • default (omitted → true): an empty successful load is a legitimate "you
  *        have none yet" state → 'ok', and the screen renders its own empty state.
- *        Safe because a real permission failure never arrives as a settled-empty
- *        success — it's a THROWN 403/404 (edge functions status-code it; direct
- *        PostgREST yields 42501/PGRST116) and is classified above. So a NEW list
- *        screen that forgets this degrades to a harmless empty state, never a
- *        false denial (the bug that dropped a zero-trip user onto the trip-level
- *        "Нет доступа к этому путешествию" screen after login).
+ *        Safe because this gate is PRESENTATIONAL — it never enforces access; RLS
+ *        + the edge functions' auth checks do. So the worst case of a benign
+ *        default is a blank/empty screen, never a data leak. For today's screens a
+ *        real deny is in fact a THROWN 403/404 (the edge status-codes it),
+ *        classified above, so a settled-empty is only ever the benign case.
+ *        Caveat for future screens: a direct PostgREST array `.select()` under RLS
+ *        returns an empty 200 — RLS silently FILTERS reads (42501 is the
+ *        write-path deny, NOT a SELECT deny), so a single-resource screen reading
+ *        that way must opt into `emptyIsOk:false` to render "no access" instead of
+ *        empty. A NEW list screen that forgets the flag degrades to a harmless
+ *        empty state, never a false denial (the bug that dropped a zero-trip user
+ *        onto the trip-level "Нет доступа к этому путешествию" screen after login).
  *      • single-resource opt-in (`emptyIsOk:false`): screens fetching ONE resource
  *        where empty-but-successful should read as "you can't see it" — a defensive
  *        belt over the thrown-error path. The trip shell/content gates pass false.
