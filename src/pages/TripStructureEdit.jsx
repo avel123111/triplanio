@@ -50,7 +50,6 @@ import TripStartControl from '@/components/trip/TripStartControl';
 // (add_city / remove_city / reorder_cities / set_city_nights). Live Google map.
 // =====================================================================
 const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
-const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9']; // design-token-exempt: data-viz city-marker palette (distinct hues hashed by key — no token equivalent)
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
@@ -65,8 +64,6 @@ const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 // until add_city inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is persisted.
 const isTmpId = (id) => String(id || '').startsWith('tmp-');
-const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
-const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), country: n.country || '' });
 
 // Canonical date-chain layout (start = prevEnd + gap; end = start + nights) now
 // lives in lib/tripDates.layoutDates, shared with ManualPlanner and mirroring the
@@ -494,7 +491,7 @@ export default function TripStructureEdit() {
     const provEnd = provStart && kind === 'transit' ? toDT(provStart).plus({ days: provNights }).toISODate() : provStart;
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
-      city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
+      city_name: city.city_name, country_code: city.country_code || null,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
@@ -517,7 +514,7 @@ export default function TripStructureEdit() {
       kind,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       city_name_en: city.city_name_en || null,
-      country: city.country || null, country_code: city.country_code || null,
+      country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
     }, insertIdx), (realId) => {
@@ -727,7 +724,7 @@ export default function TripStructureEdit() {
       const next = ordered.slice(idx + 1).find((n) => !isAnchor(n) || n.kind === 'end');
       leftPanelEl = (
         <CityPanel
-          node={node} meta={metaOf(node)} cityNo={stayNumById[node.id]}
+          node={node} cityNo={stayNumById[node.id]}
           hotels={hotelsFor(node.id)} acts={actsFor(node.id)}
           arrival={arrivalFor(node.id)} departure={departureFor(node.id)}
           arrivalWarn={transferMismatch(arrivalFor(node.id))} departureWarn={transferMismatch(departureFor(node.id))}

@@ -7,6 +7,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
 import { cityKey, localizeVisits } from '@/lib/trip-cities';
+import { localizeCountry } from '@/lib/i18n/format';
 import { continentOf, COUNTRIES_PER_CONTINENT } from '@/lib/continents';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { gateStubProps } from '@/lib/loadStateClassify';
@@ -80,16 +81,9 @@ export default function Statistics() {
   const isPro = isProActive(user);
   const scheme = isDark ? 'DARK' : 'LIGHT';
 
-  // Localised country names from ISO-3166-1 alpha-2 (no country-name data table).
-  const regionName = useMemo(() => {
-    let dn = null;
-    try { dn = new Intl.DisplayNames([locale || 'en'], { type: 'region' }); } catch { dn = null; }
-    return (cc) => {
-      if (!cc) return '';
-      try { return (dn && dn.of(String(cc).toUpperCase())) || String(cc).toUpperCase(); }
-      catch { return String(cc).toUpperCase(); }
-    };
-  }, [locale]);
+  // Localised country name from ISO-3166-1 alpha-2 — delegates to the canonical
+  // localizeCountry (native Intl.DisplayNames, cached) instead of a local reimpl.
+  const regionName = useCallback((cc) => localizeCountry(cc, lang), [lang]);
 
   // ── data ────────────────────────────────────────────────────────────────────
   const {

@@ -53,7 +53,7 @@ function FlagImg({ cc, className }) {
 
 export default function PublicTrip() {
   const { lang, setLang } = useI18n();
-  const { t, fmtDate, plural, locale, fmtDistance } = useI18nFormat();
+  const { t, fmtDate, plural, locale, fmtDistance, fmtCountry } = useI18nFormat();
   const cssReady = useLandingCss();
 
   const { tripId } = useParams();
@@ -136,7 +136,7 @@ export default function PublicTrip() {
         isTransit,
         n,
         city: v.city_name,
-        country: v.country || '',
+        country: fmtCountry(v.country_code) || '',
         cc: v.country_code || '',
         start, end, nights,
         hotel: hotel?.name || null,
