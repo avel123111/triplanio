@@ -98,8 +98,24 @@ test('queryGateKind: thrown errors classify per class when no data', () => {
   assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(500), hasData: false }), 'temporary');
 });
 
-test('queryGateKind: settled with no data and no error → access (genuine empty/no-trip)', () => {
+test('queryGateKind: single-resource settled with no data and no error → access (RLS-filtered trip)', () => {
+  // Default (emptyIsOk omitted/false): a specific trip fetched by id that comes
+  // back empty means RLS filtered it → the caller isn't a member → 'access'.
   assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: undefined, hasData: false }), 'access');
+});
+
+test('queryGateKind: collection settled empty with no error → ok, NOT access (TRIP-220)', () => {
+  // The prod bug: a zero-trip user's trips-list query settles with [] (no error),
+  // so hasData=false. Without emptyIsOk it wrongly read as 'access' and showed
+  // the trip-level "Нет доступа к этому путешествию" screen on /trips. Collection
+  // screens (trips list, inbox) pass emptyIsOk:true → empty falls through to 'ok'
+  // and the screen renders its own empty state.
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: undefined, hasData: false, emptyIsOk: true }), 'ok');
+  // emptyIsOk must NOT swallow real errors or the loading/paused states.
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(403), hasData: false, emptyIsOk: true }), 'access');
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(500), hasData: false, emptyIsOk: true }), 'temporary');
+  assert.equal(queryGateKind({ isPending: true, fetchStatus: 'fetching', error: undefined, hasData: false, emptyIsOk: true }), 'loading');
+  assert.equal(queryGateKind({ isPending: true, fetchStatus: 'paused', error: undefined, hasData: false, emptyIsOk: true }), 'temporary');
 });
 
 // ── gateStubProps: one source for the error-screen look ───────────────────────

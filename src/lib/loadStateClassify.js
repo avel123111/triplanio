@@ -94,18 +94,26 @@ export function loadErrorKind(error) {
  *    retry screen shows immediately instead of an endless spinner.
  *  - still pending / fetching → 'loading' (covers disabled queries too, whose
  *    status is 'pending' with an 'idle' fetchStatus — never misread as 'access').
- *  - settled with no error and no data → 'access' (the genuine empty case; real
- *    403/404 arrive as a thrown error and are classified above).
+ *  - settled with no error and no data → depends on `emptyIsOk` (TRIP-220):
+ *      • single-resource fetch (a trip by id) → 'access'. Under RLS a forbidden
+ *        row comes back as an EMPTY success, not a 403, so "settled + empty" is
+ *        the only signal that the caller isn't a member — the genuine deny case.
+ *      • collection fetch (trips list, inbox) → 'ok'. An empty list is the
+ *        legitimate "you have none yet" state, NOT a permission wall. Reading it
+ *        as 'access' is exactly what made a zero-trip user land on the trip-level
+ *        "Нет доступа к этому путешествию" screen right after login. Callers over
+ *        a collection pass `emptyIsOk:true` so empty falls through to their own
+ *        empty-state render. Real 403/404 still arrive as a thrown error above.
  *
- * @param {{ isPending: boolean, fetchStatus: string, error: unknown, hasData: boolean }} q
+ * @param {{ isPending: boolean, fetchStatus: string, error: unknown, hasData: boolean, emptyIsOk?: boolean }} q
  */
-export function queryGateKind({ isPending, fetchStatus, error, hasData }) {
+export function queryGateKind({ isPending, fetchStatus, error, hasData, emptyIsOk = false }) {
   if (error && loadErrorKind(error) === 'auth') return 'auth';
   if (hasData) return 'ok';
   if (error) return loadErrorKind(error);           // 'not_found' | 'access' | 'temporary'
   if (fetchStatus === 'paused') return 'temporary'; // offline, nothing cached
   if (fetchStatus === 'fetching' || isPending) return 'loading';
-  return 'access';                                   // settled, no data, no error
+  return emptyIsOk ? 'ok' : 'access';                // settled, no data, no error
 }
 
 /**

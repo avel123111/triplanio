@@ -645,6 +645,7 @@ export default function Trips() {
   const tripsGate = useQueryGate(
     { isPending: tripsPending, fetchStatus: tripsFetchStatus, error: tripsError },
     allTrips.length > 0,
+    true, // collection: an empty list is "no trips yet", not an access denial (TRIP-220)
   );
   if (tripsGate === 'temporary' || tripsGate === 'access' || tripsGate === 'not_found') {
     const stub = gateStubProps(tripsGate);

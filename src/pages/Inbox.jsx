@@ -123,6 +123,7 @@ export default function Inbox() {
   const inboxGate = useQueryGate(
     { isPending: notifPending, fetchStatus: notifFetchStatus, error: notifError },
     notifications.length > 0,
+    true, // collection: an empty inbox is "nothing yet", not an access denial (TRIP-220)
   );
   if (inboxGate === 'temporary' || inboxGate === 'access' || inboxGate === 'not_found') {
     const stub = gateStubProps(inboxGate);

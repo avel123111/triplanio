@@ -11,14 +11,17 @@ import { queryGateKind } from '@/lib/loadStateClassify';
 //
 // @param {{ isPending: boolean, fetchStatus: string, error: unknown }} query
 // @param {boolean} hasData - whether the screen already has usable (cached) data
+// @param {boolean} [emptyIsOk] - COLLECTION screens (trips list, inbox) pass true:
+//   a settled-empty success is "none yet", not a denial. See queryGateKind (TRIP-220).
 // @returns {'loading'|'auth'|'temporary'|'access'|'ok'}
-export function useQueryGate(query, hasData) {
+export function useQueryGate(query, hasData, emptyIsOk = false) {
   const nav = useNavigate();
   const kind = queryGateKind({
     isPending: query.isPending,
     fetchStatus: query.fetchStatus,
     error: query.error,
     hasData,
+    emptyIsOk,
   });
   useEffect(() => {
     if (kind === 'auth') nav('/login', { replace: true });
