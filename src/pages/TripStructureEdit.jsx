@@ -600,7 +600,6 @@ export default function TripStructureEdit() {
 
   const ordered = sortVisits(draft.nodes);
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
-  const cities = seq.filter((n) => n.kind === 'transit');   // stays only (for numbering)
   // Header count = unique transit cities (a city visited twice counts once),
   // matching the trip header / overview / trips card everywhere.
   const cityCount = uniqueCityCount(draft.nodes);
@@ -611,7 +610,6 @@ export default function TripStructureEdit() {
   const startDate = seq[0]?.start_date;
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
-  const membersCount = content?.members?.length || 0;
   // Shared role rule: created_by wins over any trip_members row, so the creator
   // is never blocked from their own editor with "no access" (TRIP-143).
   const myRole = resolveMyRole(content?.members, trip, user);
