@@ -521,7 +521,6 @@ h4,
 .field__label,
 .proto__nav-title,
 .proto__viewport-title,
-.app-header__act,
 .app-side__item,
 .input, .select, .textarea,
 .tweaks__title,
@@ -1136,31 +1135,6 @@ h4,
  color: var(--muted); margin-top: 2px;
  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  display: flex; gap: 6px; align-items: center;
-}
-
-/* Trip-action group (Share / Edit / …) — матовое стекло на канон-токенах surface-glass.
-   Радиус 13px (не --r-xl): при padding:4px он ровно вкладывает внутренние кнопки (9px = 13−4). */
-.app-header__trip-actions {
-  display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px; flex: 0 0 auto;
-  background: var(--surface-card); border: 1px solid var(--surface-card-border); box-shadow: var(--shadow-glass);
-}
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .app-header__trip-actions {
-    -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
-  }
-}
-.app-header__act {
- display: inline-flex; align-items: center; gap: 8px; position: relative;
- border: 0; background: transparent; color: var(--ink); cursor: pointer;
- padding: 9px 13px; border-radius: 9px; white-space: nowrap; transition: background .15s var(--ease-out);
-}
-.app-header__act:hover { background: var(--surface); }
-.app-header__act svg { width: 17px; height: 17px; flex: 0 0 auto; }
-.app-header__act--icon { padding: 9px 11px; }
-.app-header__act[disabled] { opacity: .5; cursor: default; }
-.app-header__act[disabled]:hover { background: transparent; }
-.app-header__act + .app-header__act::before {
-  content: ""; position: absolute; left: -4px; top: 20%; height: 60%; width: 1px; background: var(--line);
 }
 
 /* Base neutral icon button (used OUTSIDE the header too — keeps light styling). */
@@ -1814,10 +1788,6 @@ h4,
   .app-header__menu { display: grid; }                /* mobile burger appears */
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: var(--fs-h4); }
-  .app-header__act-text { display: none; }            /* trip actions collapse to icons */
-  /* blur off on mobile — header is opaque here, so the pill's backdrop-filter is only paint jank */
-  .app-header__trip-actions { -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .app-header__act { padding: 9px 10px; }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
   .app-body { grid-template-columns: 1fr; }
