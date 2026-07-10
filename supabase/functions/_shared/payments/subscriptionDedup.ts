@@ -14,9 +14,10 @@ import { ENTITLING_STATUSES } from './catalog.ts';
 
 /**
  * Есть ли у юзера ДРУГАЯ энтайтлинг-подписка, кроме exceptSubId (детект дубля).
- * exceptSubId исключает саму рассматриваемую подписку из выборки.
+ * exceptSubId исключает саму рассматриваемую подписку из выборки. Приватный —
+ * внешние вызывающие идут через isDuplicateEntitlingSub (предикат + гард статуса).
  */
-export async function hasOtherEntitlingSub(
+async function hasOtherEntitlingSub(
   admin: SupabaseClient,
   userId: string,
   exceptSubId: string | null,
