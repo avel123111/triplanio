@@ -21,6 +21,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
+import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
@@ -415,6 +416,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const confirm = useConfirm();
   const { user } = useAuth();
   const nav = useNavigate();
+  // Copy trip — moved here from the old header "…" menu. Delegates to
+  // CreateTripProvider so it runs the SAME free-tier gate as creating a new trip.
+  const { startCopy, copying } = useCreateTrip();
 
   const [title,   setTitle]   = useState(trip?.title        || '');
   const [description, setDescription] = useState(trip?.description || '');
@@ -874,6 +878,19 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </div>
       </div>
       </fieldset>
+
+      {/* ── Copy trip (full width) ────────────────────────────────────────────
+          Moved here from the old header "…" menu. Copy creates a NEW trip owned
+          by the caller and runs the SAME free-tier gate as creating one from
+          scratch (startCopy → CreateTripProvider); it never touches THIS trip,
+          so it sits OUTSIDE the read-only fieldset and stays available to every
+          participant, including a viewer. Pro status + Pro-only addons and
+          documents are stripped from the copy server-side. */}
+      <Card title={t('settings.copy_trip_title')} subtitle={t('settings.copy_trip_desc')}>
+        <Btn variant="soft" icon="copy" loading={copying} onClick={() => startCopy(tripId)}>
+          {t('settings.copy_trip_btn')}
+        </Btn>
+      </Card>
 
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>

@@ -20,10 +20,9 @@ import { useMobileNav } from '@/components/MobileBottomNav';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
-import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast, ActionMenu } from '../design/index';
+import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { sortVisits, cityIdentity } from '@/lib/validation';
-import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -41,7 +40,7 @@ import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit, canShareTrip } from '@/lib/members';
+import { resolveMyRole, roleCanEdit } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -772,7 +771,6 @@ export default function TripView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { startCopy, copying } = useCreateTrip();
   const lens = searchParams.get('lens') || 'overview';
 
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -995,39 +993,9 @@ export default function TripView() {
       )}
     </>
   );
-  // Copy trip — available to every participant. Delegated to CreateTripProvider
-  // (startCopy) so it runs the SAME free-tier gate as creating a new trip: at the
-  // cap → the Pro upsell modal; under the cap → copy. The new trip is owned by the
-  // caller; copyTrip strips Pro status + Pro-only addons server-side.
-
-  const heroActions = (
-    <>
-      {canShareTrip(myRole) && (
-        <button className="app-header__act" onClick={() => setShareOpen(true)}>
-          <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
-        </button>
-      )}
-      {canEditMode && (
-        <button className="app-header__act" onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="app-header__act-text">{t('trip.edit_trip')}</span></button>
-      )}
-      <ActionMenu
-        align="end"
-        width={240}
-        trigger={
-          <button className="app-header__act app-header__act--icon">
-            <Icon name="more" size={15} />
-          </button>
-        }
-        items={[
-          { icon: 'settings', label: t('trip.settings_title'), onSelect: () => window.__navigate?.('settings') },
-          canEditMode && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => window.__navigate?.('members') },
-          { separator: true },
-          { icon: 'copy', label: t('trip.copy'), disabled: copying, onSelect: () => startCopy(trip.id) },
-          { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
-        ]}
-      />
-    </>
-  );
+  // Trip actions (Share / Edit / Settings / Members) all live in the left trip
+  // menu (TripSidebar); Copy trip moved into the Settings lens. The header
+  // carries no duplicate action buttons.
   // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own
   // internal scroll. Everything else = the default scrolling body.
   const screenBodyClass = 'trip-screen-body'
@@ -1047,7 +1015,6 @@ export default function TripView() {
         onMenu={() => setSideOpen(true)}
         title={trip?.title}
         meta={heroSub}
-        actions={heroActions}
       />
       <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
           <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => setShareOpen(true)} />

@@ -15,10 +15,10 @@ import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit, canShareTrip } from '@/lib/members';
+import { resolveMyRole, roleCanEdit } from '@/lib/members';
 import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, Skeleton, useToast, ActionMenu } from '../design/index';
+import { Btn, Skeleton, useToast } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -31,7 +31,6 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import AppHeader from '@/components/AppHeader';
-import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
@@ -189,7 +188,6 @@ export default function TripStructureEdit() {
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
-  const { startCopy, copying } = useCreateTrip(); // header "…" → Copy trip
   const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
@@ -818,37 +816,9 @@ export default function TripStructureEdit() {
     <TripStartControl date={draft.startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
   ) : null;
 
-  // Copy trip — delegated to CreateTripProvider (startCopy) so it runs the SAME
-  // free-tier gate as creating a new trip. The new trip is owned by the caller;
-  // copyTrip strips Pro status + Pro-only addons server-side.
-
-  // Editor header trip-actions — same set as the other trip screens, but the
-  // "Edit" button is disabled (we are already in the editor). Menu items that
-  // navigate to a trip lens exit the editor first via leaveNow.
-  const editorHeaderActions = (
-    <>
-      {canShareTrip(myRole) && (
-        <button className="app-header__act" onClick={() => setShareOpen(true)}>
-          <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
-        </button>
-      )}
-      <button className="app-header__act" disabled title={t('trip.edit_trip')} aria-label={t('trip.edit_trip')}>
-        <Icon name="edit" size={15} /><span className="app-header__act-text">{t('trip.edit_trip')}</span>
-      </button>
-      <ActionMenu
-        align="end"
-        width={240}
-        trigger={<button className="app-header__act app-header__act--icon" aria-label={t('common.more') || '…'}><Icon name="more" size={15} /></button>}
-        items={[
-          { icon: 'settings', label: t('trip.settings_title'), onSelect: () => leaveNow(`/trip/${tripId}?lens=settings`) },
-          myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => leaveNow(`/trip/${tripId}?lens=members`) },
-          { separator: true },
-          { icon: 'copy', label: t('trip.copy'), disabled: copying, onSelect: () => startCopy(trip.id) },
-          { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
-        ]}
-      />
-    </>
-  );
+  // Trip actions (Share / Settings / Members) all live in the left trip menu
+  // (TripSidebar drawer); Copy trip moved into the Settings lens. The editor
+  // header carries no duplicate buttons.
 
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
@@ -870,7 +840,6 @@ export default function TripStructureEdit() {
           {cityCount > 0 && <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
         </>
       }
-      actions={editorHeaderActions}
     />
     {/* Mobile menu drawer — burger opens the full sidebar (the static icon-rail
         is hidden on mobile). */}
