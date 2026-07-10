@@ -529,7 +529,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
 function Stat({ label, value, hint }) {
   return (
     <div>
-      <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink-2)' }}>{label}</div>
+      <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink)' }}>{label}</div>
       <div className="t-subheading">{value}</div>
       {hint && <div className="muted t-meta" style={{ marginTop: 1 }}>{hint}</div>}
     </div>
@@ -587,7 +587,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         {/* Stats strip — 3 tiles directly under the hero (TRIP-222) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: '1px solid var(--line-2)' }}>
           <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line-2)' }}>
-            <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink-2)' }}>{t('event.start')}</div>
+            <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink)' }}>{t('event.start')}</div>
             <div className="t-subheading">{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
             {!cities[0]?.startDate && (
               <div className="t-meta" style={{ color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
@@ -602,7 +602,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         </div>
 
         <div style={{ padding: 18 }}>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
+          <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--ink)' }}>{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
             <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line-2)' }} />
             {home?.city_name && (
