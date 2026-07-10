@@ -39,7 +39,7 @@ import { useStay22Bundle } from '@/lib/stay22';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
-import ProUpsellModal from '@/components/common/ProUpsellModal';
+import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
 
@@ -195,7 +195,8 @@ export default function TripStructureEdit() {
   // Pro "enabled by owner" info modal for non-owners (TRIP-63 №1) — mirrors
   // TripView. A non-owner tapping the Pro lock must get the explanation, not a
   // navigation to /pro (which would show them an upgrade they can't apply).
-  const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
+  const { openProUpsell } = useProUpsell();
+  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: (content?.members || []).find(m => m.user_id === trip?.created_by)?.user_full_name || '' });
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
   // Drag / FLIP / keyboard reorder live in the shared useRouteDnD hook (also used by
   // the trip-creation flow). It's instantiated below — once `ordered`, `isAnchor`
@@ -848,7 +849,7 @@ export default function TripStructureEdit() {
         onNavigate={(id) => { setSideOpen(false); leaveNow(`/trip/${tripId}?lens=${id}`); }}
         isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
         onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-        onProInfo={() => { setSideOpen(false); setTripProInfoOpen(true); }}
+        onProInfo={() => { setSideOpen(false); openProInfo(); }}
         onShare={() => setShareOpen(true)}
       />
     </div>
@@ -859,7 +860,7 @@ export default function TripStructureEdit() {
           onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-          onProInfo={() => setTripProInfoOpen(true)}
+          onProInfo={openProInfo}
           onShare={() => setShareOpen(true)}
         />
       </div>
@@ -1138,15 +1139,6 @@ export default function TripStructureEdit() {
       {/* Unsaved-changes guard when leaving the editor (menu / logo / back). */}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={draft?.nodes || []} transfers={liveTransfers} />
 
-      {/* TRIP-63 №1: reuse the shared Pro info modal (same as TripView) so a
-          non-owner who taps the "enabled by owner" lock gets an explanation
-          instead of being navigated to /pro. */}
-      <ProUpsellModal
-        open={tripProInfoOpen}
-        mode="info"
-        onOpenChange={setTripProInfoOpen}
-        ownerName={(content?.members || []).find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
-      />
     </div>
   );
 }

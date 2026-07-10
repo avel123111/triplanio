@@ -175,7 +175,7 @@ import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
 import EventAiBlock from '@/components/common/EventAiBlock';
-import ProUpsellModal from '@/components/common/ProUpsellModal';
+import { useProUpsell } from '@/components/common/ProUpsellProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Type metadata - colours, icons, copy
@@ -571,7 +571,7 @@ export default function EventEditDialog({
   // is shown the "ask the owner" info dialog instead.
   const [isPro, setIsPro] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
-  const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
+  const { openProUpsell } = useProUpsell();
 
   const [confirmDel, setConfirmDel] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -665,7 +665,8 @@ export default function EventEditDialog({
   const openUpgrade = () => {
     // Only the owner can upgrade this trip → checkout. A participant can't unlock
     // someone else's trip by paying, so show the "ask the owner" dialog instead.
-    if (!isOwner) { setTripProInfoOpen(true); return; }
+    // Апселл рендерит app-level ProUpsellProvider (не вложенная модаль) — TRIP-225.
+    if (!isOwner) { openProUpsell({ mode: 'info' }); return; }
     onOpenChange?.(false);
     nav(`/pro?tripId=${tripId || ''}`);
   };
@@ -1303,12 +1304,6 @@ export default function EventEditDialog({
           </DialogContent>
         </Dialog>
       )}
-
-      <ProUpsellModal
-        open={tripProInfoOpen}
-        mode={isOwner ? 'upgrade' : 'info'}
-        onOpenChange={setTripProInfoOpen}
-      />
     </>
   );
 }

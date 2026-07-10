@@ -22,7 +22,7 @@ import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Severity, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Field, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
@@ -683,9 +683,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   return (
     <div className="dl-root ov-anim">
       {readOnly && (
-        <Severity level="info" title={t('settings.readonly_banner_title')}>
-          {t('doc.readonly_banner_desc')}
-        </Severity>
+        <ReadOnlyBanner>{t('doc.readonly_banner_desc')}</ReadOnlyBanner>
       )}
       {/* ── Toolbar: search + filter ── */}
       <div className="dl-toolbar">
