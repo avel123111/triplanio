@@ -1379,8 +1379,9 @@ h4,
 .map-route .sheet-grip { display: none; } /* bottom-sheet grip — phones only (below) */
 @media (max-width: 640px) {
   /* Always-on bottom sheet above the fixed 60px bottom nav: peek = grip + title,
-     .is-expanded reveals the scrollable list. Skin switches from glass to the
-     canonical solid .sheet look (blur over a moving map is muddy on phones). */
+     dragging the grip reveals the scrollable list (height owned by JS, below).
+     Skin switches from glass to the canonical solid .sheet look (blur over a
+     moving map is muddy on phones). */
   .map-route {
     top: auto; left: 0; right: 0;
     /* TRIP-222: the sheet runs to the screen bottom and covers the map behind the
@@ -1397,8 +1398,9 @@ h4,
     max-height: calc(68px + 60px + env(safe-area-inset-bottom)); /* peek + dock zone */
     transition: max-height .3s cubic-bezier(.22, 1, .36, 1);
   }
-  .map-route.is-expanded { max-height: calc(56vh + 60px + env(safe-area-inset-bottom)); }
-  .map-route .sheet-grip { display: flex; width: 100%; background: none; border: 0; cursor: pointer; }
+  /* Height is owned by JS on phones (RoutePanel): the grip drag drives max-height
+     live so the sheet follows the finger, then springs to peek / expanded. */
+  .map-route .sheet-grip { display: flex; width: 100%; background: none; border: 0; cursor: pointer; touch-action: none; }
   .map-route__head { padding-top: 2px; border-bottom: 0; }
   .map-route__list { flex: 1; min-height: 0; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
 }
