@@ -135,4 +135,9 @@ $function$;
 -- legacy denormalized single-language snapshot, fully derivable from country_code via
 -- Intl.DisplayNames; all writers (add_city, add_layover_transfer, FE inserts, copyTrip)
 -- stop writing it in this same change and no reader depends on it anymore.
+--
+-- caps-guard: allow-uncapped — TRIP-223 adds NO new text column (it DROPS one). The
+-- line-level caps guard false-positives on the `v_kind text` plpgsql local inside the
+-- recreated add_city / add_layover_transfer bodies — a local variable, not a user-facing
+-- table column, so no length cap applies.
 alter table public.city_visits drop column country;
