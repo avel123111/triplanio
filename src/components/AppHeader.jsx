@@ -12,15 +12,14 @@ import { useT } from '@/lib/i18n/I18nContext';
  * bar. The trip title, meta and trip-action buttons now live here, separated
  * from the brand block and from the utility cluster by vertical dividers.
  *
- *   [menu*][back*] logo · Triplanio │ <trip title + meta> … <trip actions> │ theme · bell · account+PRO
+ *   [menu*][back*] logo · Triplanio │ <trip title + meta> │ theme · bell · account+PRO
  *     menu  — burger, shown ONLY on mobile (opens the trip sidebar drawer)
  *     back  — round back/exit button, rendered when `onBack` is provided
- *     trip  — title / meta / actions render only when a trip context is given
+ *     trip  — title / meta render only when a trip context is given
  *
- * Trip-action buttons passed via `actions` should use the `app-header__act`
- * class (add `app-header__act--icon` for icon-only) and wrap their label in
- * `<span className="app-header__act-text">` so it collapses to an icon on
- * mobile. PRO badge + utility icons come from <HeaderActions>.
+ * Trip actions (Share / Edit / Settings / Members / Copy) live in the left trip
+ * menu (TripSidebar), NOT in this header. PRO badge + utility icons come from
+ * <HeaderActions>.
  *
  * Props:
  *   user, isPro, isDark, onToggleTheme — forwarded to the right-hand cluster
@@ -30,7 +29,6 @@ import { useT } from '@/lib/i18n/I18nContext';
  *   onMenu    — optional; renders the mobile-only burger (trip sidebar)
  *   title     — optional trip title (enables the trip block)
  *   meta      — optional trip meta node (e.g. dates · days · cities)
- *   actions   — optional trip-action buttons node (Share / Edit / …)
  */
 export default function AppHeader({
   user,
@@ -43,7 +41,6 @@ export default function AppHeader({
   onMenu,
   title,
   meta,
-  actions,
   isTrip = false,
 }) {
   const nav = useNavigate();
@@ -86,12 +83,6 @@ export default function AppHeader({
       </div>
 
       <div className="app-header__right">
-        {actions && (
-          <>
-            <div className="app-header__trip-actions" role="group">{actions}</div>
-            <span className="app-header__vdiv" />
-          </>
-        )}
         <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
       </div>
     </header>
