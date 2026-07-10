@@ -855,8 +855,11 @@ export default function EventEditDialog({
       // Entity gone → every file it referenced (originals + any staged this
       // session) is orphaned. deleteSourceEntity sweeps best-effort on success
       // (TRIP-117); seenDocPaths is the dialog's broader set (originals + staged).
-      const { error } = await deleteSourceEntity(currentKind, entity.id, [...seenDocPaths.current]);
+      const { error, deleted } = await deleteSourceEntity(currentKind, entity.id, [...seenDocPaths.current]);
       if (error) throw error;
+      // 0 rows removed = RLS hid the row (session expired / not permitted) or it
+      // was already gone → surface (onError), don't close as a phantom success.
+      if (!deleted) throw new Error('write_rejected');
     },
     onSuccess: () => {
       committedRef.current = true;
@@ -866,7 +869,7 @@ export default function EventEditDialog({
     onError: (err) => {
       toast({
         title: t('event.delete_failed'),
-        description: err?.message || String(err),
+        description: err?.message && err.message !== 'write_rejected' ? err.message : undefined,
         variant: 'destructive',
       });
     },
