@@ -30,9 +30,11 @@ export function CityPicker({ value, onChange, placeholder, autoFocus }) {
       getKey={(c) => c.external_city_id}
       onPick={(city) => {
         setQ(city.city_name);
-        // Gazetteer rows carry country_code but not a country name → derive the
-        // localized name so the anchor/review shows a country, not blank.
-        onChange({ ...city, country: city.country || localizeCountry(city.country_code, lang), timezone: tzFromCoords(city.latitude, city.longitude) });
+        // Gazetteer rows carry country_code but never a country name (mapGazCity
+        // sets country: null) → derive the localized name here so the anchor/review
+        // shows a country, not blank. This is the single point that enriches a raw
+        // search result; downstream consumers already receive the derived name.
+        onChange({ ...city, country: localizeCountry(city.country_code, lang), timezone: tzFromCoords(city.latitude, city.longitude) });
       }}
       renderRow={cityOptionRow}
       placeholder={placeholder || t('planner.city_search_ph')}
