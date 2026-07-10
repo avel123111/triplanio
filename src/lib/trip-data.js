@@ -33,9 +33,13 @@ export const TRIP_CONTENT_KEY = (tripId) => ['trip-content', tripId];
  *                                          another member deleted the row first) → no throw.
  *
  * Correctness note: the 0-row assertion relies on the SELECT policy returning
- * the just-written row, i.e. `write-policy ⊆ select-policy`. That invariant holds
- * today (both are `is_trip_participant`) and must be preserved when RLS is
- * tightened (TRIP-118), else a real write could look rejected.
+ * the just-written row, i.e. `write-policy ⊆ select-policy` (whatever a write
+ * lets through, the read must also let through). This holds today: writes are
+ * gated by `_can_edit_trip` (TRIP-124) while reads use the looser
+ * `is_trip_participant` / `_can_access_trip_document` (TRIP-118), and
+ * `_can_edit_trip ⊆ is_trip_participant`. It must stay that way — never make a
+ * table's write policy broader than its read policy, else a real write whose row
+ * the reader can't see back would look (falsely) rejected.
  *
  * @param {import('@supabase/postgrest-js').PostgrestFilterBuilder} builder
  * @param {{ expectRow?: boolean }} [opts]
