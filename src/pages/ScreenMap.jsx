@@ -127,10 +127,11 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   // always shows its list).
   const [expanded, setExpanded] = useState(false);
   const sheetRef = useRef(null);
+  const listRef = useRef(null);
   const drag = useRef(null);
   // Snap heights, measured from the element so the drag maths need no hard-coded
   // safe-area: collapsed = the CSS peek (grip + title, incl. safe-area), expanded
-  // = the content height capped at 62vh.
+  // = the full content height capped at 62vh.
   const range = useRef({ collapsed: 128, expanded: 320 });
 
   // JS only owns the height on phones — the desktop panel keeps its CSS sizing.
@@ -138,8 +139,14 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
 
   const measure = () => {
     const el = sheetRef.current; if (!el) return range.current;
-    const exH = Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.62));
-    range.current.expanded = Math.max(exH, range.current.collapsed + 40);
+    // The list is an internal scroller (overflow:auto), so el.scrollHeight is
+    // clipped to the peek — read the LIST's full scrollHeight instead and add the
+    // grip+title above it to get the sheet's natural height.
+    const list = listRef.current;
+    const above = list ? Math.max(0, list.getBoundingClientRect().top - el.getBoundingClientRect().top) : 0;
+    const full = list ? above + list.scrollHeight : el.scrollHeight;
+    const exH = Math.min(full, Math.round(window.innerHeight * 0.62));
+    range.current.expanded = Math.max(exH, range.current.collapsed + 80);
     return range.current;
   };
   const applyHeight = (exp, animate) => {
@@ -227,7 +234,7 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
       <div className="map-route__head">
         <span className="t-mono tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
       </div>
-      <div className="map-route__list scrollbar-thin">
+      <div className="map-route__list scrollbar-thin" ref={listRef}>
         {rows.map((row, i) => {
           const c = row.visit;
           const dates = fmtRange(c.start_date, c.end_date);
