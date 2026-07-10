@@ -252,7 +252,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.home_title')}</h1>
-      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.home_desc')}
       </div>
 
@@ -279,8 +279,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <Icon name="pin" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="t-ui" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
-            <div className="muted t-meta">{t('planner.geo_hint')}</div>
+            <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
+            <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
           </div>
           <Btn variant="primary" size="sm" onClick={requestGeo}>{t('planner.allow')}</Btn>
         </div>
@@ -308,8 +308,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
               <Icon name="plane" size={14} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="t-ui">{nearbyCity.city_name}</div>
-              <div className="muted t-meta"><CountryFlag code={nearbyCity.country_code} /> {nearbyCity.country} · {t('planner.your_city')}</div>
+              <div className="t-subheading">{nearbyCity.city_name}</div>
+              <div className="muted t-meta t-sans"><CountryFlag code={nearbyCity.country_code} /> {nearbyCity.country} · {t('planner.your_city')}</div>
             </div>
             {home?.city_name === nearbyCity.city_name && (
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -326,8 +326,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <Icon name="lock" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="t-ui" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
-            <div className="muted t-meta">{t('planner.geo_off_hint')}</div>
+            <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
+            <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
           </div>
           <Btn variant="ghost" size="sm" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
         </div>
@@ -370,7 +370,7 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_cities')}</h1>
-      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
+      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
@@ -454,7 +454,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <h1 style={{ marginBottom: 10 }}>
         {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
-      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.return_desc')}
       </div>
 
@@ -466,9 +466,9 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
               <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
                 <Icon name="flag" size={16} />
               </div>
-              <div className="t-ui">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
+              <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
             </div>
-            <div className="muted t-meta">
+            <div className="muted t-meta t-sans">
               {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
             </div>
           </button>
@@ -479,9 +479,9 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="globe" size={16} />
             </div>
-            <div className="t-ui">{t('planner.return_other')}</div>
+            <div className="t-subheading">{t('planner.return_other')}</div>
           </div>
-          <div className="muted t-meta">
+          <div className="muted t-meta t-sans">
             {t('planner.return_other_desc')}
           </div>
         </button>
@@ -529,7 +529,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
 function Stat({ label, value, hint }) {
   return (
     <div>
-      <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink-2)' }}>{label}</div>
+      <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink)' }}>{label}</div>
       <div className="t-subheading">{value}</div>
       {hint && <div className="muted t-meta" style={{ marginTop: 1 }}>{hint}</div>}
     </div>
@@ -568,7 +568,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_review')}</h1>
-      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
+      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
         {t('planner.review_desc')}
       </div>
 
@@ -579,13 +579,30 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
             <img src={cover.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
-          <div className="t-heading" style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
+          <div className="t-title" style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
             {displayTitle}
           </div>
         </div>
 
+        {/* Stats strip — 3 tiles directly under the hero (TRIP-222) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: '1px solid var(--line-2)' }}>
+          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line-2)' }}>
+            <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink)' }}>{t('event.start')}</div>
+            <div className="t-subheading">{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
+            {!cities[0]?.startDate && (
+              <div className="t-meta" style={{ color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
+            )}
+          </div>
+          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line-2)' }}>
+            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
+          </div>
+          <div style={{ padding: '12px 16px' }}>
+            <Stat label={t('planner.cities_stat')} value={cities.length} />
+          </div>
+        </div>
+
         <div style={{ padding: 18 }}>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
+          <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--ink)' }}>{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
             <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line-2)' }} />
             {home?.city_name && (
@@ -612,18 +629,6 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
             {returnCity?.city_name && (
               <ReviewRow icon="flag" iconColor="var(--brand)" name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
             )}
-          </div>
-
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink-2)' }}>{t('event.start')}</div>
-              <div className="t-subheading">{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
-              {!cities[0]?.startDate && (
-                <div className="t-meta" style={{ color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
-              )}
-            </div>
-            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
-            <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
         </div>
       </div>
