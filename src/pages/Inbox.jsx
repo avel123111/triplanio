@@ -120,6 +120,8 @@ export default function Inbox() {
   // A failed notifications load must surface an error + retry, not silently render
   // the "inbox empty" screen. Cached list wins (hasData) — a background refetch
   // error never blanks an already-shown inbox.
+  // Collection: empty = "nothing yet" via useQueryGate's fail-safe default; a
+  // real load failure still gates via the thrown-error path below (TRIP-220).
   const inboxGate = useQueryGate(
     { isPending: notifPending, fetchStatus: notifFetchStatus, error: notifError },
     notifications.length > 0,

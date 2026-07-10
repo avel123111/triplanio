@@ -642,6 +642,8 @@ export default function Trips() {
   // through to the "no trips yet" empty state. Only the trips list gates the
   // screen; travel-stats/participants are enrichment and degrade silently. Cached
   // list wins (hasData) — a background refetch error never blanks a shown list.
+  // Collection: empty = "no trips yet" via useQueryGate's fail-safe default; a
+  // real load failure still gates via the thrown-error path below (TRIP-220).
   const tripsGate = useQueryGate(
     { isPending: tripsPending, fetchStatus: tripsFetchStatus, error: tripsError },
     allTrips.length > 0,

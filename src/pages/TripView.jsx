@@ -954,7 +954,9 @@ export default function TripView() {
   // you opened a trip with no network. 'auth' = session gone → /login (mirrors
   // AuthContext's SIGNED_OUT redirect; harmless if both fire). 'access' (403/404)
   // → the "no access" stub. Cached trip stays visible. Render stays per-screen.
-  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shellData?.trip);
+  // emptyIsOk:false — single-resource fetch: a settled-empty shell means "you
+  // can't see this trip", a defensive belt over the thrown-403/404 path (TRIP-220).
+  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shellData?.trip, false);
 
   // 'auth' shows the same loading placeholder while useQueryGate's effect redirects to /login.
   if (shellGate === 'loading' || shellGate === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
