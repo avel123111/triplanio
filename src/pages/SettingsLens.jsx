@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { TRIP_SHELL_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
 import { displayName } from '@/lib/displayName';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
@@ -539,7 +539,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // Main currency changed → existing FX overrides were defined against the OLD
     // main currency and are now meaningless. Reset them (trip_budgets is participant-RLS).
     if (!error && data?.ok && currency !== prevCurrency) {
-      await supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId);
+      try {
+        // Secondary to the edge save above; expectRow:false because a trip may
+        // have no trip_budgets row yet (nothing to reset). Was a bare await that
+        // swallowed both real errors and the silent 0-row case.
+        await writeRows(
+          supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId),
+          { expectRow: false },
+        );
+      } catch {
+        toast({ description: t('common.write_failed'), variant: 'destructive' });
+      }
     }
     setSaving(false);
     if (error || !data?.ok) { toast({ description: t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' }); return; }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, Btn, Field, useToast } from '@/design/index';
@@ -70,11 +71,19 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
       start_date: from,
       end_date: to,
     };
-    const { error } = isEdit
-      ? await supabase.from('user_custom_visits').update(row).eq('id', editing.id)
-      : await supabase.from('user_custom_visits').insert(row);
+    try {
+      // writeRows: reads the result, so a silent 0-row RLS reject on update
+      // (session expired / not your visit) no longer looks like success.
+      await writeRows(isEdit
+        ? supabase.from('user_custom_visits').update(row).eq('id', editing.id)
+        : supabase.from('user_custom_visits').insert(row));
+    } catch (e) {
+      setSaving(false);
+      console.error('user_custom_visits save failed:', e?.message);
+      setErr(t('stats.err_save'));
+      return;
+    }
     setSaving(false);
-    if (error) { console.error('user_custom_visits save failed:', error.message); setErr(t('stats.err_save')); return; }
     refresh();
     toast({ variant: 'success', title: isEdit ? t('stats.saved_toast') : t('stats.added_toast', { city: city.city_name }) });
     onSaved?.();
@@ -84,9 +93,15 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const remove = async () => {
     if (!isEdit) return;
     setSaving(true); setErr('');
-    const { error } = await supabase.from('user_custom_visits').delete().eq('id', editing.id);
+    try {
+      await writeRows(supabase.from('user_custom_visits').delete().eq('id', editing.id), { expectRow: false });
+    } catch (e) {
+      setSaving(false);
+      console.error('user_custom_visits delete failed:', e?.message);
+      setErr(t('stats.err_delete'));
+      return;
+    }
     setSaving(false);
-    if (error) { console.error('user_custom_visits delete failed:', error.message); setErr(t('stats.err_delete')); return; }
     refresh();
     toast({ variant: 'success', title: t('stats.deleted_toast') });
     onSaved?.();
