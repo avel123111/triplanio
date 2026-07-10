@@ -101,7 +101,7 @@ import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
-import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -795,8 +795,7 @@ export default function EventEditDialog({
     onOpenChange(false);
     (async () => {
       try {
-        const { error } = await supabase.from(table).insert({ ...payload, created_by: user?.id });
-        if (error) throw error;
+        await writeRows(supabase.from(table).insert({ ...payload, created_by: user?.id }));
         invalidateTripData(qc, tripId);
       } catch (err) {
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
@@ -856,8 +855,11 @@ export default function EventEditDialog({
       // Entity gone → every file it referenced (originals + any staged this
       // session) is orphaned. deleteSourceEntity sweeps best-effort on success
       // (TRIP-117); seenDocPaths is the dialog's broader set (originals + staged).
-      const { error } = await deleteSourceEntity(currentKind, entity.id, [...seenDocPaths.current]);
+      const { error, deleted } = await deleteSourceEntity(currentKind, entity.id, [...seenDocPaths.current]);
       if (error) throw error;
+      // 0 rows removed = RLS hid the row (session expired / not permitted) or it
+      // was already gone → surface (onError), don't close as a phantom success.
+      if (!deleted) throw new Error('write_rejected');
     },
     onSuccess: () => {
       committedRef.current = true;
@@ -867,7 +869,7 @@ export default function EventEditDialog({
     onError: (err) => {
       toast({
         title: t('event.delete_failed'),
-        description: err?.message || String(err),
+        description: err?.message && err.message !== 'write_rejected' ? err.message : undefined,
         variant: 'destructive',
       });
     },
@@ -1317,14 +1319,14 @@ export default function EventEditDialog({
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function upsert(table, entity, payload, user) {
-  if (entity) {
-    const { data, error } = await supabase.from(table).update(payload).eq('id', entity.id).select().single();
-    if (error) throw error;
-    return data;
-  }
-  const { data, error } = await supabase.from(table).insert({ ...payload, created_by: user?.id }).select().single();
-  if (error) throw error;
-  return data;
+  // Single write contract (writeRows): throws on error AND on a silent 0-row
+  // RLS reject. By-id update / insert always affects exactly one row, so we
+  // return the first (was .select().single()).
+  const builder = entity
+    ? supabase.from(table).update(payload).eq('id', entity.id)
+    : supabase.from(table).insert({ ...payload, created_by: user?.id });
+  const [row] = await writeRows(builder);
+  return row;
 }
 
 function buildHotelPayload(form, visit, tz) {

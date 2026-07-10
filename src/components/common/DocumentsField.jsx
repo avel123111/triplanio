@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { supabase } from '@/api/supabaseClient';
-import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
+import { uploadTripFiles } from '@/lib/documentMutations';
 import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -60,19 +59,17 @@ export default function DocumentsField({
     }
     setUploadingWithCb(true);
     try {
-      const uploaded = [];
-      for (const file of toUpload) {
-        const path = tripStoragePath(tripId, file.name);
-        const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
-        if (upErr) {
-          toast({ title: t('event.ai_upload_error'), description: upErr.message, variant: 'destructive' });
-          continue;
-        }
-        // Long-lived signed URL (10 years) - matches the documents lens convention.
-        const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
-        uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
-        stagedPaths.current.add(path);
+      // Shared upload: long-lived signed URLs, and never a doc with an empty
+      // file_url (was `|| ''`) — a missing URL surfaces as an error instead.
+      const { uploaded, errors } = await uploadTripFiles(tripId, toUpload);
+      for (const e of errors) {
+        toast({
+          title: t('event.ai_upload_error'),
+          description: e.reason === 'upload' && e.message ? e.message : t('doc.upload_failed', { name: e.file.name }),
+          variant: 'destructive',
+        });
       }
+      for (const u of uploaded) stagedPaths.current.add(u.storage_path);
       if (uploaded.length) onChange([...docs, ...uploaded]);
     } finally {
       setUploadingWithCb(false);

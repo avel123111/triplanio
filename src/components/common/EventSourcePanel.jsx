@@ -113,16 +113,21 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       optimisticContentUpdate(qc, tripId, cacheKind, 'remove', { id: data.id });
       onClose?.();
       (async () => {
-        const { error } = await deleteSourceEntity(kind, data.id, orphanPaths);
-        if (error && prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
+        const { error, deleted } = await deleteSourceEntity(kind, data.id, orphanPaths);
+        // error OR 0-row reject (deleted:false) → undo the optimistic removal so
+        // the entity doesn't vanish on a write that never happened.
+        if (error || !deleted) {
+          if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
+          toast({ description: t('event.delete_failed') + (error ? ': ' + error.message : ''), variant: 'destructive' });
+        }
         invalidate();
       })();
       return;
     }
     setDeleting(true);
-    const { error } = await deleteSourceEntity(kind, data.id, orphanPaths);
+    const { error, deleted } = await deleteSourceEntity(kind, data.id, orphanPaths);
     setDeleting(false);
-    if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); return; }
+    if (error || !deleted) { toast({ description: t('event.delete_failed') + (error ? ': ' + error.message : ''), variant: 'destructive' }); return; }
     invalidate();
     onClose?.();
   };

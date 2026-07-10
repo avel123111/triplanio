@@ -94,18 +94,35 @@ export function loadErrorKind(error) {
  *    retry screen shows immediately instead of an endless spinner.
  *  - still pending / fetching → 'loading' (covers disabled queries too, whose
  *    status is 'pending' with an 'idle' fetchStatus — never misread as 'access').
- *  - settled with no error and no data → 'access' (the genuine empty case; real
- *    403/404 arrive as a thrown error and are classified above).
+ *  - settled with no error and no data → `emptyIsOk` decides; it defaults to the
+ *    FAIL-SAFE 'ok' (TRIP-220):
+ *      • default (omitted → true): an empty successful load is a legitimate "you
+ *        have none yet" state → 'ok', and the screen renders its own empty state.
+ *        Safe because this gate is PRESENTATIONAL — it never enforces access; RLS
+ *        + the edge functions' auth checks do. So the worst case of a benign
+ *        default is a blank/empty screen, never a data leak. For today's screens a
+ *        real deny is in fact a THROWN 403/404 (the edge status-codes it),
+ *        classified above, so a settled-empty is only ever the benign case.
+ *        Caveat for future screens: a direct PostgREST array `.select()` under RLS
+ *        returns an empty 200 — RLS silently FILTERS reads (42501 is the
+ *        write-path deny, NOT a SELECT deny), so a single-resource screen reading
+ *        that way must opt into `emptyIsOk:false` to render "no access" instead of
+ *        empty. A NEW list screen that forgets the flag degrades to a harmless
+ *        empty state, never a false denial (the bug that dropped a zero-trip user
+ *        onto the trip-level "Нет доступа к этому путешествию" screen after login).
+ *      • single-resource opt-in (`emptyIsOk:false`): screens fetching ONE resource
+ *        where empty-but-successful should read as "you can't see it" — a defensive
+ *        belt over the thrown-error path. The trip shell/content gates pass false.
  *
- * @param {{ isPending: boolean, fetchStatus: string, error: unknown, hasData: boolean }} q
+ * @param {{ isPending: boolean, fetchStatus: string, error: unknown, hasData: boolean, emptyIsOk?: boolean }} q
  */
-export function queryGateKind({ isPending, fetchStatus, error, hasData }) {
+export function queryGateKind({ isPending, fetchStatus, error, hasData, emptyIsOk = true }) {
   if (error && loadErrorKind(error) === 'auth') return 'auth';
   if (hasData) return 'ok';
   if (error) return loadErrorKind(error);           // 'not_found' | 'access' | 'temporary'
   if (fetchStatus === 'paused') return 'temporary'; // offline, nothing cached
   if (fetchStatus === 'fetching' || isPending) return 'loading';
-  return 'access';                                   // settled, no data, no error
+  return emptyIsOk ? 'ok' : 'access';                // settled, no data, no error
 }
 
 /**

@@ -580,8 +580,11 @@ export default function TripStructureEdit() {
   // 'temporary' = 500/network/offline → retry; 'access' (403/404) → no-access.
   // Mirrors TripView's gate (shared useQueryGate hook: classification + auto
   // /login on a dead session). Render stays per-screen.
-  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shell?.trip);
-  const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!content);
+  // emptyIsOk:false on both — single-resource fetches: an empty shell means "no
+  // access" (belt over the thrown-403/404 path), and empty content can't build a
+  // draft, so it must gate to retry rather than render an empty editor (TRIP-220).
+  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shell?.trip, false);
+  const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!content, false);
   if (shellGate === 'auth' || contentGate === 'auth') return <>{headerEl}</>;
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken id (404) → neutral "doesn't exist", not

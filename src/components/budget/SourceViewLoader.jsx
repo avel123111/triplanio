@@ -84,8 +84,12 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     // Capture attachment object keys before delete; deleteSourceEntity sweeps
     // best-effort only after the row is actually gone (TRIP-117).
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
-    const { error } = await deleteSourceEntity(kind, data.id, orphanPaths);
-    if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); throw error; }
+    const { error, deleted } = await deleteSourceEntity(kind, data.id, orphanPaths);
+    if (error || !deleted) {
+      toast({ description: t('event.delete_failed') + (error ? ': ' + error.message : ''), variant: 'destructive' });
+      if (error) throw error;
+      return; // 0-row reject: don't close as success, refetch reconciles
+    }
     onOpenChange(false);
     invalidate();
   };

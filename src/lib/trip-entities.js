@@ -14,6 +14,7 @@
 
 import { supabase } from '@/api/supabaseClient';
 import { removeTripFiles } from '@/lib/storageCleanup';
+import { writeRows } from '@/lib/trip-data';
 
 /** Source entity kind → its DB table. Single source of truth. */
 export const ENTITY_TABLE_BY_KIND = {
@@ -32,13 +33,25 @@ export const ENTITY_TABLE_BY_KIND = {
  *
  * @param {string} kind - hotel | transfer | activity | service
  * @param {string} id - entity row id
- * @param {string[]} orphanPaths - object keys to remove on success
- * @returns {Promise<{ error: any }>}
+ * @param {string[]} orphanPaths - object keys to remove once the row is gone
+ * @returns {Promise<{ error: any, deleted: boolean }>} `deleted` is false when
+ *   the row still exists after the call — a silent 0-row RLS reject (session
+ *   expired / not permitted) or an already-gone row. Callers must NOT treat
+ *   `deleted:false` as success (it used to look like one: bare `.delete()`
+ *   returned `error:null` and the UI closed as if it worked).
  */
 export async function deleteSourceEntity(kind, id, orphanPaths) {
   const table = ENTITY_TABLE_BY_KIND[kind];
-  if (!table) return { error: new Error(`unknown entity kind: ${kind}`) };
-  const { error } = await supabase.from(table).delete().eq('id', id);
-  if (!error) removeTripFiles(orphanPaths);
-  return { error };
+  if (!table) return { error: new Error(`unknown entity kind: ${kind}`), deleted: false };
+  try {
+    // writeRows(expectRow:false): reads the deleted rows so a silent 0-row RLS
+    // reject is visible (deleted:false) instead of a phantom success. Files are
+    // swept ONLY when a row was actually removed.
+    const rows = await writeRows(supabase.from(table).delete().eq('id', id), { expectRow: false });
+    const deleted = rows.length > 0;
+    if (deleted) removeTripFiles(orphanPaths);
+    return { error: null, deleted };
+  } catch (error) {
+    return { error, deleted: false };
+  }
 }
