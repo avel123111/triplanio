@@ -382,7 +382,7 @@ export default function TripStructureEdit() {
     });
     persistOrder(ids);
   };
-  const { dragIdx, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef } =
+  const { draggingId, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef } =
     useRouteDnD({ ordered: dndOrdered, isAnchor, onCommitOrder: commitOrder });
   // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
   // stop); raising a waypoint above 0 turns it back into a transit city.
@@ -656,7 +656,7 @@ export default function TripStructureEdit() {
   { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
   // Live preview order, FLIP reorder, keyboard move, pointer-drag arm/move/end and
   // justDraggedRef are all provided by the shared useRouteDnD hook instantiated
-  // above (destructured: displayNodes, dragIdx, overGap, setRowRef, armDrag,
+  // above (destructured: displayNodes, draggingId, overGap, setRowRef, armDrag,
   // moveNodeById, justDraggedRef). The hook's commit path is `commitOrder`.
   // Transfers whose from/to cities are NOT adjacent in the route (or dangle on a
   // removed city) — shown in the "out of plan" tray instead of a connector.
@@ -911,17 +911,16 @@ export default function TripStructureEdit() {
             <span className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
           </div>
-          <div className={'te-table' + (dragIdx !== null ? ' is-dragging' : '')}>
+          <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
-              const dIdx = ordered.indexOf(n);     // stable index in the real order
               const next = displayNodes[displayNodes.indexOf(n) + 1];
               const tr = next ? transferFor(n.id, next.id) : null;
               const pending = isTmpId(n.id);       // city awaiting its real uuid (add_city in flight) → muted, non-editable
-              const dragging = dragIdx === dIdx;
+              const dragging = draggingId === n.id;
               const dragProps = {
                 dragging,
                 pressing: pressingId === n.id,
-                onArm: (e) => armDrag(e, dIdx, n.id),
+                onArm: (e) => armDrag(e, n.id),
                 onMove: (dir) => moveNodeById(n.id, dir),
               };
               let body;
@@ -963,7 +962,7 @@ export default function TripStructureEdit() {
             })}
           </div>
 
-          {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
+          {draggingId != null && ordered[ordered.length - 1]?.kind !== 'end' && (
             <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
