@@ -382,6 +382,7 @@ h1, h2, h3, h4 {
 .nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
 .cdu b,            /* TRIP-188: инспектор канонов — числа обратного отсчёта Subheading→Title */
 .lp-ti b,          /* TRIP-188: инспектор канонов — заголовки шапок панелей события/добавления Subheading→Title */
+.flow-lp-b h1,     /* TRIP-222: инспектор канонов — заголовки шагов планирования Heading→Title (оба flow) */
 h1,
 .plan-price__amount,
 .auth__h1,
@@ -399,7 +400,6 @@ h1,
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
 h2,
 .eroute h3,
-.flow-lp-b h1,
 .lph-name,
 .acct-hero__av,
 .acct-hero__name,
@@ -421,6 +421,8 @@ h2,
 .app-header__trip-title, /* TRIP-175 инсп.: Subheading→Heading (заголовок трипа в шапке) */
 .app-header__brand-name, /* TRIP-175 инсп.: Subheading→Heading (вордмарк Triplanio) */
 .chat-head h3,     /* TRIP-175 инсп.: Label→Heading (заголовок «Групповой чат») */
+.choice-card__ttl, /* TRIP-222: инспектор канонов — названия способов создания Label→Heading */
+.flow-lp-b .section-sub, /* TRIP-222: инспектор канонов — саб-заголовки шагов планирования Subheading→Heading */
 .acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* .t-heading ← h2 (карьер .acct-sectitle); TRIP-175 инсп.: .ncal-year-lbl → Subheading */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
@@ -428,7 +430,6 @@ h2,
 h3,
 .avatar--xl,
 .invite__tx h3,
-.flow-lp-b .section-sub,
 .ti b,
 .stepper button,
 .route .rt,
@@ -464,7 +465,6 @@ h3,
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
-.choice-card__ttl,
 .te-step,
 .sheet .ss-search input,
 .plan-card__name,
@@ -1383,7 +1383,11 @@ h4,
      canonical solid .sheet look (blur over a moving map is muddy on phones). */
   .map-route {
     top: auto; left: 0; right: 0;
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    /* TRIP-222: flush on top of the 60px nav. The nav is box-sizing:border-box
+       height:60px and its surface already covers the safe-area inset (padding is
+       inside the 60px), so adding env(safe-area-inset-bottom) here double-counted
+       it and left a safe-area-tall strip of map peeking between sheet and nav. */
+    bottom: 60px;
     width: auto; max-width: none;
     background: var(--surface); border: 0;
     border-radius: 20px 20px 0 0; box-shadow: var(--sh-3);

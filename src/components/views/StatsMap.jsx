@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
-import { calmFit } from '@/lib/map/camera';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { createMiniMarkerEl, groupByLocation } from '@/lib/map/markers';
 import { dominantTone } from '@/lib/travel-stats';
@@ -22,6 +21,13 @@ import { cityKey } from '@/lib/trip-cities';
 //   from the get_user_travel_stats RPC (already deduped to real destinations).
 // The fill's ISO-3166-1 alpha-2 set is derived from the points' country codes.
 // onPointClick(groupData[]) is optional (stats side-panel).
+//
+// TRIP-222: the camera stays at whole-world scale by default and does NOT
+// auto-focus the user's visited cities — the country fill / pins already convey
+// where they've been. Bounds ≈ the inhabited world so fitBounds frames it
+// responsively at any container size (better than a fixed zoom).
+const WORLD_VIEW_BOUNDS = [[-165, -54], [178, 74]];
+
 export default function StatsMap({
   points = [],
   colorScheme = 'LIGHT',
@@ -73,11 +79,6 @@ export default function StatsMap({
     for (const [c, ps] of byC) out[c] = dominantTone(ps);
     return out;
   }, [drawable]);
-
-  const pointsSig = useMemo(
-    () => drawable.map((p) => `${(+p.lat).toFixed(5)},${(+p.lng).toFixed(5)}`).join('|'),
-    [drawable],
-  );
 
   // Country fill: create once, show on this screen, hide again on unmount so the
   // trip lenses (which never touch this layer) stay unfilled. The layer + source
@@ -135,18 +136,16 @@ export default function StatsMap({
       });
     }
 
-    // Fit only when the slot is measured (canFit); deferred otherwise — the effect
-    // re-runs when canFit flips. Pins above draw on `ready`, never blank. (TRIP-202)
-    if (canFit && drawable.length > 0 && fittedSigRef.current !== pointsSig) {
-      const pts = drawable.map((p) => [+p.lng, +p.lat]);
-      // First fit after load snaps; later changes glide with the shared adaptive
-      // calm tempo (same as every other non-public map).
-      if (fittedSigRef.current === '') fitToPoints(map, pts, { padding: 56, maxZoom: 6, duration: 0 });
-      else calmFit(map, pts, { padding: 56, maxZoom: 6 });
-      fittedSigRef.current = pointsSig;
+    // Camera: frame the WHOLE WORLD, once per mount (no auto-focus on visited
+    // cities — TRIP-222). Runs when the slot is measured (canFit); the mount reset
+    // of fittedSigRef re-applies it on each (re)mount, but a later drawable change
+    // (year filter) only redraws pins and leaves the camera where the user left it.
+    if (canFit && fittedSigRef.current === '') {
+      fitToPoints(map, WORLD_VIEW_BOUNDS, { padding: 24, duration: 0 });
+      fittedSigRef.current = 'world';
     }
     return undefined;
-  }, [ready, canFit, drawable, pointsSig, pins]);
+  }, [ready, canFit, drawable, pins]);
 
   // Country fill click → onCountryClick(isoAlpha2). The fill layer covers every
   // country (visited or not); the consumer decides whether the clicked code is in
