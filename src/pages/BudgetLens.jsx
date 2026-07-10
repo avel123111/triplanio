@@ -29,10 +29,10 @@ import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
 import { currencySymbol } from '@/lib/budget/currencies';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
-import { getActiveLocale } from '@/lib/i18n/format';
+import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, ReadOnlyBanner, fmtDate, CurrencyCombobox } from '../design/index';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
 
@@ -117,7 +117,9 @@ function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
         })}
       </svg>
       <div className="bgt-donut__c">
-        <span className="v">{money(total, mainCurrency)}</span>
+        {/* TRIP-225: центр кольца — компактный формат (₽1,3 млн), переиспуем общий
+            fmtMoneyActive({compact}); детализация/легенда ниже остаются полными. */}
+        <span className="v">{fmtMoneyActive(total, mainCurrency, { compact: true })}</span>
         <span className="l">{centerLabel}</span>
       </div>
     </div>
@@ -669,9 +671,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   return (
     <div className="bgt ov-anim">
       {readOnly && (
-        <Severity level="info" title={t('settings.readonly_banner_title')}>
-          {t('budget.readonly_banner_desc')}
-        </Severity>
+        <ReadOnlyBanner>{t('budget.readonly_banner_desc')}</ReadOnlyBanner>
       )}
       {/* ░ HEADER: screen title + primary actions relocated from the removed
           per-screen bar. On phones the buttons hide (see BudgetLens.css): "add

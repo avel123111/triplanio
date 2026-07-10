@@ -11,7 +11,7 @@ import PageNotFound from '@/lib/PageNotFound';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
-import ProUpsellModal from '@/components/common/ProUpsellModal';
+import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { isAddonEnabled } from '@/lib/tripAddons';
 import { isLensVisible } from '@/lib/tripMenu';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
@@ -227,27 +227,25 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 
 // ─── LoadingScreen / ErrorScreen ──────────────────────────────────────────────
 
-function LoadingScreen({ lens = 'overview' }) {
+function LoadingScreen({ lens = 'overview', user, isPro, isDark, onToggleTheme, onBack }) {
   const { t } = useI18n();
   return (
     <div className="trip-shell">
-      {/* Skeleton unified top bar (brand gradient) */}
-      <header className="app-header app-header--trip">
-        <div className="app-header__left">
-          <div className="app-header__brand">
-            <span className="app-header__logo"><img src="/triplanio-logo.svg" alt="Triplanio" /></span>
-            <span className="app-header__brand-name">Triplanio</span>
-          </div>
-          <span className="app-header__vdiv" />
-          <div className="app-header__trip">
-            <Skeleton w={190} h={18} r={6} style={{ marginBottom: 6 }} />
-            <Skeleton w={150} h={12} r={5} />
-          </div>
-        </div>
-        <div className="app-header__right">
-          <Skeleton w={32} h={32} r={999} />
-        </div>
-      </header>
+      {/* TRIP-225: правый кластер хедера (профиль/тема/колокольчик) и бренд доступны
+          оптимистично (AuthContext/ThemeContext/своя query) — рендерим НАСТОЯЩИЙ
+          AppHeader, а не скелетон. Скелетоним только название/мету трипа: они ждут
+          shell-запрос. */}
+      <AppHeader
+        isTrip
+        user={user}
+        isPro={isPro}
+        isDark={isDark}
+        onToggleTheme={onToggleTheme}
+        onBack={onBack}
+        backTitle={t('trip.back')}
+        title={<Skeleton w={190} h={18} r={6} />}
+        meta={<Skeleton w={150} h={12} r={5} />}
+      />
       <div className="trip-body">
         {/* Skeleton sidebar */}
         <aside className="app-side">
@@ -904,7 +902,9 @@ export default function TripView() {
   // Edit Mode (structure editor) gate: anyone but a viewer. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
   const canEditMode = roleCanEdit(myRole);
-  const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
+  const { openProUpsell } = useProUpsell();
+  // Участник (не владелец) → инфо-апселл «подключает владелец» (app-level, TRIP-225).
+  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: members.find(m => m.user_id === trip?.created_by)?.user_full_name || '' });
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
   // Global trip-header state: mobile sidebar, and the right-hand actions the
@@ -957,7 +957,7 @@ export default function TripView() {
   const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shellData?.trip, false);
 
   // 'auth' shows the same loading placeholder while useQueryGate's effect redirects to /login.
-  if (shellGate === 'loading' || shellGate === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
+  if (shellGate === 'loading' || shellGate === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} />;
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
   // exist" page, NOT the accusatory "no access". Split from 'access' in TRIP-208.
@@ -1017,7 +1017,7 @@ export default function TripView() {
         meta={heroSub}
       />
       <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
-          <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => setShareOpen(true)} />
+          <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={openProInfo} onShare={() => setShareOpen(true)} />
           <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
           {/* Phone menu: bottom-sheet variant of the same sidebar (≤640px). The
               slide-in drawer above is hidden by CSS at this breakpoint. */}
@@ -1033,7 +1033,7 @@ export default function TripView() {
             isOwner={isOwner}
             myRole={myRole}
             onUpgrade={() => { setSideOpen(false); openUpgrade(); }}
-            onProInfo={() => { setSideOpen(false); setTripProInfoOpen(true); }}
+            onProInfo={() => { setSideOpen(false); openProInfo(); }}
             onShare={() => { setSideOpen(false); setShareOpen(true); }}
           />
           <div className="trip-content">
@@ -1269,13 +1269,6 @@ export default function TripView() {
             </EventDrawerHost>
           </div>
         </div>
-
-      <ProUpsellModal
-        open={tripProInfoOpen}
-        mode="info"
-        onOpenChange={setTripProInfoOpen}
-        ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
-      />
 
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
 
