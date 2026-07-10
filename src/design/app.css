@@ -1383,18 +1383,24 @@ h4,
      canonical solid .sheet look (blur over a moving map is muddy on phones). */
   .map-route {
     top: auto; left: 0; right: 0;
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    /* TRIP-222: the sheet runs to the screen bottom and covers the map behind the
+       floating dock, so no map peeks under the nav. The dock (fixed, higher
+       stacking) still floats on top unchanged. The grip+title peek stays at the
+       same visual height — the max-heights add the 60px dock zone the sheet now
+       spans below them, and the list gets matching bottom padding so its last
+       rows clear the dock. */
+    bottom: 0;
     width: auto; max-width: none;
     background: var(--surface); border: 0;
     border-radius: 20px 20px 0 0; box-shadow: var(--sh-3);
     backdrop-filter: none; -webkit-backdrop-filter: none;
-    max-height: 68px; /* peek */
+    max-height: calc(68px + 60px + env(safe-area-inset-bottom)); /* peek + dock zone */
     transition: max-height .3s cubic-bezier(.22, 1, .36, 1);
   }
-  .map-route.is-expanded { max-height: 56vh; }
+  .map-route.is-expanded { max-height: calc(56vh + 60px + env(safe-area-inset-bottom)); }
   .map-route .sheet-grip { display: flex; width: 100%; background: none; border: 0; cursor: pointer; }
   .map-route__head { padding-top: 2px; border-bottom: 0; }
-  .map-route__list { flex: 1; min-height: 0; }
+  .map-route__list { flex: 1; min-height: 0; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
 }
 
 /* City badge (TRIP-33): translucent glass label next to the active city's pin on
