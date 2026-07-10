@@ -358,7 +358,7 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
   // implementation, no second copy to drift. Creation cities have no pinned ends,
   // so every row is movable (isAnchor → false); a commit just reorders the list
   // by id and re-cascades the dates through the shared layout engine.
-  const { dragIdx, pressingId, displayNodes, setRowRef, armDrag, moveNodeById } = useRouteDnD({
+  const { draggingId, pressingId, displayNodes, setRowRef, armDrag, moveNodeById } = useRouteDnD({
     ordered: cities,
     isAnchor: () => false,
     onCommitOrder: (ids) => setCities(cs => {
@@ -406,13 +406,13 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
                 <CityRow
                   idx={dIdx}
                   city={c}
-                  isDragging={dragIdx === dIdx}
+                  isDragging={draggingId === c.id}
                   isPressing={pressingId === c.id}
                   isLast={dIdx === cities.length - 1}
                   isFinalAnchor={dIdx === cities.length - 1 && finalPoint}
                   finalPoint={finalPoint}
                   onToggleFinalPoint={setFinalPoint}
-                  onArm={(e) => armDrag(e, dIdx, c.id)}
+                  onArm={(e) => armDrag(e, c.id)}
                   onChange={(patch) => update(c.id, patch)}
                   onRemove={() => remove(c.id)}
                   onMove={(dir) => moveNodeById(c.id, dir)}
