@@ -94,20 +94,23 @@ export function loadErrorKind(error) {
  *    retry screen shows immediately instead of an endless spinner.
  *  - still pending / fetching → 'loading' (covers disabled queries too, whose
  *    status is 'pending' with an 'idle' fetchStatus — never misread as 'access').
- *  - settled with no error and no data → depends on `emptyIsOk` (TRIP-220):
- *      • single-resource fetch (a trip by id) → 'access'. Under RLS a forbidden
- *        row comes back as an EMPTY success, not a 403, so "settled + empty" is
- *        the only signal that the caller isn't a member — the genuine deny case.
- *      • collection fetch (trips list, inbox) → 'ok'. An empty list is the
- *        legitimate "you have none yet" state, NOT a permission wall. Reading it
- *        as 'access' is exactly what made a zero-trip user land on the trip-level
- *        "Нет доступа к этому путешествию" screen right after login. Callers over
- *        a collection pass `emptyIsOk:true` so empty falls through to their own
- *        empty-state render. Real 403/404 still arrive as a thrown error above.
+ *  - settled with no error and no data → `emptyIsOk` decides; it defaults to the
+ *    FAIL-SAFE 'ok' (TRIP-220):
+ *      • default (omitted → true): an empty successful load is a legitimate "you
+ *        have none yet" state → 'ok', and the screen renders its own empty state.
+ *        Safe because a real permission failure never arrives as a settled-empty
+ *        success — it's a THROWN 403/404 (edge functions status-code it; direct
+ *        PostgREST yields 42501/PGRST116) and is classified above. So a NEW list
+ *        screen that forgets this degrades to a harmless empty state, never a
+ *        false denial (the bug that dropped a zero-trip user onto the trip-level
+ *        "Нет доступа к этому путешествию" screen after login).
+ *      • single-resource opt-in (`emptyIsOk:false`): screens fetching ONE resource
+ *        where empty-but-successful should read as "you can't see it" — a defensive
+ *        belt over the thrown-error path. The trip shell/content gates pass false.
  *
  * @param {{ isPending: boolean, fetchStatus: string, error: unknown, hasData: boolean, emptyIsOk?: boolean }} q
  */
-export function queryGateKind({ isPending, fetchStatus, error, hasData, emptyIsOk = false }) {
+export function queryGateKind({ isPending, fetchStatus, error, hasData, emptyIsOk = true }) {
   if (error && loadErrorKind(error) === 'auth') return 'auth';
   if (hasData) return 'ok';
   if (error) return loadErrorKind(error);           // 'not_found' | 'access' | 'temporary'

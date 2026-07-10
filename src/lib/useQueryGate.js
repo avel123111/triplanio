@@ -11,10 +11,13 @@ import { queryGateKind } from '@/lib/loadStateClassify';
 //
 // @param {{ isPending: boolean, fetchStatus: string, error: unknown }} query
 // @param {boolean} hasData - whether the screen already has usable (cached) data
-// @param {boolean} [emptyIsOk] - COLLECTION screens (trips list, inbox) pass true:
-//   a settled-empty success is "none yet", not a denial. See queryGateKind (TRIP-220).
+// @param {boolean} [emptyIsOk=true] - a settled-empty successful load is a
+//   legitimate empty state ('ok'), not a denial — the FAIL-SAFE default, since a
+//   real deny always arrives as a thrown 403/404. Single-resource screens (a trip
+//   by id) pass false to keep the defensive "empty means no-access" guard. See
+//   queryGateKind (TRIP-220).
 // @returns {'loading'|'auth'|'temporary'|'access'|'ok'}
-export function useQueryGate(query, hasData, emptyIsOk = false) {
+export function useQueryGate(query, hasData, emptyIsOk = true) {
   const nav = useNavigate();
   const kind = queryGateKind({
     isPending: query.isPending,

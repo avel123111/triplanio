@@ -98,24 +98,30 @@ test('queryGateKind: thrown errors classify per class when no data', () => {
   assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(500), hasData: false }), 'temporary');
 });
 
-test('queryGateKind: single-resource settled with no data and no error → access (RLS-filtered trip)', () => {
-  // Default (emptyIsOk omitted/false): a specific trip fetched by id that comes
-  // back empty means RLS filtered it → the caller isn't a member → 'access'.
-  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: undefined, hasData: false }), 'access');
+test('queryGateKind: settled empty with no error → ok by DEFAULT (fail-safe, TRIP-220)', () => {
+  // The prod bug: a zero-trip user's trips-list query settles with [] (no error),
+  // so hasData=false. The OLD default read that as 'access' and showed the trip-
+  // level "Нет доступа к этому путешествию" screen on /trips. The default is now
+  // the fail-safe 'ok' — a real deny never arrives as a settled-empty success
+  // (it's a thrown 403/404, classified above), so empty is only ever benign. A
+  // new collection screen that forgets to think about this degrades to a harmless
+  // empty state, never to a false denial.
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: undefined, hasData: false }), 'ok');
+  // The default must NOT swallow real errors or the loading/paused states.
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(403), hasData: false }), 'access');
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(500), hasData: false }), 'temporary');
+  assert.equal(queryGateKind({ isPending: true, fetchStatus: 'fetching', error: undefined, hasData: false }), 'loading');
+  assert.equal(queryGateKind({ isPending: true, fetchStatus: 'paused', error: undefined, hasData: false }), 'temporary');
 });
 
-test('queryGateKind: collection settled empty with no error → ok, NOT access (TRIP-220)', () => {
-  // The prod bug: a zero-trip user's trips-list query settles with [] (no error),
-  // so hasData=false. Without emptyIsOk it wrongly read as 'access' and showed
-  // the trip-level "Нет доступа к этому путешествию" screen on /trips. Collection
-  // screens (trips list, inbox) pass emptyIsOk:true → empty falls through to 'ok'
-  // and the screen renders its own empty state.
-  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: undefined, hasData: false, emptyIsOk: true }), 'ok');
-  // emptyIsOk must NOT swallow real errors or the loading/paused states.
-  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(403), hasData: false, emptyIsOk: true }), 'access');
-  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(500), hasData: false, emptyIsOk: true }), 'temporary');
-  assert.equal(queryGateKind({ isPending: true, fetchStatus: 'fetching', error: undefined, hasData: false, emptyIsOk: true }), 'loading');
-  assert.equal(queryGateKind({ isPending: true, fetchStatus: 'paused', error: undefined, hasData: false, emptyIsOk: true }), 'temporary');
+test('queryGateKind: single-resource opt-in (emptyIsOk:false) → settled-empty = access', () => {
+  // A specific trip fetched by id that comes back empty means "you can't see it".
+  // Single-resource screens (TripView/editor shell+content) pass emptyIsOk:false
+  // to keep that defensive guard over the thrown-error path.
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: undefined, hasData: false, emptyIsOk: false }), 'access');
+  // The opt-in still must not override auth/error/loading/paused.
+  assert.equal(queryGateKind({ isPending: false, fetchStatus: 'idle', error: httpErr(500), hasData: false, emptyIsOk: false }), 'temporary');
+  assert.equal(queryGateKind({ isPending: true, fetchStatus: 'paused', error: undefined, hasData: false, emptyIsOk: false }), 'temporary');
 });
 
 // ── gateStubProps: one source for the error-screen look ───────────────────────
