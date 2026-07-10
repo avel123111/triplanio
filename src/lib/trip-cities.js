@@ -43,6 +43,11 @@ export function cityLabel(v, lang) {
  * and switching UI language re-localizes live. Non-mutating; unchanged rows are
  * returned as-is. A visit with no resolvable label (empty `cityLabel`) keeps its
  * existing `city_name` — we never overwrite a name with an empty string.
+ *
+ * NB: the localized COUNTRY name is NOT enriched here — it is derived at the two
+ * display seams (CityPanel, PublicTrip) straight from `country_code` via the
+ * i18n `fmtCountry` (TRIP-223). This util stays pure (no i18n/luxon import) so it
+ * remains node-unit-testable; country needs Intl, cityLabel does not.
  */
 export function localizeVisits(visits, lang) {
   if (!Array.isArray(visits)) return [];

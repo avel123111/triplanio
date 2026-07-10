@@ -9,7 +9,7 @@
  */
 import React from 'react';
 import { X } from 'lucide-react';
-import { useI18n } from '@/lib/i18n/I18nContext';
+import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
 import { Btn } from '@/design/index';
@@ -79,12 +79,15 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
 }
 
 export default function CityPanel({
-  node, meta, cityNo, hotels = [], acts = [], arrival, departure, prevCity, nextCity,
+  node, cityNo, hotels = [], acts = [], arrival, departure, prevCity, nextCity,
   isHotelWarn, isActWarn, arrivalWarn = false, departureWarn = false, onBack, onRemove,
   onNightsMinus, onNightsPlus,
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
 }) {
   const { t } = useI18n();
+  // Country name is derived live from the ISO country_code (TRIP-223) — the legacy
+  // denormalized node.country column was dropped. fmtCountry re-localizes on lang change.
+  const { fmtCountry } = useI18nFormat();
   // Waypoint = a 0-night transit stop: it has arrival/departure transfers and
   // activities like a normal city, but NO hotel (no overnight stay); the nights
   // stepper turns it back into a city when raised above 0.
@@ -102,7 +105,7 @@ export default function CityPanel({
         <div className="lp-ti lp-ti--stack">
           <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
           <b>{node.city_name}</b>
-          {meta?.country && <span className="lp-country"><CountryFlag code={node.country_code} />{meta.country}</span>}
+          {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}
         </div>
         <button className="ev-dlg-close" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
       </div>

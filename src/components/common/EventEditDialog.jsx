@@ -1407,7 +1407,6 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
       geonameid: c.geonameid ?? null,
       name_i18n: c.name_i18n || null,
       city_name_en: c.city_name_en || null,
-      country: c.country || null,
       country_code: c.country_code || null,
       latitude: c.latitude ?? null,
       longitude: c.longitude ?? null,
