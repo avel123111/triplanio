@@ -292,6 +292,7 @@ function liveRateToMain(fx, code) {
 
 function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
+  const { user } = useAuth();
   const close = () => onOpenChange?.(false);
   const others = currencies.filter(c => c && c !== mainCurrency);
   const [values, setValues] = useState(() => {
@@ -321,7 +322,19 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
     });
     try {
-      await writeRows(supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId));
+      // expectRow:false so 0 rows doesn't throw — a trip can lack a trip_budgets
+      // row (seed_budget_on_trip swallows its own failures, and ensure_trip_budget
+      // is not client-callable). In that case self-heal by inserting the row so the
+      // overrides actually persist instead of silently vanishing.
+      const rows = await writeRows(
+        supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId),
+        { expectRow: false },
+      );
+      if (!rows.length) {
+        await writeRows(supabase.from('trip_budgets').insert({
+          trip_id: tripId, currency: mainCurrency, fx_overrides: next, created_by: user?.id,
+        }));
+      }
     } catch (e) {
       setSaving(false);
       setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
