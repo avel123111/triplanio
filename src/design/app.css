@@ -1383,10 +1383,6 @@ h4,
      canonical solid .sheet look (blur over a moving map is muddy on phones). */
   .map-route {
     top: auto; left: 0; right: 0;
-    /* TRIP-222: clear the GROUNDED map-lens dock (60px bar + safe-area strip). On
-       the map lens the floating glass capsule is swapped for a solid full-width
-       dock (.mbnav--map) so the moving map can't show through it; the sheet sits
-       flush on top of that dock. */
     bottom: calc(60px + env(safe-area-inset-bottom));
     width: auto; max-width: none;
     background: var(--surface); border: 0;
@@ -1883,22 +1879,6 @@ h4,
     transition: transform .16s var(--ease-spring), box-shadow .2s;
   }
   .mbnav__fab:active { transform: translateY(-15px) scale(.9); }
-
-  /* TRIP-222: map-lens dock is GROUNDED, not floating. Over a full-bleed moving
-     map the floating capsule left the map showing through the inset below/around
-     it; here the dock becomes a solid, full-width bar flush to the screen bottom
-     (safe-area filled), so the route bottom-sheet meets an opaque nav. */
-  .mbnav--map {
-    padding: 0 0 env(safe-area-inset-bottom);
-    background: var(--surface);
-  }
-  .mbnav--map .mbnav__dock {
-    max-width: none; margin: 0;
-    border-radius: 0; border: 0; border-top: 1px solid var(--line);
-    background: var(--surface);
-    -webkit-backdrop-filter: none; backdrop-filter: none;
-    box-shadow: none;
-  }
 }
 
 /* Add bottom-sheet rows (inside <Sheet>, opened by the nav "+") */

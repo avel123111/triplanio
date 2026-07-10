@@ -84,7 +84,7 @@ export default function MobileBottomNav() {
     const lens = sp.get('lens') || 'overview';
     const go = (target) => window.__navigate?.(target);
     return (
-      <nav className={'mbnav' + (lens === 'map' ? ' mbnav--map' : '')} aria-label={t('nav.trips')}>
+      <nav className="mbnav" aria-label={t('nav.trips')}>
         <div className="mbnav__dock">
           <NavItem icon="grid" label={t('trip_menu.overview')} active={lens === 'overview'} onClick={() => go('overview')} />
           <NavItem icon="list" label={t('trip_menu.timeline')} active={lens === 'timeline'} onClick={() => go('timeline')} />
