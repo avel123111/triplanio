@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="brand.css">
+<style>
+  .stage{width:1080px;height:1350px;display:flex;flex-direction:column;padding:72px 76px 64px;}
+  .head{display:flex;align-items:center;justify-content:space-between;}
+  .head .lockup .word{font-size:32px;}
+  .kicker{font-family:var(--f-mono);font-weight:600;font-size:20px;letter-spacing:.12em;
+    color:var(--muted-inv);text-transform:uppercase;}
+  .h{font-size:78px;margin-top:44px;}
+  .h .ai-w{background:var(--ai-grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{font-size:31px;color:var(--muted-inv);margin-top:18px;max-width:850px;}
+  .viz{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:24px;}
+  .envelope{display:flex;align-items:center;gap:16px;background:var(--glass);border:1px solid var(--glass-line);
+    border-radius:18px;padding:20px 30px;font-size:24px;font-weight:500;backdrop-filter:blur(8px);}
+  .beam{display:flex;flex-direction:column;align-items:center;position:relative;height:96px;margin:10px 0;}
+  .beam .line{width:5px;height:96px;background:var(--ai-grad);border-radius:5px;}
+  .beam .sp{position:absolute;right:-52px;top:26px;color:#A855F7;}
+  .cards{display:flex;flex-direction:column;gap:18px;width:640px;}
+  .aicard{background:#fff;color:var(--ink);border-radius:20px;padding:24px 28px;
+    border:2px solid transparent;background-image:linear-gradient(#fff,#fff),var(--ai-grad);
+    background-origin:border-box;background-clip:padding-box,border-box;
+    box-shadow:0 24px 60px rgba(124,58,237,.28);position:relative;}
+  .aicard .badge{position:absolute;top:-17px;right:26px;font-family:var(--f-mono);font-weight:700;
+    font-size:14px;color:#fff;background:var(--ai-grad);border-radius:999px;padding:7px 14px;letter-spacing:.04em;}
+  .aicard .ev .ico{width:56px;height:56px;}
+  .aicard .ev .t{font-size:24px;}
+  .aicard .ev .m{font-size:16px;margin-top:4px;opacity:.55;}
+  .foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
+  .cta{font-size:28px;padding:22px 42px;}
+  .site{font-size:17px;}
+</style></head><body>
+<div id="stage" class="stage dark">
+  <div class="head"><div id="lockup"></div><span class="kicker" id="kick"></span></div>
+  <div class="h" id="h"></div>
+  <div class="sub" id="sub"></div>
+  <div class="viz">
+    <div class="envelope" id="env"></div>
+    <div class="beam"><div class="line"></div><span class="sp" id="sp"></span></div>
+    <div class="cards" id="cards"></div>
+  </div>
+  <div class="foot"><div class="cta"><span id="cta"></span><span class="arr">→</span></div><span class="site">triplanio.com</span></div>
+</div>
+<script src="kit.js"></script>
+<script>
+const S = {
+  ru: { kick:'без ручного ввода', h:'Перешли письмо -<br><span class="ai-w">получи маршрут</span>',
+        sub:'AI распознаёт брони из писем и скринов и сам раскладывает их по дням поездки.',
+        env:'Fwd: Подтверждение бронирования', badge:'AI РАСПОЗНАЛ',
+        cards:[['plane','Рейс SVO → FCO','12 окт · 12:40 · терминал B','--ev-transfer'],
+               ['bed','Hotel Roma Centrale','12-15 окт · заезд 14:00','--ev-hotel']],
+        cta:'Попробовать бесплатно' },
+  en: { kick:'no manual entry', h:'Forward an email -<br><span class="ai-w">get an itinerary</span>',
+        sub:'AI reads bookings from emails and screenshots and lays them out day by day.',
+        env:'Fwd: Your booking confirmation', badge:'PARSED BY AI',
+        cards:[['plane','Flight JFK → FCO','Oct 12 · 12:40 · Terminal B','--ev-transfer'],
+               ['bed','Hotel Roma Centrale','Oct 12-15 · check-in 2pm','--ev-hotel']],
+        cta:'Try it free' },
+}[LANG];
+document.getElementById('lockup').outerHTML=lockup(58);
+document.getElementById('kick').textContent=S.kick;
+document.getElementById('h').innerHTML=S.h;
+document.getElementById('sub').textContent=S.sub;
+document.getElementById('cta').textContent=S.cta;
+document.getElementById('env').innerHTML=ICONS.mail(28)+`<span>${S.env}</span>`;
+document.getElementById('sp').innerHTML=ICONS.spark(44);
+document.getElementById('cards').innerHTML=S.cards.map(([ic,t,m,c],i)=>`
+  <div class="aicard">${i===0?`<span class="badge">${S.badge}</span>`:''}
+    <div class="ev"><span class="ico" style="background:var(${c})">${ICONS[ic](28)}</span>
+    <div><div class="t">${t}</div><div class="m">${m}</div></div></div>
+  </div>`).join('');
+</script></body></html>

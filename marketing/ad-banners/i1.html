@@ -1,0 +1,65 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="brand.css">
+<style>
+  .stage{width:1080px;height:1350px;display:flex;flex-direction:column;padding:72px 76px 64px;}
+  .head{display:flex;align-items:center;justify-content:space-between;}
+  .head .lockup .word{font-size:32px;}
+  .kicker{font-family:var(--f-mono);font-weight:600;font-size:20px;letter-spacing:.12em;
+    color:var(--muted-inv);text-transform:uppercase;}
+  .h{font-size:80px;margin-top:52px;}
+  .cloud{position:relative;height:420px;margin-top:36px;}
+  .app{position:absolute;display:flex;align-items:center;gap:14px;background:var(--glass);
+    border:1px solid var(--glass-line);border-radius:18px;padding:20px 28px;font-size:28px;
+    font-weight:500;color:rgba(228,232,248,.85);backdrop-filter:blur(6px);white-space:nowrap;}
+  .app .ic{display:flex;opacity:.7;}
+  .divider{display:flex;align-items:center;gap:22px;margin:20px 0 40px;}
+  .divider .ln{flex:1;height:1px;background:var(--glass-line);}
+  .divider .word2{font-family:var(--f-disp);font-weight:800;font-size:44px;color:#fff;}
+  .one{background:#fff;color:var(--ink);border-radius:28px;padding:42px 46px;
+    box-shadow:0 30px 70px rgba(0,0,0,.5);}
+  .one .tt{display:flex;align-items:center;gap:16px;font-family:var(--f-disp);font-weight:800;font-size:40px;}
+  .one .rows{display:flex;gap:18px;margin-top:30px;}
+  .one .pill{flex:1;display:flex;align-items:center;gap:14px;background:#F4F6FC;border-radius:16px;
+    padding:20px 22px;font-weight:600;font-size:25px;}
+  .one .pill .ico{flex:none;width:46px;height:46px;border-radius:13px;display:flex;
+    align-items:center;justify-content:center;color:#fff;}
+  .foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
+  .cta{font-size:28px;padding:22px 42px;}
+  .site{font-size:17px;}
+</style></head><body>
+<div id="stage" class="stage dark">
+  <div class="head"><div id="lockup"></div><span class="kicker" id="kick"></span></div>
+  <div class="h" id="h"></div>
+  <div class="cloud" id="cloud"></div>
+  <div class="divider"><span class="ln"></span><span class="word2" id="after"></span><span class="ln"></span></div>
+  <div class="one" id="one"></div>
+  <div class="foot"><div class="cta"><span id="cta"></span><span class="arr">→</span></div><span class="site">triplanio.com</span></div>
+</div>
+<script src="kit.js"></script>
+<script>
+const S = {
+  ru: { kick:'план поездки', h:'Сейчас он выглядит так:',
+        apps:[['note','Заметки'],['cam','Скрины'],['mail','Почта'],['chat','Чат с друзьями'],['bookmark','Закладки'],['grid','Таблица']],
+        after:'А мог бы так', tt:'Рим, 12-15 окт',
+        pills:[['plane','Рейс','--ev-transfer'],['bed','Отель','--ev-hotel'],['ticket','Билеты','--ev-activity']],
+        cta:'Собрать всё в одном месте' },
+  en: { kick:'your trip plan', h:'Right now it looks like this:',
+        apps:[['note','Notes'],['cam','Screenshots'],['mail','Email'],['chat','Group chat'],['bookmark','Bookmarks'],['grid','Spreadsheet']],
+        after:'It could look like this', tt:'Rome, Oct 12-15',
+        pills:[['plane','Flight','--ev-transfer'],['bed','Hotel','--ev-hotel'],['ticket','Tickets','--ev-activity']],
+        cta:'Get it all in one place' },
+}[LANG];
+document.getElementById('lockup').outerHTML = lockup(58);
+document.getElementById('kick').textContent=S.kick;
+document.getElementById('h').innerHTML=S.h;
+document.getElementById('after').textContent=S.after;
+document.getElementById('cta').textContent=S.cta;
+/* scattered chips: fixed pseudo-random placements */
+const POS=[[0,22,-5],[440,0,3],[660,66,-2],[85,168,2],[500,190,-4],[280,310,4]];
+document.getElementById('cloud').innerHTML=S.apps.map(([ic,t],i)=>{
+  const[x,y,r]=POS[i];
+  return `<div class="app" style="left:${x}px;top:${y}px;transform:rotate(${r}deg)">
+    <span class="ic">${ICONS[ic](30)}</span>${t}</div>`;}).join('');
+document.getElementById('one').innerHTML=`<div class="tt">${logoMark(52)} ${S.tt}</div>
+  <div class="rows">${S.pills.map(([ic,t,c])=>`<div class="pill"><span class="ico" style="background:var(${c})">${ICONS[ic](26)}</span>${t}</div>`).join('')}</div>`;
+</script></body></html>

@@ -1,0 +1,66 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="brand.css">
+<style>
+  .stage{width:1080px;height:1350px;display:flex;flex-direction:column;padding:72px 76px 64px;}
+  .head{display:flex;align-items:center;justify-content:space-between;}
+  .head .lockup .word{font-size:32px;}
+  .kicker{font-family:var(--f-mono);font-weight:600;font-size:20px;letter-spacing:.12em;
+    color:var(--muted-inv);text-transform:uppercase;}
+  .viz{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;}
+  .clock{font-family:var(--f-mono);font-weight:600;font-size:120px;color:rgba(228,232,248,.9);letter-spacing:.02em;}
+  .date{font-family:var(--f-mono);font-size:24px;color:var(--muted-inv);margin-top:-10px;letter-spacing:.08em;}
+  .push{width:760px;background:rgba(255,255,255,.96);color:var(--ink);border-radius:24px;
+    padding:26px 30px;display:flex;gap:18px;align-items:flex-start;
+    box-shadow:0 34px 80px rgba(0,0,0,.55);margin-top:36px;}
+  .push .body{flex:1;}
+  .push .app{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--muted);
+    font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+  .push .tt{font-weight:700;font-size:26px;margin-top:10px;}
+  .push .tm{font-size:22px;color:#4A4659;margin-top:6px;line-height:1.35;}
+  .push .when{font-size:16px;color:var(--muted);flex:none;}
+  .h{font-size:84px;text-align:center;margin-top:52px;}
+  .sub{font-size:30px;color:var(--muted-inv);text-align:center;margin-top:14px;max-width:800px;
+    align-self:center;}
+  .foot{display:flex;align-items:center;justify-content:center;margin-top:auto;gap:26px;}
+  .cta{font-size:28px;padding:22px 42px;}
+</style></head><body>
+<div id="stage" class="stage dark">
+  <div class="head"><div id="lockup"></div><span class="kicker" id="kick"></span></div>
+  <div class="viz">
+    <div class="clock">21:47</div>
+    <div class="date" id="date"></div>
+    <div class="push" id="push"></div>
+    <div class="h" id="h"></div>
+    <div class="sub" id="sub"></div>
+  </div>
+  <div class="foot"><div class="cta"><span id="cta"></span><span class="arr">→</span></div></div>
+</div>
+<script src="kit.js"></script>
+<script>
+const S = {
+  ru: { kick:'дедлайны отмены', date:'ЧТ, 9 ОКТЯБРЯ',
+        tt:'Бесплатная отмена: Hotel Roma', tm:'Заканчивается завтра в 12:00. Ещё можно передумать без штрафа.',
+        when:'сейчас', h:'Забыл? Мы - нет.',
+        sub:'Triplanio напоминает о дедлайнах бесплатной отмены по всем броням поездки.',
+        cta:'Попробовать Triplanio' },
+  en: { kick:'cancellation deadlines', date:'THU, OCT 9',
+        tt:'Free cancellation: Hotel Roma', tm:'Ends tomorrow at 12:00. You can still change your mind at no charge.',
+        when:'now', h:"Forgot? We didn't.",
+        sub:'Triplanio reminds you before free cancellation ends on every booking in your trip.',
+        cta:'Try Triplanio' },
+}[LANG];
+document.getElementById('lockup').outerHTML=lockup(58);
+document.getElementById('kick').textContent=S.kick;
+document.getElementById('date').textContent=S.date;
+document.getElementById('h').textContent=S.h;
+document.getElementById('sub').textContent=S.sub;
+document.getElementById('cta').textContent=S.cta;
+document.getElementById('push').innerHTML=`
+  ${logoMark(58)}
+  <div class="body">
+    <div class="app">Triplanio</div>
+    <div class="tt">${S.tt}</div>
+    <div class="tm">${S.tm}</div>
+  </div>
+  <span class="when">${S.when}</span>`;
+</script></body></html>

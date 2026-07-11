@@ -1,0 +1,68 @@
+/* Triplanio ad creatives - shared kit.
+   Brand color + logo are canon (src/design tokens); the rest is ad-specific. */
+@import url("fonts.css");
+
+:root{
+  --brand:#2173C8;
+  --brand-2:#62A6F0;
+  --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
+  --logo-blue:#2267E2;
+  --night:#0c0e1c;
+  --night-2:#141830;
+  --glass:rgba(255,255,255,.07);
+  --glass-line:rgba(255,255,255,.14);
+  --paper:#fbfcfe;
+  --ink:#272433;
+  --ink-inv:#F4F6FF;
+  --muted:#7A7689;
+  --muted-inv:rgba(228,232,248,.72);
+  --line:#E9E8F2;
+  --warning:#E2920E;
+  --success:#1F9A66;
+  --danger:#E24A52;
+  --ev-hotel:#5470E6;
+  --ev-transfer:#15A2B0;
+  --ev-activity:#E0568F;
+  --ai-grad:linear-gradient(135deg,#A855F7 0%,#6366F1 55%,#22D3EE 100%);
+  --f-disp:'Exo 2',sans-serif;
+  --f-body:'Golos Text',sans-serif;
+  --f-mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:#888;}
+body{font-family:var(--f-body);-webkit-font-smoothing:antialiased;}
+
+/* ---- stage = exact ad canvas ---- */
+.stage{position:relative;overflow:hidden;}
+.stage.dark{background:radial-gradient(1200px 800px at 78% -10%, #1b2340 0%, var(--night) 55%);color:var(--ink-inv);}
+.stage.light{background:var(--paper);color:var(--ink);}
+
+/* ---- logo lockup ---- */
+.lockup{display:flex;align-items:center;gap:14px;}
+.lockup .mark{border-radius:22%;overflow:hidden;flex:none;display:block;}
+.lockup .word{font-family:var(--f-disp);font-weight:800;letter-spacing:.01em;}
+
+/* ---- CTA ---- */
+.cta{display:inline-flex;align-items:center;gap:12px;background:var(--brand-grad);
+  color:#fff;font-family:var(--f-body);font-weight:600;border-radius:999px;
+  box-shadow:0 12px 30px rgba(33,115,200,.38);white-space:nowrap;}
+.cta .arr{font-family:var(--f-body);}
+
+/* ---- generic card ---- */
+.card{border-radius:20px;background:#fff;color:var(--ink);
+  box-shadow:0 18px 44px rgba(12,14,28,.16);border:1px solid var(--line);}
+.dark .card{background:var(--glass);color:var(--ink-inv);border:1px solid var(--glass-line);
+  box-shadow:0 18px 44px rgba(0,0,0,.35);backdrop-filter:blur(10px);}
+
+/* ---- event chip row (flight / hotel / activity) ---- */
+.ev{display:flex;align-items:center;gap:14px;}
+.ev .ico{flex:none;display:flex;align-items:center;justify-content:center;border-radius:14px;color:#fff;}
+.ev .t{font-weight:600;line-height:1.15;}
+.ev .m{font-family:var(--f-mono);font-weight:600;opacity:.62;letter-spacing:.02em;}
+
+/* ---- small site tag ---- */
+.site{font-family:var(--f-mono);font-weight:600;letter-spacing:.06em;opacity:.55;}
+
+/* headline face */
+.h{font-family:var(--f-disp);font-weight:800;line-height:1.04;letter-spacing:-.01em;}
+.sub{font-weight:500;line-height:1.35;}

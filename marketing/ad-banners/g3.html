@@ -1,0 +1,98 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="brand.css">
+<style>
+  .stage{display:flex;align-items:center;}
+  .txt{position:relative;z-index:2;}
+  .h{margin:30px 0 16px;}
+  .h .ai-w{background:var(--ai-grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{color:var(--muted-inv);}
+  .viz{position:relative;display:flex;flex-direction:column;align-items:center;}
+  .envelope{display:flex;align-items:center;gap:14px;background:var(--glass);border:1px solid var(--glass-line);
+    border-radius:16px;color:var(--ink-inv);backdrop-filter:blur(8px);}
+  .envelope .es{font-weight:500;opacity:.85;white-space:nowrap;}
+  .beam{display:flex;flex-direction:column;align-items:center;position:relative;}
+  .beam .line{width:4px;background:var(--ai-grad);border-radius:4px;}
+  .beam .sp{position:absolute;color:#A855F7;}
+  .aicard{background:#fff;color:var(--ink);border-radius:20px;box-shadow:0 24px 60px rgba(124,58,237,.35);
+    position:relative;border:2px solid transparent;
+    background-image:linear-gradient(#fff,#fff),var(--ai-grad);background-origin:border-box;background-clip:padding-box,border-box;}
+  .aicard .badge{position:absolute;font-family:var(--f-mono);font-weight:700;color:#fff;
+    background:var(--ai-grad);border-radius:999px;letter-spacing:.04em;}
+  .aicard .ev .m{opacity:.55;}
+  .site{position:absolute;font-size:15px;}
+  /* landscape */
+  .landscape{width:1200px;height:628px;padding:0 72px;gap:60px;}
+  .landscape .txt{width:600px;flex:none;}
+  .landscape .h{font-size:60px;}
+  .landscape .sub{font-size:25px;max-width:540px;}
+  .landscape .cta{font-size:23px;padding:17px 32px;margin-top:32px;}
+  .landscape .viz{flex:1;}
+  .landscape .envelope{padding:14px 20px;font-size:15px;}
+  .landscape .beam{height:74px;margin:6px 0;}
+  .landscape .beam .line{height:74px;}
+  .landscape .beam .sp{right:-34px;top:18px;}
+  .landscape .aicard{padding:22px 26px;width:360px;}
+  .landscape .aicard .badge{top:-16px;right:22px;font-size:12px;padding:6px 12px;}
+  .landscape .ev .ico{width:52px;height:52px;}
+  .landscape .ev .t{font-size:20px;}
+  .landscape .ev .m{font-size:14px;margin-top:4px;}
+  .landscape .site{right:72px;bottom:26px;}
+  /* square */
+  .square{width:1200px;height:1200px;flex-direction:column;align-items:flex-start;padding:84px 88px 90px;}
+  .square .lockup .word{font-size:40px;}
+  .square .h{font-size:96px;margin-top:52px;}
+  .square .sub{font-size:40px;max-width:940px;}
+  .square .cta{font-size:36px;padding:28px 52px;margin-top:40px;}
+  .square .viz{flex:1;width:100%;justify-content:flex-end;margin-top:44px;}
+  .square .envelope{padding:18px 26px;font-size:20px;}
+  .square .beam{height:92px;margin:8px 0;}
+  .square .beam .line{height:92px;}
+  .square .beam .sp{right:-44px;top:24px;}
+  .square .aicard{padding:28px 34px;width:520px;}
+  .square .aicard .badge{top:-20px;right:30px;font-size:15px;padding:8px 16px;}
+  .square .ev .ico{width:62px;height:62px;}
+  .square .ev .t{font-size:25px;}
+  .square .ev .m{font-size:17px;margin-top:5px;}
+  .square .site{right:88px;bottom:34px;}
+</style></head><body>
+<div id="stage" class="stage dark">
+  <div class="txt">
+    <div id="lockup"></div>
+    <div class="h" id="h"></div>
+    <div class="sub" id="sub"></div>
+    <div class="cta"><span id="cta"></span><span class="arr">→</span></div>
+  </div>
+  <div class="viz">
+    <div class="envelope" id="env"></div>
+    <div class="beam"><div class="line"></div><span class="sp" id="sp"></span></div>
+    <div class="aicard" id="card"></div>
+  </div>
+  <div class="site">triplanio.com</div>
+</div>
+<script src="kit.js"></script>
+<script>
+const S = {
+  ru: { h:'Перешли письмо -<br><span class="ai-w">AI соберёт маршрут</span>',
+        sub:'Брони из писем и скринов сами превращаются в карточки поездки.',
+        cta:'Попробовать бесплатно',
+        env:'Fwd: Подтверждение бронирования', badge:'AI РАСПОЗНАЛ',
+        ev:['bed','Hotel Roma Centrale','12-15 окт · заезд 14:00 · 2 гостя','--ev-hotel'] },
+  en: { h:'Forward an email -<br><span class="ai-w">AI builds the itinerary</span>',
+        sub:'Bookings from emails and screenshots turn into trip cards on their own.',
+        cta:'Try it free',
+        env:'Fwd: Your booking confirmation', badge:'PARSED BY AI',
+        ev:['bed','Hotel Roma Centrale','Oct 12-15 · check-in 2pm · 2 guests','--ev-hotel'] },
+}[LANG];
+const st=document.getElementById('stage'); st.classList.add(RATIO);
+document.getElementById('lockup').outerHTML = lockup(RATIO==='square'?76:62);
+document.getElementById('h').innerHTML=S.h;
+document.getElementById('sub').textContent=S.sub;
+document.getElementById('cta').textContent=S.cta;
+const sq=RATIO==='square';
+document.getElementById('env').innerHTML=ICONS.mail(sq?26:20)+`<span class="es">${S.env}</span>`;
+document.getElementById('sp').innerHTML=ICONS.spark(sq?40:30);
+const [ic,t,m,c]=S.ev;
+document.getElementById('card').innerHTML=`<span class="badge">${S.badge}</span>
+  <div class="ev"><span class="ico" style="background:var(${c})">${ICONS[ic](sq?30:24)}</span>
+  <div><div class="t">${t}</div><div class="m">${m}</div></div></div>`;
+</script></body></html>

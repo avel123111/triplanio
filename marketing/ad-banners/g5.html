@@ -1,0 +1,86 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="brand.css">
+<style>
+  .stage{display:flex;align-items:center;}
+  .txt{position:relative;z-index:2;}
+  .h{margin:30px 0 16px;}
+  .h .b{color:var(--brand);}
+  .sub{color:var(--muted-inv);}
+  .viz{position:relative;display:flex;flex-direction:column;align-items:center;}
+  .trip{background:var(--glass);border:1px solid var(--glass-line);border-radius:22px;
+    backdrop-filter:blur(10px);color:var(--ink-inv);box-shadow:0 18px 44px rgba(0,0,0,.35);}
+  .trip .tt{font-family:var(--f-disp);font-weight:800;}
+  .trip .route{font-family:var(--f-mono);font-weight:600;opacity:.65;margin-top:6px;letter-spacing:.02em;}
+  .avs{display:flex;margin-top:18px;}
+  .av{border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
+    font-weight:700;border:3px solid #1b2340;}
+  .av.plus{background:rgba(255,255,255,.16);}
+  .linkpill{display:flex;align-items:center;gap:12px;background:#fff;color:var(--ink);
+    border-radius:999px;font-family:var(--f-mono);font-weight:600;box-shadow:0 16px 40px rgba(0,0,0,.35);
+    position:relative;z-index:2;}
+  .linkpill .lk{color:var(--brand);display:flex;}
+  .site{position:absolute;font-size:15px;}
+  /* landscape */
+  .landscape{width:1200px;height:628px;padding:0 72px;gap:60px;}
+  .landscape .txt{width:600px;flex:none;}
+  .landscape .h{font-size:62px;}
+  .landscape .sub{font-size:25px;max-width:540px;}
+  .landscape .cta{font-size:23px;padding:17px 32px;margin-top:32px;}
+  .landscape .viz{flex:1;}
+  .landscape .trip{width:380px;padding:26px 30px;}
+  .landscape .trip .tt{font-size:24px;}
+  .landscape .trip .route{font-size:14px;}
+  .landscape .av{width:56px;height:56px;font-size:18px;margin-right:-12px;}
+  .landscape .linkpill{padding:14px 22px;font-size:15px;margin-top:-24px;}
+  .landscape .site{right:72px;bottom:26px;}
+  /* square */
+  .square{width:1200px;height:1200px;flex-direction:column;align-items:flex-start;padding:84px 88px 90px;}
+  .square .lockup .word{font-size:40px;}
+  .square .h{font-size:100px;margin-top:52px;}
+  .square .sub{font-size:40px;max-width:940px;}
+  .square .cta{font-size:36px;padding:28px 52px;margin-top:40px;}
+  .square .viz{flex:1;width:100%;justify-content:flex-end;margin-top:44px;}
+  .square .trip{width:560px;padding:34px 38px;}
+  .square .trip .tt{font-size:32px;}
+  .square .trip .route{font-size:18px;}
+  .square .av{width:72px;height:72px;font-size:24px;margin-right:-16px;}
+  .square .linkpill{padding:18px 30px;font-size:20px;margin-top:-30px;}
+  .square .site{right:88px;bottom:34px;}
+</style></head><body>
+<div id="stage" class="stage dark">
+  <div class="txt">
+    <div id="lockup"></div>
+    <div class="h" id="h"></div>
+    <div class="sub" id="sub"></div>
+    <div class="cta"><span id="cta"></span><span class="arr">→</span></div>
+  </div>
+  <div class="viz">
+    <div class="trip" id="trip"></div>
+    <div class="linkpill" id="pill"></div>
+  </div>
+  <div class="site">triplanio.com</div>
+</div>
+<script src="kit.js"></script>
+<script>
+const S = {
+  ru: { h:'Едете компанией?<br><span class="b">Один маршрут на всех</span>',
+        sub:'Рейсы, отели и траты - в одном трипе по одной ссылке. Приглашённым бесплатно.',
+        cta:'Создать общий трип',
+        tt:'Лиссабон вчетвером', route:'LIS · 4 УЧАСТНИКА · 12-18 МАЯ' },
+  en: { h:'Traveling as a group?<br><span class="b">One itinerary for everyone</span>',
+        sub:'Flights, hotels and expenses - one trip, one link. Free for everyone you invite.',
+        cta:'Start a shared trip',
+        tt:'Lisbon with friends', route:'LIS · 4 TRAVELERS · MAY 12-18' },
+}[LANG];
+const st=document.getElementById('stage'); st.classList.add(RATIO);
+document.getElementById('lockup').outerHTML = lockup(RATIO==='square'?76:62);
+document.getElementById('h').innerHTML=S.h;
+document.getElementById('sub').textContent=S.sub;
+document.getElementById('cta').textContent=S.cta;
+const sq=RATIO==='square';
+const AV=[['П','#2173C8'],['М','#15A2B0'],['К','#E0568F'],['А','#E2920E']];
+const avz=(LANG==='en'?[['P','#2173C8'],['M','#15A2B0'],['K','#E0568F'],['A','#E2920E']]:AV)
+  .map(([n,c])=>`<span class="av" style="background:${c}">${n}</span>`).join('')+`<span class="av plus">+</span>`;
+document.getElementById('trip').innerHTML=`<div class="tt">${S.tt}</div><div class="route">${S.route}</div><div class="avs">${avz}</div>`;
+document.getElementById('pill').innerHTML=`<span class="lk">${ICONS.link(sq?24:18)}</span>triplanio.com/join/lis25`;
+</script></body></html>

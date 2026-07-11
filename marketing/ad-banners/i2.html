@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="brand.css">
+<style>
+  .stage{width:1080px;height:1350px;display:flex;flex-direction:column;padding:80px 84px 64px;}
+  .h{font-size:96px;}
+  .list{display:flex;flex-direction:column;gap:22px;margin-top:60px;}
+  .row{display:flex;align-items:center;gap:22px;background:#fff;border:1px solid var(--line);
+    border-radius:20px;padding:28px 32px;font-size:35px;font-weight:500;color:var(--ink);
+    box-shadow:0 10px 26px rgba(12,14,28,.06);}
+  .row .ic{display:flex;color:var(--muted);}
+  .row .chk{margin-left:auto;display:flex;color:var(--success);}
+  .row.punch{background:#16294A;color:#fff;border-color:#16294A;font-weight:700;
+    box-shadow:0 18px 44px rgba(22,41,74,.35);}
+  .row.punch .chk{color:var(--danger);}
+  .foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;}
+  .brandline{display:flex;align-items:center;gap:20px;}
+  .brandline .lockup .word{font-size:34px;}
+  .cta{font-size:27px;padding:21px 40px;}
+</style></head><body>
+<div id="stage" class="stage light">
+  <div class="h" id="h"></div>
+  <div class="list" id="list"></div>
+  <div class="foot">
+    <div class="brandline"><div id="lockup"></div></div>
+    <div class="cta"><span id="cta"></span><span class="arr">→</span></div>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+const S = {
+  ru: { h:'Где твой план поездки?',
+        rows:[['note','В заметках'],['cam','В скринах'],['mail','В почте'],['chat','В чате с друзьями'],['bookmark','В закладках']],
+        punch:'Целиком - нигде', cta:'Собери всё в Triplanio' },
+  en: { h:"Where's your trip plan?",
+        rows:[['note','In your notes'],['cam','In screenshots'],['mail','In your inbox'],['chat','In the group chat'],['bookmark','In bookmarks']],
+        punch:'Nowhere in one piece', cta:'Put it all in Triplanio' },
+}[LANG];
+document.getElementById('h').textContent=S.h;
+document.getElementById('lockup').outerHTML=lockup(60);
+document.getElementById('cta').textContent=S.cta;
+document.getElementById('list').innerHTML=
+  S.rows.map(([ic,t])=>`<div class="row"><span class="ic">${ICONS[ic](32)}</span>${t}
+    <span class="chk">${ICONS.check(34)}</span></div>`).join('')
+  +`<div class="row punch">${S.punch}<span class="chk">✕</span></div>`;
+</script></body></html>

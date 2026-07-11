@@ -1,0 +1,87 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="brand.css">
+<style>
+  .stage{display:flex;align-items:center;}
+  .txt{position:relative;z-index:2;}
+  .h{margin:34px 0 18px;}
+  .sub{color:var(--muted-inv);}
+  .viz{position:relative;z-index:1;}
+  .tl{position:relative;display:flex;flex-direction:column;}
+  .tl .rail{position:absolute;top:26px;bottom:26px;width:3px;border-radius:3px;
+    background:linear-gradient(180deg,#62A6F0,#2173C8 60%,rgba(33,115,200,.15));}
+  .tl .ev{position:relative;}
+  .tl .dot{position:absolute;border-radius:50%;background:#62A6F0;box-shadow:0 0 0 6px rgba(98,166,240,.18);}
+  .site{position:absolute;}
+  /* landscape 1200x628 */
+  .landscape{width:1200px;height:628px;padding:0 72px;gap:48px;}
+  .landscape .txt{width:600px;}
+  .landscape .lockup .word{font-size:34px;}
+  .landscape .h{font-size:64px;}
+  .landscape .sub{font-size:26px;max-width:520px;}
+  .landscape .cta{font-size:24px;padding:18px 34px;margin-top:34px;}
+  .landscape .viz{width:430px;}
+  .landscape .tl{gap:20px;padding-left:34px;}
+  .landscape .tl .rail{left:6px;}
+  .landscape .tl .dot{left:-34px;top:32px;width:15px;height:15px;}
+  .landscape .card{padding:18px 22px;}
+  .landscape .ev .ico{width:52px;height:52px;}
+  .landscape .ev .t{font-size:21px;}
+  .landscape .ev .m{font-size:15px;margin-top:4px;}
+  .landscape .site{right:72px;bottom:26px;font-size:15px;}
+  /* square 1200x1200 */
+  .square{width:1200px;height:1200px;flex-direction:column;align-items:flex-start;
+    justify-content:flex-start;padding:84px 88px 96px;gap:0;}
+  .square .lockup .word{font-size:40px;}
+  .square .h{font-size:90px;margin-top:44px;}
+  .square .sub{font-size:37px;max-width:940px;margin-top:8px;}
+  .square .cta{font-size:34px;padding:25px 48px;margin-top:36px;}
+  .square .viz{width:100%;flex:1;display:flex;align-items:center;margin-top:30px;padding-bottom:26px;}
+  .square .tl{width:100%;gap:18px;padding-left:44px;}
+  .square .tl .rail{left:9px;top:34px;bottom:34px;width:4px;}
+  .square .tl .dot{left:-44px;top:32px;width:18px;height:18px;}
+  .square .card{padding:19px 28px;}
+  .square .ev .ico{width:56px;height:56px;}
+  .square .ev .t{font-size:25px;}
+  .square .ev .m{font-size:17px;margin-top:4px;}
+  .square .site{right:88px;bottom:34px;font-size:17px;}
+</style></head><body>
+<div id="stage" class="stage dark">
+  <div class="txt">
+    <div id="lockup"></div>
+    <div class="h" id="h"></div>
+    <div class="sub" id="sub"></div>
+    <div class="cta"><span id="cta"></span><span class="arr">→</span></div>
+  </div>
+  <div class="viz"><div class="tl" id="tl"><div class="rail"></div></div></div>
+  <div class="site">triplanio.com</div>
+</div>
+<script src="kit.js"></script>
+<script>
+const S = {
+  ru: { h:'Отель забронирован.<br>А остальной план?',
+        sub:'Собери рейсы, отели и планы поездки в один маршрут.',
+        cta:'Собрать поездку - бесплатно',
+        ev:[['plane','Рейс MAD → FCO','12 окт · 12:40','--ev-transfer'],
+            ['bed','Hotel Roma Centrale','12-15 окт · бронь на месте','--ev-hotel'],
+            ['ticket','Колизей, билеты','13 окт · 10:00','--ev-activity']] },
+  en: { h:'Hotel booked.<br>What about the rest?',
+        sub:'Pull flights, hotels and plans into one itinerary.',
+        cta:'Build your trip - free',
+        ev:[['plane','Flight MAD → FCO','Oct 12 · 12:40','--ev-transfer'],
+            ['bed','Hotel Roma Centrale','Oct 12-15 · booking saved','--ev-hotel'],
+            ['ticket','Colosseum tickets','Oct 13 · 10:00','--ev-activity']] },
+}[LANG];
+const st = document.getElementById('stage');
+st.classList.add(RATIO);
+document.getElementById('lockup').outerHTML = lockup(RATIO==='square'?76:62, 0);
+document.querySelector('.lockup .word').style.fontSize='';
+document.getElementById('h').innerHTML = S.h;
+document.getElementById('sub').textContent = S.sub;
+document.getElementById('cta').textContent = S.cta;
+const isz = RATIO==='square'?32:28;
+document.getElementById('tl').innerHTML += S.ev.map(([ic,t,m,c])=>`
+  <div class="card ev"><div class="dot"></div>
+    <div class="ico" style="background:var(${c})">${ICONS[ic](isz)}</div>
+    <div><div class="t">${t}</div><div class="m">${m}</div></div>
+  </div>`).join('');
+</script></body></html>
