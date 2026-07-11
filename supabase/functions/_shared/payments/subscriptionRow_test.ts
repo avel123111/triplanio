@@ -14,7 +14,7 @@
  */
 
 import { assert, assertEquals } from 'jsr:@std/assert@^1.0.8';
-import { buildSubscriptionUpsertRow } from './subscriptionRow.ts';
+import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from './subscriptionRow.ts';
 
 const PERIOD = '2026-07-15T00:00:00.000Z';
 const NEXT = '2026-07-20T00:00:00.000Z';
@@ -264,3 +264,21 @@ function base(over: Partial<Parameters<typeof buildSubscriptionUpsertRow>[0]>) {
     ...over,
   });
 }
+
+// ---------------------------------------------------------------------------
+// buildSubscriptionRefreshPatch — общий 3-полевой refresh (checkout-existing /
+// invoice.paid-existing / reconcile ×2). Пинит: ровно {status, cancel_at_period_end}
+// + current_period_end ТОЛЬКО при непустой дате; provider_meta НИКОГДА не в патче.
+// ---------------------------------------------------------------------------
+Deno.test('refresh: known period → 3 keys, no provider_meta', () => {
+  const patch = buildSubscriptionRefreshPatch({ status: 'active', cancelAtPeriodEnd: true, currentPeriodEnd: PERIOD });
+  assertEquals(patch, { status: 'active', cancel_at_period_end: true, current_period_end: PERIOD });
+  assert(!('provider_meta' in patch));
+});
+
+Deno.test('refresh: null period → current_period_end omitted (не затираем «оплачено до»)', () => {
+  const patch = buildSubscriptionRefreshPatch({ status: 'past_due', cancelAtPeriodEnd: false, currentPeriodEnd: null });
+  assertEquals(patch, { status: 'past_due', cancel_at_period_end: false });
+  assert(!('current_period_end' in patch));
+  assert(!('provider_meta' in patch));
+});

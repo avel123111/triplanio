@@ -15,8 +15,11 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type Stripe from 'npm:stripe@17.0.0';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
-import { isProductCode, stripeEnv, getActiveProviderProducts, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode } from './payments/catalog.ts';
+import { isProductCode, stripeEnv, getActiveProviderProducts, billingIntervalForProduct, type ProductCode } from './payments/catalog.ts';
 import { StripeAdapter } from './payments/stripeAdapter.ts';
+import { isFullyRefunded } from './payments/refund.ts';
+import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from './payments/subscriptionRow.ts';
+import { isDuplicateEntitlingSub } from './payments/subscriptionDedup.ts';
 import { getProviderCustomerId } from './payments/customer.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from './revokeLostProFeatures.ts';
@@ -73,11 +76,9 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
       try {
         const sub = await adapter.fetchSubscription(r.provider_subscription_id as string);
         const iso = unixToIso(getPeriodEndUnix(sub));
-        await admin.from('subscription').update({
-          status: sub.status,
-          cancel_at_period_end: sub.cancel_at_period_end === true,
-          ...(iso ? { current_period_end: iso } : {}),
-        }).eq('id', r.id);
+        await admin.from('subscription')
+          .update(buildSubscriptionRefreshPatch({ status: sub.status, cancelAtPeriodEnd: sub.cancel_at_period_end === true, currentPeriodEnd: iso }))
+          .eq('id', r.id);
       } catch (e) {
         console.error('reconcileEntitlement: retrieve failed', r.provider_subscription_id, (e as Error).message);
       }
@@ -102,27 +103,27 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
         if (productCode !== 'account_pro_monthly' && productCode !== 'account_pro_yearly') continue;
         const iso = unixToIso(getPeriodEndUnix(sub));
 
-        // Уже есть строка по этому sub id? Обновляем; иначе вставляем (партиал-уник
-        // на provider_subscription_id плохо годится как onConflict-таргет, поэтому явно).
+        // Явный check-then-insert (не upsert): операцию в этом PR не меняем
+        // (behavior-preserving скоуп). Индекс uq_subscription_provider_sub стал
+        // полным в 20260628180000, так что перевод на upsert(onConflict=
+        // 'provider_subscription_id') технически возможен отдельным тикетом.
         const { data: ex } = await admin
           .from('subscription').select('id').eq('provider_subscription_id', sub.id).limit(1);
         if (ex && ex.length > 0) {
-          await admin.from('subscription').update({
-            status: sub.status, cancel_at_period_end: sub.cancel_at_period_end === true,
-            ...(iso ? { current_period_end: iso } : {}),
-          }).eq('id', ex[0].id);
+          await admin.from('subscription')
+            .update(buildSubscriptionRefreshPatch({ status: sub.status, cancelAtPeriodEnd: sub.cancel_at_period_end === true, currentPeriodEnd: iso }))
+            .eq('id', ex[0].id);
         } else {
-          // Дубль-гард: не плодим вторую энтайтлинг-строку юзеру.
-          const { data: live } = await admin
-            .from('subscription').select('id').eq('user_id', userId).in('status', [...ENTITLING_STATUSES]).limit(1);
-          const isDup = live && live.length > 0 && (ENTITLING_STATUSES as readonly string[]).includes(sub.status);
-          await admin.from('subscription').insert({
-            user_id: userId, product_code: productCode, provider: 'stripe',
-            provider_subscription_id: sub.id, status: isDup ? 'duplicate' : sub.status, needs_review: !!isDup,
-            cancel_at_period_end: sub.cancel_at_period_end === true,
-            billing_interval: billingIntervalForProduct(productCode),
-            ...(iso ? { current_period_end: iso } : {}),
-          });
+          // Дубль-гард: не плодим вторую энтайтлинг-строку юзеру (единая семантика с вебхуком).
+          const isDup = await isDuplicateEntitlingSub(admin, userId, sub.id, sub.status);
+          await admin.from('subscription').insert(buildSubscriptionUpsertRow({
+            userId, productCode, providerSubscriptionId: sub.id,
+            status: isDup ? 'duplicate' : sub.status, needsReview: isDup,
+            cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+            currentPeriodEnd: iso, currency: sub.currency || 'usd',
+            billingInterval: billingIntervalForProduct(productCode),
+            providerMeta: { mode: 'leave' },
+          }));
         }
         recovered.push(sub.id);
       }
@@ -184,9 +185,7 @@ export async function reconcileTripEntitlement(admin: SupabaseClient, tripId: st
     const pi = await adapter.fetchPaymentIntent(p.provider_charge_id as string, { expand: ['latest_charge'] });
     const charge = (typeof pi.latest_charge === 'object' ? pi.latest_charge : null) as Stripe.Charge | null;
     if (!charge) return true;
-    const fullyRefunded = charge.refunded === true
-      || (typeof charge.amount === 'number' && typeof charge.amount_refunded === 'number'
-          && charge.amount > 0 && charge.amount_refunded >= charge.amount);
+    const fullyRefunded = isFullyRefunded(charge);
     const disputed = charge.disputed === true;
     if (fullyRefunded || disputed) {
       await admin.from('purchase').update({

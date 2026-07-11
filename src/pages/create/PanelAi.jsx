@@ -33,7 +33,7 @@ export default function PanelAi({ ctx }) {
         </div>
         <div>
           <h1 className="t-title" style={{ marginBottom: 6 }}>{t('ai_plan.title')}</h1>
-          <div className="muted t-ui">{t('ai_plan.page_subtitle')}</div>
+          <div className="muted t-body">{t('ai_plan.page_subtitle')}</div>
         </div>
       </div>
 

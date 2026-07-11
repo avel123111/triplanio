@@ -18,9 +18,10 @@ import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
 import { displayName } from '@/lib/displayName';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, Field, ReadOnlyBanner, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
-import ProUpsellModal from '@/components/common/ProUpsellModal';
+import { useProUpsell } from '@/components/common/ProUpsellProvider';
+import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
@@ -415,6 +416,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const confirm = useConfirm();
   const { user } = useAuth();
   const nav = useNavigate();
+  // Copy trip — moved here from the old header "…" menu. Delegates to
+  // CreateTripProvider so it runs the SAME free-tier gate as creating a new trip.
+  const { startCopy, copying } = useCreateTrip();
 
   const [title,   setTitle]   = useState(trip?.title        || '');
   const [description, setDescription] = useState(trip?.description || '');
@@ -439,7 +443,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
   const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
-  const [upsell, setUpsell] = useState({ open: false, mode: 'upgrade', feature: '' });
+  // Pro-апселл — единый app-level хост (TRIP-225), открывается императивно.
+  const { openProUpsell } = useProUpsell();
+  const ownerName = members.find(m => m.user_id === trip?.created_by)?.user_full_name || '';
   // Owner upgrade from Settings shows the SAME 3 offers as the sidebar / AI-block
   // (per-trip + monthly + yearly). No hidePerTrip here: Pro.jsx already hides the
   // per-trip offer for non-owners (tripOwner check), so the flag only created an
@@ -584,7 +590,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       // Trip is not Pro. Only the owner can upgrade it → owner sees the upgrade
       // path; a non-owner (admin) is told to ask the owner instead of being sent
       // to checkout (their payment wouldn't unlock THIS trip).
-      setUpsell({ open: true, mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '' });
+      openProUpsell({ mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
       return;
     }
     const newVal = !features[id];
@@ -601,7 +607,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
     if (error || !data?.ok) {
       if (data?.code === 'PRO_REQUIRED') {
-        setUpsell({ open: true, mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '' });
+        openProUpsell({ mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
       } else {
         toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
       }
@@ -689,9 +695,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* Viewer read-only notice — only this banner + the Leave button are
           interactive for a viewer (TRIP-137). */}
       {readOnly && (
-        <Severity level="info" title={t('settings.readonly_banner_title')}>
-          {t('settings.readonly_banner_desc')}
-        </Severity>
+        <ReadOnlyBanner>{t('settings.readonly_banner_desc')}</ReadOnlyBanner>
       )}
       {/* ── Identity: cover + name / description / currency / notes ──────────
           Save here governs only these manually-edited fields; the feature and
@@ -783,7 +787,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             {isOwner ? (
               <Btn variant="primary" size="sm" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
-              <button className="lockmsg" onClick={() => setUpsell({ open: true, mode: 'info', feature: '' })}>
+              <button className="lockmsg" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>
                 <Icon name="lock" size={14} />
                 {t('trip.pro_by_owner')}
               </button>
@@ -875,6 +879,19 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       </div>
       </fieldset>
 
+      {/* ── Copy trip (full width) ────────────────────────────────────────────
+          Moved here from the old header "…" menu. Copy creates a NEW trip owned
+          by the caller and runs the SAME free-tier gate as creating one from
+          scratch (startCopy → CreateTripProvider); it never touches THIS trip,
+          so it sits OUTSIDE the read-only fieldset and stays available to every
+          participant, including a viewer. Pro status + Pro-only addons and
+          documents are stripped from the copy server-side. */}
+      <Card title={t('settings.copy_trip_title')} subtitle={t('settings.copy_trip_desc')}>
+        <Btn variant="soft" icon="copy" loading={copying} onClick={() => startCopy(tripId)}>
+          {t('settings.copy_trip_btn')}
+        </Btn>
+      </Card>
+
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -908,15 +925,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
         </div>
       </Card>
-
-      <ProUpsellModal
-        open={upsell.open}
-        mode={upsell.mode}
-        feature={upsell.feature}
-        ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
-        onOpenChange={(o) => setUpsell(s => ({ ...s, open: o }))}
-        onUpgrade={openUpgrade}
-      />
     </div>
   );
 }

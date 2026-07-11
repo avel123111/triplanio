@@ -559,7 +559,7 @@ export default function Trips() {
           );
         }
       }
-      out[tr.id] = parts.filter(Boolean).join('   ').toLowerCase();
+      out[tr.id] = parts.filter(Boolean).join(' · ').toLowerCase();
     }
     return out;
   }, [allTrips, visitsByTrip, lang]);

@@ -15,10 +15,10 @@ import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit, canShareTrip } from '@/lib/members';
+import { resolveMyRole, roleCanEdit } from '@/lib/members';
 import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, Skeleton, useToast, ActionMenu } from '../design/index';
+import { Btn, Skeleton, useToast } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -31,7 +31,6 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import AppHeader from '@/components/AppHeader';
-import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
@@ -40,7 +39,7 @@ import { useStay22Bundle } from '@/lib/stay22';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
-import ProUpsellModal from '@/components/common/ProUpsellModal';
+import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
 
@@ -51,7 +50,6 @@ import TripStartControl from '@/components/trip/TripStartControl';
 // (add_city / remove_city / reorder_cities / set_city_nights). Live Google map.
 // =====================================================================
 const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
-const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9']; // design-token-exempt: data-viz city-marker palette (distinct hues hashed by key — no token equivalent)
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
@@ -66,8 +64,6 @@ const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 // until add_city inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is persisted.
 const isTmpId = (id) => String(id || '').startsWith('tmp-');
-const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
-const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), country: n.country || '' });
 
 // Canonical date-chain layout (start = prevEnd + gap; end = start + nights) now
 // lives in lib/tripDates.layoutDates, shared with ManualPlanner and mirroring the
@@ -189,7 +185,6 @@ export default function TripStructureEdit() {
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
-  const { startCopy, copying } = useCreateTrip(); // header "…" → Copy trip
   const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
@@ -197,7 +192,8 @@ export default function TripStructureEdit() {
   // Pro "enabled by owner" info modal for non-owners (TRIP-63 №1) — mirrors
   // TripView. A non-owner tapping the Pro lock must get the explanation, not a
   // navigation to /pro (which would show them an upgrade they can't apply).
-  const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
+  const { openProUpsell } = useProUpsell();
+  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: (content?.members || []).find(m => m.user_id === trip?.created_by)?.user_full_name || '' });
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
   // Drag / FLIP / keyboard reorder live in the shared useRouteDnD hook (also used by
   // the trip-creation flow). It's instantiated below — once `ordered`, `isAnchor`
@@ -384,7 +380,7 @@ export default function TripStructureEdit() {
     });
     persistOrder(ids);
   };
-  const { dragIdx, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef } =
+  const { draggingId, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef } =
     useRouteDnD({ ordered: dndOrdered, isAnchor, onCommitOrder: commitOrder });
   // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
   // stop); raising a waypoint above 0 turns it back into a transit city.
@@ -495,7 +491,7 @@ export default function TripStructureEdit() {
     const provEnd = provStart && kind === 'transit' ? toDT(provStart).plus({ days: provNights }).toISODate() : provStart;
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
-      city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
+      city_name: city.city_name, country_code: city.country_code || null,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
@@ -518,7 +514,7 @@ export default function TripStructureEdit() {
       kind,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       city_name_en: city.city_name_en || null,
-      country: city.country || null, country_code: city.country_code || null,
+      country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
     }, insertIdx), (realId) => {
@@ -602,7 +598,6 @@ export default function TripStructureEdit() {
 
   const ordered = sortVisits(draft.nodes);
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
-  const cities = seq.filter((n) => n.kind === 'transit');   // stays only (for numbering)
   // Header count = unique transit cities (a city visited twice counts once),
   // matching the trip header / overview / trips card everywhere.
   const cityCount = uniqueCityCount(draft.nodes);
@@ -613,7 +608,6 @@ export default function TripStructureEdit() {
   const startDate = seq[0]?.start_date;
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
-  const membersCount = content?.members?.length || 0;
   // Shared role rule: created_by wins over any trip_members row, so the creator
   // is never blocked from their own editor with "no access" (TRIP-143).
   const myRole = resolveMyRole(content?.members, trip, user);
@@ -658,7 +652,7 @@ export default function TripStructureEdit() {
   { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
   // Live preview order, FLIP reorder, keyboard move, pointer-drag arm/move/end and
   // justDraggedRef are all provided by the shared useRouteDnD hook instantiated
-  // above (destructured: displayNodes, dragIdx, overGap, setRowRef, armDrag,
+  // above (destructured: displayNodes, draggingId, overGap, setRowRef, armDrag,
   // moveNodeById, justDraggedRef). The hook's commit path is `commitOrder`.
   // Transfers whose from/to cities are NOT adjacent in the route (or dangle on a
   // removed city) — shown in the "out of plan" tray instead of a connector.
@@ -730,7 +724,7 @@ export default function TripStructureEdit() {
       const next = ordered.slice(idx + 1).find((n) => !isAnchor(n) || n.kind === 'end');
       leftPanelEl = (
         <CityPanel
-          node={node} meta={metaOf(node)} cityNo={stayNumById[node.id]}
+          node={node} cityNo={stayNumById[node.id]}
           hotels={hotelsFor(node.id)} acts={actsFor(node.id)}
           arrival={arrivalFor(node.id)} departure={departureFor(node.id)}
           arrivalWarn={transferMismatch(arrivalFor(node.id))} departureWarn={transferMismatch(departureFor(node.id))}
@@ -818,37 +812,9 @@ export default function TripStructureEdit() {
     <TripStartControl date={draft.startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
   ) : null;
 
-  // Copy trip — delegated to CreateTripProvider (startCopy) so it runs the SAME
-  // free-tier gate as creating a new trip. The new trip is owned by the caller;
-  // copyTrip strips Pro status + Pro-only addons server-side.
-
-  // Editor header trip-actions — same set as the other trip screens, but the
-  // "Edit" button is disabled (we are already in the editor). Menu items that
-  // navigate to a trip lens exit the editor first via leaveNow.
-  const editorHeaderActions = (
-    <>
-      {canShareTrip(myRole) && (
-        <button className="app-header__act" onClick={() => setShareOpen(true)}>
-          <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
-        </button>
-      )}
-      <button className="app-header__act" disabled title={t('trip.edit_trip')} aria-label={t('trip.edit_trip')}>
-        <Icon name="edit" size={15} /><span className="app-header__act-text">{t('trip.edit_trip')}</span>
-      </button>
-      <ActionMenu
-        align="end"
-        width={240}
-        trigger={<button className="app-header__act app-header__act--icon" aria-label={t('common.more') || '…'}><Icon name="more" size={15} /></button>}
-        items={[
-          { icon: 'settings', label: t('trip.settings_title'), onSelect: () => leaveNow(`/trip/${tripId}?lens=settings`) },
-          myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => leaveNow(`/trip/${tripId}?lens=members`) },
-          { separator: true },
-          { icon: 'copy', label: t('trip.copy'), disabled: copying, onSelect: () => startCopy(trip.id) },
-          { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
-        ]}
-      />
-    </>
-  );
+  // Trip actions (Share / Settings / Members) all live in the left trip menu
+  // (TripSidebar drawer); Copy trip moved into the Settings lens. The editor
+  // header carries no duplicate buttons.
 
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
@@ -870,7 +836,6 @@ export default function TripStructureEdit() {
           {cityCount > 0 && <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
         </>
       }
-      actions={editorHeaderActions}
     />
     {/* Mobile menu drawer — burger opens the full sidebar (the static icon-rail
         is hidden on mobile). */}
@@ -881,7 +846,7 @@ export default function TripStructureEdit() {
         onNavigate={(id) => { setSideOpen(false); leaveNow(`/trip/${tripId}?lens=${id}`); }}
         isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
         onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-        onProInfo={() => { setSideOpen(false); setTripProInfoOpen(true); }}
+        onProInfo={() => { setSideOpen(false); openProInfo(); }}
         onShare={() => setShareOpen(true)}
       />
     </div>
@@ -892,7 +857,7 @@ export default function TripStructureEdit() {
           onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-          onProInfo={() => setTripProInfoOpen(true)}
+          onProInfo={openProInfo}
           onShare={() => setShareOpen(true)}
         />
       </div>
@@ -942,17 +907,16 @@ export default function TripStructureEdit() {
             <span className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
           </div>
-          <div className={'te-table' + (dragIdx !== null ? ' is-dragging' : '')}>
+          <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
-              const dIdx = ordered.indexOf(n);     // stable index in the real order
               const next = displayNodes[displayNodes.indexOf(n) + 1];
               const tr = next ? transferFor(n.id, next.id) : null;
               const pending = isTmpId(n.id);       // city awaiting its real uuid (add_city in flight) → muted, non-editable
-              const dragging = dragIdx === dIdx;
+              const dragging = draggingId === n.id;
               const dragProps = {
                 dragging,
                 pressing: pressingId === n.id,
-                onArm: (e) => armDrag(e, dIdx, n.id),
+                onArm: (e) => armDrag(e, n.id),
                 onMove: (dir) => moveNodeById(n.id, dir),
               };
               let body;
@@ -994,7 +958,7 @@ export default function TripStructureEdit() {
             })}
           </div>
 
-          {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
+          {draggingId != null && ordered[ordered.length - 1]?.kind !== 'end' && (
             <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
@@ -1172,15 +1136,6 @@ export default function TripStructureEdit() {
       {/* Unsaved-changes guard when leaving the editor (menu / logo / back). */}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={draft?.nodes || []} transfers={liveTransfers} />
 
-      {/* TRIP-63 №1: reuse the shared Pro info modal (same as TripView) so a
-          non-owner who taps the "enabled by owner" lock gets an explanation
-          instead of being navigated to /pro. */}
-      <ProUpsellModal
-        open={tripProInfoOpen}
-        mode="info"
-        onOpenChange={setTripProInfoOpen}
-        ownerName={(content?.members || []).find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
-      />
     </div>
   );
 }

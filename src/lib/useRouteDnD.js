@@ -18,13 +18,13 @@ import { useLayoutEffect, useRef, useState } from 'react';
  *                                 both drag-drop and keyboard moves, identically.
  *
  * Returns the engine the host wires into its rows:
- *   { dragIdx, overGap, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef }
+ *   { draggingId, overGap, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef }
  */
 export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
-  const [dragIdx, setDragIdx] = useState(null);   // ordered index of the row being dragged
+  const [draggingId, setDraggingId] = useState(null); // stable id of the dragged row (survives list re-index across renders — the index doesn't)
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the row would drop into
   const [pressingId, setPressingId] = useState(null); // touch long-press feedback: row being held before the drag arms
-  const endDrag = () => { setDragIdx(null); setOverGap(null); };
+  const endDrag = () => { setDraggingId(null); setOverGap(null); };
   const justDraggedRef = useRef(false); // suppress the click that fires right after a drag
 
   // FLIP refs: animate non-dragged rows smoothly to their new slot during drag.
@@ -68,18 +68,25 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
       el.style.transform = '';
     });
     prevRectsRef.current = new Map();
-  }, [dragIdx, overGap]);
+  }, [draggingId, overGap]);
 
   // Live preview order while dragging: the dragged node is shown already moved to
   // the hovered slot (FLIP animates the shuffle). Anchors stay pinned at the ends.
   const displayNodes = (() => {
-    if (dragIdx == null || overGap == null || overGap === dragIdx || overGap === dragIdx + 1) return ordered;
+    if (draggingId == null || overGap == null) return ordered;
+    // Resolve the dragged row against the CURRENT list on every render: the id is
+    // stable, its index isn't. `ordered` is rebuilt from the trip cache each render,
+    // so a background refetch mid-drag can shift or drop rows. Every branch returns a
+    // valid array, so the preview can never index into a hole (was the crash source).
+    const from = ordered.findIndex((n) => n.id === draggingId);
+    if (from < 0) return ordered;                                 // dragged row is no longer in the list
+    if (overGap === from || overGap === from + 1) return ordered; // dropping back where it sits → no-op
     const arr = ordered.slice();
-    const [m] = arr.splice(dragIdx, 1);
-    let t = overGap > dragIdx ? overGap - 1 : overGap;
+    const [m] = arr.splice(from, 1);
+    if (arr.length === 0) return ordered;                         // nothing left to pin against
     const lo = isAnchor(arr[0]) ? 1 : 0;
     const hi = isAnchor(arr[arr.length - 1]) ? arr.length - 1 : arr.length;
-    t = Math.max(lo, Math.min(hi, t));
+    const t = Math.max(lo, Math.min(hi, overGap > from ? overGap - 1 : overGap));
     arr.splice(t, 0, m);
     return arr;
   })();
@@ -103,7 +110,7 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   // Arm a pointer drag from ANYWHERE on the row. It becomes a real drag only once
   // the pointer crosses a small threshold, so a plain tap still opens the row.
   // Presses on inner controls (steppers, booking cells, links) are ignored.
-  const armDrag = (e, dIdx, nodeId) => {
+  const armDrag = (e, nodeId) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.target?.closest?.('.te-stepper, .te-step, .te-cellbtn, .te-actchip, .te-hotelicon, .te-addmini, a, input, select, textarea')) return;
     const rowEl = rowElRefs.current.get(nodeId);
@@ -111,14 +118,14 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
     const cx = e.clientX, cy = e.clientY;
     const begin = (touchArmed) => {
       const rect = rowEl.getBoundingClientRect();
-      dragInfoRef.current = { id: nodeId, dIdx, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: !!touchArmed, lastTarget: null };
+      dragInfoRef.current = { id: nodeId, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: !!touchArmed, lastTarget: null };
       // Touch/pen: the long-press has armed the drag → lift the row IMMEDIATELY
       // (activated:true, no second move-threshold) so "drag started" is obvious,
       // and take the gesture off the browser's scroll handler (touch-action:none) +
       // capture the pointer so the following moves drag the row instead of scrolling
       // the page. Without the capture the browser treats the move as a scroll, fires
       // pointercancel, and the drag dies immediately.
-      if (touchArmed) { setDragIdx(dIdx); setOverGap(null); document.body.style.userSelect = 'none'; }
+      if (touchArmed) { setDraggingId(nodeId); setOverGap(null); document.body.style.userSelect = 'none'; }
       if (e.pointerType !== 'mouse') {
         rowEl.style.touchAction = 'none';
         try { rowEl.setPointerCapture(e.pointerId); } catch { /* capture not supported */ }
@@ -163,7 +170,7 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
     if (!info.activated) { // promote arm → real drag once past the threshold
       if (Math.hypot(e.clientX - info.startX, e.clientY - info.startY) < 5) return;
       info.activated = true;
-      setDragIdx(info.dIdx); setOverGap(null);
+      setDraggingId(info.id); setOverGap(null);
       document.body.style.userSelect = 'none';
     }
     const rowEl = rowElRefs.current.get(info.id);
@@ -220,5 +227,5 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   // post-early-return locals directly).
   liveRef.current = { ordered, displayNodes };
 
-  return { dragIdx, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef };
+  return { draggingId, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef };
 }

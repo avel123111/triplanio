@@ -81,6 +81,23 @@ export const Severity = ({ level = "info", title, children, action, icon }) => (
   </div>
 );
 
+// ----- ReadOnlyBanner ----- (TRIP-225)
+// Единый баннер роли наблюдателя (viewer read-only), раньше копипастился в
+// DocsLens / BudgetLens / SettingsLens одинаковым <Severity level="info" …>.
+// Заголовок — канонический (settings.readonly_banner_title); описание — per-lens
+// через children. Обёртка `.readonly-banner` несёт консистентный отступ там, где
+// контейнер не раскладывает детей через gap (см. app.css).
+export const ReadOnlyBanner = ({ children, title }) => {
+  const t = useT();
+  return (
+    <div className="readonly-banner">
+      <Severity level="info" title={title || t('settings.readonly_banner_title')}>
+        {children}
+      </Severity>
+    </div>
+  );
+};
+
 // ----- Form Field -----
 // Canonical inline error / warning lines (Lumo `.err` / `.wrn`, with icon).
 const ErrLine = ({ children }) => (
