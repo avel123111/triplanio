@@ -130,8 +130,13 @@ export const FUNCTIONS = {
 // Storage-бакеты. Ф4 (LIVE) сверяет: живой флаг `public` совпадает с манифестом
 // (ловит «приватный бакет вдруг стал публичным»), и что для бакета есть все
 // перечисленные политики `<bucket>_<cmd>` на storage.objects (ловит дроп политики).
+// TRIP-48: два дополнительных инварианта закрывают класс «анонимный листинг»:
+//   • публичный бакет НЕ имеет SELECT-политики (раздача идёт по /object/public/
+//     мимо RLS; SELECT рулит только `.list()` → анонимный листинг всего бакета);
+//   • не существует публичного бакета ВНЕ манифеста (слепая зона, из-за которой
+//     share-cards/share-maps проскользнули незамеченными).
 export const BUCKETS = {
-  avatars: { public: true,  policies: ['select', 'insert', 'update', 'delete'], note: 'публичный; TRIP-117 delete-политика' },
+  avatars: { public: true,  policies: ['insert', 'update', 'delete'], note: 'публичный; детерм. ключ <uid>/avatar, БЕЗ SELECT (TRIP-48)' },
   trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы + _can_access_trip_file (DEFINER)' },
 };
 
