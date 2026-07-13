@@ -484,8 +484,11 @@ export default function ScreenAccount() {
     setUploadingAvatar(true);
     setErrorMsg(null);
     try {
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-      const path = `${user.id}/avatar.${ext}`;
+      // Deterministic key: one object per user, no extension. upsert overwrites
+      // it in place, so stale variants can never accumulate and no listing sweep
+      // is needed (TRIP-48). The browser renders <img> by Content-Type (passed
+      // below), not the URL suffix, and avatar_url carries a ?t= cache-buster.
+      const path = `${user.id}/avatar`;
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, file, { upsert: true, contentType: file.type || undefined });
@@ -494,14 +497,6 @@ export default function ScreenAccount() {
       const url = `${publicUrl}?t=${Date.now()}`;
       const { error: dbErr } = await supabase.from('users').update({ avatar_url: url }).eq('id', user.id);
       if (dbErr) throw dbErr;
-      // Uploading a different extension (png→jpg) leaves the previous avatar.<ext>
-      // behind (upsert only overwrites the same key). Sweep any stale avatar
-      // objects in the user's folder except the one we just wrote (TRIP-117).
-      try {
-        const { data: files } = await supabase.storage.from('avatars').list(user.id);
-        const stale = (files || []).map(f => `${user.id}/${f.name}`).filter(p => p !== path);
-        if (stale.length) await supabase.storage.from('avatars').remove(stale);
-      } catch (e) { console.error('avatar stale-sweep failed', e); }
       setAvatarUrl(url);
       await checkUserAuth?.();
     } catch (e) {
@@ -521,8 +516,7 @@ export default function ScreenAccount() {
       const { error } = await supabase.from('users').update({ avatar_url: null }).eq('id', user.id);
       if (error) throw error;
       try {
-        const { data: files } = await supabase.storage.from('avatars').list(user.id);
-        if (files?.length) await supabase.storage.from('avatars').remove(files.map(f => `${user.id}/${f.name}`));
+        await supabase.storage.from('avatars').remove([`${user.id}/avatar`]);
       } catch { /* ignore */ }
       await checkUserAuth?.();
     } catch (e) {
