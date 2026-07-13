@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
 
     // Step 3 — storage purge (best-effort, must NOT block the delete). Sweep the
     // `<tripId>/` prefix in the trips bucket (all trip files). The share-cards /
-    // share-maps buckets were dropped in TRIP-48 (the card is rendered in the
-    // browser now, nothing is stored), so there is nothing to purge there.
+    // share-maps buckets are dead as of TRIP-48 (the card is rendered in the
+    // browser now, nothing is written there), so there is nothing to purge there.
     try {
       await purgeBucketByPrefix(tripId);
     } catch (e) {
