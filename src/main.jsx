@@ -9,10 +9,29 @@ import '@/index.css'
 import '@/design/app.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN, {
-  api_host: import.meta.env.VITE_POSTHOG_HOST,
-  defaults: '2026-05-30',
-})
+// PostHog product analytics (TRIP-213 Phase 0).
+// - dev/preview/local stay SILENT by default so the single (free-tier) project
+//   isn't polluted by test traffic; enable with VITE_POSTHOG_ENABLE_DEV=true.
+//   Prod is detected by host (mirrors the CORS/canon-inspector split below).
+// - `env` super-property tags every event → prod dashboards filter env=prod.
+// - autocapture / web vitals / session replay OFF — we rely on explicit named
+//   events only (clean data over volume). Keep $pageview (traffic/retention).
+const POSTHOG_PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com'])
+const isPosthogProdHost = POSTHOG_PROD_HOSTS.has(window.location.hostname)
+const posthogEnabled = isPosthogProdHost || import.meta.env.VITE_POSTHOG_ENABLE_DEV === 'true'
+const posthogToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN
+if (posthogToken) {
+  posthog.init(posthogToken, {
+    api_host: import.meta.env.VITE_POSTHOG_HOST,
+    defaults: '2026-05-30',
+    autocapture: false,
+    capture_performance: false,
+    disable_session_recording: true,
+    person_profiles: 'identified_only',
+    opt_out_capturing_by_default: !posthogEnabled,
+  })
+  posthog.register({ env: isPosthogProdHost ? 'prod' : 'dev' })
+}
 
 // Must run before the first render so early errors are captured.
 initSentry()
