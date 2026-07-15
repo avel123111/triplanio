@@ -10,6 +10,7 @@
  * uploaded documents; the parent maps the values into its form.
  */
 import React, { useRef, useState } from 'react';
+import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
@@ -54,6 +55,7 @@ export default function EventAiBlock({
   tripId, // required by the server-side Pro/membership gate (parseBookingWithAi)
 }) {
   const { t } = useI18n();
+  const posthog = usePostHog();
   const [text, setText] = useState('');
   const [files, setFiles] = useState([]); // { file, name, file_url? }
   const [error, setError] = useState(null);
@@ -95,6 +97,7 @@ export default function EventAiBlock({
   const runParse = async () => {
     setError(null);
     setState('parsing');
+    posthog?.capture('booking_ai_parse_started', { kind, has_files: files.length > 0, has_text: text.trim().length > 0 });
     // Objects uploaded for THIS attempt. On any non-success exit they're orphans
     // (the parse result is discarded and a retry re-uploads), so sweep them
     // best-effort — otherwise every failed/retried parse leaked files (TRIP-117).
@@ -145,6 +148,7 @@ export default function EventAiBlock({
       const documents = uploaded
         .filter((u) => u.file_url)
         .map((u) => ({ file_url: u.file_url, file_name: u.name, storage_path: u.storage_path }));
+      posthog?.capture('booking_ai_parse_completed', { kind, field_count: parsedFieldCount });
       onExtract(
         { ...result, documents },
         documents[0]?.file_url || null,

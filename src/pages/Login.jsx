@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -239,6 +240,7 @@ export default function Login() {
   // ── Auth handlers ──
   const handleGoogle = async () => {
     setIsLoading(true); setError(null);
+    posthog?.capture('user_logged_in', { method: 'google' });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -329,6 +331,7 @@ export default function Login() {
 
   const handleApple = async () => {
     setIsLoading(true); setError(null);
+    posthog?.capture('user_logged_in', { method: 'apple' });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },
@@ -340,10 +343,7 @@ export default function Login() {
     e.preventDefault(); setIsLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(error.message); setIsLoading(false); return; }
-    // Success: AuthContext picks up SIGNED_IN, but this page stays mounted on
-    // /login (App routes /login independently of auth state), so navigate
-    // explicitly to land the user in the app. Keep isLoading=true until the
-    // full navigation tears the page down (avoids a flash of re-enabled buttons).
+    posthog?.capture('user_logged_in', { method: 'email' });
     window.location.href = postLoginPath();
   };
 
@@ -379,7 +379,7 @@ export default function Login() {
       },
     });
     if (error) { setError(error.message); setIsLoading(false); }
-    else { startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
+    else { posthog?.capture('user_signed_up', { method: 'email' }); startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
   };
 
   // Set a new password during a Supabase recovery session (reached via the
