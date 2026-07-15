@@ -27,10 +27,13 @@ import { MapProvider } from '@/lib/map/MapProvider';
 import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav';
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
+import { usePostHogPageview } from '@/hooks/usePostHogPageview';
+import '@/lib/posthog';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
+  usePostHogPageview();
 
   // Public read-only trip page - no auth needed
   const path = location.pathname;

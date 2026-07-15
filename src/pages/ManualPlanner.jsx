@@ -28,6 +28,7 @@ import PanelAi from '@/pages/create/PanelAi';
 import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import posthog from '@/lib/posthog';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 import '../design/app.css';
 
@@ -900,7 +901,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       });
     },
   });
-  const onGenerate = (promptText) => { if (promptText) planMut.mutate({ promptText }); };
+  const onGenerate = (promptText) => {
+    if (!promptText) return;
+    posthog.capture('trip_ai_plan_requested');
+    planMut.mutate({ promptText });
+  };
 
   // Visible steps - "Возврат" is skipped when the last city is the finish point.
   // The entry step's label depends on the method (origin vs AI prompt).
@@ -1090,6 +1095,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
+      posthog.capture('trip_created', {
+        method,
+        city_count: visitsToInsert.length,
+        has_start_date: !!startDate,
+      });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {

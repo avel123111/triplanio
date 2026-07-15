@@ -6,6 +6,7 @@ import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { fmtMoneyActive } from '@/lib/i18n/format';
+import posthog from '@/lib/posthog';
 
 /**
  * Global Stripe-checkout return handler. Mounted ONCE above all authenticated
@@ -59,12 +60,14 @@ export default function StripeReturnModals() {
     };
 
     if (status === 'cancel') {
+      posthog.capture('payment_cancelled', { kind });
       setPayModal('fail');
       stripParams();
       return;
     }
 
     // success
+    posthog.capture('payment_completed', { kind, trip_id: pt || undefined });
     setPayModal('success');
     qc.invalidateQueries({ queryKey: ['my-pro-status'] });
     qc.invalidateQueries({ queryKey: ['me'] });

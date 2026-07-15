@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import posthog from '@/lib/posthog';
 import { Icon } from '@/design/icons';
 import { Dialog, useToast } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -139,6 +140,7 @@ export function CreateTripProvider({ children }) {
     setPending(null);
     if (!p) return;
     if (p.kind === 'copy') { doCopy(p.tripId); return; }
+    posthog.capture('trip_creation_started', { method: p.pick });
     nav(p.pick === 'ai' ? '/plan-trip-ai' : '/new-trip');
   }, [nav, pending, doCopy]);
 

@@ -4,6 +4,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Badge, Btn, Dialog, Severity, Skeleton } from '@/design/index';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
+import posthog from '@/lib/posthog';
 import './ShareDialog.css';
 
 // Must match MAP_PLACEHOLDER in the render-share-card edge function (card_svg mode).
@@ -138,6 +139,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
 
   function copyLink() {
     if (!shareUrl) return;
+    posthog.capture('trip_share_link_copied', { trip_id: trip?.id });
     navigator.clipboard?.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

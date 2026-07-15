@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import posthog from '@/lib/posthog';
 
 const AuthContext = createContext();
 
@@ -181,6 +182,11 @@ export const AuthProvider = ({ children }) => {
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
       loadedUserIdRef.current = authUser.id;
+      posthog.identify(authUser.id, {
+        name: profile?.full_name || undefined,
+        subscription_tier: profile?.subscription_tier || 'free',
+        subscription_status: profile?.subscription_status || undefined,
+      });
     } catch (error) {
       console.error('Failed to load user profile:', error);
       // On a silent refresh, keep the current auth state untouched — a transient
@@ -217,6 +223,7 @@ export const AuthProvider = ({ children }) => {
     // hard-redirect to /login - no landing flash in between.
     isLoggingOutRef.current = true;
     if (shouldRedirect) setIsLoadingAuth(true);
+    posthog.reset();
     await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);

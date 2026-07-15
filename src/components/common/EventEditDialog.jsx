@@ -17,6 +17,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
+import posthog from '@/lib/posthog';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
@@ -780,6 +781,7 @@ export default function EventEditDialog({
     // write to the DB in the background and reconcile. qc is app-level, so this
     // completes even though the dialog unmounts on close. Edits + complex transfer
     // creates keep the awaited mutation (avoids the view-panel read race / multi-row).
+    posthog.capture('booking_saved', { kind: currentKind, is_edit: !!entity });
     const optimistic = !entity && tripId && OPT_CACHE[currentKind] && !isComplexTransferCreate;
     if (!optimistic) { saveMut.mutate(); return; }
     const table = ENTITY_TABLE_BY_KIND[currentKind];

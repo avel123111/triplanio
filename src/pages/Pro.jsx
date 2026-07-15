@@ -9,6 +9,7 @@ import { parseEdgeError } from '@/lib/edgeError';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton, Severity } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
+import posthog from '@/lib/posthog';
 import '../design/app.css';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
@@ -42,6 +43,10 @@ export default function Pro() {
   }, [tripId]);
   const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner === false;
 
+  useEffect(() => {
+    posthog.capture('upgrade_page_viewed', { is_pro: isPro, has_trip_id: !!tripId });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [prices, setPrices] = useState(null);
   // Start in the loading state: prices are always fetched on mount, so the very
   // first paint should already show skeletons (not a one-frame flash of "-" cards).
@@ -66,6 +71,7 @@ export default function Pro() {
 
   const handleUpgrade = async (productCode) => {
     setErrorMsg('');
+    posthog.capture('upgrade_started', { product_code: productCode, trip_id: tripId || undefined });
     try {
       setLoading(true);
       let isIframe = false;
