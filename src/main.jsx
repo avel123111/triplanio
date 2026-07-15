@@ -1,11 +1,18 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import posthog from 'posthog-js'
+import { PostHogProvider } from '@posthog/react'
 import { initSentry } from '@/lib/sentry'
 import { initKeyboardInset } from '@/lib/keyboardInset'
 import App from '@/App.jsx'
 import '@/index.css'
 import '@/design/app.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
+
+posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN, {
+  api_host: import.meta.env.VITE_POSTHOG_HOST,
+  defaults: '2026-05-30',
+})
 
 // Must run before the first render so early errors are captured.
 initSentry()
@@ -27,5 +34,7 @@ if (!CANON_INSPECTOR_PROD_HOSTS.has(window.location.hostname)) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <App />
+  <PostHogProvider client={posthog}>
+    <App />
+  </PostHogProvider>
 )

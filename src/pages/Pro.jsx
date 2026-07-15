@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -20,6 +21,7 @@ export default function Pro() {
   const { t, fmtMoney } = useI18nFormat();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPro = isProActive(user);
+  const posthog = usePostHog();
 
   const tripId = searchParams.get('tripId') || null;
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
@@ -66,6 +68,7 @@ export default function Pro() {
 
   const handleUpgrade = async (productCode) => {
     setErrorMsg('');
+    posthog?.capture('pro_upgrade_initiated', { product_code: productCode, trip_id: tripId || undefined });
     try {
       setLoading(true);
       let isIframe = false;

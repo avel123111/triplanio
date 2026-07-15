@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
 
 const AuthContext = createContext();
@@ -178,6 +179,10 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
+      posthog?.identify(authUser.id, {
+        email: profile.email,
+        name: profile.full_name,
+      });
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
       loadedUserIdRef.current = authUser.id;
@@ -217,6 +222,7 @@ export const AuthProvider = ({ children }) => {
     // hard-redirect to /login - no landing flash in between.
     isLoggingOutRef.current = true;
     if (shouldRedirect) setIsLoadingAuth(true);
+    posthog?.reset();
     await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);

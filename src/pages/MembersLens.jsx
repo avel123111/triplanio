@@ -8,6 +8,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
@@ -55,6 +56,7 @@ const ROLES = [
 export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
+  const posthog = usePostHog();
   const close = () => onOpenChange?.(false);
   const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
@@ -91,6 +93,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
   function copyLink() {
     if (!linkUrl) return;
+    posthog?.capture('member_invited', { invite_method: 'link', role });
     navigator.clipboard?.writeText(linkUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -114,6 +117,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     if (promoteMember?.id) {
       await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
     }
+    posthog?.capture('member_invited', { invite_method: 'email', role });
     onSaved?.();
     close();
   }

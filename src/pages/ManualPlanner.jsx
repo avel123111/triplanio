@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
 import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
@@ -681,6 +682,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const posthog = usePostHog();
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -1090,6 +1092,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
+      posthog?.capture('trip_created', { method, city_count: visitsToInsert.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {
