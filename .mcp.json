@@ -25,6 +25,21 @@
         "TOLGEE_API_KEY": "${TOLGEE_API_KEY}",
         "TOLGEE_API_URL": "https://tolgee.triplanio.com"
       }
+    },
+    "posthog": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.posthog.com/mcp",
+        "--header",
+        "Authorization:Bearer ${POSTHOG_PERSONAL_API_KEY}",
+        "--header",
+        "x-posthog-read-only:true"
+      ],
+      "env": {
+        "POSTHOG_PERSONAL_API_KEY": "${POSTHOG_PERSONAL_API_KEY}"
+      }
     }
   }
 }
