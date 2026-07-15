@@ -179,10 +179,9 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
-      posthog?.identify(authUser.id, {
-        email: profile.email,
-        name: profile.full_name,
-      });
+      // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213).
+      // Personal data stays in Supabase; resolve uid → user there when needed.
+      posthog?.identify(authUser.id);
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
       loadedUserIdRef.current = authUser.id;
