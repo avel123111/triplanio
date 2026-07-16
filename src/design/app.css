@@ -400,7 +400,6 @@ h1,
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
 h2,
 .eroute h3,
-.lph-name,
 .acct-hero__av,
 .acct-hero__name,
 .acct-plan__v,
@@ -523,7 +522,6 @@ h4,
 .proto__viewport-title,
 .app-side__item,
 .input, .select, .textarea,
-.tweaks__title,
 .addsheet__tx b,
 .eroute p,
 .invite__tx p,
@@ -536,7 +534,6 @@ h4,
 .bt b,
 .gt b,
 .route .rc,
-.lp-warn b,
 .mrow .mn,
 .tl3-card .meta,
 .tl3-card--tr .rv-mode,
@@ -656,7 +653,6 @@ h4,
 .te-warnbadge,
 .te-nights,
 .te-seam__pill,
-.lph-mv,
 .ti span,
 .gt span,
 .stepper .n,
@@ -664,7 +660,6 @@ h4,
 .lkv,
 .route .ra,
 .rmid .dur,
-.lp-warn span,
 .addr div,
 .docrow b,
 .docrow span,
@@ -856,15 +851,12 @@ h4,
 .eyebrow,
 .proto__group-label,
 .app-side__group-label,
-.tweaks__row-label,
 .chat-daydiv span,
 .chat-mention__lbl,
 .ngrp__label,
 .te-th,
 .te-endlabel,
 .te-wptag,
-.lph-fc,
-.lph-mk,
 .sl2,
 .tl3-dh .datechip .m,
 .tl3-today,
@@ -1161,10 +1153,6 @@ h4,
   min-width: 0;
   max-width: 100%;
 }
-.app-main__wide {
-  padding: 0;
-}
-
 /* Map lens (TRIP-33): full-bleed map with a floating glass route panel. The
    panel (.map-route) is positioned absolutely over the map; its own block and
    the ≤640px bottom-sheet variant live in the PRIMITIVES section below. */
@@ -1271,8 +1259,7 @@ h4,
 .invite,                   /* баннер-приглашение */
 .acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
-.pl-lastcard,              /* карточка последней брони (планнер) */
-.lpanel {                  /* левая панель редактора */
+.pl-lastcard {             /* карточка последней брони (планнер) */
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
   border-radius: var(--r-xl);
@@ -1608,22 +1595,6 @@ h4,
 /* Divider */
 .hr { border: none; border-top: 1px solid var(--line-2); margin: 0; }
 
-/* Tweaks panel */
-.tweaks {
-  position: fixed; right: 18px; top: 60px;
-  width: 280px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow-pop);
-  z-index: 80;
-  overflow: hidden;
-}
-.tweaks__head { padding: 12px 14px; border-bottom: 1px solid var(--line-2); display: flex; align-items: center; gap: 8px; }
-.tweaks__title { flex: 1; }
-.tweaks__body { padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
-.tweaks__row { display: flex; flex-direction: column; gap: 6px; }
-.tweaks__row-label { color: var(--muted-2); }
 .tweaks__seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); background: var(--wash); border-radius: 9px; }
 .tweaks__seg button {
  flex: 1; padding: 5px 10px; border: none; background: transparent;
@@ -2790,9 +2761,6 @@ h4,
    LUMO EDITOR PANELS — faithful port of Lumo C5 (city / event panels).
    Used by CityPanel & EventPanels. Class names match the Lumo design.
    ================================================================= */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
-.lpanel { width: 300px; flex: 0 0 300px; min-height: 340px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s, border-color .2s, transform .18s var(--ease-spring); }
-.lpanel--wide { width: 100%; flex: 1 1 auto; min-height: 0; }
 
 /* TRIP-176: CityPanel — шапка на каноне .lp-h с brand-градиентом (не цвет эвента).
    3 строки в .lp-ti (тип·маршрут / название / страна) + слева .lp-ic с номером
@@ -2820,10 +2788,6 @@ h4,
 .lp-f--ratio { justify-content: stretch; }
 .lp-f--ratio > .btn:first-child { flex: 2; }
 .lp-f--ratio > .btn:last-child  { flex: 8; }
-/* Event create/edit footer: a quiet icon-only Delete pinned left, Cancel
-   (secondary), and Save as the dominant CTA filling the remaining width. */
-.lp-f--edit .ev-del  { flex: none; padding-left: 14px; padding-right: 14px; }
-.lp-f--edit .ev-save { flex: 1; }
 @media (max-width: 640px) {
   .lp-f--ratio > .btn:first-child { flex: 0 0 auto; }
   .lp-f--single > .btn { width: 100%; }
@@ -2883,9 +2847,6 @@ h4,
 .rmid { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ev-transfer-ink); }
 .rmid .dur { color: var(--muted); white-space: nowrap; }
 
-.lp-warn { display: flex; gap: 10px; padding: 12px; border-radius: 13px; background: var(--warning-soft); color: var(--warning-ink); }
-.lp-warn b { display: block; }
-.lp-warn span { color: var(--warning-ink); opacity: .85; }
 .metastrip .ch--p { background: var(--primary-soft); color: var(--primary); }
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
@@ -4416,9 +4377,8 @@ h4,
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
   textarea, select { font-size: var(--fs-h4) !important; }
   /* View-modal footer actions (Delete / Edit) share the row evenly instead of
-     crowding. Scoped away from the edit dialog footer (.lp-f--edit), which has
-     its own layout (icon-only delete + grow-to-fill save). */
-  .ev-dlg-ft:not(.lp-f--edit) .btn { flex: 1 1 auto; justify-content: center; }
+     crowding on phones. */
+  .ev-dlg-ft .btn { flex: 1 1 auto; justify-content: center; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
