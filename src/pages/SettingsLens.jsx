@@ -635,12 +635,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         // removeTripMember now returns a non-2xx with the reason on failure, so we
         // must read the response - navigating on a silent failure left the user
         // still in the trip ("выход" перебрасывал на /trips, но не выходил).
-        const { data, error } = await invokeFn('removeTripMember', {
+        const { data, error, message } = await invokeFn('removeTripMember', {
           body: { member_id: myMember.id },
         });
         if (error || !data?.ok) {
-          let msg = error?.message || t('settings.leave_error');
-          try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+          // invokeFn already parsed the body (read error.context once — a Response
+          // can only be read one time), so use its message; don't re-read.
+          const msg = message || t('settings.leave_error');
           toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
           return;
         }
@@ -658,10 +659,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // button carries the spinner while deleteTrip (Telegram teardown + Storage
     // purge + DELETE) runs.
     const runDelete = async () => {
-      const { data, error } = await invokeFn('deleteTrip', { body: { tripId } });
+      const { data, error, message } = await invokeFn('deleteTrip', { body: { tripId } });
       if (error || !data?.ok) {
-        let msg = data?.error || error?.message || '';
-        try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+        // invokeFn already parsed the body (read error.context once); use its
+        // message rather than re-reading the already-consumed Response.
+        const msg = message || '';
         toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
         return;
       }

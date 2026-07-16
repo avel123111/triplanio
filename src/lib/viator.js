@@ -13,6 +13,7 @@
 
 import { useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 
 // geonameid -> viator_dest_id (or null). Resolved once per city per session.
@@ -53,7 +54,10 @@ const POOL_STALE_MS = 5 * 60 * 1000;
 async function fetchViatorPage(base, page) {
   const { data, error } = await invokeFn('viatorActivities', { body: { ...base, page } });
   if (error) throw error;
-  if (data?.error) throw new Error(data.error);
+  // 200-with-{error}: invokeFn already reported it — mark the thrown error so the
+  // QueryCache.onError seam doesn't capture it a second time (new Error drops the
+  // stamp invokeFn puts on real error objects).
+  if (data?.error) throw Object.assign(new Error(data.error), { __seamHandled: true });
   return { activities: data?.activities || [], meta: data?.meta || {} };
 }
 

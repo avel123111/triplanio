@@ -115,14 +115,11 @@ export function CreateTripProvider({ children }) {
   const doCopy = useCallback(async (tripId) => {
     setCopying(true);
     try {
-      const { data, error } = await invokeFn('copyTrip', { body: { tripId } });
-      // Non-2xx → supabase-js puts the response in error.context; pull the real
-      // server message out of it so failures aren't masked by a generic toast.
-      let serverMsg = data?.error || null;
-      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
-        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
-      }
-      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
+      const { data, error, message } = await invokeFn('copyTrip', { body: { tripId } });
+      // `message` is already parsed by invokeFn (it read error.context once — a
+      // Response body can only be read one time, so we must NOT re-read it). This
+      // keeps the real server reason (e.g. TRIP_LIMIT_REACHED) out of a generic toast.
+      if (error || data?.error) throw new Error(message || 'copy failed');
       // Copying adds an active trip — drop the limit gate cache too, not just the
       // list, so the next create attempt doesn't read a stale (under-cap) count.
       invalidateActiveTripsLimit(qc);

@@ -102,7 +102,10 @@ export default function NotificationsBell({ triggerClassName }) {
       const { data, error } = await invokeFn('respondTripInvite', {
         body: { member_id: memberId, action },
       });
-      if (error || data?.error) throw new Error(data?.error || error?.message || 'Failed');
+      // Re-throw the ORIGINAL error (invokeFn stamped it __seamHandled) so the
+      // global MutationCache.onError seam doesn't capture it twice — the edge/
+      // invoke seam already reported it. new Error(...) would drop the stamp.
+      if (error || data?.error) throw error || new Error(data?.error || 'Failed');
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
