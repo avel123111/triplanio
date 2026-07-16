@@ -1689,8 +1689,13 @@ h4,
    (owned by .trip-shell / .ts-drawer). The cosmetic rules key on .app-side, which
    both hosts render, so the rail looks the same in both. */
 @media (max-width: 1040px) and (min-width: 881px) {
-  .trip-body { grid-template-columns: 60px 1fr; }
-  .ts-sidecol { flex-basis: 60px; }
+  /* Scoped to the shell parent (.trip-shell / .ts-screen) so these win over the
+     base `.trip-body`/`.ts-sidecol` widths REGARDLESS of source order — the base
+     `.trip-body { grid-template-columns: 220px 1fr }` lives later in the file, so
+     an equal-specificity override here would otherwise lose and the column would
+     never narrow (labels hidden + 220px column = the broken "wide rail"). */
+  .trip-shell .trip-body { grid-template-columns: 60px 1fr; }
+  .ts-screen .ts-sidecol { flex-basis: 60px; }
   .app-side__item span { display: none; }
   .app-side__group-label { display: none; }
   .app-side__item-badge { position: absolute; top: 2px; right: 2px; }
