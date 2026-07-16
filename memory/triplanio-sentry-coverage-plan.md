@@ -60,3 +60,19 @@ telegramWebhook держат ещё и инлайн-capture) + **aiGate инла
 Edge-охват ПОЛНОСТЬЮ унифицирован под один шов, кроме документированных исключений.
 **Осталось по TRIP-219:** фронт (invoke-capture + route-boundaries) → трейсинг+
 Session Replay → n8n Error Workflow + cron-монитор `getPendingReminders`.
+
+**★ФРОНТ-ФАЗА — архитектура согласована (Pavel 2026-07-16), СТАРТ:** слоёная
+модель, по ОДНОЙ центральной точке на класс ошибки (не 66 разрозненных, не одна
+затычка): (F1) крэши рендера → route/feature **error-boundaries**; (—) непойманный
+JS/promise → глобальные хендлеры SDK (уже есть); (F1) сбой вызова edge → **единый
+`invokeFn`-шов** `src/lib/invokeFn.js` + CI-гард «сырой `functions.invoke` вне шва
+не проходит»; (F3) ошибки React Query → глобальный `QueryCache/MutationCache.onError`
+в `query-client.js`; (F3) прямой PostgREST/RLS → общий хелпер. Решения Pavel:
+①фронт капчит то, что edge НЕ видит (сервер-4xx уже репортит edge → НЕ дублируем;
+дедуп по `error.context`: есть Response=сервер видел=skip, нет=сеть/relay/200-error=
+капчим); ②внутри — без фильтра ожидаемая/нет; квоту игнорируем; навигационный
+`AbortError`/`Failed to fetch` остаётся в `ignoreErrors` (не ошибка). Порядок
+F1→F2→F3, потом трейсинг+Replay (F5), n8n+cron (F6). `invokeFn` возвращает
+`{data,error,code,message}` (drop-in для `supabase.functions.invoke`), парсит
+`parseEdgeError` ОДИН раз (Response body читается однократно!) → мигрируемые
+call-sites ОБЯЗАНЫ убрать свой `parseEdgeError`. Пилот: `src/lib/fx.js`.
