@@ -1,16 +1,20 @@
-import * as Dialog from '@radix-ui/react-dialog';
+import { Drawer } from 'vaul';
 import { X } from 'lucide-react';
-import { useSheetSwipe } from '@/lib/useSheetSwipe';
-import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * C6 · Sheet — canonical mobile bottom-sheet (Lumo `.sheet`).
  *
- * Thin wrapper over Radix Dialog so we get focus-trap, Esc / outside-click and
- * scroll-lock for free. Used as the mobile shell for menus (ActionMenu) and
- * pickers (SearchSelect) under the mobile breakpoint. On desktop those
- * components render their anchored variants instead.
+ * Built on vaul's `Drawer` (which itself wraps Radix Dialog, so we keep the
+ * focus-trap, Esc / outside-click and scroll-lock we had before). vaul owns the
+ * gesture + animation: the whole surface is draggable with native momentum,
+ * velocity-based dismiss, and a spring settle — replacing the old grip-only
+ * `useSheetSwipe`. `repositionInputs` (default) lifts the sheet above the iOS
+ * keyboard instead of the page jumping/shrinking, so inputs behave.
+ *
+ * Used as the mobile shell for menus (ActionMenu) and pickers (SearchSelect)
+ * under the mobile breakpoint. On desktop those components render their anchored
+ * variants instead.
  *
  *   <Sheet open={open} onOpenChange={setOpen} title="Actions">
  *     ...rows...
@@ -18,30 +22,30 @@ import { useT } from '@/lib/i18n/I18nContext';
  */
 export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const t = useT();
-  const { elRef, gripProps } = useSheetSwipe(() => onOpenChange?.(false));
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="sheet-backdrop" />
-        {/* Don't auto-focus into the sheet on open: on mobile that pops the
-            keyboard for a search field, which yanks the fixed sheet up the
-            screen and triggers iOS zoom. Focus is taken on user tap instead. */}
-        <Dialog.Content ref={elRef} className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onOpenAutoFocus={keepFocusInDialog}>
-          <div className="sheet-grip" {...gripProps}><i /></div>
+    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal>
+        <Drawer.Overlay className="sheet-backdrop" />
+        {/* vaul does NOT auto-focus into the sheet on open, so the mobile keyboard
+            stays down until the user taps a field (no jump / iOS zoom on open). */}
+        <Drawer.Content className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined}>
+          {/* Visual drag affordance only — the whole sheet is draggable (vaul), so
+              this carries no handlers. */}
+          <div className="sheet-grip" aria-hidden><i /></div>
           {title ? (
             <div className="sheet-h">
-              <Dialog.Title asChild><h3>{title}</h3></Dialog.Title>
-              <Dialog.Close className="close" aria-label={t('common.close')}><X size={16} /></Dialog.Close>
+              <Drawer.Title asChild><h3>{title}</h3></Drawer.Title>
+              <Drawer.Close className="close" aria-label={t('common.close')}><X size={16} /></Drawer.Close>
             </div>
           ) : (
-            <Dialog.Title style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+            <Drawer.Title style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
               {titleText || t('common.menu')}
-            </Dialog.Title>
+            </Drawer.Title>
           )}
           <div className={'sheet-b' + (bodyClassName ? ' ' + bodyClassName : '')}>{children}</div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
 
