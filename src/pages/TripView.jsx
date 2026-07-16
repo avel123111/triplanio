@@ -31,6 +31,7 @@ import EventSourcePanel from '@/components/common/EventSourcePanel';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { useStay22Bundle } from '@/lib/stay22';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import OverviewLens from './OverviewLens';
 import BudgetLens, { AddExpenseDialog } from './BudgetLens';
 import MembersLens, { InviteDialog } from './MembersLens';
@@ -1096,6 +1097,10 @@ export default function TripView() {
             warning={eventView.warning}
           />
 
+          {/* Lens-level crash isolation (TRIP-219 F2): a crash in one lens shows
+              the retry fallback in the content area while the trip header, sidebar
+              and nav stay alive. Keyed by lens so switching tabs clears a crash. */}
+          <ErrorBoundary key={shownLens} region={`lens:${shownLens}`}>
           {shownLens === 'overview' && (
             <OverviewLens
               trip={trip}
@@ -1230,6 +1235,7 @@ export default function TripView() {
               active
             />
           )}
+          </ErrorBoundary>
             </main>
             {/* TRIP-195: global drawer for hotel/transfer/activity — anchored to
                 .trip-content (below header, right of menu), left 50% with a scrim.
