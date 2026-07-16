@@ -36,19 +36,15 @@ function useIsSheet() {
 const Dialog = ({ children, ...props }) => {
   const isSheet = useIsSheet()
   if (isSheet) {
-    // Keyboard model (TRIP-234): the app rides `interactive-widget=resizes-content`
-    // — the layout viewport shrinks above the keyboard, so a bottom-anchored sheet
-    // sized in `dvh` fits above it (header pinned + visible, body scrolls, footer
-    // just above the keyboard), the same mechanism the create-flow shell uses.
-    //   • repositionInputs={false}: don't let vaul ALSO move the sheet (double-move
-    //     = the old "flying" bug).
-    //   • noBodyStyles: vaul otherwise pins `body{position:fixed}` on iOS Safari
-    //     for scroll-lock, which DEFEATS resizes-content → the sheet stops
-    //     shrinking and its header slides off the top. Disabling it lets dvh track
-    //     the keyboard. Swipe / velocity-dismiss / spring are unaffected.
+    // Keyboard (TRIP-234): keep vaul's gesture but NOT its keyboard repositioning
+    // (repositionInputs={false} — moving the sheet double-moved it = "flying").
+    // The sheet stays anchored bottom:0; its max-height is capped to the real
+    // visible area (`--vvh` from visualViewport) in CSS so it can't grow past the
+    // screen above the keyboard (which slid the header off the top on iOS, where
+    // `dvh` does not shrink for a fixed element).
     return (
       <ResponsiveSheetCtx.Provider value={true}>
-        <Drawer.Root repositionInputs={false} noBodyStyles {...props}>{children}</Drawer.Root>
+        <Drawer.Root repositionInputs={false} {...props}>{children}</Drawer.Root>
       </ResponsiveSheetCtx.Provider>
     )
   }
