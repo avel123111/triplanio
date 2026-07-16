@@ -2127,9 +2127,9 @@ h4,
 
 /* ── C6 Overlay: below 640 px every .dlg-modal becomes a bottom sheet ──
    The mobile Content is a vaul Drawer (see ui/dialog.jsx), which owns the drag
-   transform + open/close slide. Do NOT re-add `animation` or `bottom: var(--kb)`
-   (they fought vaul → the "fly"). The `.dlg` card height IS capped to the
-   visible viewport (--vvh) so the header never slides off the top. */
+   transform, the open/close slide and lifting above the keyboard. So this block
+   keeps only the sheet geometry — do NOT re-add `animation`, `bottom: var(--kb)`
+   or a `--vvh` height cap here (they fought vaul → jump/shrink). */
 @media (max-width: 640px) {
   .dlg-modal {
     left: 0; right: 0; top: auto;
@@ -2143,10 +2143,7 @@ h4,
   .dlg-modal .dlg {
     border-radius: 20px 20px 0 0;
     max-height: 92vh;
-    /* Cap to the REAL visible height (--vvh) so the sheet never grows past the
-       top of the screen above the keyboard — dvh alone doesn't shrink for a
-       fixed element on iOS, which slid the header off the top. */
-    max-height: min(92dvh, calc(var(--vvh, 100dvh) - 8px));
+    max-height: 92dvh;
     max-width: 100%;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
@@ -3520,11 +3517,12 @@ h4,
    Rendered by <Sheet> (vaul Drawer) under the mobile breakpoint.
    ============================================================ */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--scrim); backdrop-filter: blur(2px); animation: sheetFade .2s ease; }
-/* vaul owns the drag transform + open/close slide (do NOT add `animation` or a
-   `bottom: var(--kb)` position shift — those fought vaul and caused the "fly").
-   Height IS capped to the visible viewport (--vvh) so the sheet can't grow past
-   the top above the keyboard. Skin = surface / radius / shadow / safe-area. */
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: min(86dvh, calc(var(--vvh, 100dvh) - 8px)); display: flex; flex-direction: column; }
+/* vaul (Drawer) owns positioning above the keyboard (repositionInputs),
+   the drag transform and the open/close slide — so this rule keeps only the
+   skin (surface, radius, shadow, safe-area padding, flex column). Do NOT add
+   `animation`, `bottom: var(--kb)` or a `--vvh` height cap here: those fought
+   vaul and caused the "jump / shrink / fly" the sheet used to have. */
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: 86dvh; display: flex; flex-direction: column; }
 .sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; touch-action: none; cursor: grab; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }

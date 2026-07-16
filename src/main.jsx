@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import posthog from 'posthog-js'
 import { PostHogProvider } from '@posthog/react'
 import { initSentry } from '@/lib/sentry'
-import { initKeyboardInset } from '@/lib/keyboardInset'
 import App from '@/App.jsx'
 import '@/index.css'
 import '@/design/app.css'
@@ -35,9 +34,6 @@ if (posthogToken) {
 
 // Must run before the first render so early errors are captured.
 initSentry()
-// Publish the visible viewport height (--vvh) so bottom sheets cap their height
-// to the space above the on-screen keyboard.
-initKeyboardInset()
 
 // Typography canon inspector (TRIP-165) — a dev/staging-only browser tool.
 // It must run on the DEPLOYED dev site (dev.triplanio.com), which Vercel builds
