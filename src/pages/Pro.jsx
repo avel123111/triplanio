@@ -149,14 +149,14 @@ export default function Pro() {
       key: 'monthly', name: t('sub.plan_monthly_short'), nameColor: 'var(--brand)',
       price: monthly.price, period: monthly.period,
       caption: t('sub.caption_monthly'), features: proFeatures,
-      cta: { label: t('sub.subscribe_monthly'), variant: 'secondary', code: 'account_pro_monthly' },
+      cta: { label: t('sub.subscribe_monthly'), variant: 'primary', code: 'account_pro_monthly' },
     },
     {
-      key: 'yearly', name: t('sub.plan_yearly_short'), nameColor: 'var(--brand)', featured: true,
+      key: 'yearly', name: t('sub.plan_yearly_short'), nameColor: 'var(--pro)', featured: true,
       price: yearly.price, period: yearly.period, oldPrice: yearStrike, save: savePct,
       caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : t('sub.period_year'),
       features: proFeatures,
-      cta: { label: t('sub.subscribe_yearly'), variant: 'primary', code: 'account_pro_yearly' },
+      cta: { label: t('sub.subscribe_yearly'), variant: 'pro', star: true, code: 'account_pro_yearly' },
     },
   ];
 
@@ -272,6 +272,7 @@ export default function Pro() {
                       disabled={busy}
                       onClick={() => (c.cta.code ? handleUpgrade(c.cta.code) : c.cta.onClick())}
                     >
+                      {c.cta.star && <span aria-hidden="true" style={{ marginRight: 2 }}>★</span>}
                       {c.cta.label}
                     </Btn>
                   </div>

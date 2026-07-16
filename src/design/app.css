@@ -3852,20 +3852,27 @@ h4,
   border-radius: var(--r-card);
   transition: box-shadow .22s var(--ease-out), border-color .2s;
 }
-/* Featured (Yearly) — accent border + soft accent wash + lifted shadow (design proV1). */
+/* Featured (Yearly) = the PRO plan → bound to the --pro accent (not --brand):
+   a --pro-gradient BORDER over a surface fill (gradient-border trick), matching
+   the design's 1.5px pro-gradient wrapper. */
 .plan-card--featured {
-  border-color: var(--brand);
-  background-image: linear-gradient(180deg, var(--primary-soft), transparent 60%);
-  box-shadow: 0 26px 54px -30px color-mix(in srgb, var(--brand) 60%, transparent);
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--pro-gradient) border-box;
+  box-shadow: 0 26px 54px -32px var(--pro);
 }
+/* Featured feature ticks use the --pro accent, not --brand. */
+.plan-card--featured .plan-feature__check { background: var(--pro); }
 
-/* Save badge — solid accent pill overlapping the top edge of the featured card. */
+/* Save badge — --pro-tinted pill overlapping the top edge of the featured card. */
 .plan-popular-badge {
  position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
  display: inline-flex; align-items: center; gap: 5px;
- padding: 4px 13px; background: var(--brand); color: #fff;
+ padding: 5px 14px; background: var(--pro-soft); color: var(--pro-ink);
+ text-transform: uppercase; letter-spacing: .06em;
  white-space: nowrap; border-radius: var(--r-pill);
- box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--brand) 55%, transparent);
+ box-shadow: 0 0 0 4px var(--bg), 0 10px 20px -8px var(--pro);
  z-index: 2;
 }
 
