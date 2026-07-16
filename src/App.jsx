@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
@@ -102,6 +103,11 @@ const AuthenticatedApp = () => {
       {/* One global Stripe-return handler for the whole logged-in app - shows the
           success/fail modal regardless of which screen Stripe came back to. */}
       <StripeReturnModals />
+      {/* Route-level crash isolation (TRIP-219 F2): a render crash in one screen
+          shows an in-place retry fallback instead of white-screening the whole
+          app; the global bottom-nav (sibling) stays alive. Keyed by pathname so
+          navigating away resets a crashed route. */}
+      <ErrorBoundary key={path} region={`route:${path}`}>
       <Routes>
       {/* New design - standalone (own app-header, no Layout) */}
       {/* Logged-in users can still view the landing at "/" (no auto-redirect);
@@ -120,6 +126,7 @@ const AuthenticatedApp = () => {
 
       <Route path="*" element={<PageNotFound />} />
       </Routes>
+      </ErrorBoundary>
       {/* Custom mobile bottom nav (≤640px); hides itself on planner / create /
           landing / login routes. */}
       <MobileBottomNav />
