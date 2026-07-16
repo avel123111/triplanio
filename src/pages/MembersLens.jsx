@@ -56,6 +56,41 @@ const ROLES = [
 export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
+  // Keyboard owner (TRIP-234 pilot, Design 2): the ONLY reliable keyboard signal
+  // on iOS Safari is window.visualViewport (interactive-widget=resizes-content and
+  // vaul's repositionInputs are both no-ops there). While this sheet is open we
+  // publish the keyboard height (--dlg-kb) and the visible height (--dlg-sheet-h)
+  // to :root; the .dlg-modal CSS reads them (safe 0/92dvh defaults elsewhere). The
+  // sheet then caps to the visible area and sits on the keyboard → header pinned,
+  // body scrolls, footer just above the keyboard, no iOS pan / "flying".
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!open || !vv) return;
+    const root = document.documentElement;
+    const apply = () => {
+      // Keyboard height = layout viewport (innerHeight, stable on iOS) minus the
+      // visible viewport. >60px filters out browser-toolbar show/hide so the vars
+      // engage ONLY when a real keyboard is up; otherwise clear them → the sheet
+      // keeps its default 92dvh geometry unchanged.
+      const kb = Math.max(0, window.innerHeight - vv.height);
+      if (kb > 60) {
+        root.style.setProperty('--dlg-kb', kb + 'px');
+        root.style.setProperty('--dlg-sheet-h', (vv.height - 8) + 'px');
+      } else {
+        root.style.removeProperty('--dlg-kb');
+        root.style.removeProperty('--dlg-sheet-h');
+      }
+    };
+    apply();
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+    return () => {
+      vv.removeEventListener('resize', apply);
+      vv.removeEventListener('scroll', apply);
+      root.style.removeProperty('--dlg-kb');
+      root.style.removeProperty('--dlg-sheet-h');
+    };
+  }, [open]);
   const posthog = usePostHog();
   const close = () => onOpenChange?.(false);
   const [tab, setTab] = useState('email');
@@ -137,7 +172,6 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
   return (
     <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
-      repositionInputs
       foot={<>
         <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
         {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
