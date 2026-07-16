@@ -54,7 +54,11 @@ function reportDataError(error, source, key) {
 				...(name ? { query: String(name) } : {}),
 			},
 		});
-	}).catch(() => { /* monitoring must never break the app */ });
+	}).catch((e) => {
+		// Monitoring must never break the app — but surface the failure in dev so a
+		// blocked/misconfigured Sentry doesn't make data errors silently vanish.
+		if (import.meta.env.DEV) console.warn('[monitoring] data-error report failed', e);
+	});
 }
 
 export const queryClientInstance = new QueryClient({

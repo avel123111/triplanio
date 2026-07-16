@@ -57,7 +57,10 @@ async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters 
   const body = address ? { ...params, address } : params;
   const { data, error } = await invokeFn('stay22Accommodations', { body });
   if (error) throw error;
-  if (data?.error) throw new Error(data.error);
+  // 200-with-{error}: invokeFn already reported it — mark the thrown error so the
+  // QueryCache.onError seam doesn't capture it a second time (new Error drops the
+  // stamp invokeFn puts on real error objects).
+  if (data?.error) throw Object.assign(new Error(data.error), { __seamHandled: true });
   // When a platform is selected, surface that supplier on the card (the v2
   // suppliers map has no primary/order, so pick the requested one).
   return normalizeStay22(data, filters?.provider || null);

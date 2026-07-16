@@ -562,12 +562,10 @@ export default function ScreenAccount() {
     setDeletingAccount(true);
     setErrorMsg(null);
     try {
-      const { data, error } = await invokeFn('deleteMyAccount');
+      const { data, error, code } = await invokeFn('deleteMyAccount');
       if (error) {
-        // supabase-js puts the real response body on FunctionsHttpError.context
-        // (a Response); .message is only the useless "non-2xx status code".
-        let code = '';
-        try { code = (await error.context?.json())?.code || ''; } catch { /* no body */ }
+        // `code` is already parsed by invokeFn (it read error.context once — a
+        // Response body can only be read one time, so we must NOT re-read it here).
         if (code === 'active_subscription') { setDeleteState('blocked'); return; }
         setErrorMsg(t(code === 'unauthorized' ? 'account.err_delete_unauthorized' : 'account.err_delete_failed'));
         setDeleteState(null);

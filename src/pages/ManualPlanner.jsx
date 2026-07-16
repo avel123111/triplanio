@@ -882,7 +882,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       if (fnErr) {
         // TRIP-111: серверный rate-limit генераций → понятное сообщение вместо
         // общего «не удалось». supabase.functions.invoke кладёт Response в .context.
-        if (fnErr?.context?.status === 429) throw new Error(t('ai_plan.error_rate_limited'));
+        // Мутируем message и бросаем ОРИГИНАЛ (invokeFn пометил его __seamHandled),
+        // иначе new Error теряет стамп → MutationCache.onError задваивает репорт.
+        if (fnErr?.context?.status === 429) { fnErr.message = t('ai_plan.error_rate_limited'); throw fnErr; }
         throw fnErr;
       }
       return data;
