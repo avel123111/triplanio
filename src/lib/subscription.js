@@ -30,12 +30,12 @@ export function useTripProStatus(tripId, isProTrip = false) {
   const q = useQuery({
     queryKey: ['trip-owner-pro', tripId],
     queryFn: async () => {
-      // Lazy import keeps this module free of the '@/api/supabaseClient' alias at
-      // load time, so the pure isProActive predicate stays importable under
-      // `node --test` (the drift-guard test). Behaviour is unchanged — the client
-      // is a singleton resolved on first use.
-      const { supabase } = await import('@/api/supabaseClient');
-      const res = await supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } });
+      // Lazy import keeps this module free of the '@/'-aliased invokeFn (and its
+      // transitive '@/api/supabaseClient') at load time, so the pure isProActive
+      // predicate stays importable under `node --test` (the drift-guard test).
+      // Behaviour is unchanged — the client is a singleton resolved on first use.
+      const { invokeFn } = await import('@/lib/invokeFn');
+      const res = await invokeFn('checkSubscriptionStatus', { body: { tripId } });
       return !!res.data?.isPro;
     },
     enabled: !!tripId,

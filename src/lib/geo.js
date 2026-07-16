@@ -9,6 +9,7 @@
 // separately offline via src/lib/timezone.js (tz-lookup).
 // Returns: { external_city_id, city_name, country, country_code, latitude, longitude }
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { liqRetryDelayMs } from './geo-retry.js';
 import { mapGazCity, buildResolvePayload, expandBatchRows } from './geo-cities.js';
 
@@ -29,7 +30,7 @@ async function liq(action, body) {
   // reaches here. Batch resolveCities does NOT use liq() — it degrades as a 200 and
   // is deliberately not retried.
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+    const { data, error } = await invokeFn('geoLocationiq', {
       body: { action, ...body },
     });
     if (!error) return data?.results || [];
@@ -123,7 +124,7 @@ export async function geocodeAddress(address, lang) {
   const acceptLang = lang
     || (typeof navigator !== 'undefined' && navigator.language)
     || 'en';
-  const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+  const { data, error } = await invokeFn('geoLocationiq', {
     body: { action: 'geocodeAddress', q: String(address), lang: acceptLang, limit: 1 },
   });
   if (error) return null;

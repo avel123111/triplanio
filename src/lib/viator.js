@@ -13,7 +13,7 @@
 
 import { useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 
 // geonameid -> viator_dest_id (or null). Resolved once per city per session.
 const destCache = new Map();
@@ -51,7 +51,7 @@ const POOL_STALE_MS = 5 * 60 * 1000;
 
 // Fetch one edge page of activities. Returns { activities, meta }.
 async function fetchViatorPage(base, page) {
-  const { data, error } = await supabase.functions.invoke('viatorActivities', { body: { ...base, page } });
+  const { data, error } = await invokeFn('viatorActivities', { body: { ...base, page } });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
   return { activities: data?.activities || [], meta: data?.meta || {} };

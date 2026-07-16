@@ -10,6 +10,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import {
   normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
@@ -54,7 +55,7 @@ async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters 
   const cntryEn = visit?.country_code ? countryNameEn(visit.country_code) : null;
   const address = cityEn ? [cityEn, cntryEn].filter(Boolean).join(', ') : null;
   const body = address ? { ...params, address } : params;
-  const { data, error } = await supabase.functions.invoke('stay22Accommodations', { body });
+  const { data, error } = await invokeFn('stay22Accommodations', { body });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
   // When a platform is selected, surface that supplier on the card (the v2
