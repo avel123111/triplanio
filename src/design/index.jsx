@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -298,9 +299,18 @@ export const RoleBadge = ({ role, size = "md", status }) => {
 const DLG_ICON_TONES = {
   activity: { bg: 'var(--ev-activity-soft)', fg: 'var(--ev-activity-ink)' },
 };
-export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
+export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, primaryAction, open, onOpenChange }) => {
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
   const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
+  const isMobile = useIsMobile();
+  // TRIP-234: on phones the sheet is anchored above the keyboard, so a full-width
+  // footer button lands jammed on the keyboard. Move the primary action into the
+  // header (iOS "Save"-style) on mobile and drop the footer there (the header ×
+  // is the cancel); desktop keeps the classic footer with the primary at the end.
+  const headerAction = isMobile && primaryAction ? primaryAction : null;
+  const footContent = isMobile && primaryAction
+    ? null
+    : (foot || primaryAction ? <>{foot}{primaryAction}</> : null);
   return (
     <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       {/* a11y contract lives HERE — the one wrapper every app dialog uses. The
@@ -319,12 +329,13 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
             <DialogTitle asChild><h2>{title}</h2></DialogTitle>
             {subtitle && <DialogDescription asChild><div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div></DialogDescription>}
           </div>
+          {headerAction && <div className="dlg__head-action">{headerAction}</div>}
           <button className="icon-btn" onClick={handleClose}>
             <Icon name="close" size={16} />
           </button>
         </div>
         <div className="dlg__body">{children}</div>
-        {foot && <div className="dlg__foot">{foot}</div>}
+        {footContent && <div className="dlg__foot">{footContent}</div>}
       </DialogContent>
     </UIDialog>
   );

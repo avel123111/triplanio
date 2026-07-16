@@ -2218,6 +2218,9 @@ h4,
   display: flex; align-items: center; gap: 12px;
 }
 .dlg__head h2 { flex: 1; }
+/* TRIP-234: on phones the primary action moves into the header (iOS-style) so it
+   doesn't sit on the keyboard as a footer button. */
+.dlg__head-action { flex: none; }
 .dlg__body { padding: 20px 22px; overflow: auto; flex: 1; }
 .dlg__foot {
   padding: 14px 22px;

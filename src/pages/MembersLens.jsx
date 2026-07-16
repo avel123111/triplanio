@@ -137,11 +137,14 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
   return (
     <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
-      foot={<>
-        <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
-        {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
-        {tab === 'offline' && <Btn variant="primary" icon="user" loading={saving} onClick={() => v.attemptSubmit(addOffline)} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
-      </>}>
+      foot={<Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>}
+      primaryAction={
+        tab === 'email'
+          ? <Btn variant="primary" size="sm" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>
+          : tab === 'offline'
+            ? <Btn variant="primary" size="sm" icon="user" loading={saving} onClick={() => v.attemptSubmit(addOffline)} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>
+            : null
+      }>
       <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
         <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
           <Icon name="send" size={12} />{t('member.tab_email')}
