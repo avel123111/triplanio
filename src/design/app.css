@@ -553,7 +553,6 @@ h4,
 .tr__title,
 .tr--add b,
 .plan-feature,
-.plan-select-btn,
 .ai-file b,
 .kv .v,
 .warn-banner b,
@@ -703,7 +702,6 @@ h4,
 .pro-hero__note,
 .plan-save-tag,
 .plan-price__period,
-.pro-cta-strip__text,
 .ai-blk-ti > span,
 .ai-file .ds,
 .ai-blk-hint,
@@ -938,7 +936,6 @@ h4,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
 .acct-plan__line b,
-.pro-cta-strip__text strong,
 .tx-btn:hover, .tx-btn.act,
 .s22mk__count,
 .bgt-stat__s b,
@@ -3784,7 +3781,7 @@ h4,
 /* ── Page shell ── */
 .pro-page {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   height: 100dvh;
   min-height: 560px;
   overflow: hidden;
@@ -3856,10 +3853,6 @@ h4,
   grid-template-columns: repeat(3, 1fr);
   gap: 12px; min-height: 0; padding-bottom: 16px;
 }
-.pro-plans--2 {
-  grid-template-columns: repeat(2, minmax(0, 420px));
-  justify-content: center;
-}
 
 /* ── Plan card ── */
 .plan-card {
@@ -3883,13 +3876,6 @@ h4,
   border-color: color-mix(in srgb, var(--brand) 35%, transparent);
   box-shadow: var(--sh-1);
 }
-.plan-card--selected {
-  background: color-mix(in srgb, var(--brand) 6%, var(--surface)) !important;
-  border-color: var(--brand) !important;
-  box-shadow: var(--sh-2) !important;
-  transform: translateY(-2px);
-}
-.plan-card--selected:hover { transform: translateY(-5px); }
 
 /* Ribbon + popular badge */
 .plan-ribbon {
@@ -3936,8 +3922,7 @@ h4,
  border-radius: var(--r-pill); background: var(--surface-2); color: var(--muted);
  white-space: nowrap; flex: none;
 }
-.plan-card--featured .plan-type-chip,
-.plan-card--selected .plan-type-chip { background: var(--primary-soft); color: var(--brand); }
+.plan-card--featured .plan-type-chip { background: var(--primary-soft); color: var(--brand); }
 
 /* Price */
 .plan-price {
@@ -3947,7 +3932,6 @@ h4,
  color: var(--ink);
  transition: color .2s;
 }
-.plan-card--selected .plan-price__amount,
 .plan-card--featured .plan-price__amount { color: var(--brand); }
 .plan-price__period { color: var(--muted); }
 .plan-divider { height: 1px; background: var(--line-2); margin: 0 0 11px; flex: none; }
@@ -3967,34 +3951,8 @@ h4,
   display: grid; place-items: center;
   transition: background .2s, color .2s;
 }
-.plan-card--selected .plan-feature__check {
-  background: var(--primary-soft); color: var(--brand);
-}
-
 /* Card footer */
 .plan-card__footer { padding: 0 18px 16px; flex: none; }
-.plan-select-btn {
- width: 100%; padding: 10px 16px; border-radius: var(--r-sm);
- border: 1.5px solid var(--line-strong);
- background: var(--surface-2); color: var(--ink-2);
- display: flex; align-items: center; justify-content: center; gap: 8px;
- transition: background .16s, border-color .16s, color .16s, transform .14s var(--ease-spring), box-shadow .18s;
-}
-.plan-select-btn:hover {
-  background: var(--surface); border-color: var(--brand); color: var(--ink);
-}
-.plan-select-btn:active { transform: scale(.97); }
-.plan-select-btn--active {
-  background: var(--brand-grad) !important;
-  border-color: transparent !important;
-  color: #fff !important;
-  box-shadow: 0 6px 16px -5px color-mix(in srgb, var(--brand) 55%, transparent);
-}
-.plan-select-btn--active:hover { filter: brightness(1.06); transform: none; }
-.plan-select-btn__check {
-  width: 18px; height: 18px; border-radius: 50%;
-  background: rgba(255,255,255,.28); display: grid; place-items: center; flex: none;
-}
 
 /* Plan card skeleton — THIS is the only thing that animates in (staggered). The
    real .plan-card then swaps in statically on top, so the reveal plays once. */
@@ -4004,23 +3962,6 @@ h4,
   animation: cardReveal .45s var(--ease-out) var(--card-delay, .05s) both;
 }
 
-/* ── CTA Strip ── */
-.pro-cta-strip {
-  display: flex; align-items: center; gap: 14px; padding: 0 22px;
-  background: var(--surface); border-top: 1px solid var(--line);
-  flex: none; position: relative; z-index: 10; min-height: 80px;
-  animation: fadeUp .42s var(--ease-out) .22s both;
-}
-.pro-cta-strip__icon {
-  width: 36px; height: 36px; border-radius: var(--r-sm);
-  background: var(--surface-2); color: var(--muted);
-  display: grid; place-items: center; flex: none;
-}
-.pro-cta-strip__text {
- flex: 1; color: var(--muted);
- min-width: 0;
-}
-.pro-cta-strip__text strong { color: var(--ink-2); display: block; }
 .pro-error {
   max-width: 820px; margin: 0 auto 16px; align-self: center; width: 100%;
 }
@@ -4042,33 +3983,31 @@ h4,
 /* Respect reduced-motion: render the page instantly, no entrance reveals. */
 @media (prefers-reduced-motion: reduce) {
   .pro-hero, .pro-hero__title, .pro-hero__sub, .pro-hero__note,
-  .plan-card-skel, .pro-cta-strip { animation: none; }
+  .plan-card-skel { animation: none; }
   .plan-ribbon::after { animation: none; }
-  .plan-card:hover, .plan-card--selected, .plan-card--selected:hover { transform: none; }
+  .plan-card:hover { transform: none; }
 }
 
 /* ── Responsive ── */
 @media (max-width: 760px) {
   .pro-page { height: auto; min-height: 100svh; overflow: visible; }
   .pro-main { overflow: visible; padding: 0 16px; }
-  .pro-plans, .pro-plans--2 {
+  .pro-plans {
     grid-template-columns: 1fr; overflow: visible; padding-bottom: 16px;
   }
-  .pro-cta-strip { padding: 12px 16px; gap: 10px; flex-wrap: wrap; min-height: auto; }
-  .pro-cta-strip .btn { width: 100%; justify-content: center; order: -1; }
-  .pro-cta-strip__icon { display: none; }
   .pro-hero { padding: 14px 0 10px; }
   .plan-card__body { padding: 14px 16px 12px; }
   .plan-card__footer { padding: 0 16px 14px; }
 }
-/* ≤640px the fixed MobileBottomNav floats over the page. Pad the CTA strip bottom
-   so its button clears the nav — same clearance the app shell uses for `> main`. */
+/* ≤640px the fixed MobileBottomNav floats over the page. Pad the scrollable main
+   bottom so the last card / trust line clears the nav — same clearance the app
+   shell uses for `> main`. */
 @media (max-width: 640px) {
   /* The app-shell forces the page to a fixed 100dvh flex column here, so the
      plans grid must NOT flex-grow — otherwise the cards stretch to fill the
      viewport (giant cards / oversized buttons). Natural height + scroll instead. */
-  .pro-plans, .pro-plans--2 { flex: 0 0 auto; align-content: start; }
-  .pro-cta-strip { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .pro-plans { flex: 0 0 auto; align-content: start; }
+  .pro-main { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
 }
 @media (max-height: 680px) and (min-width: 761px) {
   .pro-hero { padding: 10px 0 7px; }
@@ -4081,7 +4020,6 @@ h4,
   .plan-features { gap: 4px; }
   .plan-feature { font-size: var(--fs-meta); }
   .pro-plans { gap: 10px; padding-bottom: 10px; }
-  .pro-cta-strip { min-height: 70px; }
 }
 
 /* ─── AI Block (EventAiBlock — booking parser, dialog + side panel) ───────────
