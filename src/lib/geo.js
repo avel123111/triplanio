@@ -58,11 +58,13 @@ export async function searchCities(query, lang) {
   return (data || []).map((g) => mapGazCity(g, lk));
 }
 
-// Batch-resolve many city names → geonameid via the gazetteer (TRIP-146/214).
+// Batch-resolve many city names → geonameid via the gazetteer (TRIP-146/214/159).
 // `items` is an array of EITHER plain query strings OR objects
-// `{ city_name, name_en, country, country_code }`. For objects we query by the
-// English name (small towns that miss in Cyrillic resolve in English) and, when
-// a country_code is given, prefer same-country matches.
+// `{ city_name, name_en, country, country_code }`. For objects we send BOTH the
+// localized name and the English name; the RPC resolves the localized one first
+// (the gazetteer has native alt-names, so it's the widest — esp. Cyrillic towns
+// the AI mis-transliterates) and falls back to English for small foreign towns
+// without a localized alt-name. `country_code` biases toward same-country matches.
 //
 // ONE `search_gazetteer_batch` RPC resolves the whole list server-side — one
 // round-trip, one plan, one pooled connection (TRIP-214). This replaces the old
