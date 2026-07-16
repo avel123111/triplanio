@@ -46,9 +46,6 @@ verify_jwt = false
 [functions.aiGate]
 verify_jwt = false
 
-[functions.getDailyReminders]
-verify_jwt = false
-
 # Anonymous (logged-out) callers: login/signup/reset preflight.
 [functions.signupPrecheck]
 verify_jwt = false
