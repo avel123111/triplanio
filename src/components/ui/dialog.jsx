@@ -32,7 +32,7 @@ function useIsSheet() {
 }
 
 // Root — vaul Drawer on phones, Radix Dialog on desktop. Same open/onOpenChange
-// contract either way; the chosen engine is published to <DialogContent>.
+// contract either way; the chosen engine is published to DialogContent.
 const Dialog = ({ children, ...props }) => {
   const isSheet = useIsSheet()
   const Root = isSheet ? Drawer.Root : DialogPrimitive.Root
