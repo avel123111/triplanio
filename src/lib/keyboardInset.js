@@ -1,18 +1,17 @@
-// Single source of truth for the on-screen keyboard inset, published as the
-// `--kb` CSS variable on :root (px). Mobile bottom sheets read it to sit above
-// the keyboard.
+// Single source of truth for the visible viewport rectangle while the on-screen
+// keyboard is open, published as `--vv-top` / `--vv-h` on :root (px).
 //
-// Why this exists (TRIP-234): on iOS Safari the keyboard does NOT resize the
-// layout viewport, and `interactive-widget=resizes-content` / `dvh` are
-// Chromium-only no-ops there. The ONLY reliable signal is `window.visualViewport`.
-// We measure the keyboard overlap = layout height − (visible height + pan offset)
-// and expose it once, globally, so every sheet uses the same number instead of
-// each rolling its own (and fighting each other / vaul).
+// Why (TRIP-234): on iOS Safari the keyboard does NOT resize the layout viewport
+// and it PANS the visual viewport (moves it up, `offsetTop`) to reveal the focused
+// field — so a `position:fixed` sheet (anchored to the layout viewport) gets pushed
+// off the top / floats. `dvh` / `interactive-widget` are Chromium-only no-ops here.
+// The only correct fix is to stop anchoring the sheet to the page and anchor it to
+// the VISIBLE VIEWPORT instead: one rectangle = { top: offsetTop, height }. A fixed
+// sheet set to `top: var(--vv-top); height: var(--vv-h)` then exactly overlays the
+// area above the keyboard, pan-compensated, with no separate keyboard-height math.
 //
-// Pair with vaul's `noBodyStyles`: vaul otherwise pins `body{position:fixed}` for
-// scroll-lock, which makes iOS PAN the fixed sheet when an input is focused — that
-// pan is what made earlier sheets "fly". With no body-lock there is no pan, so
-// lifting the sheet by exactly `--kb` lands it flush on the keyboard.
+// Vars are set ONLY while a keyboard is open (>60px), and cleared otherwise, so
+// sheets keep their default bottom-sheet geometry (hug content) when it's closed.
 export function initKeyboardInset() {
   const vv = typeof window !== 'undefined' && window.visualViewport;
   if (!vv) return;
@@ -20,20 +19,13 @@ export function initKeyboardInset() {
   let raf = 0;
   const measure = () => {
     raf = 0;
-    const kbRaw = window.innerHeight - vv.height; // real keyboard height (iOS: innerHeight stays full)
-    if (kbRaw > 60) {
-      // Keyboard open. Two vars:
-      //  --kb  = distance to lift the sheet's bottom so it lands on the keyboard top,
-      //          pan-corrected (offsetTop is how far iOS has already scrolled up).
-      //  --vvh = the ACTUAL visible height above the keyboard (px). The sheet caps its
-      //          max-height to THIS — not to dvh, which on iOS never shrinks for the
-      //          keyboard, so the sheet stayed full-height and its header slid off-top.
-      root.style.setProperty('--kb', Math.max(0, Math.round(kbRaw - vv.offsetTop)) + 'px');
-      root.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+    const keyboard = window.innerHeight - vv.height; // >0 only when a keyboard shows
+    if (keyboard > 60) {
+      root.style.setProperty('--vv-top', Math.round(vv.offsetTop) + 'px');
+      root.style.setProperty('--vv-h', Math.round(vv.height) + 'px');
     } else {
-      // Keyboard closed → clear both so sheets keep their default geometry unchanged.
-      root.style.removeProperty('--kb');
-      root.style.removeProperty('--vvh');
+      root.style.removeProperty('--vv-top');
+      root.style.removeProperty('--vv-h');
     }
   };
   const schedule = () => { if (!raf) raf = window.requestAnimationFrame(measure); };

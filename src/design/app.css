@@ -2131,22 +2131,23 @@ h4,
    keeps only the sheet geometry — do NOT re-add `animation`, `bottom: var(--kb)`
    or a `--vvh` height cap here (they fought vaul → jump/shrink). */
 @media (max-width: 640px) {
-  /* TRIP-234 keyboard model: the sheet lifts by the global `--kb` (keyboard height
-     from window.visualViewport; 0 when closed) so it sits flush on the keyboard, and
-     its height is capped to the visible area above the keyboard (100dvh − --kb) so
-     the header stays pinned. .dlg-modal is the flex/clipping box; the .dlg card fills
-     it → header pinned, body scrolls, footer just above the keyboard. No iOS pan
-     because vaul runs with noBodyStyles (no body position:fixed). */
+  /* TRIP-234 — single visual-viewport anchor. Keyboard CLOSED (vars unset): a normal
+     bottom sheet glued to the screen bottom, hugging content, capped 92dvh. Keyboard
+     OPEN: --vv-top / --vv-h (window.visualViewport) make the sheet BECOME the visible
+     rectangle above the keyboard — `top` compensates the iOS pan, `height` fills to
+     the keyboard top. The sheet is anchored to the VISIBLE viewport, not the page, so
+     it can't fly. The .dlg card fills the box (flex:1) → header pinned, body scrolls,
+     footer just above the keyboard. */
   .dlg-modal {
-    left: 0; right: 0; top: auto;
-    bottom: var(--kb, 0px);
+    left: 0; right: 0;
+    top: var(--vv-top, auto);
+    bottom: 0;
+    height: var(--vv-h, auto);
     transform: none;
     width: 100%;
     max-width: 100%;
     max-height: 92vh;
-    /* Cap to the REAL visible height above the keyboard (px, from visualViewport),
-       NOT dvh — dvh never shrinks for the keyboard on iOS, so the header slid off. */
-    max-height: var(--vvh, 92dvh);
+    max-height: var(--vv-h, 92dvh);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -2182,9 +2183,12 @@ h4,
      keyboard reposition — no `bottom: var(--kb)` / `animation` here. Closes via
      the panel's own Back button, swipe-down, or backdrop tap. */
   .lp-sheet {
-    position: fixed; left: 0; right: 0; top: 0;
-    /* TRIP-234: full-screen panel shrinks above the keyboard via the global --kb. */
-    bottom: var(--kb, 0px);
+    position: fixed; left: 0; right: 0;
+    /* TRIP-234: full-screen panel; keyboard open → shrinks to the visible rectangle
+       (top compensates the iOS pan, height fills to the keyboard top). */
+    top: var(--vv-top, 0);
+    bottom: 0;
+    height: var(--vv-h, auto);
     width: 100%;
     z-index: 201;
     display: flex;
@@ -3541,7 +3545,7 @@ h4,
 /* TRIP-234: lifts by the global --kb (keyboard height, 0 when closed) and caps to the
    visible area above the keyboard, so the sheet sits flush on the keyboard with the
    body scrolling. vaul runs with noBodyStyles → no iOS pan. */
-.sheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: var(--vvh, 86dvh); display: flex; flex-direction: column; }
+.sheet { position: fixed; left: 0; right: 0; top: var(--vv-top, auto); bottom: 0; height: var(--vv-h, auto); z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: var(--vv-h, 86dvh); display: flex; flex-direction: column; }
 .sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; touch-action: none; cursor: grab; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
@@ -4810,7 +4814,7 @@ h4,
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 /* ≤640 the panel is a vaul Drawer (see VisitPanel.jsx) — vaul owns the slide-up
    and drag transform, so no `animation` here (it would fight vaul). */
-@media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: var(--kb, 0px); height: auto; width: 100%; max-height: 84%; max-height: var(--vvh, 84dvh); border-left: 0; border-radius: 26px 26px 0 0; } }
+@media (max-width: 640px) { .vpanel { top: var(--vv-top, auto); left: 0; right: 0; bottom: 0; height: var(--vv-h, auto); width: 100%; max-height: 84%; max-height: var(--vv-h, 84dvh); border-left: 0; border-radius: 26px 26px 0 0; } }
 .vp-grip { display: none; }
 @media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: 99px; background: var(--line-strong); margin: 10px auto 2px; } }
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
