@@ -298,11 +298,14 @@ export const RoleBadge = ({ role, size = "md", status }) => {
 const DLG_ICON_TONES = {
   activity: { bg: 'var(--ev-activity-soft)', fg: 'var(--ev-activity-ink)' },
 };
-export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
+export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange, repositionInputs }) => {
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
   const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
   return (
-    <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
+    // repositionInputs (TRIP-234 pilot): forwarded to the vaul Drawer so the
+    // piloted dialog lets vaul own the keyboard lift. Undefined for every other
+    // caller → default (false) preserved.
+    <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }} repositionInputs={repositionInputs}>
       {/* a11y contract lives HERE — the one wrapper every app dialog uses. The
           visible <h2>/subtitle ARE the Radix Title/Description (asChild → native,
           no hidden duplicate, zero visual change). With no subtitle we opt out of
