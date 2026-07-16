@@ -604,6 +604,7 @@ h4,
 .visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
 .bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
+.chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в рейле чата) */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
@@ -637,7 +638,6 @@ h4,
 .chat-time,
 .chat-thinking,
 .chat-mention__row span,
-.chat-member__nm,
 .chat-member__rl,
 .dock__count,
 .dock-panel__head .nm,
@@ -995,6 +995,8 @@ h4,
 .acct-inbox__s,          /* TRIP-175 инсп.: Meta+Golos (подпись «Входящие») */
 .app-header__trip-meta,  /* TRIP-175 инсп.: Meta+Golos (мета трипа в шапке) */
 .fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
+.chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
+.chat-thinking span,     /* TRIP-175 инсп.: Meta+Golos («Triplanio is typing») */
 .pcard__plat span,       /* TRIP-224: Meta+Golos (лейбл платформы Booking на карточке) */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
 .chat-rail .card li,     /* TRIP-175 инсп.: Meta+Golos (пункты списка в чат-рейле) */
