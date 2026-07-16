@@ -12,8 +12,8 @@
  * POST body:
  *   { destinationId, startDate?, endDate?, currency?, lang?, page?, sort? }
  *
- * Calls POST /products/search (summary model). Pins count=10 and the affiliate
- * campaign tag via `campaign-value`. Pricing/links come back attributed already.
+ * Calls POST /products/search (summary model). Pins count=50 (Viator's per-page
+ * max) and the affiliate campaign tag via `campaign-value`. Pricing/links come back attributed already.
  * Nothing is persisted — the panel fetches on open and renders client-side.
  * Merchandising tags are NOT forwarded (Viator display compliance).
  *
@@ -26,7 +26,9 @@ import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 const VIATOR_BASE = Deno.env.get('VIATOR_BASE') || 'https://api.viator.com/partner';
 const VIATOR_VERSION = 'application/json;version=2.0';
 const CAMPAIGN = 'trip_activities';
-const PAGE_SIZE = 10;
+// Viator caps /products/search at 50 results per request; we pull the full page
+// so one round-trip fills the client pool page (5 pages → up to 250 pooled).
+const PAGE_SIZE = 50;
 
 // App locale -> Viator Accept-Language. Viator affiliate does NOT serve ru, so ru
 // content falls back to en (our own UI strings stay localised via t()).
