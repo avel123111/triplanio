@@ -26,21 +26,22 @@ test('mapGazCity: missing name_i18n falls back to display', () => {
   assert.equal(c.city_name_en, 'Foo');
 });
 
-test('buildResolvePayload: object → English query + cc filter', () => {
+test('buildResolvePayload: object → localized q + English q_en + cc (TRIP-159)', () => {
   const p = buildResolvePayload(
     [{ city_name: 'Рим', city_name_en: 'Rome', country_code: 'it' }],
     'ru',
   );
-  assert.deepEqual(p, [{ q: 'Rome', cc: 'IT', lang: 'en' }]);
+  // localized name is the primary query, English rides along as the fallback.
+  assert.deepEqual(p, [{ q: 'Рим', q_en: 'Rome', cc: 'IT', lang: 'ru' }]);
 });
 
-test('buildResolvePayload: object without English name → app-locale query, no cc', () => {
+test('buildResolvePayload: object without English name → localized q only, no cc', () => {
   const p = buildResolvePayload([{ city_name: 'Барселона' }], 'ru');
-  assert.deepEqual(p, [{ q: 'Барселона', cc: '', lang: 'ru' }]);
+  assert.deepEqual(p, [{ q: 'Барселона', q_en: '', cc: '', lang: 'ru' }]);
 });
 
-test('buildResolvePayload: plain string → free-text query in app locale', () => {
-  assert.deepEqual(buildResolvePayload(['Porto, PT'], 'es'), [{ q: 'Porto, PT', cc: '', lang: 'es' }]);
+test('buildResolvePayload: plain string → free-text query in app locale, no q_en', () => {
+  assert.deepEqual(buildResolvePayload(['Porto, PT'], 'es'), [{ q: 'Porto, PT', q_en: '', cc: '', lang: 'es' }]);
 });
 
 test('expandBatchRows: 1-based ord maps to aligned 0-based slots', () => {

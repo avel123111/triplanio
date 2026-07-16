@@ -27,17 +27,24 @@ export function mapGazCity(g, lk) {
 
 // Build the `search_gazetteer_batch` payload aligned to `items` (array order is
 // the RPC's `ord`). `items` entries are EITHER plain query strings OR objects
-// `{ city_name, name_en, country_code }`. For objects we query by the English
-// name (small towns that miss in Cyrillic resolve in English) and, when present,
-// filter to same-country matches server-side via `cc`. `lk` is the normalized
-// app locale used for the free-text (string) queries.
+// `{ city_name, name_en, country_code }`.
+//
+// TRIP-159: we send BOTH names — `q` = the localized name (user's language),
+// `q_en` = the English name — and the RPC tries localized first, English as
+// fallback. The gazetteer has native alt-names on all languages, so the
+// user-language name resolves the widest (esp. Cyrillic towns the AI
+// mis-transliterates into a non-matching English form); the English name still
+// rescues small foreign towns that lack a localized alt-name. `cc` keeps the
+// server-side same-country preference. `lk` is the normalized app locale used
+// for both free-text (string) inputs and objects.
 export function buildResolvePayload(items, lk) {
   return items.map((it) => {
     const isStr = typeof it === 'string';
     const nameEn = isStr ? '' : (it.name_en || it.city_name_en || '').trim();
     const cc = isStr ? '' : (it.country_code || '').trim().toUpperCase();
-    const q = isStr ? it : (nameEn || it.city_name || it.q || '');
-    return { q, cc, lang: nameEn ? 'en' : lk };
+    // `it.q` = passthrough for an already-shaped query object (rare caller).
+    const q = isStr ? it : (it.city_name || it.q || '');
+    return { q, q_en: nameEn, cc, lang: lk };
   });
 }
 
