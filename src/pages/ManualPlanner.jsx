@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -875,7 +876,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   const planMut = useMutation({
     mutationFn: async ({ promptText }) => {
-      const { data, error: fnErr } = await supabase.functions.invoke('planTripWithAi', {
+      const { data, error: fnErr } = await invokeFn('planTripWithAi', {
         body: { sessionId, prompt: promptText, language: lang || 'ru' },
       });
       if (fnErr) {
@@ -997,7 +998,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         const finalCoverUrl = cover.cover_image_url
           ? await finalizeDraftCover(trip.id, cover.cover_image_url)
           : null;
-        const { error: coverErr } = await supabase.functions.invoke('updateTripSettings', {
+        const { error: coverErr } = await invokeFn('updateTripSettings', {
           body: {
             tripId: trip.id,
             fields: {

@@ -91,6 +91,7 @@ function makeSegment(defCur = 'EUR') {
 }
 
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -618,7 +619,7 @@ export default function EventEditDialog({
     if (!tripId) { setIsPro(false); return; }
     let cancelled = false;
     setIsPro(null);
-    supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
+    invokeFn('checkSubscriptionStatus', { body: { tripId } })
       .then((res) => { if (!cancelled) { setIsPro(!!res.data?.isPro); setIsOwner(!!res.data?.isOwner); } })
       .catch((e) => { console.error(e); if (!cancelled) { setIsPro(false); setIsOwner(false); } });
     return () => { cancelled = true; };

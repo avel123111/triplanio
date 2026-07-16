@@ -12,6 +12,7 @@
 import React, { useRef, useState } from 'react';
 import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
@@ -121,7 +122,7 @@ export default function EventAiBlock({
       // 2. Call the edge function. kind + fileUrls + the pasted text all go to
       //    n8n (prompts and schemas live inside the n8n workflow).
       const body = { kind, fileUrls, text: text.trim(), trip_id: tripId };
-      const { data: invoked, error: invokeErr } = await supabase.functions.invoke('parseBookingWithAi', { body });
+      const { data: invoked, error: invokeErr } = await invokeFn('parseBookingWithAi', { body });
       if (invokeErr) {
         // TRIP-111: серверный гейт — отдельные сообщения для лимита и Pro.
         const status = invokeErr?.context?.status;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
 import { Badge, Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isActiveTripCapReached } from '@/lib/limits';
 
@@ -43,7 +43,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     setState(s => ({ ...s, status: 'loading' }));
     (async () => {
       try {
-        const res = await supabase.functions.invoke('getActiveTrips', { body: {} });
+        const res = await invokeFn('getActiveTrips', { body: {} });
         if (cancelled) return;
         setState({ status: 'ready', activeCount: res.data?.activeCount || 0, isPro: !!res.data?.isPro });
       } catch (e) {

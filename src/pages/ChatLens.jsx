@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -243,8 +244,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     // Trigger Triplanio AI if mention anywhere in message
     if (/@triplanio\b/i.test(content)) {
       const realId = created?.id;
-      supabase.functions
-        .invoke('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
+      invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
         .then(({ data, error }) => {
           // TRIP-111: при отказе гейта (Pro / rate-limit) edge возвращает
           // { ok:false } и сам постит реплику бота в чат. В любом случае гасим

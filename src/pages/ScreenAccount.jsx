@@ -11,6 +11,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useProStatus } from '@/lib/useProStatus';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -223,7 +224,7 @@ function ReminderChannels() {
   const [unlinkState, setUnlinkState] = useState(null); // null | { account }
 
   const load = React.useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke('telegramGetMyIntegrations');
+    const { data, error } = await invokeFn('telegramGetMyIntegrations');
     setItems(error ? [] : (data?.integrations ?? []));
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -233,7 +234,7 @@ function ReminderChannels() {
 
   const doUnlink = async (a) => {
     setItems(list => list.filter(x => x.id !== a.id)); // optimistic
-    const { error } = await supabase.functions.invoke('telegramDisconnect', {
+    const { error } = await invokeFn('telegramDisconnect', {
       body: { tripId: a.trip_id, integrationId: a.id },
     });
     if (error) load();
@@ -449,7 +450,7 @@ export default function ScreenAccount() {
   // ── API ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
-    supabase.functions.invoke('getStripePrices', { body: {} })
+    invokeFn('getStripePrices', { body: {} })
       .then((res) => { if (!cancelled) setPrices(res.data?.prices || null); })
       .catch((e) => console.error('getStripePrices error:', e));
     return () => { cancelled = true; };
@@ -534,7 +535,7 @@ export default function ScreenAccount() {
     setPortalLoading(true);
     setErrorMsg(null);
     try {
-      const { data, error } = await supabase.functions.invoke('createBillingPortal', {
+      const { data, error } = await invokeFn('createBillingPortal', {
         body: { returnPath: '/settings' },
       });
       if (error) throw error;
@@ -561,7 +562,7 @@ export default function ScreenAccount() {
     setDeletingAccount(true);
     setErrorMsg(null);
     try {
-      const { data, error } = await supabase.functions.invoke('deleteMyAccount');
+      const { data, error } = await invokeFn('deleteMyAccount');
       if (error) {
         // supabase-js puts the real response body on FunctionsHttpError.context
         // (a Response); .message is only the useless "non-2xx status code".
