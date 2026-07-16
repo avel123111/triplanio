@@ -57,7 +57,9 @@ async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters 
   const { data, error } = await supabase.functions.invoke('stay22Accommodations', { body });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
-  return normalizeStay22(data);
+  // When a platform is selected, surface that supplier on the card (the v2
+  // suppliers map has no primary/order, so pick the requested one).
+  return normalizeStay22(data, filters?.provider || null);
 }
 
 /**

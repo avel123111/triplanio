@@ -50,6 +50,16 @@ test('normalizeStay22: maps price, currency, link, rating, stars, coords (suppli
   assert.equal(meta.hasMore, true);
 });
 
+test('normalizeStay22: preferProvider surfaces the requested supplier (not the first key)', () => {
+  const { hotels } = normalizeStay22(SAMPLE, 'booking'); // expedia is listed first, but we asked for booking
+  const a = hotels[0];
+  assert.equal(a.supplierKey, 'booking');
+  assert.equal(a.price, 340); // booking's price, not expedia's 328
+  assert.equal(a.link, 'https://www.stay22.com/allez/booking/15771687');
+  // Falls back to the first key when the preferred provider isn't on this listing.
+  assert.equal(normalizeStay22(SAMPLE, 'vrbo').hotels[0].supplierKey, 'expedia');
+});
+
 test('normalizeStay22: hides price/rating when absent, lat/lng null without coordinates', () => {
   const { hotels } = normalizeStay22(SAMPLE);
   const b = hotels[1];

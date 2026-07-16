@@ -34,12 +34,13 @@ function readCoords(loc) {
 
 // Map one Stay22 result to the flat shape the card + map badge render.
 // Supplier-agnostic: we no longer pin provider=booking, so a result may carry any
-// supplier (booking, expedia, vrbo…). The PRIMARY supplier is the first entry of
-// `suppliers` — its logo/price/link drive both the card and the badge. Determinism
-// (cheapest / top-rated) is a separate, later concern.
-function mapResult(r, currency) {
+// supplier (booking, expedia, vrbo, hotelscom). The v2 `suppliers` map has NO
+// defined ordering or "primary" entry, so when the user filtered by a platform we
+// surface THAT supplier's logo/price/link on the card + badge; otherwise we fall
+// back to the first key. Determinism (cheapest / top-rated) is a separate concern.
+function mapResult(r, currency, preferProvider) {
   const suppliers = r?.suppliers || {};
-  const supplierKey = Object.keys(suppliers)[0] || null;
+  const supplierKey = (preferProvider && suppliers[preferProvider]) ? preferProvider : (Object.keys(suppliers)[0] || null);
   const sup = supplierKey ? suppliers[supplierKey] : null;
   const rating = r?.rating || {};
   const priceTotal = sup?.price?.total;
@@ -69,11 +70,11 @@ function mapResult(r, currency) {
   };
 }
 
-export function normalizeStay22(data) {
+export function normalizeStay22(data, preferProvider = null) {
   const meta = data?.meta || {};
   const currency = meta.currency || null;
   return {
-    hotels: Array.isArray(data?.results) ? data.results.map((r) => mapResult(r, currency)).filter((h) => h.id) : [],
+    hotels: Array.isArray(data?.results) ? data.results.map((r) => mapResult(r, currency, preferProvider)).filter((h) => h.id) : [],
     meta: {
       page: meta.page || 1,
       pageSize: meta.pageSize || 10,
@@ -89,10 +90,12 @@ export function normalizeStay22(data) {
 
 // Supplier platforms for the server-side `provider` filter. `key` is the Stay22
 // API value; `label` is the brand shown in the panel (proper noun, not translated).
+// `key` is the exact Stay22 v2 `provider` value (and the key used in each result's
+// `suppliers` map) — Hotels.com is `hotelscom`, NOT `hotels`. `label` is the brand.
 export const STAY22_PROVIDERS = [
   { key: 'booking', label: 'Booking.com' },
   { key: 'expedia', label: 'Expedia' },
-  { key: 'hotels', label: 'Hotels.com' },
+  { key: 'hotelscom', label: 'Hotels.com' },
   { key: 'vrbo', label: 'Vrbo' },
 ];
 

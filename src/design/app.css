@@ -5040,6 +5040,16 @@ h4,
 .s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--primary-soft-2); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
 .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .s22f-resetall:hover { color: var(--ink); }
+
+/* Count + sort row — SHARED by BOTH fork lists (hotels + activities), so it lives
+   here, not in a component <style> (TRIP-224: the activity panel doesn't mount the
+   hotel component, so a component-local rule left the activity sort unstyled). */
+.s22-countrow { display: flex; align-items: center; gap: 12px; }
+.s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
+.s22-count { color: var(--muted); white-space: nowrap; }
+.s22-sort { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; white-space: nowrap; transition: color .15s; }
+.s22-sort:hover { color: var(--ink); }
+.s22-sort svg { color: var(--muted-2); }
 @media (prefers-reduced-motion: reduce) {
   .s22f-fbtn, .s22f-step button { transition: none; }
   .s22f-fbtn:active { transform: none; }

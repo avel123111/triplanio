@@ -369,16 +369,9 @@ export default function Stay22HotelList({
       <style>{`
         .s22 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
 
-        /* Search + filter toolbar (.s22f-*) is the SHARED fork primitive — see
-           app.css (moved out of here so the activity fork reuses it, TRIP-176). */
-        .s22-count { color: var(--muted); white-space: nowrap; }
-
-        /* ---- count + sort row (TRIP-176) ---- */
-        .s22-countrow { display: flex; align-items: center; gap: 12px; }
-        .s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
-        .s22-sort { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; white-space: nowrap; transition: color .15s; }
-        .s22-sort:hover { color: var(--ink); }
-        .s22-sort svg { color: var(--muted-2); }
+        /* Search + filter toolbar (.s22f-*) AND the count+sort row (.s22-countrow /
+           .s22-count / .s22-sort) are SHARED fork primitives — see app.css (moved
+           out of here so the activity fork reuses them, TRIP-176 / TRIP-224). */
 
         /* ---- list + cards ---- */
         .s22-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
