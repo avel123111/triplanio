@@ -9,13 +9,13 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useT } from '@/lib/i18n/I18nContext';
 
 async function fetchProfiles(tripId, userIds) {
   if (!tripId || !userIds || userIds.length === 0) return {};
   try {
-    const res = await supabase.functions.invoke('resolveProfiles', { body: { tripId, userIds } });
+    const res = await invokeFn('resolveProfiles', { body: { tripId, userIds } });
     const list = res?.data?.profiles || [];
     const map = {};
     for (const p of list) {

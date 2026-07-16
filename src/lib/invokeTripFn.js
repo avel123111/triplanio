@@ -7,10 +7,10 @@
 // it to the right screen. Shared by TripView and TripStructureEdit so they can't
 // drift on how the trip is fetched.
 
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 
 export async function invokeGetTripDetails(body) {
-  const { data, error } = await supabase.functions.invoke('getTripDetails', { body });
+  const { data, error } = await invokeFn('getTripDetails', { body });
   if (error) throw error;
   return data;
 }
