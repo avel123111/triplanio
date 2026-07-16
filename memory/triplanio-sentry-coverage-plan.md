@@ -50,6 +50,13 @@ CI-гард **2h `check-edge-sentry.mjs` ужесточён с «новых» н
 структурный инвариант (не потеряется). PR-цепочка: #498(шов+пилот copyTrip) →
 #501(re-land 8 участники/инвайты, #499 ушёл не в dev) → #502(7 read/util) →
 этот (10 функций + 5 маркеров + гард-на-все).
-**Осталось (не блокирует):** унифицировать 13 инлайн-capture на `withHandler`
-(аккуратно — у них кастомные catch: reportPaymentAnomaly, редиректы), затем
-фронт → трейсинг+replay → n8n+cron.
+**★УНИФИКАЦИЯ инлайн-capture ЗАВЕРШЕНА (2026-07-16):** из 13 инлайн-capture 12
+переведены на `withHandler` (внутренние catch/ретраи и in-flow throttle-репорты
+`geoLocationiq` сохранены; неиспользуемый `captureEdgeError`-импорт вычищен).
+`aiGate` ОСТАВЛЕН на инлайн-capture ОСОЗНАННО — его catch делает **fail-open**
+(`return {allow:true}` 200, не блокировать бота при сбое), обёртка вернула бы 500.
+Итоговая карта 44: **38 `withHandler`** + **5 `// sentry: manual`** (stripe-webhook/
+telegramWebhook держат ещё и инлайн-capture) + **aiGate инлайн (fail-open)**.
+Edge-охват ПОЛНОСТЬЮ унифицирован под один шов, кроме документированных исключений.
+**Осталось по TRIP-219:** фронт (invoke-capture + route-boundaries) → трейсинг+
+Session Replay → n8n Error Workflow + cron-монитор `getPendingReminders`.
