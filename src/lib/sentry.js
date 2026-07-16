@@ -44,6 +44,34 @@ const IGNORE_ERRORS = [
   'AbortError',
 ];
 
+// Strip anything PII-bearing before an event leaves the browser. Used by BOTH
+// `beforeSend` (error events) AND `beforeSendTransaction` (tracing events) — a
+// trace/transaction envelope carries `request.url` too, and a sampled pageload on
+// `/public/trip/:id?t=<share_token>` or an OAuth `?code=` callback would otherwise
+// ship that credential despite the error-path scrub. (Session Replay records the
+// URL in its OWN envelope, which no SDK hook intercepts — the residual there is
+// limited to already-shared share tokens / short-lived expired OAuth codes.)
+function scrubPii(event) {
+  if (event.request) {
+    delete event.request.cookies;
+    delete event.request.data;
+    if (event.request.headers) {
+      delete event.request.headers.Authorization;
+      delete event.request.headers.authorization;
+      delete event.request.headers.Cookie;
+    }
+    // Query strings can carry tokens / emails — keep the path, drop the rest.
+    if (event.request.url) {
+      event.request.url = event.request.url.split('?')[0];
+    }
+  }
+  // Keep only a stable user id for grouping; never email / username / ip.
+  if (event.user) {
+    event.user = event.user.id ? { id: event.user.id } : undefined;
+  }
+  return event;
+}
+
 export function initSentry() {
   if (!DSN) return;
 
@@ -72,27 +100,10 @@ export function initSentry() {
     replaysSessionSampleRate: 0,
     sendDefaultPii: false,
     ignoreErrors: IGNORE_ERRORS,
-    beforeSend(event) {
-      // Strip anything that could carry PII before the event is sent.
-      if (event.request) {
-        delete event.request.cookies;
-        delete event.request.data;
-        if (event.request.headers) {
-          delete event.request.headers.Authorization;
-          delete event.request.headers.authorization;
-          delete event.request.headers.Cookie;
-        }
-        // Query strings can carry tokens / emails — keep the path, drop the rest.
-        if (event.request.url) {
-          event.request.url = event.request.url.split('?')[0];
-        }
-      }
-      // Keep only a stable user id for grouping; never email / username / ip.
-      if (event.user) {
-        event.user = event.user.id ? { id: event.user.id } : undefined;
-      }
-      return event;
-    },
+    // Error events AND tracing transactions both go through the same PII scrub —
+    // the URL (with any ?t= share token / ?code= OAuth) is dropped from both.
+    beforeSend: scrubPii,
+    beforeSendTransaction: scrubPii,
   });
 }
 
