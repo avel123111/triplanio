@@ -9,11 +9,17 @@
  * returns SVG, rate-limited paths) and keep hand-written capture — they opt out
  * with an explicit `// sentry: manual` marker so the choice is visible in review.
  *
- * This guard fails a PR that adds a NEW function dir whose source contains
- * NEITHER `withHandler(` NOR `captureEdgeError(` NOR the `// sentry: manual`
- * marker — so coverage stays self-sustaining as functions are added. (Backfilling
- * the pre-existing uncovered functions onto withHandler happens in tranches; once
- * complete this can be tightened from "new" to "all".)
+ * This guard fails a PR that adds a NEW function whose ENTRYPOINT (`index.ts`)
+ * has NEITHER real `withHandler(` / `captureEdgeError(` instrumentation NOR the
+ * `// sentry: manual` opt-out marker — so coverage stays self-sustaining as
+ * functions are added. (Backfilling the pre-existing uncovered functions onto
+ * withHandler happens in tranches; once complete this can tighten "new" → "all".)
+ *
+ * Only `index.ts` is scanned (a helper/test elsewhere calling captureEdgeError
+ * must not satisfy the gate), and the code signals are matched with comments
+ * stripped (an explanatory comment mentioning withHandler must not satisfy it) —
+ * while the `// sentry: manual` opt-out is matched on the RAW text, since it is
+ * itself a comment.
  *
  * Env: BASE_REF (default origin/dev).
  * Exit: 0 ok, 1 violation, 2 internal error.
@@ -23,11 +29,19 @@ import { execFileSync } from 'node:child_process';
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const FN_DIR = 'supabase/functions';
 
-const SIGNALS = [
+const MANUAL_MARKER = /\/\/\s*sentry:\s*manual/i;
+const CODE_SIGNALS = [
   { re: /\bwithHandler\s*\(/, label: 'withHandler wrapper' },
   { re: /\bcaptureEdgeError\s*\(/, label: 'captureEdgeError call' },
-  { re: /\/\/\s*sentry:\s*manual/i, label: 'explicit // sentry: manual opt-out' },
 ];
+
+// Drop // line and /* */ block comments so a mention in a comment can't satisfy
+// the code signals (the `://` in a URL is left intact — irrelevant to matching).
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
 
 function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
@@ -61,25 +75,31 @@ if (newFns.length === 0) {
 
 const errors = [];
 for (const fn of newFns) {
-  const files = git(['ls-tree', '-r', '--name-only', 'HEAD', '--', `${FN_DIR}/${fn}`])
-    .split('\n')
-    .filter((f) => f.endsWith('.ts') || f.endsWith('.js'));
-  let src = '';
-  for (const f of files) {
+  // Scan the entrypoint only. index.ts is the Deno.serve entry for every function
+  // in this repo; .js fallback covers any non-TS entry.
+  let raw = '';
+  for (const entry of [`${FN_DIR}/${fn}/index.ts`, `${FN_DIR}/${fn}/index.js`]) {
     try {
-      src += git(['show', `HEAD:${f}`]) + '\n';
+      raw = git(['show', `HEAD:${entry}`]);
+      break;
     } catch {
-      /* skip */
+      /* try next */
     }
   }
-  const hit = SIGNALS.find((s) => s.re.test(src));
+
+  if (MANUAL_MARKER.test(raw)) {
+    console.log(`  ✓ new function "${fn}": explicit // sentry: manual opt-out`);
+    continue;
+  }
+  const code = stripComments(raw);
+  const hit = CODE_SIGNALS.find((s) => s.re.test(code));
   if (hit) {
     console.log(`  ✓ new function "${fn}": ${hit.label}`);
   } else {
     errors.push(
-      `new edge function "${fn}" has no Sentry coverage — wrap its handler in ` +
-        `withHandler(...) from _shared/http.ts, or add captureEdgeError, or (if it ` +
-        `owns its error contract) an explicit "// sentry: manual" marker`,
+      `new edge function "${fn}" has no Sentry coverage in index.ts — wrap its ` +
+        `handler in withHandler(...) from _shared/http.ts, or call captureEdgeError, ` +
+        `or (if it owns its error contract) add a "// sentry: manual" marker`,
     );
   }
 }

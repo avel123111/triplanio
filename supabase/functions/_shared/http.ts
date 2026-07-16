@@ -14,8 +14,8 @@
  *      render it with `jsonError`.
  *
  *   3. `withHandler(fnName, handler)` — the one edge seam (TRIP-219): cors +
- *      OPTIONS + a top-level try/catch that reports EVERY non-2xx outcome to
- *      Sentry (see below). Replaces the hand-written cors/OPTIONS/try/catch that
+ *      OPTIONS + a top-level try/catch that reports every ERROR outcome (4xx/5xx)
+ *      to Sentry (see below). Replaces the hand-written cors/OPTIONS/try/catch that
  *      each function used to repeat, so Sentry coverage is uniform by construction.
  *
  * Tiny by design (Deno cold-start). The only shared deps are the sibling cors +
@@ -84,12 +84,13 @@ function reportInBackground(p: Promise<unknown>): void {
 /**
  * The single edge seam: `Deno.serve(withHandler('fnName', async (req, cors) => …))`.
  *
- * Handles cors + OPTIONS, and reports EVERY non-2xx outcome to Sentry, however it
- * arose (TRIP-219 — Pavel: send any unexpected behaviour, incl. 4xx/400):
+ * Handles cors + OPTIONS, and reports every ERROR outcome (4xx/5xx) to Sentry,
+ * however it arose (TRIP-219 — Pavel: send any unexpected behaviour, incl. 4xx/400):
  *   - an unexpected throw            → 500 `INTERNAL`, reported;
  *   - a thrown `HttpError`           → its 4xx rendered via `jsonError`, reported;
  *   - a handler `return`ing >= 400   → reported by status (covers explicit
  *                                       `return jsonError(4xx, …)` early-returns).
+ * 3xx redirects are deliberate successes, not errors, so they are NOT reported.
  * The `{ error, code }` body shape is preserved byte-for-byte, so the frontend
  * `parseEdgeError` contract is unchanged. Reporting is backgrounded (no latency).
  *
