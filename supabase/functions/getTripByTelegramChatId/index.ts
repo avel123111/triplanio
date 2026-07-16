@@ -27,20 +27,16 @@
  * and ignored is_active entirely. This version fixes both.
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { buildTripData } from '../_shared/tripPayload.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
+Deno.serve(withHandler('getTripByTelegramChatId', async (req, corsHeaders) => {
   // Authenticate the server-to-server caller (n8n / Telegram bot).
   const denied = requireN8nSecret(req);
   if (denied) return denied;
 
-  try {
     const { telegram_chat_id } = await req.json();
     if (!telegram_chat_id) {
       return Response.json({ error: 'telegram_chat_id is required' }, { status: 400, headers: corsHeaders });
@@ -84,11 +80,4 @@ Deno.serve(async (req) => {
     ).filter((t) => t !== null);
 
     return Response.json({ trips }, { headers: corsHeaders });
-  } catch (err) {
-    console.error('getTripByTelegramChatId error:', err);
-    return Response.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-});
+}));

@@ -81,7 +81,7 @@ jobs:
   #   2d check-i18n                  — duplicate keys + new hardcoded UI strings
   #   2f check-dialog-radix          — raw Radix dialog import outside the shell whitelist
   #   2g check-column-caps           — new user text column without a length cap (domain/CHECK)
-  #   2h check-edge-sentry           — new edge function without withHandler/captureEdgeError
+  #   2h check-edge-sentry           — ANY edge function without withHandler/captureEdgeError/manual
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -126,9 +126,8 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-column-caps.mjs
-      - name: 2h — edge Sentry coverage (new functions)
+      - name: 2h — edge Sentry coverage (all functions)
         if: ${{ !cancelled() }}
-        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-edge-sentry.mjs
 
   deno:

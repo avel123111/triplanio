@@ -33,6 +33,7 @@ const RESET_MAX_PER_HOUR = 5; // successful sends per rolling hour, per email
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FALLBACK_REDIRECT = 'https://www.triplanio.com/reset-password';
 
+// sentry: manual — anon; rate-limit is a deliberate 200 with data.code, not an error to report.
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
