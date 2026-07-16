@@ -140,19 +140,19 @@ export default function Pro() {
   const yearly = renderPrice('account_pro_yearly');
   const cards = [
     {
-      key: 'free', name: t('sub.plan_free_title'),
+      key: 'free', name: t('sub.plan_free_title'), nameColor: 'var(--muted)',
       price: fmtMoney(0, currency, { minFraction: 0, maxFraction: 0 }),
       caption: t('sub.free_forever'), features: freeFeatures,
       cta: { label: t('sub.stay_free'), variant: 'secondary', onClick: () => nav(-1) },
     },
     {
-      key: 'monthly', name: t('sub.plan_monthly_short'),
+      key: 'monthly', name: t('sub.plan_monthly_short'), nameColor: 'var(--brand)',
       price: monthly.price, period: monthly.period,
       caption: t('sub.caption_monthly'), features: proFeatures,
       cta: { label: t('sub.subscribe_monthly'), variant: 'secondary', code: 'account_pro_monthly' },
     },
     {
-      key: 'yearly', name: t('sub.plan_yearly_short'), featured: true,
+      key: 'yearly', name: t('sub.plan_yearly_short'), nameColor: 'var(--brand)', featured: true,
       price: yearly.price, period: yearly.period, oldPrice: yearStrike, save: savePct,
       caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : t('sub.period_year'),
       features: proFeatures,
@@ -164,7 +164,10 @@ export default function Pro() {
   const busy = !!loadingPlan;
 
   return (
-    <div className="pro-page app-shell">
+    <div
+      className="pro-page app-shell"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}
+    >
 
       {/* ── App header ── */}
       <AppHeader
@@ -177,8 +180,11 @@ export default function Pro() {
         title="Pro"
       />
 
-      {/* ── Scrollable main zone ── */}
-      <main className="pro-main">
+      {/* ── Main content zone — natural height, centered (canonical standalone shell) ── */}
+      <main
+        className="pro-main"
+        style={{ flex: 1, width: '100%', maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px)', boxSizing: 'border-box' }}
+      >
 
         {/* Hero */}
         <div className="pro-hero">
@@ -219,15 +225,14 @@ export default function Pro() {
                   key={c.key}
                   className={`plan-card${c.featured ? ' plan-card--featured' : ''}`}
                 >
-                  {c.featured && <div className="plan-ribbon" />}
                   {c.featured && c.save != null && (
-                    <div className="plan-popular-badge">★ {t('sub.save_pct', { pct: c.save })}</div>
+                    <div className="plan-popular-badge">{t('sub.save_pct', { pct: c.save })}</div>
                   )}
 
                   <div className="plan-card__body">
                     {/* Plan name */}
                     <div className="plan-card__top">
-                      <div className="plan-card__name">{c.name}</div>
+                      <div className="plan-card__name" style={{ color: c.nameColor }}>{c.name}</div>
                     </div>
 
                     {/* Price */}
@@ -238,19 +243,19 @@ export default function Pro() {
                         <span className="plan-price__period" style={{ textDecoration: 'line-through' }}>{c.oldPrice}</span>
                       )}
                     </div>
-                    <div className="t-meta" style={{ color: 'var(--muted)', marginBottom: 11 }}>{c.caption}</div>
+                    <div className="t-meta" style={{ color: 'var(--muted)' }}>{c.caption}</div>
 
                     <div className="plan-divider" />
 
-                    {/* Feature list */}
+                    {/* Feature list — ON: filled accent circle + check; OFF: outlined muted circle + minus (design okBox/noBox) */}
                     <ul className="plan-features">
                       {c.features.map((f, j) => (
                         <li key={j} className="plan-feature" style={f.on ? undefined : { color: 'var(--muted)' }}>
                           <div
                             className="plan-feature__check"
-                            style={f.on ? undefined : { background: 'var(--surface-2)', color: 'var(--muted)' }}
+                            style={f.on ? undefined : { background: 'none', border: '1px solid var(--line-2)', color: 'var(--muted)' }}
                           >
-                            <Icon name={f.on ? 'check' : 'minus'} size={9} />
+                            <Icon name={f.on ? 'check' : 'minus'} size={12} />
                           </div>
                           <span>{f.text}</span>
                         </li>
@@ -275,20 +280,12 @@ export default function Pro() {
           }
         </div>
 
-        {/* Trust line (replaces the old sticky checkout strip) */}
-        {!pricesLoading && (
-          <div className="pro-hero__note" style={{ marginTop: 2 }}>
-            <Icon name="lock" size={12} />
-            {t('sub.secure_checkout')}{t('sub.secure_checkout_meta')}
-          </div>
-        )}
-
-        {/* One-time per-trip pass — owner only */}
+        {/* One-time per-trip pass — owner only. Sits directly under the plans grid. */}
         {!hidePerTrip && !pricesLoading && (
           <div
             style={{
               display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-              marginTop: 16, padding: '18px 22px', borderRadius: 'var(--r-card)',
+              padding: '18px 22px', borderRadius: 'var(--r-card)',
               border: '1.5px dashed var(--line)', background: 'var(--surface)',
             }}
           >
@@ -306,7 +303,7 @@ export default function Pro() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice.price}</span>
               <Btn
-                variant="secondary"
+                variant="primary"
                 loading={loadingPlan === 'trip_pro_lifetime'}
                 disabled={busy}
                 onClick={() => handleUpgrade('trip_pro_lifetime')}
@@ -314,6 +311,14 @@ export default function Pro() {
                 {t('sub.buy_for_trip')}
               </Btn>
             </div>
+          </div>
+        )}
+
+        {/* Trust line — small reassurance at the very bottom, below everything. */}
+        {!pricesLoading && (
+          <div className="pro-hero__note" style={{ marginTop: 2 }}>
+            <Icon name="lock" size={12} />
+            {t('sub.secure_checkout')}{t('sub.secure_checkout_meta')}
           </div>
         )}
 
