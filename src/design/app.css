@@ -4699,9 +4699,11 @@ h4,
 .pcard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
 /* Name + rating share a row; on a narrow card (mobile / slim panel) the rating
    block (score · reviews · free-cancel badge) WRAPS below the name instead of
-   squeezing it to one letter — the name keeps a readable min-width (TRIP-224). */
-.pcard__namerow { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; }
-.pcard__name { flex: 1 1 7em; min-width: 7em; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   squeezing it to one letter — the name keeps a readable min-width (TRIP-224).
+   The name itself wraps to a 2nd line when it doesn't fit, capped at 2 lines
+   (ellipsis past that); align-items:flex-start keeps the rating on the 1st line. */
+.pcard__namerow { display: flex; align-items: flex-start; gap: 6px 8px; flex-wrap: wrap; }
+.pcard__name { flex: 1 1 7em; min-width: 7em; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 .pcard__bar { display: flex; align-items: center; gap: 9px; padding: 9px 13px; border-top: 1px solid var(--line-2); background: var(--surface-2); }
 .pcard__spacer { flex: 1; min-width: 8px; }
 .pcard__plat { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
