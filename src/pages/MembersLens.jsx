@@ -9,14 +9,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePostHog } from '@posthog/react';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { edgeErrorMessage, parseEdgeError } from '@/lib/edgeError';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -80,7 +79,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     setLinkLoading(true);
     setLinkErr('');
     setLinkUrl('');
-    supabase.functions.invoke('createTripInviteLink', { body: { trip_id: tripId, role } })
+    invokeFn('createTripInviteLink', { body: { trip_id: tripId, role } })
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error || data?.error || !data?.token) { setLinkErr(t('trip.link_error')); return; }
@@ -104,18 +103,17 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const trimmed = email.trim().toLowerCase();
     setSaving(true);
     setErr('');
-    const { data, error } = await supabase.functions.invoke('inviteTripMember', {
+    const { data, error, code, message } = await invokeFn('inviteTripMember', {
       body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
     if (error || data?.error) {
-      const { code, message } = await parseEdgeError(error, data, t('members.error_generic'));
       setErr(code === 'invite_owner' ? t('members.err_invite_owner') : (message || t('members.error_generic')));
       return;
     }
     // Promoting an offline placeholder → remove it now that a real invite exists.
     if (promoteMember?.id) {
-      await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
+      await invokeFn('removeTripMember', { body: { member_id: promoteMember.id } });
     }
     posthog?.capture('member_invited', { invite_method: 'email', role });
     onSaved?.();
@@ -126,11 +124,11 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const name = offlineName.trim();
     setSaving(true);
     setErr('');
-    const { data, error } = await supabase.functions.invoke('addOfflineTripMember', {
+    const { data, error, message } = await invokeFn('addOfflineTripMember', {
       body: { tripId, name },
     });
     setSaving(false);
-    if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
+    if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
     onSaved?.();
     close();
   }
@@ -234,11 +232,11 @@ function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }
   async function save() {
     setSaving(true);
     setErr('');
-    const { data, error } = await supabase.functions.invoke('updateTripMemberRole', {
+    const { data, error, message } = await invokeFn('updateTripMemberRole', {
       body: { member_id: member.id, role },
     });
     setSaving(false);
-    if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
+    if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
     onSaved?.();
     close();
   }
@@ -294,9 +292,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // can't host a spinner, so the row shows the busy state (mbrow--busy) instead.
   async function resend(memberId) {
     setRemoving(memberId);
-    const { data, error } = await supabase.functions.invoke('resendTripInvite', { body: { member_id: memberId } });
+    const { data, error, message } = await invokeFn('resendTripInvite', { body: { member_id: memberId } });
     setRemoving(null);
-    if (error || data?.error) { toast({ description: await edgeErrorMessage(error, data, t('member.err_send_invite')), variant: 'destructive' }); return; }
+    if (error || data?.error) { toast({ description: message || t('member.err_send_invite'), variant: 'destructive' }); return; }
   }
 
   // Re-invite a member who declined: restart the invite flow on the SAME row.
@@ -304,11 +302,11 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // notification + email (reusing the existing role).
   async function reinvite(member) {
     setRemoving(member.id);
-    const { data, error } = await supabase.functions.invoke('inviteTripMember', {
+    const { data, error, message } = await invokeFn('inviteTripMember', {
       body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
     });
     setRemoving(null);
-    if (error || data?.error) { toast({ description: await edgeErrorMessage(error, data, t('member.err_send_invite')), variant: 'destructive' }); return; }
+    if (error || data?.error) { toast({ description: message || t('member.err_send_invite'), variant: 'destructive' }); return; }
     refresh();
   }
 
@@ -319,8 +317,8 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
       title: t('member.remove_confirm'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
-        if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('member.err_remove')), variant: 'destructive' }); return; }
+        const { data, error, message } = await invokeFn('removeTripMember', { body: { member_id: memberId } });
+        if (error || !data?.ok) { toast({ description: message || t('member.err_remove'), variant: 'destructive' }); return; }
         refresh();
       },
     });
@@ -335,8 +333,8 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
       description: t('confirm.leave_trip.body'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: member.id } });
-        if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('settings.leave_error')), variant: 'destructive' }); return; }
+        const { data, error, message } = await invokeFn('removeTripMember', { body: { member_id: member.id } });
+        if (error || !data?.ok) { toast({ description: message || t('settings.leave_error'), variant: 'destructive' }); return; }
         nav('/trips');
       },
     });

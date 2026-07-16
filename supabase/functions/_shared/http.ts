@@ -82,6 +82,27 @@ function reportInBackground(p: Promise<unknown>): void {
 }
 
 /**
+ * A handler that `return`ed >= 400 carries its reason in the `{ error, code }`
+ * body, not in a thrown Error — so the synthetic `"<fn> responded <status>"`
+ * event would otherwise say WHAT (the status) but not WHY. Read the body off a
+ * CLONE (the original stream must stay intact for the real response) and fold
+ * `error`/`code` into the Sentry `extra`, best-effort: a non-JSON / unreadable
+ * body just yields the bare status. Runs in the background, so this adds no
+ * latency to the response the user already received.
+ */
+async function reportResponseError(fnName: string, res: Response): Promise<void> {
+  const extra: Record<string, unknown> = { status: res.status };
+  try {
+    const body = await res.clone().json();
+    if (body && typeof body === 'object') {
+      if (body.error != null) extra.error = String(body.error).slice(0, 500);
+      if (body.code != null) extra.code = body.code;
+    }
+  } catch { /* non-JSON body — status alone is what we have */ }
+  return captureEdgeError(new Error(`${fnName} responded ${res.status}`), fnName, extra);
+}
+
+/**
  * The single edge seam: `Deno.serve(withHandler('fnName', async (req, cors) => …))`.
  *
  * Handles cors + OPTIONS, and reports every ERROR outcome (4xx/5xx) to Sentry,
@@ -107,11 +128,7 @@ export function withHandler(
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
     try {
       const res = await handler(req, corsHeaders);
-      if (res.status >= 400) {
-        reportInBackground(
-          captureEdgeError(new Error(`${fnName} responded ${res.status}`), fnName, { status: res.status }),
-        );
-      }
+      if (res.status >= 400) reportInBackground(reportResponseError(fnName, res));
       return res;
     } catch (e) {
       if (e instanceof HttpError) {
