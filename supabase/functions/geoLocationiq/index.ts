@@ -257,9 +257,11 @@ Deno.serve(withHandler('geoLocationiq', async (req, corsHeaders) => {
       // Bucket still empty after the full wait budget (pathological load) →
       // degrade. Surface a 429 + Retry-After rather than a fake empty 200.
       await captureEdgeError(new Error('geocode bucket exhausted'), 'geoLocationiq', { action });
+      // x-sentry-skip: already captured above with richer context — tell withHandler
+      // not to ALSO report this 429 (would be a duplicate Sentry event).
       return Response.json(
         { error: 'geocode_rate_limited', results: [] },
-        { status: 429, headers: { ...corsHeaders, 'Retry-After': '2' } },
+        { status: 429, headers: { ...corsHeaders, 'Retry-After': '2', 'x-sentry-skip': '1' } },
       );
     }
     if ('upstreamError' in outcome) {
@@ -272,9 +274,10 @@ Deno.serve(withHandler('geoLocationiq', async (req, corsHeaders) => {
       await captureEdgeError(new Error(`geocode ${reason}`), 'geoLocationiq', {
         reason, action, endpoint, status: outcome.upstreamError,
       });
+      // x-sentry-skip: already captured above — don't let withHandler double-report.
       return Response.json(
         { error: 'locationiq_upstream_error', status: outcome.upstreamError },
-        { status: 502, headers: corsHeaders },
+        { status: 502, headers: { ...corsHeaders, 'x-sentry-skip': '1' } },
       );
     }
     return Response.json({ results: outcome.results }, { headers: corsHeaders });

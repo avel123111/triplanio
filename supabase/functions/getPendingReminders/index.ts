@@ -38,7 +38,9 @@ interface ReminderRow {
 
 Deno.serve(withHandler('getPendingReminders', async (req, corsHeaders) => {
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+    // JSON `{ error }` (not plain text) keeps the frontend parseEdgeError contract
+    // uniform and lets withHandler's body-enrichment read it.
+    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
   }
 
   const expected = Deno.env.get('N8N_SECRET');

@@ -23,6 +23,7 @@
  * for full cover at GA.
  */
 import { corsFor } from '../_shared/cors.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { ipRateLimited, underLimit, recordHit, supabaseThrottleKind } from '../_shared/rateLimit.ts';
@@ -85,6 +86,9 @@ Deno.serve(async (req) => {
 
     return Response.json({ code: 'reset_sent' }, { headers: corsHeaders });
   } catch (err) {
+    // sentry: manual — the rate-limited 200 path is deliberate (not reported), but
+    // an unexpected 500 (RPC / Auth failure) must still reach Sentry.
+    await captureEdgeError(err, 'requestPasswordReset');
     console.error('requestPasswordReset error', err);
     return Response.json({ error: 'reset_failed' }, { status: 500, headers: corsHeaders });
   }
