@@ -1686,10 +1686,11 @@ h4,
 
 /* Mobile app shell */
 @media (max-width: 880px) {
-  /* Header is position:static on mobile (see .app-shell > .app-header) — blur has
-     nothing to composite and is a paint-jank source, so drop it and go opaque. */
-  .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px;
-    background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* TRIP-211: header keeps the SAME frosted-glass look as on desktop (the base
+     `@supports backdrop-filter` rule) — no opaque override — so it never changes
+     appearance by width. Only the mobile sizing (shorter bar, tighter padding)
+     differs here. */
+  .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px; }
   /* Non-trip screens keep logo + "Triplanio" on mobile (matches the design).
      Only trip screens drop the brand block for burger + title. */
   .app-header--trip .app-header__logo,
