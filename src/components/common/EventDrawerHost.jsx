@@ -46,8 +46,8 @@ export default function EventDrawerHost({ open, onClose, scrim = false, title = 
 
   if (isSheet) {
     return (
-      // repositionInputs stays vaul default (TRIP-234): vaul owns the keyboard.
-      <Drawer.Root open onOpenChange={(o) => { if (!o) onClose?.(); }}>
+      // TRIP-234: vaul = drag only; noBodyStyles avoids the iOS pan; keyboard via --kb.
+      <Drawer.Root open onOpenChange={(o) => { if (!o) onClose?.(); }} repositionInputs={false} noBodyStyles>
         <Drawer.Portal>
           <Drawer.Overlay className="sheet-backdrop" />
           {/* vaul owns the slide + drag + keyboard reposition; the panel's own

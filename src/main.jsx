@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import posthog from 'posthog-js'
 import { PostHogProvider } from '@posthog/react'
 import { initSentry } from '@/lib/sentry'
+import { initKeyboardInset } from '@/lib/keyboardInset'
 import App from '@/App.jsx'
 import '@/index.css'
 import '@/design/app.css'
@@ -47,6 +48,9 @@ if (!CANON_INSPECTOR_PROD_HOSTS.has(window.location.hostname)) {
     .then((m) => m.initCanonInspector())
     .catch(() => { /* dev tool is best-effort; never break the app */ })
 }
+
+// Publish the on-screen keyboard inset as `--kb` for mobile bottom sheets (iOS).
+initKeyboardInset()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <PostHogProvider client={posthog}>

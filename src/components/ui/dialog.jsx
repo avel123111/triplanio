@@ -36,15 +36,14 @@ function useIsSheet() {
 const Dialog = ({ children, ...props }) => {
   const isSheet = useIsSheet()
   if (isSheet) {
-    // repositionInputs (vaul default, TRIP-234): vaul owns the keyboard — it reads
-    // window.visualViewport and sets the drawer (.dlg-modal) height = visible area
-    // and bottom = keyboard height, so the sheet sits above the keyboard with the
-    // header pinned and the body scrolling. This is the only mechanism that works
-    // on iOS Safari (interactive-widget/dvh are Chromium-only no-ops there). The
-    // .dlg card fills the drawer (CSS below) so vaul's clamp reaches the content.
+    // TRIP-234 keyboard model: vaul owns ONLY drag/dismiss. repositionInputs={false}
+    // + noBodyStyles (no body{position:fixed} → no iOS pan / "flying"). The keyboard
+    // is handled by the global `--kb` var (src/lib/keyboardInset.js via
+    // window.visualViewport): .dlg-modal lifts by --kb and caps to the visible area;
+    // the .dlg card fills the drawer so the header pins and the body scrolls.
     return (
       <ResponsiveSheetCtx.Provider value={true}>
-        <Drawer.Root {...props}>{children}</Drawer.Root>
+        <Drawer.Root repositionInputs={false} noBodyStyles {...props}>{children}</Drawer.Root>
       </ResponsiveSheetCtx.Provider>
     )
   }

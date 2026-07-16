@@ -199,9 +199,9 @@ export default function VisitPanel({
 
   if (isSheet) {
     return (
-      // repositionInputs (vaul default, TRIP-234): vaul owns the keyboard via
-      // window.visualViewport (the only signal that works on iOS Safari).
-      <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      // TRIP-234: vaul = drag only. noBodyStyles avoids the body-lock that pans the
+      // sheet on iOS; keyboard handled globally via the `--kb` var (keyboardInset.js).
+      <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false} noBodyStyles>
         <Drawer.Portal>
           <Drawer.Overlay className="vscrim" />
           <Drawer.Content className="vpanel" aria-describedby={undefined}>

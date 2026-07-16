@@ -23,13 +23,13 @@ import { useT } from '@/lib/i18n/I18nContext';
 export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const t = useT();
   return (
-    // repositionInputs (vaul default, TRIP-234): vaul owns the keyboard — on focus
-    // it reads window.visualViewport and sets the drawer's height (to the visible
-    // area) + bottom (to the keyboard top), so the sheet sits above the keyboard,
-    // header pinned, body scrolls. This is the ONLY signal that works on iOS Safari
-    // (interactive-widget=resizes-content is a Chromium-only no-op there). The CSS
-    // (.sheet / .sheet-b flex) lets the body shrink+scroll inside vaul's clamp.
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    // TRIP-234 keyboard model: vaul owns ONLY the drag/dismiss gesture, not the
+    // keyboard. repositionInputs={false} (vaul doesn't move the sheet) + noBodyStyles
+    // (vaul doesn't pin body{position:fixed} — that body-lock is what made iOS PAN
+    // the sheet and "fly"). The keyboard is handled by the global `--kb` var
+    // (src/lib/keyboardInset.js from window.visualViewport): the .sheet CSS lifts by
+    // --kb and caps its height to the visible area (header pinned, body scrolls).
+    <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false} noBodyStyles>
       <Drawer.Portal>
         <Drawer.Overlay className="sheet-backdrop" />
         {/* vaul does NOT auto-focus into the sheet on open, so the mobile keyboard
