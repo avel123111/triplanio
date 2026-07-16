@@ -87,18 +87,52 @@ export function normalizeStay22(data) {
   };
 }
 
-// Normalize the optional filters object into edge-function fields. Only
-// non-empty values are returned, so "no filters / reset" sends nothing extra
-// and the edge function keeps its defaults (adults=2, children=0, no rooms,
-// no price bounds). min/max are per-night price in USD (Stay22 semantics).
+// Supplier platforms for the server-side `provider` filter. `key` is the Stay22
+// API value; `label` is the brand shown in the panel (proper noun, not translated).
+export const STAY22_PROVIDERS = [
+  { key: 'booking', label: 'Booking.com' },
+  { key: 'expedia', label: 'Expedia' },
+  { key: 'hotels', label: 'Hotels.com' },
+  { key: 'vrbo', label: 'Vrbo' },
+];
+
+// Normalize the optional filters object into SERVER edge-function fields. Only
+// non-empty values are returned, so "no filters / reset" sends nothing extra and
+// the edge function keeps its defaults (adults=2, children=0, no rooms, no
+// provider). Price is NOT here — it is filtered on the CLIENT over the pooled
+// results (in the trip currency), so it never reloads the pool.
 export function filterParams(filters) {
   if (!filters) return {};
   const out = {};
   if (filters.adults > 0) out.adults = filters.adults;
   if (filters.children > 0) out.children = filters.children;
   if (filters.rooms > 0) out.rooms = filters.rooms;
-  if (filters.min != null && filters.min !== '') out.min = filters.min;
-  if (filters.max != null && filters.max !== '') out.max = filters.max;
+  if (filters.provider) out.provider = filters.provider;
+  return out;
+}
+
+// Client-side filter + sort over the pooled hotels (React-free so it unit-tests).
+// Runs on the whole-city pool that feeds BOTH the list and the map pins, so the
+// two stay in sync. Text spans name+address; price is the total-stay price in the
+// TRIP currency (pool field `price`) — hotels without a price are hidden while a
+// price bound is set. Sort: 'recommended' (pool order) / 'price' ↑ / 'rating' ↓
+// (guest score). Returns a new array; the input order is never mutated.
+export function applyClientFilters(hotels, { text = '', min = '', max = '', sortBy = 'recommended' } = {}) {
+  const q = (text || '').trim().toLowerCase();
+  const lo = min !== '' && min != null ? Number(min) : null;
+  const hi = max !== '' && max != null ? Number(max) : null;
+  const priceActive = lo != null || hi != null;
+  let out = (hotels || []).filter((h) => {
+    if (q && !`${h.name || ''} ${h.address || ''}`.toLowerCase().includes(q)) return false;
+    if (priceActive) {
+      if (h.price == null) return false; // no comparable price → hide while filtering by price
+      if (lo != null && h.price < lo) return false;
+      if (hi != null && h.price > hi) return false;
+    }
+    return true;
+  });
+  if (sortBy === 'price') out = [...out].sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity)); // cheapest first, nulls last
+  else if (sortBy === 'rating') out = [...out].sort((a, b) => (b.ratingValue ?? -1) - (a.ratingValue ?? -1)); // best guest score first, nulls last
   return out;
 }
 

@@ -10,12 +10,14 @@
  *
  * POST body:
  *   { lat, lng, radius?, checkin?, checkout?, currency?, lang?, page?,
- *     adults?, children? }
+ *     adults?, children?, rooms?, provider? }
  *
  * Search is by coordinates (lat/lng). We pin aid=triplanio,
- * campaign=fork_api_sidepanel, cluster=false. `rooms` is not sent. We do NOT pin
- * a provider: Stay22 returns each result's available suppliers (booking, expedia,
- * vrbo…) and the client picks the first one (supplier-agnostic). `pageSize` is
+ * campaign=fork_api_sidepanel, cluster=false. By default we do NOT pin a provider:
+ * Stay22 returns each result's available suppliers (booking, expedia, vrbo…) and
+ * the client picks the first one (supplier-agnostic). When the user picks a
+ * platform in the panel, the client passes `provider` and we restrict the search
+ * to that supplier server-side (the pool reloads). `pageSize` is
  * client-driven (default 10, clamped 1..100) so the map-badge overlay can request
  * the full page in one go while the list paginates in lockstep (TRIP-140).
  *
@@ -44,7 +46,7 @@ Deno.serve(async (req) => {
     if (!apiKey) return Response.json({ error: 'STAY22_API_KEY not configured' }, { status: 500, headers: corsHeaders });
 
     const body = await req.json();
-    const { lat, lng, address, radius, checkin, checkout, currency, lang, page, pageSize, adults, children, rooms, min, max } = body;
+    const { lat, lng, address, radius, checkin, checkout, currency, lang, page, pageSize, adults, children, rooms, provider } = body;
 
     const hasCoords = lat !== undefined && lat !== null && lng !== undefined && lng !== null;
     if (!hasCoords && !address) {
@@ -78,10 +80,11 @@ Deno.serve(async (req) => {
     if (currency) params.set('currency', String(currency));
     if (lang) params.set('lang', String(lang));
     // Optional filters (only sent when the user applies them in the panel).
-    // rooms: omitted by default; min/max: per-night price in USD per Stay22 docs.
+    // rooms: omitted by default. provider: restrict to one supplier (booking/
+    // expedia/hotels/vrbo) when the user picks a platform. Price is filtered on
+    // the CLIENT over the pooled results (in the trip currency), not here.
     if (rooms) params.set('rooms', String(rooms));
-    if (min != null && min !== '') params.set('min', String(min));
-    if (max != null && max !== '') params.set('max', String(max));
+    if (provider) params.set('provider', String(provider));
 
     const res = await fetch(`${STAY22_BASE}?${params}`, {
       headers: { 'X-API-KEY': apiKey, accept: 'application/json' },

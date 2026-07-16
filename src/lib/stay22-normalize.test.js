@@ -1,7 +1,7 @@
 // Unit tests for Stay22 mapping + param building. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStay22, buildStay22Params, ensureNextDay, mergePool, POOL_MAX } from './stay22-normalize.js';
+import { normalizeStay22, buildStay22Params, ensureNextDay, mergePool, POOL_MAX, filterParams, applyClientFilters } from './stay22-normalize.js';
 
 const SAMPLE = {
   meta: { pageSize: 10, count: 3, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
@@ -111,4 +111,34 @@ test('mergePool: caps at POOL_MAX and flags truncated', () => {
   const { hotels, truncated } = mergePool([big]);
   assert.equal(hotels.length, POOL_MAX);
   assert.equal(truncated, true);
+});
+
+test('filterParams: passes guests + provider, never price (client-side now)', () => {
+  assert.deepEqual(filterParams({ adults: 3, children: 1, rooms: 2, provider: 'booking' }), { adults: 3, children: 1, rooms: 2, provider: 'booking' });
+  assert.deepEqual(filterParams({ adults: 0, min: 50, max: 100 }), {}); // price is NOT a server param
+  assert.deepEqual(filterParams(null), {});
+});
+
+const HOTELS = [
+  { id: 'a', name: 'Grand Plaza', address: 'Centro, Madrid', price: 300, ratingValue: 8.5 },
+  { id: 'b', name: 'Budget Inn', address: 'Airport road', price: 90, ratingValue: 7.1 },
+  { id: 'c', name: 'Sea View', address: 'Playa, Madrid', price: null, ratingValue: 9.2 },
+];
+
+test('applyClientFilters: text spans name + address, case-insensitive', () => {
+  assert.deepEqual(applyClientFilters(HOTELS, { text: 'madrid' }).map((h) => h.id), ['a', 'c']);
+  assert.deepEqual(applyClientFilters(HOTELS, { text: 'budget' }).map((h) => h.id), ['b']);
+});
+
+test('applyClientFilters: price bounds in trip currency; null-price hidden while filtering', () => {
+  assert.deepEqual(applyClientFilters(HOTELS, { max: 100 }).map((h) => h.id), ['b']);
+  assert.deepEqual(applyClientFilters(HOTELS, { min: 100 }).map((h) => h.id), ['a']); // 'c' has no price → hidden
+  assert.deepEqual(applyClientFilters(HOTELS, {}).map((h) => h.id), ['a', 'b', 'c']); // no bound → null kept
+});
+
+test('applyClientFilters: sort price ↑ (nulls last) / rating ↓; recommended keeps order', () => {
+  assert.deepEqual(applyClientFilters(HOTELS, { sortBy: 'price' }).map((h) => h.id), ['b', 'a', 'c']);
+  assert.deepEqual(applyClientFilters(HOTELS, { sortBy: 'rating' }).map((h) => h.id), ['c', 'a', 'b']);
+  assert.deepEqual(applyClientFilters(HOTELS, { sortBy: 'recommended' }).map((h) => h.id), ['a', 'b', 'c']);
+  assert.deepEqual(HOTELS.map((h) => h.id), ['a', 'b', 'c']); // input not mutated
 });
