@@ -167,8 +167,10 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   useEffect(() => { applyHeight(expanded, true); }, [expanded]);
 
   // Grip drag — the sheet grows/shrinks with the finger (pointer events cover
-  // touch + mouse); on release it settles to the nearer state with a soft spring,
-  // matching the feel of the app's other bottom sheets (useSheetSwipe).
+  // touch + mouse); on release it settles to the nearer state with a soft spring.
+  // This is a non-modal peek/expand widget over the live map (not a dismiss
+  // sheet), so it keeps its own 1:1 drag rather than the vaul Drawer the modal
+  // sheets use.
   const onGripDown = (e) => {
     const el = sheetRef.current; if (!el) return;
     measure();

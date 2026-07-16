@@ -21,8 +21,7 @@ import { Icon } from '../design/icons';
 import { Btn, Skeleton, useToast } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { keepFocusInDialog } from '@/lib/dialogFocus';
+import { Drawer } from 'vaul';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
@@ -982,23 +981,22 @@ export default function TripStructureEdit() {
           </>)}
           </div>{/* /te-panefade */}
 
-          {/* Mobile: the editor panel opens as a bottom sheet via the SAME Radix
-              sheet mechanism as modals (portal + .sheet-backdrop tap-to-close +
-              swipe + keyboard-safe dvh height). */}
+          {/* Mobile: the editor panel opens as a bottom sheet — the SAME vaul
+              Drawer engine as modals (native swipe + keyboard-safe reposition).
+              Backdrop tap / swipe-down / the panel's own Back all close it. */}
           {isSheet && leftPanelEl && (
-            <DialogPrimitive.Root open onOpenChange={(o) => { if (!o) closeLeftPanel(); }}>
-              <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="sheet-backdrop" />
-                <DialogPrimitive.Content
+            <Drawer.Root open onOpenChange={(o) => { if (!o) closeLeftPanel(); }}>
+              <Drawer.Portal>
+                <Drawer.Overlay className="sheet-backdrop" />
+                <Drawer.Content
                   className="lp-sheet"
-                  onOpenAutoFocus={keepFocusInDialog}
                   aria-describedby={undefined}
                 >
-                  <DialogPrimitive.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('trip.edit_structure')}</DialogPrimitive.Title>
+                  <Drawer.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('trip.edit_structure')}</Drawer.Title>
                   {leftPanelEl}
-                </DialogPrimitive.Content>
-              </DialogPrimitive.Portal>
-            </DialogPrimitive.Root>
+                </Drawer.Content>
+              </Drawer.Portal>
+            </Drawer.Root>
           )}
           </div>{/* /ts-leftbox */}
 

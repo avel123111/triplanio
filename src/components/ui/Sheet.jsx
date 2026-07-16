@@ -9,7 +9,7 @@ import { useT } from '@/lib/i18n/I18nContext';
  * focus-trap, Esc / outside-click and scroll-lock we had before). vaul owns the
  * gesture + animation: the whole surface is draggable with native momentum,
  * velocity-based dismiss, and a spring settle — replacing the old grip-only
- * `useSheetSwipe`. `repositionInputs` (default) lifts the sheet above the iOS
+ * hand-rolled drag. `repositionInputs` (default) lifts the sheet above the iOS
  * keyboard instead of the page jumping/shrinking, so inputs behave.
  *
  * Used as the mobile shell for menus (ActionMenu) and pickers (SearchSelect)
