@@ -316,7 +316,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-retry { margin-top: 6px; }
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the activity-specific body content keeps its own classes below. */
-        .va-rate { display: flex; align-items: center; gap: 6px; flex: none; }
+        .va-rate { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex: 0 1 auto; min-width: 0; }
         .va-star { color: var(--rating); flex: none; }
         .va-sc { color: var(--ink); font-variant-numeric: tabular-nums; }
         .va-cnt { color: var(--muted); }

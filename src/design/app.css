@@ -4694,8 +4694,11 @@ h4,
 .pcard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
 .pcard__ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
 .pcard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
-.pcard__namerow { display: flex; align-items: center; gap: 8px; }
-.pcard__name { flex: 1; min-width: 0; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Name + rating share a row; on a narrow card (mobile / slim panel) the rating
+   block (score · reviews · free-cancel badge) WRAPS below the name instead of
+   squeezing it to one letter — the name keeps a readable min-width (TRIP-224). */
+.pcard__namerow { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; }
+.pcard__name { flex: 1 1 7em; min-width: 7em; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard__bar { display: flex; align-items: center; gap: 9px; padding: 9px 13px; border-top: 1px solid var(--line-2); background: var(--surface-2); }
 .pcard__spacer { flex: 1; min-width: 8px; }
 .pcard__plat { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
