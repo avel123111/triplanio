@@ -59,10 +59,10 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   // Keyboard owner (TRIP-234 pilot, Design 2): the ONLY reliable keyboard signal
   // on iOS Safari is window.visualViewport (interactive-widget=resizes-content and
   // vaul's repositionInputs are both no-ops there). While this sheet is open we
-  // publish the keyboard height (--dlg-kb) and the visible height (--dlg-sheet-h)
-  // to :root; the .dlg-modal CSS reads them (safe 0/92dvh defaults elsewhere). The
-  // sheet then caps to the visible area and sits on the keyboard → header pinned,
-  // body scrolls, footer just above the keyboard, no iOS pan / "flying".
+  // publish the keyboard height (--dlg-kb) and the visible height (--dlg-vis) to
+  // :root; the .dlg-modal CSS reads them (safe 0/92dvh defaults elsewhere) to inset
+  // the card above the keyboard while its surface still reaches the screen bottom →
+  // header pinned, body scrolls, footer above the keyboard, no gap, no iOS pan.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!open || !vv) return;
@@ -75,10 +75,10 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       const kb = Math.max(0, window.innerHeight - vv.height);
       if (kb > 60) {
         root.style.setProperty('--dlg-kb', kb + 'px');
-        root.style.setProperty('--dlg-sheet-h', (vv.height - 8) + 'px');
+        root.style.setProperty('--dlg-vis', (vv.height - 8) + 'px');
       } else {
         root.style.removeProperty('--dlg-kb');
-        root.style.removeProperty('--dlg-sheet-h');
+        root.style.removeProperty('--dlg-vis');
       }
     };
     apply();
@@ -88,7 +88,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       vv.removeEventListener('resize', apply);
       vv.removeEventListener('scroll', apply);
       root.style.removeProperty('--dlg-kb');
-      root.style.removeProperty('--dlg-sheet-h');
+      root.style.removeProperty('--dlg-vis');
     };
   }, [open]);
   const posthog = usePostHog();

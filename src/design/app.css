@@ -2133,11 +2133,10 @@ h4,
 @media (max-width: 640px) {
   .dlg-modal {
     left: 0; right: 0; top: auto;
-    /* --dlg-kb (TRIP-234 keyboard owner): keyboard height in px, written from
-       window.visualViewport while a piloted dialog is open. Defaults to 0px so
-       every non-piloted dialog is byte-for-byte unchanged. When set, the sheet's
-       bottom sits exactly on top of the keyboard (no iOS pan → header stays). */
-    bottom: var(--dlg-kb, 0px);
+    /* Stays glued to the physical screen bottom — the sheet SURFACE must reach the
+       bottom so the page never shows through beneath it. The keyboard is cleared by
+       INSET (padding on the card below), not by lifting the whole positioner. */
+    bottom: 0;
     transform: none;
     width: 100%;
     max-width: 100%;
@@ -2147,12 +2146,19 @@ h4,
   .dlg-modal .dlg {
     border-radius: 20px 20px 0 0;
     max-height: 92vh;
-    /* --dlg-sheet-h: visible-viewport height (px) while the keyboard is up, so the
-       card can never exceed the space above the keyboard. Default 92dvh keeps the
-       keyboard-closed / non-piloted behaviour identical. */
-    max-height: var(--dlg-sheet-h, 92dvh);
+    /* TRIP-234 keyboard owner (InviteDialog pilot): while a piloted dialog is open
+       its JS publishes --dlg-kb (keyboard height, px) and --dlg-vis (visible height
+       above the keyboard, px) from window.visualViewport — the only reliable signal
+       on iOS Safari (interactive-widget/vaul are no-ops there). Defaults (0 / 92dvh)
+       keep every other dialog byte-for-byte unchanged.
+         • max-height = visible + keyboard → the card reaches down behind the
+           keyboard (surface fills, no gap) but its VISIBLE part ≤ the space above
+           the keyboard, so the header stays pinned on screen.
+         • padding-bottom = keyboard + safe-area → header/body/footer are inset
+           above the keyboard while the card body extends behind it. */
+    max-height: calc(var(--dlg-vis, 92dvh) + var(--dlg-kb, 0px));
     max-width: 100%;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--dlg-kb, 0px) + max(12px, env(safe-area-inset-bottom)));
   }
   /* Real drag handle ("бровь") — visible only as a bottom sheet. */
   .dlg-grip { display: flex; justify-content: center; align-items: center; padding: 10px 0 4px; flex: none; touch-action: none; cursor: grab; }
