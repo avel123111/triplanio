@@ -35,10 +35,19 @@ function useIsSheet() {
 // contract either way; the chosen engine is published to DialogContent.
 const Dialog = ({ children, ...props }) => {
   const isSheet = useIsSheet()
-  const Root = isSheet ? Drawer.Root : DialogPrimitive.Root
+  if (isSheet) {
+    // repositionInputs={false}: the viewport meta (`interactive-widget=
+    // resizes-content`) already lifts a bottom-anchored sheet above the
+    // keyboard; letting vaul reposition too double-moves it (the "flying" bug).
+    return (
+      <ResponsiveSheetCtx.Provider value={true}>
+        <Drawer.Root repositionInputs={false} {...props}>{children}</Drawer.Root>
+      </ResponsiveSheetCtx.Provider>
+    )
+  }
   return (
-    <ResponsiveSheetCtx.Provider value={isSheet}>
-      <Root {...props}>{children}</Root>
+    <ResponsiveSheetCtx.Provider value={false}>
+      <DialogPrimitive.Root {...props}>{children}</DialogPrimitive.Root>
     </ResponsiveSheetCtx.Provider>
   )
 }

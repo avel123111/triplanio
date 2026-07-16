@@ -199,7 +199,9 @@ export default function VisitPanel({
 
   if (isSheet) {
     return (
-      <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      // repositionInputs={false}: viewport meta already lifts the sheet above
+      // the keyboard; vaul repositioning too would double-move it.
+      <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
         <Drawer.Portal>
           <Drawer.Overlay className="vscrim" />
           <Drawer.Content className="vpanel" aria-describedby={undefined}>

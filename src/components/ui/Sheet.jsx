@@ -23,7 +23,12 @@ import { useT } from '@/lib/i18n/I18nContext';
 export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const t = useT();
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    // repositionInputs={false}: the app's viewport meta uses
+    // `interactive-widget=resizes-content`, so the layout viewport already
+    // shrinks above the keyboard and this bottom-anchored sheet (bottom:0 +
+    // dvh) sits above it natively. Letting vaul ALSO reposition (its default)
+    // double-moves the sheet → the "flying / jumps on focus" bug.
+    <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="sheet-backdrop" />
         {/* vaul does NOT auto-focus into the sheet on open, so the mobile keyboard

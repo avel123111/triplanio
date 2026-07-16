@@ -985,7 +985,7 @@ export default function TripStructureEdit() {
               Drawer engine as modals (native swipe + keyboard-safe reposition).
               Backdrop tap / swipe-down / the panel's own Back all close it. */}
           {isSheet && leftPanelEl && (
-            <Drawer.Root open onOpenChange={(o) => { if (!o) closeLeftPanel(); }}>
+            <Drawer.Root open onOpenChange={(o) => { if (!o) closeLeftPanel(); }} repositionInputs={false}>
               <Drawer.Portal>
                 <Drawer.Overlay className="sheet-backdrop" />
                 <Drawer.Content
