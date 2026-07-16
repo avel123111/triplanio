@@ -2144,7 +2144,9 @@ h4,
     width: 100%;
     max-width: 100%;
     max-height: 92vh;
-    max-height: calc(100dvh - var(--kb, 8dvh));
+    /* Cap to the REAL visible height above the keyboard (px, from visualViewport),
+       NOT dvh — dvh never shrinks for the keyboard on iOS, so the header slid off. */
+    max-height: var(--vvh, 92dvh);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -3539,7 +3541,7 @@ h4,
 /* TRIP-234: lifts by the global --kb (keyboard height, 0 when closed) and caps to the
    visible area above the keyboard, so the sheet sits flush on the keyboard with the
    body scrolling. vaul runs with noBodyStyles → no iOS pan. */
-.sheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: calc(100dvh - var(--kb, 14dvh)); display: flex; flex-direction: column; }
+.sheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: var(--vvh, 86dvh); display: flex; flex-direction: column; }
 .sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; touch-action: none; cursor: grab; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
@@ -4808,7 +4810,7 @@ h4,
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 /* ≤640 the panel is a vaul Drawer (see VisitPanel.jsx) — vaul owns the slide-up
    and drag transform, so no `animation` here (it would fight vaul). */
-@media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: var(--kb, 0px); height: auto; width: 100%; max-height: 84%; max-height: calc(100dvh - var(--kb, 16dvh)); border-left: 0; border-radius: 26px 26px 0 0; } }
+@media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: var(--kb, 0px); height: auto; width: 100%; max-height: 84%; max-height: var(--vvh, 84dvh); border-left: 0; border-radius: 26px 26px 0 0; } }
 .vp-grip { display: none; }
 @media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: 99px; background: var(--line-strong); margin: 10px auto 2px; } }
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
