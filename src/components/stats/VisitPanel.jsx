@@ -199,9 +199,9 @@ export default function VisitPanel({
 
   if (isSheet) {
     return (
-      // repositionInputs={false}: viewport meta already lifts the sheet above
-      // the keyboard; vaul repositioning too would double-move it.
-      <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
+      // repositionInputs (vaul default, TRIP-234): vaul owns the keyboard via
+      // window.visualViewport (the only signal that works on iOS Safari).
+      <Drawer.Root open={open} onOpenChange={onOpenChange}>
         <Drawer.Portal>
           <Drawer.Overlay className="vscrim" />
           <Drawer.Content className="vpanel" aria-describedby={undefined}>

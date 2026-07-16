@@ -46,7 +46,8 @@ export default function EventDrawerHost({ open, onClose, scrim = false, title = 
 
   if (isSheet) {
     return (
-      <Drawer.Root open onOpenChange={(o) => { if (!o) onClose?.(); }} repositionInputs={false}>
+      // repositionInputs stays vaul default (TRIP-234): vaul owns the keyboard.
+      <Drawer.Root open onOpenChange={(o) => { if (!o) onClose?.(); }}>
         <Drawer.Portal>
           <Drawer.Overlay className="sheet-backdrop" />
           {/* vaul owns the slide + drag + keyboard reposition; the panel's own

@@ -36,12 +36,15 @@ function useIsSheet() {
 const Dialog = ({ children, ...props }) => {
   const isSheet = useIsSheet()
   if (isSheet) {
-    // repositionInputs={false}: the viewport meta (`interactive-widget=
-    // resizes-content`) already lifts a bottom-anchored sheet above the
-    // keyboard; letting vaul reposition too double-moves it (the "flying" bug).
+    // repositionInputs (vaul default, TRIP-234): vaul owns the keyboard — it reads
+    // window.visualViewport and sets the drawer (.dlg-modal) height = visible area
+    // and bottom = keyboard height, so the sheet sits above the keyboard with the
+    // header pinned and the body scrolling. This is the only mechanism that works
+    // on iOS Safari (interactive-widget/dvh are Chromium-only no-ops there). The
+    // .dlg card fills the drawer (CSS below) so vaul's clamp reaches the content.
     return (
       <ResponsiveSheetCtx.Provider value={true}>
-        <Drawer.Root repositionInputs={false} {...props}>{children}</Drawer.Root>
+        <Drawer.Root {...props}>{children}</Drawer.Root>
       </ResponsiveSheetCtx.Provider>
     )
   }

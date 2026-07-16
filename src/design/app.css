@@ -2131,27 +2131,39 @@ h4,
    keeps only the sheet geometry — do NOT re-add `animation`, `bottom: var(--kb)`
    or a `--vvh` height cap here (they fought vaul → jump/shrink). */
 @media (max-width: 640px) {
+  /* TRIP-234: vaul owns the keyboard (repositionInputs). It writes height + bottom
+     onto THIS element (the Drawer.Content = .dlg-modal) to sit the sheet above the
+     keyboard. So .dlg-modal is the sized/clipping box (flex column, capped 92dvh,
+     overflow hidden) and the .dlg card FILLS it — that way vaul's height clamp
+     reaches the content: header pinned, body scrolls, footer above the keyboard. */
   .dlg-modal {
     left: 0; right: 0; top: auto;
     bottom: 0;
     transform: none;
     width: 100%;
     max-width: 100%;
-    display: block;
-  }
-  /* The .dlg card inside gets sheet corners, safe-area padding, and a grip handle */
-  .dlg-modal .dlg {
-    border-radius: 20px 20px 0 0;
     max-height: 92vh;
     max-height: 92dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* The .dlg card fills the drawer (no own height cap — the drawer caps it) and
+     keeps the sheet corners + safe-area padding. */
+  .dlg-modal .dlg {
+    border-radius: 20px 20px 0 0;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
     max-width: 100%;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
   /* Real drag handle ("бровь") — visible only as a bottom sheet. */
   .dlg-grip { display: flex; justify-content: center; align-items: center; padding: 10px 0 4px; flex: none; touch-action: none; cursor: grab; }
   .dlg-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
-  /* Confirm/alert dialogs: centred content stays centred in the sheet */
-  .dlg-modal .dlg__body { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
+  /* Body is the single scroller inside the card; flex:1 + min-height:0 lets it
+     shrink under vaul's keyboard clamp (no fixed dvh cap that would fight it). */
+  .dlg-modal .dlg__body { flex: 1; min-height: 0; overflow-y: auto; }
   /* Wide dialogs (TripLimitDialog) — full width on mobile, normal layout */
   .dlg-modal .dlg--wide { max-width: 100%; }
   /* backdrop-filter blur is a paint-jank source on mobile (causes the flash on
@@ -3528,7 +3540,7 @@ h4,
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
 .sheet-h h3 { flex: 1; color: var(--ink); margin: 0; }
 .sheet-h .close { width: 32px; height: 32px; border-radius: 10px; background: var(--surface-2); border: 0; color: var(--muted); cursor: pointer; display: grid; place-items: center; flex: none; }
-.sheet-b { padding: 2px 12px 8px; overflow-y: auto; overscroll-behavior: contain; }
+.sheet-b { padding: 2px 12px 8px; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 /* big tap rows used for menu items inside a sheet */
 .sheet-row { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px 14px; border: 0; background: transparent; border-radius: 13px; font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; }
 .sheet-row svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
