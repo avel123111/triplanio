@@ -115,6 +115,7 @@ async function resolveRecurringUser(
   return { userId, productCode };
 }
 
+// sentry: manual — reads the raw body for Stripe signature verification and returns domain statuses (400 invalid sig); captures unexpected 5xx inline (ensureWrite + reportPaymentAnomaly).
 Deno.serve(async (req) => {
   let eventId: string | null = null;
   try {

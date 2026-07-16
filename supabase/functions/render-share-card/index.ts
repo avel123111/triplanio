@@ -51,6 +51,7 @@ function qrUrlFor(tripId: string, format: Format): string {
   return `${LANDING}?${p.toString()}`;
 }
 
+// sentry: manual — returns an SVG image, not the {error,code} JSON contract withHandler renders.
 Deno.serve(async (req) => {
   const cors = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });

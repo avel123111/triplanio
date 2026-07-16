@@ -1,4 +1,4 @@
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
@@ -52,11 +52,7 @@ async function postBotMessage(chatId: string, tripId: string, text: string) {
   });
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('callTriplanioAi', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -153,8 +149,4 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ ok: true }, { headers: corsHeaders });
-  } catch (err) {
-    console.error('callTriplanioAi error:', err);
-    return Response.json({ error: (err as Error).message }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

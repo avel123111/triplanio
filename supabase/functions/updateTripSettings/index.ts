@@ -17,17 +17,13 @@
  *
  * Returns 200 { ok: true } | { ok: false, code: 'FORBIDDEN' | 'PRO_REQUIRED' }.
  */
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { PRO_ADDON_SET } from '../_shared/proAddons.ts';
 
 const ALLOWED_COLS = ['title', 'description', 'cover_image_url', 'cover_gradient', 'notes'];
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -86,8 +82,4 @@ Deno.serve(async (req) => {
     if (error) return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
 
     return Response.json({ ok: true }, { headers: corsHeaders });
-  } catch (e) {
-    console.error('updateTripSettings error:', e);
-    return Response.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500, headers: corsHeaders });
-  }
-});
+}));
