@@ -128,7 +128,13 @@ export function withHandler(
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
     try {
       const res = await handler(req, corsHeaders);
-      if (res.status >= 400) reportInBackground(reportResponseError(fnName, res));
+      // Report every >=400 outcome — UNLESS the handler already captured this
+      // response itself with richer context and opted out via `x-sentry-skip: 1`
+      // (e.g. geoLocationiq's 429/502, which carry distinct grouping + upstream
+      // status). Without the opt-out those would be reported twice.
+      if (res.status >= 400 && res.headers.get('x-sentry-skip') !== '1') {
+        reportInBackground(reportResponseError(fnName, res));
+      }
       return res;
     } catch (e) {
       if (e instanceof HttpError) {
