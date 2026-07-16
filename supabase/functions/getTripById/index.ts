@@ -13,32 +13,19 @@
  * included (finances are never exposed to the bot/n8n layer).
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { fetchTripPayload } from '../_shared/tripPayload.ts';
-import { captureEdgeError } from '../_shared/sentry.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
+Deno.serve(withHandler('getTripById', async (req, corsHeaders) => {
   // Authenticate the server-to-server caller (n8n / Telegram bot).
   const denied = requireN8nSecret(req);
   if (denied) return denied;
 
-  try {
-    const { id } = await req.json();
-    if (!id) {
-      return Response.json({ error: 'id is required' }, { status: 400, headers: corsHeaders });
-    }
-
-    return await fetchTripPayload(id);
-  } catch (err) {
-    await captureEdgeError(err, 'getTripById');
-    console.error('getTripById error:', err);
-    return Response.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500, headers: corsHeaders },
-    );
+  const { id } = await req.json();
+  if (!id) {
+    return Response.json({ error: 'id is required' }, { status: 400, headers: corsHeaders });
   }
-});
+
+  return await fetchTripPayload(id);
+}));

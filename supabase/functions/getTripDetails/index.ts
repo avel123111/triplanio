@@ -20,19 +20,11 @@
  * to an authorized user is rejected, never served data.
  */
 
-import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { captureEdgeError } from '../_shared/sentry.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
+import { withHandler } from '../_shared/http.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  try {
+Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // Identify caller — REQUIRED. getRequestUser returns null when there is no
     // Authorization header OR when the token is not a real user token (e.g. the
     // public anon key shipped in the frontend bundle). Either way: deny.
@@ -185,13 +177,4 @@ Deno.serve(async (req) => {
     }
 
     return Response.json(response, { headers: corsHeaders });
-
-  } catch (error) {
-    await captureEdgeError(error, 'getTripDetails');
-    console.error('getTripDetails error:', error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-});
+}));
