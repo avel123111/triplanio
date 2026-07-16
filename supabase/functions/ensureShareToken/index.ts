@@ -10,15 +10,11 @@
  * no escalation. (TRIP-202)
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('ensureShareToken', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -59,11 +55,4 @@ Deno.serve(async (req) => {
 
     return Response.json({ shareToken }, { headers: corsHeaders });
 
-  } catch (e) {
-    console.error('ensureShareToken error:', e);
-    return Response.json(
-      { error: (e as Error).message },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-});
+}));

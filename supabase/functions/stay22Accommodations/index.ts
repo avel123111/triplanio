@@ -25,7 +25,7 @@
  * Nothing is persisted — the side-panel fetches on open and renders client-side.
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const STAY22_BASE = 'https://api.stay22.com/v2/accommodations';
@@ -34,11 +34,7 @@ const CAMPAIGN = 'fork_api_sidepanel';
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('stay22Accommodations', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -104,8 +100,4 @@ Deno.serve(async (req) => {
       { meta: data.meta ?? null, _links: data._links ?? null, results: data.results ?? [] },
       { headers: corsHeaders },
     );
-  } catch (e) {
-    console.error('stay22Accommodations error:', e);
-    return Response.json({ error: (e as Error).message }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

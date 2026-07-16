@@ -1,7 +1,7 @@
 // getFxRates
 // Returns fresh-ish FX rates for the given base currency, cached in the
 // fx_rates table. Source: frankfurter.app (ECB), refreshed after 48h.
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // open.er-api.com (free, no key) — unlike ECB/frankfurter it INCLUDES RUB and
@@ -22,10 +22,7 @@ async function getUser(req: Request) {
   return user ?? null;
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  try {
+Deno.serve(withHandler('getFxRates', async (req, corsHeaders) => {
     const user = await getUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -69,8 +66,4 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ ...payload, age_hours: 0, cached: false }, { headers: corsHeaders });
-  } catch (error) {
-    console.error('getFxRates error:', error);
-    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500, headers: corsHeaders });
-  }
-});
+}));
