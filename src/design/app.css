@@ -1147,12 +1147,10 @@ h4,
 }
 .app-side__item-badge.is-quiet { background: var(--line); color: var(--muted); }
 
-/* Editor screen: the left trip menu is the full sidebar — identical to every
-   other screen — rendered in a static 220px column (.ts-sidecol), narrowed to a
-   60px icon-rail in the 881–1040 band. Neutralise the base sticky/viewport-height
-   so it just fills the editor's flex row. At ≤880 .ts-sidecol is hidden and the
-   burger opens the .ts-drawer variant. Width lives here (not inline) so the
-   icon-rail media query can narrow it without fighting an inline flex-basis. */
+/* Editor screen (>880px): the left trip menu is the full sidebar — identical to
+   every other screen — rendered in a static 220px column (.ts-sidecol). Neutralise
+   the base sticky/viewport-height so it just fills the editor's flex row. At ≤880
+   .ts-sidecol is hidden and the burger opens the .ts-drawer variant. */
 .ts-sidecol { flex: 0 0 220px; min-width: 0; min-height: 0; }
 .ts-sidecol .app-side { position: static; height: 100%; }
 
@@ -1681,31 +1679,11 @@ h4,
 .grow { flex: 1; }
 .gap-2 { gap: 2px; } .gap-4 { gap: 4px; } .gap-6 { gap: 6px; } .gap-8 { gap: 8px; } .gap-12 { gap: 12px; } .gap-16 { gap: 16px; } .gap-20 { gap: 20px; }
 
-/* ── Icon-rail (unified tablet tier) ──────────────────────────────────────────
-   The trip side nav collapses to a 60px icon-only rail on medium widths,
-   IDENTICALLY for the trip screens (.trip-body) and the structure editor
-   (.ts-sidecol) — one canonical rail, one breakpoint band. Above 1040 it's the
-   full 220px sidebar with labels; below 880 it becomes the off-canvas drawer
-   (owned by .trip-shell / .ts-drawer). The cosmetic rules key on .app-side, which
-   both hosts render, so the rail looks the same in both. */
-@media (max-width: 1040px) and (min-width: 881px) {
-  /* Scoped to the shell parent (.trip-shell / .ts-screen) so these win over the
-     base `.trip-body`/`.ts-sidecol` widths REGARDLESS of source order — the base
-     `.trip-body { grid-template-columns: 220px 1fr }` lives later in the file, so
-     an equal-specificity override here would otherwise lose and the column would
-     never narrow (labels hidden + 220px column = the broken "wide rail"). */
-  .trip-shell .trip-body { grid-template-columns: 60px 1fr; }
-  .ts-screen .ts-sidecol { flex-basis: 60px; }
-  .app-side__item span { display: none; }
-  .app-side__group-label { display: none; }
-  .app-side__item-badge { position: absolute; top: 2px; right: 2px; }
-  .app-side__item { position: relative; justify-content: center; padding: 10px 0; }
-  /* The "upgrade to Pro" card carries text + a button — it can't fit a 60px rail,
-     so it's hidden here; it returns with the full sidebar (≥1041) and in the
-     drawer / bottom-sheet (≤880). */
-  .app-side__upgrade { display: none; }
-  .app-side { padding: 16px 6px; }
-}
+/* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
+   three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
+   phone bottom-nav (≤640). There is no separate tablet/icon-rail state: the full
+   220px sidebar simply holds down to 881, then goes straight to the drawer. */
+
 /* Mobile app shell */
 @media (max-width: 880px) {
   /* Header is position:static on mobile (see .app-shell > .app-header) — blur has
