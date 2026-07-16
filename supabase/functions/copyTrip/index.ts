@@ -17,17 +17,12 @@
  * All child records are re-created with new IDs and caller as created_by.
  */
 
-import { corsFor } from '../_shared/cors.ts';
-import { HttpError, jsonError, readJson } from '../_shared/http.ts';
+import { jsonError, readJson, withHandler } from '../_shared/http.ts';
 import { PRO_ONLY_ADDONS } from '../_shared/proAddons.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHORIZED', corsHeaders);
 
@@ -274,12 +269,4 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ ok: true, tripId: newTripId }, { headers: corsHeaders });
-
-  } catch (e) {
-    // A validation reject (bad body) is an HttpError → surface its status/code;
-    // anything else is an unexpected server fault → 500.
-    if (e instanceof HttpError) return jsonError(e.status, e.message, e.code, corsHeaders);
-    console.error('copyTrip error:', e);
-    return jsonError(500, (e as Error).message, 'INTERNAL', corsHeaders);
-  }
-});
+}));
