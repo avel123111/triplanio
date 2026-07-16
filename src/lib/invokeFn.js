@@ -39,6 +39,14 @@ export async function invokeFn(name, options = {}) {
 
   const { code, message } = await parseEdgeError(error, data);
 
+  // Mark the error so the global React-Query onError seam (query-client) does not
+  // capture it a SECOND time when a queryFn re-throws it: the invoke/edge seam
+  // already owns this error's reporting (edge captured a server 4xx/5xx, or below
+  // we capture a network/200-error). Non-enumerable → never leaks into logs/JSON.
+  if (error && typeof error === 'object') {
+    try { Object.defineProperty(error, '__seamHandled', { value: true }); } catch { /* frozen error */ }
+  }
+
   // `error.context` present = the function RETURNED a non-2xx → the edge seam
   // already captured it; capturing here would duplicate. Absent = network/relay
   // failure or a 200-with-error the edge never saw → this is ours to report.

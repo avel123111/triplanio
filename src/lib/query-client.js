@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
 import { statusOf } from './loadStateClassify.js';
 
 // Retry policy (TRIP-208 B2) ────────────────────────────────────────────────────
@@ -25,7 +25,45 @@ export function retryDelay(attempt) {
   return Math.min(1000 * 2 ** attempt, 15_000) + Math.random() * 250;
 }
 
+// Data-layer error seam (TRIP-219 F3) ────────────────────────────────────────────
+// ONE place that reports every React-Query failure to Sentry, so a swallowed
+// query/mutation error can't hide. This is the class of failure no edge/invoke
+// seam sees: direct PostgREST / RPC errors (`.from()` / `.rpc()` that `throw`).
+//
+// Dedup with the invoke/edge seam: an error routed through `invokeFn` is stamped
+// `__seamHandled` (edge already captured a server 4xx/5xx, or invokeFn captured a
+// network / 200-error), so a queryFn re-throwing it is skipped here — never twice.
+// Navigational `Failed to fetch` / `AbortError` are dropped by the SDK's
+// `ignoreErrors`, so no extra filter is needed.
+//
+// Only the FIRST queryKey/mutationKey segment (the logical name) is tagged — later
+// segments carry ids / share-tokens (PII), so they are deliberately not sent.
+//
+// Sentry is imported LAZILY (inside the handler) so this module stays importable
+// under `node --test` (sentry.js reads `import.meta.env`) — same reason
+// subscription.js lazy-imports invokeFn.
+function reportDataError(error, source, key) {
+	if (!error || error.__seamHandled) return;
+	const name = Array.isArray(key) ? key[0] : key;
+	import('./sentry').then(({ Sentry }) => {
+		const status = statusOf(error);
+		Sentry.captureException(error instanceof Error ? error : new Error(String(error?.message ?? error)), {
+			tags: {
+				surface: 'frontend', layer: 'data', source,
+				...(status ? { status: String(status) } : {}),
+				...(name ? { query: String(name) } : {}),
+			},
+		});
+	}).catch(() => { /* monitoring must never break the app */ });
+}
+
 export const queryClientInstance = new QueryClient({
+	queryCache: new QueryCache({
+		onError: (error, query) => reportDataError(error, 'query', query?.queryKey),
+	}),
+	mutationCache: new MutationCache({
+		onError: (error, _vars, _ctx, mutation) => reportDataError(error, 'mutation', mutation?.options?.mutationKey),
+	}),
 	defaultOptions: {
 		queries: {
 			refetchOnWindowFocus: false,
