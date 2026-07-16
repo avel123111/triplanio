@@ -851,7 +851,7 @@ export default function TripStructureEdit() {
       />
     </div>
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <div className="ts-sidecol" style={{ flex: '0 0 220px', minWidth: 0, minHeight: 0 }}>
+      <div className="ts-sidecol">
         <TripSidebar
           tripId={tripId} trip={trip} isEditScreen
           onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}

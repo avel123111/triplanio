@@ -631,7 +631,6 @@ h4,
 .ts-startctl__date,
 .ts-cal__wdc,
 .ts-cal__day,
-.mobile-bottom-nav__item,
 .chat-online,
 .chat-name b,
 .chat-name .tm,
@@ -1006,70 +1005,6 @@ h4,
 .card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
 
 /* =================================================================
-   OUTER PROTOTYPE CHROME (frame list + viewport)
-   ================================================================= */
-.proto {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: 100vh;
-  background: var(--wash-2);
-  color: var(--ink);
-}
-.proto__nav {
-  border-right: 1px solid var(--line);
-  background: var(--surface);
-  display: flex; flex-direction: column;
-  position: sticky; top: 0;
-  height: 100vh;
-  overflow: hidden;
-}
-.proto__nav-head {
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid var(--line-2);
-}
-.proto__nav-sub { color: var(--muted); margin-top: 2px; }
-.proto__nav-list { flex: 1; overflow: auto; padding: 8px 10px 16px; }
-.proto__group-label {
- color: var(--muted-2); padding: 14px 8px 6px;
-}
-.proto__nav-item {
- display: flex; align-items: center; gap: 10px;
- padding: 7px 10px;
- border-radius: 8px;
- color: var(--ink-2);
- cursor: pointer;
- border: none; background: transparent;
- width: 100%; text-align: left;
-}
-.proto__nav-item:hover { background: var(--wash); }
-.proto__nav-item.active { background: var(--brand-soft); color: var(--brand); }
-.proto__nav-item-num {
- color: var(--muted-2); font-variant-numeric: tabular-nums;
- min-width: 18px;
-}
-.proto__nav-item.active .proto__nav-item-num { color: var(--brand); }
-
-.proto__nav-foot { border-top: 1px solid var(--line-2); padding: 12px 14px; display: flex; gap: 8px; align-items: center; }
-
-.proto__viewport {
-  display: flex; flex-direction: column;
-  min-height: 100vh;
-  background: var(--wash);
-  position: relative;
-}
-.proto__viewport-head {
-  display: flex; align-items: center; gap: 16px;
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  min-height: 44px;
-}
-.proto__viewport-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.proto__viewport-sub { color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.proto__viewport-spacer { flex: 1; min-width: 8px; }
-.proto__viewport-body { flex: 1; min-height: 0; }
-
-/* =================================================================
    THE APP ITSELF — global shell
    ================================================================= */
 .app {
@@ -1178,12 +1113,9 @@ h4,
 }
 
 
-/* Main content area */
-.app-body {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  align-items: start;
-}
+/* Trip side nav. The grid host that used to wrap it (.app-body) is gone — the
+   live shells are .trip-shell/.trip-body (trip screens) and .ts-screen/.ts-sidecol
+   (editor), which own their own column + drawer behaviour. */
 .app-side {
   border-right: 1px solid var(--line);
   background: var(--surface);
@@ -1215,10 +1147,13 @@ h4,
 }
 .app-side__item-badge.is-quiet { background: var(--line); color: var(--muted); }
 
-/* Editor screen (>760px): the left trip menu is the full sidebar — identical to
-   every other screen — rendered in a static 220px column (.ts-sidecol). Neutralise
-   the base sticky/viewport-height so it just fills the editor's flex row. On phones
-   (≤760) .ts-sidecol is hidden and the burger opens the .ts-drawer variant. */
+/* Editor screen: the left trip menu is the full sidebar — identical to every
+   other screen — rendered in a static 220px column (.ts-sidecol), narrowed to a
+   60px icon-rail in the 881–1040 band. Neutralise the base sticky/viewport-height
+   so it just fills the editor's flex row. At ≤880 .ts-sidecol is hidden and the
+   burger opens the .ts-drawer variant. Width lives here (not inline) so the
+   icon-rail media query can narrow it without fighting an inline flex-basis. */
+.ts-sidecol { flex: 0 0 220px; min-width: 0; min-height: 0; }
 .ts-sidecol .app-side { position: static; height: 100%; }
 
 .app-main {
@@ -1746,48 +1681,26 @@ h4,
 .grow { flex: 1; }
 .gap-2 { gap: 2px; } .gap-4 { gap: 4px; } .gap-6 { gap: 6px; } .gap-8 { gap: 8px; } .gap-12 { gap: 12px; } .gap-16 { gap: 16px; } .gap-20 { gap: 20px; }
 
-/* Backdrops (mobile drawers) — always fixed, opacity gates visibility */
-.proto__nav-backdrop, .app-side-backdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,.4);
-  z-index: 89; opacity: 0; pointer-events: none; transition: opacity .2s;
-}
-.proto__nav-backdrop.is-open, .app-side-backdrop.is-open { opacity: 1; pointer-events: auto; }
-.proto__nav-backdrop { z-index: 99; }
-
-/* Small responsive */
-@media (max-width: 1280px) {
-  .app-body { grid-template-columns: 220px 1fr; }
-}
-@media (max-width: 1180px) {
-  .app-body { grid-template-columns: 200px 1fr; }
-}
-/* Icon-rail mode for the trip side nav at medium widths */
+/* ── Icon-rail (unified tablet tier) ──────────────────────────────────────────
+   The trip side nav collapses to a 60px icon-only rail on medium widths,
+   IDENTICALLY for the trip screens (.trip-body) and the structure editor
+   (.ts-sidecol) — one canonical rail, one breakpoint band. Above 1040 it's the
+   full 220px sidebar with labels; below 880 it becomes the off-canvas drawer
+   (owned by .trip-shell / .ts-drawer). The cosmetic rules key on .app-side, which
+   both hosts render, so the rail looks the same in both. */
 @media (max-width: 1040px) and (min-width: 881px) {
-  .app-body { grid-template-columns: 60px 1fr; }
+  .trip-body { grid-template-columns: 60px 1fr; }
+  .ts-sidecol { flex-basis: 60px; }
   .app-side__item span { display: none; }
   .app-side__group-label { display: none; }
   .app-side__item-badge { position: absolute; top: 2px; right: 2px; }
   .app-side__item { position: relative; justify-content: center; padding: 10px 0; }
+  /* The "upgrade to Pro" card carries text + a button — it can't fit a 60px rail,
+     so it's hidden here; it returns with the full sidebar (≥1041) and in the
+     drawer / bottom-sheet (≤880). */
+  .app-side__upgrade { display: none; }
   .app-side { padding: 16px 6px; }
 }
-@media (max-width: 900px) {
-  .proto { grid-template-columns: 1fr; }
-  .proto__nav {
-    position: fixed; left: 0; top: 0; bottom: 0;
-    z-index: 100; width: 280px;
-    transform: translateX(-100%);
-    transition: transform .25s ease;
-    box-shadow: var(--shadow-pop);
-  }
-  .proto__nav.is-open { transform: translateX(0); }
-  .proto__viewport-head { padding: 8px 12px; gap: 8px; }
-  .proto__viewport-head .icon-btn { width: 32px; height: 32px; }
-  .proto__nav-toggle {
-    display: grid !important;
-  }
-}
-.proto__nav-toggle { display: none; }
-
 /* Mobile app shell */
 @media (max-width: 880px) {
   /* Header is position:static on mobile (see .app-shell > .app-header) — blur has
@@ -1804,17 +1717,9 @@ h4,
   .app-header__trip-title { font-size: var(--fs-h4); }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
-  .app-body { grid-template-columns: 1fr; }
-  .app-side {
-    position: fixed; left: 0; top: 0; bottom: 0;
-    z-index: 90; width: 84vw; max-width: 320px;
-    transform: translateX(-100%);
-    transition: transform .25s ease;
-    border-right: 1px solid var(--line);
-    box-shadow: var(--shadow-pop);
-    padding-top: 56px;
-  }
-  .app-side.is-open { transform: translateX(0); }
+  /* NB: the trip / editor sidebars go off-canvas via their OWN shells
+     (.trip-shell .app-side @ ≤880 and .ts-screen .ts-drawer @ ≤880) — not here.
+     The dead .app-body host and its .app-side drawer copy were removed. */
   .app-main { padding: 16px 14px 100px; }
   .app-header [data-mobile-toggle] { display: grid !important; }
 }
@@ -2234,39 +2139,11 @@ h4,
   .field-row.cols-2, .field-row.cols-3, .field-row.cols-4 { grid-template-columns: 1fr !important; }
 }
 
-/* Bottom mobile nav for in-app screens */
-@media (max-width: 880px) {
-  .mobile-bottom-nav {
-    position: fixed; left: 0; right: 0; bottom: 0;
-    height: 60px;
-    background: var(--surface);
-    border-top: 1px solid var(--line);
-    display: flex !important;
-    z-index: 60;
-    padding: 6px 8px env(safe-area-inset-bottom);
-  }
-  /* Stack timeline + side aside */
-  .trip-2col { grid-template-columns: 1fr !important; }
-  .trip-3col { grid-template-columns: 1fr !important; }
-  .trip-3col > aside:first-child { display: none; }
-  .trip-2col > aside { position: static !important; }
-  .trip-3col > aside { position: static !important; }
-  .budget-2col { grid-template-columns: 1fr !important; }
-  /* Disable sticky on narrow */
-  .app-side { position: fixed !important; }
-}
-.mobile-bottom-nav { display: none; }
-.mobile-bottom-nav__item {
- flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
- gap: 2px; background: transparent; border: none;
- color: var(--muted); cursor: pointer;
- border-radius: 8px;
-}
-.mobile-bottom-nav__item.active { color: var(--brand); }
-.mobile-bottom-nav__item .badge-dot {
-  position: absolute; top: 6px; right: 18%;
-  width: 7px; height: 7px; border-radius: 50%; background: var(--warm);
-}
+/* (removed) The old `.mobile-bottom-nav` + `.trip-2col/3col` + `.budget-2col`
+   block was dead — no JSX renders those classes. The live mobile nav is the
+   floating capsule `.mbnav` (MobileBottomNav.jsx). Its removal also drops the
+   stray `.app-side { position: fixed !important }` that was overriding the trip
+   drawer's own positioning at ≤880. */
 
 /* =================================================================
    DIALOG / MODAL — used everywhere (event details, confirm, share…)
@@ -3364,10 +3241,23 @@ h4,
    there). Without this base rule it would render the full sidebar inline. */
 .ts-drawer { display: none; }
 
-@media (max-width: 760px) {
-  .ts-screen .ts-drawer { display: block; }
+/* Editor sidebar → off-canvas drawer at ≤880 — the SAME breakpoint as the trip
+   screens (.trip-shell), so the two shells leave the icon-rail for a drawer at
+   the same width. (The table-compaction below stays at ≤760: that's a content
+   concern, independent of the sidebar.) */
+@media (max-width: 880px) {
   /* hide the static sidebar column; the burger opens a real drawer instead */
   .ts-screen .ts-sidecol { display: none; }
+  /* editor sidebar drawer (reuses app-side drawer pattern) */
+  .ts-screen .ts-drawer { display: block; position: fixed; inset: 0; z-index: 200; pointer-events: none; }
+  .ts-screen .ts-drawer.is-open { pointer-events: auto; }
+  .ts-screen .ts-drawer__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s var(--ease-out); }
+  .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
+  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--surface); }
+  .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
+}
+
+@media (max-width: 760px) {
   /* drop the table header row */
   .ts-screen .te-thead { display: none !important; }
   /* drop the drag grip — on touch the whole row drags via long-press.
@@ -3383,13 +3273,6 @@ h4,
   .ts-screen .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
   /* hide hotel/activity presence icons in city rows on mobile */
   .ts-screen .te-cell--hotel, .ts-screen .te-cell--act { display: none !important; }
-  /* editor sidebar drawer (reuses app-side drawer pattern) */
-  .ts-screen .ts-drawer { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
-  .ts-screen .ts-drawer.is-open { pointer-events: auto; }
-  .ts-screen .ts-drawer__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s var(--ease-out); }
-  .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
-  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--surface); }
-  .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
 }
 
 /* ===== Trip Settings lens ====================================================

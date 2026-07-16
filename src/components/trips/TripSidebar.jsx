@@ -39,6 +39,8 @@ function SidebarBody({
             key={item.id}
             className={'app-side__item' + (!isEditScreen && lens === item.id ? ' active' : '')}
             onClick={() => onNavigate(item.id)}
+            title={t(item.labelKey)}
+            aria-label={t(item.labelKey)}
           >
             <Icon name={item.icon} size={15} />
             <span className="app-side__label">{t(item.labelKey)}</span>
@@ -57,6 +59,8 @@ function SidebarBody({
             <button
               className={'app-side__item' + (isEditScreen ? ' active' : '')}
               onClick={() => { if (!isEditScreen) navSb(`/trip/${tripId}/edit`); }}
+              title={t(EDIT_ITEM.labelKey)}
+              aria-label={t(EDIT_ITEM.labelKey)}
             >
               <Icon name={EDIT_ITEM.icon} size={15} />
               <span className="app-side__label">{t(EDIT_ITEM.labelKey)}</span>
@@ -67,13 +71,15 @@ function SidebarBody({
               key={item.id}
               className={'app-side__item' + (!isEditScreen && lens === item.id ? ' active' : '')}
               onClick={() => onNavigate(item.id)}
+              title={t(item.labelKey)}
+              aria-label={t(item.labelKey)}
             >
               <Icon name={item.icon} size={15} />
               <span className="app-side__label">{t(item.labelKey)}</span>
             </button>
           ))}
           {canShare && onShare && (
-            <button className="app-side__item" onClick={onShare}>
+            <button className="app-side__item" onClick={onShare} title={t('trip.share')} aria-label={t('trip.share')}>
               <Icon name="share" size={15} />
               <span className="app-side__label">{t('trip.share')}</span>
             </button>
