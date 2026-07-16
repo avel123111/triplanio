@@ -13,9 +13,16 @@
  *      new HttpError(status, message, code)` anywhere and let its top-level catch
  *      render it with `jsonError`.
  *
- * Deliberately dependency-free and tiny (Deno cold-start): this is the reusable
- * seam, adopted opportunistically per function — not a framework.
+ *   3. `withHandler(fnName, handler)` — the one edge seam (TRIP-219): cors +
+ *      OPTIONS + a top-level try/catch that reports every ERROR outcome (4xx/5xx)
+ *      to Sentry (see below). Replaces the hand-written cors/OPTIONS/try/catch that
+ *      each function used to repeat, so Sentry coverage is uniform by construction.
+ *
+ * Tiny by design (Deno cold-start). The only shared deps are the sibling cors +
+ * sentry seams — still "seam, not framework".
  */
+import { corsFor } from './cors.ts';
+import { captureEdgeError } from './sentry.ts';
 
 export type ErrorBody = { error: string; code?: string };
 
@@ -58,4 +65,65 @@ export async function readJson(req: Request): Promise<Record<string, unknown>> {
     throw new HttpError(400, 'Request body must be a JSON object', 'INVALID_BODY');
   }
   return raw as Record<string, unknown>;
+}
+
+/**
+ * Fire a Sentry report in the BACKGROUND so monitoring never adds latency to the
+ * response. `captureEdgeError` does `await flush(2000)`; awaiting that on every
+ * 4xx (e.g. each 401/validation reject) would slow hot paths. Supabase edge
+ * exposes `EdgeRuntime.waitUntil` to finish background work after the response is
+ * sent — use it when present, else fall back to fire-and-forget (local dev, where
+ * Sentry is a no-op without a DSN anyway).
+ */
+const _edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+function reportInBackground(p: Promise<unknown>): void {
+  if (_edge?.waitUntil) _edge.waitUntil(p);
+  else void p;
+}
+
+/**
+ * The single edge seam: `Deno.serve(withHandler('fnName', async (req, cors) => …))`.
+ *
+ * Handles cors + OPTIONS, and reports every ERROR outcome (4xx/5xx) to Sentry,
+ * however it arose (TRIP-219 — Pavel: send any unexpected behaviour, incl. 4xx/400):
+ *   - an unexpected throw            → 500 `INTERNAL`, reported;
+ *   - a thrown `HttpError`           → its 4xx rendered via `jsonError`, reported;
+ *   - a handler `return`ing >= 400   → reported by status (covers explicit
+ *                                       `return jsonError(4xx, …)` early-returns).
+ * 3xx redirects are deliberate successes, not errors, so they are NOT reported.
+ * The `{ error, code }` body shape is preserved byte-for-byte, so the frontend
+ * `parseEdgeError` contract is unchanged. Reporting is backgrounded (no latency).
+ *
+ * Excluded by design (own contracts / already self-capture): stripe-webhook,
+ * telegramWebhook, render-share-card, rate-limited signupPrecheck/requestPasswordReset.
+ * Those stay hand-written and carry a `// sentry: manual` marker for the CI guard.
+ */
+export function withHandler(
+  fnName: string,
+  handler: (req: Request, corsHeaders: HeadersInit) => Promise<Response>,
+): (req: Request) => Promise<Response> {
+  return async (req: Request): Promise<Response> => {
+    const corsHeaders = corsFor(req);
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+    try {
+      const res = await handler(req, corsHeaders);
+      if (res.status >= 400) {
+        reportInBackground(
+          captureEdgeError(new Error(`${fnName} responded ${res.status}`), fnName, { status: res.status }),
+        );
+      }
+      return res;
+    } catch (e) {
+      if (e instanceof HttpError) {
+        reportInBackground(captureEdgeError(e, fnName, { status: e.status, code: e.code }));
+        return jsonError(e.status, e.message, e.code, corsHeaders);
+      }
+      // Also log to the Supabase function logs — a second channel that survives
+      // when Sentry is unset (local dev) or misconfigured. Only the unexpected
+      // 5xx path is logged; expected 4xx control flow would just be noise.
+      console.error(`${fnName} unhandled:`, e);
+      reportInBackground(captureEdgeError(e, fnName));
+      return jsonError(500, (e as Error).message, 'INTERNAL', corsHeaders);
+    }
+  };
 }
