@@ -2125,27 +2125,26 @@ h4,
 /* Drag handle is a bottom-sheet affordance only — hidden on desktop dialogs. */
 .dlg-grip { display: none; }
 
-/* ── C6 Overlay: below 640 px every .dlg-modal becomes a bottom sheet ── */
+/* ── C6 Overlay: below 640 px every .dlg-modal becomes a bottom sheet ──
+   The mobile Content is a vaul Drawer (see ui/dialog.jsx), which owns the drag
+   transform, the open/close slide and lifting above the keyboard. So this block
+   keeps only the sheet geometry — do NOT re-add `animation`, `bottom: var(--kb)`
+   or a `--vvh` height cap here (they fought vaul → jump/shrink). */
 @media (max-width: 640px) {
   .dlg-modal {
     left: 0; right: 0; top: auto;
-    /* anchor above the on-screen keyboard (var set by initKeyboardInset) */
-    bottom: var(--kb, 0px);
+    bottom: 0;
     transform: none;
     width: 100%;
     max-width: 100%;
-    max-height: 92vh;
-    max-height: calc(var(--vvh, 100dvh) - 8px);
     display: block;
-    animation: sheetUp .3s var(--ease-out);
   }
   /* The .dlg card inside gets sheet corners, safe-area padding, and a grip handle */
   .dlg-modal .dlg {
     border-radius: 20px 20px 0 0;
     max-height: 92vh;
-    max-height: min(92dvh, calc(var(--vvh, 100dvh) - 8px));
+    max-height: 92dvh;
     max-width: 100%;
-    /* no keyboard → keep safe-area gap; keyboard open → no extra gap (sheet sits on it) */
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
   /* Real drag handle ("бровь") — visible only as a bottom sheet. */
@@ -2162,17 +2161,17 @@ h4,
 
 
   /* Editor side panels become FULL-SCREEN panels on phones (a standalone screen
-     over the previous one), portaled into a Radix Dialog whose Content is
-     `.lp-sheet` holding the `.lp` card. Spans the whole viewport (top:0 → bottom
-     above the keyboard via --kb). Closed only by the panel's own back button —
-     no grip / swipe-to-close. */
+     over the previous one), rendered as a vaul Drawer whose Content is
+     `.lp-sheet` holding the `.lp` card. Spans the whole viewport (top:0 → 0).
+     vaul (see EventDrawerHost / TripStructureEdit) owns the slide, drag and
+     keyboard reposition — no `bottom: var(--kb)` / `animation` here. Closes via
+     the panel's own Back button, swipe-down, or backdrop tap. */
   .lp-sheet {
     position: fixed; left: 0; right: 0; top: 0;
-    bottom: var(--kb, 0px);
+    bottom: 0;
     width: 100%;
     z-index: 201;
     display: flex;
-    animation: sheetUp .3s var(--ease-out);
     will-change: transform;
   }
   .lp-sheet > .lp {
@@ -2418,8 +2417,8 @@ h4,
 
 /* ── Mobile: the open widget lives inside the canonical bottom-sheet (.sheet).
    .sheet--chat makes the body a full-height flex column so messages scroll
-   and the composer stays pinned; the grip drives swipe-to-dismiss. ── */
-.sheet--chat { height: min(86dvh, calc(var(--vvh, 100dvh) - 8px)); }
+   and the composer stays pinned; vaul repositions above the keyboard. ── */
+.sheet--chat { height: 86dvh; }
 .sheet--chat .sheet-b { padding: 0; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sheet--chat .chat-msgs { padding: 14px; }
 
@@ -3515,10 +3514,15 @@ h4,
 
 /* ============================================================
    C6 · Bottom sheet (Lumo) — mobile shell for menus / pickers.
-   Rendered by <Sheet> (Radix Dialog) under the mobile breakpoint.
+   Rendered by <Sheet> (vaul Drawer) under the mobile breakpoint.
    ============================================================ */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--scrim); backdrop-filter: blur(2px); animation: sheetFade .2s ease; }
-.sheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: min(86dvh, calc(var(--vvh, 100dvh) - 8px)); display: flex; flex-direction: column; animation: sheetUp .3s var(--ease-out, cubic-bezier(.22,1,.36,1)); }
+/* vaul (Drawer) owns positioning above the keyboard (repositionInputs),
+   the drag transform and the open/close slide — so this rule keeps only the
+   skin (surface, radius, shadow, safe-area padding, flex column). Do NOT add
+   `animation`, `bottom: var(--kb)` or a `--vvh` height cap here: those fought
+   vaul and caused the "jump / shrink / fly" the sheet used to have. */
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: 86dvh; display: flex; flex-direction: column; }
 .sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; touch-action: none; cursor: grab; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
@@ -3533,7 +3537,6 @@ h4,
 .sheet-row--danger { color: var(--danger-ink); }
 .sheet-row--danger svg { color: var(--danger-ink); }
 .sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
-@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
 
 /* ============================================================
@@ -4786,7 +4789,9 @@ h4,
 .vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: 110; }
 .vpanel { position: fixed; z-index: 120; background: var(--bg); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }  /* TRIP-176: фон драйвера = фон приложения */
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
-@media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: 0; height: auto; width: 100%; max-height: 84%; border-left: 0; border-radius: 26px 26px 0 0; animation: vpanelInM .34s var(--ease-out); } @keyframes vpanelInM { from { transform: translateY(102%); } to { transform: translateY(0); } } }
+/* ≤640 the panel is a vaul Drawer (see VisitPanel.jsx) — vaul owns the slide-up
+   and drag transform, so no `animation` here (it would fight vaul). */
+@media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: 0; height: auto; width: 100%; max-height: 84%; border-left: 0; border-radius: 26px 26px 0 0; } }
 .vp-grip { display: none; }
 @media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: 99px; background: var(--line-strong); margin: 10px auto 2px; } }
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }

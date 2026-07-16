@@ -1,9 +1,27 @@
+import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { Drawer } from 'vaul';
 import { pointType, TONE } from '@/lib/travel-stats';
 import { coverGradientCss } from '@/lib/trip-gradients';
-import { useSheetSwipe } from '@/lib/useSheetSwipe';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { Icon } from '@/design/icons';
+
+// ≤640px the panel is a bottom sheet — render it through vaul (native swipe +
+// keyboard-safe) instead of the CSS-restyled Radix drawer. Above 640 it stays
+// the desktop right slide-over. Matches the `.vpanel` breakpoint in app.css.
+function useIsSheet() {
+  const [isSheet, setIsSheet] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChange = () => setIsSheet(mq.matches);
+    mq.addEventListener('change', onChange);
+    onChange();
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return isSheet;
+}
 
 // Visit panel for the "My statistics" screen — opens when a country/city/pin is
 // selected and lists the visits at that place. Reuses Radix Dialog (focus-trap /
@@ -149,40 +167,61 @@ export default function VisitPanel({
 }) {
   const isCity = kind === 'city';
   const rows = groupVisits(visits);
-  // Same drag-to-dismiss hook the canonical Sheet uses — attach elRef to the
-  // surface and gripProps to the grip ("бровь"); only fires on the mobile grip
-  // (hidden on desktop), so the desktop right-drawer is unaffected.
-  const { elRef, gripProps } = useSheetSwipe(() => onOpenChange?.(false));
+  const isSheet = useIsSheet();
+
+  // Shared body — the Radix Dialog.Title/Close primitives work inside either
+  // Root (vaul wraps Radix Dialog), so the header is identical for both.
+  const body = (
+    <>
+      {/* Visual drag affordance only — vaul drags the whole sheet on mobile. */}
+      <div className="vp-grip" aria-hidden />
+      <div className={`vp-h${isCity ? ' city' : ''}`}>
+        <div className="ic" style={cc ? { background: 'transparent', borderRadius: '50%' } : undefined}><PanelFlag cc={cc} isCity={isCity} /></div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Dialog.Title asChild><h3>{name}</h3></Dialog.Title>
+          <div className="s">{sub}</div>
+        </div>
+        <Dialog.Close asChild>
+          <button className="vp-x" aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>
+        </Dialog.Close>
+      </div>
+      <div className="vp-b">
+        {rows.map((row, i) => (
+          <GroupedRow
+            key={`${row.rowType}-${row.trip_id || row.v?.id || i}-${row.start}`}
+            row={row} isCity={isCity} trips={trips} t={t} lang={lang}
+            onOpenTrip={onOpenTrip} onEditManual={onEditManual}
+          />
+        ))}
+      </div>
+    </>
+  );
+
+  if (isSheet) {
+    return (
+      // repositionInputs={false}: viewport meta already lifts the sheet above
+      // the keyboard; vaul repositioning too would double-move it.
+      <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="vscrim" />
+          <Drawer.Content className="vpanel" aria-describedby={undefined}>
+            {body}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+    );
+  }
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="vscrim" />
         <Dialog.Content
-          ref={elRef}
           className="vpanel"
           aria-describedby={undefined}
           onOpenAutoFocus={keepFocusInDialog}
         >
-          <div className="vp-grip" {...gripProps} />
-          <div className={`vp-h${isCity ? ' city' : ''}`}>
-            <div className="ic" style={cc ? { background: 'transparent', borderRadius: '50%' } : undefined}><PanelFlag cc={cc} isCity={isCity} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Dialog.Title asChild><h3>{name}</h3></Dialog.Title>
-              <div className="s">{sub}</div>
-            </div>
-            <Dialog.Close asChild>
-              <button className="vp-x" aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>
-            </Dialog.Close>
-          </div>
-          <div className="vp-b">
-            {rows.map((row, i) => (
-              <GroupedRow
-                key={`${row.rowType}-${row.trip_id || row.v?.id || i}-${row.start}`}
-                row={row} isCity={isCity} trips={trips} t={t} lang={lang}
-                onOpenTrip={onOpenTrip} onEditManual={onEditManual}
-              />
-            ))}
-          </div>
+          {body}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
