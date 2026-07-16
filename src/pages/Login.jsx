@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import './login.css';
@@ -355,7 +356,7 @@ export default function Login() {
     // Preflight: Supabase hides whether an email already exists, so ask the
     // server (signupPrecheck) before creating the account. This lets us show an
     // explicit message instead of a silent "check your email".
-    const { data: pre, error: preErr } = await supabase.functions.invoke('signupPrecheck', {
+    const { data: pre, error: preErr } = await invokeFn('signupPrecheck', {
       body: { email, redirectTo: window.location.origin + postLoginPath() },
     });
     if (preErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
@@ -413,7 +414,7 @@ export default function Login() {
     // Routed through requestPasswordReset so the server can reveal an unknown
     // email and enforce the 5/hour-per-email limit. The email itself is still
     // sent by Supabase Auth (same template) from inside that function.
-    const { data, error: invErr } = await supabase.functions.invoke('requestPasswordReset', {
+    const { data, error: invErr } = await invokeFn('requestPasswordReset', {
       body: { email, redirectTo: window.location.origin + '/reset-password' },
     });
     if (invErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
@@ -437,7 +438,7 @@ export default function Login() {
     const body = resendFlow === 'signup'
       ? { email: sentEmail, redirectTo: window.location.origin + postLoginPath() }
       : { email: sentEmail, redirectTo: window.location.origin + '/reset-password' };
-    const { data, error: invErr } = await supabase.functions.invoke(fn, { body });
+    const { data, error: invErr } = await invokeFn(fn, { body });
     setIsLoading(false);
     if (invErr) { setError(t('auth.err_generic')); return; }
     if (data?.code === 'rate_limited') { setError(t('auth.err_reset_rate_limited')); setResendLeft(60); return; }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -98,7 +99,7 @@ export default function NotificationsBell({ triggerClassName }) {
     mutationFn: async ({ memberId, action }) => {
       // Edge function sets user_id on the member, notifies the inviter, and
       // marks the invite read - a raw update would skip all of that.
-      const { data, error } = await supabase.functions.invoke('respondTripInvite', {
+      const { data, error } = await invokeFn('respondTripInvite', {
         body: { member_id: memberId, action },
       });
       if (error || data?.error) throw new Error(data?.error || error?.message || 'Failed');

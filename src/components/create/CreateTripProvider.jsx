@@ -2,7 +2,7 @@ import React, { createContext, useContext, useMemo, useState, useCallback } from
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePostHog } from '@posthog/react';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Dialog, useToast } from '@/design/index';
@@ -115,7 +115,7 @@ export function CreateTripProvider({ children }) {
   const doCopy = useCallback(async (tripId) => {
     setCopying(true);
     try {
-      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId } });
+      const { data, error } = await invokeFn('copyTrip', { body: { tripId } });
       // Non-2xx → supabase-js puts the response in error.context; pull the real
       // server message out of it so failures aren't masked by a generic toast.
       let serverMsg = data?.error || null;

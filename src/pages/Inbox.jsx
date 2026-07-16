@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/lib/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
@@ -84,7 +85,7 @@ export default function Inbox() {
       // Use the edge function: it sets user_id on the member (so the accepter
       // becomes a recognized participant under RLS), notifies the inviter, and
       // marks the invite notification read - none of which a raw update does.
-      const { data, error } = await supabase.functions.invoke('respondTripInvite', {
+      const { data, error } = await invokeFn('respondTripInvite', {
         body: { member_id: memberId, action },
       });
       if (error || data?.error) throw new Error(data?.error || error?.message || 'Failed');

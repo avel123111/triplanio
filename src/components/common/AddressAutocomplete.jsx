@@ -1,5 +1,5 @@
 import React from 'react';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { Icon } from '@/design/icons';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
@@ -48,7 +48,7 @@ export default function AddressAutocomplete({
 
   const search = async (q, engineLang) => {
     const effectiveLang = language || engineLang || appLang || 'en';
-    const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+    const { data, error } = await invokeFn('geoLocationiq', {
       body: { action: 'autocomplete', q, lang: effectiveLang, limit: 8 },
     });
     if (error) return [];
