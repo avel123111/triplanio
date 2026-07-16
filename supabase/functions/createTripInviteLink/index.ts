@@ -12,7 +12,7 @@
  *
  * Self-contained (shared helpers inlined) so it deploys cleanly on its own.
  */
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const supabaseAdmin = createClient(
@@ -46,10 +46,7 @@ async function isCallerAdmin(tripId: string, userId: string): Promise<boolean> {
 
 const LINK_TTL_DAYS = 7;
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  try {
+Deno.serve(withHandler('createTripInviteLink', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -95,8 +92,4 @@ Deno.serve(async (req) => {
       { token: inserted.token, role: inserted.role, expiresAt: inserted.expires_at, reused: false },
       { headers: corsHeaders },
     );
-  } catch (e) {
-    console.error('createTripInviteLink error:', e);
-    return Response.json({ error: (e as Error).message }, { status: 500, headers: corsHeaders });
-  }
-});
+}));
