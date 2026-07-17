@@ -68,7 +68,18 @@ async function readActualPrice(sub: SubPriceRow | null) {
 
 Deno.serve(withHandler('getUserPlan', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    // A 401 here is an EXPECTED business outcome, not a server bug: the frontend
+    // (useProStatus) fires this on a cached user whose Supabase session has quietly
+    // expired or not-yet-rehydrated on a hard reload — the app handles it (retry /
+    // re-auth). Carry the canonical `UNAUTHENTICATED` code and `x-sentry-skip` so
+    // withHandler stays silent on it, while genuine auth failures (403 / other 401s)
+    // keep alerting. (TRIP-219 — silences live noise TRIPLANIO-K.)
+    if (!user) {
+      return Response.json(
+        { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
+        { status: 401, headers: { ...corsHeaders, 'x-sentry-skip': '1' } },
+      );
+    }
 
     // Read subscription fields from users table
     let { data: userData } = await supabaseAdmin
