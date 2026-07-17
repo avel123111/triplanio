@@ -2131,6 +2131,13 @@ h4,
    keeps only the sheet geometry — do NOT re-add `animation`, `bottom: var(--kb)`
    or a `--vvh` height cap here (they fought vaul → jump/shrink). */
 @media (max-width: 640px) {
+  /* TRIP-234 · the vaul Drawer.Content (.dlg-modal) IS the sheet on phones: it
+     carries the surface background, the sheet corners and the height cap. vaul's
+     keyboard handling writes height + bottom onto THIS element and continues the
+     background downward via its ::after — so the surface/height MUST live here,
+     else the lift leaks the page through (the "gap") and the inner card's own
+     dvh height ignores vaul's resize (the footer jump). overflow stays visible
+     so vaul's ::after can fill below the lifted sheet. */
   .dlg-modal {
     left: 0; right: 0; top: auto;
     bottom: 0;
@@ -2138,20 +2145,28 @@ h4,
     width: 100%;
     max-width: 100%;
     display: block;
-  }
-  /* The .dlg card inside gets sheet corners, safe-area padding, and a grip handle */
-  .dlg-modal .dlg {
+    background: var(--surface);
     border-radius: 20px 20px 0 0;
-    max-height: 92vh;
-    max-height: 92dvh;
+    max-height: 90dvh;
+  }
+  /* The inner .dlg is now a transparent flex column bound to the sheet height —
+     grip + head pinned, body scrolls, footer pinned (above the keyboard). */
+  .dlg-modal .dlg {
+    height: 100%;
+    max-height: none;
     max-width: 100%;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
   /* Real drag handle ("бровь") — visible only as a bottom sheet. */
   .dlg-grip { display: flex; justify-content: center; align-items: center; padding: 10px 0 4px; flex: none; touch-action: none; cursor: grab; }
   .dlg-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
-  /* Confirm/alert dialogs: centred content stays centred in the sheet */
-  .dlg-modal .dlg__body { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
+  /* Body flexes within the sheet height (vaul owns the cap) — no own dvh cap,
+     min-height:0 so it can shrink and scroll when the keyboard shrinks the sheet. */
+  .dlg-modal .dlg__body { max-height: none; min-height: 0; overflow-y: auto; }
   /* Wide dialogs (TripLimitDialog) — full width on mobile, normal layout */
   .dlg-modal .dlg--wide { max-width: 100%; }
   /* backdrop-filter blur is a paint-jank source on mobile (causes the flash on
