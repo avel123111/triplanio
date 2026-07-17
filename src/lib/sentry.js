@@ -100,6 +100,12 @@ export function initSentry() {
     replaysSessionSampleRate: 0,
     sendDefaultPii: false,
     ignoreErrors: IGNORE_ERRORS,
+    // Vercel Live / Toolbar injects a feedback widget under /_next-live/* on dev &
+    // preview deploys (never in production). Its rAF/web-vitals observers throw on
+    // detached nodes — e.g. `selectNode ... has no parent` (InvalidNodeTypeError)
+    // and `undefined is not iterable` — and our rAF/addEventListener wrappers report
+    // them as ours. Third-party bundle, nothing to fix in our code → drop by source.
+    denyUrls: [/\/_next-live\//],
     // Error events AND tracing transactions both go through the same PII scrub —
     // the URL (with any ?t= share token / ?code= OAuth) is dropped from both.
     beforeSend: scrubPii,
