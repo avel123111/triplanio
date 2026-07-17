@@ -112,6 +112,17 @@ async function reportResponseError(fnName: string, res: Response): Promise<void>
  *   - a handler `return`ing >= 400   → reported by status (covers explicit
  *                                       `return jsonError(4xx, …)` early-returns).
  * 3xx redirects are deliberate successes, not errors, so they are NOT reported.
+ *
+ * 401 is the one status NOT reported (TRIP-240). A 401 means "the caller's token
+ * is invalid/expired" — the app's EXPECTED steady state under short-lived JWTs: a
+ * throttled background tab misses the silent refresh, the next call 401s, and the
+ * client's `createAuthRetryFetch` (TRIP-56) refreshes + replays it transparently
+ * (or, if truly dead, routes to /login). Alerting on that handshake step is pure
+ * noise. This does NOT hide real auth failures: a genuine Auth-service OUTAGE is a
+ * 503 (`getRequestUser` throws `AUTH_UNAVAILABLE`, never a 401), and a "logged in
+ * but forbidden" is a 403 — both still report. Silencing 401 centrally here
+ * replaces the per-function `x-sentry-skip` opt-out that `getUserPlan` used to carry.
+ *
  * The `{ error, code }` body shape is preserved byte-for-byte, so the frontend
  * `parseEdgeError` contract is unchanged. Reporting is backgrounded (no latency).
  *
@@ -128,17 +139,21 @@ export function withHandler(
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
     try {
       const res = await handler(req, corsHeaders);
-      // Report every >=400 outcome — UNLESS the handler already captured this
-      // response itself with richer context and opted out via `x-sentry-skip: 1`
-      // (e.g. geoLocationiq's 429/502, which carry distinct grouping + upstream
-      // status). Without the opt-out those would be reported twice.
-      if (res.status >= 400 && res.headers.get('x-sentry-skip') !== '1') {
+      // Report every >=400 outcome — EXCEPT a 401 (expected stale-token handshake,
+      // see the doc comment) — and UNLESS the handler already captured this response
+      // itself with richer context and opted out via `x-sentry-skip: 1` (e.g.
+      // geoLocationiq's 429/502, which carry distinct grouping + upstream status).
+      // Without the opt-out those would be reported twice.
+      if (res.status >= 400 && res.status !== 401 && res.headers.get('x-sentry-skip') !== '1') {
         reportInBackground(reportResponseError(fnName, res));
       }
       return res;
     } catch (e) {
       if (e instanceof HttpError) {
-        reportInBackground(captureEdgeError(e, fnName, { status: e.status, code: e.code }));
+        // A thrown 401 is silenced for the same reason as a returned one.
+        if (e.status !== 401) {
+          reportInBackground(captureEdgeError(e, fnName, { status: e.status, code: e.code }));
+        }
         return jsonError(e.status, e.message, e.code, corsHeaders);
       }
       // Also log to the Supabase function logs — a second channel that survives
