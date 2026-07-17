@@ -89,9 +89,7 @@ export default function StripeReturnModals() {
             const priceRes = await invokeFn('getStripePrices', { body: {} });
             const p = priceRes.data?.prices?.[productCode];
             if (p?.unit_amount != null) {
-              const amt = fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd');
-              const per = p.recurring_interval === 'month' ? t('sub.period_month') : p.recurring_interval === 'year' ? t('sub.period_year') : '';
-              setPriceLabel(amt + per);
+              setPriceLabel(fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd'));
             }
           }
         } catch { /* chip is optional */ }

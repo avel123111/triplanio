@@ -100,14 +100,8 @@ export default function Pro() {
 
   const renderPrice = (productCode) => {
     const p = prices?.[productCode];
-    if (!p) return { price: '-', period: '' };
-    const amount = (p.unit_amount || 0) / 100;
-    const price = fmtMoney(amount, p.currency, { minFraction: 0, maxFraction: 2 });
-    let period = '';
-    if (p.recurring_interval === 'month') period = t('sub.period_month');
-    else if (p.recurring_interval === 'year') period = t('sub.period_year');
-    else period = t('sub.period_once');
-    return { price, period };
+    if (!p) return '-';
+    return fmtMoney((p.unit_amount || 0) / 100, p.currency, { minFraction: 0, maxFraction: 2 });
   };
 
   // Currency + derived yearly savings, all from the live Stripe prices.
@@ -147,14 +141,14 @@ export default function Pro() {
     },
     {
       key: 'monthly', name: t('sub.plan_monthly_short'), nameColor: 'var(--brand)',
-      price: monthly.price, period: monthly.period,
+      price: monthly,
       caption: t('sub.caption_monthly'), features: proFeatures,
       cta: { label: t('sub.subscribe_monthly'), variant: 'primary', code: 'account_pro_monthly' },
     },
     {
       key: 'yearly', name: t('sub.plan_yearly_short'), nameColor: 'var(--pro)', featured: true,
-      price: yearly.price, period: yearly.period, oldPrice: yearStrike, save: savePct,
-      caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : t('sub.period_year'),
+      price: yearly, oldPrice: yearStrike, save: savePct,
+      caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : '',
       features: proFeatures,
       cta: { label: t('sub.subscribe_yearly'), variant: 'pro', star: true, code: 'account_pro_yearly' },
     },
@@ -238,7 +232,6 @@ export default function Pro() {
                     {/* Price */}
                     <div className="plan-price">
                       <span className="plan-price__amount">{c.price}</span>
-                      {c.period && <span className="plan-price__period">{c.period}</span>}
                       {c.oldPrice && (
                         <span className="plan-price__period" style={{ textDecoration: 'line-through' }}>{c.oldPrice}</span>
                       )}
@@ -285,32 +278,20 @@ export default function Pro() {
             The skeleton mirrors this same slot so the loading layout matches whether
             the banner will show or not. */}
         {!hidePerTrip && pricesLoading && !prices && (
-          <div
-            style={{
-              display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-              padding: '18px 22px', borderRadius: 'var(--r-card)',
-              border: '1.5px solid var(--line)', background: 'var(--surface)',
-            }}
-          >
+          <div className="pro-trip-bar">
             <Skeleton w={44} h={44} r={12} />
             <div style={{ flex: 1, minWidth: 220 }}>
               <Skeleton w="42%" h={16} />
               <div style={{ marginTop: 8 }}><Skeleton w="66%" h={11} /></div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className="pro-trip-bar__actions">
               <Skeleton w={70} h={22} />
               <Skeleton w={92} h={38} r={11} />
             </div>
           </div>
         )}
         {!hidePerTrip && !pricesLoading && (
-          <div
-            style={{
-              display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-              padding: '18px 22px', borderRadius: 'var(--r-card)',
-              border: '1.5px solid var(--line)', background: 'var(--surface)',
-            }}
-          >
+          <div className="pro-trip-bar">
             <span style={{
               width: 44, height: 44, flex: 'none', borderRadius: 'var(--r-sm)',
               background: 'var(--primary-soft)', color: 'var(--brand)',
@@ -322,8 +303,8 @@ export default function Pro() {
               <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
               <div className="t-meta t-sans" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice.price}</span>
+            <div className="pro-trip-bar__actions">
+              <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice}</span>
               <Btn
                 variant="primary"
                 loading={loadingPlan === 'trip_pro_lifetime'}
