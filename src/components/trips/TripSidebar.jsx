@@ -153,7 +153,7 @@ function SidebarSheetBody({
   // Management rows: edit-structure (owner/admin) + members/settings + share.
   const manageRows = [
     ...(canEditStructure(myRole) ? [{ id: 'edit', icon: EDIT_ITEM.icon, labelKey: EDIT_ITEM.labelKey, onClick: () => navSb(`/trip/${tripId}/edit`) }] : []),
-    ...mgmtItems.map((item) => ({ id: item.id, icon: item.icon, labelKey: item.labelKey, onClick: () => onNavigate(item.id) })),
+    ...mgmtItems.map((item) => ({ id: item.id, icon: item.icon, labelKey: item.labelKey, active: lens === item.id, onClick: () => onNavigate(item.id) })),
     ...(canShare && onShare ? [{ id: 'share', icon: 'share', labelKey: 'trip.share', onClick: onShare }] : []),
   ];
 
@@ -180,7 +180,7 @@ function SidebarSheetBody({
           <div className="app-side__group-label tm-caption">{t('trip_menu.section_manage')}</div>
           <div className="tm-manage">
             {manageRows.map((row) => (
-              <button key={row.id} className="tm-manage__row" onClick={row.onClick}>
+              <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
                 <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>
                 <span className="tm-manage__lbl t-label">{t(row.labelKey)}</span>
                 <Icon name="chevron" size={16} className="tm-manage__chev" />

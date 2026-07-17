@@ -3566,7 +3566,10 @@ h4,
 }
 .tm-manage__row:last-child { border-bottom: 0; }
 .tm-manage__row:hover, .tm-manage__row:active { background: var(--wash); }
+.tm-manage__row.is-active { background: var(--brand-soft); color: var(--brand); }
 .tm-manage__ico { width: 36px; height: 36px; flex: none; border-radius: 12px; background: var(--wash); color: var(--muted-2); display: grid; place-items: center; }
+.tm-manage__row.is-active .tm-manage__ico { background: var(--surface); color: var(--brand); }
+.tm-manage__row.is-active .tm-manage__chev { color: var(--brand); }
 .tm-manage__lbl { flex: 1; min-width: 0; }
 .tm-manage__chev { color: var(--muted-2); flex: none; }
 
