@@ -376,6 +376,8 @@ h1, h2, h3, h4 {
      .t-mono        ← meta-md   JetBrains 700/11/1.25
    ================================================================= */
 .t-display,
+.pro-hero__title,      /* TRIP-229: инспектор канонов — заголовок Pro-страницы Heading→Display (hero макета) */
+.plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
 .head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fd-w); line-height: 1.08; letter-spacing: var(--track-hero); }   /* .t-display ← hero (карьер .head h1); TRIP-175 инсп.: .ncal-month-lbl → Title */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
@@ -384,7 +386,6 @@ h1, h2, h3, h4 {
 .lp-ti b,          /* TRIP-188: инспектор канонов — заголовки шапок панелей события/добавления Subheading→Title */
 .flow-lp-b h1,     /* TRIP-222: инспектор канонов — заголовки шагов планирования Heading→Title (оба flow) */
 h1,
-.plan-price__amount,
 .auth__h1,
 .statcard .v,      /* TRIP-175 инсп.: Label→Title (число статкарты) */
 .bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
@@ -403,7 +404,6 @@ h2,
 .acct-hero__av,
 .acct-hero__name,
 .acct-plan__v,
-.pro-hero__title,
 .sec-head h2,
 .bgt-stat__v,
 .bgt-detail__amt .v,
@@ -967,6 +967,7 @@ h4,
    Применяется классом `t-sans` рядом с каноном ИЛИ co-selector'ом в этом правиле.
    Заводится/детектится канон-инспектором (ось mods='sans'). */
 .t-sans,
+.pro-hero__note,         /* TRIP-229: инспектор канонов — trust-строка Pro Meta+Golos */
 .mrow .me,               /* TRIP-175 инсп.: Meta+Golos (email участника) */
 .mbrow__email,           /* TRIP-175 инсп.: Meta+Golos (email участника) */
 .invite-banner__desc,    /* TRIP-175 инсп.: Meta+Golos (описание инвайт-баннера) */
@@ -3813,10 +3814,10 @@ h4,
 .pro-hero-eyebrow {
  display: inline-flex; align-items: center; gap: 7px;
  padding: 5px 13px 5px 7px;
- background: var(--primary-soft);
- border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+ background: var(--pro-soft);
+ border: 1px solid color-mix(in srgb, var(--pro) 22%, transparent);
  border-radius: var(--r-pill); margin-bottom: 10px;
- color: var(--brand);
+ color: var(--pro-ink);
 }
 .pro-hero-eyebrow__gem {
   width: 22px; height: 22px; border-radius: 8px;

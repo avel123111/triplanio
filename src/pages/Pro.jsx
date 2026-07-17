@@ -281,7 +281,28 @@ export default function Pro() {
           }
         </div>
 
-        {/* One-time per-trip pass — owner only. Sits directly under the plans grid. */}
+        {/* One-time per-trip pass — owner only. Sits directly under the plans grid.
+            The skeleton mirrors this same slot so the loading layout matches whether
+            the banner will show or not. */}
+        {!hidePerTrip && pricesLoading && !prices && (
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+              padding: '18px 22px', borderRadius: 'var(--r-card)',
+              border: '1.5px dashed var(--line)', background: 'var(--surface)',
+            }}
+          >
+            <Skeleton w={44} h={44} r={12} />
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <Skeleton w="42%" h={16} />
+              <div style={{ marginTop: 8 }}><Skeleton w="66%" h={11} /></div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <Skeleton w={70} h={22} />
+              <Skeleton w={92} h={38} r={11} />
+            </div>
+          </div>
+        )}
         {!hidePerTrip && !pricesLoading && (
           <div
             style={{
@@ -298,8 +319,8 @@ export default function Pro() {
               <Icon name="ticket" size={21} />
             </span>
             <div style={{ flex: 1, minWidth: 220 }}>
-              <div className="t-title" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
-              <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
+              <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
+              <div className="t-meta t-sans" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice.price}</span>
