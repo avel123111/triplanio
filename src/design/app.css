@@ -1302,22 +1302,10 @@ h4,
 .map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .map-route__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .map-route__dates { color: var(--muted); }
-
-/* Phones (≤640px): the route panel is a non-modal bottom sheet on the shared
-   vaul engine (<Sheet snapPoints modal=false>, class .sheet--maproute) — vaul
-   owns the drag + peek↔expanded snap, so there is no JS height ownership. This
-   block only skins the shared .sheet surface with the map panel's head + list.
-   The sheet spans to the screen bottom behind the fixed ~60px dock (TRIP-222),
-   so the scrollable list gets matching bottom padding to clear it. */
-.sheet--maproute {
-  /* A definite height for the snap points to translate against; overrides the
-     default .sheet 86dvh cap so the expanded (0.62) snap rests at 62dvh. */
-  height: 62dvh; max-height: 62dvh;
-  padding-bottom: 0; /* dock clearance lives on the scrollable list, below */
-}
-.sheet--maproute .map-route__head { padding-top: 2px; border-bottom: 0; }
-.sheet--maproute .map-route__list { flex: 1; min-height: 0; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
-.sheet--maproute .map-route__empty { flex: 1; }
+/* Phones (≤640px): the route panel becomes a non-modal bottom sheet on the
+   shared vaul engine (class .sheet--maproute, skinned in the C6 sheet section
+   below) — vaul owns the drag + peek↔expanded snap, so there is no JS height
+   ownership here anymore. */
 
 /* City badge (TRIP-33): translucent glass label next to the active city's pin on
    the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
@@ -3525,6 +3513,25 @@ h4,
 .sheet-row--danger { color: var(--danger-ink); }
 .sheet-row--danger svg { color: var(--danger-ink); }
 .sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
+
+/* Map-lens variant (TRIP-234) — the non-modal persistent-peek sheet (RoutePanel).
+   Defined AFTER .sheet so its overrides win at equal specificity. vaul measures
+   the snap offset against the full viewport (translateY = innerHeight − visible),
+   so the snap sheet must SPAN the viewport for the peek (148px) / expanded (0.62)
+   reveals to land where we ask. Content flows from the top (grip + head first),
+   so the peek band shows the grip + title and the route list is revealed as it
+   snaps up. (Mirrors vaul's own snap example: Content is full-height.) */
+.sheet--maproute {
+  height: 100dvh; max-height: 100dvh; /* override the default .sheet 86dvh cap */
+  padding-bottom: 0; /* dock clearance lives on the scrollable list, below */
+  /* Below the fixed bottom-nav dock (.mbnav z-index:95) so the dock floats on top
+     of the peek unchanged (TRIP-222) — unlike the modal .sheet (z-201) which
+     covers everything. Still above the map (normal-flow shell content). */
+  z-index: 90;
+}
+.sheet--maproute .map-route__head { padding-top: 2px; border-bottom: 0; }
+.sheet--maproute .map-route__list { flex: 1; min-height: 0; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+.sheet--maproute .map-route__empty { flex: 1; }
 @keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
 
 /* ============================================================

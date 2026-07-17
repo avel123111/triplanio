@@ -139,6 +139,16 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   // The mobile sheet rests at peek; picking a city collapses it back (desktop
   // has no snap state — it always shows the full list).
   const [snap, setSnap] = useState(SNAP_PEEK);
+  // vaul renders a snap-points drawer at translateY(100%) (off-screen) until
+  // `open` transitions false→true — a drawer mounted already-open never runs
+  // that transition and stays hidden. So mount it closed and open on the next
+  // frame; re-arm when we (re)enter the phone breakpoint.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!isPhone) { setOpen(false); return; }
+    const id = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, [isPhone]);
 
   const empty = route.length === 0;
   const nCities = empty ? 0 : uniqueCityCount(route); // dedup repeated cities for the count
@@ -206,8 +216,8 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   if (isPhone) {
     return (
       <Sheet
-        open
-        onOpenChange={() => {}}
+        open={open}
+        onOpenChange={(v) => { if (v) setOpen(true); }} // persistent: never let it close
         modal={false}
         dismissible={false}
         snapPoints={SNAP_POINTS}
