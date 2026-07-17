@@ -2159,7 +2159,8 @@ h4,
   /* Editor side panels become FULL-SCREEN panels on phones (a standalone screen
      over the previous one), rendered as a vaul Drawer whose Content is
      `.lp-sheet` holding the `.lp` card. Spans the whole viewport (top:0 → 0).
-     vaul (see EventDrawerHost / TripStructureEdit) owns the slide, drag and
+     vaul (single-sourced in ui/LpSheet, used by EventDrawerHost + the editor)
+     owns the slide, drag and
      keyboard reposition — no `bottom: var(--kb)` / `animation` here. Closes via
      the panel's own Back button, swipe-down, or backdrop tap. */
   .lp-sheet {
