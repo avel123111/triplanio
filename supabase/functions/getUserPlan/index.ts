@@ -6,8 +6,8 @@
  * Returns the caller's subscription plan and metadata.
  */
 
-import { withHandler } from '../_shared/http.ts';
-import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { withHandler, HttpError } from '../_shared/http.ts';
+import { supabaseAdmin, getRequestUserResult } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
@@ -67,7 +67,11 @@ async function readActualPrice(sub: SubPriceRow | null) {
 }
 
 Deno.serve(withHandler('getUserPlan', async (req, corsHeaders) => {
-    const user = await getRequestUser(req);
+    const { user, authFailed } = await getRequestUserResult(req);
+    // The Auth service itself failed (5xx / retryable) — a REAL operational
+    // incident, not a user's dead session. Surface as 503 and throw so withHandler
+    // reports it (don't let it hide behind the silenced 401 below).
+    if (authFailed) throw new HttpError(503, 'Auth service unavailable', 'AUTH_UNAVAILABLE');
     // A 401 here is an EXPECTED business outcome, not a server bug: the frontend
     // (useProStatus) fires this on a cached user whose Supabase session has quietly
     // expired or not-yet-rehydrated on a hard reload — the app handles it (retry /
