@@ -3576,7 +3576,7 @@ h4,
 
 .tm-account {
   display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 18px; padding: 12px 14px;
-  border-radius: var(--r-xl); border: 1px solid var(--surface-card-border); background: var(--surface-2);
+  border-radius: var(--r-xl); border: 1px solid var(--surface-card-border); background: var(--surface);
   cursor: pointer; text-align: left; transition: border-color .15s var(--ease-out);
 }
 .tm-account:hover { border-color: var(--brand); }
