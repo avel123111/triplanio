@@ -3,7 +3,7 @@
  *
  * A floating frosted-glass "capsule dock" with a raised, glowing primary "+"
  * in the centre. Two context-aware variants, chosen by route:
- *   • trip   (/trip/:id)            — Обзор · Карта · (+) · Профиль · Ещё
+ *   • trip   (/trip/:id)            — Обзор · Хронология · (+) · Календарь · Ещё
  *   • app    (/trips /settings …)   — Поездки · (+) · Профиль
  *
  * Hidden on focused full-screen flows that own their navigation: the structure
@@ -93,7 +93,7 @@ export default function MobileBottomNav() {
               <Icon name="plus" size={26} />
             </button>
           </span>
-          <NavItem label={t('nav.account')} active={false} avatar={avatarEl} onClick={() => nav('/settings')} />
+          <NavItem icon="calendar" label={t('trip_menu.calendar')} active={lens === 'calendar'} onClick={() => go('calendar')} />
           <NavItem icon="more" label={t('common.more')} active={false} onClick={() => tripCtx?.openMenu?.()} />
         </div>
       </nav>

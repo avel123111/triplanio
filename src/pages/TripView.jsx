@@ -1031,6 +1031,8 @@ export default function TripView() {
             onUpgrade={() => { setSideOpen(false); openUpgrade(); }}
             onProInfo={() => { setSideOpen(false); openProInfo(); }}
             onShare={() => { setSideOpen(false); setShareOpen(true); }}
+            user={user}
+            onAccount={() => { setSideOpen(false); nav('/settings'); }}
           />
           <div className="trip-content">
             <main ref={screenBodyRef} className={screenBodyClass}>
