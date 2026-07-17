@@ -3819,12 +3819,6 @@ h4,
  border-radius: var(--r-pill); margin-bottom: 10px;
  color: var(--brand);
 }
-.pro-hero-eyebrow__gem {
-  width: 22px; height: 22px; border-radius: 8px;
-  background: var(--brand-grad); display: grid; place-items: center;
-  box-shadow: 0 3px 8px -2px color-mix(in srgb, var(--brand) 40%, transparent);
-  flex: none;
-}
 .pro-hero__title {
  color: var(--ink);
  animation: fadeUp .4s var(--ease-out) .08s both;

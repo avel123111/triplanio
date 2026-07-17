@@ -289,7 +289,7 @@ export default function Pro() {
             style={{
               display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
               padding: '18px 22px', borderRadius: 'var(--r-card)',
-              border: '1.5px dashed var(--line)', background: 'var(--surface)',
+              border: '1.5px solid var(--line)', background: 'var(--surface)',
             }}
           >
             <Skeleton w={44} h={44} r={12} />
@@ -308,7 +308,7 @@ export default function Pro() {
             style={{
               display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
               padding: '18px 22px', borderRadius: 'var(--r-card)',
-              border: '1.5px dashed var(--line)', background: 'var(--surface)',
+              border: '1.5px solid var(--line)', background: 'var(--surface)',
             }}
           >
             <span style={{
