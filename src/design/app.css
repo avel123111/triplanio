@@ -3865,14 +3865,15 @@ h4,
 /* Featured feature ticks use the --pro accent, not --brand. */
 .plan-card--featured .plan-feature__check { background: var(--pro); }
 
-/* Save badge — --pro-tinted pill overlapping the top edge of the featured card. */
+/* Save badge — SOLID --pro pill overlapping the top edge of the featured card.
+   The 4px --bg ring cuts it cleanly out of the card's --pro-gradient border. */
 .plan-popular-badge {
- position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+ position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
  display: inline-flex; align-items: center; gap: 5px;
- padding: 5px 14px; background: var(--pro-soft); color: var(--pro-ink);
- text-transform: uppercase; letter-spacing: .06em;
+ padding: 5px 13px; background: var(--pro); color: var(--pro-fg);
+ text-transform: uppercase; letter-spacing: .05em;
  white-space: nowrap; border-radius: var(--r-pill);
- box-shadow: 0 0 0 4px var(--bg), 0 10px 20px -8px var(--pro);
+ box-shadow: 0 0 0 4px var(--bg), 0 8px 18px -8px var(--pro);
  z-index: 2;
 }
 
