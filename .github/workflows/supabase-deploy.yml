@@ -118,9 +118,15 @@ jobs:
             git add src/lib/i18n/locales
             git commit -m "chore(i18n): sync translations from Tolgee [skip ci]" \
               -m "TRIP-134 pull-on-deploy: authoritative source = Tolgee. [skip ci] avoids a redundant run; the vercel job below checks out dev tip and bakes these files in this same run."
-            # If dev moved meanwhile the push is rejected → job fails → notify alerts
-            # (safe; rare, manual retry).
-            git push origin HEAD:dev
+            # A rejected push must NOT block shipping already-merged, already-gated
+            # functions/migrations. It is rejected when dev moved mid-run OR when
+            # dev's branch protection declines the bot's DIRECT commit (a required
+            # status check the pushed commit never ran). Best-effort: warn and let
+            # the deploy chain continue; translations re-sync on the next run.
+            # DURABLE FIX: allow github-actions[bot] to bypass dev's branch protection
+            # (repo Settings → Branches → dev), which this pull-on-deploy push needs.
+            git push origin HEAD:dev \
+              || echo "::warning::tolgee sync: push to dev rejected (branch protection / race) — translations lag until the CI bypass is set; deploy continues"
           else
             echo "tolgee sync: no translation changes"
           fi
