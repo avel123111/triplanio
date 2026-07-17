@@ -1,10 +1,31 @@
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
+const SHEET_BREAKPOINT = 640
 
 function getIsMobile() {
   if (typeof window === "undefined") return false
   return window.innerWidth < MOBILE_BREAKPOINT
+}
+
+// Reactive ≤640px check — the app's BOTTOM-SHEET breakpoint: below it, dialogs
+// become vaul Drawers (dialog.jsx) and the map lens becomes a peek sheet
+// (ScreenMap). Distinct from useIsMobile's 768px MENU breakpoint, so the sheet
+// DOM/CSS switch from a single source. The `onChange()` inside the effect guards
+// against a value flip between the synchronous initializer and the first effect.
+export function useIsPhone() {
+  const q = `(max-width: ${SHEET_BREAKPOINT}px)`
+  const [phone, setPhone] = React.useState(
+    () => typeof window !== "undefined" && window.matchMedia(q).matches,
+  )
+  React.useEffect(() => {
+    const mql = window.matchMedia(q)
+    const onChange = () => setPhone(mql.matches)
+    mql.addEventListener("change", onChange)
+    onChange()
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+  return phone
 }
 
 export function useIsMobile() {
