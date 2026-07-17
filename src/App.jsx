@@ -28,6 +28,7 @@ import { MapProvider } from '@/lib/map/MapProvider';
 import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav';
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
+import ViewportProbe from '@/components/dev/ViewportProbe';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
@@ -152,6 +153,9 @@ function App() {
                     <AuthenticatedApp />
                   </Router>
                   <Toaster />
+                  {/* TRIP-234 dev-only keyboard/viewport probe — off unless
+                      ?vp=1 (persists in localStorage). Zero cost otherwise. */}
+                  <ViewportProbe />
                   {/* Vercel Web Analytics — SPA pageview tracking (auto-tracks
                       react-router navigations via the History API). */}
                   <Analytics />

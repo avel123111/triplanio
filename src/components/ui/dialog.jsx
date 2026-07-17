@@ -33,15 +33,19 @@ function useIsSheet() {
 
 // Root — vaul Drawer on phones, Radix Dialog on desktop. Same open/onOpenChange
 // contract either way; the chosen engine is published to DialogContent.
-const Dialog = ({ children, ...props }) => {
+const Dialog = ({ children, repositionInputs = false, ...props }) => {
   const isSheet = useIsSheet()
   if (isSheet) {
-    // repositionInputs={false}: the viewport meta (`interactive-widget=
-    // resizes-content`) already lifts a bottom-anchored sheet above the
-    // keyboard; letting vaul reposition too double-moves it (the "flying" bug).
+    // TRIP-234 · keyboard lift is caller-controlled, default OFF. The legacy
+    // model (false) leaned on the `interactive-widget=resizes-content` viewport
+    // meta — but iOS Safari ignores that meta, so nothing lifted the sheet above
+    // the keyboard (inputs hid behind it). Opting a dialog IN hands the lift to
+    // vaul alone (single owner, reads visualViewport) — no custom `--kb`/`--vvh`
+    // to fight it. Rolled out per-dialog once verified on-device with the probe.
+    // (destructured out, so it never leaks to the desktop Radix Root below.)
     return (
       <ResponsiveSheetCtx.Provider value={true}>
-        <Drawer.Root repositionInputs={false} {...props}>{children}</Drawer.Root>
+        <Drawer.Root repositionInputs={repositionInputs} {...props}>{children}</Drawer.Root>
       </ResponsiveSheetCtx.Provider>
     )
   }

@@ -134,7 +134,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   }
 
   return (
-    <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
+    <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange} repositionInputs
       foot={<>
         <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
         {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
