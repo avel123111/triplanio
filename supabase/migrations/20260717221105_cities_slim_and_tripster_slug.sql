@@ -40,15 +40,14 @@ CREATE INDEX IF NOT EXISTS cities_tripster_idx
   WHERE tripster_slug IS NOT NULL;
 
 -- Seed Russian cities from the Tripster directory (TRIP-236 — task 1: РФ города).
--- prod cities holds 0 RU rows, so these 260 are all new inserts. cities.id has no
--- default → assign ids sequentially from max(id). Resolved offline: Tripster feed
--- → geonameid via the GeoNames gazetteer (exact asciiname → ru alt-name → en
--- alt-name, population-first), fuzzy mis-maps dropped, geonameids validated as real
--- RU cities; tripster_id joined from the feed by slug (1:1). Non-RU enrichment +
--- the small RU tail are a verified follow-up.
-INSERT INTO public.cities (id, geonameid, name_en, iata_code, tripster_slug, tripster_id)
-SELECT (SELECT COALESCE(max(id), 0) FROM public.cities) + row_number() OVER (ORDER BY s.geonameid),
-       s.geonameid, s.name_en, s.iata, s.tripster_slug, s.tripster_id
+-- prod cities holds 0 RU rows, so these 260 are all new inserts. cities.id is
+-- GENERATED ALWAYS AS IDENTITY → we must NOT supply it (identity assigns it).
+-- Resolved offline: Tripster feed → geonameid via the GeoNames gazetteer (exact
+-- asciiname → ru alt-name → en alt-name, population-first), fuzzy mis-maps dropped,
+-- geonameids validated as real RU cities; tripster_id joined from the feed by slug
+-- (1:1). Non-RU enrichment + the small RU tail are a verified follow-up.
+INSERT INTO public.cities (geonameid, name_en, iata_code, tripster_slug, tripster_id)
+SELECT s.geonameid, s.name_en, s.iata, s.tripster_slug, s.tripster_id
 FROM (VALUES
 (461920,'Zvenigorod','714',NULL,'Zvenigorod'),
 (462755,'Zhukovsky','877','ZIA','Zhukovsky'),
