@@ -1,18 +1,14 @@
-import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
-import { captureEdgeError } from '../_shared/sentry.ts';
+import { withHandler } from '../_shared/http.ts';
 
 const BOT_EMAIL = 'info@triplanio.com';
 const BOT_NAME  = 'Triplanio';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+Deno.serve(withHandler('triplanioAiReply', async (req, corsHeaders) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
   }
 
-  try {
     const expected = Deno.env.get('N8N_SECRET');
     if (!expected) return Response.json({ error: 'N8N_SECRET not configured' }, { status: 500, headers: corsHeaders });
 
@@ -57,9 +53,4 @@ Deno.serve(async (req) => {
     if (error) throw error;
 
     return Response.json({ ok: true, id: created.id }, { headers: corsHeaders });
-  } catch (err) {
-    await captureEdgeError(err, 'triplanioAiReply');
-    console.error('triplanioAiReply error:', err);
-    return Response.json({ error: (err as Error).message }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

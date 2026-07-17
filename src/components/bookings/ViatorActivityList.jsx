@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   ChevronLeft, ChevronRight, Search, RotateCcw, Ticket, AlertTriangle, Star,
-  SlidersHorizontal, X,
+  SlidersHorizontal, X, ArrowUpDown,
 } from 'lucide-react';
 import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -11,13 +11,16 @@ import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 
 // Live Viator activities for the activity fork panel — mirrors Stay22HotelList,
 // down to the SHARED filter toolbar (.s22f-* in app.css). Fetches a bounded pool
-// on open (useViatorActivities), then filters (name + price от/до) and paginates
-// on the CLIENT — same one-pool model as the hotel fork. `url` (productUrl) is the
-// attributed affiliate link — opened as-is, never modified.
+// on open (useViatorActivities), then filters (title+desc / price от/до / free
+// cancellation), sorts and paginates on the CLIENT — same one-pool model as the
+// hotel fork. `url` (productUrl) is the attributed affiliate link — opened as-is,
+// never modified.
 
 const SKELETON_COUNT = 4;
 const PAGE_SIZE = 10;
 const BASE_PRICE = { min: '', max: '' };
+// Client sort over the pool: default (Viator relevance order) / price ↑ / reviews ↓.
+const SORT_ORDER = ['recommended', 'price', 'reviews'];
 
 function pageWindow(current, totalPages) {
   if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -43,7 +46,11 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const [query, setQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [pending, setPending] = useState(BASE_PRICE); // popover draft
+  const [pendingFree, setPendingFree] = useState(false); // free-cancel draft in the popover
   const [applied, setApplied] = useState(BASE_PRICE);  // committed price range
+  const [freeCancel, setFreeCancel] = useState(false); // committed free-cancellation filter
+  const [sortBy, setSortBy] = useState('recommended');
+  const cycleSort = () => setSortBy((s) => SORT_ORDER[(SORT_ORDER.indexOf(s) + 1) % SORT_ORDER.length]);
   const [page, setPage] = useState(1);
   // Selection + hover are list-local here (no map for activities) but follow the
   // SAME interaction model as hotels via PartnerResultCard: click selects, a
@@ -59,7 +66,9 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
     const min = applied.min !== '' ? Number(applied.min) : null;
     const max = applied.max !== '' ? Number(applied.max) : null;
     return pool.filter((a) => {
-      if (q && !(a.title || '').toLowerCase().includes(q)) return false;
+      // Text search spans title + description (short summary from Viator).
+      if (q && !`${a.title || ''} ${a.desc || ''}`.toLowerCase().includes(q)) return false;
+      if (freeCancel && !a.freeCancellation) return false;
       if (min != null || max != null) {
         if (a.fromPrice == null) return false;
         if (min != null && a.fromPrice < min) return false;
@@ -67,26 +76,46 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
       }
       return true;
     });
-  }, [pool, query, applied]);
+  }, [pool, query, applied, freeCancel]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const shown = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
+  // Sort a shallow copy so the pool order (relevance) stays intact for 'recommended'.
+  const sorted = useMemo(() => {
+    if (sortBy === 'recommended') return filtered;
+    const arr = [...filtered];
+    if (sortBy === 'price') {
+      arr.sort((a, b) => (a.fromPrice ?? Infinity) - (b.fromPrice ?? Infinity)); // cheapest first, nulls last
+    } else if (sortBy === 'reviews') {
+      arr.sort((a, b) => (b.reviewCount ?? -1) - (a.reviewCount ?? -1)); // most-reviewed first, nulls last
+    }
+    return arr;
+  }, [filtered, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const shown = useMemo(() => sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [sorted, page]);
   const pages = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
-  // Snap back to page 1 whenever the filtered set changes (query/price/pool).
-  useEffect(() => { setPage(1); }, [query, appliedSig, pool.length]);
+  // Snap back to page 1 whenever the filtered/sorted set changes.
+  useEffect(() => { setPage(1); }, [query, appliedSig, freeCancel, sortBy, pool.length]);
 
   const showSkeletons = isLoading && pool.length === 0;
   const appliedPrice = applied.min !== '' || applied.max !== '';
-  const activeCount = appliedPrice ? 1 : 0;
+  const activeCount = (appliedPrice ? 1 : 0) + (freeCancel ? 1 : 0);
+  const sortLabel = t(`fork.f_sort_${sortBy}`);
   const cur = currency || '';
   let priceText = `${cur} ${t('fork.f_to')} ${applied.max}`;
   if (applied.min && applied.max) priceText = `${cur} ${applied.min}–${applied.max}`;
   else if (applied.min) priceText = `${cur} ${t('fork.f_from')} ${applied.min}`;
 
   const setP = (k, v) => setPending((s) => ({ ...s, [k]: v.replace(/[^\d]/g, '') }));
-  const applyFilters = () => { setApplied({ ...pending }); setFilterOpen(false); };
-  const resetFilters = () => { setPending(BASE_PRICE); setApplied(BASE_PRICE); setFilterOpen(false); };
+  const applyFilters = () => { setApplied({ ...pending }); setFreeCancel(pendingFree); setFilterOpen(false); };
+  const resetFilters = () => {
+    setPending(BASE_PRICE); setApplied(BASE_PRICE);
+    setPendingFree(false); setFreeCancel(false);
+    setFilterOpen(false);
+  };
   const removePrice = () => { setPending(BASE_PRICE); setApplied(BASE_PRICE); };
+  const removeFree = () => { setPendingFree(false); setFreeCancel(false); };
+  // Re-seed the popover draft from committed state each time it opens.
+  useEffect(() => { if (filterOpen) { setPending({ ...applied }); setPendingFree(freeCancel); } }, [filterOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onBook = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator' });
 
@@ -130,6 +159,14 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
                   </label>
                 </div>
               </div>
+              <div className="s22f-grp">
+                {/* Native checkbox convention (accentColor) — same as EventEditDialog's Checkbox. */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={pendingFree} onChange={(e) => setPendingFree(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: 'var(--brand)', cursor: 'pointer', flexShrink: 0 }} />
+                  <span className="t-ui">{t('fork.activities_free_cancel')}</span>
+                </label>
+              </div>
             </div>
             {/* Actions live OUTSIDE the filter card (design, same as hotel fork) */}
             <div className="s22f-panelfoot">
@@ -143,16 +180,28 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
           </>
         )}
 
-        {appliedPrice && (
+        {(appliedPrice || freeCancel) && (
           <div className="s22f-pills">
-            <span className="s22f-pill">{priceText}<button type="button" onClick={removePrice} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
+            {appliedPrice && (
+              <span className="s22f-pill">{priceText}<button type="button" onClick={removePrice} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
+            )}
+            {freeCancel && (
+              <span className="s22f-pill">{t('fork.activities_free_cancel')}<button type="button" onClick={removeFree} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
+            )}
             <button type="button" className="s22f-resetall" onClick={resetFilters}>{t('fork.f_reset_all')}</button>
           </div>
         )}
       </div>
 
-      {!showSkeletons && !isError && filtered.length > 0 && (
-        <span className="va-count">{t('fork.activities_count', { n: filtered.length })}</span>
+      {!showSkeletons && !isError && sorted.length > 0 && (
+        <div className="s22-countrow">
+          <span className="s22-count">{t('fork.activities_count', { n: filtered.length })}</span>
+          <span className="s22-countrow__ln" />
+          {/* Client sort over the pool — shared .s22-sort primitive with hotels. */}
+          <button type="button" className="s22-sort" onClick={cycleSort}>
+            <ArrowUpDown size={14} />{sortLabel}
+          </button>
+        </div>
       )}
 
       {/* ===== States ===== */}
@@ -257,7 +306,6 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
 
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        .va-count { color: var(--muted); white-space: nowrap; }
         .va-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
         .va-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: var(--wash); }
         .va-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
@@ -268,7 +316,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-retry { margin-top: 6px; }
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the activity-specific body content keeps its own classes below. */
-        .va-rate { display: flex; align-items: center; gap: 6px; flex: none; }
+        .va-rate { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex: 0 1 auto; min-width: 0; }
         .va-star { color: var(--rating); flex: none; }
         .va-sc { color: var(--ink); font-variant-numeric: tabular-nums; }
         .va-cnt { color: var(--muted); }

@@ -47,8 +47,8 @@ export function useProStatus() {
     // couple of times; the verdict is read from the cache regardless.
     retry: 2,
     queryFn: async () => {
-      const { supabase } = await import('@/api/supabaseClient');
-      const { data, error } = await supabase.functions.invoke('getUserPlan');
+      const { invokeFn } = await import('@/lib/invokeFn');
+      const { data, error } = await invokeFn('getUserPlan');
       if (error) throw error;
       // Authoritative verdict AFTER the server reconcile. If it disagrees with the
       // cached row the client reads, refresh the row so isProActive(user) converges,

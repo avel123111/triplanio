@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { usePostHog } from '@posthog/react';
+import { invokeFn } from '@/lib/invokeFn';
 import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -25,6 +26,7 @@ export default function StripeReturnModals() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { checkUserAuth } = useAuth();
+  const posthog = usePostHog();
   const handledRef = useRef(null); // run-once guard per checkout return
   const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
   const [variant, setVariant] = useState('sub');   // 'sub' | 'trip'
@@ -59,12 +61,14 @@ export default function StripeReturnModals() {
     };
 
     if (status === 'cancel') {
+      posthog?.capture('pro_payment_failed', { kind, trip_id: pt || undefined, reason: 'cancelled' });
       setPayModal('fail');
       stripParams();
       return;
     }
 
     // success
+    posthog?.capture('pro_payment_completed', { kind, trip_id: pt || undefined });
     setPayModal('success');
     qc.invalidateQueries({ queryKey: ['my-pro-status'] });
     qc.invalidateQueries({ queryKey: ['me'] });
@@ -78,11 +82,11 @@ export default function StripeReturnModals() {
       // the webhook before redirect, so we don't poll — just refresh the user.
       if (kind === 'sub') {
         try {
-          const planRes = await supabase.functions.invoke('getUserPlan');
+          const planRes = await invokeFn('getUserPlan');
           const productCode = planRes.data?.productCode;
           setPlanLabel(productCode === 'account_pro_monthly' ? t('sub.plan_monthly_title') : productCode === 'account_pro_yearly' ? t('sub.plan_yearly_title') : null);
           if (productCode) {
-            const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
+            const priceRes = await invokeFn('getStripePrices', { body: {} });
             const p = priceRes.data?.prices?.[productCode];
             if (p?.unit_amount != null) {
               const amt = fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd');
@@ -96,7 +100,7 @@ export default function StripeReturnModals() {
         let delay = 1000;
         while (!cancelled && Date.now() < deadline) {
           try {
-            const { data } = await supabase.functions.invoke('getUserPlan'); // eslint-disable-line no-await-in-loop
+            const { data } = await invokeFn('getUserPlan'); // eslint-disable-line no-await-in-loop
             if (data?.plan === 'pro') break;
           } catch { /* transient — keep polling within budget */ }
           await new Promise(r => setTimeout(r, delay)); // eslint-disable-line no-await-in-loop

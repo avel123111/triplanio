@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/api/supabaseClient';
+import { usePostHog } from '@posthog/react';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
-import { parseEdgeError } from '@/lib/edgeError';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton, Severity } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
@@ -20,6 +20,7 @@ export default function Pro() {
   const { t, fmtMoney } = useI18nFormat();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPro = isProActive(user);
+  const posthog = usePostHog();
 
   const tripId = searchParams.get('tripId') || null;
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
@@ -35,7 +36,7 @@ export default function Pro() {
   useEffect(() => {
     if (!tripId) return;
     let cancelled = false;
-    supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
+    invokeFn('checkSubscriptionStatus', { body: { tripId } })
       .then((res) => { if (!cancelled) setTripOwner(!!res.data?.isOwner); })
       .catch(() => { if (!cancelled) setTripOwner(false); });
     return () => { cancelled = true; };
@@ -53,7 +54,7 @@ export default function Pro() {
   useEffect(() => {
     let cancelled = false;
     setPricesLoading(true);
-    supabase.functions.invoke('getStripePrices', { body: {} })
+    invokeFn('getStripePrices', { body: {} })
       .then((res) => { if (!cancelled) setPrices(res.data?.prices || {}); })
       .catch((err) => { console.error('Failed to load Stripe prices:', err); })
       .finally(() => { if (!cancelled) setPricesLoading(false); });
@@ -66,6 +67,7 @@ export default function Pro() {
 
   const handleUpgrade = async (productCode) => {
     setErrorMsg('');
+    posthog?.capture('pro_upgrade_initiated', { product_code: productCode, trip_id: tripId || undefined });
     try {
       setLoading(true);
       let isIframe = false;
@@ -75,24 +77,25 @@ export default function Pro() {
       // landing-path (trip_pro_lifetime → /trip/<id>, sub → /settings) деривируется НА
       // СЕРВЕРЕ из (productCode, tripId) — returnPath клиента не шлём (ломал детерминизм
       // тела под нативную идемпотентность Stripe). Result-модалка глобальная, откроется на любом роуте.
-      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, productCode } });
-      if (response.error) throw response.error;
-      if (response.data?.url) { window.location.href = response.data.url; return; }
-      setLoading(false);
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      // supabase-js: the {error, code} body is on error.context, not .response.data.
-      const { code, message } = await parseEdgeError(error);
-      if (code === 'SUBSCRIPTION_ALREADY_ACTIVE') {
-        try {
-          const portal = await supabase.functions.invoke('createBillingPortal', { body: { returnPath: '/settings' } });
+      // invokeFn парсит {error, code} тела один раз и возвращает code/message (не throw).
+      const { data, error, code, message } = await invokeFn('createStripeCheckout', { body: { tripId, productCode } });
+      if (error || data?.error) {
+        if (code === 'SUBSCRIPTION_ALREADY_ACTIVE') {
+          const portal = await invokeFn('createBillingPortal', { body: { returnPath: '/settings' } });
           if (portal.data?.url) { window.location.href = portal.data.url; return; }
-        } catch (e) { console.error('Billing portal fallback failed:', e); }
-        setErrorMsg(t('sub.already_active_msg'));
+          setErrorMsg(t('sub.already_active_msg'));
+          setLoading(false);
+          return;
+        }
+        setErrorMsg(t('sub.upgrade_error', { message: message || error?.message }));
         setLoading(false);
         return;
       }
-      setErrorMsg(t('sub.upgrade_error', { message: message || error.message }));
+      if (data?.url) { window.location.href = data.url; return; }
+      setLoading(false);
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      setErrorMsg(t('sub.upgrade_error', { message: error.message }));
       setLoading(false);
     }
   };

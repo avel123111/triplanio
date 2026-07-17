@@ -14,10 +14,9 @@
  * POST body: { kind: 'hotel' | 'transfer', fileUrls: string[], text?: string }
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
-import { captureEdgeError } from '../_shared/sentry.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 
@@ -41,11 +40,7 @@ async function getRequestUser(req: Request) {
 
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/parse-booking';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('parseBookingWithAi', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -108,12 +103,4 @@ Deno.serve(async (req) => {
 
     const data = await res.json();
     return Response.json(data, { headers: corsHeaders });
-  } catch (err) {
-    await captureEdgeError(err, 'parseBookingWithAi');
-    console.error('parseBookingWithAi error:', err);
-    return Response.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-});
+}));

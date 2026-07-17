@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import './login.css';
@@ -239,6 +241,7 @@ export default function Login() {
   // ── Auth handlers ──
   const handleGoogle = async () => {
     setIsLoading(true); setError(null);
+    posthog?.capture('user_logged_in', { method: 'google' });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -329,6 +332,7 @@ export default function Login() {
 
   const handleApple = async () => {
     setIsLoading(true); setError(null);
+    posthog?.capture('user_logged_in', { method: 'apple' });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },
@@ -340,10 +344,7 @@ export default function Login() {
     e.preventDefault(); setIsLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(error.message); setIsLoading(false); return; }
-    // Success: AuthContext picks up SIGNED_IN, but this page stays mounted on
-    // /login (App routes /login independently of auth state), so navigate
-    // explicitly to land the user in the app. Keep isLoading=true until the
-    // full navigation tears the page down (avoids a flash of re-enabled buttons).
+    posthog?.capture('user_logged_in', { method: 'email' });
     window.location.href = postLoginPath();
   };
 
@@ -355,7 +356,7 @@ export default function Login() {
     // Preflight: Supabase hides whether an email already exists, so ask the
     // server (signupPrecheck) before creating the account. This lets us show an
     // explicit message instead of a silent "check your email".
-    const { data: pre, error: preErr } = await supabase.functions.invoke('signupPrecheck', {
+    const { data: pre, error: preErr } = await invokeFn('signupPrecheck', {
       body: { email, redirectTo: window.location.origin + postLoginPath() },
     });
     if (preErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
@@ -379,7 +380,7 @@ export default function Login() {
       },
     });
     if (error) { setError(error.message); setIsLoading(false); }
-    else { startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
+    else { posthog?.capture('user_signed_up', { method: 'email' }); startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
   };
 
   // Set a new password during a Supabase recovery session (reached via the
@@ -413,7 +414,7 @@ export default function Login() {
     // Routed through requestPasswordReset so the server can reveal an unknown
     // email and enforce the 5/hour-per-email limit. The email itself is still
     // sent by Supabase Auth (same template) from inside that function.
-    const { data, error: invErr } = await supabase.functions.invoke('requestPasswordReset', {
+    const { data, error: invErr } = await invokeFn('requestPasswordReset', {
       body: { email, redirectTo: window.location.origin + '/reset-password' },
     });
     if (invErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
@@ -437,7 +438,7 @@ export default function Login() {
     const body = resendFlow === 'signup'
       ? { email: sentEmail, redirectTo: window.location.origin + postLoginPath() }
       : { email: sentEmail, redirectTo: window.location.origin + '/reset-password' };
-    const { data, error: invErr } = await supabase.functions.invoke(fn, { body });
+    const { data, error: invErr } = await invokeFn(fn, { body });
     setIsLoading(false);
     if (invErr) { setError(t('auth.err_generic')); return; }
     if (data?.code === 'rate_limited') { setError(t('auth.err_reset_rate_limited')); setResendLeft(60); return; }

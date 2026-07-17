@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
@@ -138,7 +139,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
 
     if (/@triplanio\b/i.test(content)) {
       const realId = created?.id;
-      supabase.functions.invoke('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
+      invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
         .catch((err) => {
           console.error('callTriplanioAi failed', err);
           if (realId) setFailedAiIds((p) => new Set([...p, realId]));

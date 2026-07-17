@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { usePostHog } from '@posthog/react';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Dialog, useToast } from '@/design/index';
@@ -85,6 +86,7 @@ export function CreateTripProvider({ children }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
+  const posthog = usePostHog();
 
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [limitOpen, setLimitOpen]   = useState(false);
@@ -96,6 +98,7 @@ export function CreateTripProvider({ children }) {
   // Run the limit gate for a concrete method. TripLimitDialog self-fetches the
   // authoritative count and auto-proceeds when the user is under the cap.
   const startCreate = useCallback((pick) => {
+    posthog?.capture('trip_creation_started', { method: pick });
     setPending({ kind: 'create', pick });
     setLimitOpen(true);
   }, []);
@@ -112,17 +115,15 @@ export function CreateTripProvider({ children }) {
   const doCopy = useCallback(async (tripId) => {
     setCopying(true);
     try {
-      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId } });
-      // Non-2xx → supabase-js puts the response in error.context; pull the real
-      // server message out of it so failures aren't masked by a generic toast.
-      let serverMsg = data?.error || null;
-      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
-        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
-      }
-      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
+      const { data, error, message } = await invokeFn('copyTrip', { body: { tripId } });
+      // `message` is already parsed by invokeFn (it read error.context once — a
+      // Response body can only be read one time, so we must NOT re-read it). This
+      // keeps the real server reason (e.g. TRIP_LIMIT_REACHED) out of a generic toast.
+      if (error || data?.error) throw new Error(message || 'copy failed');
       // Copying adds an active trip — drop the limit gate cache too, not just the
       // list, so the next create attempt doesn't read a stale (under-cap) count.
       invalidateActiveTripsLimit(qc);
+      posthog?.capture('trip_copied', { trip_id: tripId, new_trip_id: data?.tripId });
       toast({ description: t('trip.copy_done'), variant: 'success' });
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {

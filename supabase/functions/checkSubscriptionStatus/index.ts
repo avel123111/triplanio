@@ -3,16 +3,12 @@
 // Pro is available if EITHER the trip is a one-time pro_trip OR the trip's
 // OWNER has an active Pro subscription. Without a tripId, falls back to the
 // caller's own subscription (used by the trip-creation paywall).
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile, reconcileTripEntitlement } from '../_shared/reconcileEntitlement.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  try {
+Deno.serve(withHandler('checkSubscriptionStatus', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -79,9 +75,4 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ isPro: false, isOwner }, { headers: corsHeaders });
-  } catch (error) {
-    await captureEdgeError(error, 'checkSubscriptionStatus');
-    console.error('checkSubscriptionStatus error:', error);
-    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

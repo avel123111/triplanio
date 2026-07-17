@@ -36,7 +36,7 @@
  * ride along in extra.
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 
@@ -208,11 +208,7 @@ async function resolveOne(
   return { results };
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('geoLocationiq', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -261,9 +257,11 @@ Deno.serve(async (req) => {
       // Bucket still empty after the full wait budget (pathological load) →
       // degrade. Surface a 429 + Retry-After rather than a fake empty 200.
       await captureEdgeError(new Error('geocode bucket exhausted'), 'geoLocationiq', { action });
+      // x-sentry-skip: already captured above with richer context — tell withHandler
+      // not to ALSO report this 429 (would be a duplicate Sentry event).
       return Response.json(
         { error: 'geocode_rate_limited', results: [] },
-        { status: 429, headers: { ...corsHeaders, 'Retry-After': '2' } },
+        { status: 429, headers: { ...corsHeaders, 'Retry-After': '2', 'x-sentry-skip': '1' } },
       );
     }
     if ('upstreamError' in outcome) {
@@ -276,15 +274,11 @@ Deno.serve(async (req) => {
       await captureEdgeError(new Error(`geocode ${reason}`), 'geoLocationiq', {
         reason, action, endpoint, status: outcome.upstreamError,
       });
+      // x-sentry-skip: already captured above — don't let withHandler double-report.
       return Response.json(
         { error: 'locationiq_upstream_error', status: outcome.upstreamError },
-        { status: 502, headers: corsHeaders },
+        { status: 502, headers: { ...corsHeaders, 'x-sentry-skip': '1' } },
       );
     }
     return Response.json({ results: outcome.results }, { headers: corsHeaders });
-  } catch (e) {
-    console.error('geoLocationiq error:', e);
-    await captureEdgeError(e, 'geoLocationiq');
-    return Response.json({ error: (e as Error).message }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

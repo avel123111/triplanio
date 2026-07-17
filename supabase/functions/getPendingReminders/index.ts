@@ -20,7 +20,7 @@
  *      Telegram messages itself.
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
 interface ReminderRow {
@@ -36,11 +36,11 @@ interface ReminderRow {
   context: { id: string; event_timezone: string } & Record<string, unknown>;
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+Deno.serve(withHandler('getPendingReminders', async (req, corsHeaders) => {
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+    // JSON `{ error }` (not plain text) keeps the frontend parseEdgeError contract
+    // uniform and lets withHandler's body-enrichment read it.
+    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
   }
 
   const expected = Deno.env.get('N8N_SECRET');
@@ -92,4 +92,4 @@ Deno.serve(async (req) => {
   }
 
   return Response.json({ reminders: rows }, { headers: corsHeaders });
-});
+}));

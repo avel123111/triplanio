@@ -13,6 +13,6 @@ metadata:
 
 **Why:** n8n-вебхуки защищены "JWT Auth" (проверяют подпись секретом). Баг всплыл после миграции email→user_id: передеплой функций из репо перезатёр ранее работавшую (но не закоммиченную) версию, которая подписывала JWT. Теперь подпись **в репо**: `supabase/functions/_shared/n8nAuth.ts` → `signN8nJwt(secret)` (HS256, claims iat/exp 5 мин, Web Crypto, без внешних зависимостей).
 
-**How to apply:** любая функция, которая ДЕЛАЕТ исходящий запрос в n8n, должна слать `Bearer ${await signN8nJwt(n8nSecret)}`, а не сам секрет. Сейчас так в `callTriplanioAi` и `planTripWithAi`. Входящие функции (n8n → нас: `triplanioAiReply`, `getPendingReminders`, `getDailyReminders`) наоборот сравнивают входящий bearer с `N8N_SECRET` — их не трогаем. При добавлении новой функции с вызовом n8n — использовать `signN8nJwt`.
+**How to apply:** любая функция, которая ДЕЛАЕТ исходящий запрос в n8n, должна слать `Bearer ${await signN8nJwt(n8nSecret)}`, а не сам секрет. Сейчас так в `callTriplanioAi` и `planTripWithAi`. Входящие функции (n8n → нас: `triplanioAiReply`, `getPendingReminders`) наоборот сравнивают входящий bearer с `N8N_SECRET` — их не трогаем. При добавлении новой функции с вызовом n8n — использовать `signN8nJwt`.
 
 См. [[triplanio-userid-migration]].

@@ -23,35 +23,31 @@
  * DB-path collector was pure overlap and was removed — TRIP-13.)
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
 const BUCKET = 'trips';
 
-/** Sweep everything under `${prefix}/` in `bucket`, paginated (best-effort). */
-async function purgeBucketByPrefix(prefix: string, bucket: string = BUCKET): Promise<void> {
+/** Sweep everything under `${prefix}/` in the trips bucket, paginated (best-effort). */
+async function purgeBucketByPrefix(prefix: string): Promise<void> {
   const limit = 100;
   let offset = 0;
   for (;;) {
-    const { data: files, error } = await supabaseAdmin.storage.from(bucket).list(prefix, { limit, offset });
-    if (error) { console.error(`deleteTrip: list ${bucket}/${prefix} failed`, error); return; }
+    const { data: files, error } = await supabaseAdmin.storage.from(BUCKET).list(prefix, { limit, offset });
+    if (error) { console.error(`deleteTrip: list ${BUCKET}/${prefix} failed`, error); return; }
     if (!files?.length) return;
     const toRemove = files.filter((f) => f.name).map((f) => `${prefix}/${f.name}`);
     if (toRemove.length) {
-      const { error: rmErr } = await supabaseAdmin.storage.from(bucket).remove(toRemove);
-      if (rmErr) console.error(`deleteTrip: remove ${bucket}/${prefix} failed`, rmErr);
+      const { error: rmErr } = await supabaseAdmin.storage.from(BUCKET).remove(toRemove);
+      if (rmErr) console.error(`deleteTrip: remove ${BUCKET}/${prefix} failed`, rmErr);
     }
     if (files.length < limit) return;
     offset += limit;
   }
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('deleteTrip', async (req, corsHeaders) => {
     // Step 0 — auth.
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
@@ -82,12 +78,11 @@ Deno.serve(async (req) => {
     }
 
     // Step 3 — storage purge (best-effort, must NOT block the delete). Sweep the
-    // `<tripId>/` prefix in the trips bucket (all trip files), in share-cards
-    // (TRIP-193 generated cards) and in share-maps (transient client uploads).
+    // `<tripId>/` prefix in the trips bucket (all trip files). The share-cards /
+    // share-maps buckets are dead as of TRIP-48 (the card is rendered in the
+    // browser now, nothing is written there), so there is nothing to purge there.
     try {
       await purgeBucketByPrefix(tripId);
-      await purgeBucketByPrefix(tripId, 'share-cards');
-      await purgeBucketByPrefix(tripId, 'share-maps');
     } catch (e) {
       console.error('deleteTrip: storage purge failed', e);
     }
@@ -102,11 +97,4 @@ Deno.serve(async (req) => {
 
     return Response.json({ ok: true }, { headers: corsHeaders });
 
-  } catch (error) {
-    console.error('deleteTrip error:', error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-});
+}));

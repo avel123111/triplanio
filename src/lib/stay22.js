@@ -10,10 +10,11 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import {
   normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
-  mergePool, POOL_PAGES,
+  mergePool, POOL_PAGES, applyClientFilters,
 } from '@/lib/stay22-normalize';
 import { cityNameEn } from '@/lib/geo';
 import { countryNameEn } from '@/lib/countryNamesEn';
@@ -54,10 +55,15 @@ async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters 
   const cntryEn = visit?.country_code ? countryNameEn(visit.country_code) : null;
   const address = cityEn ? [cityEn, cntryEn].filter(Boolean).join(', ') : null;
   const body = address ? { ...params, address } : params;
-  const { data, error } = await supabase.functions.invoke('stay22Accommodations', { body });
+  const { data, error } = await invokeFn('stay22Accommodations', { body });
   if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return normalizeStay22(data);
+  // 200-with-{error}: invokeFn already reported it — mark the thrown error so the
+  // QueryCache.onError seam doesn't capture it a second time (new Error drops the
+  // stamp invokeFn puts on real error objects).
+  if (data?.error) throw Object.assign(new Error(data.error), { __seamHandled: true });
+  // When a platform is selected, surface that supplier on the card (the v2
+  // suppliers map has no primary/order, so pick the requested one).
+  return normalizeStay22(data, filters?.provider || null);
 }
 
 /**
@@ -144,39 +150,74 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
 // from the returned `query`; consumers without a map just pass `bundle` down.
 export function useStay22Bundle({ visit, currency = 'EUR', lang, enabled = true, tripId }) {
   const [page, setPage] = useState(1);
+  // SERVER filters (reload the pool): guests/rooms + platform (provider).
   const [applied, setApplied] = useState(null);
+  // CLIENT filters (over the pool, no reload): text search, price range (trip
+  // currency), sort. Applied to the set that feeds BOTH the list and the map pins.
+  const [clientFilters, setClientFilters] = useState({ text: '', min: '', max: '', sortBy: 'recommended' });
   const [hoveredId, setHoveredId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   // Reset the lifted state whenever the target city changes / the panel closes.
   const visitId = visit?.id || null;
   useEffect(() => {
     setPage(1); setApplied(null); setHoveredId(null); setSelectedId(null);
+    setClientFilters({ text: '', min: '', max: '', sortBy: 'recommended' });
   }, [visitId, enabled]);
 
   const query = useStay22Pool({ visit, currency, lang, filters: applied, enabled });
 
+  // Filtered + sorted pool — the single source of truth for list AND map pins.
+  const rawHotels = query.data?.hotels;
+  const data = useMemo(() => {
+    const hotels = applyClientFilters(rawHotels, clientFilters);
+    return {
+      hotels,
+      meta: {
+        ...(query.data?.meta || {}),
+        total: hotels.length,
+        pooled: rawHotels?.length ?? 0, // full pool size (pre client-filter) for "truncated" context
+      },
+    };
+  }, [rawHotels, clientFilters, query.data?.meta]);
+
   const logHotelClick = usePartnerLogger(tripId);
   const openHotelLink = (id) => {
-    const h = (query.data?.hotels || []).find((x) => String(x.id) === String(id));
+    const h = (rawHotels || []).find((x) => String(x.id) === String(id));
     if (!h?.link) return;
     logHotelClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
     window.open(h.link, '_blank', 'noopener,noreferrer');
   };
 
+  // Applying a CLIENT filter never reloads the pool, but it changes the visible
+  // set → drop stale selection/hover + reset paging (mirror the server path).
+  const applyClient = (patch) => { setClientFilters((s) => ({ ...s, ...patch })); setPage(1); setSelectedId(null); setHoveredId(null); };
+
   const bundle = enabled ? {
-    data: query.data, isLoading: query.isLoading,
+    data, isLoading: query.isLoading,
     // Dim the list only on a city/filter switch (placeholder) or first load — NOT
     // while the background tail pages stream in (the pool just grows under it).
     isFetching: query.isPlaceholderData || query.isLoading,
     isError: query.isError, refetch: query.refetch,
     page, onPageChange: setPage,
+    // SERVER filters (guests + platform): reload the pool → drop selection + reset page.
     applied,
-    // Filter changes reload the pool → drop any stale selection/hover + reset page.
     onApply: (snap) => { setApplied(snap); setPage(1); setSelectedId(null); setHoveredId(null); },
-    onResetAll: () => { setApplied(null); setPage(1); setSelectedId(null); setHoveredId(null); },
+    onResetAll: () => {
+      setApplied(null); setClientFilters({ text: '', min: '', max: '', sortBy: 'recommended' });
+      setPage(1); setSelectedId(null); setHoveredId(null);
+    },
+    // CLIENT filters (text / price / sort): instant over the pool.
+    clientFilters,
+    onSearch: (text) => applyClient({ text }),
+    onApplyPrice: (min, max) => applyClient({ min, max }),
+    onSort: (sortBy) => applyClient({ sortBy }),
     hoveredId, selectedId,
     onHover: setHoveredId, onSelect: setSelectedId,
   } : null;
 
-  return { bundle, query, selectedId, hoveredId, setSelectedId, setHoveredId, openHotelLink };
+  // `query`-shaped object for the map pins: same FILTERED hotels as the list, so
+  // pins and list never diverge. Keeps placeholder/currency flags from the pool.
+  const filteredQuery = { ...query, data };
+
+  return { bundle, query: filteredQuery, selectedId, hoveredId, setSelectedId, setHoveredId, openHotelLink };
 }

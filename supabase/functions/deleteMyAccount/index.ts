@@ -17,15 +17,11 @@
  * 500 delete_failed.
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { collectPrivateDocFiles, purgeCollectedDocFiles } from '../_shared/personalDocsTeardown.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('deleteMyAccount', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) {
       return Response.json({ code: 'unauthorized' }, { status: 401, headers: corsHeaders });
@@ -88,8 +84,4 @@ Deno.serve(async (req) => {
 
     return Response.json({ code: 'ok' }, { headers: corsHeaders });
 
-  } catch (e) {
-    console.error('deleteMyAccount error:', e);
-    return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

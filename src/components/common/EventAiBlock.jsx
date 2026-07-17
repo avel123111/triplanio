@@ -10,7 +10,9 @@
  * uploaded documents; the parent maps the values into its form.
  */
 import React, { useRef, useState } from 'react';
+import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
@@ -54,6 +56,7 @@ export default function EventAiBlock({
   tripId, // required by the server-side Pro/membership gate (parseBookingWithAi)
 }) {
   const { t } = useI18n();
+  const posthog = usePostHog();
   const [text, setText] = useState('');
   const [files, setFiles] = useState([]); // { file, name, file_url? }
   const [error, setError] = useState(null);
@@ -95,6 +98,7 @@ export default function EventAiBlock({
   const runParse = async () => {
     setError(null);
     setState('parsing');
+    posthog?.capture('booking_ai_parse_started', { kind, has_files: files.length > 0, has_text: text.trim().length > 0 });
     // Objects uploaded for THIS attempt. On any non-success exit they're orphans
     // (the parse result is discarded and a retry re-uploads), so sweep them
     // best-effort — otherwise every failed/retried parse leaked files (TRIP-117).
@@ -118,7 +122,7 @@ export default function EventAiBlock({
       // 2. Call the edge function. kind + fileUrls + the pasted text all go to
       //    n8n (prompts and schemas live inside the n8n workflow).
       const body = { kind, fileUrls, text: text.trim(), trip_id: tripId };
-      const { data: invoked, error: invokeErr } = await supabase.functions.invoke('parseBookingWithAi', { body });
+      const { data: invoked, error: invokeErr } = await invokeFn('parseBookingWithAi', { body });
       if (invokeErr) {
         // TRIP-111: серверный гейт — отдельные сообщения для лимита и Pro.
         const status = invokeErr?.context?.status;
@@ -145,6 +149,7 @@ export default function EventAiBlock({
       const documents = uploaded
         .filter((u) => u.file_url)
         .map((u) => ({ file_url: u.file_url, file_name: u.name, storage_path: u.storage_path }));
+      posthog?.capture('booking_ai_parse_completed', { kind, field_count: parsedFieldCount });
       onExtract(
         { ...result, documents },
         documents[0]?.file_url || null,

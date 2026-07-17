@@ -22,6 +22,7 @@
  * verify_jwt: defaults to TRUE (user function; NOT listed in config.toml).
  */
 import { corsFor } from '../_shared/cors.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 import { pickLang } from '../_shared/tgLang.ts';
@@ -51,6 +52,7 @@ function qrUrlFor(tripId: string, format: Format): string {
   return `${LANDING}?${p.toString()}`;
 }
 
+// sentry: manual — returns an SVG image, not the {error,code} JSON contract withHandler renders.
 Deno.serve(async (req) => {
   const cors = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -142,6 +144,9 @@ Deno.serve(async (req) => {
     const svg = buildCardSvg(format, data, defaultBgDataUri(), MAP_PLACEHOLDER, qrUrlFor(tripId, format), false, fontFaceStyle());
     return Response.json({ svg, width: outW, height: outH, slot }, { headers: cors });
   } catch (e) {
+    // sentry: manual — this function opts out of withHandler (returns SVG/JSON on
+    // its own contract), so its genuine 500 path must self-report here.
+    await captureEdgeError(e, 'render-share-card');
     console.error('render-share-card error', (e as Error).message);
     return Response.json({ error: 'internal' }, { status: 500, headers: cors });
   }

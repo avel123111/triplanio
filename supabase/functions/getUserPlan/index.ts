@@ -6,10 +6,9 @@
  * Returns the caller's subscription plan and metadata.
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
-import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, ENTITLING_STATUSES, isPriceCacheFresh } from '../_shared/payments/catalog.ts';
@@ -67,11 +66,7 @@ async function readActualPrice(sub: SubPriceRow | null) {
   }
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('getUserPlan', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -136,12 +131,4 @@ Deno.serve(async (req) => {
 
     return Response.json({ plan: 'free', email: user.email }, { headers: corsHeaders });
 
-  } catch (error) {
-    await captureEdgeError(error, 'getUserPlan');
-    console.error('getUserPlan error:', error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-});
+}));

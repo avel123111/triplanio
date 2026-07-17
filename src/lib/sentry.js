@@ -11,9 +11,13 @@
  * Config notes:
  *  - No DSN → the SDK is never initialised and every Sentry call is a safe no-op.
  *    This keeps local dev (and any env without the var) completely silent.
- *  - Errors only for now: tracing and replay are OFF to protect the shared
- *    free-plan event quota. Enable a small `tracesSampleRate` once the app is
- *    stable.
+ *  - Tracing ON at 10% (TRIP-219 F5): browser page-loads / navigations with timed
+ *    spans for the backend calls they make. Trace headers are NOT propagated to
+ *    Supabase yet (its CORS allow-list omits sentry-trace/baggage → would fail the
+ *    preflight); connecting the browser trace to the edge is a separate step.
+ *  - Session Replay ON, privacy-first: only sessions WITH an error are recorded,
+ *    and all text / inputs / media are masked — a replay shows structure, never
+ *    real content (email / billing / trip data).
  *  - `sendDefaultPii: false` + `beforeSend` scrubbing: this app handles user
  *    emails, trip data and Stripe, so nothing PII-bearing is attached
  *    automatically and request bodies / query strings / auth headers are removed
@@ -40,6 +44,34 @@ const IGNORE_ERRORS = [
   'AbortError',
 ];
 
+// Strip anything PII-bearing before an event leaves the browser. Used by BOTH
+// `beforeSend` (error events) AND `beforeSendTransaction` (tracing events) — a
+// trace/transaction envelope carries `request.url` too, and a sampled pageload on
+// `/public/trip/:id?t=<share_token>` or an OAuth `?code=` callback would otherwise
+// ship that credential despite the error-path scrub. (Session Replay records the
+// URL in its OWN envelope, which no SDK hook intercepts — the residual there is
+// limited to already-shared share tokens / short-lived expired OAuth codes.)
+function scrubPii(event) {
+  if (event.request) {
+    delete event.request.cookies;
+    delete event.request.data;
+    if (event.request.headers) {
+      delete event.request.headers.Authorization;
+      delete event.request.headers.authorization;
+      delete event.request.headers.Cookie;
+    }
+    // Query strings can carry tokens / emails — keep the path, drop the rest.
+    if (event.request.url) {
+      event.request.url = event.request.url.split('?')[0];
+    }
+  }
+  // Keep only a stable user id for grouping; never email / username / ip.
+  if (event.user) {
+    event.user = event.user.id ? { id: event.user.id } : undefined;
+  }
+  return event;
+}
+
 export function initSentry() {
   if (!DSN) return;
 
@@ -47,30 +79,31 @@ export function initSentry() {
     dsn: DSN,
     environment: ENVIRONMENT,
     release: RELEASE,
-    tracesSampleRate: 0,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      // Privacy-first replay: mask ALL text + inputs + media so the recording
+      // captures layout/interaction structure, never real content.
+      Sentry.replayIntegration({ maskAllText: true, maskAllInputs: true, blockAllMedia: true }),
+    ],
+    // Tracing: sample 10% of transactions (browser + timed backend-call spans).
+    // Not 1.0 — protect the shared free-plan quota; raise once stable.
+    tracesSampleRate: 0.1,
+    // Do NOT attach sentry-trace / baggage headers yet: the Supabase edge CORS
+    // allow-list (_shared/cors.ts) doesn't include them, so injecting them would
+    // fail the preflight and break every call. Connecting the browser trace to the
+    // edge (CORS header + withHandler instrumentation) is a separate step; until
+    // then browser-side spans still time each backend call.
+    tracePropagationTargets: [],
+    // Session Replay: record ONLY sessions where an error occurred (never healthy
+    // traffic), so volume tracks error count, not user traffic.
+    replaysOnErrorSampleRate: 1.0,
+    replaysSessionSampleRate: 0,
     sendDefaultPii: false,
     ignoreErrors: IGNORE_ERRORS,
-    beforeSend(event) {
-      // Strip anything that could carry PII before the event is sent.
-      if (event.request) {
-        delete event.request.cookies;
-        delete event.request.data;
-        if (event.request.headers) {
-          delete event.request.headers.Authorization;
-          delete event.request.headers.authorization;
-          delete event.request.headers.Cookie;
-        }
-        // Query strings can carry tokens / emails — keep the path, drop the rest.
-        if (event.request.url) {
-          event.request.url = event.request.url.split('?')[0];
-        }
-      }
-      // Keep only a stable user id for grouping; never email / username / ip.
-      if (event.user) {
-        event.user = event.user.id ? { id: event.user.id } : undefined;
-      }
-      return event;
-    },
+    // Error events AND tracing transactions both go through the same PII scrub —
+    // the URL (with any ?t= share token / ?code= OAuth) is dropped from both.
+    beforeSend: scrubPii,
+    beforeSendTransaction: scrubPii,
   });
 }
 

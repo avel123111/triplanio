@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 const PENDING_KEY = 'postLoginRedirect';
@@ -54,11 +56,12 @@ export default function JoinTrip() {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('redeemTripInviteLink', { body: { token } });
+      const { data, error } = await invokeFn('redeemTripInviteLink', { body: { token } });
       if (cancelled) return;
 
       if (!error && data?.ok && data?.tripId) {
         try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
+        posthog?.capture('trip_invite_joined', { trip_id: data.tripId });
         nav(`/trip/${data.tripId}`, { replace: true });
         return;
       }

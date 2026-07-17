@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -681,6 +683,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const posthog = usePostHog();
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -873,13 +876,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   const planMut = useMutation({
     mutationFn: async ({ promptText }) => {
-      const { data, error: fnErr } = await supabase.functions.invoke('planTripWithAi', {
+      const { data, error: fnErr } = await invokeFn('planTripWithAi', {
         body: { sessionId, prompt: promptText, language: lang || 'ru' },
       });
       if (fnErr) {
         // TRIP-111: серверный rate-limit генераций → понятное сообщение вместо
         // общего «не удалось». supabase.functions.invoke кладёт Response в .context.
-        if (fnErr?.context?.status === 429) throw new Error(t('ai_plan.error_rate_limited'));
+        // Мутируем message и бросаем ОРИГИНАЛ (invokeFn пометил его __seamHandled),
+        // иначе new Error теряет стамп → MutationCache.onError задваивает репорт.
+        if (fnErr?.context?.status === 429) { fnErr.message = t('ai_plan.error_rate_limited'); throw fnErr; }
         throw fnErr;
       }
       return data;
@@ -995,7 +1000,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         const finalCoverUrl = cover.cover_image_url
           ? await finalizeDraftCover(trip.id, cover.cover_image_url)
           : null;
-        const { error: coverErr } = await supabase.functions.invoke('updateTripSettings', {
+        const { error: coverErr } = await invokeFn('updateTripSettings', {
           body: {
             tripId: trip.id,
             fields: {
@@ -1090,6 +1095,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
+      posthog?.capture('trip_created', { method, city_count: visitsToInsert.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {

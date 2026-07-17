@@ -11,7 +11,7 @@
  * Functions run with verify_jwt=false, so the platform gateway does NOT
  * authenticate the caller — the function MUST do it itself. We require
  * `Authorization: Bearer <N8N_SECRET>` (the RAW secret, matching how n8n is
- * configured for getPendingReminders / getDailyReminders). Use
+ * configured for getPendingReminders). Use
  * requireN8nSecret() at the top of every such handler.
  */
 

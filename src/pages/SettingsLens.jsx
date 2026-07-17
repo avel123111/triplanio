@@ -12,6 +12,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
@@ -115,9 +116,9 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: cur } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+      const { data: cur } = await invokeFn('telegramGetIntegration', { body: { tripId } });
       baselineRef.current = cur?.integrations?.length ?? 0;
-      const { data, error } = await supabase.functions.invoke('telegramStartLink', { body: { tripId } });
+      const { data, error } = await invokeFn('telegramStartLink', { body: { tripId } });
       if (cancelled) return;
       if (error || !data?.url) {
         setErrText(t('settings.tg_link_error'));
@@ -141,7 +142,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
   useEffect(() => {
     if (stage !== 'connecting') return;
     const id = setInterval(async () => {
-      const { data } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+      const { data } = await invokeFn('telegramGetIntegration', { body: { tripId } });
       if ((data?.integrations?.length ?? 0) > baselineRef.current) {
         clearInterval(id);
         onLinked?.();
@@ -157,7 +158,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
     setStage('connecting');
   };
   const checkNow = async () => {
-    const { data } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+    const { data } = await invokeFn('telegramGetIntegration', { body: { tripId } });
     if ((data?.integrations?.length ?? 0) > baselineRef.current) { onLinked?.(); setStage('connected'); }
   };
   const copyLink = () => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); };
@@ -296,7 +297,7 @@ function TelegramSection({ tripId }) {
   const [busyId, setBusyId] = useState(null); // integration id with an in-flight toggle/disconnect
 
   const load = React.useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+    const { data, error } = await invokeFn('telegramGetIntegration', { body: { tripId } });
     setAccounts(error ? [] : (data?.integrations ?? []));
   }, [tripId]);
 
@@ -312,7 +313,7 @@ function TelegramSection({ tripId }) {
   const toggle = async (a) => {
     if (busyId) return;
     setBusyId(a.id);
-    const { error } = await supabase.functions.invoke('telegramSetActive', {
+    const { error } = await invokeFn('telegramSetActive', {
       body: { tripId, integrationId: a.id, isActive: !a.is_active },
     });
     if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
@@ -322,7 +323,7 @@ function TelegramSection({ tripId }) {
 
   const doRemove = async (a) => {
     setBusyId(a.id);
-    const { error } = await supabase.functions.invoke('telegramDisconnect', {
+    const { error } = await invokeFn('telegramDisconnect', {
       body: { tripId, integrationId: a.id },
     });
     if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
@@ -487,7 +488,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !bookingWarnings;
     setBusyToggle('booking_warnings');
-    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+    const { data, error } = await invokeFn('updateTripSettings', {
       body: { tripId, display: { booking_warnings: next } },
     });
     if (error || !data?.ok) {
@@ -508,7 +509,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !chatWidget;
     setBusyToggle('chat_widget');
-    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+    const { data, error } = await invokeFn('updateTripSettings', {
       body: { tripId, display: { chat_widget: next } },
     });
     if (error || !data?.ok) {
@@ -539,7 +540,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
-    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+    const { data, error } = await invokeFn('updateTripSettings', {
       body: { tripId, fields, main_currency: currency },
     });
     // Main currency changed → existing FX overrides were defined against the OLD
@@ -602,7 +603,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
-    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+    const { data, error } = await invokeFn('updateTripSettings', {
       body: { tripId, addons: nextAddons },
     });
     if (error || !data?.ok) {
@@ -634,12 +635,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         // removeTripMember now returns a non-2xx with the reason on failure, so we
         // must read the response - navigating on a silent failure left the user
         // still in the trip ("выход" перебрасывал на /trips, но не выходил).
-        const { data, error } = await supabase.functions.invoke('removeTripMember', {
+        const { data, error, message } = await invokeFn('removeTripMember', {
           body: { member_id: myMember.id },
         });
         if (error || !data?.ok) {
-          let msg = error?.message || t('settings.leave_error');
-          try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+          // invokeFn already parsed the body (read error.context once — a Response
+          // can only be read one time), so use its message; don't re-read.
+          const msg = message || t('settings.leave_error');
           toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
           return;
         }
@@ -657,10 +659,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // button carries the spinner while deleteTrip (Telegram teardown + Storage
     // purge + DELETE) runs.
     const runDelete = async () => {
-      const { data, error } = await supabase.functions.invoke('deleteTrip', { body: { tripId } });
+      const { data, error, message } = await invokeFn('deleteTrip', { body: { tripId } });
       if (error || !data?.ok) {
-        let msg = data?.error || error?.message || '';
-        try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+        // invokeFn already parsed the body (read error.context once); use its
+        // message rather than re-reading the already-consumed Response.
+        const msg = message || '';
         toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
         return;
       }

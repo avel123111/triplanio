@@ -155,6 +155,14 @@ function checkLive(dbUrl) {
       if (!spol.has(`${name}_${cmd}`)) { err(`storage-дрейф: у бакета '${name}' нет политики '${name}_${cmd}' на storage.objects`); fail = 1; }
     }
   }
+  // TRIP-48 — класс «анонимный листинг публичного бакета». Проверка существованием
+  // (не разбор qual): публичный бакет = ноль SELECT-политик, и ни одного публичного
+  // бакета вне манифеста (иначе слепая зона, как было с share-cards/share-maps).
+  for (const [id, isPublic] of Object.entries(bucketPublic)) {
+    if (!isPublic) continue;
+    if (!(id in BUCKETS)) { err(`storage-дрейф: публичный бакет '${id}' не заведён в манифест BUCKETS (слепая зона)`); fail = 1; }
+    if (spol.has(`${id}_select`)) { err(`storage-дрейф: публичный бакет '${id}' имеет SELECT-политику '${id}_select' — анонимный листинг; публичный бакет = ноль SELECT`); fail = 1; }
+  }
 
   if (!fail) console.log(`check-security-tiers [live]: живая БД совпадает с манифестом (${grants.length} таблиц + ${funcs.length} secdef-функций + ${Object.keys(BUCKETS).length} бакета) — OK`);
   return fail;

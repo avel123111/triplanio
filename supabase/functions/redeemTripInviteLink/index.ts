@@ -18,7 +18,7 @@
  *
  * Self-contained (shared helpers inlined) so it deploys cleanly on its own.
  */
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const supabaseAdmin = createClient(
@@ -35,10 +35,7 @@ async function getRequestUser(req: Request) {
   return user;
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  try {
+Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -50,9 +47,12 @@ Deno.serve(async (req) => {
       .from('trip_invite_links').select('*').eq('token', token).maybeSingle();
 
     if (!link) return Response.json({ error: 'invalid', reason: 'not_found' }, { status: 404, headers: corsHeaders });
-    if (link.revoked_at) return Response.json({ error: 'revoked', reason: 'revoked' }, { status: 410, headers: corsHeaders });
+    // x-sentry-skip: an expired/revoked link is a NORMAL business outcome (users
+    // click old links), not an error — the frontend shows a designed message. Don't
+    // let withHandler alert on it (high-frequency, non-actionable noise).
+    if (link.revoked_at) return Response.json({ error: 'revoked', reason: 'revoked' }, { status: 410, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
     if (new Date(link.expires_at).getTime() < Date.now()) {
-      return Response.json({ error: 'expired', reason: 'expired' }, { status: 410, headers: corsHeaders });
+      return Response.json({ error: 'expired', reason: 'expired' }, { status: 410, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
     }
 
     const { data: trip } = await supabaseAdmin
@@ -146,8 +146,4 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ ok: true, tripId: trip.id, alreadyMember: false }, { headers: corsHeaders });
-  } catch (e) {
-    console.error('redeemTripInviteLink error:', e);
-    return Response.json({ error: (e as Error).message }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

@@ -12,21 +12,23 @@
  * POST body:
  *   { destinationId, startDate?, endDate?, currency?, lang?, page?, sort? }
  *
- * Calls POST /products/search (summary model). Pins count=10 and the affiliate
- * campaign tag via `campaign-value`. Pricing/links come back attributed already.
+ * Calls POST /products/search (summary model). Pins count=50 (Viator's per-page
+ * max) and the affiliate campaign tag via `campaign-value`. Pricing/links come back attributed already.
  * Nothing is persisted — the panel fetches on open and renders client-side.
  * Merchandising tags are NOT forwarded (Viator display compliance).
  *
  * Returns: { activities: [...], meta: { total, page, hasMore } }.
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const VIATOR_BASE = Deno.env.get('VIATOR_BASE') || 'https://api.viator.com/partner';
 const VIATOR_VERSION = 'application/json;version=2.0';
 const CAMPAIGN = 'trip_activities';
-const PAGE_SIZE = 10;
+// Viator caps /products/search at 50 results per request; we pull the full page
+// so one round-trip fills the client pool page (5 pages → up to 250 pooled).
+const PAGE_SIZE = 50;
 
 // App locale -> Viator Accept-Language. Viator affiliate does NOT serve ru, so ru
 // content falls back to en (our own UI strings stay localised via t()).
@@ -45,11 +47,7 @@ function pickImage(images: any[]): string | null {
   return best?.url ?? null;
 }
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('viatorActivities', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -125,8 +123,4 @@ Deno.serve(async (req) => {
       { activities, meta: { total, page: pageNum, hasMore } },
       { headers: corsHeaders },
     );
-  } catch (e) {
-    console.error('viatorActivities error:', e);
-    return Response.json({ error: (e as Error).message }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

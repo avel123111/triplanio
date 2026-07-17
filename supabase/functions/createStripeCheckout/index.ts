@@ -21,19 +21,14 @@
  * Каталог/цена — из БД через StripeAdapter (provider_price + default_price).
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
-import { captureEdgeError } from '../_shared/sentry.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, isProductCode, ENTITLING_STATUSES } from '../_shared/payments/catalog.ts';
 import { ensureProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('createStripeCheckout', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -76,17 +71,21 @@ Deno.serve(async (req) => {
       const { data: alreadyPro, error: proErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: tripId });
       if (proErr) throw proErr;
       if (alreadyPro) {
-        return Response.json({ error: 'This trip is already Pro', code: 'TRIP_ALREADY_PRO' }, { status: 409, headers: corsHeaders });
+        // x-sentry-skip: a normal business "no" (checkout re-initiated for an
+        // already-Pro trip) — the frontend handles it, not an error to alert on.
+        return Response.json({ error: 'This trip is already Pro', code: 'TRIP_ALREADY_PRO' }, { status: 409, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
       }
     } else {
       // Статус-driven (как recompute): active/trialing/past_due держат Pro.
       const { data: subs } = await supabaseAdmin
         .from('subscription').select('status').eq('user_id', user.id).in('status', [...ENTITLING_STATUSES]).limit(1);
       if (subs && subs.length > 0) {
+        // x-sentry-skip: expected business "no" — user already subscribed; the
+        // frontend opens the billing portal. Not an error to alert on.
         return Response.json({
           error: 'You already have an active subscription. Use the billing portal to change plans.',
           code: 'SUBSCRIPTION_ALREADY_ACTIVE',
-        }, { status: 409, headers: corsHeaders });
+        }, { status: 409, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
       }
     }
 
@@ -152,9 +151,4 @@ Deno.serve(async (req) => {
 
     return Response.json({ url: session.url }, { headers: corsHeaders });
 
-  } catch (error) {
-    await captureEdgeError(error, 'createStripeCheckout');
-    console.error('Stripe checkout error:', error);
-    return Response.json({ error: error instanceof Error ? error.message : 'Internal error' }, { status: 500, headers: corsHeaders });
-  }
-});
+}));

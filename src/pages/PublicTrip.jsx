@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plane } from 'lucide-react';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
@@ -70,7 +70,7 @@ export default function PublicTrip() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['public-trip', tripId, token],
     queryFn: async () => {
-      const res = await supabase.functions.invoke('getPublicTrip', { body: { tripId, token } });
+      const res = await invokeFn('getPublicTrip', { body: { tripId, token } });
       if (res.error) throw res.error;
       return res.data;
     },

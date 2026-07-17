@@ -7,18 +7,13 @@
  * manage their Pro subscription (update card, cancel, view invoices).
  */
 
-import { corsFor } from '../_shared/cors.ts';
+import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { captureEdgeError } from '../_shared/sentry.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv } from '../_shared/payments/catalog.ts';
 import { getProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 
-Deno.serve(async (req) => {
-  const corsHeaders = corsFor(req);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  try {
+Deno.serve(withHandler('createBillingPortal', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
@@ -78,12 +73,4 @@ Deno.serve(async (req) => {
     const { url } = await adapter.createPortalSession(customerId, returnUrl);
     return Response.json({ url }, { headers: corsHeaders });
 
-  } catch (error) {
-    await captureEdgeError(error, 'createBillingPortal');
-    console.error('Billing portal error:', error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
-      { status: 500, headers: corsHeaders },
-    );
-  }
-});
+}));

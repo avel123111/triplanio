@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { isActiveTripCapReached } from '@/lib/limits';
 
 /**
@@ -38,7 +38,7 @@ export function useActiveTripsLimit(userId) {
     enabled: !!userId,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('getActiveTrips', { body: {} });
+      const { data, error } = await invokeFn('getActiveTrips', { body: {} });
       if (error) throw error;
       return { activeCount: data?.activeCount ?? 0, isPro: !!data?.isPro };
     },

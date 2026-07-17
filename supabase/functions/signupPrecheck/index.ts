@@ -18,6 +18,7 @@
  * `signup_precheck_ip`: 10/min + 60/hour). Add Auth CAPTCHA for full cover at GA.
  */
 import { corsFor } from '../_shared/cors.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { ipRateLimited, supabaseThrottleKind } from '../_shared/rateLimit.ts';
@@ -26,6 +27,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// sentry: manual — anon preflight; rate-limit is a deliberate 200 with data.code, not an error to report.
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -74,6 +76,9 @@ Deno.serve(async (req) => {
     // "already registered, sign in" message (product decision: same text always).
     return Response.json({ code: 'email_exists' }, { headers: corsHeaders });
   } catch (err) {
+    // sentry: manual — the rate-limited 200 path is deliberate (not reported), but
+    // an unexpected 500 (RPC / Auth failure) must still reach Sentry.
+    await captureEdgeError(err, 'signupPrecheck');
     console.error('signupPrecheck error', err);
     return Response.json({ error: 'precheck_failed' }, { status: 500, headers: corsHeaders });
   }

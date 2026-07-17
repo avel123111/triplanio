@@ -48,6 +48,7 @@ const T: Record<Lang, {
   },
 };
 
+// sentry: manual — must always answer Telegram 200 (else it retries); captures inline.
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

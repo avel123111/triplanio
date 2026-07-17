@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/api/supabaseClient';
+import { usePostHog } from '@posthog/react';
+import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Badge, Btn, Dialog, Severity, Skeleton } from '@/design/index';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
@@ -16,7 +17,7 @@ async function invokeCard(body, tries = 3) {
   let last;
   for (let attempt = 0; attempt < tries; attempt++) {
     // eslint-disable-next-line no-await-in-loop
-    last = await supabase.functions.invoke('render-share-card', { body });
+    last = await invokeFn('render-share-card', { body });
     // success (final card url OR overlay svg) or a definitive app code → done
     if (last?.data?.url || last?.data?.svg || last?.data?.code) return last;
     // eslint-disable-next-line no-await-in-loop
@@ -33,6 +34,7 @@ async function invokeCard(body, tries = 3) {
 //      can Download or (on mobile) share via the native sheet.
 export default function ShareDialog({ trip, open, onOpenChange, visits = [], transfers = [] }) {
   const { t, lang } = useI18n();
+  const posthog = usePostHog();
   const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -57,7 +59,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     let cancelled = false;
     setLoading(true);
     setError('');
-    supabase.functions.invoke('ensureShareToken', { body: { tripId: trip.id } })
+    invokeFn('ensureShareToken', { body: { tripId: trip.id } })
       .then(({ data, error: invokeErr }) => {
         if (cancelled) return;
         if (invokeErr) { console.error('ensureShareToken error:', invokeErr); setError(t('trip.link_error')); return; }
@@ -138,6 +140,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
 
   function copyLink() {
     if (!shareUrl) return;
+    posthog?.capture('trip_share_link_copied', { trip_id: trip?.id });
     navigator.clipboard?.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
