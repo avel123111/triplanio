@@ -2,9 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, Sheet } from '@/design/index';
+import { Avatar, Badge, Btn, Sheet } from '@/design/index';
 import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
 import { canShareTrip } from '@/lib/members';
+import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
 
 // Shared menu BODY (groups + upgrade card). Rendered identically by:
@@ -80,24 +81,31 @@ function SidebarBody({
           )}
         </div>
       )}
-      {showUpgrade && (
-        <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
-          <div className="ph">
-            <Badge variant="pro" icon="pro">PRO</Badge>
-          </div>
-          <div className="pt">{t('trip_menu.free_trip_title')}</div>
-          <p>{t('trip.pro_locked_lenses')}</p>
-          {isOwner ? (
-            <Btn variant="primary" size="sm" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
-          ) : (
-            <button className="lockmsg" onClick={onProInfo}>
-              <Icon name="lock" size={14} />
-              {t('trip.pro_by_owner')}
-            </button>
-          )}
-        </div>
-      )}
+      {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
     </>
+  );
+}
+
+// "Upgrade this trip to Pro" card — shown on free trips in both the list sidebar
+// and the phone sheet, so it lives in one place.
+function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
+  const { t } = useI18n();
+  return (
+    <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
+      <div className="ph">
+        <Badge variant="pro" icon="pro">PRO</Badge>
+      </div>
+      <div className="pt">{t('trip_menu.free_trip_title')}</div>
+      <p>{t('trip.pro_locked_lenses')}</p>
+      {isOwner ? (
+        <Btn variant="primary" size="sm" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+      ) : (
+        <button className="lockmsg" onClick={onProInfo}>
+          <Icon name="lock" size={14} />
+          {t('trip.pro_by_owner')}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -124,15 +132,88 @@ export default function TripSidebar({
   );
 }
 
-// Phone variant: the exact same menu rendered inside the canonical bottom-sheet
-// (reuses <Sheet> — max-height, swipe-to-close, scrim, focus-trap). On phones the
-// slide-in drawer is suppressed via CSS and this is shown instead. The parent
-// gates `open` on the phone breakpoint and closes it through onNavigate/onShare.
+// Phone sheet BODY (TRIP-235). Same items/role-gating/chat-badge/upgrade card as
+// the list sidebar, but laid out for touch: lenses in a 3-col grid of tiles with
+// the open screen highlighted, management collapsed into one bordered container,
+// and an account row (moved out of the bottom nav) at the foot.
+function SidebarSheetBody({
+  tripId, trip, lens, onNavigate,
+  isPro, proResolved = true, isOwner, myRole,
+  onUpgrade, onProInfo, onShare, user, onAccount,
+}) {
+  const { t } = useI18n();
+  const navSb = useNavigate();
+  const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
+  const mgmtItems = MGMT_ITEMS.filter((item) => !(myRole === 'viewer' && item.id === 'members'));
+  const canShare = canShareTrip(myRole);
+  const showUpgrade = proResolved && !isPro;
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isLensVisible(trip, 'chat') });
+  const accountName = displayName(user?.email, user?.full_name);
+
+  // Management rows: edit-structure (owner/admin) + members/settings + share.
+  const manageRows = [
+    ...(canEditStructure(myRole) ? [{ id: 'edit', icon: EDIT_ITEM.icon, labelKey: EDIT_ITEM.labelKey, onClick: () => navSb(`/trip/${tripId}/edit`) }] : []),
+    ...mgmtItems.map((item) => ({ id: item.id, icon: item.icon, labelKey: item.labelKey, onClick: () => onNavigate(item.id) })),
+    ...(canShare && onShare ? [{ id: 'share', icon: 'share', labelKey: 'trip.share', onClick: onShare }] : []),
+  ];
+
+  return (
+    <>
+      <div className="tm-grid">
+        {lensItems.map((item) => (
+          <button
+            key={item.id}
+            className={'tm-cell' + (lens === item.id ? ' is-active' : '')}
+            onClick={() => onNavigate(item.id)}
+            aria-current={lens === item.id ? 'page' : undefined}
+          >
+            <span className="tm-cell__ico"><Icon name={item.icon} size={18} /></span>
+            <span className="tm-cell__lbl t-label">{t(item.labelKey)}</span>
+            {item.id === 'chat' && chatUnread > 0 && (
+              <span className="tm-cell__badge t-meta">{chatUnread > 99 ? '99+' : chatUnread}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {manageRows.length > 0 && (
+        <>
+          <div className="app-side__group-label tm-caption">{t('trip_menu.section_manage')}</div>
+          <div className="tm-manage">
+            {manageRows.map((row) => (
+              <button key={row.id} className="tm-manage__row" onClick={row.onClick}>
+                <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>
+                <span className="tm-manage__lbl t-label">{t(row.labelKey)}</span>
+                <Icon name="chevron" size={16} className="tm-manage__chev" />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
+      {onAccount && (
+        <button className="tm-account" onClick={onAccount}>
+          <Avatar name={accountName} photo={user?.avatar_url} size="sm" />
+          <span className="tm-account__txt">
+            <span className="tm-account__name t-label">{t('nav.account')}</span>
+            <span className="tm-account__sub t-meta">{accountName}</span>
+          </span>
+          <Icon name="chevron" size={16} className="tm-manage__chev" />
+        </button>
+      )}
+    </>
+  );
+}
+
+// Phone variant: the touch-optimised menu (SidebarSheetBody) inside the canonical
+// bottom-sheet (reuses <Sheet> — max-height, swipe-to-close, scrim, focus-trap).
+// On phones the slide-in drawer is suppressed via CSS and this is shown instead.
+// The parent gates `open` on the phone breakpoint and closes it through the
+// onNavigate / onShare / onAccount callbacks.
 export function TripSidebarSheet({ open, onOpenChange, ...rest }) {
   const { t } = useI18n();
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={t('trip.sections_title')}>
-      <SidebarBody {...rest} />
+      <SidebarSheetBody {...rest} />
     </Sheet>
   );
 }
