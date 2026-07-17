@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Drawer } from "vaul"
 import { cn } from "@/lib/utils"
 import { keepFocusInDialog } from "@/lib/dialogFocus"
+import { useIsPhone } from "@/hooks/use-mobile"
 
 // Responsive modal: on desktop a centred Radix dialog (unchanged); on phones
 // (≤640px) a vaul Drawer bottom-sheet — native full-surface swipe + momentum
@@ -17,24 +18,11 @@ import { keepFocusInDialog } from "@/lib/dialogFocus"
 // Portal+Overlay+Content need to switch libraries, driven by this context.
 const ResponsiveSheetCtx = React.createContext(false)
 
-function useIsSheet() {
-  const [isSheet, setIsSheet] = React.useState(
-    () => typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches,
-  )
-  React.useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)")
-    const onChange = () => setIsSheet(mq.matches)
-    mq.addEventListener("change", onChange)
-    onChange()
-    return () => mq.removeEventListener("change", onChange)
-  }, [])
-  return isSheet
-}
-
 // Root — vaul Drawer on phones, Radix Dialog on desktop. Same open/onOpenChange
 // contract either way; the chosen engine is published to DialogContent.
+// useIsPhone is the shared ≤640px sheet breakpoint (src/hooks/use-mobile).
 const Dialog = ({ children, ...props }) => {
-  const isSheet = useIsSheet()
+  const isSheet = useIsPhone()
   if (isSheet) {
     // repositionInputs={false}: the viewport meta (`interactive-widget=
     // resizes-content`) already lifts a bottom-anchored sheet above the

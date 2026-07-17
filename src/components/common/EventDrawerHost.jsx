@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import LpSheet from '@/components/ui/LpSheet';
+import { useIsPhone } from '@/hooks/use-mobile';
 
 /**
  * Global host for the event / city side panels — the same "drawer" panels the
@@ -23,18 +24,9 @@ import LpSheet from '@/components/ui/LpSheet';
 export default function EventDrawerHost({ open, onClose, scrim = false, title = '', children }) {
   const drawerRef = useRef(null);
 
-  // ≤640 → bottom sheet, matching the `.lp-sheet` CSS breakpoint (NOT the 768px
-  // useIsMobile hook: the sheet styles only kick in at ≤640, so a wider breakpoint
-  // would render sheet markup with no matching CSS).
-  const [isSheet, setIsSheet] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const onChange = () => setIsSheet(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  // ≤640 → bottom sheet, matching the `.lp-sheet` CSS breakpoint (the shared
+  // sheet-breakpoint hook, NOT the wider 768px useIsMobile menu breakpoint).
+  const isSheet = useIsPhone();
 
   // Desktop drawer: move focus into the panel on open, Esc closes.
   useEffect(() => {

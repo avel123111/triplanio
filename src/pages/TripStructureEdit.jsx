@@ -10,6 +10,7 @@ import PageNotFound from '@/lib/PageNotFound';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
@@ -158,13 +159,7 @@ export default function TripStructureEdit() {
   const closeLeftPanel = () => setLeftPanel(null);
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
-  const [isSheet, setIsSheet] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const onChange = () => setIsSheet(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const isSheet = useIsPhone();
   // TRIP-161: the two-column desktop layout (>1080px, mirrors the .ts-grid CSS
   // breakpoint). Only there do side panels open as a full-height drawer over the
   // left column; below it we keep the in-flow swap, ≤640 the bottom sheet.

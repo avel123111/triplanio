@@ -1298,34 +1298,12 @@ h4,
 .map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .map-route__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .map-route__dates { color: var(--muted); }
-.map-route .sheet-grip { display: none; } /* bottom-sheet grip — phones only (below) */
-@media (max-width: 640px) {
-  /* Always-on bottom sheet above the fixed 60px bottom nav: peek = grip + title,
-     dragging the grip reveals the scrollable list (height owned by JS, below).
-     Skin switches from glass to the canonical solid .sheet look (blur over a
-     moving map is muddy on phones). */
-  .map-route {
-    top: auto; left: 0; right: 0;
-    /* TRIP-222: the sheet runs to the screen bottom and covers the map behind the
-       floating dock, so no map peeks under the nav. The dock (fixed, higher
-       stacking) still floats on top unchanged. The grip+title peek stays at the
-       same visual height — the max-heights add the 60px dock zone the sheet now
-       spans below them, and the list gets matching bottom padding so its last
-       rows clear the dock. */
-    bottom: 0;
-    width: auto; max-width: none;
-    background: var(--surface); border: 0;
-    border-radius: 20px 20px 0 0; box-shadow: var(--sh-3);
-    backdrop-filter: none; -webkit-backdrop-filter: none;
-    max-height: calc(68px + 60px + env(safe-area-inset-bottom)); /* peek + dock zone */
-    transition: max-height .3s cubic-bezier(.22, 1, .36, 1);
-  }
-  /* Height is owned by JS on phones (RoutePanel): the grip drag drives max-height
-     live so the sheet follows the finger, then springs to peek / expanded. */
-  .map-route .sheet-grip { display: flex; width: 100%; background: none; border: 0; cursor: pointer; touch-action: none; }
-  .map-route__head { padding-top: 2px; border-bottom: 0; }
-  .map-route__list { flex: 1; min-height: 0; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
-}
+/* Phones (≤640px): the route panel is rendered inside <PeekSheet> (the non-modal
+   detent sheet — see .peek-sheet in the C6 section) instead of the floating glass
+   desktop panel. The route head + rows reuse the .map-route__* skin; PeekSheet's
+   __body is the scroller, so the inner list must not scroll on its own. */
+.peek-sheet .map-route__head { padding-top: 2px; border-bottom: 0; }
+.peek-sheet .map-route__list { overflow: visible; padding: 8px 8px 0; }
 
 /* City badge (TRIP-33): translucent glass label next to the active city's pin on
    the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
@@ -3584,6 +3562,39 @@ h4,
 .tm-account__txt { flex: 1; min-width: 0; }
 .tm-account__name { display: block; }
 .tm-account__sub { display: block; margin-top: 2px; color: var(--muted); }
+
+/* ============================================================
+   PeekSheet (TRIP-234) — non-modal PERSISTENT bottom sheet with peek↔full
+   detents (the "always-on, raises/lowers" archetype; iOS detents / Android
+   BottomSheetBehavior). The modal .sheet above (vaul) is for open/dismiss
+   sheets; this one never dismisses and leaves the content underneath live (no
+   backdrop). Rendered by <PeekSheet>; the JS owns the drag transform + snap.
+   ============================================================ */
+.peek-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  /* Below the fixed bottom-nav dock (.mbnav z-index:95) so the dock floats on top
+     of the peek unchanged (TRIP-222); still above the map (shell content). */
+  z-index: 90;
+  /* Height fits the content, capped at 88dvh — a short list expands only to its
+     own height; a long one hits the cap and the body scrolls. */
+  height: auto; max-height: 88dvh;
+  display: flex; flex-direction: column;
+  background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: var(--sh-3);
+  transform: translateY(calc(100% - var(--peek, 140px))); /* rest at peek (JS sets --peek) */
+  transition: transform .32s cubic-bezier(.22, 1, .36, 1);
+  overscroll-behavior: none; /* never chain a drag to the page → no pull-to-refresh */
+}
+.peek-sheet.is-expanded { transform: translateY(0); }
+.peek-sheet.is-dragging { transition: none; } /* follow the finger 1:1 mid-drag */
+/* Grip + header are the drag zones (touch-action:none → the gesture is ours);
+   the body scrolls natively (pan-y). */
+.peek-sheet__grip { display: flex; justify-content: center; width: 100%; padding: 11px 0 3px; flex: none; border: 0; background: none; cursor: grab; touch-action: none; }
+.peek-sheet__grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
+.peek-sheet__head { flex: none; touch-action: none; }
+/* flex:0 1 auto → the body is its content height until the sheet hits the cap,
+   then it shrinks and scrolls. padding-bottom = dock zone + a small gap so the
+   last row clears the bottom-nav at the end of the scroll. */
+.peek-sheet__body { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom)); }
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).
