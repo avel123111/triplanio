@@ -95,14 +95,11 @@ export function activityPlatforms(visit, t, lang) {
         hint: cityEn,
         logo: 'https://img.wway.io/travelpayouts/brands/icon/11@svg',
         // Deep-link by the city's Tripster slug (cities.tripster_slug, seeded from
-        // the Tripster directory). Until a city is seeded, fall back to the English
-        // city name as the slug (legacy behaviour); when neither is known, the
-        // attributed TravelPayouts homepage fallback link.
+        // the Tripster directory); when the city has no slug, the attributed
+        // TravelPayouts homepage fallback link.
         url: tripsterSlug
           ? tpLink(11, 652, `https://experience.tripster.ru/experience/${tripsterSlug}/`)
-          : cityEn
-            ? tpLink(11, 652, `https://experience.tripster.ru/experience/${cityEn}/`)
-            : 'https://tripster.tpx.lt/FI9cXo6V?erid=2VtzqvY2rSV',
+          : 'https://tripster.tpx.lt/FI9cXo6V?erid=2VtzqvY2rSV',
         provider: 'travelpayouts',
       },
       {
