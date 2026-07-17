@@ -43,6 +43,7 @@ const ddmm = (iso) => (iso ? DateTime.fromISO(iso).toFormat('ddLL') : '');
 // Each dynamic link falls back to the partner homepage (attribution preserved).
 export function activityPlatforms(visit, t, lang) {
   const cityEn = visit?.city_name_en || visit?.cities?.name_en || visit?.city_name || '';
+  const tripsterSlug = visit?.cities?.tripster_slug || '';
   const viatorDest = visit?.cities?.viator_dest_id ?? visit?.viator_dest_id;
   // Viator affiliate ids (public partner ids); destination deep-link host.
   const VIATOR_REF = 'mcid=42383&pid=P00306202&medium=api&api_version=2.0';
@@ -93,9 +94,12 @@ export function activityPlatforms(visit, t, lang) {
         label: findOn(t, 'Tripster'),
         hint: cityEn,
         logo: 'https://img.wway.io/travelpayouts/brands/icon/11@svg',
-        url: cityEn
-          ? tpLink(11, 652, `https://experience.tripster.ru/experience/${cityEn}/`)
-          : tpLink(11, 652, 'https://experience.tripster.ru/'),
+        // Deep-link by the city's Tripster slug (cities.tripster_slug, seeded from
+        // the Tripster directory); when the city has no slug, the attributed
+        // TravelPayouts homepage fallback link.
+        url: tripsterSlug
+          ? tpLink(11, 652, `https://experience.tripster.ru/experience/${tripsterSlug}/`)
+          : 'https://tripster.tpx.lt/FI9cXo6V?erid=2VtzqvY2rSV',
         provider: 'travelpayouts',
       },
       {
