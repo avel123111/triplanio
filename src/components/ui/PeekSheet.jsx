@@ -32,6 +32,7 @@ import { createPortal } from 'react-dom';
  */
 
 const DOCK_PX = 60; // the fixed bottom-nav dock the peek sits behind (TRIP-222)
+const FLICK_VELOCITY = 0.3; // px/ms at release above which a flick snaps by direction
 
 // Resolve the home-indicator inset in px (env() can't be read directly in JS).
 function safeAreaBottom() {
@@ -90,13 +91,15 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
       drag.current = {
         startY: e.touches[0].clientY,
         base, peekOffset, last: base,
+        lastY: e.touches[0].clientY, lastT: e.timeStamp, vy: 0, // for velocity/flick
         onGrip: !!(e.target.closest && e.target.closest('[data-peek-grip]')),
         mode: 'idle',
       };
     };
     const onMove = (e) => {
       const d = drag.current; if (!d) return;
-      const dy = e.touches[0].clientY - d.startY; // + down, − up
+      const y = e.touches[0].clientY;
+      const dy = y - d.startY; // + down, − up
       if (d.mode === 'idle') {
         if (Math.abs(dy) < 4) return; // wait for intent
         const atTop = !bodyRef.current || bodyRef.current.scrollTop <= 0;
@@ -106,6 +109,11 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
       }
       if (d.mode !== 'drag') return;
       e.preventDefault();
+      // Track finger velocity (px/ms, + = downward) from the last sample so a
+      // quick flick snaps even over a short distance.
+      const dt = e.timeStamp - d.lastT;
+      if (dt > 0) d.vy = (y - d.lastY) / dt;
+      d.lastY = y; d.lastT = e.timeStamp;
       const offset = Math.max(0, Math.min(d.peekOffset, d.base + dy));
       d.last = offset;
       setDragOffset(offset);
@@ -116,7 +124,14 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
       const { expanded: exp, onExpandedChange: cb } = live.current;
       if (d.mode === 'drag') {
         setDragOffset(null);
-        const next = d.last < d.peekOffset / 2; // settled nearer full → expand
+        // Ignore a stale velocity if the finger paused before lifting (>80ms
+        // since the last move) — that's a deliberate placement, not a flick.
+        const vy = (e.timeStamp - d.lastT) < 80 ? d.vy : 0;
+        // A real flick commits in its direction over any distance (responsive);
+        // a slow/paused drag settles to whichever detent is closer.
+        const next = Math.abs(vy) > FLICK_VELOCITY
+          ? vy < 0            // flick up → expand, flick down → collapse
+          : d.last < d.peekOffset / 2; // → nearer detent
         if (next !== exp) cb && cb(next);
       } else if (d.mode === 'idle' && d.onGrip) {
         e.preventDefault(); // swallow the emulated click, then toggle
