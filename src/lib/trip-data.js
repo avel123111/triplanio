@@ -8,6 +8,8 @@
 // invalidateTripData(qc, tripId) so the user-visible state stays consistent
 // across the two queries.
 
+import { reportDataError } from './reportDataError.js';
+
 export const TRIP_SHELL_KEY = (tripId) => ['trip-shell', tripId];
 export const TRIP_CONTENT_KEY = (tripId) => ['trip-content', tripId];
 
@@ -47,8 +49,19 @@ export const TRIP_CONTENT_KEY = (tripId) => ['trip-content', tripId];
  */
 export async function writeRows(builder, { expectRow = true } = {}) {
   const { data, error } = await builder.select();
-  if (error) throw error;
-  if (expectRow && !data?.length) throw new Error('write_rejected');
+  // Report BEFORE throwing: a write can fail on the optimistic fire-and-forget
+  // path (EventEditDialog booking create) that never reaches a React-Query cache
+  // onError, so the throw alone would only surface as a toast. reportDataError
+  // stamps `__seamHandled`, so when this DOES bubble through a mutation it is not
+  // reported a second time by MutationCache.onError.
+  if (error) { reportDataError(error, 'write'); throw error; }
+  if (expectRow && !data?.length) {
+    // 0 rows on insert/update = a silent RLS reject (PostgREST hid the row) —
+    // a real, invisible write failure. Report it like any other.
+    const rejected = new Error('write_rejected');
+    reportDataError(rejected, 'write');
+    throw rejected;
+  }
   return data ?? [];
 }
 

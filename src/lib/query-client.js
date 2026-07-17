@@ -1,5 +1,6 @@
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
 import { statusOf } from './loadStateClassify.js';
+import { reportDataError } from './reportDataError.js';
 
 // Retry policy (TRIP-208 B2) ────────────────────────────────────────────────────
 // The old `retry: 1` retried EVERYTHING once with no delay: it retried 4xx that
@@ -26,41 +27,13 @@ export function retryDelay(attempt) {
 }
 
 // Data-layer error seam (TRIP-219 F3) ────────────────────────────────────────────
-// ONE place that reports every React-Query failure to Sentry, so a swallowed
-// query/mutation error can't hide. This is the class of failure no edge/invoke
-// seam sees: direct PostgREST / RPC errors (`.from()` / `.rpc()` that `throw`).
-//
-// Dedup with the invoke/edge seam: an error routed through `invokeFn` is stamped
-// `__seamHandled` (edge already captured a server 4xx/5xx, or invokeFn captured a
-// network / 200-error), so a queryFn re-throwing it is skipped here — never twice.
-// Navigational `Failed to fetch` / `AbortError` are dropped by the SDK's
-// `ignoreErrors`, so no extra filter is needed.
-//
-// Only the FIRST queryKey/mutationKey segment (the logical name) is tagged — later
-// segments carry ids / share-tokens (PII), so they are deliberately not sent.
-//
-// Sentry is imported LAZILY (inside the handler) so this module stays importable
-// under `node --test` (sentry.js reads `import.meta.env`) — same reason
-// subscription.js lazy-imports invokeFn.
-function reportDataError(error, source, key) {
-	if (!error || error.__seamHandled) return;
-	const name = Array.isArray(key) ? key[0] : key;
-	import('./sentry').then(({ Sentry }) => {
-		const status = statusOf(error);
-		Sentry.captureException(error instanceof Error ? error : new Error(String(error?.message ?? error)), {
-			tags: {
-				surface: 'frontend', layer: 'data', source,
-				...(status ? { status: String(status) } : {}),
-				...(name ? { query: String(name) } : {}),
-			},
-		});
-	}).catch((e) => {
-		// Monitoring must never break the app — but surface the failure in dev so a
-		// blocked/misconfigured Sentry doesn't make data errors silently vanish.
-		if (import.meta.env.DEV) console.warn('[monitoring] data-error report failed', e);
-	});
-}
-
+// Every React-Query failure is reported to Sentry via the shared `reportDataError`
+// (see ./reportDataError.js), so a swallowed query/mutation error can't hide. That
+// same reporter is used by the direct-write seam (`writeRows`), so a write that
+// fails OUTSIDE React-Query (an optimistic fire-and-forget insert) is covered too.
+// An error stamped `__seamHandled` (by invokeFn or by the write seam) is skipped
+// here — never reported twice. Navigational `Failed to fetch` / `AbortError` are
+// dropped by the SDK's `ignoreErrors`.
 export const queryClientInstance = new QueryClient({
 	queryCache: new QueryCache({
 		onError: (error, query) => reportDataError(error, 'query', query?.queryKey),
