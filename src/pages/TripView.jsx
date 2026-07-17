@@ -10,6 +10,7 @@ import TripLoadError from '@/components/trips/TripLoadError';
 import PageNotFound from '@/lib/PageNotFound';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { isAddonEnabled } from '@/lib/tripAddons';
@@ -924,13 +925,7 @@ export default function TripView() {
   }, [setTripCtx]);
   // Phones (≤640px) get the menu as a bottom-sheet instead of the slide-in
   // drawer; the drawer + its scrim are suppressed at this breakpoint in CSS.
-  const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const onChange = () => setIsPhone(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const isPhone = useIsPhone();
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
   // Viewers can't open Settings/Members even by deep link → fall back too.

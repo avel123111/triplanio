@@ -92,7 +92,8 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
         startY: e.touches[0].clientY,
         base, peekOffset, last: base,
         lastY: e.touches[0].clientY, lastT: e.timeStamp, vy: 0, // for velocity/flick
-        onGrip: !!(e.target.closest && e.target.closest('[data-peek-grip]')),
+        // A tap anywhere on the grip OR the header toggles (not just the grip bar).
+        onHandle: !!(e.target.closest && e.target.closest('[data-peek-grip],[data-peek-head]')),
         mode: 'idle',
       };
     };
@@ -133,7 +134,7 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
           ? vy < 0            // flick up → expand, flick down → collapse
           : d.last < d.peekOffset / 2; // → nearer detent
         if (next !== exp) cb && cb(next);
-      } else if (d.mode === 'idle' && d.onGrip) {
+      } else if (d.mode === 'idle' && d.onHandle) {
         e.preventDefault(); // swallow the emulated click, then toggle
         cb && cb(!exp);
       }
@@ -178,7 +179,7 @@ export function PeekSheet({ header, children, expanded, onExpandedChange, label 
       >
         <i />
       </div>
-      <div ref={headRef} className="peek-sheet__head">{header}</div>
+      <div ref={headRef} className="peek-sheet__head" data-peek-head>{header}</div>
       <div ref={bodyRef} className="peek-sheet__body">{children}</div>
     </div>,
     document.body,

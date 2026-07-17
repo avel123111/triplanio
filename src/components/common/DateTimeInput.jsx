@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
 import StartCalendar from '@/components/create/StartCalendar';
 import { Popover, PopoverTrigger, PopoverContent, Sheet } from '@/design/index';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -44,8 +45,7 @@ export default function DateTimeInput({
   // parsed back and wipe the date the user just picked; a value that differs
   // from it is a genuine external change (entity load / form reset) → resync.
   const emitted = useRef(value);
-  const isSheet = typeof window !== 'undefined'
-    && window.matchMedia('(max-width: 640px)').matches;
+  const isSheet = useIsPhone();
 
   useEffect(() => {
     if (value !== emitted.current) {

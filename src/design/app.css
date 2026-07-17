@@ -1308,7 +1308,6 @@ h4,
    __body is the scroller, so the inner list must not scroll on its own. */
 .peek-sheet .map-route__head { padding-top: 2px; border-bottom: 0; }
 .peek-sheet .map-route__list { overflow: visible; padding: 8px 8px 0; }
-.peek-sheet .map-route__empty { flex: 1; }
 
 /* City badge (TRIP-33): translucent glass label next to the active city's pin on
    the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
@@ -3530,7 +3529,9 @@ h4,
   /* Below the fixed bottom-nav dock (.mbnav z-index:95) so the dock floats on top
      of the peek unchanged (TRIP-222); still above the map (shell content). */
   z-index: 90;
-  height: 88dvh; max-height: 88dvh;
+  /* Height fits the content, capped at 88dvh — a short list expands only to its
+     own height; a long one hits the cap and the body scrolls. */
+  height: auto; max-height: 88dvh;
   display: flex; flex-direction: column;
   background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: var(--sh-3);
   transform: translateY(calc(100% - var(--peek, 140px))); /* rest at peek (JS sets --peek) */
@@ -3544,7 +3545,10 @@ h4,
 .peek-sheet__grip { display: flex; justify-content: center; width: 100%; padding: 11px 0 3px; flex: none; border: 0; background: none; cursor: grab; touch-action: none; }
 .peek-sheet__grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
 .peek-sheet__head { flex: none; touch-action: none; }
-.peek-sheet__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + env(safe-area-inset-bottom)); } /* clear the dock */
+/* flex:0 1 auto → the body is its content height until the sheet hits the cap,
+   then it shrinks and scrolls. padding-bottom = dock zone + a small gap so the
+   last row clears the bottom-nav at the end of the scroll. */
+.peek-sheet__body { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom)); }
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).
