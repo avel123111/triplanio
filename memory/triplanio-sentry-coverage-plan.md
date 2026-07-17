@@ -76,3 +76,61 @@ F1→F2→F3, потом трейсинг+Replay (F5), n8n+cron (F6). `invokeFn`
 `{data,error,code,message}` (drop-in для `supabase.functions.invoke`), парсит
 `parseEdgeError` ОДИН раз (Response body читается однократно!) → мигрируемые
 call-sites ОБЯЗАНЫ убрать свой `parseEdgeError`. Пилот: `src/lib/fx.js`.
+
+**★СТАТУС 2026-07-17 (что реально в dev + куда пришли).**
+ФРОНТ-ФАЗА ЗАВЕРШЕНА и в `dev`: F1 invokeFn-шов + гард 2i (`check-invoke-seam`,
+сырой `functions.invoke` вне шва не проходит); F2 route+lens error-boundaries
+(App.jsx + TripView); F3 `QueryCache/MutationCache.onError` в `query-client.js`;
+F5a трейсинг 10% + Session Replay (только ошибки, всё маскировано) + PII-скраб на
+`beforeSend` И `beforeSendTransaction`. Прямой PostgREST-слой покрыт КОНВЕНЦИЕЙ
+`throw`/`writeRows` (бросает на ошибку/0-строк RLS), НЕ гардом — асимметрия, не
+дыра (best-effort swallow'ы в partnerTracking/geo/i18n — намеренны).
+**Severity-модель:** ожидаемые бизнес-4xx глушатся `x-sentry-skip` (инвайт-410,
+checkout-409). НЕ строили центральный классификатор/типизированные исключения —
+отвергли как оверинжиниринг. Живой шум TRIPLANIO-K (`getUserPlan responded 401`,
+дохлая/негидратированная сессия из `useProStatus`) заглушён точечно: PR #525
+(мёржён, `code:UNAUTHENTICATED`+skip) + PR #527 (открыт — не глушить настоящую
+аварию Auth: `getRequestUserResult` различает 5xx→503 репортим vs 4xx→skip).
+Унификацию 35 руками-написанных 401 в общий `requireUser` вынесли в **TRIP-239**
+(радиус = все authed-функции вкл. платёжные → отдельно с гребом фронт-потребителей).
+
+**N8N-ФАЗА — направление ИЗМЕНЕНО (Pavel 2026-07-17): n8n шлёт в Sentry НАПРЯМУЮ,
+наш edge-релей НЕ делаем** (в коробочном Sentry-узле n8n нет create-issue → всё
+равно нужен HTTP; Pavel не хочет звать наш API; DSN-креды в n8n уже есть). Схема:
+- **Контур 1 (ошибки workflow):** один n8n workflow `Error Trigger → HTTP Request`
+  → POST в Sentry store-endpoint `…/api/<PROJECT_ID>/store/?sentry_key=<PUBLIC_KEY>&sentry_version=7`
+  с телом-событием (tags surface:n8n/workflow/node, fingerprint по workflow+node);
+  прописать как «Error Workflow» в настройках 7 активных workflow'ов (TG Reminders,
+  TG Chat Bot, InApp Group Chat Bot, TG Admin, AI Trip Parser, AI Trip Planner,
+  AI Usage Logger). Sentry сам группирует события в issue — «create issue» не нужно.
+- **Контур 2 (живость крона):** на free ОДИН cron-монитор → потрачен на самый
+  критичный `tg-reminders` (id 1515295, GUID 609f96c1…, schedule `*/15`, margin 5,
+  UTC — Pavel СОЗДАЛ). Чек-ин из n8n: HTTP-нода `…/api/<PROJECT_ID>/cron/tg-reminders/<PUBLIC_KEY>/?status=ok`
+  СРАЗУ после `getPendingReminders` (на ветке, идущей КАЖДЫЙ тик, не после Split→AI→send,
+  иначе ложные missed на пустых прогонах). instrumentation method при создании = **HTTP**
+  (не Deno/NodeJS — SDK не используем). Пока пришёл 1 тестовый чек-ин, рекуррентный
+  ещё НЕ провязан. Всё это — БЕЗ нашего кода (ни релея, ни правки getPendingReminders).
+
+**Uptime (побочно):** авто-монитор `1464763` = Sentry-Uptime (не крон) на МЁРТВЫЙ
+Vercel-preview, авто-создан 07.07 из URL в событии → снести + выключить «auto uptime
+detect». Обсудили Uptime для Railway-сервисов: n8n `/healthz`, Tolgee `/actuator/health`
+(фолбэк `/api/public/configuration`); Cyrus headless (нет входящего HTTP) → uptime-пинг
+не подходит. На free uptime тоже лимитирован — проверить слоты.
+
+**★ПОЙМАНО мониторингом (первый реальный сбой) 17.07 ~16:00:** тик TG Reminders упал
+— нода HTTP к `getPendingReminders` получила `503 SUPABASE_EDGE_RUNTIME_SERVICE_DEGRADED`
+(транзиторная деградация Supabase edge, НЕ наш код; prod). Привело к ПОТЕРЕ напоминаний:
+`get_pending_reminders` — read-only SELECT (лог в `telegram_reminder_logs` пишет edge
+ПОСЛЕ, она не выполнилась → не дедуп-проблема), НО окно скользящее `window_minutes=20`
+при Schedule `*/15` → перекрытие тиков всего 5 мин → упавший тик теряет ~15 мин окна
+безвозвратно. Фиксы вынесены в **TRIP-242** (High): retry на HTTP-ноде (Max Tries 3,
+Wait 5000) + расширить `window_minutes` ≥30 (≥2× шага → один пропущенный тик само-лечится,
+dedup не даст дубль). Опц. retry в AI Parser/Planner.
+
+**ОСТАЛОСЬ по TRIP-219:** (1) провязать рекуррентный чек-ин `tg-reminders` в n8n; (2)
+собрать n8n «Sentry Error Reporter» (Error Trigger→HTTP) + проставить в 7 workflow'ах;
+(3) снести uptime-мусор 1464763 + выключить авто-детект; (4) usage-алерт квоты Sentry
+(тумблер Pavel); (5) ручное — снести осиротевший edge-инстанс `getDailyReminders` на
+dev+prod. Отдельно/вне 219: PR #527 (мердж), TRIP-239 (requireUser), TRIP-242 (reminders
+resilience). Контур C (сквозной трейс browser→edge) — Pavel решил НЕ делать (нужен
+isolation-scope рефактор edge, иначе только заголовки = бесполезно + CORS-поверхность).
