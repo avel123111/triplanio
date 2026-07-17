@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-★В РАБОТЕ 2026-07-17 (TRIP-236, ветка `cyrus1/trip-236-rf-horoda-v-cities`, PR ещё нет). Две задачи Pavel: (1) завести РФ-города в `cities`, (2) обогатить все города данными Tripster (пока только `tripster_slug`).
+★PR #535 в dev 2026-07-17 (TRIP-236, ветка `cyrus1/trip-236-rf-horoda-v-cities`). Две задачи Pavel: (1) завести РФ-города в `cities` — СДЕЛАНО в PR #535 (сид 260 РФ); (2) обогатить все города `tripster_slug` — REST-часть (~640) в верифицир. follow-up. PR #535 = чистка схемы + `tripster_slug`(+CHECK≤128) + FE (Tripster-ссылка на слаг → tpx.lt-фолбэк, без cityEn) + edge (`getTripDetails` select) + сид 260 РФ (прод cities был 0 РФ → все INSERT).
 
 **Контекст.** В проде `cities` = разрежённый affiliate-справочник (не источник гео — гео из `geo_gazetteer`/снапшота `city_visits.name_i18n`). 0 РФ-городов (весь справочник из Viator/GYG, а они по РФ не работают). Ключ идентичности — `geonameid` (100% заполнен, уникален), но **PK физически на `id`** (Pavel решил `id` не трогать — ничего на `cities.id` не ссылается: 0 FK, 0 читателей).
 
