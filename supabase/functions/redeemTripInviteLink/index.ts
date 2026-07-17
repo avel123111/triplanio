@@ -47,9 +47,12 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
       .from('trip_invite_links').select('*').eq('token', token).maybeSingle();
 
     if (!link) return Response.json({ error: 'invalid', reason: 'not_found' }, { status: 404, headers: corsHeaders });
-    if (link.revoked_at) return Response.json({ error: 'revoked', reason: 'revoked' }, { status: 410, headers: corsHeaders });
+    // x-sentry-skip: an expired/revoked link is a NORMAL business outcome (users
+    // click old links), not an error — the frontend shows a designed message. Don't
+    // let withHandler alert on it (high-frequency, non-actionable noise).
+    if (link.revoked_at) return Response.json({ error: 'revoked', reason: 'revoked' }, { status: 410, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
     if (new Date(link.expires_at).getTime() < Date.now()) {
-      return Response.json({ error: 'expired', reason: 'expired' }, { status: 410, headers: corsHeaders });
+      return Response.json({ error: 'expired', reason: 'expired' }, { status: 410, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
     }
 
     const { data: trip } = await supabaseAdmin

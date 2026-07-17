@@ -71,17 +71,21 @@ Deno.serve(withHandler('createStripeCheckout', async (req, corsHeaders) => {
       const { data: alreadyPro, error: proErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: tripId });
       if (proErr) throw proErr;
       if (alreadyPro) {
-        return Response.json({ error: 'This trip is already Pro', code: 'TRIP_ALREADY_PRO' }, { status: 409, headers: corsHeaders });
+        // x-sentry-skip: a normal business "no" (checkout re-initiated for an
+        // already-Pro trip) — the frontend handles it, not an error to alert on.
+        return Response.json({ error: 'This trip is already Pro', code: 'TRIP_ALREADY_PRO' }, { status: 409, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
       }
     } else {
       // Статус-driven (как recompute): active/trialing/past_due держат Pro.
       const { data: subs } = await supabaseAdmin
         .from('subscription').select('status').eq('user_id', user.id).in('status', [...ENTITLING_STATUSES]).limit(1);
       if (subs && subs.length > 0) {
+        // x-sentry-skip: expected business "no" — user already subscribed; the
+        // frontend opens the billing portal. Not an error to alert on.
         return Response.json({
           error: 'You already have an active subscription. Use the billing portal to change plans.',
           code: 'SUBSCRIPTION_ALREADY_ACTIVE',
-        }, { status: 409, headers: corsHeaders });
+        }, { status: 409, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
       }
     }
 
