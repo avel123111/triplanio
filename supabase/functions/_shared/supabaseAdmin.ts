@@ -1,4 +1,5 @@
 import { createClient, type User } from 'npm:@supabase/supabase-js@2';
+import { HttpError } from './http.ts';
 
 /**
  * Service-role client — bypasses RLS. Use only inside Edge Functions
@@ -43,17 +44,23 @@ export async function getRequestUserResult(
 
 /**
  * Extracts the caller's Supabase user from the request's Authorization header.
- * Returns null if the header is absent or the token is invalid.
+ * Returns null if the header is absent or the token is invalid/expired (an
+ * EXPECTED, unauthenticated outcome the caller renders as a 401).
  *
- * Note: this collapses an Auth-service outage into the same `null`. Callers that
- * must tell those apart (e.g. to avoid silencing a real outage) should use
- * `getRequestUserResult` instead.
+ * A genuine Auth-service OUTAGE (5xx / retryable) is NOT collapsed into that
+ * `null` — it throws `HttpError(503, …, 'AUTH_UNAVAILABLE')`, which the top-level
+ * `withHandler` catch reports to Sentry (an operational incident) and returns as a
+ * 503 the client treats as "temporary → retry", not "session dead → /login". This
+ * is what lets `withHandler` safely stay silent on 401: a real outage never
+ * presents AS a 401. Callers that must branch on the outage flag without throwing
+ * can still use `getRequestUserResult` directly.
  *
  * Usage:
  *   const user = await getRequestUser(req);
  *   if (!user) return unauthorized();
  */
 export async function getRequestUser(req: Request) {
-  const { user } = await getRequestUserResult(req);
+  const { user, authFailed } = await getRequestUserResult(req);
+  if (authFailed) throw new HttpError(503, 'Auth service unavailable', 'AUTH_UNAVAILABLE');
   return user; // user.id (uuid), user.email
 }
