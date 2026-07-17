@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Drawer } from 'vaul';
+import LpSheet from '@/components/ui/LpSheet';
 
 /**
  * Global host for the event / city side panels — the same "drawer" panels the
@@ -44,25 +44,9 @@ export default function EventDrawerHost({ open, onClose, scrim = false, title = 
 
   if (!open) return null;
 
+  // ≤640 → the shared mobile panel shell (same vaul Drawer as the editor).
   if (isSheet) {
-    return (
-      <Drawer.Root open onOpenChange={(o) => { if (!o) onClose?.(); }} repositionInputs={false}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="sheet-backdrop" />
-          {/* vaul owns the slide + drag + keyboard reposition; the panel's own
-              Back button still closes it, and swipe-down / backdrop now do too. */}
-          <Drawer.Content
-            className="lp-sheet"
-            aria-describedby={undefined}
-          >
-            <Drawer.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-              {title}
-            </Drawer.Title>
-            {children}
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
-    );
+    return <LpSheet open onClose={onClose} title={title}>{children}</LpSheet>;
   }
 
   const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose?.(); } };
