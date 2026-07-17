@@ -1,27 +1,15 @@
-import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Drawer } from 'vaul';
 import { pointType, TONE } from '@/lib/travel-stats';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { Icon } from '@/design/icons';
 
 // ≤640px the panel is a bottom sheet — render it through vaul (native swipe +
 // keyboard-safe) instead of the CSS-restyled Radix drawer. Above 640 it stays
-// the desktop right slide-over. Matches the `.vpanel` breakpoint in app.css.
-function useIsSheet() {
-  const [isSheet, setIsSheet] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const onChange = () => setIsSheet(mq.matches);
-    mq.addEventListener('change', onChange);
-    onChange();
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return isSheet;
-}
+// the desktop right slide-over. Uses the shared ≤640px sheet breakpoint hook
+// (src/hooks/use-mobile), matching the `.vpanel` breakpoint in app.css.
 
 // Visit panel for the "My statistics" screen — opens when a country/city/pin is
 // selected and lists the visits at that place. Reuses Radix Dialog (focus-trap /
@@ -167,7 +155,7 @@ export default function VisitPanel({
 }) {
   const isCity = kind === 'city';
   const rows = groupVisits(visits);
-  const isSheet = useIsSheet();
+  const isSheet = useIsPhone();
 
   // Shared body — the Radix Dialog.Title/Close primitives work inside either
   // Root (vaul wraps Radix Dialog), so the header is identical for both.

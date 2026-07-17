@@ -10,6 +10,7 @@ import PageNotFound from '@/lib/PageNotFound';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
@@ -21,7 +22,7 @@ import { Icon } from '../design/icons';
 import { Btn, Skeleton, useToast } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
-import { Drawer } from 'vaul';
+import LpSheet from '@/components/ui/LpSheet';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
@@ -158,13 +159,7 @@ export default function TripStructureEdit() {
   const closeLeftPanel = () => setLeftPanel(null);
   // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
   // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
-  const [isSheet, setIsSheet] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const onChange = () => setIsSheet(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const isSheet = useIsPhone();
   // TRIP-161: the two-column desktop layout (>1080px, mirrors the .ts-grid CSS
   // breakpoint). Only there do side panels open as a full-height drawer over the
   // left column; below it we keep the in-flow swap, ≤640 the bottom sheet.
@@ -981,22 +976,13 @@ export default function TripStructureEdit() {
           </>)}
           </div>{/* /te-panefade */}
 
-          {/* Mobile: the editor panel opens as a bottom sheet — the SAME vaul
-              Drawer engine as modals (native swipe + keyboard-safe reposition).
-              Backdrop tap / swipe-down / the panel's own Back all close it. */}
+          {/* Mobile: the editor panel opens as a bottom sheet — the SAME shared
+              LpSheet shell as the global EventDrawerHost (native swipe +
+              keyboard-safe reposition; backdrop / swipe-down / Back all close). */}
           {isSheet && leftPanelEl && (
-            <Drawer.Root open onOpenChange={(o) => { if (!o) closeLeftPanel(); }} repositionInputs={false}>
-              <Drawer.Portal>
-                <Drawer.Overlay className="sheet-backdrop" />
-                <Drawer.Content
-                  className="lp-sheet"
-                  aria-describedby={undefined}
-                >
-                  <Drawer.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('trip.edit_structure')}</Drawer.Title>
-                  {leftPanelEl}
-                </Drawer.Content>
-              </Drawer.Portal>
-            </Drawer.Root>
+            <LpSheet open onClose={closeLeftPanel} title={t('trip.edit_structure')}>
+              {leftPanelEl}
+            </LpSheet>
           )}
           </div>{/* /ts-leftbox */}
 

@@ -67,8 +67,16 @@ async function readActualPrice(sub: SubPriceRow | null) {
 }
 
 Deno.serve(withHandler('getUserPlan', async (req, corsHeaders) => {
+    // Stale/absent token → 401 (expected; withHandler stays silent on it centrally,
+    // TRIP-240). A genuine Auth-service outage is raised as a 503 inside
+    // getRequestUser (AUTH_UNAVAILABLE) and reported — it never reaches here as null.
     const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    if (!user) {
+      return Response.json(
+        { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
+        { status: 401, headers: corsHeaders },
+      );
+    }
 
     // Read subscription fields from users table
     let { data: userData } = await supabaseAdmin

@@ -13,6 +13,9 @@ import '../design/app.css';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
 // modal - callers navigate here with `/pro?tripId=...&hidePerTrip=1`.
+// Layout (TRIP-229): three compare cards (Free / Monthly / Yearly), each with
+// its OWN action button — no radio-select, no sticky footer. The one-time
+// per-trip pass is a separate banner below the grid, shown only to the owner.
 export default function Pro() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
@@ -24,14 +27,12 @@ export default function Pro() {
 
   const tripId = searchParams.get('tripId') || null;
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
-  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan —
-  // they can still buy a subscription, but can't buy Pro for someone else's trip.
-  // Every in-app CTA that carries a tripId is already owner-gated, so the owner is
-  // the only realistic visitor: show pro_trip OPTIMISTICALLY while ownership is
-  // still unknown (null) and only drop it once the check explicitly returns false.
-  // This avoids a late "third card pops in" reflow for the common (owner) path;
-  // the rare leaked-URL non-owner sees a single one-time 3→2 collapse instead, and
-  // the actual purchase is blocked server-side regardless.
+  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip banner —
+  // they can still subscribe, but can't buy Pro for someone else's trip. Every
+  // in-app CTA carrying a tripId is already owner-gated, so the owner is the only
+  // realistic visitor: show the banner OPTIMISTICALLY while ownership is unknown
+  // (null) and only drop it once the check explicitly returns false. Purchase is
+  // blocked server-side regardless.
   const [tripOwner, setTripOwner] = useState(null); // null = unknown
   useEffect(() => {
     if (!tripId) return;
@@ -47,8 +48,9 @@ export default function Pro() {
   // Start in the loading state: prices are always fetched on mount, so the very
   // first paint should already show skeletons (not a one-frame flash of "-" cards).
   const [pricesLoading, setPricesLoading] = useState(true);
-  const [picked, setPicked] = useState('account_pro_monthly');
-  const [loading, setLoading] = useState(false);
+  // productCode currently being checked out (null = idle). Drives the per-card
+  // spinner and disables the other buttons while one purchase is in flight.
+  const [loadingPlan, setLoadingPlan] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -61,18 +63,14 @@ export default function Pro() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    if (hidePerTrip && picked === 'trip_pro_lifetime') setPicked('account_pro_monthly');
-  }, [hidePerTrip, picked]);
-
   const handleUpgrade = async (productCode) => {
     setErrorMsg('');
     posthog?.capture('pro_upgrade_initiated', { product_code: productCode, trip_id: tripId || undefined });
     try {
-      setLoading(true);
+      setLoadingPlan(productCode);
       let isIframe = false;
       try { isIframe = window.self !== window.top; } catch { isIframe = true; }
-      if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoading(false); return; }
+      if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoadingPlan(null); return; }
 
       // landing-path (trip_pro_lifetime → /trip/<id>, sub → /settings) деривируется НА
       // СЕРВЕРЕ из (productCode, tripId) — returnPath клиента не шлём (ломал детерминизм
@@ -84,59 +82,86 @@ export default function Pro() {
           const portal = await invokeFn('createBillingPortal', { body: { returnPath: '/settings' } });
           if (portal.data?.url) { window.location.href = portal.data.url; return; }
           setErrorMsg(t('sub.already_active_msg'));
-          setLoading(false);
+          setLoadingPlan(null);
           return;
         }
         setErrorMsg(t('sub.upgrade_error', { message: message || error?.message }));
-        setLoading(false);
+        setLoadingPlan(null);
         return;
       }
       if (data?.url) { window.location.href = data.url; return; }
-      setLoading(false);
+      setLoadingPlan(null);
     } catch (error) {
       console.error('Upgrade error:', error);
       setErrorMsg(t('sub.upgrade_error', { message: error.message }));
-      setLoading(false);
+      setLoadingPlan(null);
     }
   };
 
   const renderPrice = (productCode) => {
     const p = prices?.[productCode];
-    if (!p) return { price: '-', period: '' };
-    const amount = (p.unit_amount || 0) / 100;
-    const price = fmtMoney(amount, p.currency, { minFraction: 0, maxFraction: 2 });
-    let period = '';
-    if (p.recurring_interval === 'month') period = t('sub.period_month');
-    else if (p.recurring_interval === 'year') period = t('sub.period_year');
-    else period = t('sub.period_once');
-    return { price, period };
+    if (!p) return '-';
+    return fmtMoney((p.unit_amount || 0) / 100, p.currency, { minFraction: 0, maxFraction: 2 });
   };
 
-  const allPlans = [
+  // Currency + derived yearly savings, all from the live Stripe prices.
+  const currency = prices?.account_pro_yearly?.currency || prices?.account_pro_monthly?.currency || 'usd';
+  const monthlyAmt = prices?.account_pro_monthly?.unit_amount || null;
+  const yearlyAmt = prices?.account_pro_yearly?.unit_amount || null;
+  const yearStrike = monthlyAmt ? fmtMoney((monthlyAmt * 12) / 100, currency, { minFraction: 0, maxFraction: 2 }) : null;
+  const yearPerMonth = yearlyAmt ? fmtMoney(yearlyAmt / 12 / 100, currency, { minFraction: 0, maxFraction: 2 }) : null;
+  const savePct = (monthlyAmt && yearlyAmt) ? Math.round((1 - yearlyAmt / (monthlyAmt * 12)) * 100) : null;
+
+  // Feature matrix (TRIP-229). Free unlocks only rows 1-2; every Pro plan unlocks all.
+  const freeFeatures = [
+    { text: t('sub.feat_free_active1'), on: true },
+    { text: t('sub.feat_basic'), on: true },
+    { text: t('sub.feat_budget'), on: false },
+    { text: t('sub.feat_ai_recognition'), on: false },
+    { text: t('sub.feat_ai_assistant'), on: false },
+    { text: t('sub.feat_group_chat'), on: false },
+  ];
+  const proFeatures = [
+    { text: t('sub.feat_unlimited_active'), on: true },
+    { text: t('sub.feat_basic'), on: true },
+    { text: t('sub.feat_budget'), on: true },
+    { text: t('sub.feat_ai_recognition'), on: true },
+    { text: t('sub.feat_ai_assistant'), on: true },
+    { text: t('sub.feat_group_chat'), on: true },
+  ];
+
+  const monthly = renderPrice('account_pro_monthly');
+  const yearly = renderPrice('account_pro_yearly');
+  const cards = [
     {
-      type: 'trip_pro_lifetime', title: t('sub.plan_trip_title'),
-      caption: t('sub.plan_trip_desc'),
-      badge: t('sub.badge_once') || 'one-time',
-      features: [t('sub.plan_trip_feat_1'), t('sub.plan_trip_feat_2'), t('sub.plan_trip_feat_3')],
+      key: 'free', name: t('sub.plan_free_title'), nameColor: 'var(--muted)',
+      price: fmtMoney(0, currency, { minFraction: 0, maxFraction: 0 }),
+      caption: t('sub.free_forever'), features: freeFeatures,
+      cta: { label: t('sub.stay_free'), variant: 'secondary', onClick: () => nav(-1) },
     },
     {
-      type: 'account_pro_monthly', title: t('sub.plan_monthly_title'),
-      caption: t('sub.plan_monthly_desc'), popular: true,
-      badge: t('sub.badge_sub') || 'subscription',
-      features: [t('sub.plan_monthly_feat_1'), t('sub.plan_monthly_feat_2'), t('sub.plan_monthly_feat_3'), t('sub.plan_monthly_feat_4')],
+      key: 'monthly', name: t('sub.plan_monthly_short'), nameColor: 'var(--brand)',
+      price: monthly,
+      caption: t('sub.caption_monthly'), features: proFeatures,
+      cta: { label: t('sub.subscribe_monthly'), variant: 'primary', code: 'account_pro_monthly' },
     },
     {
-      type: 'account_pro_yearly', title: t('sub.plan_yearly_title'),
-      caption: t('sub.plan_yearly_desc'), save: '−33%',
-      badge: t('sub.badge_sub') || 'subscription',
-      features: [t('sub.plan_yearly_feat_1'), t('sub.plan_yearly_feat_2')],
+      key: 'yearly', name: t('sub.plan_yearly_short'), nameColor: 'var(--pro)', featured: true,
+      price: yearly, oldPrice: yearStrike, save: savePct,
+      caption: yearPerMonth ? t('sub.caption_yearly', { perMonth: yearPerMonth }) : '',
+      features: proFeatures,
+      cta: { label: t('sub.subscribe_yearly'), variant: 'pro', star: true, code: 'account_pro_yearly' },
     },
   ];
 
-  const plans = hidePerTrip ? allPlans.filter(p => p.type !== 'trip_pro_lifetime') : allPlans;
+  const tripPrice = renderPrice('trip_pro_lifetime');
+  const busy = !!loadingPlan;
 
   return (
-    <div className="pro-page app-shell">
+    <div
+      className="pro-page app-shell"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}
+    >
 
       {/* ── App header ── */}
       <AppHeader
@@ -149,8 +174,11 @@ export default function Pro() {
         title="Pro"
       />
 
-      {/* ── Scrollable main zone ── */}
-      <main className="pro-main">
+      {/* ── Main content zone — natural height, centered (canonical standalone shell) ── */}
+      <main
+        className="pro-main"
+        style={{ flex: 1, width: '100%', maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px)', boxSizing: 'border-box' }}
+      >
 
         {/* Hero */}
         <div className="pro-hero">
@@ -160,7 +188,7 @@ export default function Pro() {
           </div>
           <h1 className="pro-hero__title">{t('sub.hero_title')}</h1>
           <p className="pro-hero__sub">{t('sub.hero_sub')}</p>
-          {hidePerTrip && tripId === null && (
+          {tripId === null && (
             <div className="pro-hero__note">
               <Icon name="info" size={12} />
               {t('sub.per_trip_note')}
@@ -169,13 +197,9 @@ export default function Pro() {
         </div>
 
         {/* Plans grid */}
-        <div
-          className={`pro-plans${plans.length === 2 ? ' pro-plans--2' : ''}`}
-          role="radiogroup"
-          aria-label={t('sub.choose_plan')}
-        >
+        <div className="pro-plans" aria-label={t('sub.choose_plan')}>
           {pricesLoading && !prices
-            ? Array.from({ length: plans.length }).map((_, i) => (
+            ? Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
                   className="plan-card-skel"
@@ -190,88 +214,116 @@ export default function Pro() {
                   <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={11} /></div>
                 </div>
               ))
-            : plans.map((p, i) => {
-                const { price, period } = renderPrice(p.type);
-                const selected = picked === p.type;
-                return (
-                  <div
-                    key={p.type}
-                    className={[
-                      'plan-card',
-                      p.popular ? 'plan-card--featured' : '',
-                      selected ? 'plan-card--selected' : '',
-                    ].filter(Boolean).join(' ')}
-                    role="radio"
-                    aria-checked={selected}
-                    aria-label={p.title}
-                    tabIndex={0}
-                    onClick={() => setPicked(p.type)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicked(p.type); }
-                    }}
-                  >
-                    {/* Accent ribbon for featured plan */}
-                    {p.popular && <div className="plan-ribbon" />}
-                    {p.popular && (
-                      <div className="plan-popular-badge">
-                        ★ {t('sub.most_popular')}
-                      </div>
-                    )}
+            : cards.map((c) => (
+                <div
+                  key={c.key}
+                  className={`plan-card${c.featured ? ' plan-card--featured' : ''}`}
+                >
+                  {c.featured && c.save != null && (
+                    <div className="plan-popular-badge">{t('sub.save_pct', { pct: c.save })}</div>
+                  )}
 
-                    <div className="plan-card__body">
-                      {/* Card header: name + type chip */}
-                      <div className="plan-card__top">
-                        <div className="plan-card__name">{p.title}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
-                          <span className="plan-type-chip">{p.badge}</span>
-                          {p.save && <span className="plan-save-tag">{p.save}</span>}
-                        </div>
-                      </div>
-
-                      {/* Price */}
-                      <div className="plan-price">
-                        <span className="plan-price__amount">{price}</span>
-                        <span className="plan-price__period">{period}</span>
-                      </div>
-
-                      <div className="plan-divider" />
-
-                      {/* Feature list */}
-                      <ul className="plan-features">
-                        {p.features.map((f, j) => (
-                          <li key={j} className="plan-feature">
-                            <div className="plan-feature__check">
-                              <Icon name="check" size={9} />
-                            </div>
-                            <span>{f}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  <div className="plan-card__body">
+                    {/* Plan name */}
+                    <div className="plan-card__top">
+                      <div className="plan-card__name" style={{ color: c.nameColor }}>{c.name}</div>
                     </div>
 
-                    {/* Select button */}
-                    <div className="plan-card__footer">
-                      <button
-                        className={`plan-select-btn${selected ? ' plan-select-btn--active' : ''}`}
-                        tabIndex={-1}
-                      >
-                        {selected ? (
-                          <>
-                            <span className="plan-select-btn__check">
-                              <Icon name="check" size={10} />
-                            </span>
-                            {t('sub.selected')}
-                          </>
-                        ) : (
-                          t('sub.select')
-                        )}
-                      </button>
+                    {/* Price */}
+                    <div className="plan-price">
+                      <span className="plan-price__amount">{c.price}</span>
+                      {c.oldPrice && (
+                        <span className="plan-price__period" style={{ textDecoration: 'line-through' }}>{c.oldPrice}</span>
+                      )}
                     </div>
+                    <div className="t-meta" style={{ color: 'var(--muted)' }}>{c.caption}</div>
+
+                    <div className="plan-divider" />
+
+                    {/* Feature list — ON: filled accent circle + check; OFF: outlined muted circle + minus (design okBox/noBox) */}
+                    <ul className="plan-features">
+                      {c.features.map((f, j) => (
+                        <li key={j} className="plan-feature" style={f.on ? undefined : { color: 'var(--muted)' }}>
+                          <div
+                            className="plan-feature__check"
+                            style={f.on ? undefined : { background: 'none', border: '1px solid var(--line-2)', color: 'var(--muted)' }}
+                          >
+                            <Icon name={f.on ? 'check' : 'minus'} size={12} />
+                          </div>
+                          <span>{f.text}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                );
-              })
+
+                  {/* Action button */}
+                  <div className="plan-card__footer">
+                    <Btn
+                      variant={c.cta.variant}
+                      block
+                      loading={loadingPlan === c.cta.code}
+                      disabled={busy}
+                      onClick={() => (c.cta.code ? handleUpgrade(c.cta.code) : c.cta.onClick())}
+                    >
+                      {c.cta.star && <span aria-hidden="true" style={{ marginRight: 2 }}>★</span>}
+                      {c.cta.label}
+                    </Btn>
+                  </div>
+                </div>
+              ))
           }
         </div>
+
+        {/* One-time per-trip pass — owner only. Sits directly under the plans grid.
+            The skeleton mirrors this same slot so the loading layout matches whether
+            the banner will show or not. */}
+        {!hidePerTrip && pricesLoading && !prices && (
+          <div className="pro-trip-bar">
+            <Skeleton w={44} h={44} r={12} />
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <Skeleton w="42%" h={16} />
+              <div style={{ marginTop: 8 }}><Skeleton w="66%" h={11} /></div>
+            </div>
+            <div className="pro-trip-bar__actions">
+              <Skeleton w={70} h={22} />
+              <Skeleton w={92} h={38} r={11} />
+            </div>
+          </div>
+        )}
+        {!hidePerTrip && !pricesLoading && (
+          <div className="pro-trip-bar">
+            <span style={{
+              width: 44, height: 44, flex: 'none', borderRadius: 'var(--r-sm)',
+              background: 'var(--primary-soft)', color: 'var(--brand)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon name="ticket" size={21} />
+            </span>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
+              <div className="t-meta t-sans" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
+            </div>
+            <div className="pro-trip-bar__actions">
+              <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice}</span>
+              <Btn
+                variant="primary"
+                loading={loadingPlan === 'trip_pro_lifetime'}
+                disabled={busy}
+                onClick={() => handleUpgrade('trip_pro_lifetime')}
+              >
+                {t('sub.buy_for_trip')}
+              </Btn>
+            </div>
+          </div>
+        )}
+
+        {/* Trust line — small reassurance at the very bottom, below everything. */}
+        {!pricesLoading && (
+          <div className="pro-hero__note" style={{ marginTop: 2 }}>
+            <Icon name="lock" size={12} />
+            {t('sub.secure_checkout')}{t('sub.secure_checkout_meta')}
+          </div>
+        )}
 
         {/* Error */}
         {errorMsg && (
@@ -281,26 +333,6 @@ export default function Pro() {
         )}
 
       </main>
-
-      {/* ── Sticky CTA strip ── */}
-      <footer className="pro-cta-strip">
-        <div className="pro-cta-strip__icon">
-          <Icon name="lock" size={15} />
-        </div>
-        <div className="pro-cta-strip__text">
-          <strong>{t('sub.secure_checkout')}</strong>
-          {t('sub.secure_checkout_meta')}
-        </div>
-        <Btn
-          variant="primary"
-          size="lg"
-          iconRight="arrow"
-          disabled={loading}
-          onClick={() => !loading && handleUpgrade(picked)}
-        >
-          {loading ? t('sub.processing') : t('sub.go_to_payment')}
-        </Btn>
-      </footer>
 
     </div>
   );
