@@ -3539,6 +3539,51 @@ h4,
 .sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
 @keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
 
+/* Trip menu — phone bottom-sheet layout (TRIP-235). Reuses existing tokens
+   only (no new colour/size tokens): lenses in a 3-col grid of tiles with the
+   open screen highlighted (brand accent), management collapsed into one
+   bordered container, account row (moved out of the bottom nav) at the foot. */
+.tm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+.tm-cell {
+  position: relative;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
+  gap: 10px; min-height: 84px; padding: 11px 12px;
+  border-radius: var(--r-md); border: 1px solid var(--surface-card-border);
+  background: var(--surface); color: var(--ink-2);
+  cursor: pointer; text-align: left;
+  transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out);
+}
+.tm-cell:active { transform: scale(.985); }
+.tm-cell.is-active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+.tm-cell__ico { width: 30px; height: 30px; flex: none; border-radius: 10px; display: grid; place-items: center; background: var(--wash); color: var(--muted); }
+.tm-cell.is-active .tm-cell__ico { background: var(--surface); color: var(--brand); }
+.tm-cell__lbl { display: block; }
+.tm-cell__badge { position: absolute; top: 10px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--warm); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+
+.tm-caption { padding: 2px 8px 8px; }
+.tm-manage { border: 1px solid var(--surface-card-border); border-radius: var(--r-xl); background: var(--surface); overflow: hidden; }
+.tm-manage__row {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
+  background: none; border: 0; border-bottom: 1px solid var(--line);
+  color: var(--ink); cursor: pointer; text-align: left;
+  transition: background .15s var(--ease-out);
+}
+.tm-manage__row:last-child { border-bottom: 0; }
+.tm-manage__row:hover, .tm-manage__row:active { background: var(--wash); }
+.tm-manage__ico { width: 36px; height: 36px; flex: none; border-radius: 12px; background: var(--wash); color: var(--muted-2); display: grid; place-items: center; }
+.tm-manage__lbl { flex: 1; min-width: 0; }
+.tm-manage__chev { color: var(--muted-2); flex: none; }
+
+.tm-account {
+  display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 18px; padding: 12px 14px;
+  border-radius: var(--r-xl); border: 1px solid var(--surface-card-border); background: var(--surface-2);
+  cursor: pointer; text-align: left; transition: border-color .15s var(--ease-out);
+}
+.tm-account:hover { border-color: var(--brand); }
+.tm-account__txt { flex: 1; min-width: 0; }
+.tm-account__name { display: block; }
+.tm-account__sub { display: block; margin-top: 2px; color: var(--muted); }
+
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).
    Desktop: anchored Radix popover. Mobile: bottom-sheet (.sheet).
