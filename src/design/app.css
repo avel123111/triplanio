@@ -3580,6 +3580,7 @@ h4,
   cursor: pointer; text-align: left; transition: border-color .15s var(--ease-out);
 }
 .tm-account:hover { border-color: var(--brand); }
+.tm-account .avatar { width: 26px; height: 26px; }  /* ~20% larger than the sm 22px default; stays round */
 .tm-account__txt { flex: 1; min-width: 0; }
 .tm-account__name { display: block; }
 .tm-account__sub { display: block; margin-top: 2px; color: var(--muted); }
