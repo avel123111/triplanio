@@ -1302,10 +1302,13 @@ h4,
 .map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .map-route__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .map-route__dates { color: var(--muted); }
-/* Phones (≤640px): the route panel becomes a non-modal bottom sheet on the
-   shared vaul engine (class .sheet--maproute, skinned in the C6 sheet section
-   below) — vaul owns the drag + peek↔expanded snap, so there is no JS height
-   ownership here anymore. */
+/* Phones (≤640px): the route panel is rendered inside <PeekSheet> (the non-modal
+   detent sheet — see .peek-sheet in the C6 section) instead of the floating glass
+   desktop panel. The route head + rows reuse the .map-route__* skin; PeekSheet's
+   __body is the scroller, so the inner list must not scroll on its own. */
+.peek-sheet .map-route__head { padding-top: 2px; border-bottom: 0; }
+.peek-sheet .map-route__list { overflow: visible; padding: 8px 8px 0; }
+.peek-sheet .map-route__empty { flex: 1; }
 
 /* City badge (TRIP-33): translucent glass label next to the active city's pin on
    the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
@@ -3513,26 +3516,35 @@ h4,
 .sheet-row--danger { color: var(--danger-ink); }
 .sheet-row--danger svg { color: var(--danger-ink); }
 .sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
-
-/* Map-lens variant (TRIP-234) — the non-modal persistent-peek sheet (RoutePanel).
-   Defined AFTER .sheet so its overrides win at equal specificity. vaul measures
-   the snap offset against the full viewport (translateY = innerHeight − visible),
-   so the snap sheet must SPAN the viewport for the peek (148px) / expanded (0.62)
-   reveals to land where we ask. Content flows from the top (grip + head first),
-   so the peek band shows the grip + title and the route list is revealed as it
-   snaps up. (Mirrors vaul's own snap example: Content is full-height.) */
-.sheet--maproute {
-  height: 100dvh; max-height: 100dvh; /* override the default .sheet 86dvh cap */
-  padding-bottom: 0; /* dock clearance lives on the scrollable list, below */
-  /* Below the fixed bottom-nav dock (.mbnav z-index:95) so the dock floats on top
-     of the peek unchanged (TRIP-222) — unlike the modal .sheet (z-201) which
-     covers everything. Still above the map (normal-flow shell content). */
-  z-index: 90;
-}
-.sheet--maproute .map-route__head { padding-top: 2px; border-bottom: 0; }
-.sheet--maproute .map-route__list { flex: 1; min-height: 0; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
-.sheet--maproute .map-route__empty { flex: 1; }
 @keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============================================================
+   PeekSheet (TRIP-234) — non-modal PERSISTENT bottom sheet with peek↔full
+   detents (the "always-on, raises/lowers" archetype; iOS detents / Android
+   BottomSheetBehavior). The modal .sheet above (vaul) is for open/dismiss
+   sheets; this one never dismisses and leaves the content underneath live (no
+   backdrop). Rendered by <PeekSheet>; the JS owns the drag transform + snap.
+   ============================================================ */
+.peek-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  /* Below the fixed bottom-nav dock (.mbnav z-index:95) so the dock floats on top
+     of the peek unchanged (TRIP-222); still above the map (shell content). */
+  z-index: 90;
+  height: 88dvh; max-height: 88dvh;
+  display: flex; flex-direction: column;
+  background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: var(--sh-3);
+  transform: translateY(calc(100% - var(--peek, 140px))); /* rest at peek (JS sets --peek) */
+  transition: transform .32s cubic-bezier(.22, 1, .36, 1);
+  overscroll-behavior: none; /* never chain a drag to the page → no pull-to-refresh */
+}
+.peek-sheet.is-expanded { transform: translateY(0); }
+.peek-sheet.is-dragging { transition: none; } /* follow the finger 1:1 mid-drag */
+/* Grip + header are the drag zones (touch-action:none → the gesture is ours);
+   the body scrolls natively (pan-y). */
+.peek-sheet__grip { display: flex; justify-content: center; width: 100%; padding: 11px 0 3px; flex: none; border: 0; background: none; cursor: grab; touch-action: none; }
+.peek-sheet__grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
+.peek-sheet__head { flex: none; touch-action: none; }
+.peek-sheet__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-bottom: calc(60px + env(safe-area-inset-bottom)); } /* clear the dock */
 
 /* ============================================================
    C4 · SearchSelect — searchable picker (currency, language, …).

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Icon } from '../design/icons';
 import MapView from '@/components/views/MapView';
-import { Sheet } from '@/components/ui/Sheet';
+import { PeekSheet } from '@/components/ui/PeekSheet';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { DateTime } from 'luxon';
@@ -119,36 +119,17 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
 
 // ----- Route panel --------------------------------------------------------
 // Desktop: a floating glass panel top-left over the map. Phones (≤640px): the
-// same content becomes a non-modal bottom sheet on the shared vaul engine —
-// it rests at peek (grip + title) over the live map and snaps up to reveal the
-// scrollable route, collapsing back when a city is picked. Each stop = a leading
-// marker (transit number / interchange glyph / start·finish flag), the city name
-// and its dates.
-//
-// Peek and expanded snap heights for the mobile sheet. Peek is a px string tall
-// enough to clear the fixed ~60px bottom-nav dock the sheet spans behind (so the
-// grip + title sit above it); expanded is a fraction of the screen. vaul owns the
-// drag + snap between them — no hand-rolled grip physics. (Tune the peek px
-// on-device: env() safe-area can't live inside a vaul snap string.)
-const SNAP_PEEK = '148px';
-const SNAP_POINTS = [SNAP_PEEK, 0.62];
-
+// same content becomes a PeekSheet — a non-modal detent bottom sheet that rests
+// at peek (grip + title) over the live map and raises to reveal the scrollable
+// route, collapsing back when a city is picked. Each stop = a leading marker
+// (transit number / interchange glyph / start·finish flag), the city name and
+// its dates.
 function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   const { t } = useI18n();
   const isPhone = useIsPhone();
-  // The mobile sheet rests at peek; picking a city collapses it back (desktop
-  // has no snap state — it always shows the full list).
-  const [snap, setSnap] = useState(SNAP_PEEK);
-  // vaul renders a snap-points drawer at translateY(100%) (off-screen) until
-  // `open` transitions false→true — a drawer mounted already-open never runs
-  // that transition and stays hidden. So mount it closed and open on the next
-  // frame; re-arm when we (re)enter the phone breakpoint.
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!isPhone) { setOpen(false); return; }
-    const id = requestAnimationFrame(() => setOpen(true));
-    return () => cancelAnimationFrame(id);
-  }, [isPhone]);
+  // The mobile sheet rests at peek; picking a city collapses it (desktop has no
+  // detent state — it always shows the full list).
+  const [expanded, setExpanded] = useState(false);
 
   const empty = route.length === 0;
   const nCities = empty ? 0 : uniqueCityCount(route); // dedup repeated cities for the count
@@ -170,72 +151,65 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   });
 
   const hoverProps = (c) => ({ onMouseEnter: () => onHover(c.id), onMouseLeave: () => onHover(null) });
-  // Picking a city collapses the mobile sheet back to peek (desktop ignores snap).
-  const pick = (i) => { onSelect(i); setSnap(SNAP_PEEK); };
+  // Picking a city collapses the mobile sheet back to peek (desktop ignores it).
+  const pick = (i) => { onSelect(i); setExpanded(false); };
 
-  // Shared inner content — the desktop panel and the mobile sheet render the same
-  // head + scrollable list (or the empty state).
-  const body = empty ? (
+  const head = (
+    <div className="map-route__head">
+      <span className="t-mono tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
+    </div>
+  );
+  const list = (
+    <div className="map-route__list scrollbar-thin">
+      {rows.map((row, i) => {
+        const c = row.visit;
+        const dates = fmtRange(c.start_date, c.end_date);
+        return (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => pick(i)}
+            {...hoverProps(c)}
+            className={'map-route__item' + (activeIdx === i ? ' is-active' : '')}
+          >
+            <span className="map-route__marker">
+              {row.glyph ? <Icon name={row.glyph} size={13} /> : <span className="num t-meta">{row.number}</span>}
+            </span>
+            <span className="map-route__body">
+              <span className="map-route__name t-ui">{c.city_name}</span>
+              {dates && <span className="map-route__dates num t-meta">{dates}</span>}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+  const emptyState = (
     <div className="map-route__empty">
       <Icon name="pin" size={26} style={{ opacity: 0.4, marginBottom: 8 }} />
       <div className="t-body muted">{t('view.map_no_cities')}</div>
     </div>
-  ) : (
-    <>
-      <div className="map-route__head">
-        <span className="t-mono tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
-      </div>
-      <div className="map-route__list scrollbar-thin">
-        {rows.map((row, i) => {
-          const c = row.visit;
-          const dates = fmtRange(c.start_date, c.end_date);
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => pick(i)}
-              {...hoverProps(c)}
-              className={'map-route__item' + (activeIdx === i ? ' is-active' : '')}
-            >
-              <span className="map-route__marker">
-                {row.glyph ? <Icon name={row.glyph} size={13} /> : <span className="num t-meta">{row.number}</span>}
-              </span>
-              <span className="map-route__body">
-                <span className="map-route__name t-ui">{c.city_name}</span>
-                {dates && <span className="map-route__dates num t-meta">{dates}</span>}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </>
   );
 
-  // Phones: non-modal, non-dismissible bottom sheet over the live map (modal=false
-  // → no backdrop / scroll-lock, so the map stays interactive underneath).
+  // Phones: the non-modal detent sheet — peek over the live map, raise to browse,
+  // native scroll, no pull-to-refresh (see PeekSheet).
   if (isPhone) {
     return (
-      <Sheet
-        open={open}
-        onOpenChange={(v) => { if (v) setOpen(true); }} // persistent: never let it close
-        modal={false}
-        dismissible={false}
-        snapPoints={SNAP_POINTS}
-        activeSnapPoint={snap}
-        setActiveSnapPoint={setSnap}
-        className="sheet--maproute"
-        titleText={t('trip.sidebar_route')}
-        bare
+      <PeekSheet
+        expanded={expanded}
+        onExpandedChange={setExpanded}
+        header={empty ? null : head}
+        label={t('trip.sidebar_route')}
       >
-        {body}
-      </Sheet>
+        {empty ? emptyState : list}
+      </PeekSheet>
     );
   }
 
   // Desktop: a floating glass panel top-left over the map.
   return (
     <aside className="map-route surface-glass">
-      {body}
+      {empty ? emptyState : (<>{head}{list}</>)}
     </aside>
   );
 }
