@@ -7,7 +7,7 @@ import { useCallback } from 'react';
 /**
  * Low-level logger. Use the `usePartnerLogger` hook in components instead.
  */
-export function logPartnerClick({ partner, type, link, provider, tripId, user }) {
+export function logPartnerClick({ partner, type, link, provider, campaign, fallback, tripId, user }) {
   if (!partner || !type || !link) return;
   try {
     const payload = {
@@ -17,6 +17,10 @@ export function logPartnerClick({ partner, type, link, provider, tripId, user })
       // Affiliate network the click is monetized through (travelpayouts, stay22).
       // Non-affiliate direct links pass nothing → stored as NULL.
       provider: provider || null,
+      // Click surface / campaign (fork_modal_button | fork_api_search) and whether
+      // the URL was a generic/homepage fallback rather than a deep-link (TRIP-244).
+      campaign: campaign || null,
+      fallback: typeof fallback === 'boolean' ? fallback : null,
       trip_id: tripId || null,
       user_id: user?.id || '',
     };
@@ -36,8 +40,8 @@ export function logPartnerClick({ partner, type, link, provider, tripId, user })
 export function usePartnerLogger(tripId) {
   const { user } = useAuth();
   return useCallback(
-    ({ partner, type, link, provider }) =>
-      logPartnerClick({ partner, type, link, provider, tripId, user }),
+    ({ partner, type, link, provider, campaign, fallback }) =>
+      logPartnerClick({ partner, type, link, provider, campaign, fallback, tripId, user }),
     [user, tripId]
   );
 }

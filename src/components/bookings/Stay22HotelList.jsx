@@ -156,7 +156,7 @@ export default function Stay22HotelList({
   // Card click = select (no navigation); opening the supplier site (Book button
   // or a second click on the already-selected card) is logged here. The shared
   // interaction lives in PartnerResultCard so hotels + activities stay identical.
-  const onBook = (h) => logClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
+  const onBook = (h) => logClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22', campaign: 'fork_api_search', fallback: false });
 
   return (
     <div className="s22">

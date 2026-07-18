@@ -152,7 +152,7 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
       if (gids.length) {
         const { data: crows } = await supabaseAdmin
           .from('cities')
-          .select('geonameid, iata_code, viator_dest_id, getyourguide_id, tripster_slug, tripster_id, name_en')
+          .select('geonameid, iata_code, viator_dest_id, getyourguide_id, tripster_slug, tripster_id, sp8_slug, sp8_id, name_en')
           .in('geonameid', gids as number[]);
         for (const r of (crows ?? []) as any[]) dir[String(r.geonameid)] = r;
       }

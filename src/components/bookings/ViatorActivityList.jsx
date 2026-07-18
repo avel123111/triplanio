@@ -117,7 +117,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   // Re-seed the popover draft from committed state each time it opens.
   useEffect(() => { if (filterOpen) { setPending({ ...applied }); setPendingFree(freeCancel); } }, [filterOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onBook = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator' });
+  const onBook = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator', campaign: 'fork_api_search', fallback: false });
 
   return (
     <div className="va">

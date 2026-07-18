@@ -82,12 +82,13 @@ const CLICK_TYPE = {
 
 // Brand display name per partner key (bold title in the new partner card).
 const PARTNER_NAME = {
-  booking: 'Booking.com', expedia: 'Expedia', skyscanner: 'Skyscanner', omio: 'Omio',
+  booking: 'Booking.com', expedia: 'Expedia', agoda: 'Agoda', airbnb: 'Airbnb',
+  skyscanner: 'Skyscanner', omio: 'Omio', kayak: 'KAYAK',
   getrentacar: 'GetRentacar', economybookings: 'EconomyBookings', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
   sravni: 'Сравни.ру', tripinsurance: 'Tripinsurance',
   aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
-  viator: 'Viator', getyourguide: 'GetYourGuide', tripster: 'Tripster', sputnik8: 'Sputnik8',
+  viator: 'Viator', getyourguide: 'GetYourGuide', tripadvisor: 'Tripadvisor', tripster: 'Tripster', sputnik8: 'Sputnik8',
 };
 
 /**
@@ -142,8 +143,13 @@ export default function ForkPartnerModal({
 
   const handlePartnerClick = (p) => {
     // provider is the affiliate network (e.g. travelpayouts); undefined for
-    // non-affiliate direct search links → logged as NULL.
-    logClick({ partner: p.key, type: CLICK_TYPE[type] || type, link: p.url, provider: p.provider });
+    // non-affiliate direct search links → logged as NULL. campaign marks the
+    // click surface (fork pill); fallback = the URL was a generic/homepage link
+    // (or non-affiliate) rather than a precise deep-link (TRIP-244).
+    logClick({
+      partner: p.key, type: CLICK_TYPE[type] || type, link: p.url, provider: p.provider,
+      campaign: 'fork_modal_button', fallback: !!p.fallback,
+    });
     // Browser still follows the anchor's href to open the new tab.
   };
 
