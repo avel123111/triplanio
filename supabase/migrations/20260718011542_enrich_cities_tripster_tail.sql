@@ -12,14 +12,18 @@
 --
 -- This migration adds back the ones that resolve UNAMBIGUOUSLY, each verified
 -- by hand against the prod GeoNames gazetteer (IATA→own-airport city, exact
--- asciiname, or trigram on the sole candidate):
---   28 non-RU + 9 RU = 37 cities.
+-- asciiname, trigram on the sole candidate, or coordinate match):
+--   28 non-RU + 10 RU = 38 cities.
+--   NB the RU set includes real, sizeable cities the seed left out —
+--   Rostov-on-Don (1.1M), Komsomolsk-na-Amure (276k), Gus-Khrustalny (63k),
+--   Pereslavl-Zalessky (40k) — not just small towns.
 --
 -- Still on the fallback ON PURPOSE:
 --   non-RU (~23): islands/regions (Crete, Corsica, Gran Canaria, Santorini,
 --   Samui…), micro-villages, ambiguous/disputed places.
---   RU (7): Balakhna (Novaya-Balakhna trap), Teberda, Dombay, Innopolis,
---   Maksimikha, Kizhi, Olkhon — not in the cities500 snapshot / island-museum.
+--   RU (6): Teberda, Dombay, Innopolis, Maksimikha, Kizhi, Olkhon — genuinely
+--   absent from the GeoNames cities500 snapshot (resorts/new town/island-museum);
+--   adding them needs a gazetteer extension, out of scope here.
 --
 -- Hand-verified notes:
 --   Venice=3164603 (feed en "Venezia" → Verona trap; IATA VCE is correct).
@@ -60,7 +64,7 @@ WITH v(geonameid, name_en, iata, slug, tid) AS (VALUES
  (5128581, 'New York', 'NYC', 'New_York', '44'),
  (6534232, 'Lamezia', 'SUF', 'Lamezia', '1266'),
  (7304197, 'Muine', 'PHH', 'Muine', '496'),
- -- RU tail (9), all new inserts:
+ -- RU tail (10), all new inserts:
  (466215,  'Yuryev-Polsky', NULL, 'Yuryev-Polsky', '566'),
  (501175,  'Rostov-na-Donu', 'ROV', 'Rostov-on-Don', '161'),
  (501183,  'Rostov', NULL, 'Rostov', '377'),
@@ -69,7 +73,10 @@ WITH v(geonameid, name_en, iata, slug, tid) AS (VALUES
  (541224,  'Solovetsky Islands', 'CSH', 'Solovetsky_Islands', '989'),
  (557775,  'Gus-Khrustalny', NULL, 'Gus_Khrustalny', '804'),
  (575364,  'Bolkhov', NULL, 'Bolkhov', '773'),
- (2021851, 'Komsomolsk-na-Amure', 'KXK', 'Komsomolsk_na_Amure', '758')
+ (2021851, 'Komsomolsk-na-Amure', 'KXK', 'Komsomolsk_na_Amure', '758'),
+ -- Balakhna: GeoNames labels the PPL at Balakhna's exact coords (56.49N,43.60E,
+ -- pop 63083) "Novaya Balakhna" — coordinate-verified as the town itself.
+ (579514,  'Balakhna', NULL, 'Balakhna', '1028')
 )
 -- Existing rows (18 non-RU): fill only the Tripster fields, never clobber a set slug.
 , upd AS (
