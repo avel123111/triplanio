@@ -353,7 +353,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
-      <div className="muted t-meta" style={{ marginBottom: 8 }}>
+      <div className="t-ui" style={{ marginBottom: 8 }}>
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (

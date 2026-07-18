@@ -29,7 +29,7 @@
 .bgt-dleg__row { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 10px; cursor: default; transition: background .15s; }
 .bgt-dleg__row:hover { background: var(--wash); }
 .bgt-dleg__d { width: 10px; height: 10px; border-radius: 4px; flex: none; }
-.bgt-dleg__n { flex: 1; min-width: 0; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bgt-dleg__n { flex: 1; min-width: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bgt-dleg__v { color: var(--ink); font-variant-numeric: tabular-nums; }
 .bgt-dleg__p { color: var(--muted-2); width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
 
