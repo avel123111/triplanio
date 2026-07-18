@@ -12,6 +12,7 @@ import { useProStatus } from '@/lib/useProStatus';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { track } from '@/lib/analytics';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -576,6 +577,9 @@ export default function ScreenAccount() {
         setDeleteState(null);
         return;
       }
+      // Capture BEFORE logout — logout resets PostHog identity, so firing after
+      // would attach the event to an anonymous id.
+      track('account_deleted');
       await logout();
     } catch (e) {
       console.error('deleteMyAccount error:', e);

@@ -17,7 +17,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 //   events only (clean data over volume). Keep $pageview (traffic/retention).
 const POSTHOG_PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com'])
 const isPosthogProdHost = POSTHOG_PROD_HOSTS.has(window.location.hostname)
-const posthogEnabled = isPosthogProdHost || import.meta.env.VITE_POSTHOG_ENABLE_DEV === 'true'
+const posthogEnabled = isPosthogProdHost || ['1', 'true'].includes(import.meta.env.VITE_POSTHOG_ENABLE_DEV)
 const posthogToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN
 if (posthogToken) {
   posthog.init(posthogToken, {

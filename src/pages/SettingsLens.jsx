@@ -13,6 +13,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
@@ -670,6 +671,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       // Deleting an owned trip lowers the active-trip count — drop the gate cache
       // so the planner can't read a stale count and flash the limit guard.
       invalidateActiveTripsLimit(queryClient);
+      track('trip_deleted', { trip_id: tripId });
       nav('/trips');
     };
 
