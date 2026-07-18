@@ -13,7 +13,7 @@
  *     adults?, children?, rooms?, provider? }
  *
  * Search is by coordinates (lat/lng). We pin aid=triplanio,
- * campaign=fork_api_sidepanel, cluster=false. By default we do NOT pin a provider:
+ * campaign=fork_api_search, cluster=false. By default we do NOT pin a provider:
  * Stay22 returns each result's available suppliers (booking, expedia, vrbo…) and
  * the client picks the first one (supplier-agnostic). When the user picks a
  * platform in the panel, the client passes `provider` and we restrict the search
@@ -30,7 +30,7 @@ import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const STAY22_BASE = 'https://api.stay22.com/v2/accommodations';
 const AID = 'triplanio';
-const CAMPAIGN = 'fork_api_sidepanel';
+const CAMPAIGN = 'fork_api_search';
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
