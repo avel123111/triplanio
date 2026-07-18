@@ -336,7 +336,7 @@ export function insurancePlatforms(t, lang) {
         label: bookOn(t, 'Сравни.ру'),
         hint: t ? t('service.insurance_sravni_hint') : 'Compare insurance',
         logo: 'https://img.wway.io/travelpayouts/brands/icon/49@svg',
-        url: withSubId('https://sravni.tpx.lt/CqRGyRjC?erid=2VtzqvjtkhF'),
+        url: withSubId('https://sravni.tpx.lt/PB179obo?erid=2VtzqvjtkhF'),
         provider: 'travelpayouts',
         fallback: false,
       },
