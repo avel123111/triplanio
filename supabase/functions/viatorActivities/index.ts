@@ -13,7 +13,8 @@
  *   { destinationId, startDate?, endDate?, currency?, lang?, page?, sort? }
  *
  * Calls POST /products/search (summary model). Pins count=50 (Viator's per-page
- * max) and the affiliate campaign tag via `campaign-value`. Pricing/links come back attributed already.
+ * max) and the affiliate campaign tag via the `campaign-value` QUERY param (a body
+ * field is ignored). Pricing/links come back attributed already.
  * Nothing is persisted — the panel fetches on open and renders client-side.
  * Merchandising tags are NOT forwarded (Viator display compliance).
  *
@@ -25,7 +26,7 @@ import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const VIATOR_BASE = Deno.env.get('VIATOR_BASE') || 'https://api.viator.com/partner';
 const VIATOR_VERSION = 'application/json;version=2.0';
-const CAMPAIGN = 'trip_activities';
+const CAMPAIGN = 'fork_api_search';
 // Viator caps /products/search at 50 results per request; we pull the full page
 // so one round-trip fills the client pool page (5 pages → up to 250 pooled).
 const PAGE_SIZE = 50;
@@ -71,7 +72,6 @@ Deno.serve(withHandler('viatorActivities', async (req, corsHeaders) => {
     const payload: Record<string, unknown> = {
       filtering,
       pagination: { start, count: PAGE_SIZE },
-      'campaign-value': CAMPAIGN,
     };
     if (currency) payload.currency = String(currency);
     // Viator: DEFAULT sort must NOT carry an order (returns 400). Only attach
@@ -80,7 +80,10 @@ Deno.serve(withHandler('viatorActivities', async (req, corsHeaders) => {
 
     const acceptLang = LANG_MAP[String(lang || 'en')] || 'en-US';
 
-    const res = await fetch(`${VIATOR_BASE.replace(/\/$/, '')}/products/search`, {
+    // campaign-value is a QUERY param on the endpoint (per Viator partner-API docs),
+    // NOT a body field — a body field is ignored, so the affiliate attribution only
+    // lands when it rides in the URL (TRIP-244).
+    const res = await fetch(`${VIATOR_BASE.replace(/\/$/, '')}/products/search?campaign-value=${encodeURIComponent(CAMPAIGN)}`, {
       method: 'POST',
       headers: {
         'exp-api-key': apiKey,
