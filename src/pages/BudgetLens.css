@@ -48,7 +48,7 @@
 .bgt-stat--fx { cursor: pointer; transition: border-color .18s, box-shadow .2s; width: 100%; text-align: left; }
 .bgt-stat--fx:hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
 .bgt-fxlist { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 5px; }
-.bgt-fxlist span { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bgt-fxlist span { color: var(--ink); font-variant-numeric: tabular-nums; }
 .bgt-fxlist .miss { color: var(--danger); }
 
 /* ════════ CONTROLS ROW ════════ */
