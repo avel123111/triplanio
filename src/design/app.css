@@ -407,6 +407,7 @@ h2,
 .sec-head h2,
 .bgt-stat__v,
 .bgt-detail__amt .v,
+.bgt-detail__n,   /* TRIP-243 инсп.: Subheading→Heading (название категории в детали бюджета) */
 .tcp__ph,
 .ncal-wdc-num,
 .pt-mm .n,
@@ -437,7 +438,11 @@ h3,
 .ev-dlg-price .amt,
 .head__av,
 .vp-h h3,
-.bgt-detail__n,
+.bgt-dleg__v,      /* TRIP-243 инсп.: Meta→Subheading (сумма легенды доната) */
+.bgt-glist__v,     /* TRIP-243 инсп.: UI→Subheading (сумма строки списка категорий/городов) */
+.bgt-exrow__t,     /* TRIP-243 инсп.: UI→Subheading (название траты) */
+.bgt-exrow__amt,   /* TRIP-243 инсп.: UI→Subheading (сумма траты) */
+.bgt-fxrow__eq,    /* TRIP-243 инсп.: Meta→Subheading (курс в модалке валют) */
 .pt-cstop__num,
 .auth__brand-link,
 .brand-col__logo,
@@ -564,9 +569,8 @@ h4,
 .empty-note .en-tx b,
 .visit .info .dt,
 .bgt-glist__n,
-.bgt-glist__v,
-.bgt-exrow__t,
-.bgt-exrow__amt,
+.bgt-dleg__n,      /* TRIP-243 инсп.: Meta→UI (название категории легенды доната) */
+.bgt-fxlist span,  /* TRIP-243 инсп.: Meta→UI (строки курсов в FX-карточке) */
 .bgt-fxrow__cur,
 .dl-addcard b,
 .eed-fctitle,
@@ -746,18 +750,14 @@ h4,
 .triplink,
 .vmanual,
 .bgt-donut__c .l,
-.bgt-dleg__n,
-.bgt-dleg__v,
 .bgt-dleg__p,
 .bgt-stat__s,
-.bgt-fxlist span,
 .bgt-glist__c,
 .bgt-glist__add,
 .bgt-detail__s,
 .bgt-detail__amt .l,
 .bgt-exrow__s,
 .bgt-tagx,
-.bgt-fxrow__eq,
 .bgt-fxrow__hint,
 .dl-card__sub,
 .dl-card__notes,
@@ -990,6 +990,13 @@ h4,
 .pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
 .pro-up .lockmsg,        /* TRIP-225 инсп.: Meta+Golos («Подключает владелец») */
 .field__sub,             /* TRIP-225 инсп.: Meta+Golos (под-подсказка поля — всегда проза) */
+.bgt-dleg__p,            /* TRIP-243 инсп.: Meta+Golos (процент легенды доната) */
+.bgt-donut__c .l,        /* TRIP-243 инсп.: Meta+Golos (подпись «всего» под числом доната) */
+.bgt-exrow__s,           /* TRIP-243 инсп.: Meta+Golos (подзаголовок траты: город+дата; чипы .bgt-tagx держат моно сами) */
+.bgt-glist__c,           /* TRIP-243 инсп.: Meta+Golos (счётчик трат строки списка) */
+.bgt-detail__s,          /* TRIP-243 инсп.: Meta+Golos (счётчик трат в шапке детали) */
+.bgt-stat__s,            /* TRIP-243 инсп.: Meta+Golos (подпись стат-карточки) */
+.bgt-fxrow__hint,        /* TRIP-243 инсп.: Meta+Golos (хинт строки курса в модалке) */
 .card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
 
 /* =================================================================
