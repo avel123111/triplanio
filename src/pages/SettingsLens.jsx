@@ -567,6 +567,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const prevPath = collectDocPaths([], prevCoverUrl)[0];
     const newPath = collectDocPaths([], fields.cover_image_url)[0];
     if (prevPath && prevPath !== newPath) removeTripFiles([prevPath]);
+    track('settings_saved', {
+      trip_id: tripId,
+      currency_changed: currency !== prevCurrency,
+      cover_changed: prevPath !== newPath,
+    });
     // Optimistically patch the shell cache so the header title + cover update
     // instantly, then invalidate to reconcile with the server.
     queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>

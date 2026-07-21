@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePostHog } from '@posthog/react';
+import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
@@ -86,7 +86,6 @@ export function CreateTripProvider({ children }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
-  const posthog = usePostHog();
 
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [limitOpen, setLimitOpen]   = useState(false);
@@ -98,7 +97,7 @@ export function CreateTripProvider({ children }) {
   // Run the limit gate for a concrete method. TripLimitDialog self-fetches the
   // authoritative count and auto-proceeds when the user is under the cap.
   const startCreate = useCallback((pick) => {
-    posthog?.capture('trip_creation_started', { method: pick });
+    track('trip_creation_started', { method: pick });
     setPending({ kind: 'create', pick });
     setLimitOpen(true);
   }, []);
@@ -123,7 +122,7 @@ export function CreateTripProvider({ children }) {
       // Copying adds an active trip — drop the limit gate cache too, not just the
       // list, so the next create attempt doesn't read a stale (under-cap) count.
       invalidateActiveTripsLimit(qc);
-      posthog?.capture('trip_copied', { trip_id: tripId, new_trip_id: data?.tripId });
+      track('trip_copied', { trip_id: tripId, new_trip_id: data?.tripId });
       toast({ description: t('trip.copy_done'), variant: 'success' });
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {

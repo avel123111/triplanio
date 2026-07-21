@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
+import { track } from '@/lib/analytics';
 
 /**
  * ProUpsellProvider — единый app-level хост Pro-апселла (TRIP-225).
@@ -29,6 +30,9 @@ export function ProUpsellProvider({ children }) {
   //   mode='info'    → участник: «подключает владелец» + copy-link
   //   mode='upgrade' → владелец/free: фичи + CTA «Перейти к Pro» (onUpgrade)
   const openProUpsell = useCallback((opts = {}) => {
+    // central feature-gate impression (Revenue funnel) — the one place the Pro
+    // upsell modal opens, so paywall_viewed is captured by construction.
+    track('paywall_viewed', { feature: opts.feature || undefined, mode: opts.mode || 'upgrade' });
     setState({
       open: true,
       mode: opts.mode || 'upgrade',

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePostHog } from '@posthog/react';
+import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -26,7 +26,6 @@ export default function StripeReturnModals() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { checkUserAuth } = useAuth();
-  const posthog = usePostHog();
   const handledRef = useRef(null); // run-once guard per checkout return
   const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
   const [variant, setVariant] = useState('sub');   // 'sub' | 'trip'
@@ -61,14 +60,15 @@ export default function StripeReturnModals() {
     };
 
     if (status === 'cancel') {
-      posthog?.capture('pro_payment_failed', { kind, trip_id: pt || undefined, reason: 'cancelled' });
+      track('pro_payment_failed', { kind, trip_id: pt || undefined, reason: 'cancelled' });
       setPayModal('fail');
       stripParams();
       return;
     }
 
-    // success
-    posthog?.capture('pro_payment_completed', { kind, trip_id: pt || undefined });
+    // success — revenue truth now comes from the Stripe webhook (purchase_completed,
+    // $lib=edge). The client redirect is lost on closed tabs / ad-blockers, so we
+    // no longer emit a client purchase event here to avoid double-counting revenue.
     setPayModal('success');
     qc.invalidateQueries({ queryKey: ['my-pro-status'] });
     qc.invalidateQueries({ queryKey: ['me'] });

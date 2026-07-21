@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import posthog from 'posthog-js';
+import { track } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
@@ -241,7 +241,7 @@ export default function Login() {
   // ── Auth handlers ──
   const handleGoogle = async () => {
     setIsLoading(true); setError(null);
-    posthog?.capture('user_logged_in', { method: 'google' });
+    track('user_logged_in', { method: 'google' });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -332,7 +332,7 @@ export default function Login() {
 
   const handleApple = async () => {
     setIsLoading(true); setError(null);
-    posthog?.capture('user_logged_in', { method: 'apple' });
+    track('user_logged_in', { method: 'apple' });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },
@@ -344,7 +344,7 @@ export default function Login() {
     e.preventDefault(); setIsLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(error.message); setIsLoading(false); return; }
-    posthog?.capture('user_logged_in', { method: 'email' });
+    track('user_logged_in', { method: 'email' });
     window.location.href = postLoginPath();
   };
 
@@ -380,7 +380,7 @@ export default function Login() {
       },
     });
     if (error) { setError(error.message); setIsLoading(false); }
-    else { posthog?.capture('user_signed_up', { method: 'email' }); startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
+    else { track('user_signed_up', { method: 'email' }); startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
   };
 
   // Set a new password during a Supabase recovery session (reached via the

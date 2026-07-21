@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
@@ -137,7 +138,11 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       return;
     }
 
-    if (/@triplanio\b/i.test(content)) {
+    const mentionsAi = /@triplanio\b/i.test(content);
+    // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
+    track(mentionsAi ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
+
+    if (mentionsAi) {
       const realId = created?.id;
       invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
         .catch((err) => {

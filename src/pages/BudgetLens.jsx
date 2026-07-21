@@ -22,6 +22,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { writeRows } from '@/lib/trip-data';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -171,6 +172,9 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       return;
     }
     setSaving(false);
+    if (!isEdit) {
+      track('budget_expense_added', { trip_id: tripId, has_fx: currency !== (mainCurrency || 'EUR') });
+    }
     onSaved?.();
     close();
   }

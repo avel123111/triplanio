@@ -20,6 +20,7 @@
  */
 import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { emitTripReached2 } from '../_shared/analytics.ts';
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -124,6 +125,9 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     // Joined successfully -> drop any stale block for this user on this trip.
     await supabaseAdmin.from('trip_member_blocks')
       .delete().eq('trip_id', trip.id).eq('user_id', user.id);
+
+    // North Star: did this join make the trip collaborative (owner + 1st member = 2)?
+    await emitTripReached2(supabaseAdmin, trip.id, user.id);
 
     // Best-effort: notify the trip owner that someone joined.
     if (trip.created_by && trip.created_by !== user.id) {

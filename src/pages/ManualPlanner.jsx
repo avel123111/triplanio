@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePostHog } from '@posthog/react';
+import { track } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { writeRows } from '@/lib/trip-data';
@@ -683,7 +683,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const posthog = usePostHog();
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -1095,11 +1094,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
-      posthog?.capture('trip_created', { method, city_count: visitsToInsert.length, trip_id: trip.id });
+      // "first trip ever" is derived in PostHog from the user's first trip_created
+      // event (authoritative history) — the client trips cache is unreliable here
+      // (may be unloaded, and includes trips the user only participates in).
+      track('trip_created', { method, city_count: visitsToInsert.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {
       console.error('Failed to save trip:', err);
+      track('trip_create_failed', { method, reason: err?.message || 'unknown' });
       setError(err.message || t('planner.err_save_failed'));
     } finally {
       setSaving(false);
@@ -1145,7 +1148,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Btn variant="ghost" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
-              <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1')}>{t('sub.go_pro')}</Btn>
+              <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit')}>{t('sub.go_pro')}</Btn>
             </div>
           </div>
         </div>

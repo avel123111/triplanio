@@ -14,7 +14,11 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 //   Prod is detected by host (mirrors the CORS/canon-inspector split below).
 // - `env` super-property tags every event → prod dashboards filter env=prod.
 // - autocapture / web vitals / session replay OFF — we rely on explicit named
-//   events only (clean data over volume). Keep $pageview (traffic/retention).
+//   events only (clean data over volume).
+// - native $pageview OFF too (TRIP-213 Ф2): navigation is tracked by explicit
+//   per-screen open events via track() (App.jsx screenOpenEvent), and routes that
+//   already have a dedicated event send nothing — keeping $pageview would DOUBLE
+//   the highest-volume event and burn the free-tier quota for a pure duplicate.
 const POSTHOG_PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com'])
 const isPosthogProdHost = POSTHOG_PROD_HOSTS.has(window.location.hostname)
 const posthogEnabled = isPosthogProdHost || ['1', 'true'].includes(import.meta.env.VITE_POSTHOG_ENABLE_DEV)
@@ -24,6 +28,7 @@ if (posthogToken) {
     api_host: import.meta.env.VITE_POSTHOG_HOST,
     defaults: '2026-05-30',
     autocapture: false,
+    capture_pageview: false, // our own page_view via track() replaces it (no dupe)
     capture_performance: false,
     disable_session_recording: true,
     person_profiles: 'identified_only',

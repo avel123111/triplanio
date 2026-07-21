@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plane } from 'lucide-react';
 import { invokeFn } from '@/lib/invokeFn';
+import { track, setRefTripId } from '@/lib/analytics';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
@@ -77,6 +78,15 @@ export default function PublicTrip() {
     enabled: !!tripId && !!token,
     retry: false,
   });
+
+  // Виральность: публичный просмотр + запоминаем трип как источник перехода
+  // (K-фактор) — если этот посетитель позже зарегистрируется, ref_trip_id уедет
+  // с его событиями. Один раз на успешную загрузку.
+  useEffect(() => {
+    if (!tripId || !data?.trip) return;
+    setRefTripId(tripId);
+    track('public_trip_viewed', { trip_id: tripId });
+  }, [tripId, data?.trip]);
 
   const trip = data?.trip;
   const owner = data?.owner || null;
