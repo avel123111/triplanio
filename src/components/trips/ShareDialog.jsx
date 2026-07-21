@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { usePostHog } from '@posthog/react';
+import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Badge, Btn, Dialog, Severity, Skeleton } from '@/design/index';
@@ -34,7 +34,6 @@ async function invokeCard(body, tries = 3) {
 //      can Download or (on mobile) share via the native sheet.
 export default function ShareDialog({ trip, open, onOpenChange, visits = [], transfers = [] }) {
   const { t, lang } = useI18n();
-  const posthog = usePostHog();
   const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -106,6 +105,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       cardBlobUrlRef.current = objUrl;
       setCardUrl(objUrl);
       setStage('card');
+      track('share_card_generated', { trip_id: trip?.id, format });
     } catch (e) {
       console.error('card build failed', e);
       setCardCode('error');
@@ -140,7 +140,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
 
   function copyLink() {
     if (!shareUrl) return;
-    posthog?.capture('trip_share_link_copied', { trip_id: trip?.id });
+    track('trip_share_link_copied', { trip_id: trip?.id });
     navigator.clipboard?.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

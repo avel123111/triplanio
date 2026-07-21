@@ -24,7 +24,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     : { status: 'idle', activeCount: 0, isPro: false }
   );
   const nav = useNavigate();
-  const openUpgrade = () => { onOpenChange?.(false); nav('/pro?hidePerTrip=1'); };
+  const openUpgrade = () => { onOpenChange?.(false); nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit'); };
   const proceededRef = useRef(false);
 
   useEffect(() => {

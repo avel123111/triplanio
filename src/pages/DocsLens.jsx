@@ -20,6 +20,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Field, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast } from '../design/index';
@@ -140,6 +141,12 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     // Saved → the staged files are now referenced by the row; the close sweep
     // must skip them.
     savedRef.current = true;
+    track('document_uploaded', {
+      trip_id: tripId,
+      visibility,
+      has_files: !!documents.length,
+      has_link: !!linkUrl.trim(),
+    });
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
     close();
   }

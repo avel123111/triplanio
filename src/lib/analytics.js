@@ -20,3 +20,29 @@ export function track(event, props) {
   // even if analytics is disabled (dev/preview without VITE_POSTHOG_ENABLE_DEV).
   posthog?.capture?.(event, props);
 }
+
+/**
+ * Associate the current user + subsequent events with a trip GROUP so the North
+ * Star ("active trips with ≥2 participants") is a group-level metric rather than
+ * a per-person one. Call on entering a trip; `props` become group properties.
+ * @param {string} tripId
+ * @param {Record<string, unknown>} [props]  group props, e.g. { participant_count }
+ */
+export function groupTrip(tripId, props) {
+  if (!tripId) return;
+  // ponytail: sets the ACTIVE group globally (standard PostHog pattern) — events
+  // fired afterwards on non-trip screens still carry the last trip until the next
+  // groupTrip(). Upgrade path if that pollutes: pass per-event { groups:{trip} }.
+  posthog?.group?.('trip', String(tripId), props);
+}
+
+/**
+ * Record the trip a user arrived through (invite / shared public link) as a
+ * persisted super-property so every later event carries it — the basis for
+ * referral attribution / K-factor. Safe while anonymous (rides localStorage).
+ * @param {string} refTripId
+ */
+export function setRefTripId(refTripId) {
+  if (!refTripId) return;
+  posthog?.register?.({ ref_trip_id: String(refTripId) });
+}

@@ -1,6 +1,7 @@
 // Logs a partner-referral click into the PartnerClick entity.
 // Fire-and-forget: failures must not block the user's navigation to the partner.
 import { supabase } from '@/api/supabaseClient';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useCallback } from 'react';
 
@@ -26,6 +27,8 @@ export function logPartnerClick({ partner, type, link, provider, campaign, fallb
     };
     // Fire-and-forget - don't await, don't throw
     supabase.from('partner_clicks').insert(payload).then(() => {}, () => { /* ignore */ });
+    // Same click as a product-analytics event (no PII — partner/type/campaign only).
+    track('service_opened', { trip_id: tripId || undefined, service: type, partner, campaign: campaign || undefined });
   } catch {
     /* ignore */
   }

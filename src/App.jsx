@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Toaster } from "@/design/index"
+import { track } from '@/lib/analytics'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -32,6 +34,15 @@ import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
+
+  // Custom page_view on every SPA navigation (TRIP-213). This is the ONLY page
+  // view event — native $pageview is off in main.jsx so we don't double-bill the
+  // free-tier quota. Routing it through track() means a future second destination
+  // — GA4 / ad pixel, TRIP-227 — gets page views too. Fires before the auth/route
+  // branches below (hooks run unconditionally).
+  useEffect(() => {
+    track('page_view', { path: location.pathname });
+  }, [location.pathname]);
 
   // Public read-only trip page - no auth needed
   const path = location.pathname;
