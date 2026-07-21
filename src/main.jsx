@@ -15,8 +15,9 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 // - `env` super-property tags every event → prod dashboards filter env=prod.
 // - autocapture / web vitals / session replay OFF — we rely on explicit named
 //   events only (clean data over volume).
-// - native $pageview OFF too (TRIP-213 Ф2): navigations are tracked by our own
-//   `page_view` event via track() (App.jsx), so keeping $pageview would DOUBLE
+// - native $pageview OFF too (TRIP-213 Ф2): navigation is tracked by explicit
+//   per-screen open events via track() (App.jsx screenOpenEvent), and routes that
+//   already have a dedicated event send nothing — keeping $pageview would DOUBLE
 //   the highest-volume event and burn the free-tier quota for a pure duplicate.
 const POSTHOG_PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com'])
 const isPosthogProdHost = POSTHOG_PROD_HOSTS.has(window.location.hostname)
