@@ -77,7 +77,10 @@ export default function Pro() {
 
   const handleUpgrade = async (productCode) => {
     setErrorMsg('');
-    track('pro_upgrade_initiated', { product_code: productCode, plan: productCode, trip_id: tripId || undefined });
+    // `plan` = normalized dimension for dashboards (monthly|yearly|trip);
+    // `product_code` stays the exact Stripe id for reconciliation.
+    const plan = { account_pro_monthly: 'monthly', account_pro_yearly: 'yearly', trip_pro_lifetime: 'trip' }[productCode] || productCode;
+    track('pro_upgrade_initiated', { product_code: productCode, plan, trip_id: tripId || undefined });
     try {
       setLoadingPlan(productCode);
       let isIframe = false;

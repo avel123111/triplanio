@@ -1094,15 +1094,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
-      // is_first_trip: best-effort from the cached trips list (pre-insert — the new
-      // row isn't in cache yet). Omitted when the list was never loaded here.
-      const priorTripCount = qc.getQueryData(['trips', user?.id])?.length;
-      track('trip_created', {
-        method,
-        city_count: visitsToInsert.length,
-        trip_id: trip.id,
-        is_first_trip: typeof priorTripCount === 'number' ? priorTripCount === 0 : undefined,
-      });
+      // "first trip ever" is derived in PostHog from the user's first trip_created
+      // event (authoritative history) — the client trips cache is unreliable here
+      // (may be unloaded, and includes trips the user only participates in).
+      track('trip_created', { method, city_count: visitsToInsert.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {

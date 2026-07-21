@@ -35,10 +35,11 @@ const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
 
-  // Custom page_view on every SPA navigation (TRIP-213). Explicit event (in
-  // addition to PostHog's native $pageview) so a future second destination
-  // — GA4 / ad pixel, TRIP-227 — receives page views through the same track()
-  // seam. Fires before the auth/route branches below (hooks run unconditionally).
+  // Custom page_view on every SPA navigation (TRIP-213). This is the ONLY page
+  // view event — native $pageview is off in main.jsx so we don't double-bill the
+  // free-tier quota. Routing it through track() means a future second destination
+  // — GA4 / ad pixel, TRIP-227 — gets page views too. Fires before the auth/route
+  // branches below (hooks run unconditionally).
   useEffect(() => {
     track('page_view', { path: location.pathname });
   }, [location.pathname]);
