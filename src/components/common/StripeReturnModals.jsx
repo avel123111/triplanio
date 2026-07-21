@@ -66,8 +66,9 @@ export default function StripeReturnModals() {
       return;
     }
 
-    // success
-    track('pro_payment_completed', { kind, trip_id: pt || undefined });
+    // success — revenue truth now comes from the Stripe webhook (purchase_completed,
+    // $lib=edge). The client redirect is lost on closed tabs / ad-blockers, so we
+    // no longer emit a client purchase event here to avoid double-counting revenue.
     setPayModal('success');
     qc.invalidateQueries({ queryKey: ['my-pro-status'] });
     qc.invalidateQueries({ queryKey: ['me'] });
