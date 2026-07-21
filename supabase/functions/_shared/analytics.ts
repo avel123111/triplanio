@@ -5,8 +5,8 @@
  * (Stripe webhook), the North Star "trip reached 2 participants", lifecycle
  * reminders. This is the single fire-and-forget emitter for those.
  *
- * - Uses the PUBLIC project write token (the same `phc_…` key shipped in the
- *   browser bundle — safe to use here); set `POSTHOG_PROJECT_TOKEN` as an edge
+ * - Uses the PUBLIC project write key (the same `phc_…` key shipped in the
+ *   browser bundle — safe to use here); read from the `POSTHOG_PROJECT_KEY` edge
  *   secret. No-op when it is unset, so local / unconfigured runs stay silent.
  * - `env` mirrors the frontend super-property (prod|dev) and is derived from the
  *   per-project `SENTRY_ENVIRONMENT` secret — no new env var for that.
@@ -15,7 +15,7 @@
  * - Fire-and-forget: analytics must NEVER block or fail the request; every error
  *   is swallowed.
  */
-const TOKEN = Deno.env.get('POSTHOG_PROJECT_TOKEN');
+const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');
 const HOST = Deno.env.get('POSTHOG_HOST') || 'https://eu.i.posthog.com';
 const ENV = Deno.env.get('SENTRY_ENVIRONMENT') === 'development' ? 'dev' : 'prod';
 
