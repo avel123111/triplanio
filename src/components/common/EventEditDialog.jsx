@@ -102,6 +102,7 @@ import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
+import { track } from '@/lib/analytics';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
@@ -669,7 +670,7 @@ export default function EventEditDialog({
     // Апселл рендерит app-level ProUpsellProvider (не вложенная модаль) — TRIP-225.
     if (!isOwner) { openProUpsell({ mode: 'info' }); return; }
     onOpenChange?.(false);
-    nav(`/pro?tripId=${tripId || ''}`);
+    nav(`/pro?tripId=${tripId || ''}&from=paywall&feature=event_pro`);
   };
 
   // ── Unified validation (Ф2): one engine, emits CODES; text via t('validation.'+code).
@@ -776,6 +777,11 @@ export default function EventEditDialog({
       const f = issues.find((i) => i.field)?.field;
       if (f) document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
+    }
+    // booking_added: a valid CREATE of a real booking (services are opened, not
+    // "booked"). Fired at submit — the create commits optimistically below.
+    if (!entity && ['hotel', 'transfer', 'activity'].includes(currentKind)) {
+      track('booking_added', { trip_id: tripId, kind: currentKind });
     }
     // Optimistic CREATE of a single booking: show it immediately, close the panel,
     // write to the DB in the background and reconcile. qc is app-level, so this

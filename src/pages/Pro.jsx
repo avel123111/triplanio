@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { usePostHog } from '@posthog/react';
+import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -23,9 +23,11 @@ export default function Pro() {
   const { t, fmtMoney } = useI18nFormat();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPro = isProActive(user);
-  const posthog = usePostHog();
 
   const tripId = searchParams.get('tripId') || null;
+  // `from` lets callers tag WHY pricing opened — a feature gate passes
+  // ?from=paywall so we can tell an intentional pricing visit from a blocked one.
+  const from = searchParams.get('from') || null;
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
   // a tripId (e.g. a leaked link from a shared trip), hide the per-trip banner —
   // they can still subscribe, but can't buy Pro for someone else's trip. Every
@@ -43,6 +45,16 @@ export default function Pro() {
     return () => { cancelled = true; };
   }, [tripId]);
   const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner === false;
+
+  // Revenue funnel top: every pricing view + a distinct paywall impression when a
+  // feature gate sent the user here (?from=paywall). Fire once per mount.
+  useEffect(() => {
+    track('pricing_viewed', { trip_id: tripId || undefined, from: from || undefined });
+    if (from === 'paywall') {
+      track('paywall_viewed', { trip_id: tripId || undefined, feature: searchParams.get('feature') || undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [prices, setPrices] = useState(null);
   // Start in the loading state: prices are always fetched on mount, so the very
@@ -65,7 +77,7 @@ export default function Pro() {
 
   const handleUpgrade = async (productCode) => {
     setErrorMsg('');
-    posthog?.capture('pro_upgrade_initiated', { product_code: productCode, trip_id: tripId || undefined });
+    track('pro_upgrade_initiated', { product_code: productCode, plan: productCode, trip_id: tripId || undefined });
     try {
       setLoadingPlan(productCode);
       let isIframe = false;

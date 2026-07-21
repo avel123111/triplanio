@@ -43,6 +43,7 @@ import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
+import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -829,6 +830,7 @@ export default function TripView() {
     if (id === 'overview') sp.delete('lens'); else sp.set('lens', id);
     setSearchParams(sp, { replace: false });
     setSideOpen(false); // close the mobile sidebar after navigating
+    track('section_opened', { trip_id: tripId, section: id });
   };
 
   // Fetch shell (trip + cityVisits)
@@ -904,6 +906,20 @@ export default function TripView() {
   // Edit Mode (structure editor) gate: anyone but a viewer. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
   const canEditMode = roleCanEdit(myRole);
+
+  // trip_opened (once per trip) + associate events with the trip GROUP so the
+  // North Star ("active trips with ≥2 participants") is measured per-trip. Group
+  // props refresh as members / Pro resolve from the content query.
+  const openedTripRef = useRef(null);
+  useEffect(() => {
+    if (!tripId || !trip) return;
+    groupTrip(tripId, { participant_count: members.length || undefined, is_pro: !!tripIsPro });
+    if (openedTripRef.current !== tripId) {
+      openedTripRef.current = tripId;
+      track('trip_opened', { trip_id: tripId, role: myRole });
+    }
+  }, [tripId, trip, members.length, tripIsPro, myRole]);
+
   const { openProUpsell } = useProUpsell();
   // Участник (не владелец) → инфо-апселл «подключает владелец» (app-level, TRIP-225).
   const openProInfo = () => openProUpsell({ mode: 'info', ownerName: members.find(m => m.user_id === trip?.created_by)?.user_full_name || '' });

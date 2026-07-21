@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import posthog from 'posthog-js';
+import { track, setRefTripId } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -61,7 +61,9 @@ export default function JoinTrip() {
 
       if (!error && data?.ok && data?.tripId) {
         try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
-        posthog?.capture('trip_invite_joined', { trip_id: data.tripId });
+        // the trip a user joined THROUGH is their referral source (K-factor)
+        setRefTripId(data.tripId);
+        track('trip_invite_joined', { trip_id: data.tripId });
         nav(`/trip/${data.tripId}`, { replace: true });
         return;
       }

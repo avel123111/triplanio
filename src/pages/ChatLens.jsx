@@ -13,6 +13,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 're
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { track } from '@/lib/analytics';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -241,8 +242,11 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       return;
     }
 
+    const mentionsAi = /@triplanio\b/i.test(content);
+    track('chat_message_sent', { trip_id: tripId, mentions_ai: mentionsAi });
+
     // Trigger Triplanio AI if mention anywhere in message
-    if (/@triplanio\b/i.test(content)) {
+    if (mentionsAi) {
       const realId = created?.id;
       invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
         .then(({ data, error }) => {

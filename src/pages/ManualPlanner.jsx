@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePostHog } from '@posthog/react';
+import { track } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { writeRows } from '@/lib/trip-data';
@@ -683,7 +683,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const posthog = usePostHog();
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -1095,11 +1094,20 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Creating a trip raises the active-trip count — drop the limit gate cache
       // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
       invalidateActiveTripsLimit(qc);
-      posthog?.capture('trip_created', { method, city_count: visitsToInsert.length, trip_id: trip.id });
+      // is_first_trip: best-effort from the cached trips list (pre-insert — the new
+      // row isn't in cache yet). Omitted when the list was never loaded here.
+      const priorTripCount = qc.getQueryData(['trips', user?.id])?.length;
+      track('trip_created', {
+        method,
+        city_count: visitsToInsert.length,
+        trip_id: trip.id,
+        is_first_trip: typeof priorTripCount === 'number' ? priorTripCount === 0 : undefined,
+      });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {
       console.error('Failed to save trip:', err);
+      track('trip_create_failed', { method, reason: err?.message || 'unknown' });
       setError(err.message || t('planner.err_save_failed'));
     } finally {
       setSaving(false);
@@ -1145,7 +1153,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Btn variant="ghost" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
-              <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1')}>{t('sub.go_pro')}</Btn>
+              <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit')}>{t('sub.go_pro')}</Btn>
             </div>
           </div>
         </div>
