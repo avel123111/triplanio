@@ -12,12 +12,14 @@
  *   1. Calls the `get_pending_reminders(window_minutes)` SQL function which
  *      returns every reminder that falls inside its [lead_time, lead_time +
  *      window_minutes] bracket AND has not yet been logged for the user.
- *   2. Inserts a row in telegram_reminder_logs for each reminder up-front so
- *      that retries inside the same window won't double-send. n8n is the
- *      authority for delivery — once we hand it the list, we consider the
- *      reminder dispatched.
- *   3. Returns { reminders: [...] } to n8n, which formats and sends the
- *      Telegram messages itself.
+ *   2. Inserts a claim row in telegram_reminder_logs for each reminder up-front
+ *      so retries inside the same window won't double-send, and reads back each
+ *      row's id. Only freshly-claimed reminders are emitted (a row already
+ *      claimed this window is dropped, never re-sent).
+ *   3. Returns { reminders: [...] } to n8n, each carrying its log_id. n8n sends
+ *      the Telegram messages and stamps delivered_at back against log_id, so a
+ *      silent non-delivery stays visible (delivered_at is null) instead of the
+ *      claim row meaning "delivered" forever.
  */
 
 import { withHandler } from '../_shared/http.ts';
@@ -83,13 +85,35 @@ Deno.serve(withHandler('getPendingReminders', async (req, corsHeaders) => {
     sent_at: new Date().toISOString(),
   }));
 
-  const { error: logError } = await supabaseAdmin
+  // Read back the claim rows' ids. With ignoreDuplicates a reminder already
+  // claimed in this window is NOT returned here — we drop it below so it can't
+  // be sent twice. Each returned id is the telegram_reminder_logs PK that n8n
+  // echoes back to stamp delivered_at against the exact row (works even with
+  // several reminders for the same event — each is its own row/id).
+  const { data: claimed, error: logError } = await supabaseAdmin
     .from('telegram_reminder_logs')
-    .upsert(logs, { onConflict: 'user_id,event_kind,event_id', ignoreDuplicates: true });
+    .upsert(logs, { onConflict: 'user_id,event_kind,event_id', ignoreDuplicates: true })
+    .select('id, user_id, event_kind, event_id');
 
   if (logError) {
-    console.warn('reminder_logs upsert warning:', logError.message);
+    // Fail closed: without a confirmed claim we might double-send next tick.
+    // These reminders stay unclaimed and are retried on the following tick.
+    console.error('reminder_logs claim error:', logError.message);
+    return Response.json({ error: logError.message }, { status: 500, headers: corsHeaders });
   }
 
-  return Response.json({ reminders: rows }, { headers: corsHeaders });
+  // Attach each claim row's id (log_id) to its reminder and emit only the
+  // freshly-claimed ones. A reminder whose row was a pre-existing duplicate has
+  // no id here and is dropped — the RPC already excludes logged reminders, so
+  // this only fires on a rare concurrent-tick race, and dropping it is correct
+  // (it was already handed off once).
+  const idByKey = new Map(
+    (claimed ?? []).map((c) => [`${c.user_id}|${c.event_kind}|${c.event_id}`, c.id]),
+  );
+  const emit = rows.flatMap((r) => {
+    const logId = idByKey.get(`${r.user_id}|${r.type}|${r.context.id}`);
+    return logId ? [{ ...r, log_id: logId }] : [];
+  });
+
+  return Response.json({ reminders: emit }, { headers: corsHeaders });
 }));
