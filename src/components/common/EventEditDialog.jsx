@@ -782,7 +782,7 @@ export default function EventEditDialog({
     // One distinct event per booking type so it's clear what was added. Fired at
     // submit — the create commits optimistically below.
     if (!entity) {
-      if (currentKind === 'transfer') track('transfer_booking_added', { trip_id: tripId });
+      if (currentKind === 'transfer') track('transfer_added', { trip_id: tripId });
       else if (currentKind === 'hotel') track('hotel_added', { trip_id: tripId });
       else if (currentKind === 'activity') track('activity_added', { trip_id: tripId });
     }
