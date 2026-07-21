@@ -29,6 +29,7 @@ import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from '../_s
 import { isDuplicateEntitlingSub } from '../_shared/payments/subscriptionDedup.ts';
 import { buildPurchaseRow } from '../_shared/payments/purchaseRow.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
+import { captureServer } from '../_shared/analytics.ts';
 
 // Ошибка записи права → Sentry + throw (Stripe ретраит). Только для
 // энтайтлмент-критичных записей; best-effort (нотификации, customer id) — нет.
@@ -205,6 +206,15 @@ Deno.serve(async (req) => {
           })));
           if (!isDup) await recomputeTrip(trip_id);
           await saveCustomer(user_id, fresh.customer);
+          // Revenue truth from the webhook (TRIP-213 Ф2) — only a genuine new
+          // paid purchase (not a duplicate second tab). Amount is minor units.
+          if (!isDup) {
+            captureServer('purchase_completed', user_id, {
+              plan: 'trip', product_code: 'trip_pro_lifetime',
+              value: (fresh.amount_total || 0) / 100, currency: fresh.currency || 'usd',
+              transaction_id: session.id,
+            }, { trip: trip_id });
+          }
 
         } else if ((productCode === 'account_pro_monthly' || productCode === 'account_pro_yearly') && user_id) {
           const subId = typeof session.subscription === 'string' ? session.subscription : null;
@@ -242,6 +252,13 @@ Deno.serve(async (req) => {
             if (!isDup) {
               await saveCustomer(user_id, session.customer);
               await recomputeUser(user_id);
+              // Revenue truth from the webhook (TRIP-213 Ф2) — genuine NEW subscription.
+              captureServer('purchase_completed', user_id, {
+                plan: productCode === 'account_pro_yearly' ? 'yearly' : 'monthly',
+                product_code: productCode,
+                value: (session.amount_total || 0) / 100, currency: session.currency || 'usd',
+                transaction_id: session.id,
+              });
               try {
                 await supabaseAdmin.from('notifications').insert({
                   user_id, type: 'system',
