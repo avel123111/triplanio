@@ -12,6 +12,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { renderJoinedNotification, renderDeclinedNotification } from '../_shared/emailTemplate.ts';
+import { emitTripReached2 } from '../_shared/analytics.ts';
 
 Deno.serve(withHandler('respondTripInvite', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -115,6 +116,9 @@ Deno.serve(withHandler('respondTripInvite', async (req, corsHeaders) => {
           user_id: user.id,
         })
         .eq('id', member_id);
+
+      // North Star: did this accept make the trip collaborative (owner + 1st member = 2)?
+      await emitTripReached2(supabaseAdmin, member.trip_id, user.id);
 
       // Notify the inviter in THEIR language (not the accepter's)
       if (member.invited_by) {

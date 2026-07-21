@@ -52,3 +52,28 @@ export function captureServer(
     body: JSON.stringify(body),
   }).catch(() => { /* analytics is best-effort */ });
 }
+
+/**
+ * North Star: emit `trip_reached_2_participants` the moment a trip becomes
+ * collaborative. Participants = the OWNER (implicit — the creator has no
+ * trip_members row) + active members WITH an account; offline placeholders
+ * (user_id null) do NOT count. Fires once — when the first real member makes it 2.
+ * Call right AFTER a join sets a member to active. Best-effort (swallows errors).
+ * @param admin  supabase admin client (injected so this module stays DB-agnostic)
+ */
+export async function emitTripReached2(
+  // deno-lint-ignore no-explicit-any
+  admin: { from: (t: string) => any },
+  tripId: string | null | undefined,
+  joinerUserId: string | null | undefined,
+): Promise<void> {
+  if (!tripId || !joinerUserId) return;
+  try {
+    const { count } = await admin.from('trip_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId).eq('status', 'active').not('user_id', 'is', null);
+    if (count === 1) {
+      captureServer('trip_reached_2_participants', joinerUserId, { trip_id: tripId }, { trip: tripId });
+    }
+  } catch { /* best-effort */ }
+}
