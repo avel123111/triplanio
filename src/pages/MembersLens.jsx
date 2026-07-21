@@ -91,7 +91,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
   function copyLink() {
     if (!linkUrl) return;
-    track('member_invited', { invite_method: 'link', role, trip_id: tripId });
+    track('link_invited', { role, trip_id: tripId });
     navigator.clipboard?.writeText(linkUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -114,7 +114,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     if (promoteMember?.id) {
       await invokeFn('removeTripMember', { body: { member_id: promoteMember.id } });
     }
-    track('member_invited', { invite_method: 'email', role, trip_id: tripId });
+    track('email_invited', { role, trip_id: tripId });
     onSaved?.();
     close();
   }
@@ -128,6 +128,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     });
     setSaving(false);
     if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
+    track('member_invited', { role: 'offline', trip_id: tripId });
     onSaved?.();
     close();
   }

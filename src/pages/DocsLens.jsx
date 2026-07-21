@@ -141,9 +141,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     // Saved → the staged files are now referenced by the row; the close sweep
     // must skip them.
     savedRef.current = true;
-    track('document_uploaded', {
+    // Split by visibility: document1_uploaded = shared (общий), document2_uploaded = private (личный).
+    track(visibility === 'private' ? 'document2_uploaded' : 'document1_uploaded', {
       trip_id: tripId,
-      visibility,
       has_files: !!documents.length,
       has_link: !!linkUrl.trim(),
     });

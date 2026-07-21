@@ -49,6 +49,20 @@ import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
 
+// Per-section open events (TRIP-213 Ф2c) — one distinct event per lens so it's
+// clear which section the user opened, instead of a single section_opened+breakdown.
+const SECTION_OPEN_EVENT = {
+  overview: 'overview_opened',
+  timeline: 'timeline_opened',
+  map: 'map_opened',
+  calendar: 'calendar_opened',
+  budget: 'budget_opened',
+  docs: 'documents_opened',
+  members: 'members_opened',
+  settings: 'settings_opened',
+  chat: 'chat_opened',
+};
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 // Stored datetimes are naive wall-clock, local to each endpoint city. For a
@@ -830,7 +844,15 @@ export default function TripView() {
     if (id === 'overview') sp.delete('lens'); else sp.set('lens', id);
     setSearchParams(sp, { replace: false });
     setSideOpen(false); // close the mobile sidebar after navigating
-    track('section_opened', { trip_id: tripId, section: id });
+    const sectionEvent = SECTION_OPEN_EVENT[id];
+    if (sectionEvent) track(sectionEvent, { trip_id: tripId });
+  };
+
+  // Opening a service from the services widget — one distinct event per type.
+  // Concrete names (for grep): esim_opened, insurance_opened, car_rental_opened.
+  const openServiceChoice = (type) => {
+    if (type) track(`${type}_opened`, { trip_id: tripId });
+    setServiceChoice({ open: true, type });
   };
 
   // Fetch shell (trip + cityVisits)
@@ -1140,7 +1162,7 @@ export default function TripView() {
               onOpenMap={() => setLens('map')}
               onOpenBudget={() => setLens('budget')}
               onOpenMembers={() => setLens('members')}
-              onAddService={(type) => setServiceChoice({ open: true, type })}
+              onAddService={openServiceChoice}
               onOpenService={(s) => setEventView({ open: true, kind: 'service', id: s.id })}
               onBudgetLocked={() => setBudgetAddonOff(true)}
             />
