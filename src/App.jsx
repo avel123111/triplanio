@@ -31,17 +31,33 @@ import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 
+// Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
+// $pageview is off (main.jsx) and the routes that already have a dedicated event
+// (/trip/:id → trip_opened, /pro → pricing_viewed, /public/trip → public_trip_viewed,
+// /new-trip|/plan-trip-ai → trip_creation_started) send NOTHING here, so we don't
+// double-bill the free-tier quota. Only screens WITHOUT their own event get one.
+// Returns null → no event for this route.
+function screenOpenEvent(pathname) {
+  if (pathname === '/') return { event: 'landing_viewed' };
+  if (pathname === '/login' || pathname === '/reset-password') return { event: 'login_opened' };
+  if (pathname === '/trips') return { event: 'home_opened' };
+  if (pathname === '/stats') return { event: 'stats_opened' };
+  if (pathname === '/settings') return { event: 'account_opened' };
+  if (pathname === '/inbox') return { event: 'inbox_opened' };
+  const edit = pathname.match(/^\/trip\/([^/]+)\/edit$/);
+  if (edit) return { event: 'trip_editor_opened', props: { trip_id: edit[1] } };
+  return null;
+}
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
 
-  // Custom page_view on every SPA navigation (TRIP-213). This is the ONLY page
-  // view event — native $pageview is off in main.jsx so we don't double-bill the
-  // free-tier quota. Routing it through track() means a future second destination
-  // — GA4 / ad pixel, TRIP-227 — gets page views too. Fires before the auth/route
+  // Fire the screen-open event on SPA navigation. Fires before the auth/route
   // branches below (hooks run unconditionally).
   useEffect(() => {
-    track('page_view', { path: location.pathname });
+    const s = screenOpenEvent(location.pathname);
+    if (s) track(s.event, s.props);
   }, [location.pathname]);
 
   // Public read-only trip page - no auth needed
