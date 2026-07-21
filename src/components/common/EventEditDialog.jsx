@@ -778,10 +778,13 @@ export default function EventEditDialog({
       if (f) document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
-    // booking_added: a valid CREATE of a real booking (services are opened, not
-    // "booked"). Fired at submit — the create commits optimistically below.
-    if (!entity && ['hotel', 'transfer', 'activity'].includes(currentKind)) {
-      track('booking_added', { trip_id: tripId, kind: currentKind });
+    // A valid CREATE of a real booking (services are opened, not "booked").
+    // Transfers get their OWN event name (transfer_booking_added) per request;
+    // hotel/activity stay on booking_added with a `kind` prop. Fired at submit —
+    // the create commits optimistically below.
+    if (!entity) {
+      if (currentKind === 'transfer') track('transfer_booking_added', { trip_id: tripId });
+      else if (currentKind === 'hotel' || currentKind === 'activity') track('booking_added', { trip_id: tripId, kind: currentKind });
     }
     // Optimistic CREATE of a single booking: show it immediately, close the panel,
     // write to the DB in the background and reconcile. qc is app-level, so this

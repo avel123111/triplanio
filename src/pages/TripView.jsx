@@ -911,9 +911,17 @@ export default function TripView() {
   // North Star ("active trips with ≥2 participants") is measured per-trip. Group
   // props refresh as members / Pro resolve from the content query.
   const openedTripRef = useRef(null);
+  const groupKeyRef = useRef(null);
   useEffect(() => {
     if (!tripId || !trip) return;
-    groupTrip(tripId, { participant_count: members.length || undefined, is_pro: !!tripIsPro });
+    // Only re-group when the group props actually change — members.length and
+    // tripIsPro resolve a beat after mount, and without this guard each resolve
+    // fires a redundant PostHog $groupidentify.
+    const groupKey = `${tripId}:${members.length}:${tripIsPro ? 1 : 0}`;
+    if (groupKeyRef.current !== groupKey) {
+      groupKeyRef.current = groupKey;
+      groupTrip(tripId, { participant_count: members.length || undefined, is_pro: !!tripIsPro });
+    }
     if (openedTripRef.current !== tripId) {
       openedTripRef.current = tripId;
       track('trip_opened', { trip_id: tripId, role: myRole });
