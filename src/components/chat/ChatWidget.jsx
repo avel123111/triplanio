@@ -139,7 +139,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     }
 
     const mentionsAi = /@triplanio\b/i.test(content);
-    track('chat_message_sent', { trip_id: tripId, mentions_ai: mentionsAi });
+    // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
+    track(mentionsAi ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
 
     if (mentionsAi) {
       const realId = created?.id;

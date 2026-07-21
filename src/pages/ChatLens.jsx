@@ -243,7 +243,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     }
 
     const mentionsAi = /@triplanio\b/i.test(content);
-    track('chat_message_sent', { trip_id: tripId, mentions_ai: mentionsAi });
+    // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
+    track(mentionsAi ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
 
     // Trigger Triplanio AI if mention anywhere in message
     if (mentionsAi) {

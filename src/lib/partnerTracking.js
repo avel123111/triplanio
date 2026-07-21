@@ -27,8 +27,9 @@ export function logPartnerClick({ partner, type, link, provider, campaign, fallb
     };
     // Fire-and-forget - don't await, don't throw
     supabase.from('partner_clicks').insert(payload).then(() => {}, () => { /* ignore */ });
-    // Same click as a product-analytics event (no PII — partner/type/campaign only).
-    track('service_opened', { trip_id: tripId || undefined, service: type, partner, campaign: campaign || undefined });
+    // The affiliate link CLICK as a product-analytics event (distinct from opening
+    // the service widget, which fires <type>_opened). No PII — partner/type/campaign only.
+    track('partner_link_clicked', { trip_id: tripId || undefined, service: type, partner, campaign: campaign || undefined });
   } catch {
     /* ignore */
   }
