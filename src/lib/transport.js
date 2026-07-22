@@ -9,7 +9,7 @@ import { Plane, Train, Bus, Car, Ship, Footprints, CircleHelp, Navigation } from
 //   • labelKey — i18n key (event.tk_* namespace, matches the editor selector wording)
 // Keep this map in lockstep with the DB CHECK. The n8n "AI Trip Parser" emits the
 // booking-relevant subset (no walk / own_transport — those aren't parsed from tickets).
-export const TRANSFER_KINDS = {
+const TRANSFER_KINDS = {
   plane:         { icon: 'plane', Icon: Plane,      labelKey: 'event.tk_plane' },
   train:         { icon: 'train', Icon: Train,      labelKey: 'event.tk_train' },
   bus:           { icon: 'bus',   Icon: Bus,        labelKey: 'event.tk_bus' },
@@ -27,15 +27,19 @@ const TRANSFER_KIND_SYNONYMS = {
   rail: 'train', coach: 'bus', shuttle: 'bus', boat: 'ferry', foot: 'walk',
 };
 
-// Ordered list of every valid transport_type (DB order).
-export const TRANSPORT_TYPES = Object.keys(TRANSFER_KINDS);
-
 // Subset offered in the transfer editor selector (a product choice — no taxi /
 // own_transport / other picker; those only reach us via AI parse or legacy data).
 export const EDITABLE_TRANSPORT_TYPES = ['plane', 'train', 'bus', 'car', 'ferry', 'walk'];
 
+// Map a synonym to its canonical transport_type, leaving canonical / unknown
+// values unchanged (unknown stays as-is so validation can flag it). Use this to
+// normalise AI-parsed values before they are saved to the DB CHECK column.
+export function canonTransportType(type) {
+  return TRANSFER_KIND_SYNONYMS[type] || type;
+}
+
 // Resolve any transport_type (or synonym / unknown) to its canonical meta.
 // Fallback = plane (the DB default) so an unknown value never blanks a pill.
 export function transferKind(type) {
-  return TRANSFER_KINDS[TRANSFER_KIND_SYNONYMS[type] || type] || TRANSFER_KINDS.plane;
+  return TRANSFER_KINDS[canonTransportType(type)] || TRANSFER_KINDS.plane;
 }

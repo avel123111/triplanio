@@ -55,7 +55,6 @@
   "start_already_set": "Start is already set, remove the current one first",
   "start_earlier": "earlier",
   "start_later": "later",
-  "tk_plane": "Flight",
   "transfers_out_of_plan": "Transfers out of plan",
   "warns_short": "{n} warn."
 }
