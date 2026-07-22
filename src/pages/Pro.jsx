@@ -100,6 +100,7 @@ export default function Pro() {
           setLoadingPlan(null);
           return;
         }
+        track('checkout_error', { plan, product_code: productCode, reason: code || 'create_failed' });
         setErrorMsg(t('sub.upgrade_error', { message: message || error?.message }));
         setLoadingPlan(null);
         return;
@@ -108,6 +109,7 @@ export default function Pro() {
       setLoadingPlan(null);
     } catch (error) {
       console.error('Upgrade error:', error);
+      track('checkout_error', { plan, product_code: productCode, reason: 'exception' });
       setErrorMsg(t('sub.upgrade_error', { message: error.message }));
       setLoadingPlan(null);
     }

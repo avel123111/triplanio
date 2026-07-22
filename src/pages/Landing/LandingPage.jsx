@@ -3,6 +3,7 @@ import React, {
   useEffect,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { Icon as BaseIcon } from '@/design/icons';
@@ -91,7 +92,7 @@ function Hero() {
             <h1>{t('landing.hero.h1_a')}<span className="break"><span className="accent">{t('landing.hero.h1_b_accent')}</span> {t('landing.hero.h1_c')}</span></h1>
             <p className="hero__lede">{t('landing.hero.lede')}</p>
             <div className="hero__ctas">
-              <button className="btn btn--primary btn--lg" onClick={() => nav(ctaTarget)}>{t('landing.hero.cta_primary')} <Icon name="arrowRight" size={16} className="chev"/></button>
+              <button className="btn btn--primary btn--lg" onClick={() => { track('cta_clicked', { location: 'hero' }); nav(ctaTarget); }}>{t('landing.hero.cta_primary')} <Icon name="arrowRight" size={16} className="chev"/></button>
               <a className="btn btn--ghost btn--lg" href="#how">{t('landing.hero.cta_secondary')}</a>
             </div>
             <div className="hero__trust">
@@ -563,7 +564,7 @@ function FinalCTA() {
       <div className="reveal" style={{position:'relative',zIndex:1}}>
         <h2>{t('landing.finalcta.h2')}</h2>
         <p>{t('landing.finalcta.lede')}</p>
-        <button className="btn btn--white btn--lg" style={{marginTop:32}} onClick={() => nav(ctaTarget)}>
+        <button className="btn btn--white btn--lg" style={{marginTop:32}} onClick={() => { track('cta_clicked', { location: 'final' }); nav(ctaTarget); }}>
           {t('landing.finalcta.cta')} <Icon name="arrowRight" size={16} className="chev"/>
         </button>
       </div>
