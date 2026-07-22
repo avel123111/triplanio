@@ -92,7 +92,7 @@ Deno.serve(withHandler('parseBookingWithAi', async (req, corsHeaders) => {
     const res = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${n8nJwt}` },
-      body: JSON.stringify({ kind, fileUrls, text: text ?? '' }),
+      body: JSON.stringify({ kind, fileUrls, text: text ?? '', user_id: user.id, trip_id }),
     });
 
     if (!res.ok) {

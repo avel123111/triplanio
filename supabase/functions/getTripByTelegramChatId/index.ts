@@ -45,7 +45,7 @@ Deno.serve(withHandler('getTripByTelegramChatId', async (req, corsHeaders) => {
     // All integrations bound to this chat (a chat may have several trips).
     const { data: integrations, error: intErr } = await supabaseAdmin
       .from('trip_telegram_integrations')
-      .select('trip_id, is_active, linked_at')
+      .select('trip_id, user_id, is_active, linked_at')
       .eq('telegram_chat_id', String(telegram_chat_id))
       .order('is_active', { ascending: false })
       .order('linked_at', { ascending: false });
@@ -74,7 +74,7 @@ Deno.serve(withHandler('getTripByTelegramChatId', async (req, corsHeaders) => {
         uniqueIntegrations.map(async (i) => {
           const data = await buildTripData(i.trip_id);
           if (!data) return null; // trip deleted but integration row left behind
-          return { is_active: i.is_active ?? false, linked_at: i.linked_at, ...data };
+          return { is_active: i.is_active ?? false, linked_at: i.linked_at, user_id: i.user_id ?? null, ...data };
         }),
       )
     ).filter((t) => t !== null);
