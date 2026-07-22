@@ -2528,9 +2528,12 @@ h4,
    separate MembersSummaryCard "who's going" widget and must not be touched) ── */
 .mlist { display: flex; flex-direction: column; gap: 8px; }
 /* Members lens content width matches the Settings lens (.settings-lens): same
-   1040px cap, centered. Scoped with .ov-anim so only the lens root is capped,
-   not the overview MembersSummaryCard widget which shares .mlist (TRIP-279). */
-.mlist.ov-anim { max-width: 1040px; margin-inline: auto; }
+   1040px cap, centered — both the member list AND the invite banner below it, so
+   they share the same edges. .mlist is scoped with .ov-anim so only the lens root
+   is capped, not the overview MembersSummaryCard widget which shares .mlist.
+   margin-inline (not margin) keeps the banner's margin-top intact (TRIP-279). */
+.mlist.ov-anim,
+.invite-banner { max-width: 1040px; margin-inline: auto; }
 .mbrow {
   display: grid; grid-template-columns: auto 1fr auto auto;
   align-items: center; gap: 16px; padding: 14px 16px;
