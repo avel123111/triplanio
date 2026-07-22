@@ -16,6 +16,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
+import { canonTransportType } from '@/lib/transport';
 import {
   Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
   RefreshCw, ChevronUp, Check,
@@ -140,8 +141,7 @@ export default function EventAiBlock({
           : (Array.isArray(result.segments) ? result.segments : null))
         : null;
       if (legs) {
-        const TT = { flight: 'plane', air: 'plane', airplane: 'plane', rail: 'train', boat: 'ferry', shuttle: 'bus' };
-        legs.forEach((s) => { if (s && TT[s.transport_type]) s.transport_type = TT[s.transport_type]; });
+        legs.forEach((s) => { if (s?.transport_type) s.transport_type = canonTransportType(s.transport_type); });
       }
       if (kind === 'transfer' && !legs) result.transfers = [{}];
 

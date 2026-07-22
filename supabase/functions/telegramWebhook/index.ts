@@ -16,6 +16,7 @@ import { corsFor } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { captureServer } from '../_shared/analytics.ts';
 import { type Lang, pickLang, resolveLang } from '../_shared/tgLang.ts';
 
 const T: Record<Lang, {
@@ -114,6 +115,10 @@ Deno.serve(async (req) => {
       .from('telegram_link_tokens')
       .update({ used_at: new Date().toISOString() })
       .eq('id', tok.id);
+
+    // Telegram connected to a trip (TRIP-213 Ф2). tok carries the real app uid +
+    // trip, so the event attributes to the person and the trip group.
+    captureServer('telegram_connected', tok.user_id, { trip_id: tok.trip_id }, { trip: tok.trip_id });
 
     const { data: trip } = await supabaseAdmin
       .from('trips').select('title').eq('id', tok.trip_id).maybeSingle();

@@ -5,6 +5,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
+import { transferKind } from '@/lib/transport';
 
 // =====================================================================
 // Primitive layer (Radix-backed) — single import surface.
@@ -487,21 +488,6 @@ export function weekdayLong(iso, loc) {
 }
 
 // ----- Transfer card helpers -----
-const TRANSFER_KIND_META = {
-  plane: { icon: "plane", labelKey: "tse.tk_plane" },
-  train: { icon: "train", labelKey: "transfer.train" },
-  bus:   { icon: "bus",   labelKey: "transfer.bus" },
-  ferry: { icon: "ferry", labelKey: "transfer.ferry" },
-  car:   { icon: "car",   labelKey: "event.tk_car" },
-  walk:  { icon: "walk",  labelKey: "event.tk_walk" },
-  foot:  { icon: "walk",  labelKey: "event.tk_walk" },
-  bike:  { icon: "walk",  labelKey: "transfer.bike" }
-};
-
-function _transferMeta(e) {
-  return TRANSFER_KIND_META[e.kind] || TRANSFER_KIND_META.car;
-}
-
 function _addDuration(time, dur) {
   if (!time || !dur) return null;
   const [h, m] = time.split(":").map(Number);
@@ -517,7 +503,7 @@ function _addDuration(time, dur) {
 // ── Per-event color / icon / label (shared by desktop + mobile renderers) ──────
 function _evMeta(e) {
   if (e.type === "flight" || e.type === "transfer") {
-    const tm = _transferMeta(e);
+    const tm = transferKind(e.kind);
     return { c: "var(--ev-transfer)", soft: "var(--ev-transfer-soft)", icon: tm.icon, labelKey: tm.labelKey };
   }
   const MAP = {
