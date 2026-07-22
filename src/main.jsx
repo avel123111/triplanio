@@ -25,7 +25,13 @@ const posthogEnabled = isPosthogProdHost || ['1', 'true'].includes(import.meta.e
 const posthogToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN
 if (posthogToken) {
   posthog.init(posthogToken, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST,
+    // Same-origin proxy path (TRIP-265): apex triplanio.com 307-redirects to www,
+    // so a hardcoded apex api_host made events cross-origin AND hit a redirect →
+    // "Redirect is not allowed for a preflight request" killed every capture. The
+    // page is always served from the canonical origin (apex → www), so posting to
+    // `${origin}/ingest` stays same-origin; the /ingest rewrite lives in vercel.json
+    // on every Vercel deploy. Local/preview without that rewrite fall back to the env.
+    api_host: isPosthogProdHost ? `${window.location.origin}/ingest` : import.meta.env.VITE_POSTHOG_HOST,
     defaults: '2026-05-30',
     autocapture: false,
     capture_pageview: false, // our own page_view via track() replaces it (no dupe)
