@@ -111,7 +111,7 @@ export const FUNCTIONS = {
   // _can_access_trip_file — предикат storage-RLS приватного бакета `trips`; стал
   // SECURITY DEFINER в гигиене TRIP-120 (чтобы его private-проверка не слепла под RLS
   // вызывающего), исполним anon+authenticated из storage-политик TO public.
-  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', '_can_access_trip_file'],
+  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file'],
   authExec: [
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
@@ -120,10 +120,12 @@ export const FUNCTIONS = {
   // client-вызываемые функции, которым НЕ нужна ссылка на авторизацию в теле
   // (tripwire их пропускает): search_gazetteer(_batch) — публичный текстовый
   // поиск по газеттиру, без per-user данных (batch = тот же поиск пачкой, TRIP-214).
+  // nearest_cities — тот же публичный газеттир, но резолв координат → ближайшие
+  // города (TRIP-226, inhouse reverse geocoding «мой город»); per-user данных нет.
   // (geocode_*/link_pending_invites убраны из client-вызываемых в гигиене
   // TRIP-120 — REVOKE authenticated EXECUTE, теперь internal; см. миграцию
   // 20260705180000_trip120_hygiene_revoke_vestigial_execute.)
-  authzExempt: ['search_gazetteer', 'search_gazetteer_batch'],
+  authzExempt: ['search_gazetteer', 'search_gazetteer_batch', 'nearest_cities'],
 };
 
 // Storage-бакеты. Ф4 (LIVE) сверяет: живой флаг `public` совпадает с манифестом

@@ -26,6 +26,25 @@ test('mapGazCity: missing name_i18n falls back to display', () => {
   assert.equal(c.city_name_en, 'Foo');
 });
 
+test('mapGazCity: nearest_cities row (TRIP-226) maps to a full candidate', () => {
+  // nearest_cities returns the SAME TABLE shape as search_gazetteer, plus the
+  // ignored population/feature_code columns. A GPS candidate must therefore come
+  // out as a full gazetteer city (all locales + geonameid) so the picked anchor
+  // behaves like any searched city — this is what fixes the empty-anchor bug.
+  const row = {
+    geonameid: 3117735, display: 'Мадрид', subtitle: 'Мадрид, Испания',
+    country_code: 'ES', population: 3255944, feature_code: 'PPLC',
+    lat: 40.4168, lng: -3.7038,
+    name_i18n: { en: 'Madrid', es: 'Madrid', ru: 'Мадрид' },
+  };
+  const c = mapGazCity(row, 'ru');
+  assert.equal(c.city_name, 'Мадрид');
+  assert.equal(c.external_city_id, '3117735');           // non-null → anchor not empty
+  assert.deepEqual(c.name_i18n, { en: 'Madrid', es: 'Madrid', ru: 'Мадрид' });
+  assert.equal(c.country_code, 'ES');
+  assert.equal(c.latitude, 40.4168);
+});
+
 test('buildResolvePayload: object → localized q + English q_en + cc (TRIP-159)', () => {
   const p = buildResolvePayload(
     [{ city_name: 'Рим', city_name_en: 'Rome', country_code: 'it' }],
