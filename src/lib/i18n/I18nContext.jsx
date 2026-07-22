@@ -31,7 +31,7 @@ const FALLBACK_LANG = 'en';
 // Resolve a dotted address `namespace.bareKey` against a nested locale dict
 // ({ namespace: { bareKey: value } }). Split on the FIRST dot only: the namespace
 // is the file stem (dot-free), while a bare key may itself contain dots
-// (e.g. 'admin.home.title' → ns 'admin', key 'home.title'). Every real address is
+// (e.g. 'notif.all_read' → ns 'notif', key 'all_read'). Every real address is
 // dotted; a dotless/leading-dot key has no namespace and no value here, so we
 // return undefined (→ fallback → raw key) rather than the namespace object.
 function lookup(nsDict, key) {

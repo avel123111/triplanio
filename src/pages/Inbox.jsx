@@ -115,7 +115,7 @@ export default function Inbox() {
     .filter(g => g.items.length > 0);
 
   const TABS = [
-    ['all', t('admin.notifications.filter_all'), 0],
+    ['all', t('notif.all'), 0],
     ['unread', t('notif.unread'), unreadCount],
     ['invites', t('notif.invitations'), inviteCount],
   ];
