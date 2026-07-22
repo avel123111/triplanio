@@ -21,17 +21,23 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 //   the highest-volume event and burn the free-tier quota for a pure duplicate.
 const POSTHOG_PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com'])
 const isPosthogProdHost = POSTHOG_PROD_HOSTS.has(window.location.hostname)
+// True local `vite dev` is the ONLY place without the vercel.json /ingest rewrite.
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
 const posthogEnabled = isPosthogProdHost || ['1', 'true'].includes(import.meta.env.VITE_POSTHOG_ENABLE_DEV)
 const posthogToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN
 if (posthogToken) {
   posthog.init(posthogToken, {
-    // Same-origin proxy path (TRIP-265): apex triplanio.com 307-redirects to www,
-    // so a hardcoded apex api_host made events cross-origin AND hit a redirect →
-    // "Redirect is not allowed for a preflight request" killed every capture. The
-    // page is always served from the canonical origin (apex → www), so posting to
-    // `${origin}/ingest` stays same-origin; the /ingest rewrite lives in vercel.json
-    // on every Vercel deploy. Local/preview without that rewrite fall back to the env.
-    api_host: isPosthogProdHost ? `${window.location.origin}/ingest` : import.meta.env.VITE_POSTHOG_HOST,
+    // Same-origin proxy path (TRIP-265). Post to `${origin}/ingest` on EVERY host
+    // that serves this app — prod, www, dev.triplanio.com, Vercel previews, and any
+    // future subdomain — so ingestion is always same-origin as the page: no CORS,
+    // no cross-host redirect. (A hardcoded apex api_host broke the preflight because
+    // apex 307-redirects to www, and "Redirect is not allowed for a preflight
+    // request" killed every capture.) The /ingest rewrite lives in vercel.json, so
+    // it exists on all Vercel deploys; only true local `vite dev` lacks it → there
+    // we hit PostHog EU directly.
+    api_host: isLocalhost
+      ? (import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com')
+      : `${window.location.origin}/ingest`,
     defaults: '2026-05-30',
     autocapture: false,
     capture_pageview: false, // our own page_view via track() replaces it (no dupe)
