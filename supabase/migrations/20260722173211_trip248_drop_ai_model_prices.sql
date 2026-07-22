@@ -1,0 +1,12 @@
+-- TRIP-248: drop the ai_model_prices price book.
+--
+-- Cost computation moved out of the DB into n8n: the "AI Usage save" sub-workflow
+-- now reads unit prices from an n8n Data Table and writes cost_usd into
+-- ai_usage_events directly. The DB cost trigger + function (compute_ai_usage_cost,
+-- trg_ai_usage_cost) that were the only readers of ai_model_prices were dropped in
+-- 20260722123606. Nothing in the app/edge references this table (verified). Its CI
+-- security-tiers manifest entry is removed in the same PR.
+--
+-- ddl-guard: allow-destructive — TRIP-248, contract phase, ai_model_prices unused
+-- after cost calc moved to n8n (sole reader compute_ai_usage_cost dropped in 20260722123606).
+drop table if exists public.ai_model_prices;
