@@ -1,43 +1,13 @@
-// City / address geocoding via LocationIQ (managed Nominatim on OSM/ODbL),
-// proxied through the `geoLocationiq` edge function so the LocationIQ key stays
-// server-side. LocationIQ mirrors the Nominatim response shape (place_id, lat,
-// lon, display_name, address{}, type, class, importance), so the mapping below
-// is unchanged from the previous direct-Nominatim implementation.
-//
-// Results may be stored permanently (OSM/ODbL + attribution — a "Search by
-// LocationIQ" backlink is required on the Free plan). Timezones are resolved
-// separately offline via src/lib/timezone.js (tz-lookup).
-// Returns: { external_city_id, city_name, country, country_code, latitude, longitude }
+// Geocoding split (TRIP-146 + TRIP-226): CITY operations run inhouse against the
+// local GeoNames gazetteer (RPCs search_gazetteer / search_gazetteer_batch /
+// nearest_cities) — one identity key `geonameid`, localized name_i18n snapshot,
+// no external dependency. Only ADDRESS operations (booking parsing) still use
+// LocationIQ (managed Nominatim on OSM/ODbL) via the `geoLocationiq` edge proxy,
+// which keeps the billable key server-side. Timezones are resolved separately
+// offline via src/lib/timezone.js (tz-lookup).
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
-import { liqRetryDelayMs } from './geo-retry.js';
 import { mapGazCity, buildResolvePayload, expandBatchRows } from './geo-cities.js';
-
-// Thin call into the geoLocationiq edge proxy. Returns the LocationIQ result
-// array (Nominatim-shaped) or [] on any error.
-async function liq(action, body) {
-  // ONE retry on an invoke error (TRIP-59). LocationIQ free is ~2 req/s; when the
-  // shared budget is spent the geoLocationiq edge returns 429 + Retry-After (or a
-  // 502 on an upstream error), surfacing here as `error`. Without a retry that
-  // becomes [] → empty search dropdown / unresolved (red) cities. A genuine
-  // no-match returns a 200 with an empty array (no error) → NOT retried.
-  //
-  // Why one Retry-After-honoring + jittered retry, not the old fixed [0,600,1200]
-  // triple: the edge ALREADY waits its own token budget (and fair-queues) before
-  // degrading, so stacking fixed client waits double-counts the delay, and an
-  // identical schedule across clients synchronizes the herd. 401 (stale token) is
-  // handled one layer down by the client's auth-retry fetch (TRIP-56), so it never
-  // reaches here. Batch resolveCities does NOT use liq() — it degrades as a 200 and
-  // is deliberately not retried.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const { data, error } = await invokeFn('geoLocationiq', {
-      body: { action, ...body },
-    });
-    if (!error) return data?.results || [];
-    if (attempt === 0) await new Promise((r) => setTimeout(r, liqRetryDelayMs(error)));
-  }
-  return [];
-}
 
 // App UI locales baked into the per-visit name_i18n snapshot. Anything else
 // collapses to English.
@@ -85,28 +55,22 @@ export async function resolveCities(items, lang) {
   return expandBatchRows(data, items.length, lk);
 }
 
-// Reverse geocode lat/lon → city object.
-// `lang` = app locale so the detected city/country come back localized
-// (matches searchCities). Falls back to the browser language, then 'en'.
-export async function reverseGeocode(lat, lon, lang) {
-  const acceptLang = lang
-    || (typeof navigator !== 'undefined' && navigator.language)
-    || 'en';
-  const rows = await liq('reverse', { lat, lon, lang: acceptLang });
-  const d = rows[0];
-  if (!d) return null;
-  const a = d.address || {};
-  const name = a.city || a.town || a.village || a.hamlet || a.suburb || a.municipality || d.name;
-  if (!name) return null;
-  return {
-    external_city_id: String(d.place_id),
-    city_name: name,
-    country: a.country || '',
-    country_code: (a.country_code || '').toUpperCase(),
-    latitude: parseFloat(d.lat),
-    longitude: parseFloat(d.lon),
-    display_name: d.display_name,
-  };
+// Reverse geocode lat/lon → the nearest gazetteer cities (TRIP-226, inhouse).
+// Resolves coordinates to the `lim` closest cities in OUR GeoNames gazetteer
+// (RPC nearest_cities), NOT LocationIQ. Each candidate is a full gazetteer city
+// (geonameid + name_i18n{en,es,ru} + external_city_id), so a picked anchor then
+// behaves like any searched city (localized names, stats dedup, hotels). We
+// return an ARRAY of 2-3 candidates because the single closest point is often a
+// suburb — the big city the user means may be the 2nd/3rd. `lang` localizes the
+// display/subtitle; the name_i18n snapshot always carries all app locales.
+// Returns [] on error (caller falls back to manual CityPicker input).
+export async function nearbyCities(lat, lon, lang, lim = 3) {
+  const lk = normLang(lang);
+  const { data, error } = await supabase.rpc('nearest_cities', {
+    _lat: lat, _lng: lon, _lim: lim, _lang: lk,
+  });
+  if (error) return [];
+  return (data || []).map((g) => mapGazCity(g, lk));
 }
 
 // Forward-geocode a full street address (booking parsing, TRIP-145). NOT cached
