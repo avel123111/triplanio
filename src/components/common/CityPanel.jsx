@@ -14,12 +14,7 @@ import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
 import { Btn } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
-
-const TKIND = {
-  plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' },
-  bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' },
-  ferry: { icon: 'ferry', labelKey: 'transfer.ferry' }, taxi: { icon: 'car', labelKey: 'event.tk_car' },
-};
+import { transferKind } from '@/lib/transport';
 const money = (p, c) => fmtPrice(p, c) || '';
 function rangeText(a, b) { const da = fmtDate(a), db = fmtDate(b); if (!da) return ''; return db && db !== da ? `${da} – ${db}` : da; }
 
@@ -62,7 +57,7 @@ function BookRow({ tone = 'hotel', icon, title, sub, warn, onClick }) {
   );
 }
 function FlightLine({ transfer, dir, warn, onClick, t }) {
-  const meta = TKIND[transfer.transport_type] || TKIND.plane;
+  const meta = transferKind(transfer.transport_type);
   const when = dir === 'in' ? transfer.end_datetime : transfer.start_datetime;
   const time = fmtTime(when);
   const word = dir === 'in' ? t('tse.arrival_word') : t('tse.departure_word');

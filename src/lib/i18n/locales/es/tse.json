@@ -55,7 +55,6 @@
   "start_already_set": "El inicio ya está definido, quita primero el actual",
   "start_earlier": "antes",
   "start_later": "más tarde",
-  "tk_plane": "Vuelo",
   "transfers_out_of_plan": "Trayectos fuera del plan",
   "warns_short": "{n} adv."
 }

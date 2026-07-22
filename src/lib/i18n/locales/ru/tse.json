@@ -55,7 +55,6 @@
   "start_already_set": "Старт уже задан, сначала убери текущий",
   "start_earlier": "раньше",
   "start_later": "позже",
-  "tk_plane": "Перелёт",
   "transfers_out_of_plan": "Переезды вне плана",
   "warns_short": "{n} предупр"
 }

@@ -42,6 +42,7 @@ import ShareDialog from '@/components/trips/ShareDialog';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
+import { transferKind } from '@/lib/transport';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -49,7 +50,6 @@ import TripStartControl from '@/components/trip/TripStartControl';
 // validateTrip conflicts (unified engine), live id-based RPC writes
 // (add_city / remove_city / reorder_cities / set_city_nights). Live Google map.
 // =====================================================================
-const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
@@ -1226,7 +1226,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
       </div>
     );
   }
-  const meta = TKIND[t.transport_type] || TKIND.train;
+  const meta = transferKind(t.transport_type);
   return (
     <div className="te-seam">
       <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>

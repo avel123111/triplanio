@@ -19,10 +19,11 @@ import { useNavigate } from 'react-router-dom';
 import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
-  Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
+  Plane, Car as CarIcon, Moon, ShieldCheck,
   BedDouble, Ticket, Clock,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
+import { EDITABLE_TRANSPORT_TYPES, transferKind } from '@/lib/transport';
 import { DateTime } from 'luxon';
 
 // ── Design-system form primitives ──────────────────────────────────────────
@@ -224,14 +225,9 @@ const SERVICE_META = {
   car_rental: TYPE_META.service,
 };
 
-const TRANSPORT_KINDS = [
-  { id: 'plane', Icon: Plane,      labelKey: 'event.tk_plane' },
-  { id: 'train', Icon: Train,      labelKey: 'event.tk_train' },
-  { id: 'bus',   Icon: Bus,        labelKey: 'event.tk_bus' },
-  { id: 'car',   Icon: CarIcon,    labelKey: 'event.tk_car' },
-  { id: 'ferry', Icon: Ship,       labelKey: 'event.tk_ferry' },
-  { id: 'walk',  Icon: Footprints, labelKey: 'event.tk_walk' },
-];
+// Editor transport picker — derived from the canonical transfer-kind source so
+// icon + label stay in lockstep with every render map (single source of truth).
+const TRANSPORT_KINDS = EDITABLE_TRANSPORT_TYPES.map((id) => ({ id, ...transferKind(id) }));
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Empty form factories - one per kind. Edit mode hydrates from the entity.
