@@ -579,7 +579,7 @@ function ServiceBody({ entity, accent }) {
       <Section title={t('service.car_pickup')} accent={accent}>
         <div className="kv-grid">
           <KV label={t('event.pickup_where')}><div>{d.pickup_address}</div></KV>
-          <KV label={t('admin.notifications.when')}>{fmtDT(pickupDisplay)}</KV>
+          <KV label={t('event.when')}>{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
       <Section title={sameLocation ? t('service.car_dropoff') : t('event.return_elsewhere')} accent={accent}>
@@ -591,7 +591,7 @@ function ServiceBody({ entity, accent }) {
               <div>{d.dropoff_address}</div>
             )}
           </KV>
-          <KV label={t('admin.notifications.when')}>{fmtDT(dropoffDisplay)}</KV>
+          <KV label={t('event.when')}>{fmtDT(dropoffDisplay)}</KV>
         </div>
       </Section>
       <Section title={t('event.finance_booking')} accent={accent}>
