@@ -13,6 +13,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
+import { transferKind } from '@/lib/transport';
 
 const EV = {
   hotel:    { color: 'var(--ev-hotel)',    soft: 'var(--ev-hotel-soft)',    ink: 'var(--ev-hotel-ink)' },
@@ -20,13 +21,9 @@ const EV = {
   activity: { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)' },
   service:  { color: 'var(--ev-car)',      soft: 'var(--ev-car-soft)',      ink: 'var(--ev-car-ink)' },
 };
-const TKIND = {
-  plane: { icon: 'plane' }, train: { icon: 'train' }, bus: { icon: 'bus' },
-  car: { icon: 'car' }, ferry: { icon: 'ferry' }, taxi: { icon: 'car' },
-};
 
 export function kindIcon(kind, entity) {
-  if (kind === 'transfer') return (TKIND[entity?.transport_type] || TKIND.plane).icon;
+  if (kind === 'transfer') return transferKind(entity?.transport_type).icon;
   return kind === 'hotel' ? 'bed' : kind === 'activity' ? 'ticket' : 'car';
 }
 

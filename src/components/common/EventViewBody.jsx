@@ -34,15 +34,11 @@ import { validateEntity } from '@/lib/validation';
 const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
 import {
   Map as MapIcon, Calendar, FileText,
-  BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
+  BedDouble, Car as CarIcon, Ticket,
   ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-
-export const TRANSPORT_ICONS = {
-  plane: Plane, train: Train, bus: Bus, car: CarIcon, taxi: CarIcon,
-  ferry: Ship, walk: Footprints, own_transport: CarIcon, other: CarIcon,
-};
+import { transferKind } from '@/lib/transport';
 
 export function eventTheme(kind, entity) {
   if (kind === 'hotel') {
@@ -62,7 +58,7 @@ export function eventTheme(kind, entity) {
   }
   // transfer
   const tt = entity?.transport_type;
-  const Icon = TRANSPORT_ICONS[tt] || Plane;
+  const { Icon } = transferKind(tt);
   return {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
     Icon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
@@ -306,7 +302,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const { t, lang } = useI18n();
   const fromCity = cityLabel(fromVisit, lang);
   const toCity = cityLabel(toVisit, lang);
-  const Ic = TRANSPORT_ICONS[entity.transport_type] || Plane;
+  const Ic = transferKind(entity.transport_type).Icon;
   const night = !!entity.day_change;
   const typeCap = t(entity.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer');
   const dur = transferDur(entity.start_datetime, entity.end_datetime, t);

@@ -10,7 +10,7 @@ import MapView from '@/components/views/MapView';
 import { sortVisits } from '@/lib/validation';
 import { localizeVisits } from '@/lib/trip-cities';
 import { tripStats, tripDateSpan } from '@/lib/trip-stats';
-import { transportInfo } from '@/lib/transport';
+import { transferKind } from '@/lib/transport';
 import { formatDuration } from '@/lib/time';
 import './PublicTrip.css';
 
@@ -165,12 +165,12 @@ export default function PublicTrip() {
   const legFor = (a, b) => {
     const tr = transfers.find((x) => x.from_city_visit_id === a.id && x.to_city_visit_id === b.id && x.start_datetime);
     if (!tr) return null;
-    const info = transportInfo(tr.transport_type);
-    const label = t(`public.mode_${tr.transport_type}`) || info.label;
+    const meta = transferKind(tr.transport_type);
+    const label = t(`public.mode_${tr.transport_type}`) || t(meta.labelKey);
     const fromV = ordered.find((v) => v.id === a.id);
     const toV = ordered.find((v) => v.id === b.id);
     const dur = formatDuration(tr.start_datetime, tr.end_datetime, fromV?.timezone, toV?.timezone);
-    return { Icon: info.Icon, label, dur, date: fmt(tr.start_datetime) };
+    return { Icon: meta.Icon, label, dur, date: fmt(tr.start_datetime) };
   };
 
   const stats = useMemo(
