@@ -328,7 +328,6 @@ export default function Stay22HotelList({
                 meta={(h.stars || h.ratingCount) ? (
                   <div className="pcard__meta">
                     {h.stars ? <span className="pcard__stars">{'★'.repeat(h.stars)}</span> : null}
-                    {h.stars && h.ratingCount ? <span className="pcard__dot">·</span> : null}
                     {h.ratingCount ? <span className="pcard__mtx">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
                   </div>
                 ) : null}
