@@ -471,6 +471,7 @@ h3,
 .bell-dd__head .t-ui, /* TRIP-175 инсп.: UI→Subheading (заголовок «Уведомления» в колокольчике; перебивает класс .t-ui) */
 .ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
+.dl-visopt__lbl b,   /* TRIP-275 инсп.: Meta→Subheading (заголовок опции видимости «Общий»/«Личный») */
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
@@ -606,6 +607,8 @@ h4,
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в рейле чата) */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
+.dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
+.dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
@@ -769,10 +772,7 @@ h4,
 .dl-linkrow b,
 .dl-addcard span,
 .dl-empty span,
-.dl-label,
-.dl-visopt__lbl b,
 .dl-visopt__lbl span,
-.dl-dropzone b,
 .dl-dropzone span,
 .dl-upitem__n,
 .dl-dview-link b,
@@ -995,6 +995,14 @@ h4,
 .bgt-detail__s,          /* TRIP-243 инсп.: Meta+Golos (счётчик трат в шапке детали) */
 .bgt-stat__s,            /* TRIP-243 инсп.: Meta+Golos (подпись стат-карточки) */
 .bgt-fxrow__hint,        /* TRIP-243 инсп.: Meta+Golos (хинт строки курса в модалке) */
+.tweaks__seg button,     /* TRIP-275 инсп.: Meta+Golos (сегмент-табы диалогов: e-mail/ссылка/офлайн + роль) */
+.tweaks__seg .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подписи роль-табов: Только просмотр/Редактирует) */
+.field__label .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подсказка-hint поля «· свободный текст») */
+.dlg__body > .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (прозовые примечания в теле диалога) */
+.dl-root .muted.t-meta,  /* TRIP-275 инсп.: Meta+Golos (подписи секций документов «Видят все участники») */
+.dl-empty span,          /* TRIP-275 инсп.: Meta+Golos (описания пустых состояний доков) */
+.dl-visopt__lbl span,    /* TRIP-275 инсп.: Meta+Golos (подпись опции видимости «Виден всем участникам») */
+.dl-dropzone span,       /* TRIP-275 инсп.: Meta+Golos (подпись dropzone «PDF · DOC · XLS…») */
 .card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
 
 /* =================================================================
