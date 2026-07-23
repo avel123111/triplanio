@@ -402,6 +402,7 @@ h1,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
 .pcard__price b,   /* TRIP-287: инспектор канонов — цена карточки → t-heading (h2 макета) */
+.fork-state b,   /* TRIP-287: инспектор канонов — заголовок состояния поиска → t-heading (h2 макета) */
 h2,
 .eroute h3,
 .acct-hero__av,
@@ -492,6 +493,7 @@ h4,
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
+.fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
 .limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .proto__nav-item,
@@ -595,7 +597,6 @@ h4,
 .btn-ghost,
 .brand-col__sub,
 .faq__a-inner,
-.fork-state b,
 .s22f-cur,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
@@ -836,7 +837,6 @@ h4,
 .fork-pg,
 .s22f-val,
 .s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
-.fork-state p,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
@@ -4883,7 +4883,7 @@ h4,
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
   gap: 6px; padding: 26px 20px 22px; border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
   background: radial-gradient(120% 92% at 50% -12%, var(--st-accent-soft), transparent 62%), var(--surface-card);
-  border: 1px solid var(--surface-card-border);
+  border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
 }
 [data-theme="dark"] .fork-state { box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--sh-1); }
