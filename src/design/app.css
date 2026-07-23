@@ -595,7 +595,6 @@ h4,
 .faq__a-inner,
 .va-state b,
 .s22-state b,
-.s22f-poptx b,
 .s22f-cur,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
@@ -833,11 +832,11 @@ h4,
 .phone__time,
 .langdd__btn,
 .langdd__item .code,
-.va-count, .va-pg,
-.s22f-chip, .s22f-plbl, .s22f-val,
+.va-pg,
+.s22f-val,
 .s22-count, .s22-sort, .s22-pg,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
 .va-state p, .s22-state p,
-.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
@@ -946,7 +945,7 @@ h4,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
 .fork-partner__mid span,
 .fork-or span, .s22f-resetall,
-.va-count, .va-pg, .s22f-val, .s22-count, .s22-pg, .pcard__score,
+.va-pg, .s22f-val, .s22-count, .s22-pg, .pcard__score,
 .s22f-cur, .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
