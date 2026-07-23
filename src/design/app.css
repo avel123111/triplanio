@@ -4501,7 +4501,7 @@ h4,
    text, separators/numbers never squeeze. */
 .pcard__meta { display: flex; align-items: center; column-gap: 5px; min-width: 0; color: var(--muted); }
 .pcard__meta > * { flex: none; }
-.pcard__stars { color: var(--rating); font-size: var(--fs-meta); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
+.pcard__stars { color: var(--rating); font-size: 15px; line-height: 1; letter-spacing: 1px; /* design-token-exempt: размер/разрядка глифов ★ (декоративные звёзды отеля), не текст */ }
 .pcard__dot { color: var(--muted-2); }
 .pcard__mtx { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
