@@ -17,12 +17,11 @@ import { ExternalLink } from 'lucide-react';
 //
 // TRIP-287 layout — CSS grid [photo | text] + full-width footer (price ↔ Book):
 //   ┌──────────┬────────────────────────┐
-//   │  thumb   │  name                  │   score + supplier badges sit ON the
-//   │  (score, │  meta (stars · reviews)│   photo; the footer spans both columns
-//   │  supplier│  subline (addr / …)    │   so price ↔ Book stays one row at any
-//   │  badges) │                        │   container width (26cqw thumb).
-//   ├──────────┴────────────────────────┤
-//   │  price               [ Book ↗ ]   │
+//   │  thumb    │  name                 │   the score badge sits ON the photo;
+//   │  (score   │  meta (stars · reviews)│   the footer spans both columns so the
+//   │  badge)   │  subline (addr / …)   │   supplier logo · price ↔ Book stay one
+//   ├──────────┴────────────────────────┤   row at any container width (26cqw thumb).
+//   │  [logo] price        [ Book ↗ ]   │
 //   └───────────────────────────────────┘
 const PartnerResultCard = forwardRef(function PartnerResultCard({
   id,
@@ -31,7 +30,7 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
   icon,              // placeholder glyph shown under/instead of the image
   image,             // optional thumbnail src
   score = null,      // optional score badge pinned top-left on the photo
-  supplier = null,   // optional supplier badge pinned bottom-left on the photo
+  supplier = null,   // optional supplier logo shown in the footer, left of the price
   meta = null,       // optional meta line under the name (stars · reviews / duration · reviews)
   subline = null,    // optional secondary line node (e.g. address / free cancellation)
   price = null,      // optional price node (rendered in the footer, left of Book)
@@ -65,17 +64,17 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
         <div className="pcard__ph">{icon}</div>
         {image && <img src={image} alt={name} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
         {score}
-        {supplier}
       </div>
       <div className="pcard__body">
         <div className="pcard__name">{name}</div>
         {meta}
         {subline}
       </div>
-      {/* Footer spans both columns: price ↔ Book on one line at any width. Book
-          always opens the link; stopPropagation so it never doubles as a card
-          select/open. */}
+      {/* Footer spans both columns: supplier logo · price ↔ Book on one line at any
+          width. Book always opens the link; stopPropagation so it never doubles as
+          a card select/open. */}
       <div className="pcard__bar">
+        {supplier}
         {price}
         <span className="pcard__spacer" />
         <a

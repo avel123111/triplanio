@@ -253,7 +253,7 @@ export default function Stay22HotelList({
                   <span className="pcard__score">{h.ratingValue.toFixed(1)}</span>
                 ) : null}
                 supplier={h.supplierKey ? (
-                  <span className="pcard__sup" title={h.supplierKey.charAt(0).toUpperCase() + h.supplierKey.slice(1)}>
+                  <span className="pcard__plat" title={h.supplierKey.charAt(0).toUpperCase() + h.supplierKey.slice(1)}>
                     {h.supplierLogo ? <img src={h.supplierLogo} alt="" /> : h.supplierKey.charAt(0).toUpperCase()}
                   </span>
                 ) : null}

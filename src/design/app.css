@@ -835,7 +835,7 @@ h4,
 .s22f-val,
 .s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
 .fork-state p,
-.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__plat, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
@@ -4473,7 +4473,7 @@ h4,
 .pcard--sk { cursor: default; }
 
 /* Thumb — grid cell (col 1); height follows the text block, min-height keeps its
-   shape on short content. Score + supplier badges are pinned on it. */
+   shape on short content. The score badge is pinned on it. */
 .pcard__thumb { position: relative; grid-column: 1; grid-row: 1; align-self: stretch; min-height: 86px; border-radius: var(--r-sm); overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-accent, var(--ev-hotel)) 45%, white), var(--pc-accent, var(--ev-hotel)) 120%); }
 .pcard__thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; transition: transform .6s var(--ease-out); }
 .pcard__ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
@@ -4484,9 +4484,10 @@ h4,
 .pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); backdrop-filter: blur(var(--glass-blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4); padding: 0 7px; }
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
-/* Supplier badge — bottom-left on the photo (logo, letter fallback). */
-.pcard__sup { position: absolute; left: 6px; bottom: 6px; z-index: 2; width: 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; overflow: hidden; background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1.5px rgba(255,255,255,.92), 0 1px 4px rgba(0,0,0,.25); }
-.pcard__sup img { width: 100%; height: 100%; object-fit: contain; }
+/* Supplier logo — in the footer, left of the price (attribution next to the
+   amount). Small chip; letter fallback reads on the surface. */
+.pcard__plat { flex: none; width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; overflow: hidden; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+.pcard__plat img { width: 100%; height: 100%; object-fit: contain; }
 
 /* Body — grid cell (col 2), vertically centred against the photo. Name wraps to
    a 2nd line then ellipsis. */
