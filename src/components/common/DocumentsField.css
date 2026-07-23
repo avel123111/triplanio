@@ -15,13 +15,6 @@
    Typography now on the .t-meta canon (co-selector in app.css); weight collapses to the canon 600. */
 .docfield__count { color: var(--muted); }
 
-/* doc list — was: flex flex-col gap-1.5 mb-2 */
-.docfield__list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-
-/* doc link inside .docrow b — was: block truncate */
-.docrow__link { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* remove button — was: shrink-0 grid place-items-center (sizing kept inline) */
-.docrow__rm { flex: none; display: grid; place-items: center; border: 0; background: none; cursor: pointer; }
-
-.docfield__file { display: none; }                                       /* was hidden */
+/* Doc list + rows + dropzone are unified on the DocsLens reference classes
+   (.dl-uplist / .dl-upitem / .dl-ftag / .dl-dropzone, defined in DocsLens.css)
+   so the upload field looks identical everywhere (TRIP-275). */

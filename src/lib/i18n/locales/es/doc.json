@@ -64,7 +64,7 @@
   "title_ph": "Pasaporte, seguro, lista…",
   "title_placeholder": "p. ej. Póliza de seguro de viaje",
   "upload_failed": "No se pudo subir «{name}». Inténtalo de nuevo.",
-  "upload_files": "Subir archivos • hasta {mb}MB cada uno",
+  "upload_formats": "PDF · DOC · XLS · IMG · máx {mb} MB",
   "upload_label": "Sube archivos (PDF / foto), hasta 10 MB cada uno",
   "view_files_label": "Archivos",
   "view_notes": "Notas",

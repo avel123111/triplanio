@@ -20,6 +20,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
+import { fileType } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
@@ -36,16 +37,8 @@ import './DocsLens.css';
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
-/** Classify a file by extension for the colour-coded type badge. */
-function fileType(name = '') {
-  const ext = (name.split('.').pop() || '').toLowerCase();
-  if (ext === 'pdf') return 'pdf';
-  if (['doc', 'docx'].includes(ext)) return 'doc';
-  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'xls';
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'avif'].includes(ext)) return 'img';
-  return 'file';
-}
+// fileType() (colour-coded type badge) lives in @/lib/fileType — shared with the
+// reusable DocumentsField so the upload field looks identical everywhere (TRIP-275).
 
 /** Inline file chip used in both cards and the detail dialog. */
 function FileChip({ file }) {
@@ -318,7 +311,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 <>
                   <Icon name="upload" size={24} />
                   <b>{documents.length === 0 ? t('doc.upload_label') : t('doc.add_more_files')}</b>
-                  <span>PDF · DOC · XLS · IMG &nbsp;·&nbsp; max 10 MB</span>
+                  <span>{t('doc.upload_formats', { mb: 10 })}</span>
                 </>
               )}
             </div>

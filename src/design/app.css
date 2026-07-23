@@ -492,6 +492,7 @@ h4,
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
+.readonly-banner .t-ui, /* TRIP-275 инсп.: UI→Label (заголовок «Только чтение» баннера наблюдателя; перебивает класс .t-ui) */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
@@ -668,11 +669,7 @@ h4,
 .route .ra,
 .rmid .dur,
 .addr div,
-.docrow b,
-.docrow span,
 .notes,
-.upload b,
-.upload span,
 .bud-leg,
 .ov-warn,
 .ov-empty-line,
@@ -995,6 +992,7 @@ h4,
 .bgt-detail__s,          /* TRIP-243 инсп.: Meta+Golos (счётчик трат в шапке детали) */
 .bgt-stat__s,            /* TRIP-243 инсп.: Meta+Golos (подпись стат-карточки) */
 .bgt-fxrow__hint,        /* TRIP-243 инсп.: Meta+Golos (хинт строки курса в модалке) */
+.sev,                    /* TRIP-275 инсп.: Meta+Golos (проза сообщений severity/баннера наблюдателя) */
 .tweaks__seg button,     /* TRIP-275 инсп.: Meta+Golos (сегмент-табы диалогов: e-mail/ссылка/офлайн + роль) */
 .tweaks__seg .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подписи роль-табов: Только просмотр/Редактирует) */
 .field__label .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подсказка-hint поля «· свободный текст») */
@@ -2845,19 +2843,11 @@ h4,
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
 .addr div { color: var(--ink-2); }
-.docrow { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: var(--surface-3); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
-.docrow .di { width: 30px; height: 30px; border-radius: 8px; background: var(--danger-soft); color: var(--danger-ink); display: grid; place-items: center; flex: none; }
-.docrow b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.docrow span { color: var(--muted); }
 /* Notes block — Lumo .notes: surface-3 card with hairline border. */
 .notes { color: var(--ink-2); padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
-/* Upload dropzone — Lumo .upload (was used by DocumentsField but never defined). */
-.upload { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 16px; border-radius: 13px; border: 1.5px dashed var(--line-strong); background: var(--surface-3); cursor: pointer; text-align: center; transition: border-color .16s, background .16s; }
-.upload:hover { border-color: var(--primary); background: var(--primary-soft); }
-.upload svg { width: 20px; height: 20px; color: var(--muted-2); }
-.upload:hover svg { color: var(--primary); }
-.upload b { color: var(--ink-2); }
-.upload span { color: var(--muted); }
+/* Document upload field (dropzone + file rows) — unified on the DocsLens
+   reference classes .dl-dropzone / .dl-uplist / .dl-upitem / .dl-ftag (DocsLens.css),
+   reused by DocumentsField so the field looks identical everywhere (TRIP-275). */
 /* Planning left list: hide the scrollbar entirely (still scrolls). */
 .ts-leftscroll { scrollbar-width: none; -ms-overflow-style: none; }
 .ts-leftscroll::-webkit-scrollbar { width: 0; height: 0; display: none; }

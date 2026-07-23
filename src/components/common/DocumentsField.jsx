@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles } from '@/lib/documentMutations';
-import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
+import { Icon } from '@/design/icons';
+import { fileType } from '@/lib/fileType';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
@@ -97,7 +98,7 @@ export default function DocumentsField({
       {!bare && (
         <div className="docfield__head">
           <div className="docfield__title">
-            <Paperclip className="ico" size={16} style={{ color: iconColor }} />
+            <Icon name="paperclip" size={16} className="ico" style={{ color: iconColor }} />
             <span className="docfield__name">{label || t('event.documents')}</span>
             {docs.length > 0 && (
               <span className="docfield__count">· {docs.length}</span>
@@ -107,29 +108,28 @@ export default function DocumentsField({
       )}
 
       {docs.length > 0 && (
-        <div className="docfield__list">
+        <div className="dl-uplist">
           {docs.map((d, i) => (
-            <div key={`${d.file_url}-${i}`} className="docrow">
-              <span className="di"><Paperclip size={16} /></span>
-              <b style={{ flex: 1, minWidth: 0 }}>
-                <a
-                  href={d.file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="docrow__link"
-                  style={{ color: 'inherit', textDecoration: 'none' }}
-                >
-                  {d.file_name || t('event.file_word')}
-                </a>
-              </b>
+            <div key={`${d.file_url}-${i}`} className="dl-upitem">
+              <span className={`dl-ftag dl-ftag--${fileType(d.file_name)}`}>
+                <Icon name="file" size={14} />
+              </span>
+              <a
+                href={d.file_url}
+                target="_blank"
+                rel="noreferrer"
+                className="dl-upitem__n"
+                style={{ color: 'var(--brand)' }}
+              >
+                {d.file_name || t('event.file_word')}
+              </a>
               <button
                 type="button"
                 onClick={() => removeAt(i)}
-                className="docrow__rm"
-                style={{ width: 24, height: 24, borderRadius: 6, color: 'var(--muted)' }}
+                className="dl-upitem__rm"
                 aria-label={t('doc.remove_doc_aria')}
               >
-                <X size={16} />
+                <Icon name="close" size={13} />
               </button>
             </div>
           ))}
@@ -141,30 +141,28 @@ export default function DocumentsField({
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className="upload"
+          className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
         >
           <input
             ref={inputRef}
             type="file"
             multiple
-            className="docfield__file"
             accept={accept}
+            style={{ display: 'none' }}
             onChange={(e) => uploadFiles(e.target.files)}
           />
           {uploading ? (
-            <>
-              <Loader2 className="spin" style={{ color: 'var(--primary)' }} />
-              <b>{t('common.loading')}</b>
-            </>
-          ) : docs.length === 0 ? (
-            <>
-              <Upload />
-              <b>{t('doc.upload_files', { mb: maxFileSizeMb })}</b>
-            </>
+            <div className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)' }}>
+              <span className="dl-spinner" />
+              {t('common.loading')}
+            </div>
           ) : (
             <>
-              <Plus />
-              <b>{t('doc.add_more_files')}{maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}</b>
+              <Icon name="upload" size={24} />
+              <b>{docs.length === 0
+                ? t('doc.upload_label')
+                : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
+              <span>{t('doc.upload_formats', { mb: maxFileSizeMb })}</span>
             </>
           )}
         </div>
