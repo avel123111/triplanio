@@ -40,6 +40,7 @@
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
   --bk:           #003B95;  /* Booking.com brand navy — supplier/score badge */
   --bk-fg:        #fff;
+  --viator:       #328E6E;  /* Viator brand green — activity state button */
 
   /* Neutrals / surfaces */
   --ink:    hsl(var(--foreground));      /* ← index.css --foreground (Lumo #272433) */
@@ -211,6 +212,7 @@
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
   --bk:           #1A66D9;  /* Booking navy — dark theme */
+  --viator:       #2FA07C;  /* Viator green — dark theme */
 
   /* Neutrals / surfaces — dark */
   --ink-2:  #C4C1D2;
@@ -400,6 +402,7 @@ h1,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
 .pcard__price b,   /* TRIP-287: инспектор канонов — цена карточки → t-heading (h2 макета) */
+.fork-state b,   /* TRIP-287: инспектор канонов — заголовок состояния поиска → t-heading (h2 макета) */
 h2,
 .eroute h3,
 .acct-hero__av,
@@ -490,6 +493,7 @@ h4,
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
+.fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
 .limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .proto__nav-item,
@@ -593,7 +597,6 @@ h4,
 .btn-ghost,
 .brand-col__sub,
 .faq__a-inner,
-.fork-state b,
 .s22f-cur,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
@@ -834,7 +837,6 @@ h4,
 .fork-pg,
 .s22f-val,
 .s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
-.fork-state p,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
@@ -4873,14 +4875,44 @@ h4,
    forkList.jsx components (ForkListSkeleton / ForkState / ForkPager). Kept here,
    not in a component <style>, so the two panels can never drift (TRIP-287). */
 .fork-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
-/* Empty / error state — canon TRIP-189 dashed surface (пунктир = сигнал пустоты). */
-.fork-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--surface-card-border); border-radius: var(--r-xl); background: var(--surface-card); }
-.fork-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
-.fork-state--err .fork-si { background: var(--danger-soft); color: var(--danger-ink); }
-.fork-state--emp .fork-si { background: var(--surface-2); color: var(--muted); }
-.fork-state b { color: var(--ink); }
-.fork-state p { margin: 0; color: var(--muted); max-width: 28ch; }
-.fork-state .btn { margin-top: 6px; }
+/* Empty / error / no-match state — shared medal surface (TRIP-287 redesign).
+   Accent is per-STATE (identical across hotels + activities): err=red,
+   emp=blue, nomatch=yellow — driven by the --st-accent* trio. */
+.fork-state {
+  --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink);
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; padding: 26px 20px 22px; border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
+  background: radial-gradient(120% 92% at 50% -12%, var(--st-accent-soft), transparent 62%), var(--surface-card);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
+}
+[data-theme="dark"] .fork-state { box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--sh-1); }
+.fork-state::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, transparent, var(--st-accent), transparent); opacity: .6; }
+.fork-state--err     { --st-accent: var(--danger);  --st-accent-soft: var(--danger-soft);  --st-accent-ink: var(--danger-ink); }
+.fork-state--emp     { --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink); }
+.fork-state--nomatch { --st-accent: var(--warning); --st-accent-soft: var(--warning-soft); --st-accent-ink: var(--warning-ink); }
+
+.fork-state__art { position: relative; height: 82px; display: grid; place-items: center; }
+.fork-state__glow { position: absolute; inset: 50% auto auto 50%; width: 150px; height: 100px; transform: translate(-50%, -46%); background: radial-gradient(closest-side, var(--st-accent-soft), transparent 72%); }
+.fork-si {
+  position: relative; width: 66px; height: 66px; border-radius: 20px; display: grid; place-items: center; color: var(--st-accent-ink);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface-card) 86%, var(--st-accent) 14%), var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--st-accent) 34%, var(--surface-card-border));
+  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--st-accent) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.55);
+}
+[data-theme="dark"] .fork-si { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--st-accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
+.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: var(--st-accent); border: 2.5px solid var(--surface-card); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--st-accent) 80%, transparent); }
+.fork-state b { color: var(--ink); margin-top: 4px; }
+.fork-state p { margin: 0; color: var(--muted); max-width: 30ch; }
+.fork-state__actions { display: flex; flex-direction: column; gap: 9px; align-items: stretch; width: 100%; max-width: 264px; margin-top: 14px; }
+.fork-state__actions .btn { width: 100%; }
+
+/* Branded partner button — solid brand bg (--bg set inline per partner: Booking
+   navy / Viator green) + white logo chip. Reuses the base .btn engine. */
+.btn--brand { box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--bg) 65%, transparent); }
+.btn--brand:hover { box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--bg) 72%, transparent); filter: brightness(1.05); }
+.btn__brandlogo { width: 20px; height: 20px; border-radius: 6px; background: #fff; display: grid; place-items: center; flex: none; overflow: hidden; }
+.btn__brandlogo img { width: 15px; height: 15px; object-fit: contain; }
 /* Pager — prev · windowed numbers · next. */
 .fork-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
 .fork-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }

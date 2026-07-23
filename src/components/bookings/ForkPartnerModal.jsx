@@ -136,6 +136,12 @@ export default function ForkPartnerModal({
 
   const count = platforms.length;
 
+  // The Booking / Viator pill that feeds the branded button inside the search
+  // states (reused link); the list builds the full descriptor via
+  // buildStatePartner. Null when that partner isn't in the list.
+  const bookingP = platforms.find((p) => p.key === 'booking') || null;
+  const viatorP = platforms.find((p) => p.key === 'viator') || null;
+
   const handleManual = () => {
     onOpenChange(false);
     onManual?.();
@@ -211,12 +217,12 @@ export default function ForkPartnerModal({
       {/* Live Stay22 stays — hotel fork, panel only. Query/state lifted to the
           editor (TRIP-140); this list is presentational. FE-only. */}
       {type === 'hotel' && variant === 'panel' && stay22 && (
-        <Stay22HotelList {...stay22} currency={tripCurrency} tripId={tripId} />
+        <Stay22HotelList {...stay22} currency={tripCurrency} tripId={tripId} statePlatform={bookingP} />
       )}
 
       {/* Live Viator activities — activity fork, panel only. Fetched on open, FE-only. */}
       {type === 'activity' && variant === 'panel' && (
-        <ViatorActivityList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} />
+        <ViatorActivityList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} statePlatform={viatorP} />
       )}
     </>
   );

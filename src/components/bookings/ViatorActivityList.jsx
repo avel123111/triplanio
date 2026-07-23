@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Search, RotateCcw, Ticket, AlertTriangle, Star } from 'lucide-react';
+import { Search, RotateCcw, Ticket, AlertTriangle, Star, SlidersHorizontal, CloudOff, X } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
-import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
+import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 
 // Live Viator activities for the activity fork panel — mirrors Stay22HotelList,
 // down to the SHARED filter toolbar (.s22f-* in app.css) and the SHARED list
@@ -19,9 +19,12 @@ const BASE_PRICE = { min: '', max: '' };
 // Client sort over the pool: default (Viator relevance order) / price ↑ / reviews ↓.
 const SORT_ORDER = ['recommended', 'price', 'reviews'];
 
-export default function ViatorActivityList({ visit, currency, lang, tripId }) {
+export default function ViatorActivityList({ visit, currency, lang, tripId, statePlatform = null }) {
   const { t, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
+
+  // Branded "Find on Viator" button shown in every state (shared builder).
+  const brandPartner = buildStatePartner(statePlatform, 'viator', logClick);
 
   const { data, isLoading, isFetching, isError, refetch } = useViatorActivities({
     visit, currency, lang, enabled: true,
@@ -162,29 +165,35 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
       {isError && !showSkeletons && (
         <ForkState
           variant="err"
-          icon={<AlertTriangle size={20} />}
+          icon={<AlertTriangle size={28} />}
+          spark={<CloudOff size={13} />}
           title={t('fork.activities_error_title')}
           body={t('fork.activities_error_body')}
-          action={<button type="button" className="btn btn--soft btn--sm" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.activities_retry')}</button>}
+          action={<button type="button" className="btn btn--soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.activities_retry')}</button>}
+          partner={brandPartner}
         />
       )}
 
       {!isError && !showSkeletons && pool.length === 0 && (
         <ForkState
           variant="emp"
-          icon={<Search size={20} />}
+          icon={<Ticket size={28} />}
+          spark={<Search size={13} />}
           title={t('fork.activities_empty_title')}
           body={t('fork.activities_empty_body')}
+          partner={brandPartner}
         />
       )}
 
       {!isError && !showSkeletons && pool.length > 0 && filtered.length === 0 && (
         <ForkState
-          variant="emp"
-          icon={<Search size={20} />}
+          variant="nomatch"
+          icon={<SlidersHorizontal size={28} />}
+          spark={<X size={13} />}
           title={t('fork.activities_no_match_title')}
           body={t('fork.activities_no_match_body')}
-          action={<button type="button" className="btn btn--soft btn--sm" onClick={resetFilters}><RotateCcw size={14} />{t('fork.f_reset')}</button>}
+          action={<button type="button" className="btn btn--soft" onClick={resetFilters}><RotateCcw size={15} />{t('fork.f_reset')}</button>}
+          partner={brandPartner}
         />
       )}
 

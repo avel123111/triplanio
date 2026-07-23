@@ -51,17 +51,58 @@ export function ForkListSkeleton({ count = 4 }) {
   );
 }
 
-// Empty / error state — canon TRIP-189 dashed surface. `variant` = 'err' | 'emp';
-// `action` is an optional trailing node (retry / reset button).
-export function ForkState({ variant, icon, title, body, action = null }) {
+// Empty / error / no-match state — shared medal surface (TRIP-287 redesign).
+// `variant` = 'err' | 'emp' | 'nomatch' drives the accent (red / blue / yellow),
+// identical across both fork lists. `icon` fills the medal, `spark` is the small
+// corner badge. `action` is the optional retry/reset button; `partner` renders
+// the branded "find on <partner>" button (Booking for hotels, Viator for
+// activities) shown in every state — its link mirrors the partner pill above.
+export function ForkState({ variant, icon, spark = null, title, body, action = null, partner = null }) {
+  const { t } = useI18nFormat();
   return (
     <div className={`fork-state fork-state--${variant}`}>
-      <span className="fork-si">{icon}</span>
+      <div className="fork-state__art">
+        <span className="fork-state__glow" aria-hidden="true" />
+        <span className="fork-si">{icon}{spark ? <span className="fork-state__spark">{spark}</span> : null}</span>
+      </div>
       <b>{title}</b>
       <p>{body}</p>
-      {action}
+      {(action || partner) && (
+        <div className="fork-state__actions">
+          {action}
+          {partner && (
+            <a
+              className="btn btn--brand btn--block"
+              href={partner.url} target="_blank" rel="noreferrer" onClick={partner.onClick}
+              style={{ '--bg': partner.color, '--fg': '#fff', '--bd': 'transparent' }}
+            >
+              <span className="btn__brandlogo"><img src={partner.logo} alt="" /></span>
+              {t('booking.find_on', { name: partner.name })}
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+// Branded state partner — the Booking (hotels) / Viator (activities) fallback
+// shown in every search state. Brand constants (display name, white-chip logo,
+// button colour, click type) live HERE so both lists + the modal can't drift.
+// `platform` is that partner's entry from hotelPlatforms/activityPlatforms
+// (null / no url → no button); the click reuses the pill's exact affiliate link,
+// logged under the fork_state_button campaign.
+const STATE_BRANDS = {
+  booking: { name: 'Booking.com', logo: '/partners/booking-transparent.png', color: 'var(--bk)', type: 'hotel' },
+  viator: { name: 'Viator', logo: '/partners/viator.svg', color: 'var(--viator)', type: 'activity' },
+};
+export function buildStatePartner(platform, brandKey, logClick) {
+  if (!platform?.url) return null;
+  const b = STATE_BRANDS[brandKey];
+  return {
+    name: b.name, logo: b.logo, color: b.color, url: platform.url,
+    onClick: () => logClick({ partner: brandKey, type: b.type, link: platform.url, provider: platform.provider || brandKey, campaign: 'fork_state_button', fallback: !!platform.fallback }),
+  };
 }
 
 // Pager — prev · windowed page numbers · next. `onGoto(p)` is the single nav hook
