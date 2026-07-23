@@ -4,7 +4,7 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
-import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
+import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 
 // Live Viator activities for the activity fork panel — mirrors Stay22HotelList,
 // down to the SHARED filter toolbar (.s22f-* in app.css) and the SHARED list
@@ -19,16 +19,12 @@ const BASE_PRICE = { min: '', max: '' };
 // Client sort over the pool: default (Viator relevance order) / price ↑ / reviews ↓.
 const SORT_ORDER = ['recommended', 'price', 'reviews'];
 
-export default function ViatorActivityList({ visit, currency, lang, tripId, statePartner = null }) {
+export default function ViatorActivityList({ visit, currency, lang, tripId, statePlatform = null }) {
   const { t, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
 
-  // Branded "Find on Viator" button shown in every state — same link as the
-  // Viator pill above, logged under its own state-button campaign.
-  const brandPartner = statePartner && statePartner.url ? {
-    ...statePartner,
-    onClick: () => logClick({ partner: 'viator', type: 'activity', link: statePartner.url, provider: statePartner.provider || 'viator', campaign: 'fork_state_button', fallback: !!statePartner.fallback }),
-  } : null;
+  // Branded "Find on Viator" button shown in every state (shared builder).
+  const brandPartner = buildStatePartner(statePlatform, 'viator', logClick);
 
   const { data, isLoading, isFetching, isError, refetch } = useViatorActivities({
     visit, currency, lang, enabled: true,

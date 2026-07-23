@@ -86,6 +86,25 @@ export function ForkState({ variant, icon, spark = null, title, body, action = n
   );
 }
 
+// Branded state partner — the Booking (hotels) / Viator (activities) fallback
+// shown in every search state. Brand constants (display name, white-chip logo,
+// button colour, click type) live HERE so both lists + the modal can't drift.
+// `platform` is that partner's entry from hotelPlatforms/activityPlatforms
+// (null / no url → no button); the click reuses the pill's exact affiliate link,
+// logged under the fork_state_button campaign.
+const STATE_BRANDS = {
+  booking: { name: 'Booking.com', logo: '/partners/booking-transparent.png', color: 'var(--bk)', type: 'hotel' },
+  viator: { name: 'Viator', logo: '/partners/viator.svg', color: 'var(--viator)', type: 'activity' },
+};
+export function buildStatePartner(platform, brandKey, logClick) {
+  if (!platform?.url) return null;
+  const b = STATE_BRANDS[brandKey];
+  return {
+    name: b.name, logo: b.logo, color: b.color, url: platform.url,
+    onClick: () => logClick({ partner: brandKey, type: b.type, link: platform.url, provider: platform.provider || brandKey, campaign: 'fork_state_button', fallback: !!platform.fallback }),
+  };
+}
+
 // Pager — prev · windowed page numbers · next. `onGoto(p)` is the single nav hook
 // (hotels pass a variant that clears the map selection first, TRIP-141). Renders
 // nothing for a single page.

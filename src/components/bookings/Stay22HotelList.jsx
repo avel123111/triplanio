@@ -6,7 +6,7 @@ import {
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
-import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
+import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
 
 // Live Stay22 stays for the hotel fork panel (Lumo redesign v3 + filters, TRIP-224).
@@ -55,8 +55,8 @@ export default function Stay22HotelList({
   hoveredId, selectedId, onHover, onSelect,
   // Formatting / click logging context.
   currency, tripId,
-  // Branded state button — the Booking partner (same link as the pill above).
-  statePartner = null,
+  // Branded state button — the Booking platform entry (same link as the pill above).
+  statePlatform = null,
 }) {
   const { t, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
@@ -148,12 +148,8 @@ export default function Stay22HotelList({
   // interaction lives in PartnerResultCard so hotels + activities stay identical.
   const onBook = (h) => logClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22', campaign: 'fork_api_search', fallback: false });
 
-  // Branded "Find on Booking" button shown in every state — same link as the
-  // Booking pill above, logged under its own state-button campaign.
-  const brandPartner = statePartner && statePartner.url ? {
-    ...statePartner,
-    onClick: () => logClick({ partner: 'booking', type: 'hotel', link: statePartner.url, provider: statePartner.provider || 'stay22', campaign: 'fork_state_button', fallback: !!statePartner.fallback }),
-  } : null;
+  // Branded "Find on Booking" button shown in every state (shared builder).
+  const brandPartner = buildStatePartner(statePlatform, 'booking', logClick);
 
   // Distinguish "no hotels in this city" (empty) from "filters removed everything"
   // (no-match): meta.pooled is the pre-client-filter pool size; server filters
