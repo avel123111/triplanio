@@ -6,7 +6,9 @@ import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 const PENDING_KEY = 'postLoginRedirect';
-const LOGO_URL = 'https://www.triplanio.com/triplanio-logo.png';
+// Own logo served from the repo (public/triplanio-logo.png) rather than
+// hotlinked off triplanio.com; same vendoring canon as public/partners (TRIP-245).
+const LOGO_URL = '/triplanio-logo.png';
 
 const STYLES = `
 .jt-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
