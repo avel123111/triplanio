@@ -593,8 +593,7 @@ h4,
 .btn-ghost,
 .brand-col__sub,
 .faq__a-inner,
-.va-state b,
-.s22-state b,
+.fork-state b,
 .s22f-cur,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
@@ -832,10 +831,10 @@ h4,
 .phone__time,
 .langdd__btn,
 .langdd__item .code,
-.va-pg,
+.fork-pg,
 .s22f-val,
-.s22-count, .s22-sort, .s22-pg,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
-.va-state p, .s22-state p,
+.s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
+.fork-state p,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
@@ -945,7 +944,7 @@ h4,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
 .fork-partner__mid span,
 .fork-or span, .s22f-resetall,
-.va-pg, .s22f-val, .s22-count, .s22-pg, .pcard__score,
+.fork-pg, .s22f-val, .s22-count, .pcard__score,
 .s22f-cur, .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
@@ -4869,3 +4868,25 @@ h4,
   .s22f-fbtn, .s22f-step button { transition: none; }
   .s22f-fbtn:active { transform: none; }
 }
+
+/* Fork list chrome — SHARED by BOTH fork lists (hotels + activities) via the
+   forkList.jsx components (ForkListSkeleton / ForkState / ForkPager). Kept here,
+   not in a component <style>, so the two panels can never drift (TRIP-287). */
+.fork-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
+/* Empty / error state — canon TRIP-189 dashed surface (пунктир = сигнал пустоты). */
+.fork-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--surface-card-border); border-radius: var(--r-xl); background: var(--surface-card); }
+.fork-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
+.fork-state--err .fork-si { background: var(--danger-soft); color: var(--danger-ink); }
+.fork-state--emp .fork-si { background: var(--surface-2); color: var(--muted); }
+.fork-state b { color: var(--ink); }
+.fork-state p { margin: 0; color: var(--muted); max-width: 28ch; }
+.fork-state .btn { margin-top: 6px; }
+/* Pager — prev · windowed numbers · next. */
+.fork-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+.fork-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
+.fork-pg:disabled { opacity: .4; cursor: default; }
+.fork-pg:not(:disabled):active { transform: scale(.94); }
+@media (hover: hover) and (pointer: fine) { .fork-pg:not(:disabled):hover { border-color: var(--line-hover); } }
+.fork-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.fork-gap { color: var(--muted-2); padding: 0 2px; }
+@media (prefers-reduced-motion: reduce) { .fork-pg { transition: none; } }

@@ -1,38 +1,26 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  ChevronLeft, ChevronRight, Search, RotateCcw, Ticket, AlertTriangle, Star,
+  Search, RotateCcw, Ticket, AlertTriangle, Star,
   SlidersHorizontal, X, ArrowUpDown,
 } from 'lucide-react';
-import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
+import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager } from '@/components/bookings/forkList';
 
 // Live Viator activities for the activity fork panel — mirrors Stay22HotelList,
-// down to the SHARED filter toolbar (.s22f-* in app.css). Fetches a bounded pool
-// on open (useViatorActivities), then filters (title+desc / price от/до / free
-// cancellation), sorts and paginates on the CLIENT — same one-pool model as the
-// hotel fork. `url` (productUrl) is the attributed affiliate link — opened as-is,
-// never modified.
+// down to the SHARED filter toolbar (.s22f-* in app.css) and the SHARED list
+// chrome (skeleton / empty / error / pager via forkList.jsx). Fetches a bounded
+// pool on open (useViatorActivities), then filters (title+desc / price от/до /
+// free cancellation), sorts and paginates on the CLIENT — same one-pool model as
+// the hotel fork. `url` (productUrl) is the attributed affiliate link — opened
+// as-is, never modified.
 
-const SKELETON_COUNT = 4;
 const PAGE_SIZE = 10;
 const BASE_PRICE = { min: '', max: '' };
 // Client sort over the pool: default (Viator relevance order) / price ↑ / reviews ↓.
 const SORT_ORDER = ['recommended', 'price', 'reviews'];
-
-function pageWindow(current, totalPages) {
-  if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
-  const out = new Set([1, totalPages, current, current - 1, current + 1]);
-  const arr = [...out].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
-  const withGaps = [];
-  for (let i = 0; i < arr.length; i++) {
-    if (i > 0 && arr[i] - arr[i - 1] > 1) withGaps.push('…');
-    withGaps.push(arr[i]);
-  }
-  return withGaps;
-}
 
 export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const { t, fmtMoney } = useI18nFormat();
@@ -50,7 +38,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const [applied, setApplied] = useState(BASE_PRICE);  // committed price range
   const [freeCancel, setFreeCancel] = useState(false); // committed free-cancellation filter
   const [sortBy, setSortBy] = useState('recommended');
-  const cycleSort = () => setSortBy((s) => SORT_ORDER[(SORT_ORDER.indexOf(s) + 1) % SORT_ORDER.length]);
+  const cycleSort = () => setSortBy((s) => nextSort(SORT_ORDER, s));
   const [page, setPage] = useState(1);
   // Selection + hover are list-local here (no map for activities) but follow the
   // SAME interaction model as hotels via PartnerResultCard: click selects, a
@@ -93,8 +81,10 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const shown = useMemo(() => sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [sorted, page]);
   const pages = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
-  // Snap back to page 1 whenever the filtered/sorted set changes.
-  useEffect(() => { setPage(1); }, [query, appliedSig, freeCancel, sortBy, pool.length]);
+  // Snap back to page 1 whenever the user changes the result set (search / filter /
+  // sort). NOT on pool growth: background Viator pages append to the pool, and
+  // resetting on pool.length would yank the reader back to page 1 mid-browse.
+  useEffect(() => { setPage(1); }, [query, appliedSig, freeCancel, sortBy]);
 
   const showSkeletons = isLoading && pool.length === 0;
   const appliedPrice = applied.min !== '' || applied.max !== '';
@@ -204,55 +194,41 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         </div>
       )}
 
-      {/* ===== States ===== */}
-      {showSkeletons && (
-        <div className="va-list" aria-hidden="true">
-          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <div className="pcard pcard--sk" key={i}>
-              <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={11} /></div>
-              <div className="pcard__body">
-                <Skeleton w="70%" h={14} />
-                <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
-              </div>
-              <div className="pcard__bar">
-                <Skeleton w={80} h={14} />
-                <span className="pcard__spacer" />
-                <Skeleton w={70} h={30} r={10} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ===== States — shared fork chrome (forkList.jsx) ===== */}
+      {showSkeletons && <ForkListSkeleton />}
 
       {isError && !showSkeletons && (
-        <div className="va-state va-state--err">
-          <span className="va-si"><AlertTriangle size={20} /></span>
-          <b>{t('fork.activities_error_title')}</b>
-          <p>{t('fork.activities_error_body')}</p>
-          <button type="button" className="btn btn--soft btn--sm va-retry" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.activities_retry')}</button>
-        </div>
+        <ForkState
+          variant="err"
+          icon={<AlertTriangle size={20} />}
+          title={t('fork.activities_error_title')}
+          body={t('fork.activities_error_body')}
+          action={<button type="button" className="btn btn--soft btn--sm" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.activities_retry')}</button>}
+        />
       )}
 
       {!isError && !showSkeletons && pool.length === 0 && (
-        <div className="va-state va-state--emp">
-          <span className="va-si"><Search size={20} /></span>
-          <b>{t('fork.activities_empty_title')}</b>
-          <p>{t('fork.activities_empty_body')}</p>
-        </div>
+        <ForkState
+          variant="emp"
+          icon={<Search size={20} />}
+          title={t('fork.activities_empty_title')}
+          body={t('fork.activities_empty_body')}
+        />
       )}
 
       {!isError && !showSkeletons && pool.length > 0 && filtered.length === 0 && (
-        <div className="va-state va-state--emp">
-          <span className="va-si"><Search size={20} /></span>
-          <b>{t('fork.activities_no_match_title')}</b>
-          <p>{t('fork.activities_no_match_body')}</p>
-          <button type="button" className="btn btn--soft btn--sm va-retry" onClick={resetFilters}><RotateCcw size={14} />{t('fork.f_reset')}</button>
-        </div>
+        <ForkState
+          variant="emp"
+          icon={<Search size={20} />}
+          title={t('fork.activities_no_match_title')}
+          body={t('fork.activities_no_match_body')}
+          action={<button type="button" className="btn btn--soft btn--sm" onClick={resetFilters}><RotateCcw size={14} />{t('fork.f_reset')}</button>}
+        />
       )}
 
       {!isError && filtered.length > 0 && (
         <>
-          <div className="va-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
+          <div className="fork-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {shown.map((a) => (
               <PartnerResultCard
                 key={a.code}
@@ -287,38 +263,17 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="va-pager">
-              <button className="va-pg" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label={t('fork.activities_prev')}><ChevronLeft size={16} /></button>
-              {pages.map((p, i) => (p === '…'
-                ? <span key={`g${i}`} className="va-gap">…</span>
-                : <button key={p} className={`va-pg ${p === page ? 'va-pg--on' : ''}`} onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
-              <button className="va-pg" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label={t('fork.activities_next')}><ChevronRight size={16} /></button>
-            </div>
-          )}
+          <ForkPager
+            page={page} totalPages={totalPages} pages={pages} onGoto={setPage}
+            prevLabel={t('fork.activities_prev')} nextLabel={t('fork.activities_next')}
+          />
         </>
       )}
 
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        .va-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
-        .va-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: var(--wash); }
-        .va-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
-        .va-state--err .va-si { background: var(--danger-soft); color: var(--danger-ink); }
-        .va-state--emp .va-si { background: var(--surface-2); color: var(--muted); }
-        .va-state b { color: var(--ink); }
-        .va-state p { margin: 0; color: var(--muted); max-width: 30ch; }
-        .va-retry { margin-top: 6px; }
-        /* Card shell + body content (.pcard*: score/star badge, meta line, free
-           cancellation, price) are all shared — see app.css + PartnerResultCard.jsx. */
-        .va-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-        .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
-        .va-pg:disabled { opacity: .4; cursor: default; }
-        .va-pg:not(:disabled):active { transform: scale(.94); }
-        @media (hover: hover) and (pointer: fine) { .va-pg:not(:disabled):hover { border-color: var(--line-hover); } }
-        .va-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
-        .va-gap { color: var(--muted-2); padding: 0 2px; }
-        @media (prefers-reduced-motion: reduce) { .va-pg { transition: none; } }
+        /* List chrome (.fork-*) + card (.pcard*) + toolbar (.s22f-*) + count row
+           (.s22-countrow) are all shared — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

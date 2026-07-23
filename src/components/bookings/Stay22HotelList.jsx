@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  ChevronLeft, ChevronRight, ChevronDown,
+  ChevronDown,
   Search, RotateCcw, Minus, Plus, X, Hotel, AlertTriangle,
   SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react';
-import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
+import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager } from '@/components/bookings/forkList';
 import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
 
 // Live Stay22 stays for the hotel fork panel (Lumo redesign v3 + filters, TRIP-224).
@@ -18,6 +18,8 @@ import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
 // useStay22Bundle (TripStructureEdit / the timeline drawer), so ONE filtered pool
 // feeds both this list and the map badges. This component only renders and reports
 // intent upward. The only local state is the filter popover's draft + open flag.
+// List chrome (skeleton / empty / error / pager) is shared with the activity fork
+// via forkList.jsx.
 //
 // TWO filter classes (TRIP-224):
 //  · SERVER (reload the pool, committed via "Поиск"): guests/rooms + platform (provider).
@@ -25,25 +27,12 @@ import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
 //    price in the TRIP currency), sort. Price lives in the popover too but is applied
 //    client-side; text + sort apply immediately from the search row / count row.
 
-const SKELETON_COUNT = 4;
+const BASE_GUESTS = { adults: 2, children: 0, rooms: 1 };
 // Client-side page size over the single pool (TRIP-141): we never mount all 300
 // cards at once — one slice renders at a time and its images stay lazy.
 const CLIENT_PAGE_SIZE = 20;
-const BASE_GUESTS = { adults: 2, children: 0, rooms: 1 };
 // Sort cycle over the pool (labels via fork.f_sort_*): pool order / price ↑ / guest score ↓.
 const SORT_ORDER = ['recommended', 'price', 'rating'];
-
-function pageWindow(current, totalPages) {
-  if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
-  const out = new Set([1, totalPages, current, current - 1, current + 1]);
-  const arr = [...out].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
-  const withGaps = [];
-  for (let i = 0; i < arr.length; i++) {
-    if (i > 0 && arr[i] - arr[i - 1] > 1) withGaps.push('…');
-    withGaps.push(arr[i]);
-  }
-  return withGaps;
-}
 
 function Stepper({ value, min, onChange, label }) {
   return (
@@ -84,7 +73,7 @@ export default function Stay22HotelList({
   });
   const [pending, setPending] = useState(seed);
   const [filterOpen, setFilterOpen] = useState(false);
-  const cycleSort = () => onSort?.(SORT_ORDER[(SORT_ORDER.indexOf(cf.sortBy) + 1) % SORT_ORDER.length]);
+  const cycleSort = () => onSort?.(nextSort(SORT_ORDER, cf.sortBy));
   useEffect(() => { if (filterOpen) setPending(seed()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filterOpen]);
 
   // The pool here is already client-filtered + sorted (bundle): paginate it so the
@@ -260,41 +249,26 @@ export default function Stay22HotelList({
         )}
       </div>
 
-      {/* ===== States ===== */}
-      {showSkeletons && (
-        <div className="s22-list" aria-hidden="true">
-          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <div className="pcard pcard--sk" key={i}>
-              <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={11} /></div>
-              <div className="pcard__body">
-                <Skeleton w="70%" h={14} />
-                <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
-              </div>
-              <div className="pcard__bar">
-                <Skeleton w={80} h={14} />
-                <span className="pcard__spacer" />
-                <Skeleton w={70} h={30} r={10} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ===== States — shared fork chrome (forkList.jsx) ===== */}
+      {showSkeletons && <ForkListSkeleton />}
 
       {isError && !showSkeletons && (
-        <div className="s22-state s22-state--err">
-          <span className="s22-si"><AlertTriangle size={20} /></span>
-          <b>{t('fork.stay22_error_title')}</b>
-          <p>{t('fork.stay22_error_body')}</p>
-          <button type="button" className="btn btn--soft btn--sm s22-retry" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.stay22_retry')}</button>
-        </div>
+        <ForkState
+          variant="err"
+          icon={<AlertTriangle size={20} />}
+          title={t('fork.stay22_error_title')}
+          body={t('fork.stay22_error_body')}
+          action={<button type="button" className="btn btn--soft btn--sm" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.stay22_retry')}</button>}
+        />
       )}
 
       {!isError && !showSkeletons && hotels.length === 0 && (
-        <div className="s22-state s22-state--emp">
-          <span className="s22-si"><Search size={20} /></span>
-          <b>{t('fork.stay22_empty_title')}</b>
-          <p>{t('fork.stay22_empty_body')}</p>
-        </div>
+        <ForkState
+          variant="emp"
+          icon={<Search size={20} />}
+          title={t('fork.stay22_empty_title')}
+          body={t('fork.stay22_empty_body')}
+        />
       )}
 
       {!isError && pool.length > 0 && (
@@ -307,7 +281,7 @@ export default function Stay22HotelList({
               <ArrowUpDown size={14} />{sortLabel}
             </button>
           </div>
-          <div className="s22-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
+          <div className="fork-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {hotels.map((h) => (
               <PartnerResultCard
                 key={h.id}
@@ -342,58 +316,25 @@ export default function Stay22HotelList({
                 bookLabel={t('fork.stay22_book')}
                 selected={String(selectedId) === String(h.id)}
                 hovered={String(hoveredId) === String(h.id)}
-                onSelect={(id) => onSelect?.(id)}
+                onSelect={onSelect}
                 onHover={onHover}
                 onOpen={() => onBook(h)}
               />
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="s22-pager">
-              <button className="s22-pg" disabled={page <= 1} onClick={() => gotoPage(Math.max(1, page - 1))} aria-label={t('fork.stay22_prev')}><ChevronLeft size={16} /></button>
-              {pages.map((p, i) => (p === '…'
-                ? <span key={`g${i}`} className="s22-gap">…</span>
-                : <button key={p} className={`s22-pg ${p === page ? 's22-pg--on' : ''}`} onClick={() => gotoPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
-              <button className="s22-pg" disabled={page >= totalPages} onClick={() => gotoPage(page + 1)} aria-label={t('fork.stay22_next')}><ChevronRight size={16} /></button>
-            </div>
-          )}
+          <ForkPager
+            page={page} totalPages={totalPages} pages={pages} onGoto={gotoPage}
+            prevLabel={t('fork.stay22_prev')} nextLabel={t('fork.stay22_next')}
+          />
         </>
       )}
 
       <style>{`
         .s22 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-
-        /* Search + filter toolbar (.s22f-*) AND the count+sort row (.s22-countrow /
-           .s22-count / .s22-sort) are SHARED fork primitives — see app.css (moved
-           out of here so the activity fork reuses them, TRIP-176 / TRIP-224). */
-
-        /* ---- list + cards ---- */
-        .s22-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
-
-        /* ---- empty / error states ---- */
-        .s22-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--surface-card-border); border-radius: var(--r-xl); background: var(--surface-card); }  /* TRIP-176: empty/error = канон-карточка TRIP-189 (пунктир = сигнал пустоты) */
-        .s22-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
-        .s22-state--err .s22-si { background: var(--danger-soft); color: var(--danger-ink); }
-        .s22-state--emp .s22-si { background: var(--surface-2); color: var(--muted); }
-        .s22-state b { color: var(--ink); }
-        .s22-state p { margin: 0; color: var(--muted); max-width: 28ch; }
-        .s22-retry { margin-top: 6px; }
-        /* Card shell + body content (.pcard*: score/supplier badges, meta line,
-           address, price) are all shared — see app.css + PartnerResultCard.jsx. */
-
-        /* ---- pager ---- */
-        .s22-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-        .s22-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
-        .s22-pg:disabled { opacity: .4; cursor: default; }
-        .s22-pg:not(:disabled):active { transform: scale(.94); }
-        @media (hover: hover) and (pointer: fine) { .s22-pg:not(:disabled):hover { border-color: var(--line-hover); } }
-        .s22-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
-        .s22-gap { color: var(--muted-2); padding: 0 2px; }
-
-        @media (prefers-reduced-motion: reduce) {
-          .s22-pg { transition: none; }
-        }
+        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-countrow /
+           .s22-count / .s22-sort), list chrome (.fork-*) and the card (.pcard*)
+           are all SHARED fork primitives — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );
