@@ -4506,8 +4506,9 @@ h4,
 .statbar .s.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
 .statbar .s.c-distance .ic { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
 .statbar .s.c-duration .ic { background: var(--warning-soft); color: var(--warning-ink); }
+.statbar .s > div { min-width: 0; }  /* text block shrinks instead of forcing overflow */
 .statbar .v { color: var(--ink); font-variant-numeric: tabular-nums; }
-.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .045em; }
+.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .045em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line-2); flex: none; }
 .statbar .cta button, .statbar .cta .btn, .statbar .cta .b { width: 100%; }
 /* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
@@ -4522,9 +4523,11 @@ h4,
   .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; }
 }
 /* Overview stat-bar reflows on its own (column) width, not the viewport, so it
-   stays 5-across when the column is wide and drops to 2-col + full-width distance
-   when the 2-column overview squeezes it (TRIP-278, mirrors the @media rules). */
-@container (max-width: 560px) {
+   stays 5-across only when the column is genuinely wide (≈830px min-content for
+   five icon+value+label cells) and drops to 2-col + full-width distance once the
+   2-column overview squeezes it — which is the common case on ≤1400px desktops
+   where the left column sits around 550-680px (TRIP-278, mirrors the @media rules). */
+@container (max-width: 860px) {
   .ov-col .statbar { flex-wrap: wrap; }
   .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
   .ov-col .statbar .s::before { display: none; }
