@@ -1,13 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ChevronDown,
-  Search, RotateCcw, Minus, Plus, X, Hotel, AlertTriangle,
-  SlidersHorizontal, ArrowUpDown,
+  Search, RotateCcw, Minus, Plus, Hotel, AlertTriangle,
 } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
-import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager } from '@/components/bookings/forkList';
+import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
 
 // Live Stay22 stays for the hotel fork panel (Lumo redesign v3 + filters, TRIP-224).
@@ -149,105 +148,71 @@ export default function Stay22HotelList({
 
   return (
     <div className="s22">
-      {/* ===== Search + filters ===== */}
-      <div className="s22f">
-        <div className="s22f-searchrow">
-          <div className="s22f-search">
-            <Search size={16} className="s22f-search__ic" />
-            {/* Client text search over the pool (name + address) — instant. */}
-            <input
-              type="text" value={cf.text} onChange={(e) => onSearch?.(e.target.value)}
-              placeholder={t('fork.f_search_ph')} aria-label={t('fork.f_search_ph')}
-            />
+      {/* ===== Search + filters — shared ForkToolbar; only the price + platform +
+           guests fields (children) are hotel-specific ===== */}
+      <ForkToolbar
+        searchValue={cf.text}
+        onSearchChange={onSearch}
+        searchPlaceholder={t('fork.f_search_ph')}
+        filtersOpen={filterOpen}
+        onToggleFilters={() => setFilterOpen((o) => !o)}
+        activeCount={activeCount}
+        onReset={resetAll}
+        onApply={apply}
+        pills={[
+          appliedPrice && { key: 'price', label: priceText, onRemove: removePrice },
+          appliedProvider && { key: 'plat', label: providerLabel(appliedProvider), onRemove: removePlatform },
+          appliedGuests && {
+            key: 'guests',
+            label: `${t('fork.f_guests', { n: (applied.adults || BASE_GUESTS.adults) + (applied.children || 0) })} · ${t('fork.f_rooms', { n: applied.rooms || BASE_GUESTS.rooms })}`,
+            onRemove: removeGuests,
+          },
+        ].filter(Boolean)}
+      >
+        <div className="s22f-grp">
+          <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
+          <div className="s22f-pfields">
+            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+                onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
+            </label>
+            <span className="s22f-dash">–</span>
+            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+                onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
+            </label>
           </div>
-          <button
-            type="button"
-            className={`s22f-fbtn ${filterOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}
-            aria-expanded={filterOpen} aria-label={t('fork.f_filters')} title={t('fork.f_filters')}
-            onClick={() => setFilterOpen((o) => !o)}
-          >
-            <SlidersHorizontal size={17} />
-            {activeCount > 0 && <span className="badge badge--count s22f-fbtn__n">{activeCount}</span>}
-          </button>
         </div>
 
-        {filterOpen && (
-          <>
-          <div className="s22f-panel">
-            <div className="s22f-grp">
-              <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
-              <div className="s22f-pfields">
-                <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-                  <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
-                    onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
-                </label>
-                <span className="s22f-dash">–</span>
-                <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-                  <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
-                    onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
-                </label>
-              </div>
-            </div>
+        <div className="s22f-grp">
+          <div className="eyebrow">{t('fork.f_platform')}</div>
+          <div className="s22f-selwrap">
+            <select className="s22f-sel" value={pending.provider} onChange={(e) => setG('provider', e.target.value)}>
+              <option value="all">{t('fork.f_all_platforms')}</option>
+              {STAY22_PROVIDERS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+            </select>
+            <ChevronDown size={16} className="s22f-selchev" />
+          </div>
+        </div>
 
-            <div className="s22f-grp">
-              <div className="eyebrow">{t('fork.f_platform')}</div>
-              <div className="s22f-selwrap">
-                <select className="s22f-sel" value={pending.provider} onChange={(e) => setG('provider', e.target.value)}>
-                  <option value="all">{t('fork.f_all_platforms')}</option>
-                  {STAY22_PROVIDERS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-                </select>
-                <ChevronDown size={16} className="s22f-selchev" />
-              </div>
+        <div className="s22f-grp">
+          <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
+          <div className="s22f-guestgrid">
+            <div className="s22f-gcard">
+              <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
+              <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
             </div>
-
-            <div className="s22f-grp">
-              <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
-              <div className="s22f-guestgrid">
-                <div className="s22f-gcard">
-                  <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
-                  <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
-                </div>
-                <div className="s22f-gcard">
-                  <span className="s22f-gcard__l t-ui">{t('fork.f_children_t')}</span>
-                  <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
-                </div>
-                <div className="s22f-gcard">
-                  <span className="s22f-gcard__l t-ui">{t('fork.f_rooms_t')}</span>
-                  <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
-                </div>
-              </div>
+            <div className="s22f-gcard">
+              <span className="s22f-gcard__l t-ui">{t('fork.f_children_t')}</span>
+              <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
+            </div>
+            <div className="s22f-gcard">
+              <span className="s22f-gcard__l t-ui">{t('fork.f_rooms_t')}</span>
+              <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
             </div>
           </div>
-          {/* Actions live OUTSIDE the filter card (design) */}
-          <div className="s22f-panelfoot">
-            <button type="button" className="btn btn--quiet btn--sm" onClick={resetAll}>
-              <RotateCcw size={14} />{t('fork.f_reset')}
-            </button>
-            <button type="button" className="btn btn--primary btn--sm" onClick={apply}>
-              <Search size={14} />{t('fork.f_search')}
-            </button>
-          </div>
-          </>
-        )}
-
-        {(appliedGuests || appliedProvider || appliedPrice) && (
-          <div className="s22f-pills">
-            {appliedPrice && (
-              <span className="s22f-pill">{priceText}<button type="button" onClick={removePrice} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
-            )}
-            {appliedProvider && (
-              <span className="s22f-pill">{providerLabel(appliedProvider)}<button type="button" onClick={removePlatform} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
-            )}
-            {appliedGuests && (
-              <span className="s22f-pill">
-                {t('fork.f_guests', { n: (applied.adults || BASE_GUESTS.adults) + (applied.children || 0) })} · {t('fork.f_rooms', { n: applied.rooms || BASE_GUESTS.rooms })}
-                <button type="button" onClick={removeGuests} aria-label={t('fork.f_reset')}><X size={12} /></button>
-              </span>
-            )}
-            <button type="button" className="s22f-resetall" onClick={resetAll}>{t('fork.f_reset_all')}</button>
-          </div>
-        )}
-      </div>
+        </div>
+      </ForkToolbar>
 
       {/* ===== States — shared fork chrome (forkList.jsx) ===== */}
       {showSkeletons && <ForkListSkeleton />}
@@ -273,14 +238,7 @@ export default function Stay22HotelList({
 
       {!isError && pool.length > 0 && (
         <>
-          <div className="s22-countrow">
-            {countLabel && <span className="s22-count">{countLabel}</span>}
-            <span className="s22-countrow__ln" />
-            {/* Client sort over the pool (recommended / price ↑ / guest score ↓). */}
-            <button type="button" className="s22-sort" onClick={cycleSort}>
-              <ArrowUpDown size={14} />{sortLabel}
-            </button>
-          </div>
+          <ForkCountRow countLabel={countLabel} sortLabel={sortLabel} onCycleSort={cycleSort} />
           <div className="fork-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {hotels.map((h) => (
               <PartnerResultCard

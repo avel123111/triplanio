@@ -1,13 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import {
-  Search, RotateCcw, Ticket, AlertTriangle, Star,
-  SlidersHorizontal, X, ArrowUpDown,
-} from 'lucide-react';
+import { Search, RotateCcw, Ticket, AlertTriangle, Star } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
-import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager } from '@/components/bookings/forkList';
+import { pageWindow, nextSort, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 
 // Live Viator activities for the activity fork panel — mirrors Stay22HotelList,
 // down to the SHARED filter toolbar (.s22f-* in app.css) and the SHARED list
@@ -111,87 +108,52 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
 
   return (
     <div className="va">
-      {/* ===== Search + filters — SHARED .s22f-* primitive (app.css) ===== */}
-      <div className="s22f">
-        <div className="s22f-searchrow">
-          <div className="s22f-search">
-            <Search size={16} className="s22f-search__ic" />
-            <input
-              type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('fork.f_search_ph_activity')} aria-label={t('fork.f_search_ph_activity')}
-            />
+      {/* ===== Search + filters — shared ForkToolbar; only the price + free-cancel
+           fields (children) are activity-specific ===== */}
+      <ForkToolbar
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder={t('fork.f_search_ph_activity')}
+        filtersOpen={filterOpen}
+        onToggleFilters={() => setFilterOpen((o) => !o)}
+        activeCount={activeCount}
+        onReset={resetFilters}
+        onApply={applyFilters}
+        pills={[
+          appliedPrice && { key: 'price', label: priceText, onRemove: removePrice },
+          freeCancel && { key: 'free', label: t('fork.activities_free_cancel'), onRemove: removeFree },
+        ].filter(Boolean)}
+      >
+        <div className="s22f-grp">
+          <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
+          <div className="s22f-pfields">
+            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+                onChange={(e) => setP('min', e.target.value)} />
+            </label>
+            <span className="s22f-dash">–</span>
+            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+                onChange={(e) => setP('max', e.target.value)} />
+            </label>
           </div>
-          <button
-            type="button"
-            className={`s22f-fbtn ${filterOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}
-            aria-expanded={filterOpen} aria-label={t('fork.f_filters')} title={t('fork.f_filters')}
-            onClick={() => setFilterOpen((o) => !o)}
-          >
-            <SlidersHorizontal size={17} />
-            {activeCount > 0 && <span className="badge badge--count s22f-fbtn__n">{activeCount}</span>}
-          </button>
         </div>
-
-        {filterOpen && (
-          <>
-            <div className="s22f-panel">
-              <div className="s22f-grp">
-                <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
-                <div className="s22f-pfields">
-                  <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-                    <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
-                      onChange={(e) => setP('min', e.target.value)} />
-                  </label>
-                  <span className="s22f-dash">–</span>
-                  <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-                    <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
-                      onChange={(e) => setP('max', e.target.value)} />
-                  </label>
-                </div>
-              </div>
-              <div className="s22f-grp">
-                {/* Native checkbox convention (accentColor) — same as EventEditDialog's Checkbox. */}
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={pendingFree} onChange={(e) => setPendingFree(e.target.checked)}
-                    style={{ width: 16, height: 16, accentColor: 'var(--brand)', cursor: 'pointer', flexShrink: 0 }} />
-                  <span className="t-ui">{t('fork.activities_free_cancel')}</span>
-                </label>
-              </div>
-            </div>
-            {/* Actions live OUTSIDE the filter card (design, same as hotel fork) */}
-            <div className="s22f-panelfoot">
-              <button type="button" className="btn btn--quiet btn--sm" onClick={resetFilters}>
-                <RotateCcw size={14} />{t('fork.f_reset')}
-              </button>
-              <button type="button" className="btn btn--primary btn--sm" onClick={applyFilters}>
-                <Search size={14} />{t('fork.f_search')}
-              </button>
-            </div>
-          </>
-        )}
-
-        {(appliedPrice || freeCancel) && (
-          <div className="s22f-pills">
-            {appliedPrice && (
-              <span className="s22f-pill">{priceText}<button type="button" onClick={removePrice} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
-            )}
-            {freeCancel && (
-              <span className="s22f-pill">{t('fork.activities_free_cancel')}<button type="button" onClick={removeFree} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
-            )}
-            <button type="button" className="s22f-resetall" onClick={resetFilters}>{t('fork.f_reset_all')}</button>
-          </div>
-        )}
-      </div>
+        <div className="s22f-grp">
+          {/* Native checkbox convention (accentColor) — same as EventEditDialog's Checkbox. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={pendingFree} onChange={(e) => setPendingFree(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: 'var(--brand)', cursor: 'pointer', flexShrink: 0 }} />
+            <span className="t-ui">{t('fork.activities_free_cancel')}</span>
+          </label>
+        </div>
+      </ForkToolbar>
 
       {!showSkeletons && !isError && sorted.length > 0 && (
-        <div className="s22-countrow">
-          <span className="s22-count">{t('fork.activities_count', { n: filtered.length })}</span>
-          <span className="s22-countrow__ln" />
-          {/* Client sort over the pool — shared .s22-sort primitive with hotels. */}
-          <button type="button" className="s22-sort" onClick={cycleSort}>
-            <ArrowUpDown size={14} />{sortLabel}
-          </button>
-        </div>
+        <ForkCountRow
+          countLabel={t('fork.activities_count', { n: filtered.length })}
+          sortLabel={sortLabel}
+          onCycleSort={cycleSort}
+        />
       )}
 
       {/* ===== States — shared fork chrome (forkList.jsx) ===== */}
