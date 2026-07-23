@@ -4426,7 +4426,6 @@ h4,
  background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 999px;
  box-shadow: 0 3px 10px -3px rgba(20,24,40,.28), 0 1px 2px rgba(20,24,40,.16);
  color: var(--ink);
- font-weight: 700;   /* price/count badges are strong (matches the .t-strong canon on the spans) */
  font-variant-numeric: tabular-nums; white-space: nowrap;
  transition: transform .16s var(--ease-spring), box-shadow .18s, border-color .16s, background .16s;
 }
