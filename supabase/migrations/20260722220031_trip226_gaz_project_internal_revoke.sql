@@ -1,0 +1,19 @@
+-- TRIP-226 follow-up — gaz_project должна быть INTERNAL (не client-исполнима).
+--
+-- Баг: в 20260722205000 стоял `revoke all on function gaz_project ... from public`,
+-- но это no-op. Supabase через `ALTER DEFAULT PRIVILEGES` выдаёт EXECUTE новым
+-- функциям в схеме public НАПРЯМУЮ ролям anon/authenticated (а не через PUBLIC),
+-- поэтому после create гранты висят на самих ролях, и revoke FROM public их не
+-- снимает. В итоге gaz_project осталась client-исполнима → LIVE-страж ярусов
+-- (check-security-tiers.mjs, IF3/IF4) валит деплой: secdef-функция вне манифеста
+-- не должна быть доступна anon/authenticated.
+--
+-- gaz_project — внутренний хелпер проекции (зовётся только из search_gazetteer_core
+-- и nearest_cities, обе SECURITY DEFINER owner=postgres → исполняют его как postgres),
+-- клиентский EXECUTE ей не нужен. Снимаем явные гранты у ролей, приводя ACL к
+-- эталону search_gazetteer_core (`{postgres, service_role}`).
+--
+-- Тот же класс граблей, что TRIP-49: цель REVOKE ≠ цель GRANT. Идиома для нового
+-- ВНУТРЕННЕГО secdef-хелпера в Supabase — revoke у public И ролей:
+--   revoke all on function <f> from public, anon, authenticated;
+revoke all on function public.gaz_project(bigint, text) from anon, authenticated;

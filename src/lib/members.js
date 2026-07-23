@@ -26,8 +26,8 @@ export function withOwnerRow(members = [], ownerId = '', owner = {}) {
 // | 'viewer'). trips.created_by is the SOLE source of ownership and ALWAYS wins
 // over any trip_members row: a stray member row for the creator must never
 // demote them (this is what showed the owner as a viewer and blocked /edit with
-// "no access"). Mirrors the precedence in useTripAccess.js. Single source so the
-// trip view and the structure editor can't drift (TRIP-143).
+// "no access"). Single source of role precedence so the trip view and the
+// structure editor can't drift (TRIP-143).
 export function resolveMyRole(members = [], trip = null, user = null) {
   if (trip?.created_by && user?.id && trip.created_by === user.id) return 'owner';
   const mine = (members || []).find((m) => m.user_id === user?.id);

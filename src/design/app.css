@@ -40,6 +40,7 @@
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
   --bk:           #003B95;  /* Booking.com brand navy — supplier/score badge */
   --bk-fg:        #fff;
+  --viator:       #328E6E;  /* Viator brand green — activity state button */
 
   /* Neutrals / surfaces */
   --ink:    hsl(var(--foreground));      /* ← index.css --foreground (Lumo #272433) */
@@ -211,6 +212,7 @@
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
   --bk:           #1A66D9;  /* Booking navy — dark theme */
+  --viator:       #2FA07C;  /* Viator green — dark theme */
 
   /* Neutrals / surfaces — dark */
   --ink-2:  #C4C1D2;
@@ -399,6 +401,8 @@ h1,
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
+.pcard__price b,   /* TRIP-287: инспектор канонов — цена карточки → t-heading (h2 макета) */
+.fork-state b,   /* TRIP-287: инспектор канонов — заголовок состояния поиска → t-heading (h2 макета) */
 h2,
 .eroute h3,
 .acct-hero__av,
@@ -427,6 +431,7 @@ h2,
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
+.pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
 .avatar--xl,
 .invite__tx h3,
@@ -480,8 +485,6 @@ h4,
 .pt-mast__l1,
 .pt-cta p,
 .banner p,
-.va-ti b, .s22-ti b,
-.va-price b, .s22-price b,
 .acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
 .acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
@@ -490,6 +493,7 @@ h4,
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
+.fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
 .limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .proto__nav-item,
@@ -563,7 +567,6 @@ h4,
 .warn-banner b,
 .f-sec,
 .ch-row .cr-b b,
-.pcard__name,
 .crow .nm,
 .cbar .val,
 .empty-note .en-tx b,
@@ -594,9 +597,6 @@ h4,
 .btn-ghost,
 .brand-col__sub,
 .faq__a-inner,
-.va-state b,
-.s22-state b,
-.s22f-poptx b,
 .s22f-cur,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
@@ -834,12 +834,10 @@ h4,
 .phone__time,
 .langdd__btn,
 .langdd__item .code,
-.va-count, .va-sc, .va-pg,
-.s22f-chip, .s22f-plbl, .s22f-val,
-.s22-count, .s22-sort, .s22-sc, .s22-pg,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
-.va-state p, .s22-state p,
-.va-sub, .s22-sub, .va-flag,
-.fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall, .pcard__plat span,
+.fork-pg,
+.s22f-val,
+.s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
@@ -894,7 +892,7 @@ h4,
 .chat .planresult .badge,
 .app-sidebar__group,
 .mbnav__lbl,
-.va-from, .s22-price span, .fork-partner__mid span,
+.fork-partner__mid span,
 .ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.25;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-183: .t-micro ← label макета (JetBrains 600/9.5/caps/--track-caps .14); был 700/11 */
 .t-mono,
 .cm-code,
@@ -918,9 +916,9 @@ h4,
    не как канон, а как МОДИФИКАТОР .tp-caption поверх .t-mono (определение выше) —
    1:1 с пресетом аудитора; инспектор детектит его как «Mono + caption».
    Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
-   в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
-   span) → .t-micro (mono+track, co-selector выше — капс/трекинг уже в каноне, свой
-   оверлей больше не нужен). Токен --fs-nano оставлен: его использует CalendarLens. */
+   в правиле t-meta выше), капс-эйбрау (.fork-partner__mid span) → .t-micro
+   (mono+track, co-selector выше — капс/трекинг уже в каноне, свой оверлей больше
+   не нужен). Токен --fs-nano оставлен: его использует CalendarLens. */
 
 /* Санкционированные орто-модификаторы (TRIP-165 Фаза 3) — комбинируются с любым каноном.
    Единственные места (кроме канонов) где легально живёт font-weight / line-height. */
@@ -935,7 +933,7 @@ h4,
 .tl3-card--tr .rv-mode small,
 .acct-plan__line b,
 .tx-btn:hover, .tx-btn.act,
-.s22mk__count,
+.s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
 .bgt-stat__s b,
 .ptrip h1, .ptrip h2, .ptrip h3,
 .pt-mast__l1 b,
@@ -946,11 +944,10 @@ h4,
 .field__match.is-ok::before,
 .field__match.is-bad::before,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
-.va-flag, .va-from, .s22-price span, .fork-partner__mid span,
+.fork-partner__mid span,
 .fork-or span, .s22f-resetall,
-.va-count, .va-sc, .va-pg, .s22f-val, .s22-count, .s22-sc, .s22-pg,
-.s22f-cur, .s22f-dash,
-.va-price b, .s22-price b { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
+.fork-pg, .s22f-val, .s22-count, .pcard__score,
+.s22f-cur, .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
 .s22mk,
@@ -984,7 +981,8 @@ h4,
 .fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
 .chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
 .chat-thinking span,     /* TRIP-175 инсп.: Meta+Golos («Triplanio is typing») */
-.pcard__plat span,       /* TRIP-224: Meta+Golos (лейбл платформы Booking на карточке) */
+.pcard__mtx, .pcard__addr, .pcard__score, .pcard__price span,  /* TRIP-287: Meta+Golos (отзывы/адрес/оценка/сноска цены карточки) */
+.s22mk__price, .s22mk__count,  /* TRIP-287: инспектор канонов — цена/счётчик маркера карты → Meta+Golos */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
 .chat-rail .card li,     /* TRIP-175 инсп.: Meta+Golos (пункты списка в чат-рейле) */
 .pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
@@ -4457,38 +4455,68 @@ h4,
 
 /* ─── Partner result card (shared: Stay22 hotels + Viator activities) ─────────
    ONE shell for both fork partner lists so the identical elements stay identical
-   (TRIP-140 unification). Per-list body content (rating/price/address) keeps its
-   own classes and is slotted in; the thumb gradient takes the list's accent via
-   --pc-accent. Behaviour lives in PartnerResultCard.jsx. */
-/* TRIP-176: two-zone result card — top (thumb + name/rating/address) + bottom
-   bar (supplier · price · Book). Shared by the Stay22 hotel and Viator activity
-   fork lists via PartnerResultCard. */
-.pcard { display: flex; flex-direction: column; cursor: pointer; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+   (TRIP-140 unification). Body content (score/supplier/meta/address/price) shares
+   the .pcard__* classes below and is slotted in per list; the thumb gradient takes
+   the list's accent via --pc-accent. Behaviour lives in PartnerResultCard.jsx. */
+/* TRIP-287: grid result card — [thumb | text] + full-width footer (price ↔
+   Book). Score + supplier badges sit ON the photo; the footer spans both columns
+   so price ↔ Book stays one row at any container width. The thumb scales with the
+   container (26cqw) — the lists set container-type: inline-size. Shared by the
+   Stay22 hotel and Viator activity fork lists via PartnerResultCard. */
+.pcard { position: relative; display: grid; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
 .pcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) { .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
+@media (hover: hover) and (pointer: fine) {
+  .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); }
+  .pcard:hover .pcard__thumb img { transform: scale(1.06); }
+}
 .pcard:active { transform: scale(.99); }
 .pcard.is-hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
 .pcard.is-sel { border-color: var(--brand); box-shadow: 0 0 0 2px var(--primary-ring), var(--sh-2); }
 .pcard--sk { cursor: default; }
-.pcard__top { display: flex; gap: 11px; padding: 9px 12px 8px 9px; }
-.pcard__thumb { position: relative; width: 60px; height: 60px; flex: none; border-radius: var(--r-sm); overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-accent, var(--ev-hotel)) 45%, white), var(--pc-accent, var(--ev-hotel)) 120%); }
-.pcard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
+
+/* Thumb — grid cell (col 1); height follows the text block, min-height keeps its
+   shape on short content. Score + supplier badges are pinned on it. */
+.pcard__thumb { position: relative; grid-column: 1; grid-row: 1; align-self: stretch; min-height: 86px; border-radius: var(--r-sm); overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-accent, var(--ev-hotel)) 45%, white), var(--pc-accent, var(--ev-hotel)) 120%); }
+.pcard__thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; transition: transform .6s var(--ease-out); }
 .pcard__ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
-.pcard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
-/* Name + rating share a row; on a narrow card (mobile / slim panel) the rating
-   block (score · reviews · free-cancel badge) WRAPS below the name instead of
-   squeezing it to one letter — the name keeps a readable min-width (TRIP-224).
-   The name itself wraps to a 2nd line when it doesn't fit, capped at 2 lines
-   (ellipsis past that); align-items:flex-start keeps the rating on the 1st line. */
-.pcard__namerow { display: flex; align-items: flex-start; gap: 6px 8px; flex-wrap: wrap; }
-.pcard__name { flex: 1 1 7em; min-width: 7em; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
-.pcard__bar { display: flex; align-items: center; gap: 9px; padding: 9px 13px; border-top: 1px solid var(--line-2); background: var(--surface-2); }
+
+/* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
+   Booking navy token. Activities: glass star pill (.pcard__score--star). */
+.pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
+.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); backdrop-filter: blur(var(--glass-blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4); padding: 0 7px; }
+.pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
+
+/* Supplier badge — bottom-left on the photo (logo, letter fallback). */
+.pcard__sup { position: absolute; left: 6px; bottom: 6px; z-index: 2; width: 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; overflow: hidden; background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1.5px rgba(255,255,255,.92), 0 1px 4px rgba(0,0,0,.25); }
+.pcard__sup img { width: 100%; height: 100%; object-fit: contain; }
+
+/* Body — grid cell (col 2), vertically centred against the photo. Name wraps to
+   a 2nd line then ellipsis. */
+.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.pcard__name { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+
+/* Meta line (stars · reviews / duration · reviews): one row, ellipsis on the
+   text, separators/numbers never squeeze. */
+/* align-items: baseline — stars (16px) and the review text (meta) share one
+   baseline so the bigger star glyphs never sit lower than the digits. */
+.pcard__meta { display: flex; align-items: baseline; column-gap: 5px; min-width: 0; color: var(--muted); }
+.pcard__meta > * { flex: none; }
+.pcard__stars { color: var(--rating); font-size: 16px; line-height: 1; letter-spacing: 1px; /* design-token-exempt: размер/разрядка глифов ★ (декоративные звёзды отеля), не текст */ }
+.pcard__mtx { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Subline (address / free cancellation) — one muted line, ellipsis. */
+.pcard__addr { color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pcard__addr--ok { color: var(--success); }
+
+/* Footer — full-width row (spans both columns), price ↔ Book on one line at any
+   container width; the price sub-note shrinks first, price + Book never do. */
+.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .pcard__spacer { flex: 1; min-width: 8px; }
-.pcard__plat { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-.pcard__plat img { width: 20px; height: 20px; border-radius: 6px; flex: none; object-fit: contain; background: var(--surface); }
-.pcard__plat span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pcard__bar .btn { flex: none; }
-@media (prefers-reduced-motion: reduce) { .pcard { transition: none; } .pcard:active { transform: none; } }
+.pcard__price { flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.pcard__price b { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pcard__price span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.pcard__go { flex: none; border-radius: var(--r-pill); }
+@media (prefers-reduced-motion: reduce) { .pcard, .pcard__thumb img { transition: none; } .pcard:active { transform: none; } }
 
 /* ─── Trips home + statistics: greeting, stat-bar, map hero, rail ─────────────
    Ф4 of the travel-stats redesign. New classes (none overlap existing ones).
@@ -4842,3 +4870,55 @@ h4,
   .s22f-fbtn, .s22f-step button { transition: none; }
   .s22f-fbtn:active { transform: none; }
 }
+
+/* Fork list chrome — SHARED by BOTH fork lists (hotels + activities) via the
+   forkList.jsx components (ForkListSkeleton / ForkState / ForkPager). Kept here,
+   not in a component <style>, so the two panels can never drift (TRIP-287). */
+.fork-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
+/* Empty / error / no-match state — shared medal surface (TRIP-287 redesign).
+   Accent is per-STATE (identical across hotels + activities): err=red,
+   emp=blue, nomatch=yellow — driven by the --st-accent* trio. */
+.fork-state {
+  --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink);
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; padding: 26px 20px 22px; border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
+  background: radial-gradient(120% 92% at 50% -12%, var(--st-accent-soft), transparent 62%), var(--surface-card);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
+}
+[data-theme="dark"] .fork-state { box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--sh-1); }
+.fork-state::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, transparent, var(--st-accent), transparent); opacity: .6; }
+.fork-state--err     { --st-accent: var(--danger);  --st-accent-soft: var(--danger-soft);  --st-accent-ink: var(--danger-ink); }
+.fork-state--emp     { --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink); }
+.fork-state--nomatch { --st-accent: var(--warning); --st-accent-soft: var(--warning-soft); --st-accent-ink: var(--warning-ink); }
+
+.fork-state__art { position: relative; height: 82px; display: grid; place-items: center; }
+.fork-state__glow { position: absolute; inset: 50% auto auto 50%; width: 150px; height: 100px; transform: translate(-50%, -46%); background: radial-gradient(closest-side, var(--st-accent-soft), transparent 72%); }
+.fork-si {
+  position: relative; width: 66px; height: 66px; border-radius: 20px; display: grid; place-items: center; color: var(--st-accent-ink);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface-card) 86%, var(--st-accent) 14%), var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--st-accent) 34%, var(--surface-card-border));
+  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--st-accent) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.55);
+}
+[data-theme="dark"] .fork-si { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--st-accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
+.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: var(--st-accent); border: 2.5px solid var(--surface-card); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--st-accent) 80%, transparent); }
+.fork-state b { color: var(--ink); margin-top: 4px; }
+.fork-state p { margin: 0; color: var(--muted); max-width: 30ch; }
+.fork-state__actions { display: flex; flex-direction: column; gap: 9px; align-items: stretch; width: 100%; max-width: 264px; margin-top: 14px; }
+.fork-state__actions .btn { width: 100%; }
+
+/* Branded partner button — solid brand bg (--bg set inline per partner: Booking
+   navy / Viator green) + white logo chip. Reuses the base .btn engine. */
+.btn--brand { box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--bg) 65%, transparent); }
+.btn--brand:hover { box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--bg) 72%, transparent); filter: brightness(1.05); }
+.btn__brandlogo { width: 20px; height: 20px; border-radius: 6px; background: #fff; display: grid; place-items: center; flex: none; overflow: hidden; }
+.btn__brandlogo img { width: 15px; height: 15px; object-fit: contain; }
+/* Pager — prev · windowed numbers · next. */
+.fork-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+.fork-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
+.fork-pg:disabled { opacity: .4; cursor: default; }
+.fork-pg:not(:disabled):active { transform: scale(.94); }
+@media (hover: hover) and (pointer: fine) { .fork-pg:not(:disabled):hover { border-color: var(--line-hover); } }
+.fork-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.fork-gap { color: var(--muted-2); padding: 0 2px; }
+@media (prefers-reduced-motion: reduce) { .fork-pg { transition: none; } }

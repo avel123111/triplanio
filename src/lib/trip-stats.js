@@ -58,7 +58,7 @@ export function tripDuration(trip, visits = []) {
 }
 
 /** Great-circle distance between two [lat, lng] points, in km (haversine). */
-function haversineKm(aLat, aLng, bLat, bLng) {
+export function haversineKm(aLat, aLng, bLat, bLng) {
   const R = 6371; // mean Earth radius, km
   const toRad = (d) => (d * Math.PI) / 180;
   const dLat = toRad(bLat - aLat);

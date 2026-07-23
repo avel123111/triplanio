@@ -6,13 +6,14 @@ import { invokeFn } from '@/lib/invokeFn';
 import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { resolveCities, reverseGeocode } from '@/lib/geo';
+import { resolveCities, nearbyCities } from '@/lib/geo';
 import CountryFlag from '@/components/common/CountryFlag';
 import { tzFromCoords } from '@/lib/timezone';
+import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
@@ -228,19 +229,29 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
 function StepHome({ home, setHome, startDate, setStartDate }) {
   const t = useT();
   const { lang } = useI18n();
+  const { fmtDistance } = useI18nFormat();
   const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
-  const [nearbyCity, setNearbyCity] = useState(null); // detected city from GPS
+  const [candidates, setCandidates] = useState([]); // 2-3 nearest cities from GPS
 
   const requestGeo = () => {
     if (!navigator.geolocation) { setGeoState('denied'); return; }
     setGeoState('loading');
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude, lang);
-        if (city) {
-          const tz = tzFromCoords(city.latitude, city.longitude);
-          const full = { ...city, timezone: tz };
-          setNearbyCity(full);
+        // Inhouse reverse geocode → up to 3 nearest gazetteer cities (TRIP-226).
+        // The closest point is often a suburb, so we let the user pick.
+        const found = await nearbyCities(pos.coords.latitude, pos.coords.longitude, lang);
+        if (found.length) {
+          // Localize country from country_code like CityPicker does — mapGazCity
+          // leaves country=null, but the review row + payload expect a country name.
+          setCandidates(found.map((c) => ({
+            ...c,
+            country: c.country || localizeCountry(c.country_code, lang),
+            timezone: tzFromCoords(c.latitude, c.longitude),
+            // Distance from the user's GPS point to the gazetteer city (its
+            // centroid) — shown in the chip so a suburb-vs-city pick is informed.
+            distanceKm: haversineKm(pos.coords.latitude, pos.coords.longitude, c.latitude, c.longitude),
+          })));
           setGeoState('allowed');
         } else {
           setGeoState('denied');
@@ -295,30 +306,38 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         </div>
       )}
 
-      {geoState === 'allowed' && nearbyCity && (
-        <div>
-          <button onClick={() => setHome(nearbyCity)} style={{
-            display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 14px',
-            background: home?.city_name === nearbyCity.city_name ? 'var(--brand-soft)' : 'var(--surface)',
-            border: '1.5px solid ' + (home?.city_name === nearbyCity.city_name ? 'var(--brand)' : 'var(--line)'),
-            borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
-          }}
-            onMouseEnter={e => { if (home?.city_name !== nearbyCity.city_name) e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
-            onMouseLeave={e => { if (home?.city_name !== nearbyCity.city_name) e.currentTarget.style.borderColor = 'var(--line)'; }}
-          >
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-              <Icon name="plane" size={14} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="t-subheading">{nearbyCity.city_name}</div>
-              <div className="muted t-meta t-sans"><CountryFlag code={nearbyCity.country_code} /> {nearbyCity.country} · {t('planner.your_city')}</div>
-            </div>
-            {home?.city_name === nearbyCity.city_name && (
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name="check" size={11} />
-              </div>
-            )}
-          </button>
+      {geoState === 'allowed' && candidates.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {candidates.map((c) => {
+            const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
+            const dist = fmtDistance(c.distanceKm);
+            // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
+            const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
+            return (
+              <button key={c.external_city_id} onClick={() => setHome(c)} style={{
+                display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 14px',
+                background: selected ? 'var(--brand-soft)' : 'var(--surface)',
+                border: '1.5px solid ' + (selected ? 'var(--brand)' : 'var(--line)'),
+                borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
+              }}
+                onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
+                onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line)'; }}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <Icon name="plane" size={14} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="t-subheading">{c.city_name}</div>
+                  <div className="muted t-meta t-sans"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
+                </div>
+                {selected && (
+                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <Icon name="check" size={11} />
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
