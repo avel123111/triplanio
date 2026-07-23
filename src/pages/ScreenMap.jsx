@@ -39,34 +39,31 @@ function fmtRange(a, b) {
 const FOCUS_ZOOM = 6;
 
 function ScreenMap({ visits = [], transfers = [], active = true }) {
-  const [activeIdx, setActiveIdx] = useState(0);
-  // The camera stays on the whole-route frame until the user picks a city; then
-  // it flies to that city (MapView's `focus`). Re-picking the active city clears
-  // the focus and eases back to the whole trip.
-  const [picked, setPicked] = useState(false);
+  // One selection drives everything (no city selected at start): a selected city
+  // gets the highlighted pin + glass badge and the camera flies to it; nothing
+  // selected ⇒ the whole-route frame with no highlight.
+  const [selectedIdx, setSelectedIdx] = useState(null);
   const [hoverId, setHoverId] = useState(null); // city hovered (pin OR route row)
 
   // Real route — visits with coordinates, in trip order.
   const route = useMemo(() => sortVisits(visits).filter(v => v.latitude && v.longitude), [visits]);
 
   useEffect(() => {
-    if (activeIdx >= route.length) { setActiveIdx(0); setPicked(false); }
-  }, [route.length, activeIdx]);
+    if (selectedIdx != null && selectedIdx >= route.length) setSelectedIdx(null);
+  }, [route.length, selectedIdx]);
 
   const isDark = document.documentElement.dataset.theme === 'dark';
-  const activeVisit = route[activeIdx] || null;
+  const selectedVisit = selectedIdx != null ? route[selectedIdx] || null : null;
 
-  // Re-picking the active city toggles focus off (back to the whole-trip frame);
-  // picking another city flies to it.
-  const select = (i) => {
-    if (i === activeIdx) { setPicked((p) => !p); return; }
-    setActiveIdx(i);
-    setPicked(true);
-  };
+  // Unified select/deselect for BOTH the list rows and the map pins: clicking a
+  // city selects it; clicking the already-selected city deselects (back to the
+  // whole-route frame). Empty-map clicks call `deselect` directly.
+  const select = (i) => setSelectedIdx((cur) => (cur === i ? null : i));
+  const deselect = () => setSelectedIdx(null);
 
-  // The badge follows the hovered city (tooltip) and otherwise the active one.
+  // The badge follows the hovered city (tooltip) and otherwise the selected one.
   const hoverVisit = hoverId != null ? route.find(v => v.id === hoverId) : null;
-  const badgeVisit = hoverVisit || activeVisit;
+  const badgeVisit = hoverVisit || selectedVisit;
   const cityBadge = badgeVisit ? {
     lng: badgeVisit.longitude,
     lat: badgeVisit.latitude,
@@ -75,7 +72,7 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
     dates: fmtRange(badgeVisit.start_date, badgeVisit.end_date),
   } : null;
 
-  const focus = picked && activeVisit ? [[activeVisit.longitude, activeVisit.latitude]] : null;
+  const focus = selectedVisit ? [[selectedVisit.longitude, selectedVisit.latitude]] : null;
 
   return (
     // The parent <main> is padding:0 + overflow:hidden for the map lens, so this
@@ -92,7 +89,7 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
           mapControls
           active={active}
           colorScheme={isDark ? 'DARK' : 'LIGHT'}
-          selectedVisitId={activeVisit?.id}
+          selectedVisitId={selectedVisit?.id}
           hoveredVisitId={hoverId}
           focus={focus}
           focusZoom={FOCUS_ZOOM}
@@ -103,13 +100,13 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
             if (idx !== -1) select(idx);
           }}
           onCityHover={(visitsAtPoint) => setHoverId(visitsAtPoint ? (visitsAtPoint[0]?.id ?? null) : null)}
-          onMapClick={() => { setActiveIdx(null); setPicked(false); }}
+          onMapClick={deselect}
         />
       </div>
 
       <RoutePanel
         route={route}
-        activeIdx={activeIdx}
+        selectedIdx={selectedIdx}
         onSelect={select}
         onHover={setHoverId}
       />
@@ -124,7 +121,7 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
 // route, collapsing back when a city is picked. Each stop = a leading marker
 // (transit number / interchange glyph / start·finish flag), the city name and
 // its dates.
-function RoutePanel({ route, activeIdx, onSelect, onHover }) {
+function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
   const { t } = useI18n();
   const isPhone = useIsPhone();
   // The mobile sheet rests at peek; picking a city collapses it (desktop has no
@@ -170,7 +167,7 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
             type="button"
             onClick={() => pick(i)}
             {...hoverProps(c)}
-            className={'map-route__item' + (activeIdx === i ? ' is-active' : '')}
+            className={'map-route__item' + (selectedIdx === i ? ' is-active' : '')}
           >
             <span className="map-route__marker">
               {row.glyph ? <Icon name={row.glyph} size={13} /> : <span className="num t-meta">{row.number}</span>}
