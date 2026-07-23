@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ChevronDown,
-  Search, RotateCcw, Minus, Plus, Hotel, AlertTriangle,
+  Search, RotateCcw, Minus, Plus, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
 } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
@@ -55,6 +55,8 @@ export default function Stay22HotelList({
   hoveredId, selectedId, onHover, onSelect,
   // Formatting / click logging context.
   currency, tripId,
+  // Branded state button — the Booking partner (same link as the pill above).
+  statePartner = null,
 }) {
   const { t, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
@@ -146,6 +148,22 @@ export default function Stay22HotelList({
   // interaction lives in PartnerResultCard so hotels + activities stay identical.
   const onBook = (h) => logClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22', campaign: 'fork_api_search', fallback: false });
 
+  // Branded "Find on Booking" button shown in every state — same link as the
+  // Booking pill above, logged under its own state-button campaign.
+  const brandPartner = statePartner && statePartner.url ? {
+    ...statePartner,
+    onClick: () => logClick({ partner: 'booking', type: 'hotel', link: statePartner.url, provider: statePartner.provider || 'stay22', campaign: 'fork_state_button', fallback: !!statePartner.fallback }),
+  } : null;
+
+  // Distinguish "no hotels in this city" (empty) from "filters removed everything"
+  // (no-match): meta.pooled is the pre-client-filter pool size; server filters
+  // reload the pool, so a filtered-to-zero API response has pooled===0 but a
+  // filter still active. Any active filter (server / price / text) + zero results
+  // ⇒ no-match; otherwise ⇒ empty.
+  const pooledCount = meta.pooled ?? pool.length;
+  const anyFilterActive = activeCount > 0 || (cf.text || '').trim() !== '';
+  const isNoMatch = pool.length === 0 && (pooledCount > 0 || anyFilterActive);
+
   return (
     <div className="s22">
       {/* ===== Search + filters — shared ForkToolbar; only the price + platform +
@@ -220,19 +238,35 @@ export default function Stay22HotelList({
       {isError && !showSkeletons && (
         <ForkState
           variant="err"
-          icon={<AlertTriangle size={20} />}
+          icon={<AlertTriangle size={28} />}
+          spark={<CloudOff size={13} />}
           title={t('fork.stay22_error_title')}
           body={t('fork.stay22_error_body')}
-          action={<button type="button" className="btn btn--soft btn--sm" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.stay22_retry')}</button>}
+          action={<button type="button" className="btn btn--soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.stay22_retry')}</button>}
+          partner={brandPartner}
         />
       )}
 
-      {!isError && !showSkeletons && hotels.length === 0 && (
+      {!isError && !showSkeletons && isNoMatch && (
+        <ForkState
+          variant="nomatch"
+          icon={<SlidersHorizontal size={28} />}
+          spark={<X size={13} />}
+          title={t('fork.stay22_no_match_title')}
+          body={t('fork.stay22_no_match_body')}
+          action={<button type="button" className="btn btn--soft" onClick={resetAll}><RotateCcw size={15} />{t('fork.f_reset')}</button>}
+          partner={brandPartner}
+        />
+      )}
+
+      {!isError && !showSkeletons && pool.length === 0 && !isNoMatch && (
         <ForkState
           variant="emp"
-          icon={<Search size={20} />}
+          icon={<Hotel size={28} />}
+          spark={<Search size={13} />}
           title={t('fork.stay22_empty_title')}
           body={t('fork.stay22_empty_body')}
+          partner={brandPartner}
         />
       )}
 
