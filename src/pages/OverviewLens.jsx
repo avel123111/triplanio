@@ -48,12 +48,12 @@ export default function OverviewLens({
             <div className="wdg-h">{dot}{bar('38%', 16, 6)}</div>
             <div className="ov-bar" style={{ height: 280, borderRadius: 0 }} />
           </div>
-          {/* stat row */}
-          <div className="statrow">
+          {/* stat bar */}
+          <div className="statbar surface-panel">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div className="statcard" key={i}>
-                {bar('55%', 22, 6)}
-                {bar('80%', 10, 5, 10)}
+              <div className="s" key={i}>
+                <span className="ov-bar" style={{ width: 42, height: 42, borderRadius: 13, flex: 'none' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>{bar('55%', 22, 6)}{bar('80%', 10, 5, 7)}</div>
               </div>
             ))}
           </div>
