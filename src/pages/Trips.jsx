@@ -160,7 +160,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   return (
     <>
       <div className="t-mono tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
-      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
+      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={`surface-glass${ghost ? ' is-ghost' : ''}`} />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
           {showMap

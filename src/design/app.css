@@ -189,7 +189,7 @@
   --fs-meta:    12.5px;  /* body-med макета → канон .t-ui */
   --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
   --fs-strong:  var(--fs-base);  /* база body + эмфаз-текст (НЕ канон) — алиас на base, единый источник 13px (TRIP-183 аудит: убран дубль-литерал) */
-  --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, statcard, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
+  --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
   --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; фикс (мельче не опускаем) */
   --fs-h2:      calc(clamp(15px, 2.1vw, 16.5px) * var(--fd-k));   /* h2 макета → канон .t-heading; TRIP-203: fluid (16.5 деск → 15 фон), заменяет ручные @media-понижения */
   --fs-h1:      calc(clamp(19px, 2.6vw, 26px) * var(--fd-k)); /* h1 макета → канон .t-title; TRIP-203: min 21→19 (единое понижение на фоне) */
@@ -387,7 +387,6 @@ h1, h2, h3, h4 {
 .flow-lp-b h1,     /* TRIP-222: инспектор канонов — заголовки шагов планирования Heading→Title (оба flow) */
 h1,
 .auth__h1,
-.statcard .v,      /* TRIP-175 инсп.: Label→Title (число статкарты) */
 .bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
 .bgt-donut__c .v,  /* TRIP-175 инсп.: Heading→Title (центр доната бюджета; .t-flush сохранён) */
@@ -840,7 +839,6 @@ h4,
 .va-state p, .s22-state p,
 .va-sub, .s22-sub, .va-flag,
 .fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall, .pcard__plat span,
-.statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
 .t-micro,
@@ -1240,7 +1238,6 @@ h4,
    доопределяет в собственном блоке ниже по файлу. Значения — только из токенов
    --surface-card / --surface-card-border / --r-xl / --shadow-glass / --glass-blur. */
 .surface-glass,
-.statbar,                  /* /trips — полоса Города/Страны */
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
 .nonext,                   /* /trips — пусто «следующий трип» */
@@ -1255,7 +1252,6 @@ h4,
 }
 .surface-panel,
 .card,
-.statcard,
 .wdg,
 .panel,                    /* экран трипа/статистика — плоские панели/виджеты */
 .summary,                  /* /stats — полоса из 6 стат-плиток */
@@ -2949,6 +2945,10 @@ h4,
   align-items: start;
 }
 .ov-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+/* Left column = size container so the stat-bar reflows to its own width, not the
+   viewport (mockup v01 @container): 5-across when the column is wide, 2-col when
+   the 2-column overview squeezes it on mid-width desktops (TRIP-278). */
+.ovwrap .ov-col:first-child { container-type: inline-size; }
 
 /* ---- widget shell ---- */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тень только на ховере как affordance */
@@ -3013,33 +3013,10 @@ h4,
  align-items: center; justify-content: center; gap: 8px;
 }
 
-/* ---- stat row ---- */
-.statrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
-.statcard {
-  padding: 16px 12px;
-  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 9px; min-width: 0;
-}
-/* icon chip on top, centered; number + label stacked below */
-.statcard .ic {
-  width: 32px; height: 32px; border-radius: 11px; flex: none;
-  display: grid; place-items: center;
-  background: var(--primary-soft); color: var(--primary);
-}
-.statcard .ic svg { width: 17px; height: 17px; }
-.statcard .meta { display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 5px; min-width: 0; }
-.statcard .v {
- color: var(--ink); min-width: 0;
-}
-.statcard .k {
- color: var(--muted); min-width: 0;
- white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-/* icon-chip tones (city/transfer mirror /trips; distance/duration reuse existing tokens) */
-.statcard.c-city .ic     { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.statcard.c-transfer .ic { background: var(--info-soft);        color: var(--info-ink); }
-.statcard.c-distance .ic { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
-.statcard.c-duration .ic { background: var(--warning-soft);     color: var(--warning-ink); }
+/* ---- stat row ----
+   Overview trip stats render through the shared .statbar polosa (TRIP-278);
+   see the .statbar block below. Panel skin is applied via `surface-panel` on
+   the element; margin reset for the overview column lives beside .statbar. */
 
 /* ---- entrance: staggered reveal (decorative) ---- */
 @keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -3047,7 +3024,6 @@ h4,
 .ovwrap .ov-col:first-child .ov-anim:nth-child(2) { animation-delay: 60ms; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(1) { animation-delay: 50ms; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(2) { animation-delay: 110ms; }
-.statrow .statcard { animation: ovIn .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 80ms); }
 /* Calendar lens: a slightly larger, longer entrance for a more dynamic feel. */
 @keyframes ovInCal { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .ov-anim--cal { animation: ovInCal .5s var(--ease-out) both; }
@@ -3066,20 +3042,14 @@ h4,
 @keyframes ovSkel { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .ov-anim, .statrow .statcard, .ov-skel, .ov-bar,
+  .ov-anim, .ov-skel, .ov-bar,
   .settings-lens > .card, .settings-lens > .settings-grid { animation: none; }
   .wdg:hover { transform: none; }
 }
 
 @media (max-width: 880px) {
   .ovwrap { grid-template-columns: 1fr; }
-  .statrow { grid-template-columns: repeat(2, 1fr); }
   .ov-maparea { height: 220px; }
-}
-@media (max-width: 640px) {
-  .statrow { gap: 10px; }
-  .statcard { padding: 12px 13px; }
-  .statcard .v { font-size: var(--fs-h4); }
 }
 
 /* ============================================================
@@ -4522,25 +4492,44 @@ h4,
 .head__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 @media (max-width: 640px) { .head__av { width: 48px; height: 48px; } }
 
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* Skin is assigned per screen (TRIP-189): .surface-glass on /trips home,
+   .surface-panel on the trip Overview column (TRIP-278). Below = layout only. */
 .statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
-.statbar .s { flex: 1; min-width: 0; padding: 16px 20px; display: flex; align-items: center; gap: 13px; border-left: 1px solid var(--line-2); }
-.statbar .s:first-child { border-left: 0; }
-.statbar .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--primary); }
-.statbar .ic svg { width: 19px; height: 19px; }
+.statbar .s { position: relative; flex: 1; min-width: 0; padding: 18px 20px; display: flex; align-items: center; gap: 13px; }
+/* inset hairline divider (mockup v01): slim, padded top & bottom, not full-height */
+.statbar .s::before { content: ""; position: absolute; inset: 16px auto 16px 0; width: 1px; background: var(--line-2); }
+.statbar .s:first-child::before { display: none; }
+.statbar .ic { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--primary); }
+.statbar .ic svg { width: 20px; height: 20px; }
 .statbar .s.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .statbar .s.c-trip .ic { background: var(--ev-car-soft); color: var(--ev-car-ink); }
 .statbar .s.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
+.statbar .s.c-distance .ic { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
+.statbar .s.c-duration .ic { background: var(--warning-soft); color: var(--warning-ink); }
 .statbar .v { color: var(--ink); font-variant-numeric: tabular-nums; }
-.statbar .k { color: var(--muted); margin-top: 5px; }
+.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .045em; }
 .statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line-2); flex: none; }
-.statbar .cta button { width: 100%; }
+.statbar .cta button, .statbar .cta .btn, .statbar .cta .b { width: 100%; }
+/* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
+.ov-col .statbar { margin-top: 0; }
 @media (max-width: 640px) {
   .statbar { flex-wrap: wrap; }
-  .statbar .s { flex: 1 0 50%; border-left: 0; border-top: 1px solid var(--line-2); padding: 14px 16px; }
-  .statbar .s:nth-child(-n+2) { border-top: 0; }
-  .statbar .s:nth-child(odd) { border-right: 1px solid var(--line-2); }
+  .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .statbar .s::before { display: none; }
+  .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line-2); }
+  /* distance = the trip's headline number: full width, centered, bottom row (mockup v01) */
+  .statbar .s.c-distance { flex: 1 0 100%; order: 1; justify-content: center; border-top: 1px solid var(--line-2); }
   .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; }
+}
+/* Overview stat-bar reflows on its own (column) width, not the viewport, so it
+   stays 5-across when the column is wide and drops to 2-col + full-width distance
+   when the 2-column overview squeezes it (TRIP-278, mirrors the @media rules). */
+@container (max-width: 560px) {
+  .ov-col .statbar { flex-wrap: wrap; }
+  .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .ov-col .statbar .s::before { display: none; }
+  .ov-col .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line-2); }
+  .ov-col .statbar .s.c-distance { flex: 1 0 100%; order: 1; justify-content: center; border-top: 1px solid var(--line-2); }
 }
 
 .dash-hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-top: 18px; }
@@ -4596,10 +4585,7 @@ h4,
    .chart, map controls/legend, fullscreen, visit panel).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* — stat-bar trailing CTA (used on the home stat-bar) — */
-.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line-2); flex: none; }
-.statbar .cta .btn, .statbar .cta .b { width: 100%; }
-@media (max-width: 640px) { .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; } }
+/* stat-bar trailing CTA: see the canonical .statbar block above (TRIP-278 collapse). */
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
