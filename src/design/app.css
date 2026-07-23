@@ -471,6 +471,7 @@ h3,
 .bell-dd__head .t-ui, /* TRIP-175 инсп.: UI→Subheading (заголовок «Уведомления» в колокольчике; перебивает класс .t-ui) */
 .ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
+.dl-visopt__lbl b,   /* TRIP-275 инсп.: Meta→Subheading (заголовок опции видимости «Общий»/«Личный») */
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
@@ -491,6 +492,7 @@ h4,
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
+.readonly-banner .t-ui, /* TRIP-275 инсп.: UI→Label (заголовок «Только чтение» баннера наблюдателя; перебивает класс .t-ui) */
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
@@ -606,6 +608,8 @@ h4,
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в рейле чата) */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
+.dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
+.dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
@@ -665,11 +669,7 @@ h4,
 .route .ra,
 .rmid .dur,
 .addr div,
-.docrow b,
-.docrow span,
 .notes,
-.upload b,
-.upload span,
 .bud-leg,
 .ov-warn,
 .ov-empty-line,
@@ -769,10 +769,7 @@ h4,
 .dl-linkrow b,
 .dl-addcard span,
 .dl-empty span,
-.dl-label,
-.dl-visopt__lbl b,
 .dl-visopt__lbl span,
-.dl-dropzone b,
 .dl-dropzone span,
 .dl-upitem__n,
 .dl-dview-link b,
@@ -995,6 +992,15 @@ h4,
 .bgt-detail__s,          /* TRIP-243 инсп.: Meta+Golos (счётчик трат в шапке детали) */
 .bgt-stat__s,            /* TRIP-243 инсп.: Meta+Golos (подпись стат-карточки) */
 .bgt-fxrow__hint,        /* TRIP-243 инсп.: Meta+Golos (хинт строки курса в модалке) */
+.sev,                    /* TRIP-275 инсп.: Meta+Golos (проза сообщений severity/баннера наблюдателя) */
+.tweaks__seg button,     /* TRIP-275 инсп.: Meta+Golos (сегмент-табы диалогов: e-mail/ссылка/офлайн + роль) */
+.tweaks__seg .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подписи роль-табов: Только просмотр/Редактирует) */
+.field__label .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подсказка-hint поля «· свободный текст») */
+.dlg__body > .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (прозовые примечания в теле диалога) */
+.dl-root .muted.t-meta,  /* TRIP-275 инсп.: Meta+Golos (подписи секций документов «Видят все участники») */
+.dl-empty span,          /* TRIP-275 инсп.: Meta+Golos (описания пустых состояний доков) */
+.dl-visopt__lbl span,    /* TRIP-275 инсп.: Meta+Golos (подпись опции видимости «Виден всем участникам») */
+.dl-dropzone span,       /* TRIP-275 инсп.: Meta+Golos (подпись dropzone «PDF · DOC · XLS…») */
 .card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
 
 /* =================================================================
@@ -2837,19 +2843,11 @@ h4,
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
 .addr div { color: var(--ink-2); }
-.docrow { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: var(--surface-3); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
-.docrow .di { width: 30px; height: 30px; border-radius: 8px; background: var(--danger-soft); color: var(--danger-ink); display: grid; place-items: center; flex: none; }
-.docrow b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.docrow span { color: var(--muted); }
 /* Notes block — Lumo .notes: surface-3 card with hairline border. */
 .notes { color: var(--ink-2); padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
-/* Upload dropzone — Lumo .upload (was used by DocumentsField but never defined). */
-.upload { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 16px; border-radius: 13px; border: 1.5px dashed var(--line-strong); background: var(--surface-3); cursor: pointer; text-align: center; transition: border-color .16s, background .16s; }
-.upload:hover { border-color: var(--primary); background: var(--primary-soft); }
-.upload svg { width: 20px; height: 20px; color: var(--muted-2); }
-.upload:hover svg { color: var(--primary); }
-.upload b { color: var(--ink-2); }
-.upload span { color: var(--muted); }
+/* Document upload field (dropzone + file rows) — unified on the DocsLens
+   reference classes .dl-dropzone / .dl-uplist / .dl-upitem / .dl-ftag (DocsLens.css),
+   reused by DocumentsField so the field looks identical everywhere (TRIP-275). */
 /* Planning left list: hide the scrollbar entirely (still scrolls). */
 .ts-leftscroll { scrollbar-width: none; -ms-overflow-style: none; }
 .ts-leftscroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
@@ -4115,7 +4113,7 @@ h4,
    EVENT/SERVICE DIALOGS — Lumo redesign (view + edit), 2026-06-08
    Self-contained .ev-dlg system. Uses --ev-color/--ev-soft/--ev-ink set on the
    .ev-dlg root by the caller. Additive: does not touch legacy panel classes
-   (.route/.docrow/.notes/.kvgrid used by the trip-editor left panels).
+   (.route/.notes/.kvgrid used by the trip-editor left panels).
    ═══════════════════════════════════════════════════════════════════════════ */
 .ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
 .ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;flex:none;}

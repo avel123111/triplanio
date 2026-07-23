@@ -64,7 +64,7 @@
   "title_ph": "Паспорт, Страховка, Чеклист…",
   "title_placeholder": "Например, «Виза в Испанию»",
   "upload_failed": "Не удалось загрузить «{name}». Попробуй ещё раз.",
-  "upload_files": "Загрузить файлы • до {mb}MB каждый",
+  "upload_formats": "PDF · DOC · XLS · IMG · до {mb} МБ",
   "upload_label": "Загрузить файлы (PDF / фото), до 10 МБ каждый",
   "view_files_label": "Файлы",
   "view_notes": "Заметки",
