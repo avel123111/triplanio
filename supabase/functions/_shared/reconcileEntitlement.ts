@@ -15,7 +15,8 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type Stripe from 'npm:stripe@17.0.0';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
-import { isProductCode, stripeEnv, getActiveProviderProducts, billingIntervalForProduct, type ProductCode } from './payments/catalog.ts';
+import { stripeEnv, getActiveProviderProducts, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode } from './payments/catalog.ts';
+import { resolveProductCodeFromSub } from './payments/identity.ts';
 import { StripeAdapter } from './payments/stripeAdapter.ts';
 import { isFullyRefunded } from './payments/refund.ts';
 import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from './payments/subscriptionRow.ts';
@@ -63,11 +64,15 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
 
   const adapter = new StripeAdapter(key, stripeEnv(key));
 
+  // Только энтайтлящие строки: canceled/duplicate не должны запирать юзера в
+  // stuck-PRO-ветке — иначе после «отписался → снова подписался мимо checkout»
+  // stuck-FREE (единственный путь материализации) навсегда недостижим.
   const { data: rows } = await admin
     .from('subscription')
     .select('id, provider_subscription_id')
     .eq('user_id', userId)
     .in('product_code', ['account_pro_monthly', 'account_pro_yearly'])
+    .in('status', [...ENTITLING_STATUSES])
     .not('provider_subscription_id', 'is', null);
 
   if (rows && rows.length > 0) {
@@ -94,12 +99,7 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
       const subs = await adapter.listSubscriptionsByCustomer(customerId, 10);
       const recovered: string[] = [];
       for (const sub of subs) {
-        const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
-        const productId = typeof price?.product === 'string'
-          ? price.product : ((price?.product as { id?: string } | undefined)?.id ?? null);
-        const catalogCode = productId ? codeByProduct.get(productId) ?? null : null;
-        const metaCode = sub.metadata?.product_code;
-        const productCode = catalogCode ?? (isProductCode(metaCode) ? metaCode : null);
+        const productCode = await resolveProductCodeFromSub(sub, adapter, { codeByProduct });
         if (productCode !== 'account_pro_monthly' && productCode !== 'account_pro_yearly') continue;
         const iso = unixToIso(getPeriodEndUnix(sub));
 

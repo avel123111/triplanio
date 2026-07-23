@@ -25,6 +25,27 @@ export async function getProviderCustomerId(
   return data && data.length > 0 ? (data[0].provider_customer_id as string) : null;
 }
 
+/**
+ * Обратный lookup: customer id провайдера → наш user_id (или null). Детерминизм
+ * 1:1 — уникальный индекс uq_provider_customer_provider_cus (provider,
+ * provider_customer_id). Фолбэк-резолв владельца подписки для вебхука
+ * (подписка без metadata, созданная мимо нашего checkout).
+ */
+export async function getUserIdForProviderCustomer(
+  admin: SupabaseClient,
+  customerId: string | null | undefined,
+  provider = 'stripe',
+): Promise<string | null> {
+  if (!customerId) return null;
+  const { data } = await admin
+    .from('provider_customer')
+    .select('user_id')
+    .eq('provider', provider)
+    .eq('provider_customer_id', customerId)
+    .limit(1);
+  return data && data.length > 0 ? (data[0].user_id as string) : null;
+}
+
 /** Сохранить идентичность (идемпотентно, best-effort — не критично для права). */
 export async function saveProviderCustomerId(
   admin: SupabaseClient,

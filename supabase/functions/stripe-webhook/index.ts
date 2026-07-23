@@ -25,6 +25,7 @@ import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { isFullyRefunded } from '../_shared/payments/refund.ts';
 import { stripeEnv, isProductCode, billingIntervalForProduct, type ProductCode } from '../_shared/payments/catalog.ts';
 import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
+import { resolveSubscriptionIdentity, resolveProductCodeFromSub } from '../_shared/payments/identity.ts';
 import { buildSubscriptionUpsertRow, buildSubscriptionRefreshPatch } from '../_shared/payments/subscriptionRow.ts';
 import { isDuplicateEntitlingSub } from '../_shared/payments/subscriptionDedup.ts';
 import { buildPurchaseRow } from '../_shared/payments/purchaseRow.ts';
@@ -92,28 +93,6 @@ async function findSubRow(subId: string) {
     .eq('provider_subscription_id', subId)
     .limit(1);
   return data && data.length > 0 ? data[0] : null;
-}
-
-// { userId, productCode } для подписки: из существующей строки, иначе из metadata.
-async function resolveRecurringUser(
-  adapter: StripeAdapter,
-  subId: string,
-  existing: { user_id?: string; product_code?: string } | null,
-  ctx: string,
-): Promise<{ userId: string; productCode: ProductCode } | null> {
-  let userId = existing?.user_id ?? null;
-  let productCode = (existing?.product_code as ProductCode | undefined) ?? null;
-  if (!userId || !productCode) {
-    const sub = await adapter.fetchSubscription(subId);
-    userId = userId ?? ((sub.metadata?.user_id as string) || null);
-    const metaCode = sub.metadata?.product_code;
-    productCode = productCode ?? (isProductCode(metaCode) ? metaCode : null);
-  }
-  if (!userId || (productCode !== 'account_pro_monthly' && productCode !== 'account_pro_yearly')) {
-    await reportPaymentAnomaly('sub_unresolved_user', { ctx, sub_id: subId }, 'error');
-    return null;
-  }
-  return { userId, productCode };
 }
 
 // sentry: manual — reads the raw body for Stripe signature verification and returns domain statuses (400 invalid sig); captures unexpected 5xx inline (ensureWrite + reportPaymentAnomaly).
@@ -279,10 +258,12 @@ Deno.serve(async (req) => {
         const subId = invoiceSubId(invoice);
         if (!subId) break;
         const existing = await findSubRow(subId);
-        const resolved = await resolveRecurringUser(adapter, subId, existing, 'invoice.paid');
+        // Refetch истины из Stripe (ТЗ §1.3) — ОДИН фетч: резолв личности и
+        // status/period_end читаются из одного объекта.
+        const sub = await adapter.fetchSubscription(subId);
+        const resolved = await resolveSubscriptionIdentity(supabaseAdmin, adapter, sub, 'invoice.paid', existing, reportPaymentAnomaly);
         if (!resolved) break;
         await saveCustomer(resolved.userId, invoice.customer);
-        const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
         if (existing) {
           await ensureWrite('invoice.paid update', supabaseAdmin.from('subscription')
@@ -316,14 +297,14 @@ Deno.serve(async (req) => {
         const subId = invoiceSubId(invoice);
         if (!subId) break;
         const existing = await findSubRow(subId);
-        const resolved = await resolveRecurringUser(adapter, subId, existing, 'invoice.payment_failed');
+        // Refetch истины (ТЗ §1.3), один фетч: статус подписки берём из Stripe
+        // verbatim (active в smart-retry / unpaid / canceled при исчерпании
+        // дённинга); грейс держит recompute по provider_meta.next_payment_attempt.
+        const sub = await adapter.fetchSubscription(subId);
+        const resolved = await resolveSubscriptionIdentity(supabaseAdmin, adapter, sub, 'invoice.payment_failed', existing, reportPaymentAnomaly);
         if (!resolved) break;
         await saveCustomer(resolved.userId, invoice.customer);
         const nextAttemptIso = invoice.next_payment_attempt ? unixToIso(invoice.next_payment_attempt) : null;
-        // Refetch истины (ТЗ §1.3): статус подписки берём из Stripe verbatim
-        // (active в smart-retry / unpaid / canceled при исчерпании дённинга).
-        // Грейс держит recompute по provider_meta.next_payment_attempt (ниже).
-        const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
         await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert(
           buildSubscriptionUpsertRow({
@@ -354,11 +335,11 @@ Deno.serve(async (req) => {
         const nextAttemptIso = invoice.next_payment_attempt ? unixToIso(invoice.next_payment_attempt) : null;
         if (!nextAttemptIso) break;
         const existing = await findSubRow(subId);
-        const resolved = await resolveRecurringUser(adapter, subId, existing, 'invoice.updated');
+        // Refetch истины (ТЗ §1.3), один фетч: статус из Stripe verbatim + grace-дата из инвойса.
+        const sub = await adapter.fetchSubscription(subId);
+        const resolved = await resolveSubscriptionIdentity(supabaseAdmin, adapter, sub, 'invoice.updated', existing, reportPaymentAnomaly);
         if (!resolved) break;
         await saveCustomer(resolved.userId, invoice.customer);
-        // Refetch истины (ТЗ §1.3): статус из Stripe verbatim + grace-дата из инвойса.
-        const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
         await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert(
           buildSubscriptionUpsertRow({
@@ -383,10 +364,10 @@ Deno.serve(async (req) => {
           // прийти не по порядку). Это и чинит «отменил, а показывает активной».
           const sub = await adapter.fetchSubscription(subObj.id);
           const periodEndIso = unixToIso(getPeriodEndUnix(sub));
-          const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
-          const productId = typeof price?.product === 'string'
-            ? price.product : ((price?.product as { id?: string } | undefined)?.id ?? null);
-          const productCode = productId ? await adapter.productCodeForProviderProduct(productId) : null;
+          // Смена плана: код ТОЛЬКО из каталога по текущему price (metadata-фолбэк
+          // выключен — при catalog-miss сохраняем прежний код строки, а не
+          // откатываем его на stale-снапшот момента покупки).
+          const productCode = await resolveProductCodeFromSub(sub, adapter, { metadataFallback: false });
           await ensureWrite('subscription.updated', supabaseAdmin.from('subscription').update({
             status: sub.status, cancel_at_period_end: sub.cancel_at_period_end === true,
             ...(productCode ? { product_code: productCode, billing_interval: billingIntervalForProduct(productCode) } : {}),

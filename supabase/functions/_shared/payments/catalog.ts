@@ -11,15 +11,10 @@ import { supabaseAdmin } from '../supabaseAdmin.ts';
 import type { ProviderEnv, ResolvedPrice } from './types.ts';
 
 // Единый вокабуляр продукта — product_code (фронт, metadata провайдера, каталог и
-// реестр говорят на нём же; переходный plan_type и мосты PLAN_TO_PRODUCT/
-// PRODUCT_TO_PLAN выпилены — одна сущность, одно имя).
-export type ProductCode = 'trip_pro_lifetime' | 'account_pro_monthly' | 'account_pro_yearly';
-export const VALID_PRODUCTS = ['trip_pro_lifetime', 'account_pro_monthly', 'account_pro_yearly'] as const;
-
-/** Является ли строка валидным product_code (для проверки входа/metadata). */
-export function isProductCode(value: unknown): value is ProductCode {
-  return typeof value === 'string' && (VALID_PRODUCTS as readonly string[]).includes(value);
-}
+// реестр говорят на нём же). Живёт в чистом productCodes.ts (без supabaseAdmin),
+// здесь ре-экспорт — потребители каталога продолжают импортировать отсюда.
+export { isProductCode, VALID_PRODUCTS, type ProductCode } from './productCodes.ts';
+import type { ProductCode } from './productCodes.ts';
 
 /** True когда секретный ключ Stripe — тестовый (`sk_test_…`). */
 export function isTestStripeKey(key: string): boolean {
