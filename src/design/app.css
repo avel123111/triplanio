@@ -482,7 +482,6 @@ h4,
 .pt-mast__l1,
 .pt-cta p,
 .banner p,
-.va-ti b, .s22-ti b,
 .acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
 .acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
@@ -838,7 +837,6 @@ h4,
 .s22f-chip, .s22f-plbl, .s22f-val,
 .s22-count, .s22-sort, .s22-pg,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
 .va-state p, .s22-state p,
-.va-sub, .s22-sub,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
