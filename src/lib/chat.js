@@ -98,12 +98,16 @@ export function useChatMessages(chatId, { enabled = true } = {}) {
   return useQuery({
     queryKey: CHAT_MESSAGES_KEY(chatId),
     queryFn: async () => {
+      // Load the FULL chat history, oldest→newest. No row cap: a trip group chat
+      // is bounded (hundreds of rows at most) and PostgREST imposes no default
+      // max-rows here. The previous `.limit(200)` combined with ascending order
+      // returned the OLDEST 200 rows, so once a chat crossed 200 messages every
+      // newer message silently stopped loading (TRIP-292).
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('chat_id', chatId)
-        .order('created_at', { ascending: true })
-        .limit(200);
+        .order('created_at', { ascending: true });
       if (error) throw error;
       return data || [];
     },

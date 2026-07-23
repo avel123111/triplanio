@@ -1,5 +1,7 @@
 /* DocumentsField — ported off Tailwind onto Lumo tokens (TRIP-53 / ретайр Tailwind, Этап 1).
-   Row (.docrow/.di) and dropzone (.upload) classes live in app.css and are reused. */
+   The upload field (dropzone + file rows) reuses the DocsLens reference classes
+   .dl-dropzone / .dl-uplist / .dl-upitem / .dl-ftag (DocsLens.css) so it looks
+   identical everywhere (TRIP-275). Only the card wrapper is defined here. */
 
 /* card wrapper (non-bare) — роль panel на канонических токенах поверхностей (TRIP-189) */
 .docfield { border: 1px solid var(--surface-card-border); background: var(--surface-card); border-radius: var(--r-xl); padding: 16px; }
@@ -14,14 +16,3 @@
 /* count — was: text-xs text-muted-foreground font-normal.
    Typography now on the .t-meta canon (co-selector in app.css); weight collapses to the canon 600. */
 .docfield__count { color: var(--muted); }
-
-/* doc list — was: flex flex-col gap-1.5 mb-2 */
-.docfield__list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-
-/* doc link inside .docrow b — was: block truncate */
-.docrow__link { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* remove button — was: shrink-0 grid place-items-center (sizing kept inline) */
-.docrow__rm { flex: none; display: grid; place-items: center; border: 0; background: none; cursor: pointer; }
-
-.docfield__file { display: none; }                                       /* was hidden */
