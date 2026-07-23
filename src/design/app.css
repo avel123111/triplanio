@@ -428,6 +428,7 @@ h2,
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
+.pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
 .avatar--xl,
 .invite__tx h3,
@@ -482,7 +483,6 @@ h4,
 .pt-cta p,
 .banner p,
 .va-ti b, .s22-ti b,
-.pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-label (title макета) */
 .acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
 .acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
@@ -984,6 +984,7 @@ h4,
 .chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
 .chat-thinking span,     /* TRIP-175 инсп.: Meta+Golos («Triplanio is typing») */
 .pcard__mtx, .pcard__addr, .pcard__score, .pcard__price span,  /* TRIP-287: Meta+Golos (отзывы/адрес/оценка/сноска цены карточки) */
+.s22mk__price,           /* TRIP-287: инспектор канонов — цена маркера карты → Meta+Golos */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
 .chat-rail .card li,     /* TRIP-175 инсп.: Meta+Golos (пункты списка в чат-рейле) */
 .pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
@@ -4488,7 +4489,7 @@ h4,
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
 /* Supplier badge — bottom-left on the photo (logo, letter fallback). */
-.pcard__sup { position: absolute; left: 6px; bottom: 6px; z-index: 2; width: 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; overflow: hidden; background: var(--surface); color: var(--ink); box-shadow: 0 0 0 2px var(--surface), 0 1px 4px rgba(0,0,0,.25); }
+.pcard__sup { position: absolute; left: 6px; bottom: 6px; z-index: 2; width: 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; overflow: hidden; background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1.5px rgba(255,255,255,.92), 0 1px 4px rgba(0,0,0,.25); }
 .pcard__sup img { width: 100%; height: 100%; object-fit: contain; }
 
 /* Body — grid cell (col 2), vertically centred against the photo. Name wraps to
@@ -4500,7 +4501,7 @@ h4,
    text, separators/numbers never squeeze. */
 .pcard__meta { display: flex; align-items: center; column-gap: 5px; min-width: 0; color: var(--muted); }
 .pcard__meta > * { flex: none; }
-.pcard__stars { color: var(--rating); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
+.pcard__stars { color: var(--rating); font-size: var(--fs-meta); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
 .pcard__dot { color: var(--muted-2); }
 .pcard__mtx { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
