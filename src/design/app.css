@@ -481,7 +481,7 @@ h4,
 .pt-cta p,
 .banner p,
 .va-ti b, .s22-ti b,
-.va-price b, .s22-price b,
+.pcard__price b,
 .acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
 .acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
@@ -834,12 +834,12 @@ h4,
 .phone__time,
 .langdd__btn,
 .langdd__item .code,
-.va-count, .va-sc, .va-pg,
+.va-count, .va-pg,
 .s22f-chip, .s22f-plbl, .s22f-val,
-.s22-count, .s22-sort, .s22-sc, .s22-pg,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
+.s22-count, .s22-sort, .s22-pg,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
 .va-state p, .s22-state p,
-.va-sub, .s22-sub, .va-flag,
-.fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall, .pcard__plat span,
+.va-sub, .s22-sub,
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
 .statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
@@ -894,7 +894,7 @@ h4,
 .chat .planresult .badge,
 .app-sidebar__group,
 .mbnav__lbl,
-.va-from, .s22-price span, .fork-partner__mid span,
+.pcard__price span, .fork-partner__mid span,
 .ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.25;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-183: .t-micro ← label макета (JetBrains 600/9.5/caps/--track-caps .14); был 700/11 */
 .t-mono,
 .cm-code,
@@ -918,7 +918,7 @@ h4,
    не как канон, а как МОДИФИКАТОР .tp-caption поверх .t-mono (определение выше) —
    1:1 с пресетом аудитора; инспектор детектит его как «Mono + caption».
    Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
-   в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
+   в правиле t-meta выше), капс-эйбрау (.pcard__price span/.fork-partner__mid
    span) → .t-micro (mono+track, co-selector выше — капс/трекинг уже в каноне, свой
    оверлей больше не нужен). Токен --fs-nano оставлен: его использует CalendarLens. */
 
@@ -946,11 +946,11 @@ h4,
 .field__match.is-ok::before,
 .field__match.is-bad::before,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
-.va-flag, .va-from, .s22-price span, .fork-partner__mid span,
+.pcard__price span, .fork-partner__mid span,
 .fork-or span, .s22f-resetall,
-.va-count, .va-sc, .va-pg, .s22f-val, .s22-count, .s22-sc, .s22-pg,
+.va-count, .va-pg, .s22f-val, .s22-count, .s22-pg, .pcard__score,
 .s22f-cur, .s22f-dash,
-.va-price b, .s22-price b { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
+.pcard__price b { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
 .s22mk,
@@ -984,7 +984,7 @@ h4,
 .fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
 .chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
 .chat-thinking span,     /* TRIP-175 инсп.: Meta+Golos («Triplanio is typing») */
-.pcard__plat span,       /* TRIP-224: Meta+Golos (лейбл платформы Booking на карточке) */
+.pcard__mtx, .pcard__addr,  /* TRIP-287: Meta+Golos (отзывы/адрес карточки — проза) */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
 .chat-rail .card li,     /* TRIP-175 инсп.: Meta+Golos (пункты списка в чат-рейле) */
 .pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
@@ -4457,38 +4457,67 @@ h4,
 
 /* ─── Partner result card (shared: Stay22 hotels + Viator activities) ─────────
    ONE shell for both fork partner lists so the identical elements stay identical
-   (TRIP-140 unification). Per-list body content (rating/price/address) keeps its
-   own classes and is slotted in; the thumb gradient takes the list's accent via
-   --pc-accent. Behaviour lives in PartnerResultCard.jsx. */
-/* TRIP-176: two-zone result card — top (thumb + name/rating/address) + bottom
-   bar (supplier · price · Book). Shared by the Stay22 hotel and Viator activity
-   fork lists via PartnerResultCard. */
-.pcard { display: flex; flex-direction: column; cursor: pointer; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+   (TRIP-140 unification). Body content (score/supplier/meta/address/price) shares
+   the .pcard__* classes below and is slotted in per list; the thumb gradient takes
+   the list's accent via --pc-accent. Behaviour lives in PartnerResultCard.jsx. */
+/* TRIP-287: grid result card — [thumb | text] + full-width footer (price ↔
+   Book). Score + supplier badges sit ON the photo; the footer spans both columns
+   so price ↔ Book stays one row at any container width. The thumb scales with the
+   container (26cqw) — the lists set container-type: inline-size. Shared by the
+   Stay22 hotel and Viator activity fork lists via PartnerResultCard. */
+.pcard { position: relative; display: grid; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
 .pcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) { .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
+@media (hover: hover) and (pointer: fine) {
+  .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); }
+  .pcard:hover .pcard__thumb img { transform: scale(1.06); }
+}
 .pcard:active { transform: scale(.99); }
 .pcard.is-hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
 .pcard.is-sel { border-color: var(--brand); box-shadow: 0 0 0 2px var(--primary-ring), var(--sh-2); }
 .pcard--sk { cursor: default; }
-.pcard__top { display: flex; gap: 11px; padding: 9px 12px 8px 9px; }
-.pcard__thumb { position: relative; width: 60px; height: 60px; flex: none; border-radius: var(--r-sm); overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-accent, var(--ev-hotel)) 45%, white), var(--pc-accent, var(--ev-hotel)) 120%); }
-.pcard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
+
+/* Thumb — grid cell (col 1); height follows the text block, min-height keeps its
+   shape on short content. Score + supplier badges are pinned on it. */
+.pcard__thumb { position: relative; grid-column: 1; grid-row: 1; align-self: stretch; min-height: 86px; border-radius: var(--r-sm); overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-accent, var(--ev-hotel)) 45%, white), var(--pc-accent, var(--ev-hotel)) 120%); }
+.pcard__thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; transition: transform .6s var(--ease-out); }
 .pcard__ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
-.pcard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
-/* Name + rating share a row; on a narrow card (mobile / slim panel) the rating
-   block (score · reviews · free-cancel badge) WRAPS below the name instead of
-   squeezing it to one letter — the name keeps a readable min-width (TRIP-224).
-   The name itself wraps to a 2nd line when it doesn't fit, capped at 2 lines
-   (ellipsis past that); align-items:flex-start keeps the rating on the 1st line. */
-.pcard__namerow { display: flex; align-items: flex-start; gap: 6px 8px; flex-wrap: wrap; }
-.pcard__name { flex: 1 1 7em; min-width: 7em; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
-.pcard__bar { display: flex; align-items: center; gap: 9px; padding: 9px 13px; border-top: 1px solid var(--line-2); background: var(--surface-2); }
+
+/* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
+   Booking navy token. Activities: glass star pill (.pcard__score--star). */
+.pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
+.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); backdrop-filter: blur(var(--glass-blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4); padding: 0 7px; }
+.pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
+
+/* Supplier badge — bottom-left on the photo (logo, letter fallback). */
+.pcard__sup { position: absolute; left: 6px; bottom: 6px; z-index: 2; width: 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; overflow: hidden; background: var(--surface); color: var(--ink); box-shadow: 0 0 0 2px var(--surface), 0 1px 4px rgba(0,0,0,.25); }
+.pcard__sup img { width: 100%; height: 100%; object-fit: contain; }
+
+/* Body — grid cell (col 2), vertically centred against the photo. Name wraps to
+   a 2nd line then ellipsis. */
+.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.pcard__name { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+
+/* Meta line (stars · reviews / duration · reviews): one row, ellipsis on the
+   text, separators/numbers never squeeze. */
+.pcard__meta { display: flex; align-items: center; column-gap: 5px; min-width: 0; color: var(--muted); }
+.pcard__meta > * { flex: none; }
+.pcard__stars { color: var(--rating); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
+.pcard__dot { color: var(--muted-2); }
+.pcard__mtx { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Subline (address / free cancellation) — one muted line, ellipsis. */
+.pcard__addr { color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pcard__addr--ok { color: var(--success); }
+
+/* Footer — full-width row (spans both columns), price ↔ Book on one line at any
+   container width; the price sub-note shrinks first, price + Book never do. */
+.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .pcard__spacer { flex: 1; min-width: 8px; }
-.pcard__plat { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-.pcard__plat img { width: 20px; height: 20px; border-radius: 6px; flex: none; object-fit: contain; background: var(--surface); }
-.pcard__plat span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pcard__bar .btn { flex: none; }
-@media (prefers-reduced-motion: reduce) { .pcard { transition: none; } .pcard:active { transform: none; } }
+.pcard__price { flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.pcard__price b { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pcard__price span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.pcard__go { flex: none; border-radius: var(--r-pill); }
+@media (prefers-reduced-motion: reduce) { .pcard, .pcard__thumb img { transition: none; } .pcard:active { transform: none; } }
 
 /* ─── Trips home + statistics: greeting, stat-bar, map hero, rail ─────────────
    Ф4 of the travel-stats redesign. New classes (none overlap existing ones).

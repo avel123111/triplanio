@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  MapPin, ChevronLeft, ChevronRight, ChevronDown,
+  ChevronLeft, ChevronRight, ChevronDown,
   Search, RotateCcw, Minus, Plus, X, Hotel, AlertTriangle,
   SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react';
@@ -265,12 +265,10 @@ export default function Stay22HotelList({
         <div className="s22-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div className="pcard pcard--sk" key={i}>
-              <div className="pcard__top">
-                <Skeleton w={60} h={60} r={12} />
-                <div className="pcard__body">
-                  <Skeleton w="70%" h={14} />
-                  <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
-                </div>
+              <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={11} /></div>
+              <div className="pcard__body">
+                <Skeleton w="70%" h={14} />
+                <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
               </div>
               <div className="pcard__bar">
                 <Skeleton w={80} h={14} />
@@ -319,26 +317,24 @@ export default function Stay22HotelList({
                 accent="var(--ev-hotel)"
                 icon={<Hotel size={22} />}
                 image={h.thumbnail}
-                platform={h.supplierKey ? (
-                  <span className="pcard__plat">
-                    {h.supplierLogo ? <img src={h.supplierLogo} alt="" /> : null}
-                    <span>{h.supplierKey.charAt(0).toUpperCase() + h.supplierKey.slice(1)}</span>
+                score={h.ratingValue != null ? (
+                  <span className="pcard__score">{h.ratingValue.toFixed(1)}</span>
+                ) : null}
+                supplier={h.supplierKey ? (
+                  <span className="pcard__sup" title={h.supplierKey.charAt(0).toUpperCase() + h.supplierKey.slice(1)}>
+                    {h.supplierLogo ? <img src={h.supplierLogo} alt="" /> : h.supplierKey.charAt(0).toUpperCase()}
                   </span>
                 ) : null}
-                rating={(h.stars || h.ratingValue != null) ? (
-                  <div className="s22-rate">
-                    {h.stars ? <span className="s22-stars">{'★'.repeat(h.stars)}</span> : null}
-                    {h.ratingValue != null && (
-                      <span className="s22-score">
-                        <span className="s22-sc">{h.ratingValue.toFixed(1)}</span>
-                        {h.ratingCount ? <span className="s22-cnt">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
-                      </span>
-                    )}
+                meta={(h.stars || h.ratingCount) ? (
+                  <div className="pcard__meta">
+                    {h.stars ? <span className="pcard__stars">{'★'.repeat(h.stars)}</span> : null}
+                    {h.stars && h.ratingCount ? <span className="pcard__dot">·</span> : null}
+                    {h.ratingCount ? <span className="pcard__mtx">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
                   </div>
                 ) : null}
-                subline={h.address ? <div className="s22-addr"><MapPin size={13} /><span>{h.address}</span></div> : null}
+                subline={h.address ? <div className="pcard__addr">{h.address}</div> : null}
                 price={h.price != null ? (
-                  <span className="s22-price">
+                  <span className="pcard__price">
                     <b>{fmtMoney(h.price, h.currency || meta.currency)}</b>
                     {meta.nights ? <span>{t('fork.stay22_for_nights', { count: meta.nights })}</span> : null}
                   </span>
@@ -384,19 +380,8 @@ export default function Stay22HotelList({
         .s22-state b { color: var(--ink); }
         .s22-state p { margin: 0; color: var(--muted); max-width: 28ch; }
         .s22-retry { margin-top: 6px; }
-        /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
-           the hotel-specific body content keeps its own classes below. */
-        .s22-rate { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 0 1 auto; min-width: 0; }
-        .s22-stars { color: var(--rating); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
-        .s22-score { display: inline-flex; align-items: center; gap: 6px; }
-        .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; }
-        .s22-cnt { color: var(--muted); }
-        .s22-addr { display: flex; align-items: center; gap: 5px; color: var(--muted); overflow: hidden; }
-        .s22-addr svg { flex: none; color: var(--muted-2); }
-        .s22-addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .s22-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
-        .s22-price b { color: var(--ink); font-variant-numeric: tabular-nums; }
-        .s22-price span { color: var(--muted); margin-top: 2px; }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
+        /* Card shell + body content (.pcard*: score/supplier badges, meta line,
+           address, price) are all shared — see app.css + PartnerResultCard.jsx. */
 
         /* ---- pager ---- */
         .s22-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }

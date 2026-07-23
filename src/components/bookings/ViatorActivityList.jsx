@@ -209,12 +209,10 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         <div className="va-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div className="pcard pcard--sk" key={i}>
-              <div className="pcard__top">
-                <Skeleton w={60} h={60} r={12} />
-                <div className="pcard__body">
-                  <Skeleton w="70%" h={14} />
-                  <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
-                </div>
+              <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={11} /></div>
+              <div className="pcard__body">
+                <Skeleton w="70%" h={14} />
+                <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
               </div>
               <div className="pcard__bar">
                 <Skeleton w={80} h={14} />
@@ -263,21 +261,18 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
                 accent="var(--ev-activity)"
                 icon={<Ticket size={22} />}
                 image={a.image}
-                rating={(a.rating != null || a.freeCancellation) ? (
-                  <div className="va-rate">
-                    {a.rating != null && (
-                      <>
-                        <Star size={12} className="va-star" />
-                        <span className="va-sc">{Number(a.rating).toFixed(1)}</span>
-                        {a.reviewCount ? <span className="va-cnt">{t('fork.activities_reviews', { n: a.reviewCount })}</span> : null}
-                      </>
-                    )}
-                    {a.freeCancellation && <span className="va-flag">{t('fork.activities_free_cancel')}</span>}
-                  </div>
+                score={a.rating != null ? (
+                  <span className="pcard__score pcard__score--star"><Star size={10} />{Number(a.rating).toFixed(1)}</span>
+                ) : null}
+                meta={a.reviewCount ? (
+                  <div className="pcard__meta"><span className="pcard__mtx">{t('fork.activities_reviews', { n: a.reviewCount })}</span></div>
+                ) : null}
+                subline={a.freeCancellation ? (
+                  <div className="pcard__addr pcard__addr--ok">{t('fork.activities_free_cancel')}</div>
                 ) : null}
                 price={a.fromPrice != null ? (
-                  <span className="va-price">
-                    <span className="va-from">{t('fork.activities_from')}</span>
+                  <span className="pcard__price">
+                    <span>{t('fork.activities_from')}</span>
                     <b>{fmtMoney(a.fromPrice, a.currency || currency)}</b>
                   </span>
                 ) : null}
@@ -314,16 +309,8 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-state b { color: var(--ink); }
         .va-state p { margin: 0; color: var(--muted); max-width: 30ch; }
         .va-retry { margin-top: 6px; }
-        /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
-           the activity-specific body content keeps its own classes below. */
-        .va-rate { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex: 0 1 auto; min-width: 0; }
-        .va-star { color: var(--rating); flex: none; }
-        .va-sc { color: var(--ink); font-variant-numeric: tabular-nums; }
-        .va-cnt { color: var(--muted); }
-        .va-flag { color: var(--brand); background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
-        .va-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
-        .va-from { color: var(--muted); }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
-        .va-price b { color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
+        /* Card shell + body content (.pcard*: score/star badge, meta line, free
+           cancellation, price) are all shared — see app.css + PartnerResultCard.jsx. */
         .va-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
         .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
         .va-pg:disabled { opacity: .4; cursor: default; }
