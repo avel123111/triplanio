@@ -6,13 +6,14 @@ import { invokeFn } from '@/lib/invokeFn';
 import { writeRows } from '@/lib/trip-data';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, nearbyCities } from '@/lib/geo';
 import CountryFlag from '@/components/common/CountryFlag';
 import { tzFromCoords } from '@/lib/timezone';
+import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
@@ -228,6 +229,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
 function StepHome({ home, setHome, startDate, setStartDate }) {
   const t = useT();
   const { lang } = useI18n();
+  const { fmtDistance } = useI18nFormat();
   const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
   const [candidates, setCandidates] = useState([]); // 2-3 nearest cities from GPS
 
@@ -246,6 +248,9 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             ...c,
             country: c.country || localizeCountry(c.country_code, lang),
             timezone: tzFromCoords(c.latitude, c.longitude),
+            // Distance from the user's GPS point to the gazetteer city (its
+            // centroid) — shown in the chip so a suburb-vs-city pick is informed.
+            distanceKm: haversineKm(pos.coords.latitude, pos.coords.longitude, c.latitude, c.longitude),
           })));
           setGeoState('allowed');
         } else {
@@ -305,6 +310,9 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {candidates.map((c) => {
             const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
+            const dist = fmtDistance(c.distanceKm);
+            // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
+            const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
             return (
               <button key={c.external_city_id} onClick={() => setHome(c)} style={{
                 display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 14px',
@@ -320,7 +328,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="t-subheading">{c.city_name}</div>
-                  <div className="muted t-meta t-sans"><CountryFlag code={c.country_code} /> {c.country} · {t('planner.your_city')}</div>
+                  <div className="muted t-meta t-sans"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
                 </div>
                 {selected && (
                   <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>

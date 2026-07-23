@@ -27,7 +27,6 @@
   "err_no_session": "Your session expired. Sign in again.",
   "err_no_title": "Enter a trip name",
   "err_save_failed": "Could not save the trip. Try again.",
-  "err_unrecognized": "Pick each city from the suggestions: unrecognized cities are marked red",
   "fewer_nights": "Fewer nights",
   "final_point": "This is the trip's final stop",
   "final_point_hint": "No return needed, the \"Return\" step is skipped",
@@ -43,8 +42,6 @@
   "limit_desc_strong": "1 active trip",
   "limit_title": "Limit reached",
   "more_nights": "More nights",
-  "move_down": "Move down",
-  "move_up": "Move up",
   "nearby": "Nearby",
   "next": "Next",
   "next_label": "Next",
@@ -88,6 +85,5 @@
   "title_label": "Trip name",
   "to_trips": "To trips",
   "trip_start": "Trip start",
-  "where_to": "Where to?",
-  "your_city": "your city"
+  "where_to": "Where to?"
 }
