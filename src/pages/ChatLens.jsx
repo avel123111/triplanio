@@ -669,9 +669,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           {/* Keyboard shortcuts — desktop only, there is no Shift+Enter on a phone.
               Keys render as <kbd> pills; "Enter"/"Shift" are key names, not copy. */}
           <div className="chat-composer__hint">
-            <span><kbd>Enter</kbd> {t('chat.hint_send')}</span>
+            <span><kbd>Enter</kbd> {t('chat.hint_send')}</span> {/* i18n-ignore: key name */}
             <span>·</span>
-            <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_newline')}</span>
+            <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_newline')}</span> {/* i18n-ignore: key names */}
           </div>
         </div>
       </div>

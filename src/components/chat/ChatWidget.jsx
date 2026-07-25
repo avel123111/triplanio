@@ -279,11 +279,15 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           <EmptyState icon="chat" title={t('chat.write_first')} />
         </div>
       ) : messageEls}
+      {/* Same pill as the lens — this used to be an inline-styled one-off, so the
+          two surfaces drew the same indicator differently. */}
       {isThinking && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
-          <TriplanioAvatar size="sm" />
-          <span className="t-meta" style={{ color: 'var(--ai)' }}>{t('chat.typing')}</span>
-          <span className="ai-dots"><span /><span /><span /></span>
+        <div className="chat-overline">
+          <div className="chat-thinking">
+            <TriplanioAvatar size="sm" />
+            <span>{t('chat.typing')}</span>
+            <span className="ai-dots"><span /><span /><span /></span>
+          </div>
         </div>
       )}
     </div>
@@ -362,9 +366,6 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   return (
     <div className="dock-panel">
       {headInner}
-
-      {/* Thinking shimmer bar */}
-      {isThinking && <div className="chat-thinking-bar" />}
 
       {messagesInner}
 

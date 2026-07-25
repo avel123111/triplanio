@@ -601,6 +601,8 @@ h4,
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
 .chat-name b,         /* TRIP-296 инсп.: Meta→UI (автор сообщения) */
+.chat-thinking,       /* TRIP-296 инсп.: Meta→UI («Triplanio печатает») */
+.chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
 .chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
 .dock-panel__id b,    /* TRIP-296: заголовок виджета */
 .chat-reply__more,    /* TRIP-296: «Показать целиком» под ответом ассистента */
@@ -640,8 +642,6 @@ h4,
 .chat-time,
 .chat-row__err,       /* TRIP-296: «Не отправлено» */
 .chat-composer__hint, /* TRIP-296: подсказка Enter / Shift+Enter */
-.chat-thinking,
-.chat-mention__row span,
 .chat-member__rl,
 .dock__count,
 .dock-panel__head .nm,
@@ -2336,8 +2336,6 @@ h4,
 .chat-thinking { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 12px 0 5px; border-radius: var(--r-pill); background: var(--ai-soft); border: 1px solid var(--ai-line); color: var(--ai-ink); flex: none; }
 .chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
 .chat-jump b { color: var(--brand); }
-.chat-thinking-bar { position: relative; height: 3px; overflow: hidden; flex: none; }
-.chat-thinking-bar::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--ai), transparent); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
 
 /* ── Composer (shared) ── */
 /* Widget dock (a panel edge). The lens overrides this below into a floating
