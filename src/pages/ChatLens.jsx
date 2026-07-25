@@ -1,18 +1,21 @@
 /**
- * ChatLens - group chat tab inside TripView.
+ * ChatLens - the group chat lens of TripView, rendered as a full-bleed room:
+ * header / scrolling stream / pinned composer. The stream and the composer are
+ * the shared ChatStream + ChatComposer, so the floating widget stays identical.
  *
  * Real-time via Supabase Realtime on chat_messages (filtered by chat_id).
- * Supports @Triplanio AI trigger, mention dropdown, thinking state.
+ * Owns what the widget does not: day dividers, older-history paging, the
+ * "new messages" pill, retry of a failed send and the @Triplanio AI trigger.
  *
  * Props:
  *   tripId  - string
- *   members - array of trip member rows (for @mention list)
- *   myRole  - string
+ *   members - trip member rows (member list + author resolution)
+ *   myRole  - string, used only for the solo-owner fallback row
+ *   ownerId - trips.created_by; the owner usually has no trip_members row
  */
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -27,7 +30,7 @@ import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { Icon } from '../design/icons';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, fetchOlderMessages, prependChatMessages, CHAT_MESSAGES_KEY, CHAT_PAGE } from '@/lib/chat';
+import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, askAssistant, fetchOlderMessages, prependChatMessages, CHAT_MESSAGES_KEY, CHAT_PAGE } from '@/lib/chat';
 
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
@@ -191,7 +194,6 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
       { onConflict: 'chat_id,user_id' },
     ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
-   
   }, [chatId, user?.id, msgs.length]);
 
   // ── Thinking state ──
@@ -291,20 +293,11 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     // Trigger Triplanio AI if mention anywhere in message
     if (mentionsAi) {
       const realId = created?.id;
-      invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
-        .then(({ data, error }) => {
-          // TRIP-111: при отказе гейта (Pro / rate-limit) edge возвращает
-          // { ok:false } и сам постит реплику бота в чат. В любом случае гасим
-          // индикатор «Triplanio печатает» — иначе он висит вечно (invoke не
-          // бросает на не-2xx, а на ok:false ответа-бота из n8n не будет).
-          if (error || data?.ok === false) {
-            if (realId) setFailedAiIds((prev) => new Set([...prev, realId]));
-          }
-        })
-        .catch((err) => {
-          console.error('callTriplanioAi failed', err);
-          if (realId) setFailedAiIds((prev) => new Set([...prev, realId]));
-        });
+      askAssistant({
+        chatId,
+        userMessage: content,
+        onFailed: () => { if (realId) setFailedAiIds((prev) => new Set([...prev, realId])); },
+      });
     }
   }
 
@@ -320,13 +313,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const askMore = useCallback(() => composerRef.current?.insertMention(), []);
 
   // Chat participants = owner + active admins/viewers (excl. offline/pending).
-  const activeMembers = (() => {
-    const list = chatParticipants(members, ownerId);
-    if (list.length === 0 && user) {
-      return [{ id: 'self', user_full_name: user.full_name || '', user_id: user.id, role: myRole || 'owner', status: 'active' }];
-    }
-    return list;
-  })();
+  // A solo trip can resolve to an empty list (no members rows, owner not loaded
+  // yet) — fall back to the viewer so the header never reads "0 people".
+  const participants = chatParticipants(members, ownerId);
+  const activeMembers = (participants.length === 0 && user)
+    ? [{ id: 'self', user_full_name: user.full_name || '', user_id: user.id, role: myRole || 'owner', status: 'active' }]
+    : participants;
 
   // ── Member list ── the former right rail, now behind the header button:
   // Popover on desktop, canonical Sheet on phones (same pattern as

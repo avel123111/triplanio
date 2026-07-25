@@ -9,6 +9,7 @@ import { pluralCategory } from '@/lib/i18n/format';
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { withOwnerRow } from '@/lib/members';
 import { mergeIncomingMessage } from '@/lib/chat-merge';
@@ -66,6 +67,7 @@ export function pluralPeople(n, t, lang) {
 // chat lens use this hook, so they no longer keep two independent caches of the
 // same rows. `enabled` lets the widget stay lazy (fetch only when opened) while
 // the lens fetches on mount.
+
 // One page of history. The lens opens on the newest page and walks backwards on
 // demand; anything older is fetched by fetchOlderMessages.
 export const CHAT_PAGE = 200;
@@ -113,6 +115,23 @@ export async function fetchOlderMessages(chatId, beforeIso) {
     .limit(CHAT_PAGE);
   if (error) throw error;
   return (data || []).reverse();
+}
+
+// Ask the assistant to answer a message, reporting FAILURE through onFailed.
+//
+// The failure test is the subtle part, so it lives here once: on a refused gate
+// (not Pro / rate-limited, TRIP-111) the edge function answers 200 with
+// `{ ok:false }` and posts the bot's refusal itself — invokeFn does NOT throw,
+// and no n8n answer will ever arrive. A caller that only wired `.catch` left the
+// "Triplanio печатает" indicator spinning forever; that is exactly what the
+// widget did while the lens handled it.
+export function askAssistant({ chatId, userMessage, onFailed }) {
+  invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: userMessage } })
+    .then(({ data, error }) => { if (error || data?.ok === false) onFailed?.(); })
+    .catch((err) => {
+      console.error('callTriplanioAi failed', err);
+      onFailed?.();
+    });
 }
 
 // Prepend an older page to the shared cache, skipping rows we already hold. The
@@ -238,4 +257,3 @@ function useChatLiveSubscription(tripId, { enabled = true } = {}) {
     qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
   }, { enabled: !!chatId && enabled });
 }
-

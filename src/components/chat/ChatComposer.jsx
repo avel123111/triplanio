@@ -14,8 +14,8 @@ import TriplanioAvatar from './TriplanioAvatar';
  *
  * Owns its own text: the shell only receives finished messages via onSend.
  *
- * Ref API: focus() and insertMention() — the lens's "Ask again" action seeds the
- * field from outside.
+ * Ref API: insertMention() — the lens's "Ask again" action seeds the field from
+ * outside.
  *
  * Props:
  *   onSend(text)  send a non-empty message
@@ -39,18 +39,16 @@ const ChatComposer = forwardRef(function ChatComposer(
   // Complete a trailing @token ("@", "@tri") into the full handle. When there is
   // NO trailing token — the "@" button on an empty field — INSERT the mention:
   // a bare .replace() silently no-ops there, which left the button doing nothing.
-  const insertMention = (handle = TRIPLANIO_BOT_NAME) => {
+  const insertMention = () => {
+    const mention = '@' + TRIPLANIO_BOT_NAME + ' ';
     setText((prev) => (/@(\w*)$/.test(prev)
-      ? prev.replace(/@(\w*)$/, '@' + handle + ' ')
-      : (prev && !prev.endsWith(' ') ? prev + ' ' : prev) + '@' + handle + ' '));
+      ? prev.replace(/@(\w*)$/, mention)
+      : (prev && !prev.endsWith(' ') ? prev + ' ' : prev) + mention));
     setShowMention(false);
     taRef.current?.focus();
   };
 
-  useImperativeHandle(ref, () => ({
-    focus: () => taRef.current?.focus(),
-    insertMention,
-  }));
+  useImperativeHandle(ref, () => ({ insertMention }));
 
   const send = () => {
     const content = text.trim();
@@ -121,7 +119,7 @@ const ChatComposer = forwardRef(function ChatComposer(
             type="button"
             className="chat-at"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => insertMention()}
+            onClick={insertMention}
             title={t('chat.mention_all_hint')}
             aria-label={t('chat.mention')}
           >

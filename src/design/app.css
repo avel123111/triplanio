@@ -2256,13 +2256,11 @@ h4,
 .chat-members-btn .avatar { width: 26px; height: 26px; }
 .chat-members-pop { width: 330px; max-width: calc(100vw - 16px); padding: 8px; }
 
-/* ── Message stream (shared) ── */
-.chat-msgs { flex: 1; overflow: auto; padding: 18px; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+/* ── Message stream (shared) ──
+   Gutters belong to the shell (`.chat-room` / `.dock-panel`), which is why this
+   base rule carries no padding of its own. */
+.chat-msgs { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
 .chat-room .chat-msgs { padding: 20px 24px 8px; }
-/* Widget: tighter composer than the lens dock (same markup, denser variant). */
-.dock-panel .chat-composer__row { border-radius: var(--r-md); padding: 6px; box-shadow: none; }
-.dock-panel .chat-at, .dock-panel .chat-send { width: 34px; height: 34px; border-radius: 10px; }
-.dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 /* Readable column inside a full-width room. 760px is the app's existing reading
    width (Inbox), not a new number. */
 .chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; }
@@ -2290,7 +2288,6 @@ h4,
 .chat-row--me .chat-col { align-items: flex-end; }
 .chat-name { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; padding-left: 2px; }
 .chat-name b { color: var(--ink); }
-.chat-name b.ai { color: var(--ai); }
 .chat-name .tm { color: var(--muted); }
 .chat-bubble { padding: 11px 15px; border-radius: var(--r-md); word-break: break-word; }
 /* Incoming = surface + hairline (not a grey fill): on a light room the fill read
@@ -2457,7 +2454,6 @@ h4,
   .chat-members-btn { height: 34px; padding: 0 5px; }
   /* Breathing room above the composer — the stream used to end flush against it. */
   .chat-room .chat-msgs { padding: 16px 12px 12px; }
-  .chat-msgs { padding: 14px; }
   .chat-col { max-width: 86%; }
   .chat-row__sp { width: 28px; }
   .chat-row__sp .avatar { width: 28px; height: 28px; }
@@ -2472,19 +2468,18 @@ h4,
 /* ──────────────────────────────────────────────────────────────────────────
    Floating chat widget (ChatWidget) — Lumo
    ────────────────────────────────────────────────────────────────────────── */
+/* Brand, not the AI gradient: the widget is the trip chat, and the gradient
+   claimed the whole conversation was an AI surface. */
 .dock {
   position: fixed; right: 24px; bottom: max(24px, env(safe-area-inset-bottom));
   width: 56px; height: 56px; border-radius: 50%;
-  color: #fff; display: grid; place-items: center;
+  background: var(--brand); color: #fff; display: grid; place-items: center;
   box-shadow: var(--sh-3);
   border: none; cursor: pointer; z-index: 70;
   transition: transform .16s var(--ease-spring), box-shadow .2s;
 }
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
-/* Brand, not the AI gradient: the widget is the trip chat, and the gradient
-   claimed the whole conversation was an AI surface. */
-.dock { background: var(--brand); }
 [data-theme="dark"] .dock { color: #0c1424; }
 .dock__count {
  position: absolute; top: -4px; right: -4px;
@@ -2520,8 +2515,11 @@ h4,
 .dock-panel .chat-reply { margin-top: 20px; }
 .dock-panel .chat-reply__card { padding: 12px 14px 12px 17px; }
 /* The composer already carries its own surface, so inside the widget dock it
-   drops the outer bar chrome. */
+   drops the outer bar chrome and runs a denser variant of the same markup. */
 .dock-panel .chat-composer { border-top: 0; padding: 0; }
+.dock-panel .chat-composer__row { border-radius: var(--r-md); padding: 6px; box-shadow: none; }
+.dock-panel .chat-at, .dock-panel .chat-send { width: 34px; height: 34px; border-radius: 10px; }
+.dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    Notifications & Members (Lumo)

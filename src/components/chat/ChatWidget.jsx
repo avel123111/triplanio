@@ -1,19 +1,22 @@
 /**
- * ChatWidget - floating chat button + collapsible panel.
+ * ChatWidget - floating chat button + docked panel.
  *
- * Mounted by TripView on every lens *except* the dedicated chat lens.
- * Design matches DockedChat from the reference prototype (dock.jsx).
+ * Mounted by TripView on every lens *except* the dedicated chat lens, and never
+ * on phones (there the room itself is the whole screen).
+ *
+ * A denser shell around the SAME ChatStream + ChatComposer the lens uses: it
+ * keeps only what genuinely differs — the dock chrome, the unread badge and the
+ * lazy "fetch on open" message query.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
 import { mentionsTriplanio } from '@/lib/mention';
-import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
+import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, askAssistant, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { AvatarStack, EmptyState } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
@@ -63,7 +66,6 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
       { onConflict: 'chat_id,user_id' },
     ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
-   
   }, [open, chatId, user?.id]);
 
   // ── Display names ── include the owner: they usually have NO trip_members
@@ -118,90 +120,79 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
 
     if (mentionsAi) {
       const realId = created?.id;
-      invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
-        .catch((err) => {
-          console.error('callTriplanioAi failed', err);
-          if (realId) setFailedAiIds((p) => new Set([...p, realId]));
-        });
+      askAssistant({
+        chatId,
+        userMessage: content,
+        onFailed: () => { if (realId) setFailedAiIds((p) => new Set([...p, realId])); },
+      });
     }
   }
 
   const activeMembers = chatParticipants(members, ownerId);
 
   // ── Closed: floating button ──
-  const closedFab = (
-    <button
-      className="dock"
-      onClick={() => setOpen(true)}
-      aria-label={t('chat.open_aria')}
-    >
-      <Icon name="chat" size={22} />
-      {unread > 0 && (
-        <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
-      )}
-    </button>
-  );
-
-  // ── Open panel ── one header row: who is in the chat, where it is, and the
-  // two ways out (full screen / collapse). The old tab strip above it listed a
-  // single always-active tab, so it was chrome with nothing to switch.
-  const headInner = (
-    <div className="dock-panel__head">
-      <AvatarStack people={resolveMembers(activeMembers, { profiles, selfUser: user, deletedLabel: t('common.deleted_user') })} />
-      <div className="dock-panel__id">
-        <b>{t('chat.group_title')}</b>
-        <span>{tripTitle ? `${tripTitle} · ` : ''}{pluralPeople(activeMembers.length, t, lang)}</span>
-      </div>
+  if (!open) {
+    return (
       <button
-        className="icon-btn"
-        onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
-        aria-label={t('chat.open_full_aria')}
+        className="dock"
+        onClick={() => setOpen(true)}
+        aria-label={t('chat.open_aria')}
       >
-        <Icon name="expand" size={15} />
+        <Icon name="chat" size={22} />
+        {unread > 0 && (
+          <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
+        )}
       </button>
-      <button
-        className="icon-btn"
-        onClick={() => setOpen(false)}
-        aria-label={t('common.close')}
-      >
-        <Icon name="close" size={15} />
-      </button>
-    </div>
-  );
-
-  const messagesInner = (
-    <div ref={scrollRef} className="chat-msgs scrollbar-thin">
-      {msgs.length === 0 ? (
-        <div style={{ margin: 'auto' }}>
-          <EmptyState icon="chat" title={t('chat.write_first')} />
-        </div>
-      ) : (
-        <ChatStream messages={msgs} selfUser={user} profiles={profiles} members={members} />
-      )}
-    </div>
-  );
-
-  const composerInner = (
-    <ChatComposer
-      onSend={sendMessage}
-      disabled={sending || !chatId}
-      placeholder={t('chat.widget_composer_ph')}
-      isThinking={isThinking}
-      maxHeight={90}
-    />
-  );
-
-  // ── Closed: floating button ──
-  if (!open) return closedFab;
+    );
+  }
 
   // ── Open: docked panel ──
   return (
     <div className="dock-panel">
-      {headInner}
+      {/* One header row: who is in the chat, where it is, and the two ways out
+          (full screen / collapse). The old tab strip above it listed a single
+          always-active tab, so it was chrome with nothing to switch. */}
+      <div className="dock-panel__head">
+        <AvatarStack people={resolveMembers(activeMembers, { profiles, selfUser: user, deletedLabel: t('common.deleted_user') })} />
+        <div className="dock-panel__id">
+          <b>{t('chat.group_title')}</b>
+          <span>{tripTitle ? `${tripTitle} · ` : ''}{pluralPeople(activeMembers.length, t, lang)}</span>
+        </div>
+        <button
+          className="icon-btn"
+          onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
+          aria-label={t('chat.open_full_aria')}
+        >
+          <Icon name="expand" size={15} />
+        </button>
+        <button
+          className="icon-btn"
+          onClick={() => setOpen(false)}
+          aria-label={t('common.close')}
+        >
+          <Icon name="close" size={15} />
+        </button>
+      </div>
 
-      {messagesInner}
+      <div ref={scrollRef} className="chat-msgs scrollbar-thin">
+        {msgs.length === 0 ? (
+          <div style={{ margin: 'auto' }}>
+            <EmptyState icon="chat" title={t('chat.write_first')} />
+          </div>
+        ) : (
+          <ChatStream messages={msgs} selfUser={user} profiles={profiles} members={members} />
+        )}
+      </div>
 
-      <div className="dock-panel__dock">{composerInner}</div>
+      <div className="dock-panel__dock">
+        <ChatComposer
+          onSend={sendMessage}
+          disabled={sending || !chatId}
+          placeholder={t('chat.widget_composer_ph')}
+          isThinking={isThinking}
+          maxHeight={90}
+        />
+      </div>
     </div>
   );
 }

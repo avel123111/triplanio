@@ -41,8 +41,11 @@ export default function ChatReply({ text, time, onAsk }) {
 
   // Copy the raw markdown — what the assistant actually wrote, so pasting it
   // into a note or a message keeps the headings and lists.
+  // The second `?.` matters: without the clipboard API (http context, old
+  // WebView) the first one yields undefined and `.then` on it THROWS, so the
+  // "unavailable" branch never ran and the click handler blew up instead.
   const copy = () => {
-    navigator.clipboard?.writeText(text || '').then(() => {
+    navigator.clipboard?.writeText(text || '')?.then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }, () => { /* clipboard unavailable */ });

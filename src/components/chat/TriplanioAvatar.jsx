@@ -7,30 +7,18 @@ import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
  * if available, otherwise falls back to a branded robot SVG on a gradient circle.
  *
  * Props:
- *   - size: 'xs' | 'sm' | 'md' | 'lg'  (default 'md')
+ *   - size: 'xs' | 'md'  (default 'md')
  *
  * `ring`, `className`, `tripId` and `avatarUrl` were dropped — no call site ever
  * passed them, so the pre-resolved-URL branch of the lookup was unreachable too.
+ * The scale carries only the two steps chat actually uses, for the same reason.
  */
-// Mirrors the chat design's avatar scale — chat is this component's only
-// consumer, so the two scales are kept identical on purpose.
-// `xs` is the disc INSIDE a 26px status pill: the design draws it as a 26px
-// avatar with a 2px surface ring, i.e. 22px of visible gradient with room to
-// breathe. Without that step the disc filled the pill edge to edge and looked
-// like it was bursting out of it.
-const SIZE_PX = {
-  xs: 22,   // inside the "Triplanio печатает" pill
-  sm: 26,
-  md: 32,   // stream + assistant reply + mention row
-  lg: 36,
-};
-
-const SVG_SIZE = {
-  xs: 12,
-  sm: 14,
-  md: 20,
-  lg: 22,
-};
+// `xs` is the disc INSIDE the 26px "Triplanio печатает" pill: the design draws
+// it as a 26px avatar with a 2px surface ring, i.e. 22px of visible gradient
+// with room to breathe. Without that step the disc filled the pill edge to edge
+// and looked like it was bursting out of it.
+const SIZE_PX = { xs: 22, md: 32 };  // md = stream + assistant reply + mention row
+const SVG_SIZE = { xs: 12, md: 20 };
 
 export default function TriplanioAvatar({ size = 'md' }) {
   const profiles  = useUserProfiles([TRIPLANIO_BOT_USER_ID]);
