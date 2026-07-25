@@ -176,19 +176,18 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // Memoized message elements - typing in the composer (same component) must
   // NOT rebuild every bubble on each keystroke (that caused the typing lag).
   const messageEls = useMemo(() => msgs.map((m, i) => {
+    let time = '';
+    try { time = new Date(m.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); } catch { /* ignore */ }
+    // Same assistant-as-document rendering as the lens, just a narrower column.
+    if (m.user_id === TRIPLANIO_BOT_USER_ID) return <ChatReply key={m.id} text={m.text || ''} time={time} />;
     const prev = i > 0 ? msgs[i - 1] : null;
     const next = i < msgs.length - 1 ? msgs[i + 1] : null;
     const isMe = m.user_id === user?.id;
-    const isAi = m.user_id === TRIPLANIO_BOT_USER_ID;
     const grouped = prev && prev.user_id === m.user_id &&
       new Date(m.created_at).toDateString() === new Date(prev.created_at).toDateString();
     const lastOfRun = !(next && next.user_id === m.user_id &&
       new Date(m.created_at).toDateString() === new Date(next.created_at).toDateString());
-    const who = isAi ? TRIPLANIO_BOT_NAME : nameFor(m.user_id);
-    let time = '';
-    try { time = new Date(m.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); } catch { /* ignore */ }
-    // Same assistant-as-document rendering as the lens, just a narrower column.
-    if (isAi) return <ChatReply key={m.id} text={m.text || ''} time={time} />;
+    const who = nameFor(m.user_id);
     const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
     return (
       <div key={m.id} className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
@@ -294,12 +293,12 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           {/* Only @Triplanio is actionable - members aren't mentionable, so the
               popup lists just the assistant. */}
           <button
-            onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
+            onMouseDown={(e) => { e.preventDefault(); applyMention(TRIPLANIO_BOT_NAME); }}
             className="chat-mention__row"
           >
             <TriplanioAvatar size="sm" />
             <span style={{ flex: 1 }}>
-              <b>Triplanio</b>
+              <b>{TRIPLANIO_BOT_NAME}</b>
               <span>{t('chat.mention_all_hint')}</span>
             </span>
           </button>

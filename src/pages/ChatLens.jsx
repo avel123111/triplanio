@@ -124,7 +124,7 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
 function ChatSkeleton() {
   return (
     <div className="chat-msgs__in" aria-hidden>
-      {[['58%', false], ['42%', true], ['72%', false], ['38%', true]].map(([w, me], i) => (
+      {[{ w: '58%' }, { w: '42%', me: true }, { w: '72%' }, { w: '38%', me: true }].map(({ w, me }, i) => (
         <div key={i} className={'chat-row' + (me ? ' chat-row--me' : '')}>
           {!me && <Skeleton w={28} h={28} r={999} style={{ flexShrink: 0 }} />}
           <Skeleton w={w} h={me ? 40 : 56} r={16} />
@@ -290,16 +290,14 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   async function sendMessage(retryOf) {
     const content = retryOf ? (retryOf.text || '') : text.trim();
     if (!content || (!retryOf && sending) || !chatId) return;
-    if (!retryOf) {
-      setText('');
-      setShowMention(false);
-      setSending(true);
-    }
 
     const optId = retryOf ? retryOf.id : 'opt-' + Date.now();
     if (retryOf) {
       markRow(optId, { __pending: true, __failed: false });
     } else {
+      setText('');
+      setShowMention(false);
+      setSending(true);
       const optimistic = {
         id:             optId,
         chat_id:        chatId,
@@ -420,16 +418,15 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       if (!isSameDay(m.created_at, prev?.created_at)) {
         rows.push(<DateDivider key={'div-' + m.id} date={fmtMsgDate(m.created_at)} />);
       }
-      const next    = i < msgs.length - 1 ? msgs[i + 1] : null;
-      const isMe    = m.user_id === user?.id;
-      const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
-      const lastOfRun = !(next && isSameDay(m.created_at, next.created_at) && next.user_id === m.user_id);
-      const isBot   = m.user_id === TRIPLANIO_BOT_USER_ID;
       // The assistant answers as a document, not a bubble — see ChatReply.
-      if (isBot) {
+      if (m.user_id === TRIPLANIO_BOT_USER_ID) {
         rows.push(<ChatReply key={m.id} text={m.text || ''} time={fmtMsgTime(m.created_at)} onAsk={askMore} />);
         continue;
       }
+      const next      = i < msgs.length - 1 ? msgs[i + 1] : null;
+      const isMe      = m.user_id === user?.id;
+      const grouped   = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
+      const lastOfRun = !(next && isSameDay(m.created_at, next.created_at) && next.user_id === m.user_id);
       // Author identity via the shared resolver: falls back to the message's
       // user_full_name snapshot so a member who has LEFT the trip still shows
       // their name (and a gradient-initials avatar) on past messages.
@@ -489,13 +486,15 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         />
       ))}
       <div className="chat-member-sep">
-        <ChatMember name="Triplanio" role={t('chat.ai_general')} ai />
+        <ChatMember name={TRIPLANIO_BOT_NAME} role={t('chat.ai_general')} ai />
       </div>
     </>
   );
 
-  const membersBtn = (
-    <button type="button" className="chat-members-btn" aria-label={t('chat.members_title')}>
+  // On phones the button opens the Sheet itself; on desktop PopoverTrigger
+  // (asChild) supplies the handler, so it takes `onClick` rather than owning it.
+  const renderMembersBtn = (onClick) => (
+    <button type="button" className="chat-members-btn" onClick={onClick} aria-label={t('chat.members_title')}>
       <AvatarStack
         people={activeMembers.map((m) => ({
           name: nameFor(m.user_id),
@@ -517,11 +516,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <div className="chat-head__sub">{pluralPeople(activeMembers.length, t, lang)}</div>
           )}
         </div>
-        {isPhone ? (
-          <span onClick={() => setMembersOpen(true)}>{membersBtn}</span>
-        ) : (
+        {isPhone ? renderMembersBtn(() => setMembersOpen(true)) : (
           <Popover open={membersOpen} onOpenChange={setMembersOpen}>
-            <PopoverTrigger asChild>{membersBtn}</PopoverTrigger>
+            <PopoverTrigger asChild>{renderMembersBtn()}</PopoverTrigger>
             <PopoverContent align="end" className="chat-members-pop">{membersList}</PopoverContent>
           </Popover>
         )}
@@ -563,85 +560,85 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       {/* Tier 3 · composer — same column and gutters as the stream */}
       <div className="chat-composer">
         <div className="chat-composer__in">
-        {(isThinking || newCount > 0) && (
-          <div className="chat-overline">
-            {isThinking && (
-              <div className="chat-thinking">
-                <TriplanioAvatar size="xs" />
-                <span>{t('chat.typing')}</span>
-                <span className="ai-dots"><span /><span /><span /></span>
-              </div>
-            )}
-            {newCount > 0 && (
-              <button type="button" className="chat-jump" onClick={jumpToBottom}>
-                {t('chat.new_messages')} <b>{newCount}</b>
-                <Icon name="arrowD" size={13} />
+          {(isThinking || newCount > 0) && (
+            <div className="chat-overline">
+              {isThinking && (
+                <div className="chat-thinking">
+                  <TriplanioAvatar size="xs" />
+                  <span>{t('chat.typing')}</span>
+                  <span className="ai-dots"><span /><span /><span /></span>
+                </div>
+              )}
+              {newCount > 0 && (
+                <button type="button" className="chat-jump" onClick={jumpToBottom}>
+                  {t('chat.new_messages')} <b>{newCount}</b>
+                  <Icon name="arrowD" size={13} />
+                </button>
+              )}
+            </div>
+          )}
+          {showMention && (
+            <div className="chat-mention">
+              <div className="chat-mention__lbl">{t('chat.mention')}</div>
+              {/* Only @Triplanio is actionable - mentioning a member does nothing,
+                  so the popup lists just the assistant. */}
+              <button
+                onMouseDown={(e) => { e.preventDefault(); applyMention(TRIPLANIO_BOT_NAME); }}
+                className="chat-mention__row"
+              >
+                <TriplanioAvatar size="sm" />
+                <span style={{ flex: 1 }}>
+                  <b>{TRIPLANIO_BOT_NAME}</b>
+                  <span>{t('chat.mention_all_hint')}</span>
+                </span>
               </button>
-            )}
-          </div>
-        )}
-        {showMention && (
-          <div className="chat-mention">
-            <div className="chat-mention__lbl">{t('chat.mention')}</div>
-            {/* Only @Triplanio is actionable - mentioning a member does nothing,
-                so the popup lists just the assistant. */}
+            </div>
+          )}
+
+          <div className="chat-composer__row">
+            {/* Calling the assistant used to be discoverable only by typing "@". */}
             <button
-              onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
-              className="chat-mention__row"
+              type="button"
+              className="chat-at"
+              onClick={() => { applyMention(TRIPLANIO_BOT_NAME); taRef.current?.focus(); }}
+              title={t('chat.mention_all_hint')}
+              aria-label={t('chat.mention')}
             >
-              <TriplanioAvatar size="sm" />
-              <span style={{ flex: 1 }}>
-                <b>Triplanio</b>
-                <span>{t('chat.mention_all_hint')}</span>
-              </span>
+              <Icon name="ai" size={18} />
+            </button>
+            <div className="chat-composer__field">
+              {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
+                  overlay renders the full text with @Triplanio in bold purple,
+                  the textarea shows only the caret - no double glyphs. */}
+              <div
+                ref={ovRef}
+                aria-hidden="true"
+                className="chat-ov"
+                dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
+              />
+              <textarea
+                ref={taRef}
+                className="textarea chat-ta"
+                placeholder={t('chat.composer_ph')}
+                value={text}
+                onChange={handleTextChange}
+                onKeyDown={handleKey}
+                rows={1}
+                style={{ minHeight: 44, maxHeight: 100 }}
+              />
+            </div>
+            <button
+              type="button"
+              className="chat-send"
+              onClick={() => sendMessage()}
+              disabled={sending || !text.trim() || !chatId}
+              aria-label={t('chat.send')}
+            >
+              <Icon name="send" size={17} />
             </button>
           </div>
-        )}
-
-        <div className="chat-composer__row">
-          {/* Calling the assistant used to be discoverable only by typing "@". */}
-          <button
-            type="button"
-            className="chat-at"
-            onClick={() => { applyMention(TRIPLANIO_BOT_NAME); taRef.current?.focus(); }}
-            title={t('chat.mention_all_hint')}
-            aria-label={t('chat.mention')}
-          >
-            <Icon name="ai" size={18} />
-          </button>
-          <div className="chat-composer__field">
-            {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
-                overlay renders the full text with @Triplanio in bold purple,
-                the textarea shows only the caret - no double glyphs. */}
-            <div
-              ref={ovRef}
-              aria-hidden="true"
-              className="chat-ov"
-              dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
-            />
-            <textarea
-              ref={taRef}
-              className="textarea chat-ta"
-              placeholder={t('chat.composer_ph')}
-              value={text}
-              onChange={handleTextChange}
-              onKeyDown={handleKey}
-              rows={1}
-              style={{ minHeight: 44, maxHeight: 100 }}
-            />
-          </div>
-          <button
-            type="button"
-            className="chat-send"
-            onClick={() => sendMessage()}
-            disabled={sending || !text.trim() || !chatId}
-            aria-label={t('chat.send')}
-          >
-            <Icon name="send" size={17} />
-          </button>
-        </div>
-        {/* Keyboard shortcuts — desktop only, there is no Shift+Enter on a phone. */}
-        <div className="chat-composer__hint">{t('chat.send_hint')}</div>
+          {/* Keyboard shortcuts — desktop only, there is no Shift+Enter on a phone. */}
+          <div className="chat-composer__hint">{t('chat.send_hint')}</div>
         </div>
       </div>
 
