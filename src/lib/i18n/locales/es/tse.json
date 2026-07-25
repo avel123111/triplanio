@@ -22,11 +22,9 @@
   "delete_city_q": "¿Eliminar la ciudad «{city}»?",
   "departure_word": "Salida",
   "end_already_set": "El final ya está definido, quita primero el actual",
-  "err_load": "No se pudo cargar el viaje: ",
   "err_save": "No se pudo guardar: ",
   "exit_editor": "Salir de la planificación",
   "fix_hint_suffix": "Ajusta las noches, el orden o el inicio de la ciudad a la izquierda",
-  "hide_map": "Ocultar el mapa",
   "layover": "escala",
   "map_dark": "Mapa oscuro",
   "map_flat": "Mapa plano",
@@ -51,10 +49,7 @@
   "remove": "quitar",
   "route_city": "Ciudad de la ruta",
   "section_road": "Trayecto",
-  "show_map": "Mostrar el mapa",
   "start_already_set": "El inicio ya está definido, quita primero el actual",
-  "start_earlier": "antes",
-  "start_later": "más tarde",
   "transfers_out_of_plan": "Trayectos fuera del plan",
   "warns_short": "{n} adv."
 }

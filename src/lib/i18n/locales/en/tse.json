@@ -22,11 +22,9 @@
   "delete_city_q": "Delete the city \"{city}\"?",
   "departure_word": "Departure",
   "end_already_set": "Finish is already set, remove the current one first",
-  "err_load": "Could not load the trip: ",
   "err_save": "Could not save: ",
   "exit_editor": "Exit planning",
   "fix_hint_suffix": "Adjust the nights, order or city start on the left",
-  "hide_map": "Hide map",
   "layover": "layover",
   "map_dark": "Dark map",
   "map_flat": "Flat map",
@@ -51,10 +49,7 @@
   "remove": "remove",
   "route_city": "Route city",
   "section_road": "Travel",
-  "show_map": "Show map",
   "start_already_set": "Start is already set, remove the current one first",
-  "start_earlier": "earlier",
-  "start_later": "later",
   "transfers_out_of_plan": "Transfers out of plan",
   "warns_short": "{n} warn."
 }

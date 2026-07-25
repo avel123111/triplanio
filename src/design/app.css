@@ -492,10 +492,8 @@ h4,
 .fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
 .limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
-.proto__nav-item,
 .app-header .app-header__avatar,
 .avatar--lg,
-.lens-tab,
 .chat-bubble,
 .chat-ov, .chat-ta,
 .pro-hero__sub,
@@ -523,8 +521,6 @@ h4,
 .trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
 .btn,
 .field__label,
-.proto__nav-title,
-.proto__viewport-title,
 .app-side__item,
 .input, .select, .textarea,
 .addsheet__tx b,
@@ -613,9 +609,6 @@ h4,
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
-.proto__nav-sub,
-.proto__nav-item-num,
-.proto__viewport-sub,
 .app-header__trip-meta,
 .app-header__pro,
 .app-side__item-badge,
@@ -623,12 +616,9 @@ h4,
 .err, .wrn,
 .pro-up p,
 .pro-up .lockmsg,
-.locktag,
 .sev,
 .avatar,
 .avatar--sm,
-.lens-tab__count,
-.lens-tab.is-pro::after,
 .tweaks__seg button,
 .seg button,
 .choice-card__sub,
@@ -656,7 +646,6 @@ h4,
 .m-status,
 .invite-banner__desc,
 .partner-pill,
-.partner-pill__logo,
 .te-country,
 .te-warnbadge,
 .te-nights,
@@ -664,10 +653,7 @@ h4,
 .ti span,
 .gt span,
 .stepper .n,
-.metastrip .ch,
-.lkv,
 .route .ra,
-.rmid .dur,
 .addr div,
 .notes,
 .bud-leg,
@@ -684,7 +670,6 @@ h4,
 .acct-divrow__s,
 .acct-hero__av .ov,
 .acct-hero__mail,
-.acct-linkbtn,
 .acct-flabel,
 .acct-plan__p,
 .acct-note,
@@ -715,12 +700,8 @@ h4,
 .bk-link,
 .warn-banner span,
 .ch-row .cr-b span,
-.drop-zone b,
-.drop-zone span,
 .tx-btn,
 .seg-card-ti .rl,
-.lay-pill,
-.night-badge,
 .bk-link .pb,
 .lp-ti span,
 .tmk__core,
@@ -841,7 +822,6 @@ h4,
 .t-micro,
 .badge,
 .eyebrow,
-.proto__group-label,
 .app-side__group-label,
 .chat-daydiv span,
 .chat-reply__tag,     /* TRIP-296: бейдж «ассистент» у ответа */
@@ -854,7 +834,6 @@ h4,
 .tl3-dh .datechip .m,
 .tl3-today,
 .cityrail .cr-h,
-.acct-nav__grp,
 .acct-plan__k,
 .acct-tgtrips__lbl,
 .plan-popular-badge,
@@ -925,7 +904,6 @@ h4,
 .dock-panel__head .nm b,
 .nrow__link,
 .te-seam__pill--add,
-.lkv .v,
 .bud-leg .nm,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
@@ -1228,8 +1206,6 @@ h4,
 .dz-lift--transfer:hover { border-left-color: var(--ev-transfer); }
 @media (prefers-reduced-motion: reduce) { .dz-lift:hover { transform: none; } }
 /* Border-only hover (list rows). */
-.dz-bord { border: 1px solid var(--line); transition: border-color .14s var(--ease-out); }
-.dz-bord:hover { border-color: var(--line-hover); }
 /* Strong card lift (collection cards): -2px + card shadow. */
 .dz-lift-card { border: 1px solid var(--line); transition: border-color .15s var(--ease-out), box-shadow .15s var(--ease-out), transform .15s var(--ease-out); }
 .dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--shadow-card); }
@@ -1417,8 +1393,6 @@ h4,
 
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
-.field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-.field-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
 
 /* Badge / chip */
 .badge {
@@ -1483,12 +1457,6 @@ h4,
   .pro-up--inline .btn,
   .pro-up--inline .lockmsg { width: 100%; }
 }
-/* locktag — inline "Pro only" chip on gated items (Lumo .locktag) */
-.locktag {
- display: inline-flex; align-items: center; gap: 5px;
- color: var(--pro-ink); background: var(--pro-soft);
- padding: 3px 8px; border-radius: 999px;
-}
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--danger { background: var(--danger-soft); color: var(--danger); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
@@ -1542,47 +1510,6 @@ h4,
 /* Over a photo (trip cards) the ring has to be white, not the surface colour. */
 .avatar-stack--white .avatar { border: none; box-shadow: 0 0 0 2px #fff; }
 
-/* Lens tabs */
-.lens-tabs {
-  display: inline-flex; gap: 2px;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--wash);
-  border: 1px solid var(--line);
-  flex-wrap: wrap;
-}
-.lens-tab {
- display: inline-flex; align-items: center; gap: 7px;
- padding: 7px 12px;
- border-radius: 9px;
-
- color: var(--muted);
- background: transparent;
- border: none;
- position: relative;
-}
-.lens-tab:hover { color: var(--ink); }
-.lens-tab.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(15,23,42,.06);
-}
-.lens-tab__count {
- background: var(--warm); color: white;
- padding: 0 5px; border-radius: 999px;
- min-width: 16px; height: 16px;
- display: inline-grid; place-items: center;
-}
-.lens-tab.is-pro::after {
- content: "Pro";
- padding: 1px 4px; border-radius: 3px;
- background: var(--pro-soft); color: var(--pro-ink);
-}
-
-/* Section header */
-.sect-h { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.sect-h h2 { flex: 1; }
-.sect-h .actions { display: flex; gap: 8px; }
 
 /* Divider */
 .hr { border: none; border-top: 1px solid var(--line-2); margin: 0; }
@@ -1640,7 +1567,6 @@ h4,
 .row { display: flex; gap: 10px; align-items: center; }
 .col { display: flex; flex-direction: column; gap: 10px; }
 .grow { flex: 1; }
-.gap-2 { gap: 2px; } .gap-4 { gap: 4px; } .gap-6 { gap: 6px; } .gap-8 { gap: 8px; } .gap-12 { gap: 12px; } .gap-16 { gap: 16px; } .gap-20 { gap: 20px; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -1826,21 +1752,6 @@ h4,
   .planner-2col { grid-template-columns: 1fr !important; }
 }
 
-/* Manual planner layout */
-.planner-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
-  gap: 24px;
-  align-items: start;
-}
-.planner-map-col {
-  position: sticky;
-  top: 80px;
-}
-@media (max-width: 960px) {
-  .planner-grid { grid-template-columns: 1fr; }
-  .planner-map-col { position: static; order: 2; }
-}
 
 /* ── Unified create-flow (manual + AI) ──────────────────────────────────────
    Mirrors the trip-edit two-card layout: a framed full-bleed map (left) and a
@@ -2078,7 +1989,7 @@ h4,
   /* TRIP-203: голые h1/h2 больше НЕ понижаются вручную — каноны --fs-h1/--fs-h2
      теперь fluid (clamp) и шринкуются токеном единообразно на всех экранах. */
   /* Stack 2-column grids to 1 on small screens */
-  .field-row.cols-2, .field-row.cols-3, .field-row.cols-4 { grid-template-columns: 1fr !important; }
+  .field-row.cols-2 { grid-template-columns: 1fr !important; }
 }
 
 /* (removed) The old `.mobile-bottom-nav` + `.trip-2col/3col` + `.budget-2col`
@@ -2719,23 +2630,6 @@ h4,
  border: 1px solid var(--line);
  color: var(--ink);
 }
-.partner-pill__logo {
- width: 18px; height: 18px; border-radius: 4px;
- display: grid; place-items: center;
- color: white;
-}
-
-/* AI section accent card */
-.ai-card {
-  position: relative; overflow: hidden;
-}
-.ai-card::before {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(120% 80% at 0% 0%, rgba(106,62,226,.18), transparent 60%);
-  pointer-events: none;
-}
-.ai-card > * { position: relative; }
-
 /* Skeleton pulse */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -2919,7 +2813,6 @@ h4,
   .btn-label-collapse { display: none; }
 }
 
-.seclabel { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
 .addmini { width: 26px; height: 26px; border-radius: 8px; background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
 .addmini:hover { background: var(--accent); color: var(--accent-ink); }
 
@@ -2955,13 +2848,7 @@ h4,
 .lp-stepper__tx b { color: var(--ink); }
 .lp-stepper__tx span { color: var(--muted); }
 
-.metastrip { display: flex; flex-wrap: wrap; gap: 8px; }
-.metastrip .ch { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); background: var(--secondary); padding: 6px 11px; border-radius: var(--r-pill); }
 
-.lkv { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.lkv .k { color: var(--muted); }
-.lkv .v { color: var(--ink); }
-.kvgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 16px; }
 /* .kv / .kv .k / .kv .v are defined once in the EVENT/SERVICE DIALOGS block below. */
 .route { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; padding: 16px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 14px; }
 .route .rd { color: var(--muted); }
@@ -2969,10 +2856,7 @@ h4,
 .route .rc { color: var(--ink-2); margin-top: 3px; }
 .route .ra { color: var(--muted); margin-top: 1px; }
 .route .end { text-align: right; }
-.rmid { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ev-transfer-ink); }
-.rmid .dur { color: var(--muted); white-space: nowrap; }
 
-.metastrip .ch--p { background: var(--primary-soft); color: var(--primary); }
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
 .addr div { color: var(--ink-2); }
@@ -3189,12 +3073,11 @@ h4,
 .settings-lens > :nth-child(4) { animation-delay: 165ms; }
 
 /* ---- loading skeleton ---- */
-.ov-skel { background: var(--surface-2); border: 1px solid var(--line); border-radius: 20px; animation: ovSkel 1.3s ease-in-out infinite; }
 .ov-bar { background: var(--surface-2); border-radius: 8px; animation: ovSkel 1.3s ease-in-out infinite; }
 @keyframes ovSkel { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .ov-anim, .statrow .statcard, .ov-skel, .ov-bar,
+  .ov-anim, .statrow .statcard, .ov-bar,
   .settings-lens > .card, .settings-lens > .settings-grid { animation: none; }
   .wdg:hover { transform: none; }
 }
@@ -3420,8 +3303,6 @@ h4,
 /* Base text matches the Lumo body exactly so nothing inherits a lighter/smaller
    default (15px / 500 / display-headings). */
 .acct-nav { position: sticky; top: 78px; }
-.acct-nav__grp { color: var(--muted-2); padding: 0 12px; margin: 0 0 8px; }
-.acct-nav__grp + .acct-nav__grp { margin-top: 14px; }
 .acct-nav a { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
 .acct-nav a:hover { background: var(--surface-2); color: var(--ink); }
 .acct-nav a.active { background: var(--primary-soft); color: var(--brand); }
@@ -3455,9 +3336,6 @@ h4,
 .acct-hero__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acct-hero__mail { color: var(--muted); margin-top: 2px; }
 .acct-hero__actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
-.acct-linkbtn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: inherit; border-radius: var(--r-pill); cursor: pointer; transition: background .18s, border-color .18s, color .18s, transform .16s var(--ease-spring); }
-.acct-linkbtn:hover { background: var(--surface-2); border-color: var(--line-hover); } .acct-linkbtn:active { transform: scale(.96); } .acct-linkbtn svg { width: 13px; height: 13px; }
-.acct-linkbtn--danger { color: var(--danger-ink); } .acct-linkbtn--danger:hover { background: var(--danger-soft); border-color: transparent; }
 .acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
 .acct-hero__edit .btn { align-self: end; }
 .acct-flabel { display: block; color: var(--ink-2); margin-bottom: 6px; }
@@ -4240,7 +4118,7 @@ h4,
    EVENT/SERVICE DIALOGS — Lumo redesign (view + edit), 2026-06-08
    Self-contained .ev-dlg system. Uses --ev-color/--ev-soft/--ev-ink set on the
    .ev-dlg root by the caller. Additive: does not touch legacy panel classes
-   (.route/.notes/.kvgrid used by the trip-editor left panels).
+   (.route/.notes used by the trip-editor left panels).
    ═══════════════════════════════════════════════════════════════════════════ */
 .ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
 .ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;flex:none;}
@@ -4390,11 +4268,6 @@ h4,
 .ch-row .cr-b span{display:block; color:var(--muted); margin-top:1px;}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
-.drop-zone{display:flex;flex-direction:column;align-items:center;gap:5px;padding:18px;border:1.5px dashed var(--line-strong);border-radius:12px;text-align:center;cursor:pointer;transition:border-color .14s,background .14s;}
-.drop-zone:hover{border-color:var(--primary);background:var(--primary-soft);}
-.drop-zone svg{width:20px;height:20px;color:var(--muted);}
-.drop-zone b{ color:var(--ink-2);}
-.drop-zone span{ color:var(--muted); }
 /* transport type grid */
 .tx-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
 .tx-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:9px 4px;border-radius:10px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer;font:inherit; transition:all .13s;}
@@ -4410,12 +4283,6 @@ h4,
 .seg-card-ti .rl{display:flex;align-items:center;gap:5px; color:var(--ink);}
 .seg-card-ti .rl svg{width:11px;height:11px;color:var(--muted);}
 .seg-card-body{padding:11px 12px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:8px;}
-.lay-div{display:flex;align-items:center;gap:8px;padding:4px 10px;}
-.lay-div .ld{width:1px;height:14px;background:var(--line);margin-left:14px;}
-.lay-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--ev-transfer-soft);color:var(--ev-transfer-ink); }
-.lay-pill svg{width:11px;height:11px;}
-.night-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line); color:var(--ink-2);}
-.night-badge svg{width:12px;height:12px;}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
 .bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center; color:#fff;flex:none;overflow:hidden;}

@@ -30,7 +30,7 @@ export function supabaseThrottleKind(err: unknown): 'soon' | 'hour' | null {
 }
 
 /** Best-effort client IP from the edge proxy headers (first hop of XFF). */
-export function clientIp(req: Request): string | null {
+function clientIp(req: Request): string | null {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {
     const first = xff.split(',')[0].trim();

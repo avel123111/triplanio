@@ -41,9 +41,7 @@
   "list_empty_countries": "No visited countries yet.",
   "map_fullscreen": "Fullscreen",
   "map_globe": "Map or globe",
-  "map_hint": "tap a country or pin",
   "map_loading": "Loading map…",
-  "map_unavailable": "Map unavailable",
   "n_cities": "cities: {n}",
   "nav": "Statistics",
   "next_empty_sub": "Appears once you create your first trip",
@@ -95,6 +93,5 @@
   "world_countries_visited": "countries of the world visited",
   "world_explored": "World explored",
   "world_label": "world",
-  "world_of": "{visited} of {total} countries",
   "year_all": "All time"
 }
