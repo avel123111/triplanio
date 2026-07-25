@@ -630,7 +630,7 @@ h4,
 .ts-startctl__date,
 .ts-cal__wdc,
 .ts-cal__day,
-.chat-online,
+.chat-head__sub,   /* TRIP-296: подзаголовок шапки комнаты → Meta+Golos */
 .chat-name b,
 .chat-name .tm,
 .chat-time,
@@ -975,7 +975,6 @@ h4,
 .pcard__mtx, .pcard__addr, .pcard__score, .pcard__price span,  /* TRIP-287: Meta+Golos (отзывы/адрес/оценка/сноска цены карточки) */
 .s22mk__price, .s22mk__count,  /* TRIP-287: инспектор канонов — цена/счётчик маркера карты → Meta+Golos */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
-.chat-rail .card li,     /* TRIP-175 инсп.: Meta+Golos (пункты списка в чат-рейле) */
 .pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
 .pro-up .lockmsg,        /* TRIP-225 инсп.: Meta+Golos («Подключает владелец») */
 .field__sub,             /* TRIP-225 инсп.: Meta+Golos (под-подсказка поля — всегда проза) */
@@ -1671,9 +1670,6 @@ h4,
   .app-header__account { display: none; }
   .trip-screen-body { padding-bottom: 96px !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
-  /* Chat: keep the body the fixed (non-scrolling) frame, but reserve room for the
-     floating bottom-nav so the composer + send button sit above it, not under. */
-  .trip-screen-body--chat { padding: 12px 12px calc(88px + env(safe-area-inset-bottom)) !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
      become a fixed-height shell — the global header pins (never scrolls), the
      content scrolls INSIDE its own container, and the bottom nav stays glued.
@@ -2220,26 +2216,33 @@ h4,
    this block only replaces the inline style soup with semantic classes.
    ────────────────────────────────────────────────────────────────────────── */
 
-/* ── Chat lens shell ── */
-.chat-grid { display: grid; grid-template-columns: 1fr 280px; gap: 18px; height: 100%; min-height: 0; }
-.chat-card {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
-  display: flex; flex-direction: column; overflow: hidden; position: relative;
-  box-shadow: var(--sh-1); min-height: 0;
+/* ── Chat lens shell ──
+   The lens is a full-bleed ROOM, not a card inside the screen body: header /
+   scrolling stream / pinned composer, each owning its own row. The old
+   `.chat-grid` (1fr + 280px rail) and `.chat-card` chrome are gone — the rail
+   held two static cards that were display:none below 768px anyway, and a card
+   border around a full-screen surface is a card-in-a-card. */
+.chat-room { display: flex; flex-direction: column; height: 100%; min-height: 0; position: relative; }
+.chat-head { display: flex; align-items: center; gap: 11px; padding: 13px 24px; border-bottom: 1px solid var(--line); flex: none; }
+.chat-head__id { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; flex: 1; }
+.chat-head__id h3 { margin: 0; color: var(--ink); }
+.chat-head__sub { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Members trigger — avatar stack + label in one pill; opens the member list as a
+   Popover (desktop) or the canonical Sheet (phones). */
+.chat-members-btn {
+  display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px 0 6px;
+  border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink-2); cursor: pointer; flex: none;
+  transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
-.chat-head { display: flex; align-items: center; gap: 11px; padding: 13px 18px; border-bottom: 1px solid var(--line-2); flex: none; }
-.chat-head h3 { flex: 1; margin: 0; color: var(--ink); }
-.chat-head__ic {
-  width: 34px; height: 34px; border-radius: 10px; background: var(--ai-gradient); color: #fff;
-  display: grid; place-items: center; flex: none; box-shadow: 0 5px 14px -5px var(--ai);
-}
-.chat-online { display: inline-flex; align-items: center; gap: 6px; color: var(--success-ink); background: var(--success-soft); padding: 5px 10px; border-radius: var(--r-pill); white-space: nowrap; }
-.chat-online .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); position: relative; }
-.chat-online .pulse::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--success); opacity: .35; animation: chatPulse 1.8s var(--ease-out) infinite; }
-@keyframes chatPulse { 0% { transform: scale(.6); opacity: .5; } 100% { transform: scale(1.7); opacity: 0; } }
+.chat-members-btn:hover { border-color: var(--line-hover); box-shadow: var(--sh-1); }
+.chat-members-pop { width: 330px; max-width: calc(100vw - 16px); padding: 8px; }
 
 /* ── Message stream (shared) ── */
 .chat-msgs { flex: 1; overflow: auto; padding: 18px; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+/* Readable column inside a full-width room. 760px is the app's existing reading
+   width (Inbox), not a new number. */
+.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; }
 .chat-daydiv { text-align: center; margin: 14px 0 8px; }
 .chat-daydiv span { color: var(--muted-2); background: var(--wash); padding: 4px 12px; border-radius: var(--r-pill); }
 .chat-row { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
@@ -2306,18 +2309,17 @@ h4,
 .chat-mention__row b { color: var(--ai); display: block; }
 .chat-mention__row span { color: var(--muted); }
 
-/* ── Right rail (lens) ── */
-.chat-rail { display: flex; flex-direction: column; gap: 14px; overflow: auto; min-height: 0; }
-.chat-member { display: flex; align-items: center; gap: 10px; }
+/* ── Member list — lives in the header Popover / Sheet (was the right rail) ── */
+.chat-member { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; }
+.chat-member:hover { background: var(--wash); }
 .chat-member__b { flex: 1; min-width: 0; }
 .chat-member__nm { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-member__rl { color: var(--muted); }
-.chat-member-sep { border-top: 1px solid var(--line-2); padding-top: 8px; margin-top: 4px; }
+.chat-member-sep { border-top: 1px solid var(--line-2); padding-top: 4px; margin-top: 4px; }
 
-/* ── Lens responsive: collapse to one column, hide rail (≤768px) ── */
+/* ── Lens responsive (≤768px) ── */
 @media (max-width: 768px) {
-  .chat-grid { grid-template-columns: 1fr; gap: 0; }
-  .chat-rail { display: none; }
+  .chat-head { padding: 11px 14px; }
   .chat-msgs { padding: 14px; }
   .chat-col { max-width: 88%; }
 }
@@ -2874,7 +2876,6 @@ h4,
 /* ---- Scrollable screen body ---- */
 .trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
-.trip-screen-body--chat { padding: 28px; overflow: hidden; }
 
 /* ---- Mobile menu scrim (sidebar slides over the content) ---- */
 .trip-side-scrim { display: none; }

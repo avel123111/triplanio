@@ -1038,11 +1038,12 @@ export default function TripView() {
   // Trip actions (Share / Edit / Settings / Members) all live in the left trip
   // menu (TripSidebar); Copy trip moved into the Settings lens. The header
   // carries no duplicate action buttons.
-  // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own
-  // internal scroll. Everything else = the default scrolling body.
+  // Map and chat are both edge-to-edge, no-scroll surfaces that own their inner
+  // scrolling (TRIP-296: the chat lens became a full-bleed room, so its former
+  // `--chat` modifier was an exact duplicate of `--flush`). Everything else =
+  // the default scrolling body.
   const screenBodyClass = 'trip-screen-body'
-    + (shownLens === 'map' ? ' trip-screen-body--flush' : '')
-    + (shownLens === 'chat' ? ' trip-screen-body--chat' : '');
+    + (shownLens === 'map' || shownLens === 'chat' ? ' trip-screen-body--flush' : '');
 
   return (
     <div className="trip-shell">

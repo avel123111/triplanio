@@ -57,9 +57,12 @@ export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className
 };
 
 // ----- AvatarStack -----
+// `people` rows carry the same fields as <Avatar>: name + optional photo/deleted/kind.
+// Photos matter — the chat header stacks real member avatars, and without them the
+// stack fell back to initials while the same people showed photos two lines below.
 export const AvatarStack = ({ people = [], max = 4, size = "sm" }) => (
   <div className="avatar-stack">
-    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} kind={p.kind} size={size} />)}
+    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
     {people.length > max && (
       <div className={`avatar avatar--${size}`} style={{ background: "var(--wash)", color: "var(--muted)", border: "1.5px solid var(--surface)" }}>
         +{people.length - max}

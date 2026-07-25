@@ -23,8 +23,9 @@ import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
-import { Avatar, Card, EmptyState, Severity, Btn } from '../design/index';
+import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { Icon } from '../design/icons';
+import { useIsPhone } from '@/hooks/use-mobile';
 import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY } from '@/lib/chat';
 
 
@@ -123,6 +124,22 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
   );
 }
 
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+// Mirrors the real stream (avatar + bubble, alternating sides) instead of a
+// centred "Loading messages…" line, so the layout doesn't jump when rows land.
+function ChatSkeleton() {
+  return (
+    <div className="chat-msgs__in" aria-hidden>
+      {[['58%', false], ['42%', true], ['72%', false], ['38%', true]].map(([w, me], i) => (
+        <div key={i} className={'chat-row' + (me ? ' chat-row--me' : '')}>
+          {!me && <Skeleton w={28} h={28} r={999} style={{ flexShrink: 0 }} />}
+          <Skeleton w={w} h={me ? 40 : 56} r={16} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
 
 export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
@@ -133,9 +150,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const taRef      = useRef(null);
   const ovRef      = useRef(null);
 
+  const isPhone = useIsPhone();
+
   const [text,        setText]        = useState('');
   const [sending,     setSending]     = useState(false);
   const [showMention, setShowMention] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
   const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
@@ -360,141 +380,151 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     return list;
   })();
 
+  // ── Member list ── the former right rail, now behind the header button:
+  // Popover on desktop, canonical Sheet on phones (same pattern as
+  // TripStartControl). Built once and rendered into whichever shell is active.
+  const membersList = (
+    <>
+      {activeMembers.length === 0 ? (
+        <div className="muted t-meta" style={{ padding: '8px 10px' }}>{t('member.empty')}</div>
+      ) : activeMembers.map((m) => (
+        <ChatMember
+          key={m.id}
+          name={nameFor(m.user_id)}
+          avatarUrl={profiles[m.user_id]?.avatar_url}
+          isDeleted={profiles[m.user_id]?.is_deleted}
+          role={m.role === 'owner' ? t('members.role_owner') : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer')}
+        />
+      ))}
+      <div className="chat-member-sep">
+        <ChatMember name="Triplanio" role={t('chat.ai_general')} ai />
+      </div>
+    </>
+  );
+
+  const membersBtn = (
+    <button type="button" className="chat-members-btn" aria-label={t('chat.members_title')}>
+      <AvatarStack
+        people={activeMembers.map((m) => ({
+          name: nameFor(m.user_id),
+          photo: profiles[m.user_id]?.avatar_url,
+          deleted: profiles[m.user_id]?.is_deleted,
+        }))}
+      />
+      <span className="t-ui">{t('trip.sidebar_members')}</span>
+    </button>
+  );
+
   return (
-    <div className="chat-grid ov-anim">
-      {/* Chat area */}
-      <div className="chat-card">
-        {/* Header */}
-        <div className="chat-head">
-          <span className="chat-head__ic" aria-hidden>
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.2L18 8l-4.4 1.8L12 14l-1.6-4.2L6 8l4.4-1.8z" /><circle cx="18.5" cy="17.5" r="2" /></svg>
-          </span>
+    <div className="chat-room ov-anim">
+      {/* Tier 1 · room header */}
+      <div className="chat-head">
+        <div className="chat-head__id">
           <h3>{t('chat.group_title')}</h3>
           {activeMembers.length > 0 && (
-            <span className="chat-online">
-              <span className="pulse" />
-              {pluralPeople(activeMembers.length, t, lang)}
-            </span>
+            <div className="chat-head__sub">{pluralPeople(activeMembers.length, t, lang)}</div>
           )}
         </div>
+        {isPhone ? (
+          <span onClick={() => setMembersOpen(true)}>{membersBtn}</span>
+        ) : (
+          <Popover open={membersOpen} onOpenChange={setMembersOpen}>
+            <PopoverTrigger asChild>{membersBtn}</PopoverTrigger>
+            <PopoverContent align="end" className="chat-members-pop">{membersList}</PopoverContent>
+          </Popover>
+        )}
+      </div>
 
-        {/* Messages */}
-        <div ref={scrollRef} className="chat-msgs scrollbar-thin">
-          {isLoading ? (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>{t('chat.loading_messages')}</div>
-          ) : (msgsError && msgs.length === 0) ? (
-            /* TRIP-208: a failed load shows retry, not a false "no messages yet". */
-            <div style={{ margin: 'auto', maxWidth: 420, padding: 16 }}>
-              <Severity
-                level="error"
-                title={t('sys.load_error_title')}
-                action={<Btn variant="ghost" size="sm" onClick={() => refetchMsgs()}>{t('sys.retry')}</Btn>}
-              >
-                {t('sys.load_error_desc')}
-              </Severity>
-            </div>
-          ) : msgs.length === 0 ? (
-            <div style={{ margin: 'auto' }}>
-              <EmptyState icon="chat" title={t('chat.empty_title')} body={t('chat.empty_desc')} />
-            </div>
-          ) : messageRows}
+      {/* Tier 2 · stream */}
+      <div ref={scrollRef} className="chat-msgs scrollbar-thin">
+        {isLoading ? (
+          <ChatSkeleton />
+        ) : (msgsError && msgs.length === 0) ? (
+          /* TRIP-208: a failed load shows retry, not a false "no messages yet". */
+          <div style={{ margin: 'auto', maxWidth: 420, padding: 16 }}>
+            <Severity
+              level="error"
+              title={t('sys.load_error_title')}
+              action={<Btn variant="ghost" size="sm" onClick={() => refetchMsgs()}>{t('sys.retry')}</Btn>}
+            >
+              {t('sys.load_error_desc')}
+            </Severity>
+          </div>
+        ) : msgs.length === 0 ? (
+          <div style={{ margin: 'auto' }}>
+            <EmptyState icon="chat" title={t('chat.empty_title')} body={t('chat.empty_desc')} />
+          </div>
+        ) : <div className="chat-msgs__in">{messageRows}</div>}
+      </div>
+
+      {/* Thinking strip */}
+      {isThinking && (
+        <div className="chat-thinking">
+          <TriplanioAvatar size="xs" />
+          <span>{t('chat.typing')}</span>
+          <span className="ai-dots"><span /><span /><span /></span>
         </div>
+      )}
 
-        {/* Thinking strip */}
-        {isThinking && (
-          <div className="chat-thinking">
-            <TriplanioAvatar size="xs" />
-            <span>{t('chat.typing')}</span>
-            <span className="ai-dots"><span /><span /><span /></span>
+      {/* Tier 3 · composer */}
+      <div className="chat-composer">
+        {showMention && (
+          <div className="chat-mention">
+            <div className="chat-mention__lbl">{t('chat.mention')}</div>
+            {/* Only @Triplanio is actionable - mentioning a member does nothing,
+                so the popup lists just the assistant. */}
+            <button
+              onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
+              className="chat-mention__row"
+            >
+              <TriplanioAvatar size="sm" />
+              <span style={{ flex: 1 }}>
+                <b>Triplanio</b>
+                <span>{t('chat.mention_all_hint')}</span>
+              </span>
+            </button>
           </div>
         )}
 
-        {/* Input */}
-        <div className="chat-composer">
-          {showMention && (
-            <div className="chat-mention">
-              <div className="chat-mention__lbl">{t('chat.mention')}</div>
-              {/* Only @Triplanio is actionable - mentioning a member does nothing,
-                  so the popup lists just the assistant. */}
-              <button
-                onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
-                className="chat-mention__row"
-              >
-                <TriplanioAvatar size="sm" />
-                <span style={{ flex: 1 }}>
-                  <b>Triplanio</b>
-                  <span>{t('chat.mention_all_hint')}</span>
-                </span>
-              </button>
-            </div>
-          )}
-
-          <div className="chat-composer__row">
-            <div className="chat-composer__field">
-              {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
-                  overlay renders the full text with @Triplanio in bold purple,
-                  the textarea shows only the caret - no double glyphs. */}
-              <div
-                ref={ovRef}
-                aria-hidden="true"
-                className="chat-ov"
-                dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
-              />
-              <textarea
-                ref={taRef}
-                className="textarea chat-ta"
-                placeholder={t('chat.composer_ph')}
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKey}
-                rows={1}
-                style={{ minHeight: 44, maxHeight: 100 }}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={sendMessage}
-              disabled={sending || !text.trim() || !chatId}
-              style={{ height: 44, flexShrink: 0, padding: '0 18px' }}
-            >
-              <Icon name="send" size={16} /> {t('chat.send')}
-            </button>
+        <div className="chat-composer__row">
+          <div className="chat-composer__field">
+            {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
+                overlay renders the full text with @Triplanio in bold purple,
+                the textarea shows only the caret - no double glyphs. */}
+            <div
+              ref={ovRef}
+              aria-hidden="true"
+              className="chat-ov"
+              dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
+            />
+            <textarea
+              ref={taRef}
+              className="textarea chat-ta"
+              placeholder={t('chat.composer_ph')}
+              value={text}
+              onChange={handleTextChange}
+              onKeyDown={handleKey}
+              rows={1}
+              style={{ minHeight: 44, maxHeight: 100 }}
+            />
           </div>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={sendMessage}
+            disabled={sending || !text.trim() || !chatId}
+            style={{ height: 44, flexShrink: 0, padding: '0 18px' }}
+          >
+            <Icon name="send" size={16} /> {t('chat.send')}
+          </button>
         </div>
       </div>
 
-      {/* Sidebar */}
-      <aside className="chat-rail scrollbar-thin">
-        <Card title={t('chat.members_title')}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {activeMembers.length === 0 ? (
-              <div className="muted t-meta">{t('member.empty')}</div>
-            ) : (
-              activeMembers.map((m) => (
-                <ChatMember
-                  key={m.id}
-                  name={nameFor(m.user_id)}
-                  avatarUrl={profiles[m.user_id]?.avatar_url}
-          isDeleted={profiles[m.user_id]?.is_deleted}
-                  role={m.role === 'owner' ? t('members.role_owner') : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer')}
-                />
-              ))
-            )}
-            <div className="chat-member-sep">
-              <ChatMember name="Triplanio" role={t('chat.ai_general')} ai />
-            </div>
-          </div>
-        </Card>
-
-        <Card variant="soft" title={t('chat.ai_can_title')}>
-          <ul className="t-meta" style={{ margin: 0, padding: 0, listStyle: 'none', color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <li>{t('chat.ai_can_1')}</li>
-            <li>{t('chat.ai_can_2')}</li>
-            <li>{t('chat.ai_can_3')}</li>
-          </ul>
-        </Card>
-      </aside>
+      {isPhone && (
+        <Sheet open={membersOpen} onOpenChange={setMembersOpen} title={t('chat.members_title')}>
+          {membersList}
+        </Sheet>
+      )}
     </div>
   );
 }
