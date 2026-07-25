@@ -1172,11 +1172,6 @@ h4,
   /* тип — из канона .t-ui (co-selector, TRIP-165) */
   padding: 12px 20px; border-radius: var(--r-btn);
   background: var(--bg); color: var(--fg); border: 1px solid var(--bd);
-  /* Якорим плитку фона по border-box (TRIP-295): по умолчанию она меряется от
-     padding-box, но красится до border-box — под прозрачным бордером .btn--ai /
-     .btn--pro вылезал repeat, противоположный край градиента полосой слева и сверху.
-     Для плоских --bg свойство ничего не меняет. */
-  background-origin: border-box;
   cursor: pointer; white-space: nowrap;
   transition: transform .16s var(--ease-spring), background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
 }
@@ -1200,11 +1195,19 @@ h4,
 .btn--danger-ghost:hover { --bg: var(--danger-soft); }
 /* AI CTA — design-system: white text in light, dark text in dark (the dark-theme
    ai-gradient is brighter, so dark text reads better there). */
-.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--ai); }
-.btn--ai:hover { background-position: 100% 0; }
+.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); box-shadow: 0 8px 20px -7px var(--ai); }
 [data-theme="dark"] .btn--ai { --fg: #0c0a1e; }
-.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--pro); }
-.btn--pro:hover { background-position: 100% 0; }
+.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); box-shadow: 0 8px 20px -7px var(--pro); }
+/* Общий слой градиентных вариантов (TRIP-295). `background-origin` обязан стоять
+   ЗДЕСЬ, после шортката `background` выше: шорткат сбрасывает ВСЕ background-*
+   longhand'ы, включая origin, — поэтому то же правило в базовом .btn молча не
+   работает. Без него плитка градиента меряется от padding-box, а красится до
+   border-box, и зазор в 1px под прозрачным бордером добирается repeat'ом соседней
+   плитки: её противоположный край (циан у --ai, розовый у --pro) и рисует полосу
+   слева. Сверху утечка тоже есть, но там край совпадает с началом градиента и
+   потому незаметен. */
+.btn--ai, .btn--pro { background-origin: border-box; background-size: 170% 170%; }
+.btn--ai:hover, .btn--pro:hover { background-position: 100% 0; }
 .btn--sm { padding: 9px 15px; }                        /* размер из канона .t-ui (TRIP-165) */
 .btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = 16px (--fs-h4); .t-label с TRIP-175 = 14px, крупная кнопка осталась 16 намеренно */
 .btn--icon { padding: 11px; width: 42px; height: 42px; }
