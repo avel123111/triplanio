@@ -2366,9 +2366,14 @@ h4,
   border-top: 0; padding: 0 24px 20px;
   background: linear-gradient(180deg, transparent, var(--bg) 38%);
 }
-/* Lens only: the composer shares the stream's readable column. The widget has no
-   `__in`, so its popover keeps anchoring to `.chat-composer` itself. */
+/* The composer's inner column: in the ROOM it carries the readable width and the
+   stream's gutters, in the DOCK it must carry neither (the dock panel already
+   sets its own padding). This used to say "the widget has no `__in`" — true
+   before the two composers were unified into one component, false since: the
+   widget silently inherited the room's 24px inset, which is why the "typing" /
+   "new messages" row sat far from the panel edge there but flush in the lens. */
 .chat-composer__in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 8px; }
+.dock-panel .chat-composer__in { max-width: none; padding: 0; }
 /* The ROW is the input surface: field + both buttons live inside one rounded
    container, so the textarea itself carries no border (it is not a .textarea). */
 .chat-composer__row {
