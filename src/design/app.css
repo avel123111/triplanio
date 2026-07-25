@@ -2249,6 +2249,7 @@ h4,
 /* Readable column inside a full-width room. 760px is the app's existing reading
    width (Inbox), not a new number. */
 .chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; }
+.chat-hist { display: flex; justify-content: center; padding-bottom: 14px; }
 .chat-daydiv { text-align: center; margin: 14px 0 8px; }
 .chat-daydiv span { color: var(--muted-2); background: var(--wash); padding: 4px 12px; border-radius: var(--r-pill); }
 .chat-row { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; align-items: flex-end; }

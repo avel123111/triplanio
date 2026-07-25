@@ -95,22 +95,26 @@ export function countUnread(messages, lastReadAt, myUserId) {
 // chat lens use this hook, so they no longer keep two independent caches of the
 // same rows. `enabled` lets the widget stay lazy (fetch only when opened) while
 // the lens fetches on mount.
+// One page of history. The lens opens on the newest page and walks backwards on
+// demand; anything older is fetched by fetchOlderMessages.
+export const CHAT_PAGE = 200;
+
 export function useChatMessages(chatId, { enabled = true } = {}) {
   return useQuery({
     queryKey: CHAT_MESSAGES_KEY(chatId),
     queryFn: async () => {
-      // Load the FULL chat history, oldest→newest. No row cap: a trip group chat
-      // is bounded (hundreds of rows at most) and PostgREST imposes no default
-      // max-rows here. The previous `.limit(200)` combined with ascending order
-      // returned the OLDEST 200 rows, so once a chat crossed 200 messages every
-      // newer message silently stopped loading (TRIP-292).
+      // NEWEST page: order DESC + limit, then reverse for display. The old
+      // `.limit(200)` with ASC order returned the OLDEST 200 rows, so past 200
+      // messages every newer one silently stopped loading (TRIP-292) — that fix
+      // dropped the cap entirely; this restores it on the correct end.
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(CHAT_PAGE);
       if (error) throw error;
-      return data || [];
+      return (data || []).reverse();
     },
     enabled: !!chatId && enabled,
     // Catch up any messages missed while unmounted on (re)mount; realtime keeps
@@ -125,6 +129,29 @@ export function useChatMessages(chatId, { enabled = true } = {}) {
 // merge rule itself is pure and unit-tested in chat-merge.js.
 export function appendChatMessage(qc, chatId, msg) {
   qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => mergeIncomingMessage(old, msg));
+}
+
+// One page of history older than `beforeIso`, oldest→newest (display order).
+export async function fetchOlderMessages(chatId, beforeIso) {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('chat_id', chatId)
+    .lt('created_at', beforeIso)
+    .order('created_at', { ascending: false })
+    .limit(CHAT_PAGE);
+  if (error) throw error;
+  return (data || []).reverse();
+}
+
+// Prepend an older page to the shared cache, skipping rows we already hold. The
+// cache stays a FLAT oldest→newest array — no infinite-query page shape — so
+// appendChatMessage, the widget and the unread counter are untouched.
+export function prependChatMessages(qc, chatId, older) {
+  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => {
+    const have = new Set(old.map((m) => m.id));
+    return [...older.filter((m) => !have.has(m.id)), ...old];
+  });
 }
 
 // ── Fetch my read marker ──────────────────────────────────────────────────────

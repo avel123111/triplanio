@@ -27,7 +27,7 @@ import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { Icon } from '../design/icons';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY } from '@/lib/chat';
+import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, fetchOlderMessages, prependChatMessages, CHAT_MESSAGES_KEY, CHAT_PAGE } from '@/lib/chat';
 
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -170,6 +170,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const [showMention, setShowMention] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [newCount,    setNewCount]    = useState(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [historyDone,  setHistoryDone]  = useState(false);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
   const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
@@ -228,6 +230,18 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     setNewCount(0);
   };
 
+  // Prepending an older page grows the stream ABOVE the viewport, which would
+  // shove the reader down by exactly that height — add it back so the rows they
+  // were looking at stay under the cursor.
+  const keepAnchorRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && keepAnchorRef.current != null) {
+      el.scrollTop += el.scrollHeight - keepAnchorRef.current;
+      keepAnchorRef.current = null;
+    }
+  }, [msgs]);
+
   useEffect(() => {
     const el = scrollRef.current;
     const last = msgs[msgs.length - 1];
@@ -263,6 +277,26 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     if (failedAiIds.has(last.id)) return false;
     return /@triplanio\b/i.test(last.text || '');
   }, [msgs, failedAiIds]);
+
+  // ── Older history ──
+  // The stream opens on the newest CHAT_PAGE rows; older pages come on demand.
+  async function loadOlder() {
+    const oldest = msgs[0]?.created_at;
+    if (!oldest || loadingOlder || !chatId) return;
+    setLoadingOlder(true);
+    keepAnchorRef.current = scrollRef.current?.scrollHeight ?? null;
+    try {
+      const older = await fetchOlderMessages(chatId, oldest);
+      if (older.length < CHAT_PAGE) setHistoryDone(true);
+      if (older.length) prependChatMessages(qc, chatId, older);
+      else keepAnchorRef.current = null;
+    } catch (err) {
+      console.error('Chat history load failed:', err);
+      keepAnchorRef.current = null;
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   // Flip flags on one optimistic row in place (pending ⇄ failed).
   function markRow(optId, patch) {
@@ -531,7 +565,18 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           <div style={{ margin: 'auto' }}>
             <EmptyState icon="chat" title={t('chat.empty_title')} body={t('chat.empty_desc')} />
           </div>
-        ) : <div className="chat-msgs__in">{messageRows}</div>}
+        ) : (
+          <div className="chat-msgs__in">
+            {!historyDone && msgs.length >= CHAT_PAGE && (
+              <div className="chat-hist">
+                <Btn variant="secondary" size="sm" icon="chevU" loading={loadingOlder} onClick={loadOlder}>
+                  {t('chat.load_older')}
+                </Btn>
+              </div>
+            )}
+            {messageRows}
+          </div>
+        )}
       </div>
 
       {/* Tier 3 · composer — same column and gutters as the stream */}
