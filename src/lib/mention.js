@@ -1,13 +1,17 @@
-// The ONE rule for "this text mentions @Triplanio".
+// The ONE rule for RENDERING "@Triplanio" as a mention.
 //
 // It used to exist in three variants: a strict regex for highlighting a sent
 // message, and a loose /@triplanio\b/i for the composer overlay and for deciding
 // whether to call the assistant. They disagreed on the leading boundary, so
 // "pavel@triplanio" fired the paid LLM call while showing no mention at all.
 //
+// Deciding whether to CALL the assistant is no longer here at all: that call is
+// paid and the client must not make it, so it moved to the server as
+// public.mentions_assistant (TRIP-296). What is left is presentation — the
+// composer overlay and the message bubbles.
+//
 // Dependency-free on purpose (same convention as chat-merge.js) so `node --test`
-// can exercise it — this gates a paid call, it should not be untested. Env-bound
-// bot identity lives in triplanio.js instead.
+// can exercise it. Env-bound bot identity lives in triplanio.js instead.
 
 // Boundary = start/end of text, whitespace or common punctuation. "@TriplanioX"
 // and "mail@triplanio" are therefore NOT mentions.
@@ -17,12 +21,6 @@ const MENTION_RE_SOURCE = `(^|${EDGE})@Triplanio(?=$|${EDGE})`;
 // A fresh RegExp per call: a shared /g literal carries `lastIndex` between calls,
 // so `.test()` on it returns alternating answers for the same input.
 const re = (flags) => new RegExp(MENTION_RE_SOURCE, flags);
-
-/** Does this message address the assistant? */
-export function mentionsTriplanio(text) {
-  if (!text) return false;
-  return re('i').test(text);
-}
 
 /** Replace every mention via `render(matchedText)`, keeping the leading char. */
 export function replaceMentions(text, render) {

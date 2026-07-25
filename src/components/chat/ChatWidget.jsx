@@ -8,22 +8,18 @@
  * keeps only what genuinely differs — the dock chrome, the unread badge and the
  * lazy "fetch on open" message query.
  */
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
-import { mentionsTriplanio } from '@/lib/mention';
-import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, askAssistant, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
+import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, chatParticipants, pluralPeople } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { AvatarStack, EmptyState } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from './ChatStream';
 import ChatComposer from './ChatComposer';
 import { Icon } from '@/design/icons';
-import { displayName } from '@/lib/displayName';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 
 export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {
@@ -32,13 +28,14 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [failedAiIds, setFailedAiIds] = useState(() => new Set());
   const scrollRef = useRef(null);
 
-  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
   const unread = useUnreadChatCount(tripId);
   const { data: chatId } = useChatId(tripId);
+
+  // ── Send ── the SAME seam the lens uses (the widget used to carry its own copy,
+  // which had already drifted: a failed send silently dropped the user's text).
+  const { send, retry, sending } = useChatSend(chatId, tripId);
 
   // ── Load messages (only when open) ── shared cache with the chat lens.
   const { data: msgs = [] } = useChatMessages(chatId, { enabled: open });
@@ -49,9 +46,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // Only maintain the message cache while OPEN: a closed widget doesn't render
   // messages, and priming the shared cache with a partial list would flash on
   // next open. Unread stays live regardless via useUnreadChatCount's own sub.
-  useChatInserts(chatId, (msg) => {
-    appendChatMessage(qc, chatId, msg);
-    qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+  useChatRows(chatId, (msg, ev) => {
+    applyChatRow(qc, chatId, msg);
+    if (ev === 'INSERT') qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
   }, { enabled: open });
 
   // ── Auto-scroll ──
@@ -73,60 +70,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const profileIds = [...members.map((m) => m.user_id), ownerId].filter(Boolean);
   const profiles = useUserProfiles(profileIds, tripId);
 
-  // ── Thinking state ──
-  const isThinking = useMemo(() => {
-    if (!msgs.length) return false;
-    const last = msgs[msgs.length - 1];
-    if (!last || last.user_id === TRIPLANIO_BOT_USER_ID) return false;
-    if (failedAiIds.has(last.id)) return false;
-    return mentionsTriplanio(last.text);
-  }, [msgs, failedAiIds]);
-
-  // ── Send ──
-  async function sendMessage(content) {
-    if (!content || sending || !chatId) return;
-    setSending(true);
-
-    const optId = 'opt-' + Date.now();
-    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, {
-      id: optId, chat_id: chatId, trip_id: tripId,
-      user_id: user?.id,
-      user_full_name: myName, text: content,
-      created_at: new Date().toISOString(), __pending: true,
-    }]);
-
-    const { data: created, error } = await supabase.from('chat_messages')
-      .insert({
-        chat_id: chatId, trip_id: tripId,
-        user_id: user?.id, user_full_name: myName,
-        text: content, created_by: user?.id,
-      })
-      .select('id').single();
-
-    setSending(false);
-    if (error) {
-      console.error('ChatWidget send error', error);
-      qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
-      return;
-    }
-    // Settle from the INSERT result — waiting for the realtime echo left the
-    // row dimmed as "sending" until a reload (see the lens for the full note).
-    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) =>
-      old.map((m) => (m.id === optId ? { ...m, id: created?.id || optId, __pending: false } : m)));
-
-    const mentionsAi = mentionsTriplanio(content);
-    // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
-    track(mentionsAi ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
-
-    if (mentionsAi) {
-      const realId = created?.id;
-      askAssistant({
-        chatId,
-        userMessage: content,
-        onFailed: () => { if (realId) setFailedAiIds((p) => new Set([...p, realId])); },
-      });
-    }
-  }
+  // ── Thinking state ── server state, same as the lens (see useChatSend).
+  const isThinking = isAiThinking(msgs);
 
   const activeMembers = chatParticipants(members, ownerId);
 
@@ -180,13 +125,13 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             <EmptyState icon="chat" title={t('chat.write_first')} />
           </div>
         ) : (
-          <ChatStream messages={msgs} selfUser={user} profiles={profiles} members={members} />
+          <ChatStream messages={msgs} selfUser={user} profiles={profiles} members={members} onRetry={retry} />
         )}
       </div>
 
       <div className="dock-panel__dock">
         <ChatComposer
-          onSend={sendMessage}
+          onSend={send}
           disabled={sending || !chatId}
           placeholder={t('chat.widget_composer_ph')}
           isThinking={isThinking}
