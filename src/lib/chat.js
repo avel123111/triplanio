@@ -13,6 +13,7 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
 import { pluralCategory } from '@/lib/i18n/format';
+import { Sentry } from '@/lib/sentry';
 import { withOwnerRow } from '@/lib/members';
 import { mergeIncomingMessage } from '@/lib/chat-merge';
 
@@ -104,7 +105,35 @@ export function useChatMessages(chatId, { enabled = true } = {}) {
 // the merge lives in ONE place (TRIP-208); the rule itself is pure and
 // unit-tested in chat-merge.js.
 export function applyChatRow(qc, chatId, msg) {
+  reportFailedRun(msg);
   qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => mergeIncomingMessage(old, msg));
+}
+
+// An assistant run that ends badly is reported from HERE, and not from where it
+// actually fails, because nobody at the failure site can report it usefully:
+//   • the edge function answers before the assistant even starts (the n8n webhook
+//     ACKs on receipt), so its request is a success by the time things break;
+//   • the watchdog that closes a hung run lives in SQL, where the environment
+//     name cannot be derived (both databases are called `postgres`) — it only
+//     writes a Postgres log warning;
+//   • n8n reports to Sentry itself, but under its own environment, so a broken
+//     dev run looks like a production event.
+// This module sees every terminal status through the same realtime seam AND runs
+// in the browser, where Sentry already carries the right environment and release.
+// Reported once per message (a redelivered row must not re-fire).
+const REPORTED_RUNS = new Set();
+// Refusals are the system working as intended, not failures to alert on.
+const EXPECTED_REFUSALS = new Set(['PRO_REQUIRED', 'RATE_LIMITED']);
+
+function reportFailedRun(msg) {
+  if (!aiRunFailed(msg) || !msg.id || REPORTED_RUNS.has(msg.id)) return;
+  if (EXPECTED_REFUSALS.has(msg.ai_error)) return;
+  REPORTED_RUNS.add(msg.id);
+  Sentry.captureMessage(`chat assistant run ${msg.ai_status}`, {
+    level: 'error',
+    tags: { surface: 'chat', ai_status: msg.ai_status, ai_error: msg.ai_error || 'UNKNOWN' },
+    extra: { message_id: msg.id, trip_id: msg.trip_id, attempts: msg.ai_attempts },
+  });
 }
 
 // One page of history older than `beforeIso`, oldest→newest (display order).
