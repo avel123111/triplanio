@@ -14,6 +14,10 @@
 -- Остальные исходы алертить не нужно, они уже покрыты: WEBHOOK_ERROR — это 502
 -- самой edge-функции (её ловит withHandler), сбой внутри n8n репортит сам n8n,
 -- а PRO_REQUIRED / RATE_LIMITED — штатный отказ, а не поломка.
+--
+-- caps-guard: allow-uncapped — колонок файл не добавляет; `v_trips text` это
+-- локальная переменная plpgsql (список трипов для алерта), а не колонка. Тот же
+-- случай, что в стороже напоминаний TRIP-248.
 create or replace function public.chat_ai_run_watchdog()
 returns integer
 language plpgsql
