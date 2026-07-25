@@ -4,6 +4,7 @@ import { Icon } from '@/design/icons';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
+import { aiRunFailed } from '@/lib/chat';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import ChatMarkdown from './ChatMarkdown';
 import ChatReply from './ChatReply';
@@ -49,10 +50,22 @@ function sameRun(a, b) {
   return !!a && !!b && a.user_id === b.user_id && isSameDay(a.created_at, b.created_at);
 }
 
+// A refused / failed assistant run explains itself in the reader's language: the
+// edge function used to POST its refusal into the chat as a message from the bot
+// (with its own ru/en/es table), i.e. it faked an assistant reply to clear a UI
+// indicator. Now it writes a machine code on the row and the copy lives here.
+const AI_ERROR_KEY = {
+  PRO_REQUIRED: 'chat.ai_err_pro',
+  RATE_LIMITED: 'chat.ai_err_rate',
+};
+
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 // Human messages only — the assistant renders through ChatReply.
-function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, pending, failed, onRetry, t }) {
+function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, pending, failed, aiErrorKey, onRetry, t }) {
   const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
+  // One foot row, two reasons: the message never left (failed), or the ANSWER
+  // never came (aiErrorKey). Same markup, so both read as one pattern.
+  const footKey = failed ? 'chat.not_sent' : aiErrorKey;
 
   return (
     <div className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
@@ -78,11 +91,11 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, 
             linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
           />
         </div>
-        {failed ? (
+        {footKey ? (
           <div className="chat-row__foot">
             <span className="chat-row__err">
               <Icon name="warning" size={12} />
-              {t('chat.not_sent')}
+              {t(footKey)}
             </span>
             <Btn variant="ghost" size="sm" onClick={onRetry}>{t('sys.retry')}</Btn>
           </div>
@@ -140,6 +153,7 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
         isDeleted={author.deleted}
         pending={m.__pending}
         failed={m.__failed}
+        aiErrorKey={aiRunFailed(m) ? (AI_ERROR_KEY[m.ai_error] || 'chat.ai_failed') : null}
         onRetry={onRetry ? () => onRetry(m) : undefined}
         t={t}
       />,

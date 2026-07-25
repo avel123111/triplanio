@@ -4,8 +4,8 @@
  * the shared ChatStream + ChatComposer, so the floating widget stays identical.
  *
  * Real-time via Supabase Realtime on chat_messages (filtered by chat_id).
- * Owns what the widget does not: day dividers, older-history paging, the
- * "new messages" pill, retry of a failed send and the @Triplanio AI trigger.
+ * Owns what the widget does not: day dividers, older-history paging and the
+ * "new messages" pill. Sending (and retry) is the shared useChatSend seam.
  *
  * Props:
  *   tripId  - string
@@ -13,24 +13,21 @@
  *   myRole  - string, used only for the solo-owner fallback row
  *   ownerId - trips.created_by; the owner usually has no trip_members row
  */
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { mentionsTriplanio } from '@/lib/mention';
+import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from '@/components/chat/ChatStream';
 import ChatComposer from '@/components/chat/ChatComposer';
-import { displayName } from '@/lib/displayName';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { Icon } from '../design/icons';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, askAssistant, fetchOlderMessages, prependChatMessages, CHAT_MESSAGES_KEY, CHAT_PAGE } from '@/lib/chat';
+import { chatParticipants, pluralPeople, useChatId, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, fetchOlderMessages, prependChatMessages, CHAT_PAGE } from '@/lib/chat';
 
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
@@ -104,17 +101,16 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
   const isPhone = useIsPhone();
 
-  const [sending,     setSending]     = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [newCount,    setNewCount]    = useState(0);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [historyDone,  setHistoryDone]  = useState(false);
-  const [failedAiIds, setFailedAiIds] = useState(() => new Set());
-
-  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
 
   // ── Resolve chatId for this trip ── (shared hook; same ['chat-id', tripId] cache)
   const { data: chatId } = useChatId(tripId);
+
+  // ── Send ── one shared seam with the widget; the client passes text only.
+  const { send, retry, sending } = useChatSend(chatId, tripId);
 
   // ── Resolve participant display names ──
   const profileIds = [
@@ -133,10 +129,11 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // loading so the very first paint is already the skeleton.
   const streamLoading = !chatId || isLoading;
 
-  // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): append
-  // the new message to the lens cache. One channel per chat_id is now shared with
-  // the sidebar badge + widget instead of each opening its own.
-  useChatInserts(chatId, (msg) => appendChatMessage(qc, chatId, msg));
+  // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): merge
+  // the row into the lens cache. One channel per chat_id is now shared with the
+  // sidebar badge + widget instead of each opening its own. UPDATEs come through
+  // the same seam, which is how the assistant's state reaches every participant.
+  useChatRows(chatId, (msg) => applyChatRow(qc, chatId, msg));
 
   // ── Auto-scroll ──
   // Only follow the stream while the reader is AT the bottom (or sent the message
@@ -196,15 +193,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
   }, [chatId, user?.id, msgs.length]);
 
-  // ── Thinking state ──
-  const isThinking = useMemo(() => {
-    if (!msgs.length) return false;
-    const last = msgs[msgs.length - 1];
-    if (!last) return false;
-    if (last.user_id === TRIPLANIO_BOT_USER_ID) return false;
-    if (failedAiIds.has(last.id)) return false;
-    return mentionsTriplanio(last.text);
-  }, [msgs, failedAiIds]);
+  // ── Thinking state ── read from the server: an open assistant run on any row.
+  // It used to be guessed from the tail of the local cache ("the last message
+  // mentions @Triplanio"), so it never survived a reload, differed between
+  // participants, was silenced by the next message, and had no way to end when
+  // no answer ever came — the reason it could hang for months (TRIP-296).
+  const isThinking = isAiThinking(msgs);
 
   // ── Older history ──
   // The stream opens on the newest CHAT_PAGE rows; older pages come on demand.
@@ -225,88 +219,6 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       setLoadingOlder(false);
     }
   }
-
-  // Flip flags on one optimistic row in place (pending ⇄ failed).
-  function markRow(optId, patch) {
-    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) =>
-      old.map((m) => (m.id === optId ? { ...m, ...patch } : m)));
-  }
-
-  // ── Send message ──
-  // `retryOf` re-sends an existing failed row instead of creating a new one.
-  async function sendMessage(content, retryOf) {
-    if (!content || (!retryOf && sending) || !chatId) return;
-
-    const optId = retryOf ? retryOf.id : 'opt-' + Date.now();
-    if (retryOf) {
-      markRow(optId, { __pending: true, __failed: false });
-    } else {
-      setSending(true);
-      const optimistic = {
-        id:             optId,
-        chat_id:        chatId,
-        trip_id:        tripId,
-        user_id:        user?.id,
-        user_full_name: myName,
-        text:           content,
-        created_at:     new Date().toISOString(),
-        __pending:      true,
-      };
-      qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, optimistic]);
-    }
-
-    const { data: created, error } = await supabase
-      .from('chat_messages')
-      .insert({
-        chat_id:        chatId,
-        trip_id:        tripId,
-        user_id:        user?.id,
-        user_full_name: myName,
-        text:           content,
-        created_by:     user?.id,
-      })
-      .select('id')
-      .single();
-
-    if (!retryOf) setSending(false);
-
-    if (error) {
-      console.error('Chat send error:', error);
-      // Keep the message ON SCREEN, marked "not sent" with a retry action. It
-      // used to be dropped from the cache while the composer had already been
-      // cleared — the user's text was simply gone, with nothing to tell them.
-      markRow(optId, { __pending: false, __failed: true });
-      return;
-    }
-
-    // Settle the row from the INSERT's own result instead of waiting for the
-    // realtime echo: the sender's own row may arrive late or not at all (the
-    // channel can be mid-subscribe), and the message then sat dimmed as
-    // "sending" until a page reload. Adopting the real id also lets the echo
-    // de-dupe by id when it does land.
-    markRow(optId, { id: created?.id || optId, __pending: false });
-
-    const mentionsAi = mentionsTriplanio(content);
-    // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
-    track(mentionsAi ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
-
-    // Trigger Triplanio AI if mention anywhere in message
-    if (mentionsAi) {
-      const realId = created?.id;
-      askAssistant({
-        chatId,
-        userMessage: content,
-        onFailed: () => { if (realId) setFailedAiIds((prev) => new Set([...prev, realId])); },
-      });
-    }
-  }
-
-  // Stable callbacks for the memoized stream: sendMessage closes over state that
-  // changes every render, so pass it through a ref instead of rebuilding every
-  // bubble on each keystroke (that was the original typing lag).
-  const sendRef = useRef(sendMessage);
-  sendRef.current = sendMessage;
-  const handleRetry = useCallback((m) => sendRef.current(m.text || '', m), []);
 
   // "Ask again" under an assistant answer: seed the composer with the mention so
   // the follow-up question is one keystroke away.
@@ -405,7 +317,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               profiles={profiles}
               members={members}
               withDateDividers
-              onRetry={handleRetry}
+              onRetry={retry}
               onAsk={askMore}
             />
           </div>
@@ -415,7 +327,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       {/* Tier 3 · composer — same column and gutters as the stream */}
       <ChatComposer
         ref={composerRef}
-        onSend={(content) => sendMessage(content)}
+        onSend={send}
         disabled={sending || !chatId}
         placeholder={t("chat.composer_ph")}
         isThinking={isThinking}

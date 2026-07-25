@@ -68,6 +68,12 @@ export const TABLES = {
   // Ярус B (уточнено в Ф3c): 0 обращений клиента из src/ — таблица edge-only,
   // authenticated DML снят (закрывает REST-обход read-only для viewer, I5).
   trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3c: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop _write политику (всё через telegram* edge)' },
+  // chat_messages: был ярус C с прямым клиентским INSERT (viewer пишет — решение
+  // Pavel в силе). TRIP-296 перевёл запись на secdef-функцию send_chat_message:
+  // RLS не могла проверить автора (user_id приходил с клиента → подмена участника
+  // и БОТА), время и связку чат↔трип, а вставка сообщения и запуск ассистента были
+  // двумя операциями с клиента. Теперь клиент только читает.
+  chat_messages:     { tier: 'B', write: 'send_chat_message (secdef RPC)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop insert/update/delete политик; запись только через RPC' },
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
   users:              { tier: 'C', write: 'self (id=auth.uid())',      anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (колонки энтайтлмента уже отозваны — TRIP-62/платёжка)' },
@@ -75,9 +81,6 @@ export const TABLES = {
   notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
   chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
   partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
-  // chat_messages: РЕШЕНО (Pavel) — viewer ПИШЕТ (чат коллаборативный). insert остаётся
-  // is_trip_participant, update/delete=self. В Ф3 только снять латентный anon DML.
-  chat_messages:      { tier: 'C', write: 'participant-insert/self-edit', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon; insert=is_trip_participant (viewer пишет — решено)' },
 
   // ── Ярус D — справочник/системное (снять клиентский DML; SELECT где читаем) ───
   cities:               { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated; клиент читает города (SELECT оставить)' },
@@ -116,6 +119,9 @@ export const FUNCTIONS = {
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
     'get_trip_owner_profiles', 'get_trip_participant_profiles', 'get_user_travel_stats',
+    // TRIP-296: единственный путь записи в чат. Авторизация в теле —
+    // is_trip_participant(trip_id) + автор из auth.uid() (IF4 её видит).
+    'send_chat_message',
   ],
   // client-вызываемые функции, которым НЕ нужна ссылка на авторизацию в теле
   // (tripwire их пропускает): search_gazetteer(_batch) — публичный текстовый
@@ -143,7 +149,7 @@ export const BUCKETS = {
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
 export const DECISIONS = [
-  'chat_messages: viewer ПИШЕТ в чат (коллаборативно). insert=is_trip_participant. [решено: да]',
+  'chat_messages: viewer ПИШЕТ в чат (коллаборативно) — решение в силе, но проверка переехала из RLS в send_chat_message (TRIP-296: RLS не умела проверить автора). [решено: да]',
   'trips: полный Ярус B — без поколоночных исключений, все записи через edge. [решено: Ярус B]',
   'trip_telegram_integrations: viewer НЕ привязывает Telegram — гейт can_edit_trip в БД (I5). [решено: нет]',
 ];

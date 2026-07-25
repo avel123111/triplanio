@@ -1,4 +1,7 @@
 {
+  "ai_err_pro": "The AI assistant is available on a Pro subscription",
+  "ai_err_rate": "Too many requests to the AI assistant. Try again in a few minutes",
+  "ai_failed": "The assistant did not answer",
   "ai_general": "@Triplanio: general",
   "assistant_tag": "assistant",
   "composer_ph": "Write a message. @ opens mentions",
