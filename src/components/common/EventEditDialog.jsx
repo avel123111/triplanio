@@ -39,15 +39,26 @@ function Input({ className = '', ...p }) {
 function Textarea({ className = '', ...p }) {
   return <textarea className={`textarea ${className}`} {...p} />;
 }
-function Checkbox({ checked, onCheckedChange, className = '' }) {
+
+// A boolean row: switch + title/hint, optionally revealing a dependent field.
+// Both booleans in this dialog (hotel "free cancellation", car-rental "return
+// elsewhere") are this exact shape, so they share one shell and stay identical.
+// The title/hint toggle on click — `.eed-fclabel` has always advertised
+// `cursor: pointer`, and the car-rental row was a real <label> before. `children`
+// sits OUTSIDE that hit area so a nested input never flips the switch.
+function SwitchRow({ on, onChange, title, hint, children }) {
+  const flip = () => onChange(!on);
   return (
-    <input
-      type="checkbox"
-      checked={!!checked}
-      onChange={(e) => onCheckedChange?.(e.target.checked)}
-      className={className}
-      style={{ width: 16, height: 16, accentColor: 'var(--brand)', cursor: 'pointer', flexShrink: 0 }}
-    />
+    <div className="eed-fcbox">
+      <div className="eed-fclabel">
+        <Toggle on={on} onChange={onChange} label={title} />
+        <div className="eed-fcbody">
+          <div className="eed-fctitle" onClick={flip}>{title}</div>
+          {hint && <div className="eed-fchint" onClick={flip}>{hint}</div>}
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1629,27 +1640,25 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
         </AiField>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
-        <div className="eed-fcbox">
-          <div className="eed-fclabel">
-            <Toggle on={!!form.free_cancellation} onChange={(v) => setField('free_cancellation', !!v)} label={t('event.free_cancel_have')} />
-            <div className="eed-fcbody">
-              <div className="eed-fctitle">{t('event.free_cancel_have')}</div>
-              <div className="eed-fchint">{t('event.free_cancel_hint')}</div>
-              {form.free_cancellation && (
-                <div className="eed-fcdate">
-                  <AiField active={aiFields.has('free_cancellation_until_local')}>
-                    <DateTimeInput
-                      value={form.free_cancellation_until_local}
-                      onChange={(v) => setField('free_cancellation_until_local', v)}
-                      onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
-                    />
-                  </AiField>
-                  <TimezoneHint tz={tz} />
-                </div>
-              )}
+        <SwitchRow
+          on={!!form.free_cancellation}
+          onChange={(v) => setField('free_cancellation', !!v)}
+          title={t('event.free_cancel_have')}
+          hint={t('event.free_cancel_hint')}
+        >
+          {form.free_cancellation && (
+            <div className="eed-fcdate">
+              <AiField active={aiFields.has('free_cancellation_until_local')}>
+                <DateTimeInput
+                  value={form.free_cancellation_until_local}
+                  onChange={(v) => setField('free_cancellation_until_local', v)}
+                  onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
+                />
+              </AiField>
+              <TimezoneHint tz={tz} />
             </div>
-          </div>
-        </div>
+          )}
+        </SwitchRow>
       </AiField>
 
       <Accordion title={t('event.booking_details')} subtitle={t('event.booking_details_hint')} badge={bookingFilled}>
@@ -2407,17 +2416,12 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       </div>
 
       <SectionHeader color={color}>{t('event.return_section')}</SectionHeader>
-      <label className="ch-row">
-        <input
-          type="checkbox"
-          checked={!!form.return_different_location}
-          onChange={(e) => setField('return_different_location', e.target.checked)}
-        />
-        <div className="cr-b">
-          <b>{t('event.return_diff_place')}</b>
-          {!form.return_different_location && <span>{t('event.return_same_suffix')}</span>}
-        </div>
-      </label>
+      <SwitchRow
+        on={!!form.return_different_location}
+        onChange={(v) => setField('return_different_location', !!v)}
+        title={t('event.return_diff_place')}
+        hint={form.return_different_location ? null : t('event.return_same_suffix')}
+      />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {form.return_different_location && (
           <div>

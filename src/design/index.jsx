@@ -213,11 +213,18 @@ export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
 // `busy` shows an in-knob spinner and blocks interaction while the change is
 // being persisted server-side — toggles never report a state the backend
 // hasn't confirmed (no optimistic flips).
+// Rendered as a real switch: `type="button"` keeps a Toggle inside a <form>
+// from submitting it, and `aria-checked` is what carries the on/off state to a
+// screen reader (`aria-label` on its own only supplies the name).
 export const Toggle = ({ on, onChange, locked, busy, label }) => (
   <button
+    type="button"
+    role="switch"
+    aria-checked={!!on}
+    aria-label={label}
+    aria-busy={busy || undefined}
     onClick={() => !locked && !busy && onChange && onChange(!on)}
     disabled={busy || undefined}
-    aria-busy={busy || undefined}
     style={{
       width: 36, height: 21, padding: 0, border: "none",
       borderRadius: 999,
@@ -226,8 +233,10 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
       opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
       transition: "background .15s ease",
     }}
-    aria-label={label}
   >
+    {/* Bleeds the hit area from the painted 36×21 track out to the 44px minimum
+        touch target. Sits before the knob so the knob still paints on top. */}
+    <span aria-hidden="true" style={{ position: "absolute", inset: "-12px -4px" }} />
     <span style={{
       position: "absolute", top: 2, left: on ? 17 : 2,
       width: 17, height: 17, borderRadius: "50%",

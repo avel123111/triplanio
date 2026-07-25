@@ -615,7 +615,9 @@ export default function ScreenAccount() {
 
   const NAV = [
     { id: 'profile', label: t('account.identity'), icon: 'user' },
-    { id: 'plan', label: t('account.subscription'), icon: 'pro' },
+    // Outline 'star', not the filled 'pro' ProStar: this is a nav row like its
+    // neighbours, not a Pro marker, so it keeps their outline weight.
+    { id: 'plan', label: t('account.subscription'), icon: 'star' },
     { id: 'appearance', label: t('account.preferences'), icon: 'globe' },
     { id: 'notify', label: t('account.email_notifs'), icon: 'bell' },
     { id: 'help', label: t('account.nav_help'), icon: 'shield' },

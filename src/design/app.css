@@ -561,7 +561,6 @@ h4,
 .kv .v,
 .warn-banner b,
 .f-sec,
-.ch-row .cr-b b,
 .crow .nm,
 .cbar .val,
 .empty-note .en-tx b,
@@ -714,7 +713,6 @@ h4,
 .ev-dlg-price .cur,
 .bk-link,
 .warn-banner span,
-.ch-row .cr-b span,
 .drop-zone b,
 .drop-zone span,
 .tx-btn,
@@ -4375,11 +4373,6 @@ h4,
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
-.ch-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;}
-.ch-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);margin-top:2px;flex:none;cursor:pointer;}
-.ch-row .cr-b{flex:1;min-width:0;}
-.ch-row .cr-b b{display:block; color:var(--ink);}
-.ch-row .cr-b span{display:block; color:var(--muted); margin-top:1px;}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
 .drop-zone{display:flex;flex-direction:column;align-items:center;gap:5px;padding:18px;border:1.5px dashed var(--line-strong);border-radius:12px;text-align:center;cursor:pointer;transition:border-color .14s,background .14s;}
