@@ -104,25 +104,25 @@ Deno.serve(withHandler('callTriplanioAi', async (req, corsHeaders) => {
       .limit(CONTEXT_MESSAGES);
     const messages = (recentMessages || []).reverse();
 
-    // Адреса возврата собираются из СОБСТВЕННОГО окружения функции. Раньше они
-    // были зашиты в n8n на прод, поэтому ответ на dev-вопрос уходил в прод-проект
-    // и умирал там с 404 «Chat not found» — dev-чат с ассистентом не работал ни
-    // дня, а сгенерированные (и оплаченные) ответы выбрасывались (TRIP-296).
-    const fnBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
-
+    // Окружение проекта одним полем: n8n сам собирает адрес любой функции как
+    // `{{ domain }}/functions/v1/<slug>`. Перечислять здесь по URL на каждую
+    // функцию нельзя — при добавлении новых нод пришлось бы дописывать поле в
+    // payload на каждую. Раньше адреса были зашиты в n8n на ПРОД, поэтому ответ
+    // на dev-вопрос уходил в прод-проект и умирал там с 404 «Chat not found» —
+    // dev-чат с ассистентом не работал ни дня, а сгенерированные (и оплаченные)
+    // ответы выбрасывались (TRIP-296).
     const payload = {
       message_id: messageId,
       chat_id: msg.chat_id,
       trip_id: msg.trip_id,
+      domain: Deno.env.get('SUPABASE_URL'),
       user_message: msg.text || '',
-      messages,
-      reply_url: `${fnBase}/triplanioAiReply`,
-      trip_api_url: `${fnBase}/getTripById`,
       requested_by: {
         user_id: user.id,
         email: user.email,
         full_name: user.user_metadata?.full_name || null,
       },
+      messages,
     };
 
     const n8nSecret = Deno.env.get('N8N_SECRET');
