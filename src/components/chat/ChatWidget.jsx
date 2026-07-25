@@ -11,7 +11,8 @@ import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME, highlightMentions } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { mentionsTriplanio, highlightMentions } from '@/lib/mention';
 import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
@@ -94,7 +95,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     const last = msgs[msgs.length - 1];
     if (!last || last.user_id === TRIPLANIO_BOT_USER_ID) return false;
     if (failedAiIds.has(last.id)) return false;
-    return /@triplanio\b/i.test(last.text || '');
+    return mentionsTriplanio(last.text);
   }, [msgs, failedAiIds]);
 
   // ── Send ──
@@ -133,7 +134,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) =>
       old.map((m) => (m.id === optId ? { ...m, id: created?.id || optId, __pending: false } : m)));
 
-    const mentionsAi = /@triplanio\b/i.test(content);
+    const mentionsAi = mentionsTriplanio(content);
     // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
     track(mentionsAi ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
 

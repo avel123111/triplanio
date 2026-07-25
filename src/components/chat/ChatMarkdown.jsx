@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
-import { TRIPLANIO_MENTION_REGEX } from '@/lib/triplanio';
+import { replaceMentions } from '@/lib/mention';
 import './ChatMarkdown.css';
 
 /**
@@ -15,9 +15,8 @@ import './ChatMarkdown.css';
 const MENTION_SENTINEL = 'XXTRIPLANIOMENTIONXX';
 
 function wrapMentions(text) {
-  if (!text) return '';
-  const re = new RegExp(TRIPLANIO_MENTION_REGEX.source, 'gi');
-  return text.replace(re, (full, lead) => `${lead || ''}${MENTION_SENTINEL}`);
+  // Same rule that decides whether the assistant is called — see lib/mention.js.
+  return replaceMentions(text, () => MENTION_SENTINEL);
 }
 
 function replaceSentinelInChildren(children, mentionStyle, mentionClassName) {

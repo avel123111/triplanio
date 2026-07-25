@@ -17,7 +17,8 @@ import { track } from '@/lib/analytics';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME, highlightMentions } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { mentionsTriplanio, highlightMentions } from '@/lib/mention';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -296,7 +297,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     if (!last) return false;
     if (last.user_id === TRIPLANIO_BOT_USER_ID) return false;
     if (failedAiIds.has(last.id)) return false;
-    return /@triplanio\b/i.test(last.text || '');
+    return mentionsTriplanio(last.text);
   }, [msgs, failedAiIds]);
 
   // ── Older history ──
@@ -385,7 +386,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     // de-dupe by id when it does land.
     markRow(optId, { id: created?.id || optId, __pending: false });
 
-    const mentionsAi = /@triplanio\b/i.test(content);
+    const mentionsAi = mentionsTriplanio(content);
     // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
     track(mentionsAi ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
 
@@ -417,7 +418,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // focus it, so the follow-up question is one keystroke away. Stable identity —
   // it is a dependency of the memoized message list.
   const askMore = useCallback(() => {
-    setText((prev) => (/@triplanio\b/i.test(prev) ? prev : `@${TRIPLANIO_BOT_NAME} ${prev}`.trimEnd() + ' '));
+    setText((prev) => (mentionsTriplanio(prev) ? prev : `@${TRIPLANIO_BOT_NAME} ${prev}`.trimEnd() + ' '));
     taRef.current?.focus();
   }, []);
 
