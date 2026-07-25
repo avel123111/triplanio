@@ -69,7 +69,7 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, 
     <div className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
       {!isMe && (
         <div className="chat-row__sp">
-          {lastOfRun && <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ flexShrink: 0 }} />}
+          {lastOfRun && <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} />}
         </div>
       )}
       <div className="chat-col">
@@ -108,8 +108,8 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
   return (
     <div className="chat-member">
       {ai
-        ? <TriplanioAvatar size="sm" />
-        : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ width: 28, height: 28 }} />}
+        ? <TriplanioAvatar />
+        : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} />}
       <div className="chat-member__b">
         <div className="chat-member__nm">{name}</div>
         <div className="chat-member__rl">{role}</div>
@@ -184,6 +184,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
   // ── Load messages ── shared cache with the chat widget.
   const { data: msgs = [], isLoading, error: msgsError, refetch: refetchMsgs } = useChatMessages(chatId);
+
+  // Resolving chat_id is the FIRST request, and while it runs the messages query
+  // is still disabled — so `isLoading` is false and the stream would flash the
+  // "no messages yet" empty state before the skeleton. Treat "no chat_id yet" as
+  // loading so the very first paint is already the skeleton.
+  const streamLoading = !chatId || isLoading;
 
   // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): append
   // the new message to the lens cache. One channel per chat_id is now shared with
@@ -380,16 +386,20 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   }
 
   function applyMention(handle) {
-    // Replace the trailing @token (even a partial one like "@tri") with the
-    // full handle, so picking the suggestion always completes the name.
-    setText((t) => t.replace(/@(\w*)$/, '@' + handle + ' '));
+    // Complete a trailing @token ("@", "@tri") into the full handle. When there
+    // is NO trailing token — the "@" toolbar button on an empty field — insert
+    // the mention instead of replacing nothing: a bare `.replace()` silently
+    // no-ops there, which left the button doing literally nothing.
+    setText((prev) => (/@(\w*)$/.test(prev)
+      ? prev.replace(/@(\w*)$/, '@' + handle + ' ')
+      : (prev && !prev.endsWith(' ') ? prev + ' ' : prev) + '@' + handle + ' '));
     setShowMention(false);
   }
 
   // Auto-grow the composer up to ~4 lines, then scroll. The highlight overlay
   // (position:absolute inset:0) matches the textarea box automatically; we only
   // keep its scroll offset in lockstep with the textarea.
-  const COMPOSER_MAX_H = 100; // ≈ 4 lines @ 13.5px / 1.4
+  const COMPOSER_MAX_H = 132; // ≈ 6 lines @ 22px line-height (design)
   useLayoutEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
@@ -502,7 +512,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           deleted: profiles[m.user_id]?.is_deleted,
         }))}
       />
-      <span className="t-ui">{t('trip.sidebar_members')}</span>
+      <span className="chat-members-btn__lbl t-ui">{t('trip.sidebar_members')}</span>
     </button>
   );
 
@@ -526,7 +536,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
       {/* Tier 2 · stream */}
       <div ref={scrollRef} className="chat-msgs scrollbar-thin" onScroll={onStreamScroll}>
-        {isLoading ? (
+        {streamLoading ? (
           <ChatSkeleton />
         ) : (msgsError && msgs.length === 0) ? (
           /* TRIP-208: a failed load shows retry, not a false "no messages yet". */
@@ -564,7 +574,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <div className="chat-overline">
               {isThinking && (
                 <div className="chat-thinking">
-                  <TriplanioAvatar size="xs" />
+                  <TriplanioAvatar size="sm" />
                   <span>{t('chat.typing')}</span>
                   <span className="ai-dots"><span /><span /><span /></span>
                 </div>
@@ -586,7 +596,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 onMouseDown={(e) => { e.preventDefault(); applyMention(TRIPLANIO_BOT_NAME); }}
                 className="chat-mention__row"
               >
-                <TriplanioAvatar size="sm" />
+                <TriplanioAvatar />
                 <span style={{ flex: 1 }}>
                   <b>{TRIPLANIO_BOT_NAME}</b>
                   <span>{t('chat.mention_all_hint')}</span>
@@ -604,12 +614,16 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               title={t('chat.mention_all_hint')}
               aria-label={t('chat.mention')}
             >
-              <Icon name="ai" size={18} />
+              <Icon name="at" size={18} />
             </button>
             <div className="chat-composer__field">
               {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
                   overlay renders the full text with @Triplanio in bold purple,
-                  the textarea shows only the caret - no double glyphs. */}
+                  the textarea shows only the caret - no double glyphs.
+                  The row itself is the bordered surface now, so the textarea
+                  carries NO .textarea class — but both layers must keep the
+                  SAME font metrics and padding or the caret drifts (see
+                  memory/triplanio-chat-caret-drift). */}
               <div
                 ref={ovRef}
                 aria-hidden="true"
@@ -618,13 +632,13 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               />
               <textarea
                 ref={taRef}
-                className="textarea chat-ta"
+                className="chat-ta"
                 placeholder={t('chat.composer_ph')}
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKey}
                 rows={1}
-                style={{ minHeight: 44, maxHeight: 100 }}
+                style={{ minHeight: 40, maxHeight: 132 }}
               />
             </div>
             <button

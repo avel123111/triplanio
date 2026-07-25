@@ -50,10 +50,11 @@ export default function ChatReply({ text, time, onAsk }) {
 
   return (
     <div className="chat-reply">
-      <TriplanioAvatar size="sm" />
+      <TriplanioAvatar />
       <div className="chat-reply__body">
         <div className="chat-reply__who">
           <b>{TRIPLANIO_BOT_NAME}</b>
+          <span className="chat-reply__tag">{t('chat.assistant_tag')}</span>
           <span className="tm">{time}</span>
         </div>
 

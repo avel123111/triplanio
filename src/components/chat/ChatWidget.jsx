@@ -145,9 +145,12 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
 
   const activeMembers = chatParticipants(members, ownerId);
 
-  // Helper that completes an @mention on select.
+  // Completes a trailing @token, or inserts the mention when there is none (the
+  // "@" button on an empty field) — a bare .replace() would no-op there.
   function applyMention(handle) {
-    setText((t) => t.replace(/@(\w*)$/, '@' + handle + ' '));
+    setText((prev) => (/@(\w*)$/.test(prev)
+      ? prev.replace(/@(\w*)$/, '@' + handle + ' ')
+      : (prev && !prev.endsWith(' ') ? prev + ' ' : prev) + '@' + handle + ' '));
     setShowMention(false);
   }
 
@@ -193,7 +196,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       <div key={m.id} className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
         {!isMe && (
           <div className="chat-row__sp">
-            {lastOfRun && <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} deleted={profiles[m.user_id]?.is_deleted} size="sm" style={{ flexShrink: 0 }} />}
+            {lastOfRun && <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} deleted={profiles[m.user_id]?.is_deleted} />}
           </div>
         )}
         <div className="chat-col">
@@ -278,7 +281,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       ) : messageEls}
       {isThinking && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
-          <TriplanioAvatar size="xs" />
+          <TriplanioAvatar size="sm" />
           <span className="t-meta" style={{ color: 'var(--ai)' }}>{t('chat.typing')}</span>
           <span className="ai-dots"><span /><span /><span /></span>
         </div>
@@ -296,7 +299,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             onMouseDown={(e) => { e.preventDefault(); applyMention(TRIPLANIO_BOT_NAME); }}
             className="chat-mention__row"
           >
-            <TriplanioAvatar size="sm" />
+            <TriplanioAvatar />
             <span style={{ flex: 1 }}>
               <b>{TRIPLANIO_BOT_NAME}</b>
               <span>{t('chat.mention_all_hint')}</span>
@@ -312,9 +315,11 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           title={t('chat.mention_all_hint')}
           aria-label={t('chat.mention')}
         >
-          <Icon name="ai" size={16} />
+          <Icon name="at" size={16} />
         </button>
         <div className="chat-composer__field">
+          {/* No .textarea class: the row is the bordered surface. Both layers
+              must keep identical metrics or the caret drifts. */}
           <div
             ref={ovRef}
             aria-hidden="true"
@@ -323,7 +328,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           />
           <textarea
             ref={taRef}
-            className="textarea chat-ta"
+            className="chat-ta"
             placeholder={t('chat.widget_composer_ph')}
             value={text}
             rows={1}

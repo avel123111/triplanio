@@ -1,5 +1,6 @@
 {
   "ai_general": "@Triplanio: general",
+  "assistant_tag": "asistente",
   "composer_ph": "Escribe un mensaje. @ abre las menciones",
   "empty_desc": "Inicia la conversación: los miembros del viaje verán los nuevos mensajes aquí",
   "empty_title": "Aún no hay mensajes",

@@ -7,23 +7,24 @@ import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
  * if available, otherwise falls back to a branded robot SVG on a gradient circle.
  *
  * Props:
- *   - size:      'xs' | 'sm' | 'md'  (default 'sm')
+ *   - size:      'sm' | 'md' | 'lg'  (default 'md')
  *   - ring:      boolean - adds a soft ring
  *   - tripId:    trip context for the avatar lookup
  *   - avatarUrl: optional pre-resolved URL - skips the lookup
  *   - className: extra classes for the outer element
  */
-// px sizes (were Tailwind w-5/w-7/w-9 = 20/28/36px)
+// Mirrors the chat design's avatar scale (26 / 32 / 36) — chat is this
+// component's only consumer, so the two scales are kept identical on purpose.
 const SIZE_PX = {
-  xs: 20,
-  sm: 28,
-  md: 36,
+  sm: 26,   // inline status pills ("Triplanio думает")
+  md: 32,   // stream + assistant reply + mention row
+  lg: 36,
 };
 
 const SVG_SIZE = {
-  xs: 14,
-  sm: 18,
-  md: 22,
+  sm: 16,
+  md: 20,
+  lg: 22,
 };
 
 function useBotAvatar(tripId, providedUrl) {
@@ -34,15 +35,15 @@ function useBotAvatar(tripId, providedUrl) {
 }
 
 export default function TriplanioAvatar({
-  size = 'sm',
+  size = 'md',
   ring = false,
   tripId,
   avatarUrl: providedAvatarUrl,
   className = '',
 }) {
   const avatarUrl = useBotAvatar(tripId, providedAvatarUrl);
-  const px        = SIZE_PX[size] || SIZE_PX.sm;
-  const svgPx     = SVG_SIZE[size] || SVG_SIZE.sm;
+  const px        = SIZE_PX[size] || SIZE_PX.md;
+  const svgPx     = SVG_SIZE[size] || SVG_SIZE.md;
   // ring-2 ring-primary/30 → 2px soft primary ring via box-shadow
   const ringStyle = ring ? { boxShadow: '0 0 0 2px var(--primary-ring)' } : null;
   const baseStyle = { width: px, height: px, borderRadius: '9999px', flex: 'none' };
