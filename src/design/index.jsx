@@ -408,7 +408,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
   return (
     <div style={{
       background: "var(--surface)",
-      border: "1.5px solid var(--ai-soft-12)",
+      border: "1.5px solid var(--ai-soft-2)",
       borderRadius: 12, padding: 12,
       display: "flex", gap: 12, maxWidth: 360,
     }}>

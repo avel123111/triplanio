@@ -82,16 +82,12 @@
 
   /* AI — фиолет→индиго→циан (TRIP-187). База --ai = #7C3AED: маркер, тень и метка-текст. */
   --ai:        #7C3AED;
-  --ai-2:      #6366F1;
-  --ai-3:      #22D3EE;
   --ai-ink:    #6D28D9;
   --ai-soft:   rgba(139,92,246,.14);
   --ai-soft-2: rgba(139,92,246,.24);
   --ai-line:   rgba(139,92,246,.5);   /* рамка AI-контейнеров (дизайн-система TRIP-187) */
-  --ai-soft-12:var(--ai-soft-2);
   --ai-gradient:      linear-gradient(135deg,#A855F7 0%,#6366F1 55%,#22D3EE 100%);
   --ai-gradient-soft: linear-gradient(135deg,rgba(168,85,247,.13),rgba(99,102,241,.12),rgba(34,211,238,.12));
-  --ai-grad:        var(--ai-gradient);
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
   /* Pro / premium — оранж→розовый градиент монетизации (TRIP-187) */
@@ -249,8 +245,6 @@
 
   /* AI — dark (фиолет→индиго→циан, TRIP-187) */
   --ai:        #C084FC;
-  --ai-2:      #818CF8;
-  --ai-3:      #4FE3F0;
   --ai-ink:    #C6B5FF;
   --ai-soft:   rgba(168,85,247,.18);
   --ai-soft-2: rgba(168,85,247,.26);
@@ -1201,11 +1195,19 @@ h4,
 .btn--danger-ghost:hover { --bg: var(--danger-soft); }
 /* AI CTA — design-system: white text in light, dark text in dark (the dark-theme
    ai-gradient is brighter, so dark text reads better there). */
-.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--ai); }
-.btn--ai:hover { background-position: 100% 0; }
+.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); box-shadow: 0 8px 20px -7px var(--ai); }
 [data-theme="dark"] .btn--ai { --fg: #0c0a1e; }
-.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--pro); }
-.btn--pro:hover { background-position: 100% 0; }
+.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); box-shadow: 0 8px 20px -7px var(--pro); }
+/* Общий слой градиентных вариантов (TRIP-295). `background-origin` обязан стоять
+   ЗДЕСЬ, после шортката `background` выше: шорткат сбрасывает ВСЕ background-*
+   longhand'ы, включая origin, — поэтому то же правило в базовом .btn молча не
+   работает. Без него плитка градиента меряется от padding-box, а красится до
+   border-box, и зазор в 1px под прозрачным бордером добирается repeat'ом соседней
+   плитки: её противоположный край (циан у --ai, розовый у --pro) и рисует полосу
+   слева. Сверху утечка тоже есть, но там край совпадает с началом градиента и
+   потому незаметен. */
+.btn--ai, .btn--pro { background-origin: border-box; background-size: 170% 170%; }
+.btn--ai:hover, .btn--pro:hover { background-position: 100% 0; }
 .btn--sm { padding: 9px 15px; }                        /* размер из канона .t-ui (TRIP-165) */
 .btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = 16px (--fs-h4); .t-label с TRIP-175 = 14px, крупная кнопка осталась 16 намеренно */
 .btn--icon { padding: 11px; width: 42px; height: 42px; }
@@ -1387,7 +1389,7 @@ h4,
 .textarea { min-height: 80px; resize: vertical; }
 .field--ai .input, .field--ai .select, .field--ai .textarea {
   background: var(--ai-soft);
-  border-color: var(--ai-soft-12);
+  border-color: var(--ai-soft-2);
 }
 .field--ai .field__label::after {
  content: "AI";
@@ -1486,7 +1488,6 @@ h4,
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--danger { background: var(--danger-soft); color: var(--danger); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
-.badge--ai { background: var(--ai-soft); color: var(--ai); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--primary-soft); color: var(--brand); }
 .badge--solid { background: var(--brand); color: white; }
@@ -1527,7 +1528,7 @@ h4,
 .avatar--lg { width: 36px; height: 36px; }
 .avatar--xl { width: 56px; height: 56px; }
 .avatar--sm { width: 22px; height: 22px; }
-.avatar--ai { background: var(--ai-grad) !important; }
+.avatar--ai { background: var(--ai-gradient) !important; }
 .avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1.5px dashed var(--line); }
 .avatar--deleted { background: var(--wash) !important; color: var(--muted) !important; }
 
@@ -1765,7 +1766,7 @@ h4,
 .choice-card--ai:hover { border-color: var(--ai); }
 .choice-card__ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none; }
 .choice-card__ic--man { background: var(--primary-soft); color: var(--brand); }
-.choice-card__ic--ai  { background: var(--ai-grad); color: #fff; }
+.choice-card__ic--ai  { background: var(--ai-gradient); color: #fff; }
 .choice-card__tx { min-width: 0; }
 .choice-card__ttl { color: var(--ink); }
 .choice-card__sub { color: var(--muted); margin-top: 2px; }
@@ -2210,34 +2211,6 @@ h4,
   border-top: 1px solid var(--line-2);
   display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
   background: var(--wash-2);
-}
-
-/* AI gradient highlight */
-.ai-gradient {
-  background: linear-gradient(135deg, var(--ai) 0%, var(--ai-2) 60%, var(--ai-3) 100%);
-  color: white;
-}
-.ai-gradient-bg {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--ai) 10%, transparent) 0%,
-    color-mix(in srgb, var(--ai-2) 10%, transparent) 60%,
-    color-mix(in srgb, var(--ai-3) 8%, transparent) 100%);
-}
-.ai-gradient-border {
-  position: relative;
-}
-.ai-gradient-border::before {
-  content: ""; position: absolute; inset: 0;
-  border-radius: inherit; padding: 1.5px;
-  background: linear-gradient(135deg, var(--ai), var(--ai-2), var(--ai-3));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  pointer-events: none;
-}
-.ai-text {
-  background: linear-gradient(135deg, var(--ai), var(--ai-2) 60%, var(--ai-3));
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
