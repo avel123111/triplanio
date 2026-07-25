@@ -6,7 +6,10 @@ import { highlightMentions } from './mention.js';
 // text renders a mention. Deciding whether to CALL the assistant left this
 // module for the server (public.mentions_assistant, TRIP-296) — a paid call is
 // not the client's to make.
-const highlights = (s) => highlightMentions(s).includes('<span');
+const SPAN = /<span/;
+function highlights(s) {
+  return SPAN.test(highlightMentions(s));
+}
 
 test('matches a real mention anywhere in the message', () => {
   assert.ok(highlights('@Triplanio что не забронировано?'));
