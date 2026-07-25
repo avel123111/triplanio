@@ -24,7 +24,6 @@
   "offline_badge": "оффлайн",
   "offline_hint": "Оффлайн-участник отображается в списке, но не получает уведомлений. Позже его можно пригласить по email.",
   "offline_name": "Имя",
-  "offline_name_placeholder": "Например, Маша",
   "pending": "ожидает",
   "promote": "Пригласить по email",
   "promote_subtitle": "Превратить в онлайн-участника",

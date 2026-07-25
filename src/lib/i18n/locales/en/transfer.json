@@ -23,7 +23,6 @@
   "booking_ref_ph": "e.g. ABC123",
   "booking_url": "Booking link",
   "carrier": "Carrier",
-  "carrier_ph": "e.g. Lufthansa, Renfe…",
   "currency": "Currency",
   "departure": "Departure",
   "departure_with_tz": "Departure ({tz})",
