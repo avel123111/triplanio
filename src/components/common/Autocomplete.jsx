@@ -128,9 +128,11 @@ export default function Autocomplete({
       setResults([]); setOpen(false); setHighlighted(-1); setLoading(false);
       return;
     }
-    setLoading(true);
     lastQueryRef.current = query;
     timerRef.current = setTimeout(async () => {
+      // Raise `loading` only once the debounce settled and a request is really
+      // in flight — doing it per keystroke spun the icon while idle (TRIP-277).
+      setLoading(true);
       try {
         const r = (await search(query.trim(), langRef.current)) || [];
         if (lastQueryRef.current !== query) return; // ignore stale
@@ -216,11 +218,13 @@ export default function Autocomplete({
           aria-expanded={open && results.length > 0}
           aria-controls={`${uid}-list`}
           aria-activedescendant={highlighted >= 0 ? `${uid}-opt-${highlighted}` : undefined}
-          style={{ paddingLeft: leftPad, paddingRight: loading ? 36 : 12 }}
+          // Spinner slot is reserved permanently: toggling paddingRight with
+          // `loading` resized the field's text box mid-typing (TRIP-277).
+          style={{ paddingLeft: leftPad, paddingRight: 36 }}
           {...inputProps}
         />
         {loading && (
-          <Icon name="refresh" size={15} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)', animation: 'spin .7s linear infinite' }} />
+          <Icon name="refresh" size={15} className="spin" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)' }} />
         )}
       </div>
       {open && results.length > 0 && box && createPortal(

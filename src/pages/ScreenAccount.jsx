@@ -123,7 +123,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
               </>
             ) : (
               <div style={{ height: 40, display: 'grid', placeItems: 'center start' }}>
-                <div style={{ width: 18, height: 18, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                <div className="spin" style={{ width: 18, height: 18, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
               </div>
             )}
           </div>
@@ -594,7 +594,7 @@ export default function ScreenAccount() {
   if (!user) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
-        <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
       </div>
     );
   }
