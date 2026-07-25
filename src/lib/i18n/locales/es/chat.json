@@ -5,6 +5,8 @@
   "empty_desc": "Inicia la conversación: los miembros del viaje verán los nuevos mensajes aquí",
   "empty_title": "Aún no hay mensajes",
   "group_title": "Chat de grupo",
+  "hint_newline": "nueva línea",
+  "hint_send": "enviar",
   "load_older": "Cargar anteriores",
   "members_title": "Participantes del chat",
   "mention": "Mencionar",
@@ -20,7 +22,6 @@
   "reply_less": "Contraer",
   "reply_more": "Ver respuesta completa",
   "send": "Enviar",
-  "send_hint": "Enter para enviar, Shift+Enter para nueva línea",
   "typing": "Triplanio está escribiendo",
   "widget_composer_ph": "Mensaje al grupo... (@mención)",
   "write_first": "Escribe el primero 💬"

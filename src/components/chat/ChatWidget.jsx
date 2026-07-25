@@ -7,7 +7,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
@@ -105,6 +104,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     setText('');
     setShowMention(false);
     setSending(true);
+    taRef.current?.focus();   // keep the mobile keyboard up between messages
 
     const optId = 'opt-' + Date.now();
     qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, {
@@ -128,6 +128,10 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
       return;
     }
+    // Settle from the INSERT result — waiting for the realtime echo left the
+    // row dimmed as "sending" until a reload (see the lens for the full note).
+    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) =>
+      old.map((m) => (m.id === optId ? { ...m, id: created?.id || optId, __pending: false } : m)));
 
     const mentionsAi = /@triplanio\b/i.test(content);
     // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
@@ -212,7 +216,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
               mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } : { color: 'var(--ai)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ }}
             />
           </div>
-          {isMe && !grouped && (
+          {isMe && lastOfRun && (
             <div className="chat-time">{time}</div>
           )}
         </div>
@@ -221,36 +225,25 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [msgs, profiles, user?.id]);
 
-  // ── Closed: floating button (rendered when the panel/sheet is shut) ──
+  // ── Closed: floating button ──
   const closedFab = (
     <button
-      className="dock dock--ai"
+      className="dock"
       onClick={() => setOpen(true)}
       aria-label={t('chat.open_aria')}
     >
-      <MessageCircle size={22} />
+      <Icon name="chat" size={22} />
       {unread > 0 && (
         <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
       )}
-      {/* Sparkles sub-badge - purely decorative, signals AI is part of the chat */}
-      <span style={{
-        position: 'absolute', bottom: -3, right: -3,
-        width: 22, height: 22, borderRadius: '50%',
-        background: 'var(--ai-gradient)', color: 'white',
-        border: '2px solid var(--surface)',
-        display: 'grid', placeItems: 'center',
-        pointerEvents: 'none',
-      }}>
-        <Sparkles size={11} />
-      </span>
     </button>
   );
 
-  // ── Open panel ──
+  // ── Open panel ── one header row: who is in the chat, where it is, and the
+  // two ways out (full screen / collapse). The old tab strip above it listed a
+  // single always-active tab, so it was chrome with nothing to switch.
   const headInner = (
     <div className="dock-panel__head">
-      {/* Was a hand-rolled stack of <Avatar>s with inline negative margins —
-          the same thing AvatarStack already draws (TRIP-296). */}
       <AvatarStack
         people={activeMembers.map((m) => ({
           name: nameFor(m.user_id),
@@ -258,16 +251,23 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           deleted: profiles[m.user_id]?.is_deleted,
         }))}
       />
-      <div className="nm">
-        {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length, t, lang)}
+      <div className="dock-panel__id">
+        <b>{t('chat.group_title')}</b>
+        <span>{tripTitle ? `${tripTitle} · ` : ''}{pluralPeople(activeMembers.length, t, lang)}</span>
       </div>
       <button
         className="icon-btn"
-        style={{ width: 30, height: 30 }}
         onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
         aria-label={t('chat.open_full_aria')}
       >
-        <ExternalLink size={14} />
+        <Icon name="expand" size={15} />
+      </button>
+      <button
+        className="icon-btn"
+        onClick={() => setOpen(false)}
+        aria-label={t('common.close')}
+      >
+        <Icon name="close" size={15} />
       </button>
     </div>
   );
@@ -344,6 +344,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         <button
           type="button"
           className="chat-send"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={sendMessage}
           disabled={sending || !text.trim() || !chatId}
           aria-label={t('chat.send')}
@@ -360,30 +361,6 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // ── Open: docked panel ──
   return (
     <div className="dock-panel">
-      {/* Tab bar - single "group chat" tab + close */}
-      <div className="dock-panel__tabs">
-        <button className="dock-panel__tab active" style={{ flex: 1, justifyContent: 'flex-start' }}>
-          <MessageCircle size={14} />
-          {t('chat.group_title')}
-          {unread > 0 && (
-            <span className="t-micro" style={{
-              marginLeft: 4, background: 'var(--warm)', color: 'white',
-              borderRadius: 999,
-              minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              padding: '0 4px',
-            }}>{unread > 99 ? '99+' : unread}</span>
-          )}
-        </button>
-        <button
-          className="icon-btn"
-          style={{ width: 32, height: 32, flexShrink: 0, marginBottom: 6 }}
-          onClick={() => setOpen(false)}
-          aria-label={t('common.close')}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
       {headInner}
 
       {/* Thinking shimmer bar */}
@@ -391,7 +368,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
 
       {messagesInner}
 
-      {composerInner}
+      <div className="dock-panel__dock">{composerInner}</div>
     </div>
   );
 }

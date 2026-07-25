@@ -5,6 +5,8 @@
   "empty_desc": "Start the conversation: your trip members will see new messages here",
   "empty_title": "No messages yet",
   "group_title": "Group chat",
+  "hint_newline": "new line",
+  "hint_send": "to send",
   "load_older": "Load older",
   "members_title": "Chat participants",
   "mention": "Mention",
@@ -20,7 +22,6 @@
   "reply_less": "Collapse",
   "reply_more": "Show full answer",
   "send": "Send",
-  "send_hint": "Enter to send, Shift+Enter for new line",
   "typing": "Triplanio is typing",
   "widget_composer_ph": "Message to the group... (@mention)",
   "write_first": "Be the first to write 💬"

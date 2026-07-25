@@ -533,7 +533,6 @@ h4,
 .ts-startctl--block .ts-startctl__date,
 .ts-cal__title,
 .chat-mention__row b,
-.dock-panel__tab,
 .te-row__num,
 .te-actchip,
 .bt b,
@@ -601,6 +600,9 @@ h4,
 .bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
+.chat-name b,         /* TRIP-296 инсп.: Meta→UI (автор сообщения) */
+.chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
+.dock-panel__id b,    /* TRIP-296: заголовок виджета */
 .chat-reply__more,    /* TRIP-296: «Показать целиком» под ответом ассистента */
 .chat-jump,           /* TRIP-296: «Новые сообщения ↓» */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
@@ -633,9 +635,7 @@ h4,
 .ts-cal__wdc,
 .ts-cal__day,
 .chat-head__sub,   /* TRIP-296: подзаголовок шапки комнаты → Meta+Golos */
-.chat-name b,
 .chat-name .tm,
-.chat-reply__who b,   /* TRIP-296: автор ответа ассистента */
 .chat-reply__who .tm,
 .chat-time,
 .chat-row__err,       /* TRIP-296: «Не отправлено» */
@@ -2324,6 +2324,10 @@ h4,
 .chat-reply__more:hover { text-decoration: underline; }
 .chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
 .chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: -8px; }
+/* Secondary actions sit under the answer — muted until hovered, so they never
+   compete with the answer itself. */
+.chat-reply__acts .btn { color: var(--muted); }
+.chat-reply__acts .btn:hover { color: var(--ink); }
 
 /* ── Overline above the composer: thinking pill + "jump to newest" ── */
 .chat-overline { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-bottom: 6px; }
@@ -2369,11 +2373,29 @@ h4,
    advances are guaranteed identical. (The mention's bold look comes from
    -webkit-text-stroke, which does not change advance width.) */
 .chat-ov, .chat-ta { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-/* Padding lives on BOTH layers and is identical — the field itself has none.
-   Putting it on the field instead would offset the overlay (inset:0 covers the
-   padding box) from the textarea text and bring the caret drift back. */
-.chat-ov { position: absolute; inset: 0; padding: 9px 6px; line-height: 22px; white-space: pre-wrap; word-break: break-word; color: var(--ink); pointer-events: none; overflow: hidden; }
-.chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; padding: 9px 6px; line-height: 22px; border: 0; outline: 0; resize: none; overflow-y: hidden; display: block; min-height: 40px; }
+/* EVERY property that affects glyph advance or line breaking is declared ONCE,
+   for both layers together. The caret comes from the textarea while the visible
+   text comes from the overlay, so any divergence shows up as a drifting caret.
+   The overlay used to keep `word-break: break-word` while the textarea kept its
+   UA default `normal` — the two then wrapped at different points and the caret
+   ended up a word away from the text on multi-line input.
+   Padding is on the layers, NOT on the field: the overlay is inset:0 of the
+   field, so field padding would shift it relative to the textarea. */
+.chat-ov, .chat-ta {
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  font-weight: 400;
+  letter-spacing: 0;
+  word-spacing: normal;
+  line-height: 22px;
+  padding: 9px 6px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  tab-size: 4;
+}
+.chat-ov { position: absolute; inset: 0; color: var(--ink); pointer-events: none; overflow: hidden; }
+.chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; border: 0; outline: 0; resize: none; overflow-y: hidden; display: block; min-height: 40px; }
 .chat-ta::placeholder { color: var(--muted-2); }
 /* Mobile (≤640px) bumps .textarea to 16px to stop iOS zoom-on-focus (see the
    .input/.select/.textarea rule in the responsive section). The overlay is a
@@ -2395,7 +2417,8 @@ h4,
 /* Call the assistant without knowing the "@" convention. */
 .chat-at { height: 40px; width: 40px; flex: none; border: 0; border-radius: 12px; background: var(--ai-soft); color: var(--ai-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .18s var(--ease-out); }
 .chat-at:hover { background: var(--ai-soft-2); }
-.chat-composer__hint { color: var(--muted-2); padding: 0 4px; }
+.chat-composer__hint { display: flex; align-items: center; gap: 8px; color: var(--muted-2); padding: 0 4px; }
+.chat-composer__hint kbd { font-family: var(--font-mono); font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }
 @media (max-width: 640px) { .chat-composer__hint { display: none; } }
 
 /* ── Mention popover (shared) ── */
@@ -2420,7 +2443,8 @@ h4,
   .chat-head__sub { display: none; }
   .chat-members-btn .chat-members-btn__lbl { display: none; }
   .chat-members-btn { height: 34px; padding: 0 5px; }
-  .chat-room .chat-msgs { padding: 16px 12px 4px; }
+  /* Breathing room above the composer — the stream used to end flush against it. */
+  .chat-room .chat-msgs { padding: 16px 12px 12px; }
   .chat-msgs { padding: 14px; }
   .chat-col { max-width: 86%; }
   .chat-row__sp { width: 28px; }
@@ -2446,21 +2470,24 @@ h4,
 }
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
-.dock--ai { background: var(--ai-gradient); }
+/* Brand, not the AI gradient: the widget is the trip chat, and the gradient
+   claimed the whole conversation was an AI surface. */
+.dock { background: var(--brand); }
+[data-theme="dark"] .dock { color: #0c1424; }
 .dock__count {
  position: absolute; top: -4px; right: -4px;
  background: var(--warm); color: #fff;
- min-width: 20px; height: 20px; border-radius: var(--r-pill);
+ min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--r-pill);
  display: grid; place-items: center;
- border: 2px solid var(--surface);
+ border: 2px solid var(--bg);
 }
 .dock-panel {
   position: fixed; right: 24px; bottom: 24px;
-  width: 384px; max-width: calc(100vw - 32px);
-  height: 552px; max-height: calc(100vh - 80px);
+  width: 396px; max-width: calc(100vw - 32px);
+  height: min(580px, calc(100vh - 112px));
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-xl);
   box-shadow: var(--sh-3);
   z-index: 75;
   display: flex; flex-direction: column;
@@ -2468,22 +2495,21 @@ h4,
   animation: dockUp .26s var(--ease-out);
 }
 @keyframes dockUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
-.dock-panel__tabs {
-  display: flex; gap: 2px; padding: 8px 10px 0;
-  border-bottom: 1px solid var(--line-2);
-  background: var(--wash-2);
-}
-.dock-panel__tab {
- flex: 1; padding: 9px 12px; border: none; background: transparent;
- border-bottom: 2px solid transparent;
- color: var(--muted);
- cursor: pointer;
- display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.dock-panel__tab.active { color: var(--brand); border-color: var(--brand); }
-.dock-panel__head { padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
-.dock-panel__head .nm { flex: 1; color: var(--ink-2); min-width: 0; }
-.dock-panel__head .nm b { color: var(--ink); }
+/* ONE header row — the former tab strip held a single always-active tab. */
+.dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line-2); }
+.dock-panel__head .icon-btn { width: 32px; height: 32px; border-radius: 9px; }
+.dock-panel__head .avatar { width: 26px; height: 26px; }
+.dock-panel__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.dock-panel__id b { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock-panel__id span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock-panel__dock { flex: none; padding: 10px 12px 12px; border-top: 1px solid var(--line-2); }
+.dock-panel .chat-msgs { padding: 8px 12px 12px; }
+.dock-panel .chat-col { max-width: 86%; }
+.dock-panel .chat-reply { margin-top: 20px; }
+.dock-panel .chat-reply__card { padding: 12px 14px 12px 17px; }
+/* The composer already carries its own surface, so inside the widget dock it
+   drops the outer bar chrome. */
+.dock-panel .chat-composer { border-top: 0; padding: 0; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    Notifications & Members (Lumo)

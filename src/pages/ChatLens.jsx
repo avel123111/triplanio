@@ -94,7 +94,9 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, 
             </span>
             <Btn variant="ghost" size="sm" onClick={onRetry}>{t('sys.retry')}</Btn>
           </div>
-        ) : isMe && !grouped && (
+        ) : isMe && lastOfRun && (
+          /* Closes the run, like the avatar does for incoming messages. Keyed on
+             `!grouped` it landed under the FIRST bubble and split the group. */
           <div className="chat-time">{time}</div>
         )}
       </div>
@@ -304,6 +306,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       setText('');
       setShowMention(false);
       setSending(true);
+      // Keep the field focused so the mobile keyboard stays up for the next
+      // message instead of collapsing after every send.
+      taRef.current?.focus();
       const optimistic = {
         id:             optId,
         chat_id:        chatId,
@@ -340,6 +345,13 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       markRow(optId, { __pending: false, __failed: true });
       return;
     }
+
+    // Settle the row from the INSERT's own result instead of waiting for the
+    // realtime echo: the sender's own row may arrive late or not at all (the
+    // channel can be mid-subscribe), and the message then sat dimmed as
+    // "sending" until a page reload. Adopting the real id also lets the echo
+    // de-dupe by id when it does land.
+    markRow(optId, { id: created?.id || optId, __pending: false });
 
     const mentionsAi = /@triplanio\b/i.test(content);
     // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
@@ -644,6 +656,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <button
               type="button"
               className="chat-send"
+              /* Don't let the button take focus: on phones that collapses the
+                 keyboard between messages. */
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => sendMessage()}
               disabled={sending || !text.trim() || !chatId}
               aria-label={t('chat.send')}
@@ -651,8 +666,13 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               <Icon name="send" size={17} />
             </button>
           </div>
-          {/* Keyboard shortcuts — desktop only, there is no Shift+Enter on a phone. */}
-          <div className="chat-composer__hint">{t('chat.send_hint')}</div>
+          {/* Keyboard shortcuts — desktop only, there is no Shift+Enter on a phone.
+              Keys render as <kbd> pills; "Enter"/"Shift" are key names, not copy. */}
+          <div className="chat-composer__hint">
+            <span><kbd>Enter</kbd> {t('chat.hint_send')}</span>
+            <span>·</span>
+            <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_newline')}</span>
+          </div>
         </div>
       </div>
 
