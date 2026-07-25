@@ -28,7 +28,7 @@ export default function PanelAi({ ctx }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Title */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--ai-gradient)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <Icon name="sparkles" size={22} />
         </div>
         <div>
@@ -66,7 +66,7 @@ export default function PanelAi({ ctx }) {
       {/* Assistant status reply */}
       <div className="t-body" style={{ padding: 14, background: 'var(--ai-soft)', borderRadius: 12, color: 'var(--ink-2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="sparkles" size={11} /></span>
+          <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ai-gradient)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="sparkles" size={11} /></span>
           <b className="t-meta" style={{ color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</b>
           {aiState === 'generating' && <span className="ai-dots" style={{ color: 'var(--ai)', marginLeft: 'auto' }}><span /><span /><span /></span>}
         </div>

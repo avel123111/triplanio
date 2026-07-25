@@ -240,7 +240,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       <span style={{
         position: 'absolute', bottom: -3, right: -3,
         width: 22, height: 22, borderRadius: '50%',
-        background: 'var(--ai-grad)', color: 'white',
+        background: 'var(--ai-gradient)', color: 'white',
         border: '2px solid var(--surface)',
         display: 'grid', placeItems: 'center',
         pointerEvents: 'none',
