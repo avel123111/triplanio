@@ -504,6 +504,7 @@ h4,
 .dl-search input,
 .tcp__upload,
 .check,
+.checkbox,
 .auth__switch,
 .auth-error,
 .nav a,
@@ -1422,6 +1423,36 @@ h4,
 .err { color: var(--danger-ink); }
 .wrn { color: var(--warning-ink); }
 .err svg, .wrn svg { width: 13px; height: 13px; flex: none; }
+
+/* Canonical checkbox — the app's only one. `appearance: none` because the box
+   the OS paints can't be styled; the <label> wrapper makes the caption part of
+   the control (click target + a11y name) for free.
+   NB: `.check` is a different thing (the landing's tick bullet) — don't merge. */
+.checkbox { display: inline-flex; align-items: center; gap: 9px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.checkbox input {
+  appearance: none;
+  width: 17px; height: 17px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  display: inline-grid; place-items: center;
+  transition: background .15s ease, border-color .15s ease;
+  flex: 0 0 auto; cursor: pointer;
+}
+.checkbox input:checked { background: var(--brand); border-color: var(--brand); }
+.checkbox input:checked::after {
+  content: "";
+  width: 9px; height: 5px;
+  border-left: 1.8px solid #fff;
+  border-bottom: 1.8px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
+/* Dimmed via a sibling selector rather than `:has()`: the build target includes
+   Firefox 104, which predates `:has()`, and a disabled tint does not justify
+   being the first thing in this codebase to depend on it. */
+.checkbox input:disabled,
+.checkbox input:disabled ~ span { opacity: .5; cursor: not-allowed; }
 
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }

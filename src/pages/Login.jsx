@@ -4,6 +4,7 @@ import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { Checkbox } from '@/design/index';
 import './login.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -515,10 +516,7 @@ export default function Login() {
                   </div>
 
                   <div className="row-between">
-                    <label className="check">
-                      <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-                      <span>{t('auth.remember')}</span>
-                    </label>
+                    <Checkbox checked={remember} onChange={setRemember} label={t('auth.remember')} />
                   </div>
 
                   <button type="submit" className="btn-primary" disabled={isLoading}>

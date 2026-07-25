@@ -209,6 +209,25 @@ export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
   }} />
 );
 
+// ----- Checkbox -----
+// A real <input type="checkbox"> under the `.checkbox` skin (app.css), so native
+// keyboard, focus and <label> semantics come for free.
+//
+// Checkbox vs Toggle: a checkbox is a value you pick and then submit (a form
+// field, a filter applied by a button); a Toggle is a setting that takes effect
+// the moment you flip it. Don't swap one for the other to look tidier.
+export const Checkbox = ({ checked, onChange, label, disabled, className = "" }) => (
+  <label className={`checkbox ${className}`}>
+    <input
+      type="checkbox"
+      checked={!!checked}
+      disabled={disabled || undefined}
+      onChange={(e) => onChange?.(e.target.checked)}
+    />
+    {label && <span>{label}</span>}
+  </label>
+);
+
 // ----- Toggle -----
 // `busy` shows an in-knob spinner and blocks interaction while the change is
 // being persisted server-side — toggles never report a state the backend
