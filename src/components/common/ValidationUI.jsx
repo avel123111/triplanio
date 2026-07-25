@@ -73,6 +73,21 @@ export function fieldHasError(issues, field) {
   return (issues || []).some((i) => i.field === field && i.level === 'error');
 }
 
+// True when `field` carries a non-blocking warning and no error - for
+// amber-border styling on the wrapper. An error owns the field's colour.
+export function fieldHasWarning(issues, field) {
+  const issue = pickFieldIssue(issues || [], field);
+  return !!issue && issue.level !== 'error';
+}
+
+// Wrapper class for a field's validation state: `.tv-invalid` (red) or
+// `.field--warning` (amber), never both. Single source for every form wrapper.
+export function fieldStateClass(issues, field) {
+  const issue = pickFieldIssue(issues || [], field);
+  if (!issue) return '';
+  return issue.level === 'error' ? 'tv-invalid' : 'field--warning';
+}
+
 function focusField(field) {
   if (!field) return;
   const el = document.querySelector(`[data-vfield="${CSS.escape(field)}"]`);

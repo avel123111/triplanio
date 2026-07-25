@@ -98,7 +98,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { validateEntity, transferAiCityAdvisories } from '@/lib/validation';
-import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldStateClass } from '@/components/common/ValidationUI';
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -1556,7 +1556,7 @@ function SectionHeader({ children }) {
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.hotel.color;
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   // Filled-field counts drive the accordion badges (how many booking details /
   // documents are set without expanding the group).
   const bookingFilled = [form.booking_url, form.booking_reference, form.phone, form.email].filter(Boolean).length;
@@ -1774,7 +1774,7 @@ function TransferLegCard({
   fromName, toName, toCityEditable, layoverCityPh,
   startTz, endTz, issues, color, t,
 }) {
-  const invF = (name) => (fieldHasError(issues, vf(name)) ? 'tv-invalid' : '');
+  const invF = (name) => fieldStateClass(issues, vf(name));
   const tk = TRANSPORT_OF(leg.transport_type);
   const TIcon = tk.Icon;
   // Within-leg duration (departure → arrival) for the date-block hint —
@@ -1987,10 +1987,14 @@ function DateRangeBlock({
   startLabel, startValue, onStart, onStartMissing, startVField, startTz,
   endLabel, endValue, onEnd, onEndMissing, endVField, endTz,
 }) {
-  const invalid = (startVField && fieldHasError(issues, startVField))
-    || (endVField && fieldHasError(issues, endVField));
+  const eitherEnd = (test) => (startVField && test(issues, startVField))
+    || (endVField && test(issues, endVField));
+  const invalid = eitherEnd(fieldHasError);
+  // Day-tolerance warnings (TR_DEP_DAY / TR_ARR_DAY) land on these two fields;
+  // a hard error on either end outranks them, so only one tint shows at a time.
+  const warn = !invalid && eitherEnd(fieldHasWarning);
   return (
-    <div className="eed-dateblock" style={style}>
+    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`} style={style}>
       <div className="eed-dateblock__lbl t-micro">{label}</div>
       <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
         <div className="sd-cellwrap" data-vfield={startVField}>
@@ -2027,6 +2031,10 @@ function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
   const date = s.date || e.date || '';
   const durMin = layoverMins(form.startLocal, form.endLocal);
   const invalid = fieldHasError(issues, 'start') || fieldHasError(issues, 'end');
+  // Same amber state as DateRangeBlock: both blocks are the start/end pair, so
+  // they must flag validation identically even though no activity warning
+  // targets these fields today.
+  const warn = !invalid && (fieldHasWarning(issues, 'start') || fieldHasWarning(issues, 'end'));
   const emit = (d, st, et) => {
     setField('startLocal', d && st ? `${d}T${st}` : '');
     setField('endLocal', d && et ? `${d}T${et}` : '');
@@ -2034,7 +2042,7 @@ function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
     setTime('end', !!d && !et);
   };
   return (
-    <div className="eed-dateblock">
+    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`}>
       <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
       <div data-vfield="start">
         <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
@@ -2190,7 +2198,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
@@ -2249,7 +2257,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
 
 function EsimServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.esim')}</SectionHeader>
@@ -2289,7 +2297,7 @@ function EsimServiceFields({ form, setField, issues, onTouch, setUploading, trip
 
 function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
@@ -2354,7 +2362,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, onT
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.service.color;
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   return (
     <>
       <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>

@@ -1408,6 +1408,16 @@ h4,
   border-color: var(--warning);
   box-shadow: 0 0 0 3px var(--warning-soft);
 }
+/* Same amber state on the event editor's own controls (date-range block draws
+   its own border, service forms use raw input/select/textarea), so
+   `.field--warning` is the ONE warning skin. Border-only, mirroring
+   `.tv-invalid`; a field never gets both (see fieldStateClass). */
+.field--warning .stay-dates,
+.field--warning input,
+.field--warning select,
+.field--warning textarea {
+  border-color: var(--warning);
+}
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
 .err, .wrn { display: flex; align-items: center; gap: 5px; }

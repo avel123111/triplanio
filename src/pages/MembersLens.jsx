@@ -19,7 +19,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
@@ -68,7 +68,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
-  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(v.displayIssues, f);
 
   // Generate (or reuse) a real invite link when the "link" tab is active.
   // The role is bound to the token server-side, so switching role re-fetches.
