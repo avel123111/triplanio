@@ -22,6 +22,27 @@
 // Avatar component renders initials over a deterministic gradient.
 import { displayName } from '@/lib/displayName';
 
+/**
+ * Same resolution for a list of PARTICIPANT rows (member list, avatar stacks).
+ * Returns rows shaped for <Avatar> / <AvatarStack> with the membership fields
+ * kept. Replaces the per-screen `nameFor` helpers, which reimplemented a subset
+ * of the order below and so lost authors who had left the trip.
+ */
+export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {}) {
+  return (members || []).map((m) => ({
+    id: m.id,
+    role: m.role,
+    ...resolveAuthor({
+      userId: m.user_id,
+      nameSnapshot: m.user_full_name,
+      profiles,
+      members,
+      selfUser,
+      deletedLabel,
+    }),
+  }));
+}
+
 export function resolveAuthor({
   userId,
   nameSnapshot,

@@ -1541,6 +1541,8 @@ h4,
 .avatar-stack { display: inline-flex; }
 .avatar-stack .avatar { margin-left: -8px; }
 .avatar-stack .avatar:first-child { margin-left: 0; }
+/* Over a photo (trip cards) the ring has to be white, not the surface colour. */
+.avatar-stack--white .avatar { border: none; box-shadow: 0 0 0 2px #fff; }
 
 /* Lens tabs */
 .lens-tabs {
@@ -2320,7 +2322,11 @@ h4,
 .chat-reply__card { position: relative; padding: 16px 20px; border-radius: var(--r-md); overflow: hidden; }
 .chat-reply__card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ai-gradient); }
 .chat-reply__card.is-clamped { padding-bottom: 46px; }
-.chat-reply__card.is-clamped .chat-reply__text { max-height: 264px; overflow: hidden; }
+/* Height comes from ChatReply (CLAMP_H) via an inline max-height: the same
+   number measured the overflow and clipped the text from two different files,
+   so one could be changed without the other and the "show full" button stopped
+   matching the actual cut. */
+.chat-reply__card.is-clamped .chat-reply__text { overflow: hidden; }
 .chat-reply__card.is-clamped::after {
   content: ""; position: absolute; left: 3px; right: 0; bottom: 0; height: 100px; pointer-events: none;
   background: linear-gradient(180deg, transparent, var(--surface) 62%);
@@ -3741,13 +3747,8 @@ h4,
    одиночные — только Pro-бейдж (если есть). Карточки responsive.
    ============================================================ */
 
-/* ── Аватар-стек (.av-stack) ───────────────────────────────── */
-.av-stack { display: inline-flex; }
-/* Remove the built-in .avatar border — use box-shadow only for the overlap ring */
-.av-stack .avatar { margin-left: -9px; border: none; box-shadow: 0 0 0 2px var(--surface); }
-.av-stack .avatar:first-child { margin-left: 0; }
-/* Card-footer: solid white ring */
-.av-stack--white .avatar { border: none; box-shadow: 0 0 0 2px #fff; }
+/* .av-stack удалён — был вторым набором правил для того же стека аватаров,
+   что и канон .avatar-stack (TRIP-296). */
 
 /* ── Постер-карточка (grid view) ───────────────────────────── */
 .tc-grid {
@@ -3804,7 +3805,7 @@ h4,
 .tc__scope svg { width: 14px; height: 14px; flex: none; opacity: .9; }
 .tc__scope span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tc__foot { display: flex; align-items: center; gap: 7px; margin-top: 13px; flex-wrap: wrap; }
-.tc__foot .av-stack { margin-left: auto; }
+.tc__foot .avatar-stack { margin-left: auto; }
 
 /* frost-glass chip for "Совместный" and role */
 .tc__glass {

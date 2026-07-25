@@ -10,7 +10,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -77,26 +77,21 @@ function coverBg(trip) {
   return coverGradientCss(trip.cover_gradient);
 }
 
-// ─── Avatar stack — uses the same Avatar component as MembersLens/OverviewLens
-const AvatarStack = ({ members, maxShow = 3, white = false }) => {
+// ─── Avatar stack — the canonical <AvatarStack> from the design system. This
+// file used to carry its own copy (third implementation of the same element),
+// with its own `.av-stack` CSS twin of `.avatar-stack`.
+const TripAvatars = ({ members, maxShow = 3, white = false }) => {
   if (!members || members.length === 0) return null;
-  const shown    = members.slice(0, maxShow);
-  const overflow = members.length - maxShow;
   return (
-    <div className={`av-stack${white ? ' av-stack--white' : ''}`}>
-      {shown.map((m, i) => (
-        <Avatar
-          key={m.user_id ?? i}
-          name={displayName(m.email, m.full_name)}
-          photo={m.avatar_url || ''}
-          deleted={m.is_deleted}
-          size="sm"
-        />
-      ))}
-      {overflow > 0 && (
-        <Avatar name={`+${overflow}`} size="sm" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }} />
-      )}
-    </div>
+    <AvatarStack
+      max={maxShow}
+      className={white ? 'avatar-stack--white' : ''}
+      people={members.map((m) => ({
+        name: displayName(m.email, m.full_name),
+        photo: m.avatar_url || '',
+        deleted: m.is_deleted,
+      }))}
+    />
   );
 };
 
@@ -235,7 +230,7 @@ const TripCard = ({ trip, onClick }) => {
             <span className="tc__glass">
               {roleLabel(t, trip.role)}
             </span>
-            <AvatarStack members={trip.members} maxShow={3} white />
+            <TripAvatars members={trip.members} maxShow={3} white />
           </div>
         )}
       </div>
@@ -278,7 +273,7 @@ const TripRow = ({ trip, onClick }) => {
         <span className="tr__date tab tr-hideS">{trip.days}</span>
         {trip.isShared && (
           <div className="tr-hideS">
-            <AvatarStack members={trip.members} maxShow={2} />
+            <TripAvatars members={trip.members} maxShow={2} />
           </div>
         )}
         {trip.isShared && (

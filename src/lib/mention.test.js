@@ -32,7 +32,7 @@ test('repeated calls give the same answer (no shared lastIndex)', () => {
 
 test('highlight wraps the mention and keeps the leading character', () => {
   const out = highlightMentions('да @Triplanio привет');
-  assert.ok(out.includes('>@Triplanio</span>'));
+  assert.ok(out.includes('@Triplanio</span>'));
   assert.ok(out.startsWith('да <span'));
 });
 

@@ -59,7 +59,9 @@ export default function ChatReply({ text, time, onAsk }) {
         </div>
 
         <div className={'chat-reply__card' + (clamped ? ' is-clamped' : '')}>
-          <div ref={textRef} className="chat-reply__text">
+          {/* CLAMP_H is the single source: it both measures the overflow and
+              clips the text. The CSS only owns `overflow: hidden`. */}
+          <div ref={textRef} className="chat-reply__text" style={clamped ? { maxHeight: CLAMP_H } : undefined}>
             <ChatMarkdown text={text} linkClassName="cm-a cm-a--brand" />
           </div>
           {overflows && (

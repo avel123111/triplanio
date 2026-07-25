@@ -14,100 +14,21 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
-import { getActiveLocale } from '@/lib/i18n/format';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { mentionsTriplanio, highlightMentions } from '@/lib/mention';
+import { mentionsTriplanio } from '@/lib/mention';
 import { useUserProfiles } from '@/lib/useUserProfiles';
+import { resolveMembers } from '@/lib/resolveAuthor';
+import ChatStream from '@/components/chat/ChatStream';
+import ChatComposer from '@/components/chat/ChatComposer';
 import { displayName } from '@/lib/displayName';
-import { resolveAuthor } from '@/lib/resolveAuthor';
-import ChatMarkdown from '@/components/chat/ChatMarkdown';
-import ChatReply from '@/components/chat/ChatReply';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { Icon } from '../design/icons';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { chatParticipants, pluralPeople, useChatId, useChatInserts, useChatMessages, appendChatMessage, fetchOlderMessages, prependChatMessages, CHAT_MESSAGES_KEY, CHAT_PAGE } from '@/lib/chat';
 
-
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-
-function fmtMsgTime(isoStr) {
-  try { return new Date(isoStr).toLocaleTimeString(getActiveLocale(), { hour: '2-digit', minute: '2-digit' }); }
-  catch { return ''; }
-}
-
-function fmtMsgDate(isoStr) {
-  try { return new Date(isoStr).toLocaleDateString(getActiveLocale(), { day: 'numeric', month: 'long' }); }
-  catch { return ''; }
-}
-
-function isSameDay(a, b) {
-  if (!a || !b) return false;
-  return new Date(a).toDateString() === new Date(b).toDateString();
-}
-
-// ─── DateDivider ──────────────────────────────────────────────────────────────
-
-function DateDivider({ date }) {
-  return (
-    <div className="chat-daydiv"><span>{date}</span></div>
-  );
-}
-
-// ─── Msg ──────────────────────────────────────────────────────────────────────
-
-// Human messages only — the assistant renders through ChatReply.
-//
-// A run of consecutive messages by one author reads as one block: the NAME row
-// opens it, the avatar closes it (`lastOfRun`) so it sits next to the newest
-// bubble, and the inner corners tighten.
-function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, pending, failed, onRetry, t }) {
-  const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
-
-  return (
-    <div className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
-      {!isMe && (
-        <div className="chat-row__sp">
-          {lastOfRun && <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} />}
-        </div>
-      )}
-      <div className="chat-col">
-        {!grouped && !isMe && (
-          <div className="chat-name">
-            <b>{who}</b>
-            <span className="tm">{time}</span>
-          </div>
-        )}
-        <div className={'chat-bubble ' + bubbleMod + (pending ? ' chat-bubble--pending' : '')}>
-          <ChatMarkdown
-            text={text}
-            /* Mention colour lives in CSS, not inline: it depends on the bubble
-               AND the theme (in dark the own-bubble is light blue with dark
-               text, so a hardcoded white mention was unreadable on it). */
-            mentionStyle={null}
-            mentionClassName="chat-men"
-            linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
-          />
-        </div>
-        {failed ? (
-          <div className="chat-row__foot">
-            <span className="chat-row__err">
-              <Icon name="warning" size={12} />
-              {t('chat.not_sent')}
-            </span>
-            <Btn variant="ghost" size="sm" onClick={onRetry}>{t('sys.retry')}</Btn>
-          </div>
-        ) : isMe && lastOfRun && (
-          /* Closes the run, like the avatar does for incoming messages. Keyed on
-             `!grouped` it landed under the FIRST bubble and split the group. */
-          <div className="chat-time">{time}</div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
 
@@ -175,15 +96,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const scrollRef  = useRef(null);
-  const taRef      = useRef(null);
-  const ovRef      = useRef(null);
+  const scrollRef   = useRef(null);
+  const composerRef = useRef(null);
 
   const isPhone = useIsPhone();
 
-  const [text,        setText]        = useState('');
   const [sending,     setSending]     = useState(false);
-  const [showMention, setShowMention] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [newCount,    setNewCount]    = useState(0);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -202,20 +120,6 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     user?.id,
   ].filter(Boolean);
   const profiles = useUserProfiles(profileIds, tripId);
-  const nameFor = (userId) => {
-    let real = profiles[userId]?.full_name;
-    let email = profiles[userId]?.email || '';
-    if (!real) {
-      const mm = members.find(m => m.user_id === userId);
-      real = mm?.user_full_name || '';
-      email = email || mm?.invite_email || '';
-    }
-    if (!real && user?.id && userId === user.id) {
-      real = user.full_name || '';
-      email = email || user.email || '';
-    }
-    return displayName(email, real);
-  };
 
   // ── Load messages ── shared cache with the chat widget.
   const { data: msgs = [], isLoading, error: msgsError, refetch: refetchMsgs } = useChatMessages(chatId);
@@ -287,7 +191,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
       { onConflict: 'chat_id,user_id' },
     ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [chatId, user?.id, msgs.length]);
 
   // ── Thinking state ──
@@ -328,20 +232,14 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
   // ── Send message ──
   // `retryOf` re-sends an existing failed row instead of creating a new one.
-  async function sendMessage(retryOf) {
-    const content = retryOf ? (retryOf.text || '') : text.trim();
+  async function sendMessage(content, retryOf) {
     if (!content || (!retryOf && sending) || !chatId) return;
 
     const optId = retryOf ? retryOf.id : 'opt-' + Date.now();
     if (retryOf) {
       markRow(optId, { __pending: true, __failed: false });
     } else {
-      setText('');
-      setShowMention(false);
       setSending(true);
-      // Keep the field focused so the mobile keyboard stays up for the next
-      // message instead of collapsing after every send.
-      taRef.current?.focus();
       const optimistic = {
         id:             optId,
         chat_id:        chatId,
@@ -410,110 +308,16 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     }
   }
 
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  }
+  // Stable callbacks for the memoized stream: sendMessage closes over state that
+  // changes every render, so pass it through a ref instead of rebuilding every
+  // bubble on each keystroke (that was the original typing lag).
+  const sendRef = useRef(sendMessage);
+  sendRef.current = sendMessage;
+  const handleRetry = useCallback((m) => sendRef.current(m.text || '', m), []);
 
-  // "Ask again" under an assistant answer: seed the composer with the mention and
-  // focus it, so the follow-up question is one keystroke away. Stable identity —
-  // it is a dependency of the memoized message list.
-  const askMore = useCallback(() => {
-    setText((prev) => (mentionsTriplanio(prev) ? prev : `@${TRIPLANIO_BOT_NAME} ${prev}`.trimEnd() + ' '));
-    taRef.current?.focus();
-  }, []);
-
-  function handleTextChange(e) {
-    const v = e.target.value;
-    setText(v);
-    // Show the mention popup whenever the text ends with an @token
-    // (`@`, `@t`, `@tri`, …) at the start or after whitespace.
-    setShowMention(/(^|\s)@(\w*)$/.test(v));
-  }
-
-  function applyMention(handle) {
-    // Complete a trailing @token ("@", "@tri") into the full handle. When there
-    // is NO trailing token — the "@" toolbar button on an empty field — insert
-    // the mention instead of replacing nothing: a bare `.replace()` silently
-    // no-ops there, which left the button doing literally nothing.
-    setText((prev) => (/@(\w*)$/.test(prev)
-      ? prev.replace(/@(\w*)$/, '@' + handle + ' ')
-      : (prev && !prev.endsWith(' ') ? prev + ' ' : prev) + '@' + handle + ' '));
-    setShowMention(false);
-  }
-
-  // Auto-grow the composer up to ~4 lines, then scroll. The highlight overlay
-  // (position:absolute inset:0) matches the textarea box automatically; we only
-  // keep its scroll offset in lockstep with the textarea.
-  const COMPOSER_MAX_H = 132; // ≈ 6 lines @ 22px line-height (design)
-  useLayoutEffect(() => {
-    const ta = taRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    const next = Math.min(ta.scrollHeight, COMPOSER_MAX_H);
-    ta.style.height = next + 'px';
-    ta.style.overflowY = ta.scrollHeight > COMPOSER_MAX_H ? 'auto' : 'hidden';
-  }, [text]);
-  useEffect(() => {
-    const ta = taRef.current;
-    const ov = ovRef.current;
-    if (!ta || !ov) return undefined;
-    const sync = () => { ov.scrollTop = ta.scrollTop; };
-    ta.addEventListener('scroll', sync);
-    return () => ta.removeEventListener('scroll', sync);
-  }, []);
-
-  // Build message rows with date dividers. Memoized on [msgs, profiles, user]
-  // so typing in the composer (which lives in this same component) does NOT
-  // rebuild every bubble on each keystroke - that was the typing lag.
-  const messageRows = useMemo(() => {
-    const rows = [];
-    for (let i = 0; i < msgs.length; i++) {
-      const m    = msgs[i];
-      const prev = i > 0 ? msgs[i - 1] : null;
-      if (!isSameDay(m.created_at, prev?.created_at)) {
-        rows.push(<DateDivider key={'div-' + m.id} date={fmtMsgDate(m.created_at)} />);
-      }
-      // The assistant answers as a document, not a bubble — see ChatReply.
-      if (m.user_id === TRIPLANIO_BOT_USER_ID) {
-        rows.push(<ChatReply key={m.id} text={m.text || ''} time={fmtMsgTime(m.created_at)} onAsk={askMore} />);
-        continue;
-      }
-      const next      = i < msgs.length - 1 ? msgs[i + 1] : null;
-      const isMe      = m.user_id === user?.id;
-      const grouped   = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
-      const lastOfRun = !(next && isSameDay(m.created_at, next.created_at) && next.user_id === m.user_id);
-      // Author identity via the shared resolver: falls back to the message's
-      // user_full_name snapshot so a member who has LEFT the trip still shows
-      // their name (and a gradient-initials avatar) on past messages.
-      const author = resolveAuthor({
-        userId: m.user_id,
-        nameSnapshot: m.user_full_name,
-        profiles,
-        members,
-        selfUser: user,
-        deletedLabel: t('common.deleted_user'),
-      });
-      rows.push(
-        <Msg
-          key={m.id}
-          who={author.name}
-          isMe={isMe}
-          text={m.text || ''}
-          time={fmtMsgTime(m.created_at)}
-          grouped={grouped}
-          lastOfRun={lastOfRun}
-          avatarUrl={author.photo}
-          isDeleted={author.deleted}
-          pending={m.__pending}
-          failed={m.__failed}
-          onRetry={() => sendMessage(m)}
-          t={t}
-        />,
-      );
-    }
-    return rows;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [msgs, profiles, members, user?.id, t, askMore]);
+  // "Ask again" under an assistant answer: seed the composer with the mention so
+  // the follow-up question is one keystroke away.
+  const askMore = useCallback(() => composerRef.current?.insertMention(), []);
 
   // Chat participants = owner + active admins/viewers (excl. offline/pending).
   const activeMembers = (() => {
@@ -527,17 +331,19 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // ── Member list ── the former right rail, now behind the header button:
   // Popover on desktop, canonical Sheet on phones (same pattern as
   // TripStartControl). Built once and rendered into whichever shell is active.
+  const people = resolveMembers(activeMembers, { profiles, selfUser: user, deletedLabel: t('common.deleted_user') });
+
   const membersList = (
     <>
-      {activeMembers.length === 0 ? (
+      {people.length === 0 ? (
         <div className="muted t-meta" style={{ padding: '8px 10px' }}>{t('member.empty')}</div>
-      ) : activeMembers.map((m) => (
+      ) : people.map((p) => (
         <ChatMember
-          key={m.id}
-          name={nameFor(m.user_id)}
-          avatarUrl={profiles[m.user_id]?.avatar_url}
-          isDeleted={profiles[m.user_id]?.is_deleted}
-          role={m.role === 'owner' ? t('members.role_owner') : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer')}
+          key={p.id}
+          name={p.name}
+          avatarUrl={p.photo}
+          isDeleted={p.deleted}
+          role={p.role === 'owner' ? t('members.role_owner') : p.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer')}
         />
       ))}
       <div className="chat-member-sep">
@@ -550,13 +356,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // (asChild) supplies the handler, so it takes `onClick` rather than owning it.
   const renderMembersBtn = (onClick) => (
     <button type="button" className="chat-members-btn" onClick={onClick} aria-label={t('chat.members_title')}>
-      <AvatarStack
-        people={activeMembers.map((m) => ({
-          name: nameFor(m.user_id),
-          photo: profiles[m.user_id]?.avatar_url,
-          deleted: profiles[m.user_id]?.is_deleted,
-        }))}
-      />
+      <AvatarStack people={people} />
       <span className="chat-members-btn__lbl t-ui">{t('trip.sidebar_members')}</span>
     </button>
   );
@@ -607,107 +407,34 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 </Btn>
               </div>
             )}
-            {messageRows}
+            <ChatStream
+              messages={msgs}
+              selfUser={user}
+              profiles={profiles}
+              members={members}
+              withDateDividers
+              onRetry={handleRetry}
+              onAsk={askMore}
+            />
           </div>
         )}
       </div>
 
       {/* Tier 3 · composer — same column and gutters as the stream */}
-      <div className="chat-composer">
-        <div className="chat-composer__in">
-          {(isThinking || newCount > 0) && (
-            <div className="chat-overline">
-              {isThinking && (
-                <div className="chat-thinking">
-                  <TriplanioAvatar size="xs" />
-                  <span>{t('chat.typing')}</span>
-                  <span className="ai-dots"><span /><span /><span /></span>
-                </div>
-              )}
-              {newCount > 0 && (
-                <button type="button" className="chat-jump" onClick={jumpToBottom}>
-                  {t('chat.new_messages')} <b>{newCount}</b>
-                  <Icon name="arrowD" size={13} />
-                </button>
-              )}
-            </div>
-          )}
-          {showMention && (
-            <div className="chat-mention">
-              <div className="chat-mention__lbl">{t('chat.mention')}</div>
-              {/* Only @Triplanio is actionable - mentioning a member does nothing,
-                  so the popup lists just the assistant. */}
-              <button
-                onMouseDown={(e) => { e.preventDefault(); applyMention(TRIPLANIO_BOT_NAME); }}
-                className="chat-mention__row"
-              >
-                <TriplanioAvatar />
-                <span style={{ flex: 1 }}>
-                  <b>{TRIPLANIO_BOT_NAME}</b>
-                  <span>{t('chat.mention_all_hint')}</span>
-                </span>
-              </button>
-            </div>
-          )}
-
-          <div className="chat-composer__row">
-            {/* Calling the assistant used to be discoverable only by typing "@". */}
-            <button
-              type="button"
-              className="chat-at"
-              onClick={() => { applyMention(TRIPLANIO_BOT_NAME); taRef.current?.focus(); }}
-              title={t('chat.mention_all_hint')}
-              aria-label={t('chat.mention')}
-            >
-              <Icon name="at" size={18} />
-            </button>
-            <div className="chat-composer__field">
-              {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
-                  overlay renders the full text with @Triplanio in bold purple,
-                  the textarea shows only the caret - no double glyphs.
-                  The row itself is the bordered surface now, so the textarea
-                  carries NO .textarea class — but both layers must keep the
-                  SAME font metrics and padding or the caret drifts (see
-                  memory/triplanio-chat-caret-drift). */}
-              <div
-                ref={ovRef}
-                aria-hidden="true"
-                className="chat-ov"
-                dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
-              />
-              <textarea
-                ref={taRef}
-                className="chat-ta"
-                placeholder={t('chat.composer_ph')}
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKey}
-                rows={1}
-                style={{ minHeight: 40, maxHeight: 132 }}
-              />
-            </div>
-            <button
-              type="button"
-              className="chat-send"
-              /* Don't let the button take focus: on phones that collapses the
-                 keyboard between messages. */
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => sendMessage()}
-              disabled={sending || !text.trim() || !chatId}
-              aria-label={t('chat.send')}
-            >
-              <Icon name="send" size={17} />
-            </button>
-          </div>
-          {/* Keyboard shortcuts — desktop only, there is no Shift+Enter on a phone.
-              Keys render as <kbd> pills; "Enter"/"Shift" are key names, not copy. */}
-          <div className="chat-composer__hint">
-            <span><kbd>Enter</kbd> {t('chat.hint_send')}</span> {/* i18n-ignore: key name */}
-            <span>·</span>
-            <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_newline')}</span> {/* i18n-ignore: key names */}
-          </div>
-        </div>
-      </div>
+      <ChatComposer
+        ref={composerRef}
+        onSend={(content) => sendMessage(content)}
+        disabled={sending || !chatId}
+        placeholder={t("chat.composer_ph")}
+        isThinking={isThinking}
+        withHint
+        jump={newCount > 0 ? (
+          <button type="button" className="chat-jump" onClick={jumpToBottom}>
+            {t("chat.new_messages")} <b>{newCount}</b>
+            <Icon name="arrowD" size={13} />
+          </button>
+        ) : null}
+      />
 
       {isPhone && (
         <Sheet open={membersOpen} onOpenChange={setMembersOpen} title={t('chat.members_title')}>
