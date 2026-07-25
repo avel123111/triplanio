@@ -12,31 +12,22 @@ import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME, highlightMentions } from '@/lib/triplanio';
 import { useChatId, useUnreadChatCount, useChatInserts, useChatMessages, appendChatMessage, CHAT_MESSAGES_KEY, chatParticipants, pluralPeople } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
-import { Avatar, EmptyState, Sheet } from '@/design/index';
+import ChatReply from './ChatReply';
+import { Avatar, AvatarStack, EmptyState } from '@/design/index';
+import { Icon } from '@/design/icons';
 import { displayName } from '@/lib/displayName';
 import { useUserProfiles } from '@/lib/useUserProfiles';
-import { useIsMobile } from '@/hooks/use-mobile';
-
-function highlightMentions(val) {
-  // Bold look WITHOUT a font-weight change (which would widen the run and drift
-  // the caret): -webkit-text-stroke thickens glyphs but keeps advance width, so
-  // the transparent textarea (caret source) and this overlay stay in lockstep.
-  return (val || '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')
-    .replace(/@triplanio\b/gi, '<span style="color:var(--ai);-webkit-text-stroke:0.7px var(--ai)">$&</span>');
-}
 
 export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -186,27 +177,30 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // NOT rebuild every bubble on each keystroke (that caused the typing lag).
   const messageEls = useMemo(() => msgs.map((m, i) => {
     const prev = i > 0 ? msgs[i - 1] : null;
+    const next = i < msgs.length - 1 ? msgs[i + 1] : null;
     const isMe = m.user_id === user?.id;
     const isAi = m.user_id === TRIPLANIO_BOT_USER_ID;
     const grouped = prev && prev.user_id === m.user_id &&
       new Date(m.created_at).toDateString() === new Date(prev.created_at).toDateString();
+    const lastOfRun = !(next && next.user_id === m.user_id &&
+      new Date(m.created_at).toDateString() === new Date(next.created_at).toDateString());
     const who = isAi ? TRIPLANIO_BOT_NAME : nameFor(m.user_id);
     let time = '';
     try { time = new Date(m.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); } catch { /* ignore */ }
-    const bubbleMod = isMe ? 'chat-bubble--me' : isAi ? 'chat-bubble--ai' : 'chat-bubble--them';
+    // Same assistant-as-document rendering as the lens, just a narrower column.
+    if (isAi) return <ChatReply key={m.id} text={m.text || ''} time={time} />;
+    const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
     return (
       <div key={m.id} className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
         {!isMe && (
-          grouped
-            ? <div className="chat-row__sp" aria-hidden />
-            : (isAi
-                ? <TriplanioAvatar size="sm" />
-                : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} deleted={profiles[m.user_id]?.is_deleted} size="sm" style={{ flexShrink: 0 }} />)
+          <div className="chat-row__sp">
+            {lastOfRun && <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} deleted={profiles[m.user_id]?.is_deleted} size="sm" style={{ flexShrink: 0 }} />}
+          </div>
         )}
         <div className="chat-col">
           {!grouped && !isMe && (
             <div className="chat-name">
-              <b className={isAi ? 'ai' : ''}>{who}</b>
+              <b>{who}</b>
               <span className="tm">{time}</span>
             </div>
           )}
@@ -250,23 +244,18 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     </button>
   );
 
-  // ── Open panel — shared inner parts (identical markup + logic on desktop
-  //    dock-panel and inside the mobile bottom-sheet, so chat logic is never
-  //    duplicated). ──
+  // ── Open panel ──
   const headInner = (
     <div className="dock-panel__head">
-      <div style={{ display: 'flex' }}>
-        {activeMembers.slice(0, 4).map((m, i) => (
-          <Avatar
-            key={m.id || i}
-            name={nameFor(m.user_id)}
-            photo={profiles[m.user_id]?.avatar_url || ''}
-            deleted={profiles[m.user_id]?.is_deleted}
-            size="sm"
-            style={{ marginLeft: i === 0 ? 0 : -8, border: '1.5px solid var(--surface)', borderRadius: '50%', zIndex: 4 - i }}
-          />
-        ))}
-      </div>
+      {/* Was a hand-rolled stack of <Avatar>s with inline negative margins —
+          the same thing AvatarStack already draws (TRIP-296). */}
+      <AvatarStack
+        people={activeMembers.map((m) => ({
+          name: nameFor(m.user_id),
+          photo: profiles[m.user_id]?.avatar_url,
+          deleted: profiles[m.user_id]?.is_deleted,
+        }))}
+      />
       <div className="nm">
         {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length, t, lang)}
       </div>
@@ -317,6 +306,15 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         </div>
       )}
       <div className="chat-composer__row">
+        <button
+          type="button"
+          className="chat-at"
+          onClick={() => { applyMention(TRIPLANIO_BOT_NAME); taRef.current?.focus(); }}
+          title={t('chat.mention_all_hint')}
+          aria-label={t('chat.mention')}
+        >
+          <Icon name="ai" size={16} />
+        </button>
         <div className="chat-composer__field">
           <div
             ref={ovRef}
@@ -340,46 +338,22 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           />
         </div>
         <button
+          type="button"
           className="chat-send"
           onClick={sendMessage}
           disabled={sending || !text.trim() || !chatId}
           aria-label={t('chat.send')}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Icon name="send" size={16} />
         </button>
       </div>
     </div>
   );
 
-  // ── Mobile: open in the canonical bottom-sheet (swipe-to-dismiss, 86dvh,
-  //    scroll-lock). The FAB stays mounted so Radix can play the sheet's
-  //    enter/exit animation cleanly. ──
-  if (isMobile) {
-    return (
-      <>
-        {!open && closedFab}
-        <Sheet
-          open={open}
-          onOpenChange={setOpen}
-          titleText={t('chat.group_title')}
-          className="sheet--chat"
-          bodyClassName="sheet-b--chat"
-        >
-          {headInner}
-          {isThinking && <div className="chat-thinking-bar" />}
-          {messagesInner}
-          {composerInner}
-        </Sheet>
-      </>
-    );
-  }
-
-  // ── Closed (desktop): floating button ──
+  // ── Closed: floating button ──
   if (!open) return closedFab;
 
-  // ── Open (desktop): docked panel ──
+  // ── Open: docked panel ──
   return (
     <div className="dock-panel">
       {/* Tab bar - single "group chat" tab + close */}

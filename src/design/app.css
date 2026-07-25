@@ -639,6 +639,7 @@ h4,
 .chat-reply__who .tm,
 .chat-time,
 .chat-row__err,       /* TRIP-296: «Не отправлено» */
+.chat-composer__hint, /* TRIP-296: подсказка Enter / Shift+Enter */
 .chat-thinking,
 .chat-mention__row span,
 .chat-member__rl,
@@ -2340,11 +2341,19 @@ h4,
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
    the border + 4px ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }
-.chat-send { height: 44px; width: 44px; flex: none; border: 0; border-radius: var(--r-btn); background: var(--ai-gradient); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px -8px var(--ai); transition: transform .16s var(--ease-spring), filter .2s; }
-.chat-send:hover { filter: brightness(1.05); }
+/* ONE send button for both shells. The lens used to draw a wide .btn--primary
+   with a label while the widget drew this square on --ai-gradient: the same
+   action, two looks, and the gradient claimed sending was an AI act. */
+.chat-send { height: 44px; width: 44px; flex: none; border: 0; border-radius: var(--r-btn); background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px -9px var(--brand); transition: transform .16s var(--ease-spring), filter .2s; }
+.chat-send:hover { filter: brightness(1.06); }
 .chat-send:active { transform: scale(.94); }
 .chat-send:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-.chat-send svg { width: 17px; height: 17px; }
+[data-theme="dark"] .chat-send { color: #0c1424; }
+/* Call the assistant without knowing the "@" convention. */
+.chat-at { height: 44px; width: 44px; flex: none; border: 0; border-radius: var(--r-btn); background: var(--ai-soft); color: var(--ai-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .18s var(--ease-out); }
+.chat-at:hover { background: var(--ai-soft-2); }
+.chat-composer__hint { color: var(--muted-2); margin-top: 7px; padding: 0 2px; }
+@media (max-width: 640px) { .chat-composer__hint { display: none; } }
 
 /* ── Mention popover (shared) ── */
 .chat-mention { position: absolute; bottom: calc(100% + 6px); left: 12px; width: 280px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--sh-3); padding: 6px; z-index: 6; }
@@ -2420,13 +2429,6 @@ h4,
 .dock-panel__head { padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
 .dock-panel__head .nm { flex: 1; color: var(--ink-2); min-width: 0; }
 .dock-panel__head .nm b { color: var(--ink); }
-
-/* ── Mobile: the open widget lives inside the canonical bottom-sheet (.sheet).
-   .sheet--chat makes the body a full-height flex column so messages scroll
-   and the composer stays pinned; vaul repositions above the keyboard. ── */
-.sheet--chat { height: 86dvh; }
-.sheet--chat .sheet-b { padding: 0; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.sheet--chat .chat-msgs { padding: 14px; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    Notifications & Members (Lumo)

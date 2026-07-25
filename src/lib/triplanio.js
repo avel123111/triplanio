@@ -31,3 +31,22 @@ export function startsWithTriplanioMention(text) {
   if (!text) return false;
   return /^@Triplanio(\b|$|[\s.,!?;:])/i.test(text.trim());
 }
+
+/**
+ * HTML for the composer's highlight overlay: escaped user input with @triplanio
+ * tinted. Shared by the chat lens and the widget — it used to be copy-pasted in
+ * both, and the caret fix below only ever landed once per copy.
+ *
+ * The mention must look bold WITHOUT a font-weight change: a heavier weight
+ * widens the glyph run, so the textarea (normal weight, and the thing that
+ * actually drives the caret) and this overlay drift apart. -webkit-text-stroke
+ * thickens the strokes while keeping advance width identical.
+ */
+export function highlightMentions(val) {
+  return (val || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>')
+    .replace(/@triplanio\b/gi, '<span style="color:var(--ai);-webkit-text-stroke:0.7px var(--ai)">$&</span>');
+}

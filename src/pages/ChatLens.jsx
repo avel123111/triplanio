@@ -17,7 +17,7 @@ import { track } from '@/lib/analytics';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME, highlightMentions } from '@/lib/triplanio';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -45,25 +45,6 @@ function fmtMsgDate(isoStr) {
 function isSameDay(a, b) {
   if (!a || !b) return false;
   return new Date(a).toDateString() === new Date(b).toDateString();
-}
-
-// HTML-escape user input, then wrap @triplanio in a colored bold span. Used in
-// the input overlay only - never inside dangerouslySetInnerHTML on user-facing
-// content that's been roundtripped through the DB.
-function highlightMentions(val) {
-  const escaped = (val || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br/>');
-  // Keep the mention BOLD but without a font-weight change: a heavier weight
-  // widens the glyph run, so the textarea (normal weight, drives the caret)
-  // and the overlay diverge and the caret drifts. -webkit-text-stroke thickens
-  // the strokes WITHOUT changing advance width → looks bold, caret stays put.
-  return escaped.replace(
-    /@triplanio\b/gi,
-    '<span style="color:var(--ai);-webkit-text-stroke:0.7px var(--ai)">$&</span>',
-  );
 }
 
 // ─── DateDivider ──────────────────────────────────────────────────────────────
@@ -618,6 +599,16 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         )}
 
         <div className="chat-composer__row">
+          {/* Calling the assistant used to be discoverable only by typing "@". */}
+          <button
+            type="button"
+            className="chat-at"
+            onClick={() => { applyMention(TRIPLANIO_BOT_NAME); taRef.current?.focus(); }}
+            title={t('chat.mention_all_hint')}
+            aria-label={t('chat.mention')}
+          >
+            <Icon name="ai" size={18} />
+          </button>
           <div className="chat-composer__field">
             {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
                 overlay renders the full text with @Triplanio in bold purple,
@@ -641,14 +632,16 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           </div>
           <button
             type="button"
-            className="btn btn--primary"
-            onClick={sendMessage}
+            className="chat-send"
+            onClick={() => sendMessage()}
             disabled={sending || !text.trim() || !chatId}
-            style={{ height: 44, flexShrink: 0, padding: '0 18px' }}
+            aria-label={t('chat.send')}
           >
-            <Icon name="send" size={16} /> {t('chat.send')}
+            <Icon name="send" size={17} />
           </button>
         </div>
+        {/* Keyboard shortcuts — desktop only, there is no Shift+Enter on a phone. */}
+        <div className="chat-composer__hint">{t('chat.send_hint')}</div>
         </div>
       </div>
 
