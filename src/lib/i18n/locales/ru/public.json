@@ -1,6 +1,5 @@
 {
   "brand": "Triplanio",
-  "cta_copy": "Скопировать маршрут",
   "cta_plan": "Спланировать своё",
   "cta_sub": "Скопируйте его себе или соберите свой — с городами, переездами и картой. В Triplanio, бесплатно.",
   "cta_title": "Понравился маршрут?",
@@ -8,7 +7,6 @@
   "mast_kick": "Маршрут",
   "meta_cities": "города",
   "meta_countries": "страны",
-  "meta_days": "дней",
   "meta_distance": "в пути",
   "meta_transfers": "переезда",
   "mode_bus": "Автобус",
@@ -27,7 +25,6 @@
   "oops": "Упс",
   "people_eyebrow": "Компания",
   "people_title": "Участники путешествия",
-  "read_only": "Только просмотр",
   "role_end": "Финиш",
   "role_start": "Старт",
   "role_waypoint": "Транзит",
@@ -38,7 +35,5 @@
   "shared_sub": "поделился путешествием",
   "subtitle_days_few": "дня",
   "subtitle_days_many": "дней",
-  "subtitle_days_one": "день",
-  "tab_map": "Карта",
-  "tab_timeline": "Маршрут"
+  "subtitle_days_one": "день"
 }

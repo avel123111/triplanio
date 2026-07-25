@@ -167,14 +167,11 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
 
-      // Clear legacy auto-generated avatars (dicebear initials) so they fall
-      // back to the gradient instead of overwriting it with a flat image.
-      if (profile?.avatar_url && profile.avatar_url.includes('api.dicebear.com')) {
-        profile.avatar_url = null;
-        // best-effort one-time cleanup; UI already uses the nulled value
-        supabase.from('users').update({ avatar_url: null }).eq('id', authUser.id);
-      }
-
+      // avatar_url is passed through as stored — do NOT re-add a sanitizer here.
+      // This path feeds only the header and the profile, while trip screens and
+      // chat read the same column through resolveProfiles, so one user ended up
+      // with two different avatars. Legacy dicebear placeholders are cleared in
+      // the data instead (migration 20260725202621).
       setUser({ ...profile, id: authUser.id });
       setIsAuthenticated(true);
       if (!silent) setIsLoadingAuth(false);

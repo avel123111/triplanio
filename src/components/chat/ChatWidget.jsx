@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, chatParticipants, pluralPeople } from '@/lib/chat';
+import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, chatParticipants, pluralPeople, CHAT_MESSAGES_KEY } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { AvatarStack, EmptyState } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
@@ -29,6 +29,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const scrollRef = useRef(null);
+  const composerRef = useRef(null);
 
   const unread = useUnreadChatCount(tripId);
   const { data: chatId } = useChatId(tripId);
@@ -40,16 +41,21 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // ── Load messages (only when open) ── shared cache with the chat lens.
   const { data: msgs = [] } = useChatMessages(chatId, { enabled: open });
 
-  // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b): append
-  // the new message to this widget's own cache + refresh unread. No standalone
-  // channel anymore, so the widget no longer duplicates the sidebar/lens ones.
-  // Only maintain the message cache while OPEN: a closed widget doesn't render
-  // messages, and priming the shared cache with a partial list would flash on
-  // next open. Unread stays live regardless via useUnreadChatCount's own sub.
-  useChatRows(chatId, (msg, ev) => {
-    applyChatRow(qc, chatId, msg);
-    if (ev === 'INSERT') qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
-  }, { enabled: open });
+  // ── Realtime ── rides the shared per-chat_id channel (TRIP-208 Ф2-2b), which
+  // useUnreadChatCount above already keeps open — so this costs no extra
+  // connection, and the unread count is refreshed there, not here.
+  //
+  // It listens even while the widget is CLOSED, which is the fix for "the badge
+  // lit up but the message isn't in the widget": gated on `open`, everything
+  // that arrived while it was shut never reached the shared cache, and opening
+  // it did not refetch either (the app-wide staleTime of 30s considers the cache
+  // fresh) — the message showed up only after a trip through the lens or a
+  // reload. Merging only into an EXISTING cache keeps the original reason for
+  // the gate: a widget that was never opened must not seed a one-message list
+  // that would flash before the first real page lands.
+  useChatRows(chatId, (msg) => {
+    if (qc.getQueryData(CHAT_MESSAGES_KEY(chatId)) !== undefined) applyChatRow(qc, chatId, msg);
+  });
 
   // ── Auto-scroll ──
   useEffect(() => {
@@ -125,12 +131,23 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             <EmptyState icon="chat" title={t('chat.write_first')} />
           </div>
         ) : (
-          <ChatStream messages={msgs} selfUser={user} profiles={profiles} members={members} onRetry={retry} />
+          /* onAsk is what renders "Ask again" under an assistant answer. The
+             widget used to omit it, so the SAME ChatReply showed one action
+             here and two in the lens. */
+          <ChatStream
+            messages={msgs}
+            selfUser={user}
+            profiles={profiles}
+            members={members}
+            onRetry={retry}
+            onAsk={() => composerRef.current?.insertMention()}
+          />
         )}
       </div>
 
       <div className="dock-panel__dock">
         <ChatComposer
+          ref={composerRef}
           onSend={send}
           disabled={sending || !chatId}
           placeholder={t('chat.widget_composer_ph')}

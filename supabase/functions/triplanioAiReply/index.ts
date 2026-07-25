@@ -26,35 +26,15 @@ Deno.serve(withHandler('triplanioAiReply', async (req, corsHeaders) => {
     }
 
     const body = await readJson(req);
-    const messageIdIn = typeof body.message_id === 'string' ? body.message_id : '';
-    const chatId      = typeof body.chat_id === 'string' ? body.chat_id : '';
-    const message     = typeof body.message === 'string' ? body.message : '';
-    const failure     = typeof body.error === 'string' ? body.error : '';
+    const messageId = typeof body.message_id === 'string' ? body.message_id : '';
+    const message   = typeof body.message === 'string' ? body.message : '';
+    const failure   = typeof body.error === 'string' ? body.error : '';
 
-    if (!messageIdIn && !chatId) {
-      return Response.json({ error: 'message_id or chat_id required' }, { status: 400, headers: corsHeaders });
+    if (!messageId) {
+      return Response.json({ error: 'message_id required' }, { status: 400, headers: corsHeaders });
     }
     if (!failure && !message.trim()) {
       return Response.json({ error: 'message required' }, { status: 400, headers: corsHeaders });
-    }
-
-    // Мост на время переключения: воркфлоу n8n правится руками и ещё не знает про
-    // message_id, поэтому по chat_id находим самый свежий открытый прогон этого
-    // чата. Удалить вместе с переводом воркфлоу на message_id (TRIP-296, Ф6).
-    let messageId = messageIdIn;
-    if (!messageId) {
-      const { data: open } = await supabaseAdmin
-        .from('chat_messages')
-        .select('id')
-        .eq('chat_id', chatId)
-        .in('ai_status', ['queued', 'running'])
-        .order('ai_requested_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!open) {
-        return Response.json({ error: 'No open assistant run for this chat' }, { status: 404, headers: corsHeaders });
-      }
-      messageId = open.id;
     }
 
     const { data: botUser } = await supabaseAdmin
