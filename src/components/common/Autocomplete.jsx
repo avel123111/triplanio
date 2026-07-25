@@ -224,7 +224,16 @@ export default function Autocomplete({
           {...inputProps}
         />
         {loading && (
-          <Icon name="refresh" size={15} className="spin" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)' }} />
+          // The wrapper owns the centring transform, the icon owns the spin.
+          // `aispin` animates `transform`, so putting both on one element makes
+          // the keyframe clobber translateY(-50%) — the icon then slides half
+          // its height every turn instead of rotating in place (TRIP-277).
+          <span
+            aria-hidden="true"
+            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}
+          >
+            <Icon name="refresh" size={15} className="spin" style={{ color: 'var(--muted-2)' }} />
+          </span>
         )}
       </div>
       {open && results.length > 0 && box && createPortal(
