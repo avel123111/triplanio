@@ -978,7 +978,6 @@ h4,
 .app-header__trip-meta,  /* TRIP-175 инсп.: Meta+Golos (мета трипа в шапке) */
 .fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
 .chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
-.chat-thinking span,     /* TRIP-175 инсп.: Meta+Golos («Triplanio is typing») */
 .pcard__mtx, .pcard__addr, .pcard__score, .pcard__price span,  /* TRIP-287: Meta+Golos (отзывы/адрес/оценка/сноска цены карточки) */
 .s22mk__price, .s22mk__count,  /* TRIP-287: инспектор канонов — цена/счётчик маркера карты → Meta+Golos */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
@@ -2333,7 +2332,10 @@ h4,
 .chat-overline { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-bottom: 6px; }
 /* Was a full-width tinted strip welded to the top of the composer; as a pill it
    reads as status rather than as a second toolbar. */
-.chat-thinking { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 12px 0 5px; border-radius: var(--r-pill); background: var(--ai-soft); border: 1px solid var(--ai-line); color: var(--ai-ink); flex: none; }
+.chat-thinking { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px 0 5px; border-radius: var(--r-pill); background: var(--ai-soft); border: 1px solid var(--ai-line); color: var(--ai-ink); flex: none; }
+/* Dots take the pill's own ink and the design's 4px — the global .ai-dots are
+   5px on the stronger --ai, which inside a soft pill read as a second accent. */
+.chat-thinking .ai-dots span { width: 4px; height: 4px; background: currentColor; }
 .chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
 .chat-jump b { color: var(--brand); }
 

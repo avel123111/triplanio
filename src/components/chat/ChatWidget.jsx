@@ -284,7 +284,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       {isThinking && (
         <div className="chat-overline">
           <div className="chat-thinking">
-            <TriplanioAvatar size="sm" />
+            <TriplanioAvatar size="xs" />
             <span>{t('chat.typing')}</span>
             <span className="ai-dots"><span /><span /><span /></span>
           </div>

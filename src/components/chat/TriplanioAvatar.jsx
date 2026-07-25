@@ -13,16 +13,22 @@ import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
  *   - avatarUrl: optional pre-resolved URL - skips the lookup
  *   - className: extra classes for the outer element
  */
-// Mirrors the chat design's avatar scale (26 / 32 / 36) — chat is this
-// component's only consumer, so the two scales are kept identical on purpose.
+// Mirrors the chat design's avatar scale — chat is this component's only
+// consumer, so the two scales are kept identical on purpose.
+// `xs` is the disc INSIDE a 26px status pill: the design draws it as a 26px
+// avatar with a 2px surface ring, i.e. 22px of visible gradient with room to
+// breathe. Without that step the disc filled the pill edge to edge and looked
+// like it was bursting out of it.
 const SIZE_PX = {
-  sm: 26,   // inline status pills ("Triplanio думает")
+  xs: 22,   // inside the "Triplanio печатает" pill
+  sm: 26,
   md: 32,   // stream + assistant reply + mention row
   lg: 36,
 };
 
 const SVG_SIZE = {
-  sm: 16,
+  xs: 12,
+  sm: 14,
   md: 20,
   lg: 22,
 };

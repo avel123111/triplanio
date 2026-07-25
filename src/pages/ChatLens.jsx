@@ -128,7 +128,7 @@ function ChatSkeleton() {
     <div className="chat-msgs__in" aria-hidden>
       {[{ w: '58%' }, { w: '42%', me: true }, { w: '72%' }, { w: '38%', me: true }].map(({ w, me }, i) => (
         <div key={i} className={'chat-row' + (me ? ' chat-row--me' : '')}>
-          {!me && <Skeleton w={28} h={28} r={999} style={{ flexShrink: 0 }} />}
+          {!me && <Skeleton w={32} h={32} r={999} style={{ flexShrink: 0 }} />}
           <Skeleton w={w} h={me ? 40 : 56} r={16} />
         </div>
       ))}
@@ -586,7 +586,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <div className="chat-overline">
               {isThinking && (
                 <div className="chat-thinking">
-                  <TriplanioAvatar size="sm" />
+                  <TriplanioAvatar size="xs" />
                   <span>{t('chat.typing')}</span>
                   <span className="ai-dots"><span /><span /><span /></span>
                 </div>
