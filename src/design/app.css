@@ -1227,8 +1227,6 @@ h4,
 .dz-lift--transfer { border-left: 3px solid var(--ev-transfer); }
 .dz-lift--transfer:hover { border-left-color: var(--ev-transfer); }
 @media (prefers-reduced-motion: reduce) { .dz-lift:hover { transform: none; } }
-.dz-xbtn { background: transparent; transition: background .12s var(--ease-out); }
-.dz-xbtn:hover { background: var(--wash); }
 /* Border-only hover (list rows). */
 .dz-bord { border: 1px solid var(--line); transition: border-color .14s var(--ease-out); }
 .dz-bord:hover { border-color: var(--line-hover); }
