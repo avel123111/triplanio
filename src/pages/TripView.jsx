@@ -39,7 +39,7 @@ import MembersLens, { InviteDialog } from './MembersLens';
 import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
-import ChatLens from './ChatLens';
+import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
@@ -286,12 +286,17 @@ function LoadingScreen({ lens = 'overview', user, isPro, isDark, onToggleTheme, 
           </div>
         </aside>
         <div className="trip-content">
-          <main className="trip-screen-body">
+          {/* Chat is a full-bleed room, exactly as when it is loaded — otherwise
+              the skeleton sits in a padded body and the whole screen jumps. */}
+          <main className={'trip-screen-body' + (lens === 'chat' ? ' trip-screen-body--flush' : '')}>
             {/* Same building blocks as the loaded layout, so nothing reshuffles
-                when shell → content resolves. Lens-aware so the Overview (default)
-                doesn't flash a timeline skeleton first. */}
+                when shell → content resolves. Lens-aware: overview and chat each
+                get their OWN skeleton, instead of flashing a timeline (plus a
+                right rail the chat lens does not even have). */}
             {lens === 'overview' ? (
               <OverviewLens isLoading />
+            ) : lens === 'chat' ? (
+              <ChatLensSkeleton />
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <SkeletonTimeline />

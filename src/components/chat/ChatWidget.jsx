@@ -213,7 +213,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           <div className={'chat-bubble ' + bubbleMod + (m.__pending ? ' chat-bubble--pending' : '')}>
             <ChatMarkdown
               text={m.text || ''}
-              mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } : { color: 'var(--ai)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ }}
+              mentionStyle={null}
+              mentionClassName="chat-men"
             />
           </div>
           {isMe && lastOfRun && (

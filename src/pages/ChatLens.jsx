@@ -82,7 +82,11 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, 
         <div className={'chat-bubble ' + bubbleMod + (pending ? ' chat-bubble--pending' : '')}>
           <ChatMarkdown
             text={text}
-            mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } : { color: 'var(--ai)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ }}
+            /* Mention colour lives in CSS, not inline: it depends on the bubble
+               AND the theme (in dark the own-bubble is light blue with dark
+               text, so a hardcoded white mention was unreadable on it). */
+            mentionStyle={null}
+            mentionClassName="chat-men"
             linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
           />
         </div>
@@ -123,6 +127,19 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 // Mirrors the real stream (avatar + bubble, alternating sides) instead of a
 // centred "Loading messages…" line, so the layout doesn't jump when rows land.
+//
+// Exported as ChatLensSkeleton for the trip shell's own loading screen: while the
+// shell query runs, the lens isn't mounted yet, and without this the chat lens
+// showed a TIMELINE skeleton plus a right-rail skeleton for a rail it no longer
+// has.
+export function ChatLensSkeleton() {
+  return (
+    <div className="chat-room">
+      <div className="chat-msgs scrollbar-thin"><ChatSkeleton /></div>
+    </div>
+  );
+}
+
 function ChatSkeleton() {
   return (
     <div className="chat-msgs__in" aria-hidden>

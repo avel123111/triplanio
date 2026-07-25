@@ -2297,6 +2297,12 @@ h4,
 .chat-bubble--me { background: var(--brand); border: 1px solid transparent; color: #fff; border-bottom-right-radius: 6px; }
 [data-theme="dark"] .chat-bubble--me { color: #0c1424; }
 .chat-bubble--pending { opacity: .7; }
+/* @Triplanio inside a message. In the own-bubble it must follow the bubble's
+   ink: dark theme paints that bubble light blue with dark text, so the light
+   variant was white-on-light-blue. */
+.chat-men { font-weight: 700; color: var(--ai); }
+.chat-bubble--me .chat-men { color: rgba(255, 255, 255, .94); }
+[data-theme="dark"] .chat-bubble--me .chat-men { color: rgba(12, 20, 36, .72); }
 .chat-time { color: var(--muted); margin-top: 2px; padding-right: 2px; }
 
 /* ── Assistant reply — a DOCUMENT, not a bubble (TRIP-296) ──
