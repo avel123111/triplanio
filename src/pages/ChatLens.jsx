@@ -128,14 +128,29 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
 // Mirrors the real stream (avatar + bubble, alternating sides) instead of a
 // centred "Loading messages…" line, so the layout doesn't jump when rows land.
 //
-// Exported as ChatLensSkeleton for the trip shell's own loading screen: while the
-// shell query runs, the lens isn't mounted yet, and without this the chat lens
-// showed a TIMELINE skeleton plus a right-rail skeleton for a rail it no longer
-// has.
+// Opening the chat cold has TWO loading phases: the trip shell query (lens not
+// mounted yet) and then the chat's own messages query. ChatLensSkeleton is what
+// the shell renders, and it reproduces the FULL room geometry — header, stream,
+// composer — so the stream skeleton sits at the exact same offset in both
+// phases. Without the header row it started 60px higher and the whole screen
+// dropped when the room header appeared, which read as two different skeletons
+// of one screen.
 export function ChatLensSkeleton() {
   return (
     <div className="chat-room">
+      <div className="chat-head">
+        <div className="chat-head__id">
+          <Skeleton w={150} h={15} r={5} />
+          <Skeleton w={92} h={11} r={4} />
+        </div>
+        <Skeleton w={128} h={38} r={999} style={{ flexShrink: 0 }} />
+      </div>
       <div className="chat-msgs scrollbar-thin"><ChatSkeleton /></div>
+      <div className="chat-composer">
+        <div className="chat-composer__in">
+          <Skeleton h={56} r={20} />
+        </div>
+      </div>
     </div>
   );
 }
