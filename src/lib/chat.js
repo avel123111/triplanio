@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { withOwnerRow } from '@/lib/members';
+import { mergeIncomingMessage } from '@/lib/chat-merge';
 
 // Keyed by chat_id (not tripId): the chat widget and the chat lens are never
 // mounted together, so ONE cache per chat_id is shared between them — switching
@@ -119,17 +120,11 @@ export function useChatMessages(chatId, { enabled = true } = {}) {
   });
 }
 
-// Apply an incoming realtime INSERT to the shared message cache: de-dupe by id,
-// drop this user's optimistic ('opt-') placeholder, append. Shared by the widget
-// and the lens so the append logic lives in ONE place (TRIP-208).
+// Apply an incoming realtime INSERT to the shared message cache. Shared by the
+// widget and the lens so the append logic lives in ONE place (TRIP-208); the
+// merge rule itself is pure and unit-tested in chat-merge.js.
 export function appendChatMessage(qc, chatId, msg) {
-  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => {
-    if (old.find((m) => m.id === msg.id)) return old;
-    const filtered = old.filter((m) =>
-      !(String(m.id).startsWith('opt-') && m.user_id === msg.user_id),
-    );
-    return [...filtered, msg];
-  });
+  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => mergeIncomingMessage(old, msg));
 }
 
 // ── Fetch my read marker ──────────────────────────────────────────────────────

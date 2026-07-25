@@ -77,16 +77,19 @@ function DateDivider({ date }) {
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 
 // Human messages only — the assistant renders through ChatReply.
-function Msg({ who, isMe, text, time, grouped, avatarUrl, isDeleted }) {
+//
+// A run of consecutive messages by one author reads as one block: the NAME row
+// opens it, the avatar closes it (`lastOfRun`) so it sits next to the newest
+// bubble, and the inner corners tighten.
+function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, pending, failed, onRetry, t }) {
   const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
 
   return (
     <div className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
-      {/* Incoming: avatar in its own left column; a spacer keeps grouped bubbles aligned. */}
       {!isMe && (
-        grouped
-          ? <div className="chat-row__sp" aria-hidden />
-          : <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ flexShrink: 0 }} />
+        <div className="chat-row__sp">
+          {lastOfRun && <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ flexShrink: 0 }} />}
+        </div>
       )}
       <div className="chat-col">
         {!grouped && !isMe && (
@@ -95,14 +98,22 @@ function Msg({ who, isMe, text, time, grouped, avatarUrl, isDeleted }) {
             <span className="tm">{time}</span>
           </div>
         )}
-        <div className={'chat-bubble ' + bubbleMod}>
+        <div className={'chat-bubble ' + bubbleMod + (pending ? ' chat-bubble--pending' : '')}>
           <ChatMarkdown
             text={text}
             mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } : { color: 'var(--ai)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ }}
             linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
           />
         </div>
-        {isMe && !grouped && (
+        {failed ? (
+          <div className="chat-row__foot">
+            <span className="chat-row__err">
+              <Icon name="warning" size={12} />
+              {t('chat.not_sent')}
+            </span>
+            <Btn variant="ghost" size="sm" onClick={onRetry}>{t('sys.retry')}</Btn>
+          </div>
+        ) : isMe && !grouped && (
           <div className="chat-time">{time}</div>
         )}
       </div>
@@ -158,6 +169,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const [sending,     setSending]     = useState(false);
   const [showMention, setShowMention] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [newCount,    setNewCount]    = useState(0);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
   const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
@@ -196,11 +208,41 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   useChatInserts(chatId, (msg) => appendChatMessage(qc, chatId, msg));
 
   // ── Auto-scroll ──
+  // Only follow the stream while the reader is AT the bottom (or sent the message
+  // themselves). Scrolling on every arrival yanked the viewport away from anyone
+  // reading history; now they get a "new messages" pill instead.
+  const atBottomRef = useRef(true);
+  const lastIdRef   = useRef(null);
+
+  const onStreamScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (atBottomRef.current) setNewCount(0);
+  };
+
+  const jumpToBottom = () => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    atBottomRef.current = true;
+    setNewCount(0);
+  };
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    const last = msgs[msgs.length - 1];
+    // Keyed on the TAIL id, not on length: prepending older pages (the "load
+    // more" button) must not read as "a new message arrived".
+    if (!el || !last || last.id === lastIdRef.current) return;
+    const isFirstPaint = lastIdRef.current === null;
+    lastIdRef.current = last.id;
+    if (isFirstPaint || atBottomRef.current || last.user_id === user?.id) {
+      el.scrollTop = el.scrollHeight;
+      setNewCount(0);
+    } else {
+      setNewCount((n) => n + 1);
     }
-  }, [msgs]);
+  }, [msgs, user?.id]);
 
   // ── Mark read while viewing (and after each new message) ──
   useEffect(() => {
@@ -222,26 +264,39 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     return /@triplanio\b/i.test(last.text || '');
   }, [msgs, failedAiIds]);
 
-  // ── Send message ──
-  async function sendMessage() {
-    const content = text.trim();
-    if (!content || sending || !chatId) return;
-    setText('');
-    setShowMention(false);
-    setSending(true);
+  // Flip flags on one optimistic row in place (pending ⇄ failed).
+  function markRow(optId, patch) {
+    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) =>
+      old.map((m) => (m.id === optId ? { ...m, ...patch } : m)));
+  }
 
-    const optId = 'opt-' + Date.now();
-    const optimistic = {
-      id:             optId,
-      chat_id:        chatId,
-      trip_id:        tripId,
-      user_id:        user?.id,
-      user_full_name: myName,
-      text:           content,
-      created_at:     new Date().toISOString(),
-      __pending:      true,
-    };
-    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, optimistic]);
+  // ── Send message ──
+  // `retryOf` re-sends an existing failed row instead of creating a new one.
+  async function sendMessage(retryOf) {
+    const content = retryOf ? (retryOf.text || '') : text.trim();
+    if (!content || (!retryOf && sending) || !chatId) return;
+    if (!retryOf) {
+      setText('');
+      setShowMention(false);
+      setSending(true);
+    }
+
+    const optId = retryOf ? retryOf.id : 'opt-' + Date.now();
+    if (retryOf) {
+      markRow(optId, { __pending: true, __failed: false });
+    } else {
+      const optimistic = {
+        id:             optId,
+        chat_id:        chatId,
+        trip_id:        tripId,
+        user_id:        user?.id,
+        user_full_name: myName,
+        text:           content,
+        created_at:     new Date().toISOString(),
+        __pending:      true,
+      };
+      qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, optimistic]);
+    }
 
     const { data: created, error } = await supabase
       .from('chat_messages')
@@ -256,11 +311,14 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       .select('id')
       .single();
 
-    setSending(false);
+    if (!retryOf) setSending(false);
 
     if (error) {
       console.error('Chat send error:', error);
-      qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
+      // Keep the message ON SCREEN, marked "not sent" with a retry action. It
+      // used to be dropped from the cache while the composer had already been
+      // cleared — the user's text was simply gone, with nothing to tell them.
+      markRow(optId, { __pending: false, __failed: true });
       return;
     }
 
@@ -347,8 +405,10 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       if (!isSameDay(m.created_at, prev?.created_at)) {
         rows.push(<DateDivider key={'div-' + m.id} date={fmtMsgDate(m.created_at)} />);
       }
+      const next    = i < msgs.length - 1 ? msgs[i + 1] : null;
       const isMe    = m.user_id === user?.id;
       const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
+      const lastOfRun = !(next && isSameDay(m.created_at, next.created_at) && next.user_id === m.user_id);
       const isBot   = m.user_id === TRIPLANIO_BOT_USER_ID;
       // The assistant answers as a document, not a bubble — see ChatReply.
       if (isBot) {
@@ -374,8 +434,13 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           text={m.text || ''}
           time={fmtMsgTime(m.created_at)}
           grouped={grouped}
+          lastOfRun={lastOfRun}
           avatarUrl={author.photo}
           isDeleted={author.deleted}
+          pending={m.__pending}
+          failed={m.__failed}
+          onRetry={() => sendMessage(m)}
+          t={t}
         />,
       );
     }
@@ -448,7 +513,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       </div>
 
       {/* Tier 2 · stream */}
-      <div ref={scrollRef} className="chat-msgs scrollbar-thin">
+      <div ref={scrollRef} className="chat-msgs scrollbar-thin" onScroll={onStreamScroll}>
         {isLoading ? (
           <ChatSkeleton />
         ) : (msgsError && msgs.length === 0) ? (
@@ -469,17 +534,26 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         ) : <div className="chat-msgs__in">{messageRows}</div>}
       </div>
 
-      {/* Thinking strip */}
-      {isThinking && (
-        <div className="chat-thinking">
-          <TriplanioAvatar size="xs" />
-          <span>{t('chat.typing')}</span>
-          <span className="ai-dots"><span /><span /><span /></span>
-        </div>
-      )}
-
-      {/* Tier 3 · composer */}
+      {/* Tier 3 · composer — same column and gutters as the stream */}
       <div className="chat-composer">
+        <div className="chat-composer__in">
+        {(isThinking || newCount > 0) && (
+          <div className="chat-overline">
+            {isThinking && (
+              <div className="chat-thinking">
+                <TriplanioAvatar size="xs" />
+                <span>{t('chat.typing')}</span>
+                <span className="ai-dots"><span /><span /><span /></span>
+              </div>
+            )}
+            {newCount > 0 && (
+              <button type="button" className="chat-jump" onClick={jumpToBottom}>
+                {t('chat.new_messages')} <b>{newCount}</b>
+                <Icon name="arrowD" size={13} />
+              </button>
+            )}
+          </div>
+        )}
         {showMention && (
           <div className="chat-mention">
             <div className="chat-mention__lbl">{t('chat.mention')}</div>
@@ -529,6 +603,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           >
             <Icon name="send" size={16} /> {t('chat.send')}
           </button>
+        </div>
         </div>
       </div>
 

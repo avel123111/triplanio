@@ -602,6 +602,7 @@ h4,
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
 .chat-reply__more,    /* TRIP-296: «Показать целиком» под ответом ассистента */
+.chat-jump,           /* TRIP-296: «Новые сообщения ↓» */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
@@ -637,6 +638,7 @@ h4,
 .chat-reply__who b,   /* TRIP-296: автор ответа ассистента */
 .chat-reply__who .tm,
 .chat-time,
+.chat-row__err,       /* TRIP-296: «Не отправлено» */
 .chat-thinking,
 .chat-mention__row span,
 .chat-member__rl,
@@ -2249,10 +2251,18 @@ h4,
 .chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; }
 .chat-daydiv { text-align: center; margin: 14px 0 8px; }
 .chat-daydiv span { color: var(--muted-2); background: var(--wash); padding: 4px 12px; border-radius: var(--r-pill); }
-.chat-row { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
+.chat-row { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; align-items: flex-end; }
 .chat-row--me { justify-content: flex-end; }
 .chat-row--grouped { margin-top: 2px; }
-.chat-row__sp { width: 28px; flex: none; }
+/* Fixed gutter on every incoming row; the avatar lands in it on the LAST message
+   of a run, so it sits beside the newest bubble instead of the oldest. */
+.chat-row__sp { width: 28px; flex: none; display: flex; align-items: flex-end; }
+/* Inner corners of a run tighten; the outer side keeps the full radius. */
+.chat-row--grouped .chat-bubble--them { border-top-left-radius: 5px; }
+.chat-row--grouped .chat-bubble--me { border-top-right-radius: 5px; }
+/* Send failed — the message stays put with a retry, it is never dropped. */
+.chat-row__foot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.chat-row__err { color: var(--danger-ink); display: inline-flex; align-items: center; gap: 4px; }
 .chat-col { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; max-width: 80%; }
 .chat-row--me .chat-col { align-items: flex-end; }
 .chat-name { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; padding-left: 2px; }
@@ -2289,14 +2299,21 @@ h4,
 .chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 18px; bottom: 13px; margin: 0; z-index: 2; }
 .chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: -8px; }
 
-/* ── Thinking strip (shared) ── */
-.chat-thinking { position: relative; display: flex; align-items: center; gap: 9px; padding: 8px 16px; background: var(--ai-soft); border-top: 1px solid var(--line-2); color: var(--ai-ink); flex: none; }
-.chat-thinking::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--ai), transparent); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+/* ── Overline above the composer: thinking pill + "jump to newest" ── */
+.chat-overline { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-bottom: 6px; }
+/* Was a full-width tinted strip welded to the top of the composer; as a pill it
+   reads as status rather than as a second toolbar. */
+.chat-thinking { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 12px 0 5px; border-radius: var(--r-pill); background: var(--ai-soft); border: 1px solid var(--ai-line); color: var(--ai-ink); flex: none; }
+.chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
+.chat-jump b { color: var(--brand); }
 .chat-thinking-bar { position: relative; height: 3px; overflow: hidden; flex: none; }
 .chat-thinking-bar::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--ai), transparent); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
 
 /* ── Composer (shared) ── */
 .chat-composer { border-top: 1px solid var(--line-2); padding: 12px; position: relative; flex: none; }
+/* Lens only: the composer shares the stream's readable column. The widget has no
+   `__in`, so its popover keeps anchoring to `.chat-composer` itself. */
+.chat-composer__in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; }
 .chat-composer__row { display: flex; gap: 8px; align-items: flex-end; }
 .chat-composer__field { flex: 1; min-width: 0; position: relative; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
