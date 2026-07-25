@@ -81,7 +81,7 @@ function ChatSkeleton() {
   return (
     <div className="chat-msgs__in" aria-hidden>
       {[{ w: '58%' }, { w: '42%', me: true }, { w: '72%' }, { w: '38%', me: true }].map(({ w, me }, i) => (
-        <div key={i} className={'chat-row' + (me ? ' chat-row--me' : '')}>
+        <div key={i} className={'chat-run' + (me ? ' chat-run--me' : '')}>
           {!me && <Skeleton w={32} h={32} r={999} style={{ flexShrink: 0 }} />}
           <Skeleton w={w} h={me ? 40 : 56} r={16} />
         </div>

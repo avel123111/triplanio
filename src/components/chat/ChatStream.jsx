@@ -45,7 +45,8 @@ function isSameDay(a, b) {
 }
 
 // A run = consecutive messages from one author on one day. The NAME row opens it
-// and the avatar (or, for own messages, the timestamp) closes it.
+// (own messages get no name) and the timestamp closes it; the avatar belongs to
+// the run as a whole, not to any one message in it.
 function sameRun(a, b) {
   return !!a && !!b && a.user_id === b.user_id && isSameDay(a.created_at, b.created_at);
 }
@@ -60,49 +61,43 @@ const AI_ERROR_KEY = {
 };
 
 // ─── Msg ──────────────────────────────────────────────────────────────────────
-// Human messages only — the assistant renders through ChatReply.
-function Msg({ who, isMe, text, time, grouped, lastOfRun, avatarUrl, isDeleted, pending, failed, aiErrorKey, onRetry, t }) {
+// ONE message inside a run. The author's avatar is NOT here: it belongs to the
+// run (see ChatStream), so it can stay sticky across the whole block.
+function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErrorKey, onRetry, t }) {
   const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
   // One foot row, two reasons: the message never left (failed), or the ANSWER
   // never came (aiErrorKey). Same markup, so both read as one pattern.
   const footKey = failed ? 'chat.not_sent' : aiErrorKey;
 
   return (
-    <div className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
-      {!isMe && (
-        <div className="chat-row__sp">
-          {lastOfRun && <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} />}
+    <div className={'chat-msg' + (grouped ? ' chat-msg--grouped' : '')}>
+      {!grouped && !isMe && (
+        <div className="chat-name">
+          <b>{who}</b>
+          <span className="tm">{time}</span>
         </div>
       )}
-      <div className="chat-col">
-        {!grouped && !isMe && (
-          <div className="chat-name">
-            <b>{who}</b>
-            <span className="tm">{time}</span>
-          </div>
-        )}
-        <div className={'chat-bubble ' + bubbleMod + (pending ? ' chat-bubble--pending' : '')}>
-          <ChatMarkdown
-            text={text}
-            /* Mention colour lives in CSS: it depends on the bubble AND the theme
-               (in dark the own-bubble is light blue with dark text). */
-            mentionStyle={null}
-            mentionClassName="chat-men"
-            linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
-          />
-        </div>
-        {footKey ? (
-          <div className="chat-row__foot">
-            <span className="chat-row__err">
-              <Icon name="warning" size={12} />
-              {t(footKey)}
-            </span>
-            <Btn variant="ghost" size="sm" onClick={onRetry}>{t('sys.retry')}</Btn>
-          </div>
-        ) : isMe && lastOfRun && (
-          <div className="chat-time">{time}</div>
-        )}
+      <div className={'chat-bubble ' + bubbleMod + (pending ? ' chat-bubble--pending' : '')}>
+        <ChatMarkdown
+          text={text}
+          /* Mention colour lives in CSS: it depends on the bubble AND the theme
+             (in dark the own-bubble is light blue with dark text). */
+          mentionStyle={null}
+          mentionClassName="chat-men"
+          linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
+        />
       </div>
+      {footKey ? (
+        <div className="chat-msg__foot">
+          <span className="chat-msg__err">
+            <Icon name="warning" size={12} />
+            {t(footKey)}
+          </span>
+          <Btn variant="ghost" size="sm" onClick={onRetry}>{t('sys.retry')}</Btn>
+        </div>
+      ) : isMe && lastOfRun && (
+        <div className="chat-time">{time}</div>
+      )}
     </div>
   );
 }
@@ -115,25 +110,33 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
   const { t } = useI18n();
   const rows = [];
 
-  for (let i = 0; i < messages.length; i++) {
-    const m = messages[i];
-    const prev = i > 0 ? messages[i - 1] : null;
+  // Walk by RUN, not by message: the avatar is drawn once per run and stays
+  // sticky beside it, so the messages of one author have to share a wrapper.
+  let i = 0;
+  while (i < messages.length) {
+    const first = messages[i];
 
-    if (withDateDividers && !isSameDay(m.created_at, prev?.created_at)) {
-      rows.push(<div key={'div-' + m.id} className="chat-daydiv"><span>{fmtDate(m.created_at)}</span></div>);
+    if (withDateDividers && !isSameDay(first.created_at, messages[i - 1]?.created_at)) {
+      rows.push(<div key={'div-' + first.id} className="chat-daydiv"><span>{fmtDate(first.created_at)}</span></div>);
     }
 
     // The assistant answers as a document, not a bubble.
-    if (m.user_id === TRIPLANIO_BOT_USER_ID) {
-      rows.push(<ChatReply key={m.id} text={m.text || ''} time={fmtTime(m.created_at)} onAsk={onAsk} />);
+    if (first.user_id === TRIPLANIO_BOT_USER_ID) {
+      rows.push(<ChatReply key={first.id} text={first.text || ''} time={fmtTime(first.created_at)} onAsk={onAsk} />);
+      i += 1;
       continue;
     }
+
+    let end = i + 1;
+    while (end < messages.length && sameRun(first, messages[end])) end += 1;
+    const run = messages.slice(i, end);
+    const isMe = first.user_id === selfUser?.id;
 
     // Shared resolver: falls back to the row's user_full_name snapshot, so an
     // author who has LEFT the trip still shows their name.
     const author = resolveAuthor({
-      userId: m.user_id,
-      nameSnapshot: m.user_full_name,
+      userId: first.user_id,
+      nameSnapshot: first.user_full_name,
       profiles,
       members,
       selfUser,
@@ -141,23 +144,33 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
     });
 
     rows.push(
-      <Msg
-        key={m.id}
-        who={author.name}
-        isMe={m.user_id === selfUser?.id}
-        text={m.text || ''}
-        time={fmtTime(m.created_at)}
-        grouped={sameRun(prev, m)}
-        lastOfRun={!sameRun(m, messages[i + 1])}
-        avatarUrl={author.photo}
-        isDeleted={author.deleted}
-        pending={m.__pending}
-        failed={m.__failed}
-        aiErrorKey={aiRunFailed(m) ? (AI_ERROR_KEY[m.ai_error] || 'chat.ai_failed') : null}
-        onRetry={onRetry ? () => onRetry(m) : undefined}
-        t={t}
-      />,
+      <div key={'run-' + first.id} className={'chat-run' + (isMe ? ' chat-run--me' : '')}>
+        {!isMe && (
+          <div className="chat-run__av">
+            <Avatar name={author.name} photo={author.photo || ''} deleted={author.deleted} />
+          </div>
+        )}
+        <div className="chat-run__col">
+          {run.map((m, k) => (
+            <Msg
+              key={m.id}
+              who={author.name}
+              isMe={isMe}
+              text={m.text || ''}
+              time={fmtTime(m.created_at)}
+              grouped={k > 0}
+              lastOfRun={k === run.length - 1}
+              pending={m.__pending}
+              failed={m.__failed}
+              aiErrorKey={aiRunFailed(m) ? (AI_ERROR_KEY[m.ai_error] || 'chat.ai_failed') : null}
+              onRetry={onRetry ? () => onRetry(m) : undefined}
+              t={t}
+            />
+          ))}
+        </div>
+      </div>,
     );
+    i = end;
   }
 
   return rows;

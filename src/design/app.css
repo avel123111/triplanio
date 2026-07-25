@@ -640,7 +640,7 @@ h4,
 .chat-name .tm,
 .chat-reply__who .tm,
 .chat-time,
-.chat-row__err,       /* TRIP-296: «Не отправлено» */
+.chat-msg__err,       /* TRIP-296: «Не отправлено» / ассистент не ответил */
 .chat-composer__hint, /* TRIP-296: подсказка Enter / Shift+Enter */
 .chat-member__rl,
 .dock__count,
@@ -2269,21 +2269,29 @@ h4,
 .chat-daydiv:first-child { margin-top: 0; }
 .chat-daydiv::before, .chat-daydiv::after { content: ""; height: 1px; flex: 1; background: var(--line); }
 .chat-daydiv span { color: var(--muted-2); flex: none; }
-.chat-row { display: flex; gap: 12px; margin-top: 16px; justify-content: flex-start; align-items: flex-end; }
-.chat-row--me { justify-content: flex-end; }
-.chat-row--grouped { margin-top: 4px; }
-/* Fixed gutter on every incoming row; the avatar lands in it on the LAST message
-   of a run, so it sits beside the newest bubble instead of the oldest. */
-.chat-row__sp { width: 32px; flex: none; display: flex; align-items: flex-end; }
-.chat-row__sp .avatar { width: 32px; height: 32px; }
+/* A RUN = consecutive messages from one author on one day, laid out as ONE
+   block: the avatar column on the left, the messages on the right. The avatar
+   belongs to the run rather than to a single row, which is what lets it be
+   sticky — it starts at the author's name and rides the top edge down the whole
+   run while you scroll. Sticky is bounded by `.chat-run`, so it can never leave
+   its own author's block. */
+.chat-run { display: flex; gap: 12px; margin-top: 16px; justify-content: flex-start; align-items: flex-start; }
+.chat-run--me { justify-content: flex-end; }
+.chat-run__av { width: 32px; flex: none; position: sticky; top: 8px; align-self: flex-start; }
+.chat-run__av .avatar { width: 32px; height: 32px; }
+.chat-run__col { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: min(560px, 78%); }
+/* ONE message inside the run: name row (first of an incoming run), bubble, and
+   then either its time or the failure foot. */
+.chat-msg { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 5px; }
+.chat-run--me .chat-run__col,
+.chat-run--me .chat-msg { align-items: flex-end; }
 /* Inner corners of a run tighten; the outer side keeps the full radius. */
-.chat-row--grouped .chat-bubble--them { border-top-left-radius: 6px; }
-.chat-row--grouped .chat-bubble--me { border-top-right-radius: 6px; }
-/* Send failed — the message stays put with a retry, it is never dropped. */
-.chat-row__foot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.chat-row__err { color: var(--danger-ink); display: inline-flex; align-items: center; gap: 4px; }
-.chat-col { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; max-width: min(560px, 78%); gap: 5px; }
-.chat-row--me .chat-col { align-items: flex-end; }
+.chat-msg--grouped .chat-bubble--them { border-top-left-radius: 6px; }
+.chat-msg--grouped .chat-bubble--me { border-top-right-radius: 6px; }
+/* Send failed, or the assistant never answered — the message stays put with a
+   retry, it is never dropped. */
+.chat-msg__foot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.chat-msg__err { color: var(--danger-ink); display: inline-flex; align-items: center; gap: 4px; }
 .chat-name { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; padding-left: 2px; }
 .chat-name b { color: var(--ink); }
 .chat-name .tm { color: var(--muted); }
@@ -2336,7 +2344,10 @@ h4,
 .chat-reply__acts .btn:hover { color: var(--ink); }
 
 /* ── Overline above the composer: thinking pill + "jump to newest" ── */
-.chat-overline { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-bottom: 6px; }
+/* The pills used to sit flush against the composer's top border, which cut
+   through them. Only the TOP margin is set here: the matching 8px below already
+   comes from `.chat-composer__in`'s own `gap`. */
+.chat-overline { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-top: 8px; }
 /* Was a full-width tinted strip welded to the top of the composer; as a pill it
    reads as status rather than as a second toolbar. */
 .chat-thinking { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px 0 5px; border-radius: var(--r-pill); background: var(--ai-soft); border: 1px solid var(--ai-line); color: var(--ai-ink); flex: none; }
@@ -2452,9 +2463,10 @@ h4,
   .chat-members-btn { height: 34px; padding: 0 5px; }
   /* Breathing room above the composer — the stream used to end flush against it. */
   .chat-room .chat-msgs { padding: 16px 12px 12px; }
-  .chat-col { max-width: 86%; }
-  .chat-row__sp { width: 28px; }
-  .chat-row__sp .avatar { width: 28px; height: 28px; }
+  .chat-run__col { max-width: 86%; }
+  /* The gutter keeps its 32px on phones: the assistant's avatar now sits in the
+     SAME gutter (ChatReply) and is sized inside the component, so shrinking the
+     box alone left its disc hanging out of it. */
   .chat-reply { margin-top: 24px; }
   .chat-reply__card { padding: 12px 16px; }
   .chat-reply__card.is-clamped .chat-reply__more { left: 16px; }
@@ -2509,7 +2521,7 @@ h4,
 .dock-panel__id span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dock-panel__dock { flex: none; padding: 10px 12px 12px; border-top: 1px solid var(--line-2); }
 .dock-panel .chat-msgs { padding: 8px 12px 12px; }
-.dock-panel .chat-col { max-width: 86%; }
+.dock-panel .chat-run__col { max-width: 86%; }
 .dock-panel .chat-reply { margin-top: 20px; }
 .dock-panel .chat-reply__card { padding: 12px 14px 12px 17px; }
 /* The composer already carries its own surface, so inside the widget dock it

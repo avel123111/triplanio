@@ -14,8 +14,8 @@ import TriplanioAvatar from './TriplanioAvatar';
  *
  * Owns its own text: the shell only receives finished messages via onSend.
  *
- * Ref API: insertMention() — the lens's "Ask again" action seeds the field from
- * outside.
+ * Ref API: insertMention() — the "Ask again" action of an assistant answer seeds
+ * the field from outside, on both surfaces.
  *
  * Props:
  *   onSend(text)  send a non-empty message
@@ -23,7 +23,7 @@ import TriplanioAvatar from './TriplanioAvatar';
  *   placeholder   field placeholder
  *   isThinking    show the "Triplanio печатает" pill above the field
  *   jump          optional node next to it ("new messages" pill in the lens)
- *   withHint      show the Enter / Shift+Enter pills (desktop lens only)
+ *   withHint      show the Shift+Enter / Enter pills (desktop lens only)
  *   maxHeight     auto-grow ceiling in px
  */
 const ChatComposer = forwardRef(function ChatComposer(
@@ -149,7 +149,16 @@ const ChatComposer = forwardRef(function ChatComposer(
                 // Popup on a trailing @token at the start or after whitespace.
                 setShowMention(/(^|\s)@(\w*)$/.test(v));
               }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+              /* Shift+Enter sends, plain Enter breaks the line — ONE rule on
+                 desktop and on a phone. A virtual keyboard's Enter is
+                 indistinguishable from a physical one (same `key`, same
+                 `keyCode`), so "Enter sends, but only on desktop" would have to
+                 branch on the input device. On a phone the send button is the
+                 way out, and `enterKeyHint` labels that key as a line break
+                 instead of "Go" — the keyboard must not promise an action the
+                 field won't do. */
+              onKeyDown={(e) => { if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); send(); } }}
+              enterKeyHint="enter"
               style={{ maxHeight }}
             />
           </div>
@@ -171,9 +180,9 @@ const ChatComposer = forwardRef(function ChatComposer(
         {withHint && (
           /* Keys render as <kbd> pills; "Enter"/"Shift" are key names, not copy. */
           <div className="chat-composer__hint">
-            <span><kbd>Enter</kbd> {t('chat.hint_send')}</span> {/* i18n-ignore: key name */}
+            <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_send')}</span> {/* i18n-ignore: key names */}
             <span>·</span>
-            <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_newline')}</span> {/* i18n-ignore: key names */}
+            <span><kbd>Enter</kbd> {t('chat.hint_newline')}</span> {/* i18n-ignore: key name */}
           </div>
         )}
       </div>
