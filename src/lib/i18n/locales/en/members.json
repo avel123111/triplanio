@@ -24,7 +24,6 @@
   "offline_badge": "offline",
   "offline_hint": "Offline members appear in the list but never get notifications. You can invite them by email later.",
   "offline_name": "Name",
-  "offline_name_placeholder": "e.g. Mary",
   "pending": "pending",
   "promote": "Invite by email",
   "promote_subtitle": "Convert to online member",

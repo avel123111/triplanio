@@ -23,7 +23,6 @@
   "booking_ref_ph": "Например, ABC123",
   "booking_url": "Ссылка на бронирование",
   "carrier": "Перевозчик",
-  "carrier_ph": "Например, Lufthansa, РЖД…",
   "currency": "Валюта",
   "departure": "Отправление",
   "departure_with_tz": "Отправление ({tz})",

@@ -23,7 +23,6 @@
   "booking_ref_ph": "p. ej. ABC123",
   "booking_url": "Enlace de la reserva",
   "carrier": "Operador",
-  "carrier_ph": "p. ej. Iberia, Renfe…",
   "currency": "Moneda",
   "departure": "Salida",
   "departure_with_tz": "Salida ({tz})",
