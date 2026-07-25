@@ -15,9 +15,8 @@
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
-import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
-  Edit2, Trash2, ExternalLink, MapPin, X,
+  Edit2, Trash2, X,
 } from 'lucide-react';
 import {
   useEventViewModel, useEntityDocs, EventViewSections,
@@ -76,7 +75,7 @@ export default function EventModal(props) {
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, entity, canEdit);
 
   if (!entity || !kind || !vm) return null;
-  const { theme, themeLabel, title, priceText, bookingUrl, mapAddress, platformLabel, platformLogo } = vm;
+  const { theme, themeLabel, title, priceText } = vm;
   const eyebrow = getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel);
 
   return (
@@ -120,47 +119,11 @@ export default function EventModal(props) {
               </div>
             </div>
           ) : (
-            <>
-              {(bookingUrl || mapAddress) && (
-                <div className="ev-actions-top">
-                  {bookingUrl && (
-                    <a
-                      href={normalizeExternalUrl(bookingUrl)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="bk-link"
-                    >
-                      {platformLogo ? (
-                        <span className="pb" style={{ background: 'var(--surface-2)', overflow: 'hidden' }}>
-                          <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </span>
-                      ) : platformLabel ? (
-                        <span className="pb" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}>
-                          {(platformLabel || '?').charAt(0).toUpperCase()}
-                        </span>
-                      ) : null}
-                      {t('event.view_booking')}
-                      <ExternalLink />
-                    </a>
-                  )}
-                  {mapAddress && (
-                    <button
-                      type="button"
-                      className="bk-link"
-                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
-                    >
-                      <MapPin />
-                      {t('service.car_view_on_map')}
-                    </button>
-                  )}
-                </div>
-              )}
-              <EventViewSections
-                kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
-                accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
-                externalWarning={warning}
-              />
-            </>
+            <EventViewSections
+              kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
+              accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
+              externalWarning={warning}
+            />
           )}
         </div>
 
