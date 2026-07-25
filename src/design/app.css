@@ -600,7 +600,8 @@ h4,
 .visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
 .bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
-.chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в рейле чата) */
+.chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
+.chat-reply__more,    /* TRIP-296: «Показать целиком» под ответом ассистента */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
@@ -633,6 +634,8 @@ h4,
 .chat-head__sub,   /* TRIP-296: подзаголовок шапки комнаты → Meta+Golos */
 .chat-name b,
 .chat-name .tm,
+.chat-reply__who b,   /* TRIP-296: автор ответа ассистента */
+.chat-reply__who .tm,
 .chat-time,
 .chat-thinking,
 .chat-mention__row span,
@@ -1267,6 +1270,7 @@ h4,
 .invite,                   /* баннер-приглашение */
 .acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
+.chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
 .pl-lastcard {             /* карточка последней брони (планнер) */
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
@@ -2258,9 +2262,32 @@ h4,
 .chat-bubble { padding: 9px 13px; border-radius: 16px; word-break: break-word; }
 .chat-bubble--them { background: var(--wash); color: var(--ink); border-bottom-left-radius: 5px; }
 .chat-bubble--me { background: var(--brand); color: #fff; border-bottom-right-radius: 5px; }
-.chat-bubble--ai { background: var(--ai-gradient-soft); color: var(--ink); border: 1px solid var(--ai-line); border-bottom-left-radius: 5px; }
 .chat-bubble--pending { opacity: .7; }
 .chat-time { color: var(--muted); margin-top: 2px; padding-right: 2px; }
+
+/* ── Assistant reply — a DOCUMENT, not a bubble (TRIP-296) ──
+   An assistant answer is routinely 40-80 lines of headings + lists. In a tinted
+   bubble (`.chat-bubble--ai`, removed) that reads as a wall of colour, so the
+   answer now sits in a full-width panel on the canonical `.surface-panel` skin,
+   marked as AI by a gradient spine rather than a fill. Long answers clamp with a
+   fade and expand on demand. */
+.chat-reply { display: flex; gap: 8px; margin-top: 26px; }
+.chat-reply__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.chat-reply__who { display: flex; align-items: center; gap: 8px; min-height: 22px; }
+.chat-reply__who b { color: var(--ai); }
+.chat-reply__who .tm { color: var(--muted); }
+.chat-reply__card { position: relative; padding: 14px 18px; overflow: hidden; }
+.chat-reply__card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ai-gradient); }
+.chat-reply__card.is-clamped { padding-bottom: 46px; }
+.chat-reply__card.is-clamped .chat-reply__text { max-height: 264px; overflow: hidden; }
+.chat-reply__card.is-clamped::after {
+  content: ""; position: absolute; left: 3px; right: 0; bottom: 0; height: 100px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--surface) 62%);
+}
+.chat-reply__more { color: var(--ai-ink); background: none; border: 0; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
+.chat-reply__more:hover { text-decoration: underline; }
+.chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 18px; bottom: 13px; margin: 0; z-index: 2; }
+.chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: -8px; }
 
 /* ── Thinking strip (shared) ── */
 .chat-thinking { position: relative; display: flex; align-items: center; gap: 9px; padding: 8px 16px; background: var(--ai-soft); border-top: 1px solid var(--line-2); color: var(--ai-ink); flex: none; }

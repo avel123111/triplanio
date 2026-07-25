@@ -9,7 +9,7 @@
  *   members - array of trip member rows (for @mention list)
  *   myRole  - string
  */
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
@@ -22,6 +22,7 @@ import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
+import ChatReply from '@/components/chat/ChatReply';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { Icon } from '../design/icons';
@@ -75,8 +76,9 @@ function DateDivider({ date }) {
 
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 
-function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl, isDeleted }) {
-  const bubbleMod = isMe ? 'chat-bubble--me' : isAi ? 'chat-bubble--ai' : 'chat-bubble--them';
+// Human messages only — the assistant renders through ChatReply.
+function Msg({ who, isMe, text, time, grouped, avatarUrl, isDeleted }) {
+  const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
 
   return (
     <div className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
@@ -84,12 +86,12 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl, isDeleted }) {
       {!isMe && (
         grouped
           ? <div className="chat-row__sp" aria-hidden />
-          : (isAi ? <TriplanioAvatar size="sm" /> : <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ flexShrink: 0 }} />)
+          : <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ flexShrink: 0 }} />
       )}
       <div className="chat-col">
         {!grouped && !isMe && (
           <div className="chat-name">
-            <b className={isAi ? 'ai' : ''}>{who}</b>
+            <b>{who}</b>
             <span className="tm">{time}</span>
           </div>
         )}
@@ -290,6 +292,14 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   }
 
+  // "Ask again" under an assistant answer: seed the composer with the mention and
+  // focus it, so the follow-up question is one keystroke away. Stable identity —
+  // it is a dependency of the memoized message list.
+  const askMore = useCallback(() => {
+    setText((prev) => (/@triplanio\b/i.test(prev) ? prev : `@${TRIPLANIO_BOT_NAME} ${prev}`.trimEnd() + ' '));
+    taRef.current?.focus();
+  }, []);
+
   function handleTextChange(e) {
     const v = e.target.value;
     setText(v);
@@ -340,36 +350,38 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       const isMe    = m.user_id === user?.id;
       const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
       const isBot   = m.user_id === TRIPLANIO_BOT_USER_ID;
+      // The assistant answers as a document, not a bubble — see ChatReply.
+      if (isBot) {
+        rows.push(<ChatReply key={m.id} text={m.text || ''} time={fmtMsgTime(m.created_at)} onAsk={askMore} />);
+        continue;
+      }
       // Author identity via the shared resolver: falls back to the message's
       // user_full_name snapshot so a member who has LEFT the trip still shows
       // their name (and a gradient-initials avatar) on past messages.
-      const author = isBot
-        ? null
-        : resolveAuthor({
-            userId: m.user_id,
-            nameSnapshot: m.user_full_name,
-            profiles,
-            members,
-            selfUser: user,
-            deletedLabel: t('common.deleted_user'),
-          });
+      const author = resolveAuthor({
+        userId: m.user_id,
+        nameSnapshot: m.user_full_name,
+        profiles,
+        members,
+        selfUser: user,
+        deletedLabel: t('common.deleted_user'),
+      });
       rows.push(
         <Msg
           key={m.id}
-          who={isBot ? TRIPLANIO_BOT_NAME : author.name}
+          who={author.name}
           isMe={isMe}
-          isAi={isBot}
           text={m.text || ''}
           time={fmtMsgTime(m.created_at)}
           grouped={grouped}
-          avatarUrl={isBot ? '' : author.photo}
-          isDeleted={isBot ? false : author.deleted}
+          avatarUrl={author.photo}
+          isDeleted={author.deleted}
         />,
       );
     }
     return rows;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [msgs, profiles, members, user?.id, t]);
+  }, [msgs, profiles, members, user?.id, t, askMore]);
 
   // Chat participants = owner + active admins/viewers (excl. offline/pending).
   const activeMembers = (() => {

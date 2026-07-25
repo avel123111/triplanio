@@ -78,7 +78,10 @@ export default function ChatMarkdown({
     li:         ({ children }) => <li className="cm-li">{rep(children)}</li>,
     h1:         ({ children }) => <div className="cm-h">{rep(children)}</div>,
     h2:         ({ children }) => <div className="cm-h">{rep(children)}</div>,
+    // h3/h4 share a level: the assistant writes its section headings as h4, which
+    // previously fell through to a raw <h4> outside the typography canons.
     h3:         ({ children }) => <div className="cm-h3">{rep(children)}</div>,
+    h4:         ({ children }) => <div className="cm-h3">{rep(children)}</div>,
     blockquote: ({ children }) => (
       <blockquote className="cm-quote">{rep(children)}</blockquote>
     ),
