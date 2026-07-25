@@ -7,11 +7,10 @@ import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
  * if available, otherwise falls back to a branded robot SVG on a gradient circle.
  *
  * Props:
- *   - size:      'sm' | 'md' | 'lg'  (default 'md')
- *   - ring:      boolean - adds a soft ring
- *   - tripId:    trip context for the avatar lookup
- *   - avatarUrl: optional pre-resolved URL - skips the lookup
- *   - className: extra classes for the outer element
+ *   - size: 'xs' | 'sm' | 'md' | 'lg'  (default 'md')
+ *
+ * `ring`, `className`, `tripId` and `avatarUrl` were dropped — no call site ever
+ * passed them, so the pre-resolved-URL branch of the lookup was unreachable too.
  */
 // Mirrors the chat design's avatar scale — chat is this component's only
 // consumer, so the two scales are kept identical on purpose.
@@ -33,25 +32,11 @@ const SVG_SIZE = {
   lg: 22,
 };
 
-function useBotAvatar(tripId, providedUrl) {
-  const shouldFetch = providedUrl == null;
-  const profiles = useUserProfiles(shouldFetch ? [TRIPLANIO_BOT_USER_ID] : [], tripId);
-  if (!shouldFetch) return providedUrl;
-  return profiles?.[TRIPLANIO_BOT_USER_ID]?.avatar_url || '';
-}
-
-export default function TriplanioAvatar({
-  size = 'md',
-  ring = false,
-  tripId,
-  avatarUrl: providedAvatarUrl,
-  className = '',
-}) {
-  const avatarUrl = useBotAvatar(tripId, providedAvatarUrl);
+export default function TriplanioAvatar({ size = 'md' }) {
+  const profiles  = useUserProfiles([TRIPLANIO_BOT_USER_ID]);
+  const avatarUrl = profiles?.[TRIPLANIO_BOT_USER_ID]?.avatar_url || '';
   const px        = SIZE_PX[size] || SIZE_PX.md;
   const svgPx     = SVG_SIZE[size] || SVG_SIZE.md;
-  // ring-2 ring-primary/30 → 2px soft primary ring via box-shadow
-  const ringStyle = ring ? { boxShadow: '0 0 0 2px var(--primary-ring)' } : null;
   const baseStyle = { width: px, height: px, borderRadius: '9999px', flex: 'none' };
 
   if (avatarUrl) {
@@ -59,16 +44,14 @@ export default function TriplanioAvatar({
       <img
         src={avatarUrl}
         alt="Triplanio"
-        className={className}
-        style={{ ...baseStyle, objectFit: 'cover', ...ringStyle }}
+        style={{ ...baseStyle, objectFit: 'cover' }}
       />
     );
   }
 
   return (
     <div
-      className={className}
-      style={{ ...baseStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--assistant-grad)', ...ringStyle }}
+      style={{ ...baseStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--assistant-grad)' }}
       aria-label="Triplanio"
     >
       <svg width={svgPx} height={svgPx} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

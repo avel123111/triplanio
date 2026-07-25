@@ -1,5 +1,7 @@
 import { pluralCategory } from '@/lib/i18n/format';
-// Helpers for the trip chat: queries, read-markers, unread counters.
+// Helpers for the trip chat: chat_id lookup, message paging, unread counter and
+// the shared realtime channel. Read markers are written inline by the lens and
+// the widget (a plain upsert), so this module no longer wraps them.
 //
 // All queries pivot on chat_id (from the chats table - one "group" chat per
 // trip) and on user_id (uuid) rather than user_email.
@@ -15,9 +17,9 @@ import { mergeIncomingMessage } from '@/lib/chat-merge';
 // mounted together, so ONE cache per chat_id is shared between them — switching
 // lenses reuses it instead of refetching (TRIP-208: was 3 separate caches).
 export const CHAT_MESSAGES_KEY = (chatId) => ['chat-msgs', chatId];
-export const CHAT_READ_KEY     = (tripId, userId) => ['chat-read', tripId, userId];
-export const CHAT_ID_KEY       = (tripId) => ['chat-id', tripId];
-export const CHAT_UNREAD_KEY   = (tripId, userId) => ['chat-unread', tripId, userId];
+// Not exported: only this module builds these keys.
+const CHAT_ID_KEY     = (tripId) => ['chat-id', tripId];
+const CHAT_UNREAD_KEY = (tripId, userId) => ['chat-unread', tripId, userId];
 
 // ── Resolve group chat id from tripId ─────────────────────────────────────────
 
@@ -56,37 +58,6 @@ export function chatParticipants(members = [], ownerId = '') {
 export function pluralPeople(n, t, lang) {
   const cat = pluralCategory(n, lang);
   return `${n} ${t(`chat.people_${cat}`)}`;
-}
-
-// ── Timestamp helpers ─────────────────────────────────────────────────────────
-
-function parseUtcMs(s) {
-  if (!s) return 0;
-  if (s instanceof Date) return s.getTime();
-  let str = String(s);
-  if (!/[zZ]$/.test(str) && !/[+-]\d{2}:?\d{2}$/.test(str)) str += 'Z';
-  const t = new Date(str).getTime();
-  return Number.isFinite(t) ? t : 0;
-}
-
-function toUtcIso(s) {
-  if (!s) return new Date().toISOString();
-  const ms = parseUtcMs(s);
-  return ms ? new Date(ms).toISOString() : new Date().toISOString();
-}
-
-// ── Count unread (used by tests / local computation) ─────────────────────────
-
-export function countUnread(messages, lastReadAt, myUserId) {
-  if (!Array.isArray(messages) || messages.length === 0) return 0;
-  const cutoff = parseUtcMs(lastReadAt);
-  let n = 0;
-  for (const m of messages) {
-    if (m.user_id === myUserId) continue;
-    const t = parseUtcMs(m.created_at);
-    if (t > cutoff) n += 1;
-  }
-  return n;
 }
 
 // ── Fetch messages ────────────────────────────────────────────────────────────
@@ -154,27 +125,6 @@ export function prependChatMessages(qc, chatId, older) {
   });
 }
 
-// ── Fetch my read marker ──────────────────────────────────────────────────────
-
-export function useMyChatRead(tripId, { enabled = true } = {}) {
-  const { user } = useAuth();
-  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && !!user?.id && enabled });
-  return useQuery({
-    queryKey: CHAT_READ_KEY(tripId, user?.id),
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('chat_reads')
-        .select('*')
-        .eq('chat_id', chatId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      return data || null;
-    },
-    enabled: !!chatId && !!user?.id && enabled,
-    refetchOnMount: 'always',
-  });
-}
-
 // ── Unread count ──────────────────────────────────────────────────────────────
 //
 // Direct COUNT-query against the DB - independent of any chat-messages cache.
@@ -229,7 +179,7 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
 // sharing a name - which no longer happens).
 const chatInsertRegistry = new Map(); // chatId -> { channel, subscribers:Set<fn> }
 
-export function subscribeChatInserts(chatId, onInsert) {
+function subscribeChatInserts(chatId, onInsert) {
   if (!chatId) return () => {};
   let entry = chatInsertRegistry.get(chatId);
   if (!entry) {
@@ -281,7 +231,7 @@ export function useChatInserts(chatId, onInsert, { enabled = true } = {}) {
 // opens two channels). It does NOT touch the message cache: the widget/lens each
 // append to the shared cache via their own useChatInserts, so the badge only
 // needs to invalidate unread.
-export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
+function useChatLiveSubscription(tripId, { enabled = true } = {}) {
   const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
   const qc = useQueryClient();
   useChatInserts(chatId, () => {
@@ -289,21 +239,3 @@ export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
   }, { enabled: !!chatId && enabled });
 }
 
-// ── Mark read ─────────────────────────────────────────────────────────────────
-
-export async function markChatRead(tripId, userId, lastReadAt) {
-  const ts = toUtcIso(lastReadAt);
-  const { data: chat } = await supabase
-    .from('chats').select('id').eq('trip_id', tripId).eq('type', 'group').single();
-  if (!chat?.id || !userId) return null;
-  const { data, error } = await supabase
-    .from('chat_reads')
-    .upsert(
-      { chat_id: chat.id, user_id: userId, trip_id: tripId, last_read_at: ts },
-      { onConflict: 'chat_id,user_id' },
-    )
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
