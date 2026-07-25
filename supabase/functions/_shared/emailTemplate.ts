@@ -217,7 +217,7 @@ export function renderInviteTemplate(
   };
 }
 
-export function renderInviteEmail(
+function renderInviteEmail(
   lang: string | null | undefined,
   params: { inviter: string; title: string; role: string; recipientEmail: string; appUrl: string },
 ): { subject: string; body: string; brand: string } {

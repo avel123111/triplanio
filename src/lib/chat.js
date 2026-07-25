@@ -103,6 +103,14 @@ export function useChatMessages(chatId, { enabled = true } = {}) {
 // returned) to the shared message cache. Shared by the widget and the lens so
 // the merge lives in ONE place (TRIP-208); the rule itself is pure and
 // unit-tested in chat-merge.js.
+// A failed assistant run is NOT reported from here. The browser looked like the
+// right place (it sees every terminal status and carries the right Sentry
+// environment), but the alert would fire once PER OPEN TAB — every participant
+// watching the chat reports the same timeout. Alerting belongs where the state
+// changes exactly once: the pg_cron watchdog closes a hung run and posts the
+// event itself. The other outcomes are already covered — a webhook failure is
+// the edge function's own 502, a failure inside n8n is reported by n8n, and a
+// Pro/rate refusal is the system working as intended.
 export function applyChatRow(qc, chatId, msg) {
   qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => mergeIncomingMessage(old, msg));
 }

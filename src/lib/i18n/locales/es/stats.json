@@ -41,9 +41,7 @@
   "list_empty_countries": "Aún no hay países visitados.",
   "map_fullscreen": "Pantalla completa",
   "map_globe": "Mapa o globo",
-  "map_hint": "toca un país o pin",
   "map_loading": "Cargando mapa…",
-  "map_unavailable": "Mapa no disponible",
   "n_cities": "ciudades: {n}",
   "nav": "Estadística",
   "next_empty_sub": "Aparecerá cuando crees tu primer viaje",
@@ -95,6 +93,5 @@
   "world_countries_visited": "países del mundo visitados",
   "world_explored": "Mundo explorado",
   "world_label": "mundo",
-  "world_of": "{visited} de {total} países",
   "year_all": "Todo el tiempo"
 }

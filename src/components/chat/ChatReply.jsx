@@ -53,7 +53,11 @@ export default function ChatReply({ text, time, onAsk }) {
 
   return (
     <div className="chat-reply">
-      <TriplanioAvatar />
+      {/* Same rule as a human run: the avatar starts at the name and rides the
+          top edge down a long answer instead of scrolling out of sight. */}
+      <div className="chat-run__av">
+        <TriplanioAvatar />
+      </div>
       <div className="chat-reply__body">
         <div className="chat-reply__who">
           <b>{TRIPLANIO_BOT_NAME}</b>
