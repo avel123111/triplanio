@@ -39,7 +39,7 @@ import MembersLens, { InviteDialog } from './MembersLens';
 import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
-import ChatLens from './ChatLens';
+import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
@@ -286,12 +286,17 @@ function LoadingScreen({ lens = 'overview', user, isPro, isDark, onToggleTheme, 
           </div>
         </aside>
         <div className="trip-content">
-          <main className="trip-screen-body">
+          {/* Chat is a full-bleed room, exactly as when it is loaded — otherwise
+              the skeleton sits in a padded body and the whole screen jumps. */}
+          <main className={'trip-screen-body' + (lens === 'chat' ? ' trip-screen-body--flush' : '')}>
             {/* Same building blocks as the loaded layout, so nothing reshuffles
-                when shell → content resolves. Lens-aware so the Overview (default)
-                doesn't flash a timeline skeleton first. */}
+                when shell → content resolves. Lens-aware: overview and chat each
+                get their OWN skeleton, instead of flashing a timeline (plus a
+                right rail the chat lens does not even have). */}
             {lens === 'overview' ? (
               <OverviewLens isLoading />
+            ) : lens === 'chat' ? (
+              <ChatLensSkeleton />
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <SkeletonTimeline />
@@ -1038,11 +1043,12 @@ export default function TripView() {
   // Trip actions (Share / Edit / Settings / Members) all live in the left trip
   // menu (TripSidebar); Copy trip moved into the Settings lens. The header
   // carries no duplicate action buttons.
-  // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own
-  // internal scroll. Everything else = the default scrolling body.
+  // Map and chat are both edge-to-edge, no-scroll surfaces that own their inner
+  // scrolling (TRIP-296: the chat lens became a full-bleed room, so its former
+  // `--chat` modifier was an exact duplicate of `--flush`). Everything else =
+  // the default scrolling body.
   const screenBodyClass = 'trip-screen-body'
-    + (shownLens === 'map' ? ' trip-screen-body--flush' : '')
-    + (shownLens === 'chat' ? ' trip-screen-body--chat' : '');
+    + (shownLens === 'map' || shownLens === 'chat' ? ' trip-screen-body--flush' : '');
 
   return (
     <div className="trip-shell">

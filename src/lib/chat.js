@@ -1,5 +1,7 @@
 import { pluralCategory } from '@/lib/i18n/format';
-// Helpers for the trip chat: queries, read-markers, unread counters.
+// Helpers for the trip chat: chat_id lookup, message paging, unread counter and
+// the shared realtime channel. Read markers are written inline by the lens and
+// the widget (a plain upsert), so this module no longer wraps them.
 //
 // All queries pivot on chat_id (from the chats table - one "group" chat per
 // trip) and on user_id (uuid) rather than user_email.
@@ -7,16 +9,18 @@ import { pluralCategory } from '@/lib/i18n/format';
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { withOwnerRow } from '@/lib/members';
+import { mergeIncomingMessage } from '@/lib/chat-merge';
 
 // Keyed by chat_id (not tripId): the chat widget and the chat lens are never
 // mounted together, so ONE cache per chat_id is shared between them — switching
 // lenses reuses it instead of refetching (TRIP-208: was 3 separate caches).
 export const CHAT_MESSAGES_KEY = (chatId) => ['chat-msgs', chatId];
-export const CHAT_READ_KEY     = (tripId, userId) => ['chat-read', tripId, userId];
-export const CHAT_ID_KEY       = (tripId) => ['chat-id', tripId];
-export const CHAT_UNREAD_KEY   = (tripId, userId) => ['chat-unread', tripId, userId];
+// Not exported: only this module builds these keys.
+const CHAT_ID_KEY     = (tripId) => ['chat-id', tripId];
+const CHAT_UNREAD_KEY = (tripId, userId) => ['chat-unread', tripId, userId];
 
 // ── Resolve group chat id from tripId ─────────────────────────────────────────
 
@@ -57,59 +61,33 @@ export function pluralPeople(n, t, lang) {
   return `${n} ${t(`chat.people_${cat}`)}`;
 }
 
-// ── Timestamp helpers ─────────────────────────────────────────────────────────
-
-function parseUtcMs(s) {
-  if (!s) return 0;
-  if (s instanceof Date) return s.getTime();
-  let str = String(s);
-  if (!/[zZ]$/.test(str) && !/[+-]\d{2}:?\d{2}$/.test(str)) str += 'Z';
-  const t = new Date(str).getTime();
-  return Number.isFinite(t) ? t : 0;
-}
-
-function toUtcIso(s) {
-  if (!s) return new Date().toISOString();
-  const ms = parseUtcMs(s);
-  return ms ? new Date(ms).toISOString() : new Date().toISOString();
-}
-
-// ── Count unread (used by tests / local computation) ─────────────────────────
-
-export function countUnread(messages, lastReadAt, myUserId) {
-  if (!Array.isArray(messages) || messages.length === 0) return 0;
-  const cutoff = parseUtcMs(lastReadAt);
-  let n = 0;
-  for (const m of messages) {
-    if (m.user_id === myUserId) continue;
-    const t = parseUtcMs(m.created_at);
-    if (t > cutoff) n += 1;
-  }
-  return n;
-}
-
 // ── Fetch messages ────────────────────────────────────────────────────────────
 //
 // ONE shared message cache per chat_id (TRIP-208): both the chat widget and the
 // chat lens use this hook, so they no longer keep two independent caches of the
 // same rows. `enabled` lets the widget stay lazy (fetch only when opened) while
 // the lens fetches on mount.
+
+// One page of history. The lens opens on the newest page and walks backwards on
+// demand; anything older is fetched by fetchOlderMessages.
+export const CHAT_PAGE = 200;
+
 export function useChatMessages(chatId, { enabled = true } = {}) {
   return useQuery({
     queryKey: CHAT_MESSAGES_KEY(chatId),
     queryFn: async () => {
-      // Load the FULL chat history, oldest→newest. No row cap: a trip group chat
-      // is bounded (hundreds of rows at most) and PostgREST imposes no default
-      // max-rows here. The previous `.limit(200)` combined with ascending order
-      // returned the OLDEST 200 rows, so once a chat crossed 200 messages every
-      // newer message silently stopped loading (TRIP-292).
+      // NEWEST page: order DESC + limit, then reverse for display. The old
+      // `.limit(200)` with ASC order returned the OLDEST 200 rows, so past 200
+      // messages every newer one silently stopped loading (TRIP-292) — that fix
+      // dropped the cap entirely; this restores it on the correct end.
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(CHAT_PAGE);
       if (error) throw error;
-      return data || [];
+      return (data || []).reverse();
     },
     enabled: !!chatId && enabled,
     // Catch up any messages missed while unmounted on (re)mount; realtime keeps
@@ -119,37 +97,50 @@ export function useChatMessages(chatId, { enabled = true } = {}) {
   });
 }
 
-// Apply an incoming realtime INSERT to the shared message cache: de-dupe by id,
-// drop this user's optimistic ('opt-') placeholder, append. Shared by the widget
-// and the lens so the append logic lives in ONE place (TRIP-208).
+// Apply an incoming realtime INSERT to the shared message cache. Shared by the
+// widget and the lens so the append logic lives in ONE place (TRIP-208); the
+// merge rule itself is pure and unit-tested in chat-merge.js.
 export function appendChatMessage(qc, chatId, msg) {
-  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => {
-    if (old.find((m) => m.id === msg.id)) return old;
-    const filtered = old.filter((m) =>
-      !(String(m.id).startsWith('opt-') && m.user_id === msg.user_id),
-    );
-    return [...filtered, msg];
-  });
+  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => mergeIncomingMessage(old, msg));
 }
 
-// ── Fetch my read marker ──────────────────────────────────────────────────────
+// One page of history older than `beforeIso`, oldest→newest (display order).
+export async function fetchOlderMessages(chatId, beforeIso) {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('chat_id', chatId)
+    .lt('created_at', beforeIso)
+    .order('created_at', { ascending: false })
+    .limit(CHAT_PAGE);
+  if (error) throw error;
+  return (data || []).reverse();
+}
 
-export function useMyChatRead(tripId, { enabled = true } = {}) {
-  const { user } = useAuth();
-  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && !!user?.id && enabled });
-  return useQuery({
-    queryKey: CHAT_READ_KEY(tripId, user?.id),
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('chat_reads')
-        .select('*')
-        .eq('chat_id', chatId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      return data || null;
-    },
-    enabled: !!chatId && !!user?.id && enabled,
-    refetchOnMount: 'always',
+// Ask the assistant to answer a message, reporting FAILURE through onFailed.
+//
+// The failure test is the subtle part, so it lives here once: on a refused gate
+// (not Pro / rate-limited, TRIP-111) the edge function answers 200 with
+// `{ ok:false }` and posts the bot's refusal itself — invokeFn does NOT throw,
+// and no n8n answer will ever arrive. A caller that only wired `.catch` left the
+// "Triplanio печатает" indicator spinning forever; that is exactly what the
+// widget did while the lens handled it.
+export function askAssistant({ chatId, userMessage, onFailed }) {
+  invokeFn('callTriplanioAi', { body: { chat_id: chatId, user_message: userMessage } })
+    .then(({ data, error }) => { if (error || data?.ok === false) onFailed?.(); })
+    .catch((err) => {
+      console.error('callTriplanioAi failed', err);
+      onFailed?.();
+    });
+}
+
+// Prepend an older page to the shared cache, skipping rows we already hold. The
+// cache stays a FLAT oldest→newest array — no infinite-query page shape — so
+// appendChatMessage, the widget and the unread counter are untouched.
+export function prependChatMessages(qc, chatId, older) {
+  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => {
+    const have = new Set(old.map((m) => m.id));
+    return [...older.filter((m) => !have.has(m.id)), ...old];
   });
 }
 
@@ -207,7 +198,7 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
 // sharing a name - which no longer happens).
 const chatInsertRegistry = new Map(); // chatId -> { channel, subscribers:Set<fn> }
 
-export function subscribeChatInserts(chatId, onInsert) {
+function subscribeChatInserts(chatId, onInsert) {
   if (!chatId) return () => {};
   let entry = chatInsertRegistry.get(chatId);
   if (!entry) {
@@ -259,29 +250,10 @@ export function useChatInserts(chatId, onInsert, { enabled = true } = {}) {
 // opens two channels). It does NOT touch the message cache: the widget/lens each
 // append to the shared cache via their own useChatInserts, so the badge only
 // needs to invalidate unread.
-export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
+function useChatLiveSubscription(tripId, { enabled = true } = {}) {
   const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
   const qc = useQueryClient();
   useChatInserts(chatId, () => {
     qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
   }, { enabled: !!chatId && enabled });
-}
-
-// ── Mark read ─────────────────────────────────────────────────────────────────
-
-export async function markChatRead(tripId, userId, lastReadAt) {
-  const ts = toUtcIso(lastReadAt);
-  const { data: chat } = await supabase
-    .from('chats').select('id').eq('trip_id', tripId).eq('type', 'group').single();
-  if (!chat?.id || !userId) return null;
-  const { data, error } = await supabase
-    .from('chat_reads')
-    .upsert(
-      { chat_id: chat.id, user_id: userId, trip_id: tripId, last_read_at: ts },
-      { onConflict: 'chat_id,user_id' },
-    )
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
 }
