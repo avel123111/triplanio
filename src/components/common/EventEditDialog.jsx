@@ -2098,24 +2098,18 @@ function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
     <div className={`eed-dateblock${warn ? ' field--warning' : ''}`}>
       <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
       <div data-vfield="start">
-        <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
+        <DateTimeInput mode="date" value={date} onChange={(d) => emit(d, s.time, e.time)} />
       </div>
       <div className={`stay-dates${invalid ? ' is-invalid' : ''}`} style={{ marginTop: 8 }}>
         <div className="sd-cellwrap">
-          <div className="sd-cell sd-cell--time">
-            <span className="sd-cell__lbl eyebrow">{t('activity.start')}</span>
-            <input type="time" className="sd-timeinput t-strong" value={s.time} onChange={(ev) => emit(date, ev.target.value, e.time)} />
-          </div>
+          <DateTimeInput mode="time" variant="cell" cellLabel={t('activity.start')} value={s.time} onChange={(tm) => emit(date, tm, e.time)} />
         </div>
         <div className="stay-dates__mid">
           <Clock size={14} style={{ color: color || 'var(--muted-2)' }} />
           {durMin != null && <span className="t-meta">{fmtDur(durMin, t)}</span>}
         </div>
         <div className="sd-cellwrap" data-vfield="end">
-          <div className="sd-cell sd-cell--time">
-            <span className="sd-cell__lbl eyebrow">{t('event.end')}</span>
-            <input type="time" className="sd-timeinput t-strong" value={e.time} onChange={(ev) => emit(date, s.time, ev.target.value)} />
-          </div>
+          <DateTimeInput mode="time" variant="cell" cellLabel={t('event.end')} value={e.time} onChange={(tm) => emit(date, s.time, tm)} />
         </div>
       </div>
       {tz && <div className="eed-drange-tz"><TimezoneHint tz={tz} /></div>}
@@ -2368,11 +2362,11 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
       <div className="fld-grid">
         <div data-vfield="date_start" className={inv('date_start')}>
           <Label>{t('service.date_start')}</Label>
-          <Input type="date" value={form.date_start} onChange={(e) => setField('date_start', e.target.value)} />
+          <DateTimeInput mode="date" value={form.date_start} onChange={(v) => setField('date_start', v)} />
         </div>
         <div data-vfield="date_finish" className={inv('date_finish')}>
           <Label>{t('service.date_finish')}</Label>
-          <Input type="date" value={form.date_finish} onChange={(e) => setField('date_finish', e.target.value)} />
+          <DateTimeInput mode="date" value={form.date_finish} onChange={(v) => setField('date_finish', v)} />
           <FieldError issues={issues} field="date_finish" />
         </div>
       </div>

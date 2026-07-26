@@ -6,40 +6,50 @@ import { useIsPhone } from '@/hooks/use-mobile';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 
 /**
- * Date/time field for the event editor. One shared calendar everywhere
- * (TRIP-176): the field is a trigger that opens our custom <StartCalendar> in a
- * Popover (desktop) or Sheet (phone) — same calendar the trip-start control
- * uses — here in its date+time state.
+ * The date / date+time / time field of the app (TRIP-277). One trigger, one
+ * panel (<StartCalendar> in a Popover on desktop, Sheet on phone), three modes
+ * — so every place that asks for a moment in time looks and behaves the same.
+ * No native <input type="date|time"> is left anywhere in src/ (guarded by
+ * datetime-canon.test.js).
  *
- * The external contract is unchanged from the old native <datetime-local>
- * wrapper so every call site keeps working:
- *  - value              "yyyy-MM-ddTHH:mm" (or "" when incomplete)
+ *  - mode="datetime" (default)  value "yyyy-MM-ddTHH:mm"  (or "" when incomplete)
+ *  - mode="date"                value "yyyy-MM-dd"
+ *  - mode="time"                value "HH:mm"
  *  - onChange(value)     the valid value, or "" while a date has no time yet
  *  - onTimeMissingChange(isMissing)  true when a date is picked but the time is
  *    still empty, so the parent can disable Save and flag the field — exactly
  *    the partial-date case the native input used validity.badInput for.
+ *  - variant="cell"  summary-cell presentation for the date-range block
+ *    (eyebrow label + big value) instead of the .input-styled button.
  */
-const parse = (v) => {
-  if (typeof v !== 'string' || !v) return { date: '', time: '' };
-  const [d, tm = ''] = v.split('T');
+const parse = (v, mode) => {
+  const s = typeof v === 'string' ? v : '';
+  if (mode === 'time') return { date: '', time: s.slice(0, 5) };
+  const [d, tm = ''] = s.split('T');
   return { date: (d || '').slice(0, 10), time: tm.slice(0, 5) };
+};
+
+// One string per mode does both jobs: the empty-state placeholder on the
+// trigger and the title of the sheet the trigger opens.
+const TITLE_KEY = {
+  date: 'event.pick_date_short',
+  datetime: 'event.pick_datetime',
+  time: 'common.time',
 };
 
 export default function DateTimeInput({
   value,
   onChange,
   onTimeMissingChange,
-  withTime = true,
+  mode = 'datetime',
   className,
-  // Summary-cell presentation for the date-range block (TRIP-176 design):
-  // renders an eyebrow label + big date + time as a clickable cell instead of
-  // the plain input button. Same calendar, same value contract.
   variant,
   cellLabel,
 }) {
   const t = useT();
   const { lang } = useI18n();
-  const [{ date, time }, setState] = useState(() => parse(value));
+  const isTime = mode === 'time';
+  const [{ date, time }, setState] = useState(() => parse(value, mode));
   const [open, setOpen] = useState(false);
   // Remember what WE last emitted so our own "partial → ''" emit doesn't get
   // parsed back and wipe the date the user just picked; a value that differs
@@ -49,43 +59,51 @@ export default function DateTimeInput({
 
   useEffect(() => {
     if (value !== emitted.current) {
-      setState(parse(value));
+      setState(parse(value, mode));
       emitted.current = value;
     }
-  }, [value]);
+  }, [value, mode]);
 
   // On unmount clear any raised "time missing" flag so a removed field (e.g. a
   // deleted transfer segment) never keeps Save disabled.
   useEffect(() => () => { onTimeMissingChange?.(false); }, []);
 
   const emit = (d, tm) => {
-    const missing = withTime && !!d && !tm;
+    const missing = mode === 'datetime' && !!d && !tm;
     let next = '';
-    if (d && withTime && tm) next = `${d}T${tm}`;
-    else if (d && !withTime) next = d;
+    if (isTime) next = tm || '';
+    else if (mode === 'date') next = d || '';
+    else if (d && tm) next = `${d}T${tm}`;
     emitted.current = next;
     setState({ date: d, time: tm });
     onChange?.(next);
     onTimeMissingChange?.(missing);
   };
 
-  const label = date
-    ? DateTime.fromISO(date, { zone: 'utc' }).setLocale(lang).toFormat('d MMM yyyy')
-      + (withTime && time ? `, ${time}` : '')
-    : t('event.pick_datetime');
+  const fmtDate = (fmt) => DateTime.fromISO(date, { zone: 'utc' }).setLocale(lang).toFormat(fmt);
+  const empty = isTime ? !time : !date;
+  const title = t(TITLE_KEY[mode]);
 
-  // Cell variant: split date ("28 июн, вс") and time ("10:00") lines.
-  const cellDate = date
-    ? DateTime.fromISO(date, { zone: 'utc' }).setLocale(lang).toFormat('d MMM, ccc')
-    : t('event.pick_date_short');
+  // Trigger text: the placeholder while empty, the picked value otherwise.
+  let label = title;
+  if (isTime && time) label = time;
+  else if (date) label = fmtDate('d MMM yyyy') + (mode === 'datetime' && time ? `, ${time}` : '');
 
-  const calendar = (
+  // Cell variant: eyebrow + big value. Date modes split the value over two
+  // lines (date · time), time mode carries the clock alone.
+  let cellMain = t('event.pick_date_short');
+  if (isTime) cellMain = time || '—:—';
+  else if (date) cellMain = fmtDate('d MMM, ccc');
+
+  const panel = (
     <StartCalendar
       value={date || null}
       lang={lang}
-      withTime={withTime}
+      mode={mode}
       time={time}
-      onPick={(iso) => emit(iso, time)}
+      // Date-only has nothing left to choose after the day, so it closes;
+      // date+time keeps the panel open for the hour/minute columns.
+      onPick={(iso) => { emit(iso, time); if (mode === 'date') setOpen(false); }}
       onTimeChange={(tm) => emit(date, tm)}
     />
   );
@@ -93,17 +111,17 @@ export default function DateTimeInput({
   const trigger = variant === 'cell' ? (
     <button
       type="button"
-      className={`sd-cell${date ? '' : ' is-empty'} ${className || ''}`}
+      className={`sd-cell${empty ? ' is-empty' : ''} ${className || ''}`}
       onClick={isSheet ? () => setOpen(true) : undefined}
     >
       {cellLabel != null && <span className="sd-cell__lbl eyebrow">{cellLabel}</span>}
-      <span className="sd-cell__d t-strong">{cellDate}</span>
-      {withTime && <span className="sd-cell__t t-mono">{time || '—:—'}</span>}
+      <span className="sd-cell__d t-strong">{cellMain}</span>
+      {mode === 'datetime' && <span className="sd-cell__t t-mono">{time || '—:—'}</span>}
     </button>
   ) : (
     <button
       type="button"
-      className={`input eed-dtbtn${date ? '' : ' is-empty'} ${className || ''}`}
+      className={`input eed-dtbtn${empty ? ' is-empty' : ''} ${className || ''}`}
       onClick={isSheet ? () => setOpen(true) : undefined}
     >
       {label}
@@ -114,8 +132,8 @@ export default function DateTimeInput({
     return (
       <>
         {trigger}
-        <Sheet open={open} onOpenChange={setOpen} title={t('event.pick_datetime')}>
-          {calendar}
+        <Sheet open={open} onOpenChange={setOpen} title={title}>
+          {panel}
         </Sheet>
       </>
     );
@@ -124,8 +142,8 @@ export default function DateTimeInput({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="start" className="ts-startcal-pop">
-        {calendar}
+      <PopoverContent align="start">
+        {panel}
       </PopoverContent>
     </Popover>
   );

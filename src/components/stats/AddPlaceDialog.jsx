@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, Btn, Field, useToast } from '@/design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import CitySearch from '@/components/cities/CitySearch';
+import DateTimeInput from '@/components/common/DateTimeInput';
 
 // Add / edit / delete a manual visit (user_custom_visits) — the write side of the
 // "My statistics" map. Backend (table + RLS by auth.uid() + the custom-point
@@ -149,8 +150,8 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label={t('stats.field_from')}><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label={t('stats.field_to')}><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          <Field label={t('stats.field_from')}><DateTimeInput mode="date" value={from} onChange={setFrom} /></Field>
+          <Field label={t('stats.field_to')}><DateTimeInput mode="date" value={to} onChange={setTo} /></Field>
         </div>
 
         {err && <div className="t-meta" style={{ color: 'var(--danger)' }}>{err}</div>}

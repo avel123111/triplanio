@@ -626,6 +626,7 @@ h4,
 .ts-startctl__date,
 .ts-cal__wdc,
 .ts-cal__day,
+.ts-time__cell,    /* TRIP-277: ячейка времени = ячейка дня, одна шкала */
 .chat-head__sub,   /* TRIP-296: подзаголовок шапки комнаты → Meta+Golos */
 .chat-name .tm,
 .chat-reply__who .tm,
@@ -1997,20 +1998,36 @@ h4,
 @media (max-width: 560px) {
   .geo-prompt > .btn { flex: 1 1 100%; justify-content: center; }
 }
-.ts-cal { width: 248px; }
+/* The picker panel (TRIP-277): month grid, time columns, or both side by side. */
+.ts-cal { display: flex; align-items: flex-start; gap: 12px; max-width: calc(100vw - 24px); }
+.ts-cal__date { width: 248px; }
 .ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .ts-cal__title { color: var(--ink); text-transform: capitalize; }
 .ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .ts-cal__wd { margin-bottom: 4px; }
 .ts-cal__wdc { text-align: center; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
 .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); display: grid; place-items: center; }
-.ts-cal__day:hover { background: var(--wash); }
-.ts-cal__day.on { background: var(--brand); color: #fff; }
-/* Time row (date+time state, TRIP-176) — sits under the month grid. */
-.ts-cal__time { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
-.ts-cal__time-lbl { flex: none; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.ts-cal__time-in { flex: 1; min-width: 0; }
-.sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; }
+/* Day and time cells share ONE skin — that is what makes date and time read as
+   the same element (TRIP-277). Never fork these two rules. */
+.ts-cal__day:hover,
+.ts-time__cell:hover { background: var(--wash); }
+.ts-cal__day.on,
+.ts-time__cell.on { background: var(--brand); color: #fff; }
+/* Time side — value head + column heads + scrollable cells, row for row the
+   same three-part structure as the month side. */
+.ts-time { display: flex; flex-direction: column; }
+.ts-cal--datetime .ts-time { border-left: 1px solid var(--line); padding-left: 12px; }
+.ts-time__head { justify-content: center; }
+.ts-time__head .ts-cal__title { font-variant-numeric: tabular-nums; }
+.ts-time__col .ts-cal__wdc { margin-bottom: 4px; }
+.ts-time__cols { display: flex; gap: 6px; }
+.ts-time__col { display: flex; flex-direction: column; min-width: 54px; }
+.ts-time__list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; max-height: 212px; scrollbar-width: thin; overscroll-behavior: contain; }
+.ts-time__list:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 4px var(--primary-ring); }
+.ts-time__cell { border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); padding: 6px 0; text-align: center; font-variant-numeric: tabular-nums; }
+.sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; flex-direction: column; align-items: center; }
+.sheet .ts-cal__date { width: 100%; }
+.sheet .ts-cal--datetime .ts-time { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 10px; width: 100%; justify-content: center; }
 /* Date/time field trigger — an .input-styled button that shows the picked value
    (left-aligned) and opens the shared calendar. */
 .eed-dtbtn { text-align: left; cursor: pointer; }
@@ -4219,9 +4236,6 @@ h4,
 .sd-cell__d{color:var(--ink);}
 .sd-cell__t{color:var(--muted);}
 .sd-cell.is-empty .sd-cell__d{color:var(--muted-2);}
-.sd-cell--time{cursor:default;}
-.sd-cell--time:hover{background:transparent;}
-.sd-timeinput{border:0;background:transparent;padding:0;margin:0;width:100%;color:var(--ink);outline:0;font-variant-numeric:tabular-nums;}
 .stay-dates.is-invalid{border-color:var(--danger,#DC2626);}
 .eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
 .eed-drange-tz>*{flex:1;min-width:0;}

@@ -50,7 +50,7 @@ export default function TripStartControl({ date, onStep, onPickDate, label, bloc
           <PopoverTrigger asChild>
             <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(date, lang)}</button>
           </PopoverTrigger>
-          <PopoverContent align={popoverAlign} className="ts-startcal-pop">
+          <PopoverContent align={popoverAlign}>
             <StartCalendar value={date} lang={lang} onPick={pick} />
           </PopoverContent>
         </Popover>

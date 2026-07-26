@@ -35,6 +35,7 @@ import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, ReadOnlyBanner, fmtDate, CurrencyCombobox } from '../design/index';
 import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import DateTimeInput from '@/components/common/DateTimeInput';
 import './BudgetLens.css';
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
@@ -221,7 +222,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
         <Field label={t('budget.field_date')}>
-          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+          <DateTimeInput mode="date" value={date} onChange={setDate} />
         </Field>
       </div>
       <div className="field-row cols-2" style={{ marginTop: 14 }}>
