@@ -228,37 +228,7 @@
   gap: 14px;
   margin: 4px 0 22px;
 }
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--ink-2);
-  cursor: pointer;
-  user-select: none;
-}
-.check input {
-  appearance: none;
-  width: 17px; height: 17px;
-  border: 1.5px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  display: inline-grid;
-  place-items: center;
-  transition: background .15s ease, border-color .15s ease;
-  flex: 0 0 auto;
-  cursor: pointer;
-}
-.check input:checked {
-  background: var(--brand);
-  border-color: var(--brand);
-}
-.check input:checked::after {
-  content: "";
-  width: 9px; height: 5px;
-  border-left: 1.8px solid #fff;
-  border-bottom: 1.8px solid #fff;
-  transform: rotate(-45deg) translate(1px,-1px);
-}
+/* The checkbox is the design system's `.checkbox` (app.css) — no local copy. */
 
 .btn-primary {
   display: inline-flex;

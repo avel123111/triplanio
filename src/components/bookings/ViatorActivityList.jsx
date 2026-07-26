@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Search, RotateCcw, Ticket, AlertTriangle, Star, SlidersHorizontal, CloudOff, X } from 'lucide-react';
+import { Checkbox } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
@@ -142,12 +143,14 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
           </div>
         </div>
         <div className="s22f-grp">
-          {/* Native checkbox convention (accentColor) — same as EventEditDialog's Checkbox. */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input type="checkbox" checked={pendingFree} onChange={(e) => setPendingFree(e.target.checked)}
-              style={{ width: 16, height: 16, accentColor: 'var(--brand)', cursor: 'pointer', flexShrink: 0 }} />
-            <span className="t-ui">{t('fork.activities_free_cancel')}</span>
-          </label>
+          {/* A checkbox, not a Toggle: a draft filter that only takes effect on
+              "Apply" (applyFilters), so it must not look like a flipped setting. */}
+          <Checkbox
+            className="t-ui"
+            checked={pendingFree}
+            onChange={setPendingFree}
+            label={t('fork.activities_free_cancel')}
+          />
         </div>
       </ForkToolbar>
 

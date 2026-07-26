@@ -502,6 +502,7 @@ h4,
 .dl-search input,
 .tcp__upload,
 .check,
+.checkbox,
 .auth__switch,
 .auth-error,
 .nav a,
@@ -557,7 +558,6 @@ h4,
 .kv .v,
 .warn-banner b,
 .f-sec,
-.ch-row .cr-b b,
 .crow .nm,
 .cbar .val,
 .empty-note .en-tx b,
@@ -699,7 +699,6 @@ h4,
 .ev-dlg-price .cur,
 .bk-link,
 .warn-banner span,
-.ch-row .cr-b span,
 .tx-btn,
 .seg-card-ti .rl,
 .bk-link .pb,
@@ -1384,12 +1383,52 @@ h4,
   border-color: var(--warning);
   box-shadow: 0 0 0 3px var(--warning-soft);
 }
+/* Same amber state on the event editor's own controls (date-range block draws
+   its own border, service forms use raw input/select/textarea), so
+   `.field--warning` is the ONE warning skin. Border-only, mirroring
+   `.tv-invalid`; a field never gets both (see fieldStateClass). */
+.field--warning .stay-dates,
+.field--warning input,
+.field--warning select,
+.field--warning textarea {
+  border-color: var(--warning);
+}
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
 .err, .wrn { display: flex; align-items: center; gap: 5px; }
 .err { color: var(--danger-ink); }
 .wrn { color: var(--warning-ink); }
 .err svg, .wrn svg { width: 13px; height: 13px; flex: none; }
+
+/* Canonical checkbox — the app's only one. `appearance: none` because the box
+   the OS paints can't be styled; the <label> wrapper makes the caption part of
+   the control (click target + a11y name) for free.
+   NB: `.check` is a different thing (the landing's tick bullet) — don't merge. */
+.checkbox { display: inline-flex; align-items: center; gap: 9px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.checkbox input {
+  appearance: none;
+  width: 17px; height: 17px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  display: inline-grid; place-items: center;
+  transition: background .15s ease, border-color .15s ease;
+  flex: 0 0 auto; cursor: pointer;
+}
+.checkbox input:checked { background: var(--brand); border-color: var(--brand); }
+.checkbox input:checked::after {
+  content: "";
+  width: 9px; height: 5px;
+  border-left: 1.8px solid #fff;
+  border-bottom: 1.8px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
+/* Dimmed via a sibling selector rather than `:has()`: the build target includes
+   Firefox 104, which predates `:has()`, and a disabled tint does not justify
+   being the first thing in this codebase to depend on it. */
+.checkbox input:disabled,
+.checkbox input:disabled ~ span { opacity: .5; cursor: not-allowed; }
 
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
@@ -4070,6 +4109,10 @@ h4,
 .ai-blk-hint{ color:var(--muted-2); }
 /* inline border-spinner (parsing) */
 .ai-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ai);border-right-color:transparent;border-radius:50%;animation:aispin .8s linear infinite;flex:none;}
+/* The implicit `from` here is the element's own computed transform, so this
+   keyframe REPLACES it. Never put .spin on an element that is positioned with
+   a transform (e.g. `translateY(-50%)` centring) — it would slide as it turns.
+   Wrap it instead: the wrapper positions, the inner element spins. */
 @keyframes aispin{to{transform:rotate(360deg);}}
 /* generic spinner utility (replaces Tailwind animate-spin on lucide icons) */
 .spin{animation:aispin 1s linear infinite;}
@@ -4261,11 +4304,6 @@ h4,
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
-.ch-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;}
-.ch-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);margin-top:2px;flex:none;cursor:pointer;}
-.ch-row .cr-b{flex:1;min-width:0;}
-.ch-row .cr-b b{display:block; color:var(--ink);}
-.ch-row .cr-b span{display:block; color:var(--muted); margin-top:1px;}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
 /* transport type grid */

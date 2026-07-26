@@ -31,7 +31,7 @@ import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
 import './DocsLens.css';
 
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
@@ -86,7 +86,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   const qc           = useQueryClient();
   const { user }     = useAuth();
   const v    = useHybridValidation('document', { title });
-  const inv  = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const inv  = (f) => fieldStateClass(v.displayIssues, f);
 
   async function uploadFiles(files) {
     if (!files?.length) return;

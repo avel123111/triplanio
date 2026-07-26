@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
@@ -868,7 +868,7 @@ export default function TripView() {
     queryKey: TRIP_SHELL_KEY(tripId),
     // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
     // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_SHELL_INCLUDE }),
     enabled: !!tripId,
     retry: false,
   });
@@ -878,7 +878,7 @@ export default function TripView() {
     queryKey: TRIP_CONTENT_KEY(tripId),
     // Same self-healing path — without it a 401 here silently rendered an empty
     // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['content', 'budget'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
     enabled: !!tripId && !loadingShell,
     retry: false,
   });
@@ -1401,8 +1401,6 @@ export default function TripView() {
       {!isPhone && isLensVisible(trip, 'chat') && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
         <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
@@ -253,14 +253,16 @@ export default function TripStructureEdit() {
     queryKey: TRIP_SHELL_KEY(tripId),
     // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
     // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_SHELL_INCLUDE }),
     enabled: !!tripId,
     retry: false,
     staleTime: 30000, // reuse TripView's cached shell on entry → no reload flicker
   });
+  // Shares TripView's cache entry → must request the SAME include even though
+  // the editor ignores the budget half (TRIP-277; rationale in trip-data.js).
   const { data: content, error: contentError, isPending: contentPending, fetchStatus: contentFetchStatus } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['content'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
     enabled: !!tripId && !loadingShell,
     retry: false,
   });
