@@ -72,7 +72,10 @@ export default function MobileBottomNav() {
     path.startsWith('/plan-trip-ai') ||
     path.startsWith('/public') ||
     path.startsWith('/join') ||
-    /^\/trip\/[^/]+\/edit\/?$/.test(path);
+    /^\/trip\/[^/]+\/edit\/?$/.test(path) ||
+    // Chat lens (TRIP-296): the room hands its whole bottom edge to the composer,
+    // so the floating nav would sit on top of the send button.
+    (/^\/trip\/[^/]+\/?$/.test(path) && sp.get('lens') === 'chat');
   if (hidden) return null;
 
   const onTrip = /^\/trip\/[^/]+\/?$/.test(path);

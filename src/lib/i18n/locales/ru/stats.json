@@ -41,9 +41,7 @@
   "list_empty_countries": "Пока нет посещённых стран.",
   "map_fullscreen": "На весь экран",
   "map_globe": "Карта или глобус",
-  "map_hint": "нажмите страну или пин",
   "map_loading": "Загружаю карту…",
-  "map_unavailable": "Карта недоступна",
   "n_cities": "городов: {n}",
   "nav": "Статистика",
   "next_empty_sub": "Появится после создания первой поездки",
@@ -95,6 +93,5 @@
   "world_countries_visited": "стран мира посещено",
   "world_explored": "Мир исследован",
   "world_label": "мира",
-  "world_of": "{visited} из {total} стран",
   "year_all": "Всё время"
 }

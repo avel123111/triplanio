@@ -1,6 +1,5 @@
 {
   "brand": "Triplanio",
-  "cta_copy": "Copiar itinerario",
   "cta_plan": "Planifica el tuyo",
   "cta_sub": "Cópialo para ti o crea el tuyo — con ciudades, traslados y un mapa. En Triplanio, gratis.",
   "cta_title": "¿Te gusta este itinerario?",
@@ -8,7 +7,6 @@
   "mast_kick": "Itinerario",
   "meta_cities": "ciudades",
   "meta_countries": "países",
-  "meta_days": "días",
   "meta_distance": "en camino",
   "meta_transfers": "traslados",
   "mode_bus": "Autobús",
@@ -27,7 +25,6 @@
   "oops": "Ups",
   "people_eyebrow": "Compañía",
   "people_title": "Compañeros de viaje",
-  "read_only": "Solo lectura",
   "role_end": "Fin",
   "role_start": "Inicio",
   "role_waypoint": "Escala",
@@ -38,7 +35,5 @@
   "shared_sub": "compartió este viaje",
   "subtitle_days_few": "días",
   "subtitle_days_many": "días",
-  "subtitle_days_one": "día",
-  "tab_map": "Mapa",
-  "tab_timeline": "Itinerario"
+  "subtitle_days_one": "día"
 }

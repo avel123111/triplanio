@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
@@ -39,7 +39,7 @@ import MembersLens, { InviteDialog } from './MembersLens';
 import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
-import ChatLens from './ChatLens';
+import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
@@ -286,12 +286,17 @@ function LoadingScreen({ lens = 'overview', user, isPro, isDark, onToggleTheme, 
           </div>
         </aside>
         <div className="trip-content">
-          <main className="trip-screen-body">
+          {/* Chat is a full-bleed room, exactly as when it is loaded — otherwise
+              the skeleton sits in a padded body and the whole screen jumps. */}
+          <main className={'trip-screen-body' + (lens === 'chat' ? ' trip-screen-body--flush' : '')}>
             {/* Same building blocks as the loaded layout, so nothing reshuffles
-                when shell → content resolves. Lens-aware so the Overview (default)
-                doesn't flash a timeline skeleton first. */}
+                when shell → content resolves. Lens-aware: overview and chat each
+                get their OWN skeleton, instead of flashing a timeline (plus a
+                right rail the chat lens does not even have). */}
             {lens === 'overview' ? (
               <OverviewLens isLoading />
+            ) : lens === 'chat' ? (
+              <ChatLensSkeleton />
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <SkeletonTimeline />
@@ -863,7 +868,7 @@ export default function TripView() {
     queryKey: TRIP_SHELL_KEY(tripId),
     // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
     // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_SHELL_INCLUDE }),
     enabled: !!tripId,
     retry: false,
   });
@@ -873,7 +878,7 @@ export default function TripView() {
     queryKey: TRIP_CONTENT_KEY(tripId),
     // Same self-healing path — without it a 401 here silently rendered an empty
     // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['content', 'budget'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
     enabled: !!tripId && !loadingShell,
     retry: false,
   });
@@ -1038,11 +1043,12 @@ export default function TripView() {
   // Trip actions (Share / Edit / Settings / Members) all live in the left trip
   // menu (TripSidebar); Copy trip moved into the Settings lens. The header
   // carries no duplicate action buttons.
-  // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own
-  // internal scroll. Everything else = the default scrolling body.
+  // Map and chat are both edge-to-edge, no-scroll surfaces that own their inner
+  // scrolling (TRIP-296: the chat lens became a full-bleed room, so its former
+  // `--chat` modifier was an exact duplicate of `--flush`). Everything else =
+  // the default scrolling body.
   const screenBodyClass = 'trip-screen-body'
-    + (shownLens === 'map' ? ' trip-screen-body--flush' : '')
-    + (shownLens === 'chat' ? ' trip-screen-body--chat' : '');
+    + (shownLens === 'map' || shownLens === 'chat' ? ' trip-screen-body--flush' : '');
 
   return (
     <div className="trip-shell">
@@ -1395,8 +1401,6 @@ export default function TripView() {
       {!isPhone && isLensVisible(trip, 'chat') && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
         <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

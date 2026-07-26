@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
-import { TRIPLANIO_MENTION_REGEX } from '@/lib/triplanio';
+import { replaceMentions } from '@/lib/mention';
 import './ChatMarkdown.css';
 
 /**
@@ -15,9 +15,8 @@ import './ChatMarkdown.css';
 const MENTION_SENTINEL = 'XXTRIPLANIOMENTIONXX';
 
 function wrapMentions(text) {
-  if (!text) return '';
-  const re = new RegExp(TRIPLANIO_MENTION_REGEX.source, 'gi');
-  return text.replace(re, (full, lead) => `${lead || ''}${MENTION_SENTINEL}`);
+  // Same rule that decides whether the assistant is called — see lib/mention.js.
+  return replaceMentions(text, () => MENTION_SENTINEL);
 }
 
 function replaceSentinelInChildren(children, mentionStyle, mentionClassName) {
@@ -78,7 +77,10 @@ export default function ChatMarkdown({
     li:         ({ children }) => <li className="cm-li">{rep(children)}</li>,
     h1:         ({ children }) => <div className="cm-h">{rep(children)}</div>,
     h2:         ({ children }) => <div className="cm-h">{rep(children)}</div>,
+    // h3/h4 share a level: the assistant writes its section headings as h4, which
+    // previously fell through to a raw <h4> outside the typography canons.
     h3:         ({ children }) => <div className="cm-h3">{rep(children)}</div>,
+    h4:         ({ children }) => <div className="cm-h3">{rep(children)}</div>,
     blockquote: ({ children }) => (
       <blockquote className="cm-quote">{rep(children)}</blockquote>
     ),

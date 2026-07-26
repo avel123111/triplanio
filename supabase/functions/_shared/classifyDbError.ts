@@ -74,7 +74,7 @@ export interface ClassifiedError {
 }
 
 /** Classify a supabase-js query error object (the `error` from `{ data, error }`). */
-export function classifyDbError(error: unknown): ClassifiedError {
+function classifyDbError(error: unknown): ClassifiedError {
   const code = (error as { code?: string } | null)?.code ?? null;
   let kind: DbErrorKind = 'transient'; // safe default: unknown ⇒ retryable, never a silent deny
   if (code) {

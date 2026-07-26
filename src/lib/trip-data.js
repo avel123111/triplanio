@@ -13,6 +13,15 @@ import { reportDataError } from './reportDataError.js';
 export const TRIP_SHELL_KEY = (tripId) => ['trip-shell', tripId];
 export const TRIP_CONTENT_KEY = (tripId) => ['trip-content', tripId];
 
+// One key = one payload shape. Every caller of a key must request the SAME
+// `include`, or the screen that asks for less overwrites the shared cache entry
+// with a thinner payload and the other screen silently renders empty data
+// (TRIP-277: the route editor fetched ['content'] while the trip fetched
+// ['content','budget'], so entering the editor wiped the budget out of the cache
+// and the budget widget stayed blank until a reload). Import, never inline.
+export const TRIP_SHELL_INCLUDE = ['shell'];
+export const TRIP_CONTENT_INCLUDE = ['content', 'budget'];
+
 /**
  * Single source of truth for "did this write actually land?".
  *

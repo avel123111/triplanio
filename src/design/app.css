@@ -82,16 +82,12 @@
 
   /* AI — фиолет→индиго→циан (TRIP-187). База --ai = #7C3AED: маркер, тень и метка-текст. */
   --ai:        #7C3AED;
-  --ai-2:      #6366F1;
-  --ai-3:      #22D3EE;
   --ai-ink:    #6D28D9;
   --ai-soft:   rgba(139,92,246,.14);
   --ai-soft-2: rgba(139,92,246,.24);
   --ai-line:   rgba(139,92,246,.5);   /* рамка AI-контейнеров (дизайн-система TRIP-187) */
-  --ai-soft-12:var(--ai-soft-2);
   --ai-gradient:      linear-gradient(135deg,#A855F7 0%,#6366F1 55%,#22D3EE 100%);
   --ai-gradient-soft: linear-gradient(135deg,rgba(168,85,247,.13),rgba(99,102,241,.12),rgba(34,211,238,.12));
-  --ai-grad:        var(--ai-gradient);
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
   /* Pro / premium — оранж→розовый градиент монетизации (TRIP-187) */
@@ -249,8 +245,6 @@
 
   /* AI — dark (фиолет→индиго→циан, TRIP-187) */
   --ai:        #C084FC;
-  --ai-2:      #818CF8;
-  --ai-3:      #4FE3F0;
   --ai-ink:    #C6B5FF;
   --ai-soft:   rgba(168,85,247,.18);
   --ai-soft-2: rgba(168,85,247,.26);
@@ -498,10 +492,8 @@ h4,
 .fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
 .limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
-.proto__nav-item,
 .app-header .app-header__avatar,
 .avatar--lg,
-.lens-tab,
 .chat-bubble,
 .chat-ov, .chat-ta,
 .pro-hero__sub,
@@ -510,6 +502,7 @@ h4,
 .dl-search input,
 .tcp__upload,
 .check,
+.checkbox,
 .auth__switch,
 .auth-error,
 .nav a,
@@ -529,8 +522,6 @@ h4,
 .trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
 .btn,
 .field__label,
-.proto__nav-title,
-.proto__viewport-title,
 .app-side__item,
 .input, .select, .textarea,
 .addsheet__tx b,
@@ -539,7 +530,6 @@ h4,
 .ts-startctl--block .ts-startctl__date,
 .ts-cal__title,
 .chat-mention__row b,
-.dock-panel__tab,
 .te-row__num,
 .te-actchip,
 .bt b,
@@ -568,7 +558,6 @@ h4,
 .kv .v,
 .warn-banner b,
 .f-sec,
-.ch-row .cr-b b,
 .crow .nm,
 .cbar .val,
 .empty-note .en-tx b,
@@ -606,16 +595,20 @@ h4,
 .visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
 .bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
-.chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в рейле чата) */
+.chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
+.chat-name b,         /* TRIP-296 инсп.: Meta→UI (автор сообщения) */
+.chat-thinking,       /* TRIP-296 инсп.: Meta→UI («Triplanio печатает») */
+.chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
+.chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
+.dock-panel__id b,    /* TRIP-296: заголовок виджета */
+.chat-reply__more,    /* TRIP-296: «Показать целиком» под ответом ассистента */
+.chat-jump,           /* TRIP-296: «Новые сообщения ↓» */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
-.proto__nav-sub,
-.proto__nav-item-num,
-.proto__viewport-sub,
 .app-header__trip-meta,
 .app-header__pro,
 .app-side__item-badge,
@@ -623,12 +616,9 @@ h4,
 .err, .wrn,
 .pro-up p,
 .pro-up .lockmsg,
-.locktag,
 .sev,
 .avatar,
 .avatar--sm,
-.lens-tab__count,
-.lens-tab.is-pro::after,
 .tweaks__seg button,
 .seg button,
 .choice-card__sub,
@@ -636,12 +626,12 @@ h4,
 .ts-startctl__date,
 .ts-cal__wdc,
 .ts-cal__day,
-.chat-online,
-.chat-name b,
+.chat-head__sub,   /* TRIP-296: подзаголовок шапки комнаты → Meta+Golos */
 .chat-name .tm,
+.chat-reply__who .tm,
 .chat-time,
-.chat-thinking,
-.chat-mention__row span,
+.chat-msg__err,       /* TRIP-296: «Не отправлено» / ассистент не ответил */
+.chat-composer__hint, /* TRIP-296: подсказка Enter / Shift+Enter */
 .chat-member__rl,
 .dock__count,
 .dock-panel__head .nm,
@@ -656,7 +646,6 @@ h4,
 .m-status,
 .invite-banner__desc,
 .partner-pill,
-.partner-pill__logo,
 .te-country,
 .te-warnbadge,
 .te-nights,
@@ -664,10 +653,7 @@ h4,
 .ti span,
 .gt span,
 .stepper .n,
-.metastrip .ch,
-.lkv,
 .route .ra,
-.rmid .dur,
 .addr div,
 .notes,
 .bud-leg,
@@ -684,7 +670,6 @@ h4,
 .acct-divrow__s,
 .acct-hero__av .ov,
 .acct-hero__mail,
-.acct-linkbtn,
 .acct-flabel,
 .acct-plan__p,
 .acct-note,
@@ -714,13 +699,8 @@ h4,
 .ev-dlg-price .cur,
 .bk-link,
 .warn-banner span,
-.ch-row .cr-b span,
-.drop-zone b,
-.drop-zone span,
 .tx-btn,
 .seg-card-ti .rl,
-.lay-pill,
-.night-badge,
 .bk-link .pb,
 .lp-ti span,
 .tmk__core,
@@ -841,9 +821,9 @@ h4,
 .t-micro,
 .badge,
 .eyebrow,
-.proto__group-label,
 .app-side__group-label,
 .chat-daydiv span,
+.chat-reply__tag,     /* TRIP-296: бейдж «ассистент» у ответа */
 .chat-mention__lbl,
 .ngrp__label,
 .te-th,
@@ -853,7 +833,6 @@ h4,
 .tl3-dh .datechip .m,
 .tl3-today,
 .cityrail .cr-h,
-.acct-nav__grp,
 .acct-plan__k,
 .acct-tgtrips__lbl,
 .plan-popular-badge,
@@ -924,7 +903,6 @@ h4,
 .dock-panel__head .nm b,
 .nrow__link,
 .te-seam__pill--add,
-.lkv .v,
 .bud-leg .nm,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
@@ -977,11 +955,9 @@ h4,
 .app-header__trip-meta,  /* TRIP-175 инсп.: Meta+Golos (мета трипа в шапке) */
 .fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
 .chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
-.chat-thinking span,     /* TRIP-175 инсп.: Meta+Golos («Triplanio is typing») */
 .pcard__mtx, .pcard__addr, .pcard__score, .pcard__price span,  /* TRIP-287: Meta+Golos (отзывы/адрес/оценка/сноска цены карточки) */
 .s22mk__price, .s22mk__count,  /* TRIP-287: инспектор канонов — цена/счётчик маркера карты → Meta+Golos */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
-.chat-rail .card li,     /* TRIP-175 инсп.: Meta+Golos (пункты списка в чат-рейле) */
 .pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
 .pro-up .lockmsg,        /* TRIP-225 инсп.: Meta+Golos («Подключает владелец») */
 .field__sub,             /* TRIP-225 инсп.: Meta+Golos (под-подсказка поля — всегда проза) */
@@ -1201,11 +1177,19 @@ h4,
 .btn--danger-ghost:hover { --bg: var(--danger-soft); }
 /* AI CTA — design-system: white text in light, dark text in dark (the dark-theme
    ai-gradient is brighter, so dark text reads better there). */
-.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--ai); }
-.btn--ai:hover { background-position: 100% 0; }
+.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); box-shadow: 0 8px 20px -7px var(--ai); }
 [data-theme="dark"] .btn--ai { --fg: #0c0a1e; }
-.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--pro); }
-.btn--pro:hover { background-position: 100% 0; }
+.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); box-shadow: 0 8px 20px -7px var(--pro); }
+/* Общий слой градиентных вариантов (TRIP-295). `background-origin` обязан стоять
+   ЗДЕСЬ, после шортката `background` выше: шорткат сбрасывает ВСЕ background-*
+   longhand'ы, включая origin, — поэтому то же правило в базовом .btn молча не
+   работает. Без него плитка градиента меряется от padding-box, а красится до
+   border-box, и зазор в 1px под прозрачным бордером добирается repeat'ом соседней
+   плитки: её противоположный край (циан у --ai, розовый у --pro) и рисует полосу
+   слева. Сверху утечка тоже есть, но там край совпадает с началом градиента и
+   потому незаметен. */
+.btn--ai, .btn--pro { background-origin: border-box; background-size: 170% 170%; }
+.btn--ai:hover, .btn--pro:hover { background-position: 100% 0; }
 .btn--sm { padding: 9px 15px; }                        /* размер из канона .t-ui (TRIP-165) */
 .btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = 16px (--fs-h4); .t-label с TRIP-175 = 14px, крупная кнопка осталась 16 намеренно */
 .btn--icon { padding: 11px; width: 42px; height: 42px; }
@@ -1220,11 +1204,7 @@ h4,
 .dz-lift--transfer { border-left: 3px solid var(--ev-transfer); }
 .dz-lift--transfer:hover { border-left-color: var(--ev-transfer); }
 @media (prefers-reduced-motion: reduce) { .dz-lift:hover { transform: none; } }
-.dz-xbtn { background: transparent; transition: background .12s var(--ease-out); }
-.dz-xbtn:hover { background: var(--wash); }
 /* Border-only hover (list rows). */
-.dz-bord { border: 1px solid var(--line); transition: border-color .14s var(--ease-out); }
-.dz-bord:hover { border-color: var(--line-hover); }
 /* Strong card lift (collection cards): -2px + card shadow. */
 .dz-lift-card { border: 1px solid var(--line); transition: border-color .15s var(--ease-out), box-shadow .15s var(--ease-out), transform .15s var(--ease-out); }
 .dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--shadow-card); }
@@ -1266,6 +1246,7 @@ h4,
 .invite,                   /* баннер-приглашение */
 .acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
+.chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
 .pl-lastcard {             /* карточка последней брони (планнер) */
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
@@ -1387,7 +1368,7 @@ h4,
 .textarea { min-height: 80px; resize: vertical; }
 .field--ai .input, .field--ai .select, .field--ai .textarea {
   background: var(--ai-soft);
-  border-color: var(--ai-soft-12);
+  border-color: var(--ai-soft-2);
 }
 .field--ai .field__label::after {
  content: "AI";
@@ -1402,6 +1383,16 @@ h4,
   border-color: var(--warning);
   box-shadow: 0 0 0 3px var(--warning-soft);
 }
+/* Same amber state on the event editor's own controls (date-range block draws
+   its own border, service forms use raw input/select/textarea), so
+   `.field--warning` is the ONE warning skin. Border-only, mirroring
+   `.tv-invalid`; a field never gets both (see fieldStateClass). */
+.field--warning .stay-dates,
+.field--warning input,
+.field--warning select,
+.field--warning textarea {
+  border-color: var(--warning);
+}
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
 .err, .wrn { display: flex; align-items: center; gap: 5px; }
@@ -1409,10 +1400,38 @@ h4,
 .wrn { color: var(--warning-ink); }
 .err svg, .wrn svg { width: 13px; height: 13px; flex: none; }
 
+/* Canonical checkbox — the app's only one. `appearance: none` because the box
+   the OS paints can't be styled; the <label> wrapper makes the caption part of
+   the control (click target + a11y name) for free.
+   NB: `.check` is a different thing (the landing's tick bullet) — don't merge. */
+.checkbox { display: inline-flex; align-items: center; gap: 9px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.checkbox input {
+  appearance: none;
+  width: 17px; height: 17px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  display: inline-grid; place-items: center;
+  transition: background .15s ease, border-color .15s ease;
+  flex: 0 0 auto; cursor: pointer;
+}
+.checkbox input:checked { background: var(--brand); border-color: var(--brand); }
+.checkbox input:checked::after {
+  content: "";
+  width: 9px; height: 5px;
+  border-left: 1.8px solid #fff;
+  border-bottom: 1.8px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
+/* Dimmed via a sibling selector rather than `:has()`: the build target includes
+   Firefox 104, which predates `:has()`, and a disabled tint does not justify
+   being the first thing in this codebase to depend on it. */
+.checkbox input:disabled,
+.checkbox input:disabled ~ span { opacity: .5; cursor: not-allowed; }
+
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
-.field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-.field-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
 
 /* Badge / chip */
 .badge {
@@ -1477,16 +1496,9 @@ h4,
   .pro-up--inline .btn,
   .pro-up--inline .lockmsg { width: 100%; }
 }
-/* locktag — inline "Pro only" chip on gated items (Lumo .locktag) */
-.locktag {
- display: inline-flex; align-items: center; gap: 5px;
- color: var(--pro-ink); background: var(--pro-soft);
- padding: 3px 8px; border-radius: 999px;
-}
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--danger { background: var(--danger-soft); color: var(--danger); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
-.badge--ai { background: var(--ai-soft); color: var(--ai); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--primary-soft); color: var(--brand); }
 .badge--solid { background: var(--brand); color: white; }
@@ -1527,55 +1539,16 @@ h4,
 .avatar--lg { width: 36px; height: 36px; }
 .avatar--xl { width: 56px; height: 56px; }
 .avatar--sm { width: 22px; height: 22px; }
-.avatar--ai { background: var(--ai-grad) !important; }
+.avatar--ai { background: var(--ai-gradient) !important; }
 .avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1.5px dashed var(--line); }
 .avatar--deleted { background: var(--wash) !important; color: var(--muted) !important; }
 
 .avatar-stack { display: inline-flex; }
 .avatar-stack .avatar { margin-left: -8px; }
 .avatar-stack .avatar:first-child { margin-left: 0; }
+/* Over a photo (trip cards) the ring has to be white, not the surface colour. */
+.avatar-stack--white .avatar { border: none; box-shadow: 0 0 0 2px #fff; }
 
-/* Lens tabs */
-.lens-tabs {
-  display: inline-flex; gap: 2px;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--wash);
-  border: 1px solid var(--line);
-  flex-wrap: wrap;
-}
-.lens-tab {
- display: inline-flex; align-items: center; gap: 7px;
- padding: 7px 12px;
- border-radius: 9px;
-
- color: var(--muted);
- background: transparent;
- border: none;
- position: relative;
-}
-.lens-tab:hover { color: var(--ink); }
-.lens-tab.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(15,23,42,.06);
-}
-.lens-tab__count {
- background: var(--warm); color: white;
- padding: 0 5px; border-radius: 999px;
- min-width: 16px; height: 16px;
- display: inline-grid; place-items: center;
-}
-.lens-tab.is-pro::after {
- content: "Pro";
- padding: 1px 4px; border-radius: 3px;
- background: var(--pro-soft); color: var(--pro-ink);
-}
-
-/* Section header */
-.sect-h { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.sect-h h2 { flex: 1; }
-.sect-h .actions { display: flex; gap: 8px; }
 
 /* Divider */
 .hr { border: none; border-top: 1px solid var(--line-2); margin: 0; }
@@ -1633,7 +1606,6 @@ h4,
 .row { display: flex; gap: 10px; align-items: center; }
 .col { display: flex; flex-direction: column; gap: 10px; }
 .grow { flex: 1; }
-.gap-2 { gap: 2px; } .gap-4 { gap: 4px; } .gap-6 { gap: 6px; } .gap-8 { gap: 8px; } .gap-12 { gap: 12px; } .gap-16 { gap: 16px; } .gap-20 { gap: 20px; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -1670,9 +1642,6 @@ h4,
   .app-header__account { display: none; }
   .trip-screen-body { padding-bottom: 96px !important; }
   .trip-screen-body--flush { padding-bottom: 0 !important; }
-  /* Chat: keep the body the fixed (non-scrolling) frame, but reserve room for the
-     floating bottom-nav so the composer + send button sit above it, not under. */
-  .trip-screen-body--chat { padding: 12px 12px calc(88px + env(safe-area-inset-bottom)) !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
      become a fixed-height shell — the global header pins (never scrolls), the
      content scrolls INSIDE its own container, and the bottom nav stays glued.
@@ -1765,7 +1734,7 @@ h4,
 .choice-card--ai:hover { border-color: var(--ai); }
 .choice-card__ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none; }
 .choice-card__ic--man { background: var(--primary-soft); color: var(--brand); }
-.choice-card__ic--ai  { background: var(--ai-grad); color: #fff; }
+.choice-card__ic--ai  { background: var(--ai-gradient); color: #fff; }
 .choice-card__tx { min-width: 0; }
 .choice-card__ttl { color: var(--ink); }
 .choice-card__sub { color: var(--muted); margin-top: 2px; }
@@ -1822,21 +1791,6 @@ h4,
   .planner-2col { grid-template-columns: 1fr !important; }
 }
 
-/* Manual planner layout */
-.planner-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
-  gap: 24px;
-  align-items: start;
-}
-.planner-map-col {
-  position: sticky;
-  top: 80px;
-}
-@media (max-width: 960px) {
-  .planner-grid { grid-template-columns: 1fr; }
-  .planner-map-col { position: static; order: 2; }
-}
 
 /* ── Unified create-flow (manual + AI) ──────────────────────────────────────
    Mirrors the trip-edit two-card layout: a framed full-bleed map (left) and a
@@ -2074,7 +2028,7 @@ h4,
   /* TRIP-203: голые h1/h2 больше НЕ понижаются вручную — каноны --fs-h1/--fs-h2
      теперь fluid (clamp) и шринкуются токеном единообразно на всех экранах. */
   /* Stack 2-column grids to 1 on small screens */
-  .field-row.cols-2, .field-row.cols-3, .field-row.cols-4 { grid-template-columns: 1fr !important; }
+  .field-row.cols-2 { grid-template-columns: 1fr !important; }
 }
 
 /* (removed) The old `.mobile-bottom-nav` + `.trip-2col/3col` + `.budget-2col`
@@ -2212,34 +2166,6 @@ h4,
   background: var(--wash-2);
 }
 
-/* AI gradient highlight */
-.ai-gradient {
-  background: linear-gradient(135deg, var(--ai) 0%, var(--ai-2) 60%, var(--ai-3) 100%);
-  color: white;
-}
-.ai-gradient-bg {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--ai) 10%, transparent) 0%,
-    color-mix(in srgb, var(--ai-2) 10%, transparent) 60%,
-    color-mix(in srgb, var(--ai-3) 8%, transparent) 100%);
-}
-.ai-gradient-border {
-  position: relative;
-}
-.ai-gradient-border::before {
-  content: ""; position: absolute; inset: 0;
-  border-radius: inherit; padding: 1.5px;
-  background: linear-gradient(135deg, var(--ai), var(--ai-2), var(--ai-3));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  pointer-events: none;
-}
-.ai-text {
-  background: linear-gradient(135deg, var(--ai), var(--ai-2) 60%, var(--ai-3));
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
 /* ──────────────────────────────────────────────────────────────────────────
    CHAT (Lumo) — shared by the Chat lens (ChatLens) and the floating widget
    (ChatWidget). Token-only: light / dark / all four palettes follow
@@ -2247,55 +2173,167 @@ h4,
    this block only replaces the inline style soup with semantic classes.
    ────────────────────────────────────────────────────────────────────────── */
 
-/* ── Chat lens shell ── */
-.chat-grid { display: grid; grid-template-columns: 1fr 280px; gap: 18px; height: 100%; min-height: 0; }
-.chat-card {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
-  display: flex; flex-direction: column; overflow: hidden; position: relative;
-  box-shadow: var(--sh-1); min-height: 0;
+/* ── Chat lens shell ──
+   The lens is a full-bleed ROOM, not a card inside the screen body: header /
+   scrolling stream / pinned composer, each owning its own row. The old
+   `.chat-grid` (1fr + 280px rail) and `.chat-card` chrome are gone — the rail
+   held two static cards that were display:none below 768px anyway, and a card
+   border around a full-screen surface is a card-in-a-card. */
+.chat-room { display: flex; flex-direction: column; height: 100%; min-height: 0; position: relative; }
+/* Same frosted bar as the global .app-header — the room header is a second tier
+   of the same chrome, not a plain content strip. */
+.chat-head {
+  display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 24px;
+  border-bottom: 1px solid var(--line); flex: none;
+  background: var(--header-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
 }
-.chat-head { display: flex; align-items: center; gap: 11px; padding: 13px 18px; border-bottom: 1px solid var(--line-2); flex: none; }
-.chat-head h3 { flex: 1; margin: 0; color: var(--ink); }
-.chat-head__ic {
-  width: 34px; height: 34px; border-radius: 10px; background: var(--ai-gradient); color: #fff;
-  display: grid; place-items: center; flex: none; box-shadow: 0 5px 14px -5px var(--ai);
+.chat-head__id { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; flex: 1; }
+.chat-head__id h3 { margin: 0; color: var(--ink); }
+.chat-head__sub { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Members trigger — avatar stack + label in one pill; opens the member list as a
+   Popover (desktop) or the canonical Sheet (phones). */
+.chat-members-btn {
+  display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px 0 6px;
+  border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink-2); cursor: pointer; flex: none;
+  transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
-.chat-online { display: inline-flex; align-items: center; gap: 6px; color: var(--success-ink); background: var(--success-soft); padding: 5px 10px; border-radius: var(--r-pill); white-space: nowrap; }
-.chat-online .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); position: relative; }
-.chat-online .pulse::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--success); opacity: .35; animation: chatPulse 1.8s var(--ease-out) infinite; }
-@keyframes chatPulse { 0% { transform: scale(.6); opacity: .5; } 100% { transform: scale(1.7); opacity: 0; } }
+.chat-members-btn:hover { border-color: var(--line-hover); box-shadow: var(--sh-1); }
+.chat-members-btn .avatar { width: 26px; height: 26px; }
+.chat-members-pop { width: 330px; max-width: calc(100vw - 16px); padding: 8px; }
 
-/* ── Message stream (shared) ── */
-.chat-msgs { flex: 1; overflow: auto; padding: 18px; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
-.chat-daydiv { text-align: center; margin: 14px 0 8px; }
-.chat-daydiv span { color: var(--muted-2); background: var(--wash); padding: 4px 12px; border-radius: var(--r-pill); }
-.chat-row { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
-.chat-row--me { justify-content: flex-end; }
-.chat-row--grouped { margin-top: 2px; }
-.chat-row__sp { width: 28px; flex: none; }
-.chat-col { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; max-width: 80%; }
-.chat-row--me .chat-col { align-items: flex-end; }
+/* ── Message stream (shared) ──
+   Gutters belong to the shell (`.chat-room` / `.dock-panel`), which is why this
+   base rule carries no padding of its own. */
+.chat-msgs { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+.chat-room .chat-msgs { padding: 20px 24px 8px; }
+/* Readable column inside a full-width room. 760px is the app's existing reading
+   width (Inbox), not a new number. */
+.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; }
+.chat-hist { display: flex; justify-content: center; padding-bottom: 20px; }
+/* Rule-and-label, not a pill: the divider spans the column so a day break reads
+   as a section edge rather than another chip in the stream. */
+.chat-daydiv { display: flex; align-items: center; gap: 16px; margin: 24px 0 20px; }
+.chat-daydiv:first-child { margin-top: 0; }
+.chat-daydiv::before, .chat-daydiv::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+.chat-daydiv span { color: var(--muted-2); flex: none; }
+/* A RUN = consecutive messages from one author on one day, laid out as ONE
+   block: the avatar column on the left, the messages on the right. The avatar
+   belongs to the run rather than to a single row, which is what lets it be
+   sticky — it starts at the author's name and rides the top edge down the whole
+   run while you scroll. Sticky is bounded by `.chat-run`, so it can never leave
+   its own author's block. */
+.chat-run { display: flex; gap: 12px; margin-top: 16px; justify-content: flex-start; align-items: flex-start; }
+.chat-run--me { justify-content: flex-end; }
+.chat-run__av { width: 32px; flex: none; position: sticky; top: 8px; align-self: flex-start; }
+.chat-run__av .avatar { width: 32px; height: 32px; }
+.chat-run__col { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: min(560px, 78%); }
+/* ONE message inside the run: name row (first of an incoming run), bubble, and
+   then either its time or the failure foot. */
+.chat-msg { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 5px; }
+.chat-run--me .chat-run__col,
+.chat-run--me .chat-msg { align-items: flex-end; }
+/* Inner corners of a run tighten; the outer side keeps the full radius. */
+.chat-msg--grouped .chat-bubble--them { border-top-left-radius: 6px; }
+.chat-msg--grouped .chat-bubble--me { border-top-right-radius: 6px; }
+/* Send failed, or the assistant never answered — the message stays put with a
+   retry, it is never dropped. */
+.chat-msg__foot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.chat-msg__err { color: var(--danger-ink); display: inline-flex; align-items: center; gap: 4px; }
 .chat-name { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; padding-left: 2px; }
 .chat-name b { color: var(--ink); }
-.chat-name b.ai { color: var(--ai); }
 .chat-name .tm { color: var(--muted); }
-.chat-bubble { padding: 9px 13px; border-radius: 16px; word-break: break-word; }
-.chat-bubble--them { background: var(--wash); color: var(--ink); border-bottom-left-radius: 5px; }
-.chat-bubble--me { background: var(--brand); color: #fff; border-bottom-right-radius: 5px; }
-.chat-bubble--ai { background: var(--ai-gradient-soft); color: var(--ink); border: 1px solid var(--ai-line); border-bottom-left-radius: 5px; }
+.chat-bubble { padding: 11px 15px; border-radius: var(--r-md); word-break: break-word; }
+/* Incoming = surface + hairline (not a grey fill): on a light room the fill read
+   as a second background layer. */
+.chat-bubble--them { background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-bottom-left-radius: 6px; }
+.chat-bubble--me { background: var(--brand); border: 1px solid transparent; color: #fff; border-bottom-right-radius: 6px; }
+[data-theme="dark"] .chat-bubble--me { color: #0c1424; }
 .chat-bubble--pending { opacity: .7; }
+/* @Triplanio inside a message. In the own-bubble it must follow the bubble's
+   ink: dark theme paints that bubble light blue with dark text, so the light
+   variant was white-on-light-blue. */
+.chat-men { font-weight: 700; color: var(--ai); }
+.chat-bubble--me .chat-men { color: rgba(255, 255, 255, .94); }
+[data-theme="dark"] .chat-bubble--me .chat-men { color: rgba(12, 20, 36, .72); }
 .chat-time { color: var(--muted); margin-top: 2px; padding-right: 2px; }
 
-/* ── Thinking strip (shared) ── */
-.chat-thinking { position: relative; display: flex; align-items: center; gap: 9px; padding: 8px 16px; background: var(--ai-soft); border-top: 1px solid var(--line-2); color: var(--ai-ink); flex: none; }
-.chat-thinking::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--ai), transparent); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
-.chat-thinking-bar { position: relative; height: 3px; overflow: hidden; flex: none; }
-.chat-thinking-bar::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--ai), transparent); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+/* ── Assistant reply — a DOCUMENT, not a bubble (TRIP-296) ──
+   An assistant answer is routinely 40-80 lines of headings + lists. In a tinted
+   bubble (`.chat-bubble--ai`, removed) that reads as a wall of colour, so the
+   answer now sits in a full-width panel on the canonical `.surface-panel` skin,
+   marked as AI by a gradient spine rather than a fill. Long answers clamp with a
+   fade and expand on demand. */
+.chat-reply { display: flex; gap: 12px; margin-top: 32px; }
+.chat-reply__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.chat-reply__who { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+.chat-reply__who b { color: var(--ai-ink); }
+.chat-reply__who .tm { color: var(--muted-2); }
+.chat-reply__tag { padding: 3px 7px; border-radius: 6px; background: var(--ai-soft); color: var(--ai-ink); }
+.chat-reply__card { position: relative; padding: 16px 20px; border-radius: var(--r-md); overflow: hidden; }
+.chat-reply__card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ai-gradient); }
+.chat-reply__card.is-clamped { padding-bottom: 46px; }
+/* Height comes from ChatReply (CLAMP_H) via an inline max-height: the same
+   number measured the overflow and clipped the text from two different files,
+   so one could be changed without the other and the "show full" button stopped
+   matching the actual cut. */
+.chat-reply__card.is-clamped .chat-reply__text { overflow: hidden; }
+.chat-reply__card.is-clamped::after {
+  content: ""; position: absolute; left: 3px; right: 0; bottom: 0; height: 100px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--surface) 62%);
+}
+.chat-reply__more { color: var(--ai-ink); background: none; border: 0; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
+.chat-reply__more:hover { text-decoration: underline; }
+.chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
+.chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: -8px; }
+/* Secondary actions sit under the answer — muted until hovered, so they never
+   compete with the answer itself. */
+.chat-reply__acts .btn { color: var(--muted); }
+.chat-reply__acts .btn:hover { color: var(--ink); }
+
+/* ── Overline above the composer: thinking pill + "jump to newest" ── */
+/* The pills used to sit flush against the composer's top border, which cut
+   through them. Only the TOP margin is set here: the matching 8px below already
+   comes from `.chat-composer__in`'s own `gap`. */
+.chat-overline { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-top: 8px; }
+/* Was a full-width tinted strip welded to the top of the composer; as a pill it
+   reads as status rather than as a second toolbar. */
+.chat-thinking { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px 0 5px; border-radius: var(--r-pill); background: var(--ai-soft); border: 1px solid var(--ai-line); color: var(--ai-ink); flex: none; }
+/* Dots take the pill's own ink and the design's 4px — the global .ai-dots are
+   5px on the stronger --ai, which inside a soft pill read as a second accent. */
+.chat-thinking .ai-dots span { width: 4px; height: 4px; background: currentColor; }
+.chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
+.chat-jump b { color: var(--brand); }
 
 /* ── Composer (shared) ── */
+/* Widget dock (a panel edge). The lens overrides this below into a floating
+   dock — there the composer is its own rounded surface, so a full-width rule
+   above it would read as a second border. */
 .chat-composer { border-top: 1px solid var(--line-2); padding: 12px; position: relative; flex: none; }
-.chat-composer__row { display: flex; gap: 8px; align-items: flex-end; }
-.chat-composer__field { flex: 1; min-width: 0; position: relative; }
+.chat-room .chat-composer {
+  border-top: 0; padding: 0 24px 20px;
+  background: linear-gradient(180deg, transparent, var(--bg) 38%);
+}
+/* The composer's inner column: in the ROOM it carries the readable width and the
+   stream's gutters, in the DOCK it must carry neither (the dock panel already
+   sets its own padding). This used to say "the widget has no `__in`" — true
+   before the two composers were unified into one component, false since: the
+   widget silently inherited the room's 24px inset, which is why the "typing" /
+   "new messages" row sat far from the panel edge there but flush in the lens. */
+.chat-composer__in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 8px; }
+.dock-panel .chat-composer__in { max-width: none; padding: 0; }
+/* The ROW is the input surface: field + both buttons live inside one rounded
+   container, so the textarea itself carries no border (it is not a .textarea). */
+.chat-composer__row {
+  display: flex; gap: 8px; align-items: flex-end; padding: 8px;
+  background: var(--surface); border: 1px solid var(--line-strong);
+  border-radius: var(--r-xl); box-shadow: var(--sh-1);
+  transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+.chat-composer__row:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.chat-composer__field { flex: 1; min-width: 0; position: relative; min-height: 40px; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
    @triplanio renders bold-coloured while the caret stays in lockstep. */
 /* Overlay (visible text) and textarea (transparent, caret source) MUST share
@@ -2308,8 +2346,36 @@ h4,
    advances are guaranteed identical. (The mention's bold look comes from
    -webkit-text-stroke, which does not change advance width.) */
 .chat-ov, .chat-ta { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-.chat-ov { position: absolute; inset: 0; padding: 11px 14px; white-space: pre-wrap; word-break: break-word; color: var(--ink); pointer-events: none; border-radius: var(--r-sm); overflow: hidden; }
-.chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; padding: 11px 14px; resize: none; overflow-y: hidden; display: block; }
+/* EVERY property that affects glyph advance or line breaking is declared ONCE,
+   for both layers together. The caret comes from the textarea while the visible
+   text comes from the overlay, so any divergence shows up as a drifting caret.
+   The overlay used to keep `word-break: break-word` while the textarea kept its
+   UA default `normal` — the two then wrapped at different points and the caret
+   ended up a word away from the text on multi-line input.
+   Padding is on the layers, NOT on the field: the overlay is inset:0 of the
+   field, so field padding would shift it relative to the textarea. */
+.chat-ov, .chat-ta {
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  font-weight: 400;
+  letter-spacing: 0;
+  word-spacing: normal;
+  line-height: 22px;
+  padding: 9px 6px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  tab-size: 4;
+}
+.chat-ov { position: absolute; inset: 0; color: var(--ink); pointer-events: none; overflow: hidden; }
+.chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; border: 0; outline: 0; resize: none; overflow-y: hidden; display: block; min-height: 40px; }
+.chat-ta::placeholder { color: var(--muted-2); }
+/* While the field is EMPTY the hint stays on one line and is clipped at the right
+   edge. Without this it wrapped on a narrow screen, and since the auto-grow
+   measures `scrollHeight` — which counts the placeholder — the input opened to
+   two rows before a single character was typed. Typing drops
+   `:placeholder-shown`, so real text wraps as usual. */
+.chat-ta:placeholder-shown { white-space: nowrap; text-overflow: ellipsis; }
 /* Mobile (≤640px) bumps .textarea to 16px to stop iOS zoom-on-focus (see the
    .input/.select/.textarea rule in the responsive section). The overlay is a
    <div>, not a .textarea, so it stayed 14px → 16-vs-14 advance mismatch pushed
@@ -2319,11 +2385,20 @@ h4,
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
    the border + 4px ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }
-.chat-send { height: 44px; width: 44px; flex: none; border: 0; border-radius: var(--r-btn); background: var(--ai-gradient); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px -8px var(--ai); transition: transform .16s var(--ease-spring), filter .2s; }
-.chat-send:hover { filter: brightness(1.05); }
+/* ONE send button for both shells. The lens used to draw a wide .btn--primary
+   with a label while the widget drew this square on --ai-gradient: the same
+   action, two looks, and the gradient claimed sending was an AI act. */
+.chat-send { height: 40px; width: 40px; flex: none; border: 0; border-radius: 12px; background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px -9px var(--brand); transition: transform .16s var(--ease-spring), filter .2s; }
+.chat-send:hover { filter: brightness(1.06); }
 .chat-send:active { transform: scale(.94); }
 .chat-send:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-.chat-send svg { width: 17px; height: 17px; }
+[data-theme="dark"] .chat-send { color: #0c1424; }
+/* Call the assistant without knowing the "@" convention. */
+.chat-at { height: 40px; width: 40px; flex: none; border: 0; border-radius: 12px; background: var(--ai-soft); color: var(--ai-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .18s var(--ease-out); }
+.chat-at:hover { background: var(--ai-soft-2); }
+.chat-composer__hint { display: flex; align-items: center; gap: 8px; color: var(--muted-2); padding: 0 4px; }
+.chat-composer__hint kbd { font-family: var(--font-mono); font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }
+@media (max-width: 640px) { .chat-composer__hint { display: none; } }
 
 /* ── Mention popover (shared) ── */
 .chat-mention { position: absolute; bottom: calc(100% + 6px); left: 12px; width: 280px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--sh-3); padding: 6px; z-index: 6; }
@@ -2333,50 +2408,64 @@ h4,
 .chat-mention__row b { color: var(--ai); display: block; }
 .chat-mention__row span { color: var(--muted); }
 
-/* ── Right rail (lens) ── */
-.chat-rail { display: flex; flex-direction: column; gap: 14px; overflow: auto; min-height: 0; }
-.chat-member { display: flex; align-items: center; gap: 10px; }
+/* ── Member list — lives in the header Popover / Sheet (was the right rail) ── */
+.chat-member { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; }
+.chat-member:hover { background: var(--wash); }
 .chat-member__b { flex: 1; min-width: 0; }
 .chat-member__nm { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-member__rl { color: var(--muted); }
-.chat-member-sep { border-top: 1px solid var(--line-2); padding-top: 8px; margin-top: 4px; }
+.chat-member-sep { border-top: 1px solid var(--line-2); padding-top: 4px; margin-top: 4px; }
 
-/* ── Lens responsive: collapse to one column, hide rail (≤768px) ── */
+/* ── Lens responsive (≤768px) ── */
 @media (max-width: 768px) {
-  .chat-grid { grid-template-columns: 1fr; gap: 0; }
-  .chat-rail { display: none; }
-  .chat-msgs { padding: 14px; }
-  .chat-col { max-width: 88%; }
+  .chat-head { height: 56px; padding: 0 14px; gap: 8px; }
+  .chat-head__sub { display: none; }
+  .chat-members-btn .chat-members-btn__lbl { display: none; }
+  .chat-members-btn { height: 34px; padding: 0 5px; }
+  /* Breathing room above the composer — the stream used to end flush against it. */
+  .chat-room .chat-msgs { padding: 16px 12px 12px; }
+  .chat-run__col { max-width: 86%; }
+  /* The gutter keeps its 32px on phones: the assistant's avatar now sits in the
+     SAME gutter (ChatReply) and is sized inside the component, so shrinking the
+     box alone left its disc hanging out of it. */
+  .chat-reply { margin-top: 24px; }
+  .chat-reply__card { padding: 12px 16px; }
+  .chat-reply__card.is-clamped .chat-reply__more { left: 16px; }
+  /* Dock gutters match the stream's — no double inset. */
+  .chat-room .chat-composer { padding: 0 0 12px; }
+  .chat-composer__in { padding: 0 12px; }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
    Floating chat widget (ChatWidget) — Lumo
    ────────────────────────────────────────────────────────────────────────── */
+/* Brand, not the AI gradient: the widget is the trip chat, and the gradient
+   claimed the whole conversation was an AI surface. */
 .dock {
   position: fixed; right: 24px; bottom: max(24px, env(safe-area-inset-bottom));
   width: 56px; height: 56px; border-radius: 50%;
-  color: #fff; display: grid; place-items: center;
+  background: var(--brand); color: #fff; display: grid; place-items: center;
   box-shadow: var(--sh-3);
   border: none; cursor: pointer; z-index: 70;
   transition: transform .16s var(--ease-spring), box-shadow .2s;
 }
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
-.dock--ai { background: var(--ai-gradient); }
+[data-theme="dark"] .dock { color: #0c1424; }
 .dock__count {
  position: absolute; top: -4px; right: -4px;
  background: var(--warm); color: #fff;
- min-width: 20px; height: 20px; border-radius: var(--r-pill);
+ min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--r-pill);
  display: grid; place-items: center;
- border: 2px solid var(--surface);
+ border: 2px solid var(--bg);
 }
 .dock-panel {
   position: fixed; right: 24px; bottom: 24px;
-  width: 384px; max-width: calc(100vw - 32px);
-  height: 552px; max-height: calc(100vh - 80px);
+  width: 396px; max-width: calc(100vw - 32px);
+  height: min(580px, calc(100vh - 112px));
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-xl);
   box-shadow: var(--sh-3);
   z-index: 75;
   display: flex; flex-direction: column;
@@ -2384,29 +2473,29 @@ h4,
   animation: dockUp .26s var(--ease-out);
 }
 @keyframes dockUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
-.dock-panel__tabs {
-  display: flex; gap: 2px; padding: 8px 10px 0;
-  border-bottom: 1px solid var(--line-2);
-  background: var(--wash-2);
-}
-.dock-panel__tab {
- flex: 1; padding: 9px 12px; border: none; background: transparent;
- border-bottom: 2px solid transparent;
- color: var(--muted);
- cursor: pointer;
- display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.dock-panel__tab.active { color: var(--brand); border-color: var(--brand); }
-.dock-panel__head { padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
-.dock-panel__head .nm { flex: 1; color: var(--ink-2); min-width: 0; }
-.dock-panel__head .nm b { color: var(--ink); }
-
-/* ── Mobile: the open widget lives inside the canonical bottom-sheet (.sheet).
-   .sheet--chat makes the body a full-height flex column so messages scroll
-   and the composer stays pinned; vaul repositions above the keyboard. ── */
-.sheet--chat { height: 86dvh; }
-.sheet--chat .sheet-b { padding: 0; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.sheet--chat .chat-msgs { padding: 14px; }
+/* ONE header row — the former tab strip held a single always-active tab. */
+.dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line-2); }
+.dock-panel__head .icon-btn { width: 32px; height: 32px; border-radius: 9px; }
+.dock-panel__head .avatar { width: 26px; height: 26px; }
+.dock-panel__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.dock-panel__id b { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock-panel__id span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 8px сверху — ровно столько же, сколько даёт `.chat-overline` в комнате. Полоса
+   «Triplanio печатает / Новые сообщения» обязана стоять одинаково на обеих
+   поверхностях, поэтому её отступ задаёт ОДИН источник: сам композер в комнате
+   и этот padding в доке (свой margin у полосы здесь снят — иначе 10+8). */
+.dock-panel__dock { flex: none; padding: 8px 12px 12px; border-top: 1px solid var(--line-2); }
+.dock-panel .chat-overline { margin-top: 0; }
+.dock-panel .chat-msgs { padding: 8px 12px 12px; }
+.dock-panel .chat-run__col { max-width: 86%; }
+.dock-panel .chat-reply { margin-top: 20px; }
+.dock-panel .chat-reply__card { padding: 12px 14px 12px 17px; }
+/* The composer already carries its own surface, so inside the widget dock it
+   drops the outer bar chrome and runs a denser variant of the same markup. */
+.dock-panel .chat-composer { border-top: 0; padding: 0; }
+.dock-panel .chat-composer__row { border-radius: var(--r-md); padding: 6px; box-shadow: none; }
+.dock-panel .chat-at, .dock-panel .chat-send { width: 34px; height: 34px; border-radius: 10px; }
+.dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    Notifications & Members (Lumo)
@@ -2586,23 +2675,6 @@ h4,
  border: 1px solid var(--line);
  color: var(--ink);
 }
-.partner-pill__logo {
- width: 18px; height: 18px; border-radius: 4px;
- display: grid; place-items: center;
- color: white;
-}
-
-/* AI section accent card */
-.ai-card {
-  position: relative; overflow: hidden;
-}
-.ai-card::before {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(120% 80% at 0% 0%, rgba(106,62,226,.18), transparent 60%);
-  pointer-events: none;
-}
-.ai-card > * { position: relative; }
-
 /* Skeleton pulse */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -2786,7 +2858,6 @@ h4,
   .btn-label-collapse { display: none; }
 }
 
-.seclabel { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
 .addmini { width: 26px; height: 26px; border-radius: 8px; background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
 .addmini:hover { background: var(--accent); color: var(--accent-ink); }
 
@@ -2822,13 +2893,7 @@ h4,
 .lp-stepper__tx b { color: var(--ink); }
 .lp-stepper__tx span { color: var(--muted); }
 
-.metastrip { display: flex; flex-wrap: wrap; gap: 8px; }
-.metastrip .ch { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); background: var(--secondary); padding: 6px 11px; border-radius: var(--r-pill); }
 
-.lkv { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.lkv .k { color: var(--muted); }
-.lkv .v { color: var(--ink); }
-.kvgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 16px; }
 /* .kv / .kv .k / .kv .v are defined once in the EVENT/SERVICE DIALOGS block below. */
 .route { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; padding: 16px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 14px; }
 .route .rd { color: var(--muted); }
@@ -2836,10 +2901,7 @@ h4,
 .route .rc { color: var(--ink-2); margin-top: 3px; }
 .route .ra { color: var(--muted); margin-top: 1px; }
 .route .end { text-align: right; }
-.rmid { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ev-transfer-ink); }
-.rmid .dur { color: var(--muted); white-space: nowrap; }
 
-.metastrip .ch--p { background: var(--primary-soft); color: var(--primary); }
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
 .addr div { color: var(--ink-2); }
@@ -2901,7 +2963,6 @@ h4,
 /* ---- Scrollable screen body ---- */
 .trip-screen-body { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 60px; }
 .trip-screen-body--flush { padding: 0; overflow: hidden; }
-.trip-screen-body--chat { padding: 28px; overflow: hidden; }
 
 /* ---- Mobile menu scrim (sidebar slides over the content) ---- */
 .trip-side-scrim { display: none; }
@@ -3057,12 +3118,11 @@ h4,
 .settings-lens > :nth-child(4) { animation-delay: 165ms; }
 
 /* ---- loading skeleton ---- */
-.ov-skel { background: var(--surface-2); border: 1px solid var(--line); border-radius: 20px; animation: ovSkel 1.3s ease-in-out infinite; }
 .ov-bar { background: var(--surface-2); border-radius: 8px; animation: ovSkel 1.3s ease-in-out infinite; }
 @keyframes ovSkel { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .ov-anim, .statrow .statcard, .ov-skel, .ov-bar,
+  .ov-anim, .statrow .statcard, .ov-bar,
   .settings-lens > .card, .settings-lens > .settings-grid { animation: none; }
   .wdg:hover { transform: none; }
 }
@@ -3288,8 +3348,6 @@ h4,
 /* Base text matches the Lumo body exactly so nothing inherits a lighter/smaller
    default (15px / 500 / display-headings). */
 .acct-nav { position: sticky; top: 78px; }
-.acct-nav__grp { color: var(--muted-2); padding: 0 12px; margin: 0 0 8px; }
-.acct-nav__grp + .acct-nav__grp { margin-top: 14px; }
 .acct-nav a { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
 .acct-nav a:hover { background: var(--surface-2); color: var(--ink); }
 .acct-nav a.active { background: var(--primary-soft); color: var(--brand); }
@@ -3323,9 +3381,6 @@ h4,
 .acct-hero__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acct-hero__mail { color: var(--muted); margin-top: 2px; }
 .acct-hero__actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
-.acct-linkbtn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: inherit; border-radius: var(--r-pill); cursor: pointer; transition: background .18s, border-color .18s, color .18s, transform .16s var(--ease-spring); }
-.acct-linkbtn:hover { background: var(--surface-2); border-color: var(--line-hover); } .acct-linkbtn:active { transform: scale(.96); } .acct-linkbtn svg { width: 13px; height: 13px; }
-.acct-linkbtn--danger { color: var(--danger-ink); } .acct-linkbtn--danger:hover { background: var(--danger-soft); border-color: transparent; }
 .acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
 .acct-hero__edit .btn { align-self: end; }
 .acct-flabel { display: block; color: var(--ink-2); margin-bottom: 6px; }
@@ -3633,13 +3688,8 @@ h4,
    одиночные — только Pro-бейдж (если есть). Карточки responsive.
    ============================================================ */
 
-/* ── Аватар-стек (.av-stack) ───────────────────────────────── */
-.av-stack { display: inline-flex; }
-/* Remove the built-in .avatar border — use box-shadow only for the overlap ring */
-.av-stack .avatar { margin-left: -9px; border: none; box-shadow: 0 0 0 2px var(--surface); }
-.av-stack .avatar:first-child { margin-left: 0; }
-/* Card-footer: solid white ring */
-.av-stack--white .avatar { border: none; box-shadow: 0 0 0 2px #fff; }
+/* .av-stack удалён — был вторым набором правил для того же стека аватаров,
+   что и канон .avatar-stack (TRIP-296). */
 
 /* ── Постер-карточка (grid view) ───────────────────────────── */
 .tc-grid {
@@ -3696,7 +3746,7 @@ h4,
 .tc__scope svg { width: 14px; height: 14px; flex: none; opacity: .9; }
 .tc__scope span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tc__foot { display: flex; align-items: center; gap: 7px; margin-top: 13px; flex-wrap: wrap; }
-.tc__foot .av-stack { margin-left: auto; }
+.tc__foot .avatar-stack { margin-left: auto; }
 
 /* frost-glass chip for "Совместный" and role */
 .tc__glass {
@@ -4065,6 +4115,10 @@ h4,
 .ai-blk-hint{ color:var(--muted-2); }
 /* inline border-spinner (parsing) */
 .ai-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ai);border-right-color:transparent;border-radius:50%;animation:aispin .8s linear infinite;flex:none;}
+/* The implicit `from` here is the element's own computed transform, so this
+   keyframe REPLACES it. Never put .spin on an element that is positioned with
+   a transform (e.g. `translateY(-50%)` centring) — it would slide as it turns.
+   Wrap it instead: the wrapper positions, the inner element spins. */
 @keyframes aispin{to{transform:rotate(360deg);}}
 /* generic spinner utility (replaces Tailwind animate-spin on lucide icons) */
 .spin{animation:aispin 1s linear infinite;}
@@ -4113,7 +4167,7 @@ h4,
    EVENT/SERVICE DIALOGS — Lumo redesign (view + edit), 2026-06-08
    Self-contained .ev-dlg system. Uses --ev-color/--ev-soft/--ev-ink set on the
    .ev-dlg root by the caller. Additive: does not touch legacy panel classes
-   (.route/.notes/.kvgrid used by the trip-editor left panels).
+   (.route/.notes used by the trip-editor left panels).
    ═══════════════════════════════════════════════════════════════════════════ */
 .ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
 .ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;flex:none;}
@@ -4256,18 +4310,8 @@ h4,
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
-.ch-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;}
-.ch-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);margin-top:2px;flex:none;cursor:pointer;}
-.ch-row .cr-b{flex:1;min-width:0;}
-.ch-row .cr-b b{display:block; color:var(--ink);}
-.ch-row .cr-b span{display:block; color:var(--muted); margin-top:1px;}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
-.drop-zone{display:flex;flex-direction:column;align-items:center;gap:5px;padding:18px;border:1.5px dashed var(--line-strong);border-radius:12px;text-align:center;cursor:pointer;transition:border-color .14s,background .14s;}
-.drop-zone:hover{border-color:var(--primary);background:var(--primary-soft);}
-.drop-zone svg{width:20px;height:20px;color:var(--muted);}
-.drop-zone b{ color:var(--ink-2);}
-.drop-zone span{ color:var(--muted); }
 /* transport type grid */
 .tx-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
 .tx-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:9px 4px;border-radius:10px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer;font:inherit; transition:all .13s;}
@@ -4283,12 +4327,6 @@ h4,
 .seg-card-ti .rl{display:flex;align-items:center;gap:5px; color:var(--ink);}
 .seg-card-ti .rl svg{width:11px;height:11px;color:var(--muted);}
 .seg-card-body{padding:11px 12px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:8px;}
-.lay-div{display:flex;align-items:center;gap:8px;padding:4px 10px;}
-.lay-div .ld{width:1px;height:14px;background:var(--line);margin-left:14px;}
-.lay-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--ev-transfer-soft);color:var(--ev-transfer-ink); }
-.lay-pill svg{width:11px;height:11px;}
-.night-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line); color:var(--ink-2);}
-.night-badge svg{width:12px;height:12px;}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
 .bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center; color:#fff;flex:none;overflow:hidden;}

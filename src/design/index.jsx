@@ -57,9 +57,12 @@ export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className
 };
 
 // ----- AvatarStack -----
-export const AvatarStack = ({ people = [], max = 4, size = "sm" }) => (
-  <div className="avatar-stack">
-    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} kind={p.kind} size={size} />)}
+// `people` rows carry the same fields as <Avatar>: name + optional photo/deleted/kind.
+// Photos matter — the chat header stacks real member avatars, and without them the
+// stack fell back to initials while the same people showed photos two lines below.
+export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
+  <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
+    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
     {people.length > max && (
       <div className={`avatar avatar--${size}`} style={{ background: "var(--wash)", color: "var(--muted)", border: "1.5px solid var(--surface)" }}>
         +{people.length - max}
@@ -206,15 +209,41 @@ export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
   }} />
 );
 
+// ----- Checkbox -----
+// A real <input type="checkbox"> under the `.checkbox` skin (app.css), so native
+// keyboard, focus and <label> semantics come for free.
+//
+// Checkbox vs Toggle: a checkbox is a value you pick and then submit (a form
+// field, a filter applied by a button); a Toggle is a setting that takes effect
+// the moment you flip it. Don't swap one for the other to look tidier.
+export const Checkbox = ({ checked, onChange, label, disabled, className = "" }) => (
+  <label className={`checkbox ${className}`}>
+    <input
+      type="checkbox"
+      checked={!!checked}
+      disabled={disabled || undefined}
+      onChange={(e) => onChange?.(e.target.checked)}
+    />
+    {label && <span>{label}</span>}
+  </label>
+);
+
 // ----- Toggle -----
 // `busy` shows an in-knob spinner and blocks interaction while the change is
 // being persisted server-side — toggles never report a state the backend
 // hasn't confirmed (no optimistic flips).
+// Rendered as a real switch: `type="button"` keeps a Toggle inside a <form>
+// from submitting it, and `aria-checked` is what carries the on/off state to a
+// screen reader (`aria-label` on its own only supplies the name).
 export const Toggle = ({ on, onChange, locked, busy, label }) => (
   <button
+    type="button"
+    role="switch"
+    aria-checked={!!on}
+    aria-label={label}
+    aria-busy={busy || undefined}
     onClick={() => !locked && !busy && onChange && onChange(!on)}
     disabled={busy || undefined}
-    aria-busy={busy || undefined}
     style={{
       width: 36, height: 21, padding: 0, border: "none",
       borderRadius: 999,
@@ -223,8 +252,10 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
       opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
       transition: "background .15s ease",
     }}
-    aria-label={label}
   >
+    {/* Bleeds the hit area from the painted 36×21 track out to the 44px minimum
+        touch target. Sits before the knob so the knob still paints on top. */}
+    <span aria-hidden="true" style={{ position: "absolute", inset: "-12px -4px" }} />
     <span style={{
       position: "absolute", top: 2, left: on ? 17 : 2,
       width: 17, height: 17, borderRadius: "50%",
@@ -240,33 +271,6 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
 // ----- Currency formatting -----
 // Canonical money formatter (locale-aware, decimals only when present).
 export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
-
-// ----- DismissibleSeverity -----
-export const DismissibleSeverity = ({ level = "info", title, children, onDismiss, action, icon }) => {
-  const t = useT();
-  const [open, setOpen] = React.useState(true);
-  if (!open) return null;
-  return (
-    <div className={`sev sev--${level}`} style={{ position: "relative" }}>
-      <span className="sev__icon">
-        <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
-      </span>
-      <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
-        {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
-        {children}
-        {action && <div style={{ marginTop: 8 }}>{action}</div>}
-      </div>
-      <button onClick={() => { setOpen(false); onDismiss?.(); }} className="dz-xbtn" style={{
-        position: "absolute", top: 8, right: 8,
-        width: 22, height: 22, borderRadius: 6, border: "none",
-        color: "var(--muted)", cursor: "pointer",
-        display: "grid", placeItems: "center",
-      }} title={t('common.close')} aria-label={t('common.close')}>
-        <Icon name="close" size={12} />
-      </button>
-    </div>
-  );
-};
 
 // ----- RoleBadge with icon -----
 export const RoleBadge = ({ role, size = "md", status }) => {
@@ -347,7 +351,8 @@ const PARTNERS = {
   "holafly":       { color: "#5ac6c1", label: "Holafly",     short: "H" },
 };
 
-export function detectPartner(url) {
+// Not exported: only PartnerLogo and PartnerPill below resolve a partner.
+function detectPartner(url) {
   if (!url) return null;
   const u = url.toLowerCase();
   for (const [k, v] of Object.entries(PARTNERS)) {
@@ -388,7 +393,8 @@ export const PartnerLogo = ({ url, size = 18 }) => {
   );
 };
 
-export const PartnerPill = ({ url, fallback }) => {
+// Not exported: rendered only by StreamEventRow below.
+const PartnerPill = ({ url, fallback }) => {
   const t = useT();
   const p = detectPartner(url);
   return (
@@ -400,58 +406,8 @@ export const PartnerPill = ({ url, fallback }) => {
 };
 
 // =====================================================================
-// BOOKING SUGGESTION CARD - used by AI in chats
-// =====================================================================
-export function BookingSuggestionCard({ type, name, partner, url, price, cur, rating, sub, extras }) {
-  const t = useT();
-  const p = detectPartner(url || partner);
-  return (
-    <div style={{
-      background: "var(--surface)",
-      border: "1.5px solid var(--ai-soft-12)",
-      borderRadius: 12, padding: 12,
-      display: "flex", gap: 12, maxWidth: 360,
-    }}>
-      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0 }}>
-        <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "ticket"} size={20} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="t-ui" style={{ marginBottom: 2 }}>{name}</div>
-        <div className="muted t-meta">{sub}</div>
-        {rating && (
-          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
-            <Badge variant="success">{rating}/10</Badge>
-            <span className="muted t-meta">{p?.label || partner}</span>
-          </div>
-        )}
-        {extras && (
-          <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {extras.map((e, i) => <Badge key={i} variant="quiet">{e}</Badge>)}
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <div className="num t-ui">{fmt(price, cur)}</div>
-          <div style={{ flex: 1 }} />
-          <Btn variant="ghost" size="sm" icon="external">{p?.label || t('common.open')}</Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =====================================================================
 // SHARED TIMELINE UTILITIES - exported so all screens can use them
 // =====================================================================
-
-// ----- Utility: group event stream by date -----
-export function groupByDate(events) {
-  const groups = {};
-  for (const e of events) {
-    if (!groups[e.date]) groups[e.date] = [];
-    groups[e.date].push(e);
-  }
-  return Object.entries(groups).map(([date, items]) => ({ date, items }));
-}
 
 const _WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const _MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];

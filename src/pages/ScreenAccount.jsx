@@ -123,7 +123,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
               </>
             ) : (
               <div style={{ height: 40, display: 'grid', placeItems: 'center start' }}>
-                <div style={{ width: 18, height: 18, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                <div className="spin" style={{ width: 18, height: 18, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
               </div>
             )}
           </div>
@@ -594,7 +594,7 @@ export default function ScreenAccount() {
   if (!user) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
-        <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
       </div>
     );
   }
@@ -615,7 +615,9 @@ export default function ScreenAccount() {
 
   const NAV = [
     { id: 'profile', label: t('account.identity'), icon: 'user' },
-    { id: 'plan', label: t('account.subscription'), icon: 'pro' },
+    // Outline 'star', not the filled 'pro' ProStar: this is a nav row like its
+    // neighbours, not a Pro marker, so it keeps their outline weight.
+    { id: 'plan', label: t('account.subscription'), icon: 'star' },
     { id: 'appearance', label: t('account.preferences'), icon: 'globe' },
     { id: 'notify', label: t('account.email_notifs'), icon: 'bell' },
     { id: 'help', label: t('account.nav_help'), icon: 'shield' },

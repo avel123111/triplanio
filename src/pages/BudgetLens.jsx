@@ -34,7 +34,7 @@ import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, ReadOnlyBanner, fmtDate, CurrencyCombobox } from '../design/index';
-import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('expense', { title, amount, categoryId });
-  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(v.displayIssues, f);
 
   async function save() {
     setSaving(true);
@@ -313,7 +313,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('fx', { rates: values });
-  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(v.displayIssues, f);
 
   async function apply() {
     setSaving(true);
@@ -412,7 +412,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('category', { name });
-  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(v.displayIssues, f);
 
   async function save() {
     setSaving(true);

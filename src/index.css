@@ -272,9 +272,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; }
 .ai-filled input,
 .ai-filled textarea,
 .ai-filled [role="combobox"],
-.ai-filled button[role="combobox"] {
+.ai-filled button[role="combobox"],
+/* The date-range summary cell is a <button>, not an input, so it has to be
+   named here explicitly - otherwise AI-parsed check-in/out and departure/
+   arrival dates stay untinted. */
+.ai-filled .sd-cell {
   background-color: var(--ai-soft) !important;
-  border-color: var(--ai-soft-12) !important;
+  border-color: var(--ai-soft-2) !important;
 }
 
 /* Mobile fix: native datetime-local inputs render localized text that often

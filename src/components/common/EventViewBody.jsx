@@ -24,7 +24,7 @@ import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate, invalidateTripData } from '@/lib/trip-data';
 import { uploadTripFiles, persistEntityDocuments } from '@/lib/documentMutations';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
+import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { cityLabel } from '@/lib/trip-cities';
 import { validateEntity } from '@/lib/validation';
 
@@ -33,7 +33,7 @@ import { validateEntity } from '@/lib/validation';
 // not "…в undefined". One helper reused at every seam (load + display).
 const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
 import {
-  Map as MapIcon, Calendar, FileText,
+  Map as MapIcon, MapPin, Calendar, FileText,
   BedDouble, Car as CarIcon, Ticket,
   ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
@@ -217,7 +217,7 @@ function HotelBody({ entity, docs = [] }) {
       )}
 
       {/* Booking details */}
-      {(entity.booking_reference || entity.phone || entity.email || bookingUrl) && (
+      {(entity.booking_reference || entity.phone || entity.email) && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
           <div className="hv-rows">
@@ -244,13 +244,6 @@ function HotelBody({ entity, docs = [] }) {
                 <span className="hv-row__sp" />
                 <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a>
               </div>
-            )}
-            {bookingUrl && (
-              <a className="hv-row hv-row--link" href={bookingUrl} target="_blank" rel="noreferrer">
-                <span className="hv-row__ic"><ExternalLink /></span>
-                <span className="hv-row__lbl t-ui">{t('event.view_booking')}</span>
-                <ExternalLink size={15} style={{ color: 'var(--muted-2)' }} />
-              </a>
             )}
           </div>
         </div>
@@ -308,7 +301,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
   const carrier = entity.carrier || '';
   const priceText = fmtPrice(entity.price, entity.currency);
-  const hasDetails = entity.booking_reference || carrier || entity.flight_number || entity.booking_url;
+  const hasDetails = entity.booking_reference || carrier || entity.flight_number;
   const notes = entity.notes;
   return (
     <div className="tv">
@@ -397,14 +390,6 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
                 <span className="hv-row__sp" />
                 <span className="hv-row__v t-strong mono">{entity.flight_number}</span>
               </div>
-            )}
-            {/* TRIP-176: ссылка на бронь в transfer view (была только в hotel/activity) */}
-            {entity.booking_url && (
-              <a className="hv-row hv-row--link" href={entity.booking_url} target="_blank" rel="noreferrer">
-                <span className="hv-row__ic"><ExternalLink /></span>
-                <span className="hv-row__lbl t-ui">{t('event.view_booking')}</span>
-                <ExternalLink size={15} style={{ color: 'var(--muted-2)' }} />
-              </a>
             )}
           </div>
         </div>
@@ -845,8 +830,53 @@ export function entityViewIssues(kind, entity, { visit, fromVisit, toVisit } = {
   return raw.filter((i) => !VIEW_ISSUE_SKIP.test(i.code));
 }
 
+/**
+ * "Open booking" + "Show on map" — the only place either action is rendered, so
+ * every shell showing an event (dialog, editor panel) offers the same pair under
+ * the same conditions.
+ *
+ * Both `bookingUrl` and `mapAddress` are already resolved per-kind by
+ * `useEventViewModel`; a kind without one (an activity has no booking_url
+ * column) simply never gets that button. The map opens Google Maps by address
+ * rather than coordinates — the address is the field users actually fill in.
+ */
+function EventActions({ bookingUrl, mapAddress, platformLabel, platformLogo }) {
+  const { t } = useI18n();
+  if (!bookingUrl && !mapAddress) return null;
+  return (
+    <div className="ev-actions-top">
+      {bookingUrl && (
+        <a href={normalizeExternalUrl(bookingUrl)} target="_blank" rel="noreferrer" className="bk-link">
+          {platformLogo ? (
+            <span className="pb" style={{ background: 'var(--surface-2)', overflow: 'hidden' }}>
+              <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </span>
+          ) : platformLabel ? (
+            <span className="pb" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}>
+              {platformLabel.charAt(0).toUpperCase()}
+            </span>
+          ) : null}
+          {t('event.view_booking')}
+          <ExternalLink />
+        </a>
+      )}
+      {mapAddress && (
+        <button
+          type="button"
+          className="bk-link"
+          onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
+        >
+          <MapPin />
+          {t('event.show_on_map')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null }) {
   const { t, lang } = useI18n();
+  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit);
   // One banner: an explicit message from the caller (editor structural conflict)
   // plus the engine verdicts on this saved row, deduped by resolved text. Visits are
   // run through withCityName so verdicts read "…из Барселона", not "…из undefined".
@@ -863,6 +893,12 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
           <span>⚠️</span>
           <div>{warnings.map((w, k) => <div key={k}>{w}</div>)}</div>
         </div>
+      )}
+      {vm && (
+        <EventActions
+          bookingUrl={vm.bookingUrl} mapAddress={vm.mapAddress}
+          platformLabel={vm.platformLabel} platformLogo={vm.platformLogo}
+        />
       )}
       {kind === 'hotel' && <HotelBody entity={entity} docs={docs} />}
       {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} docs={docs} />}
