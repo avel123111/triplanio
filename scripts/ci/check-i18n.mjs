@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CI guard 2d (TRIP-134, JSON model TRIP-129) — i18n discipline (rule 4). Three checks:
+ * CI guard 2d (TRIP-134, JSON model TRIP-129) — i18n discipline (rule 4). Four checks:
  *
  * A. NAMESPACE/KEY INTEGRITY (global, blocking). Locales are JSON files at
  *    locales/<loc>/<namespace>.json with BARE keys (the namespace is the file
@@ -25,6 +25,14 @@
  *    Every quoted `<namespace>.<key>` literal in the backend must resolve in every
  *    locale, where <namespace> is an existing locale file stem.
  *
+ * D. FRONTEND LITERAL KEYS RESOLVE (global, blocking). The mirror of C for src/:
+ *    every literal `t('ns.key')` call-site must resolve in every locale. That same
+ *    sweep (TRIP-296) also dropped a key that IS referenced plainly in src
+ *    (`event.show_on_map`, EventViewBody), so the "does the frontend use it?" pass
+ *    cannot be trusted on its own either. Dynamic keys (t('pre_' + x), template
+ *    literals) are deliberately out of scope here — the closing quote must end the
+ *    argument — since their families cannot be resolved statically.
+ *
  * Env: BASE_REF (default origin/dev).
  * Exit: 0 ok, 1 violation, 2 internal error.
  */
@@ -40,6 +48,13 @@ const BACKEND_DIRS = ['supabase/functions', 'supabase/migrations'];
 
 function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+// Commented-out code and doc examples are prose, not call-sites — checks B and D
+// both skip such lines (e.g. the `t('namespace.key')` example in i18n/dictionary.js).
+function isCommentLine(text) {
+  const s = text.trim();
+  return s.startsWith('//') || s.startsWith('*') || s.startsWith('/*');
 }
 
 /* ----------------------------- locales on disk ------------------------------ */
@@ -151,8 +166,7 @@ function checkHardcoded() {
   const errors = [];
   for (const { file, lineNo, text } of addedLines()) {
     if (/i18n-ignore/.test(text)) continue;
-    const trimmed = text.trim();
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+    if (isCommentLine(text)) continue;
 
     let m;
     TEXT_NODE_RE.lastIndex = 0;
@@ -167,25 +181,14 @@ function checkHardcoded() {
   return errors;
 }
 
-/* ------------------- C. backend-emitted keys resolve ------------------------ */
+/* -------------- shared by checks C and D: key index + file walk ------------- */
 
-function* walk(dir) {
-  if (!existsSync(dir)) return;
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name);
-    if (e.isDirectory()) yield* walk(p);
-    else if (/\.(ts|sql)$/.test(e.name)) yield p;
-  }
-}
-
-function checkBackendKeys() {
-  const errors = [];
+// `ns.key` -> Set(locales defining it), plus the namespace vocabulary and the
+// locale list. A file that failed to parse still contributes its namespace (the
+// stem is the filename); its keys are simply unknown here — check A is what
+// reports the broken JSON.
+function buildKeyIndex() {
   const byLocale = readLocales();
-  const locales = [...byLocale.keys()];
-
-  // `ns.key` -> Set(locales defining it), plus the namespace vocabulary. A file
-  // that failed to parse still contributes its namespace (the stem is the name);
-  // its keys are simply unknown here — check A is what reports the broken JSON.
   const keyToLocales = new Map();
   const namespaces = new Set();
   for (const [locale, entries] of byLocale) {
@@ -198,6 +201,30 @@ function checkBackendKeys() {
       }
     }
   }
+  return { keyToLocales, namespaces, locales: [...byLocale.keys()] };
+}
+
+// Locales that do not define `full`, i.e. where t() would fall through to the
+// raw key. Empty array = resolves everywhere.
+function missingLocales({ keyToLocales, locales }, full) {
+  const have = keyToLocales.get(full);
+  return locales.filter((l) => !have?.has(l));
+}
+
+function* walk(dir, extRe) {
+  if (!existsSync(dir)) return;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) yield* walk(p, extRe);
+    else if (extRe.test(e.name)) yield p;
+  }
+}
+
+/* ------------------- C. backend-emitted keys resolve ------------------------ */
+
+function checkBackendKeys(index) {
+  const errors = [];
+  const { namespaces } = index;
   if (!namespaces.size) return errors;
 
   // Single-quoted `ns.key` where ns is a real locale namespace. Anchoring on the
@@ -207,7 +234,7 @@ function checkBackendKeys() {
   const litRe = new RegExp(`'((?:${nsAlt})\\.[A-Za-z0-9_]+)'`, 'g');
 
   for (const dir of BACKEND_DIRS) {
-    for (const file of walk(dir)) {
+    for (const file of walk(dir, /\.(ts|sql)$/)) {
       const text = readFileSync(file, 'utf8');
       litRe.lastIndex = 0;
       let m;
@@ -216,8 +243,7 @@ function checkBackendKeys() {
         const full = m[1];
         if (seen.has(full)) continue;
         seen.add(full);
-        const have = keyToLocales.get(full);
-        const missing = locales.filter((l) => !have?.has(l));
+        const missing = missingLocales(index, full);
         if (missing.length) {
           errors.push(`${file}: emits "${full}" — missing in locale(s): ${missing.join(', ')}`);
         }
@@ -227,13 +253,46 @@ function checkBackendKeys() {
   return errors;
 }
 
+/* ------------------- D. frontend literal keys resolve ----------------------- */
+
+// A literal `t('ns.key')` call — the closing quote must end the argument (`)` or
+// `,`), which is what excludes a dynamic prefix like t('notif.booking_kind_' + k)
+// and template-built keys: those families cannot be resolved statically, so they
+// are left to their own literal call-sites.
+const T_LITERAL_RE = /\bt\(\s*(["'])([a-z0-9_]+\.[A-Za-z0-9_]+)\1\s*[,)]/g;
+
+function checkFrontendKeys(index) {
+  const errors = [];
+  const { namespaces } = index;
+
+  for (const file of walk('src', /\.(jsx|js)$/)) {
+    const lines = readFileSync(file, 'utf8').split('\n');
+    for (const [i, line] of lines.entries()) {
+      if (isCommentLine(line)) continue;
+      let m;
+      T_LITERAL_RE.lastIndex = 0;
+      while ((m = T_LITERAL_RE.exec(line))) {
+        const full = m[2];
+        if (!namespaces.has(full.split('.')[0])) continue; // dotted literal, but not an i18n address
+        const missing = missingLocales(index, full);
+        if (missing.length) {
+          errors.push(`${file}:${i + 1}: t("${full}") — missing in locale(s): ${missing.join(', ')}`);
+        }
+      }
+    }
+  }
+  return errors;
+}
+
 /* ---------------------------------- run ------------------------------------ */
 
-let keyErrors, hcErrors, backendErrors;
+let keyErrors, hcErrors, backendErrors, frontendErrors;
 try {
+  const index = buildKeyIndex(); // read the locales once, share with C and D
   keyErrors = checkLocaleKeys();
   hcErrors = checkHardcoded();
-  backendErrors = checkBackendKeys();
+  backendErrors = checkBackendKeys(index);
+  frontendErrors = checkFrontendKeys(index);
 } catch (e) {
   console.error(`::error::i18n guard internal error: ${e.message}`);
   process.exit(2);
@@ -263,6 +322,14 @@ if (backendErrors.length) {
   for (const e of backendErrors) console.error(`  ✗ ${e}`);
 } else {
   console.log('check-i18n: backend-emitted keys resolve — OK');
+}
+
+if (frontendErrors.length) {
+  failed = true;
+  console.error('::error::i18n frontend-key guard failed (a t() call-site references a key that no longer resolves — the UI would render the raw key):');
+  for (const e of frontendErrors) console.error(`  ✗ ${e}`);
+} else {
+  console.log('check-i18n: frontend literal keys resolve — OK');
 }
 
 process.exit(failed ? 1 : 0);
