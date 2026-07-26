@@ -2266,7 +2266,11 @@ h4,
    answer now sits in a full-width panel on the canonical `.surface-panel` skin,
    marked as AI by a gradient spine rather than a fill. Long answers clamp with a
    fade and expand on demand. */
-.chat-reply { display: flex; gap: 12px; margin-top: 32px; }
+/* The answer and its actions are two stacked rows, not one: the sticky avatar is
+   bounded by `__row`, so it stops at the bottom of the MESSAGE. Keeping the
+   actions inside that row made it ride down to the bottom of the buttons. */
+.chat-reply { display: flex; flex-direction: column; gap: 8px; margin-top: 32px; }
+.chat-reply__row { display: flex; gap: 12px; }
 .chat-reply__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .chat-reply__who { display: flex; align-items: center; gap: 8px; min-height: 24px; }
 .chat-reply__who b { color: var(--ai-ink); }
@@ -2287,7 +2291,9 @@ h4,
 .chat-reply__more { color: var(--ai-ink); background: none; border: 0; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
 .chat-reply__more:hover { text-decoration: underline; }
 .chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
-.chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: -8px; }
+/* Sits under the answer, aligned with it: 44px = the avatar gutter (32) plus the
+   row gap (12); -8px pulls the ghost buttons' own padding back to that edge. */
+.chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: 36px; }
 /* Secondary actions sit under the answer — muted until hovered, so they never
    compete with the answer itself. */
 .chat-reply__acts .btn { color: var(--muted); }
@@ -2369,13 +2375,11 @@ h4,
 }
 .chat-ov { position: absolute; inset: 0; color: var(--ink); pointer-events: none; overflow: hidden; }
 .chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; border: 0; outline: 0; resize: none; overflow-y: hidden; display: block; min-height: 40px; }
-.chat-ta::placeholder { color: var(--muted-2); }
-/* While the field is EMPTY the hint stays on one line and is clipped at the right
-   edge. Without this it wrapped on a narrow screen, and since the auto-grow
-   measures `scrollHeight` — which counts the placeholder — the input opened to
-   two rows before a single character was typed. Typing drops
-   `:placeholder-shown`, so real text wraps as usual. */
-.chat-ta:placeholder-shown { white-space: nowrap; text-overflow: ellipsis; }
+/* The hint lives in the OVERLAY (see ChatComposer), not in the field: a native
+   placeholder is laid out by the textarea, so a long hint wrapped on a narrow
+   screen and pushed the auto-grow to two rows. Here it is one line with a real
+   ellipsis at any width. */
+.chat-ov__ph { display: block; color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Mobile (≤640px) bumps .textarea to 16px to stop iOS zoom-on-focus (see the
    .input/.select/.textarea rule in the responsive section). The overlay is a
    <div>, not a .textarea, so it stayed 14px → 16-vs-14 advance mismatch pushed

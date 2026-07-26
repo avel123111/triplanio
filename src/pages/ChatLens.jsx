@@ -329,7 +329,10 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         ref={composerRef}
         onSend={send}
         disabled={sending || !chatId}
-        placeholder={t("chat.composer_ph")}
+        /* On a phone the field is barely wider than the hint, so the long form
+           would only ever be read as its first half. The short one fits whole;
+           the "@" button next to it carries the part about mentions. */
+        placeholder={isPhone ? t('chat.composer_ph_short') : t('chat.composer_ph')}
         isThinking={isThinking}
         withHint
         jump={newCount > 0 ? (

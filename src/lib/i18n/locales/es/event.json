@@ -110,6 +110,7 @@
   "save_failed": "No se pudo guardar",
   "seg_count": "{n} tramos · {c} escalas",
   "segment_n": "Segmento {n}",
+  "show_on_map": "Ver en el mapa",
   "start": "Inicio",
   "stay_dates": "Fechas de estancia",
   "title_ctx_activity": "Actividad en {city}",

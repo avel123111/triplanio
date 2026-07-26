@@ -5,6 +5,7 @@
   "ai_general": "@Triplanio: general",
   "assistant_tag": "assistant",
   "composer_ph": "Write a message. @ opens mentions",
+  "composer_ph_short": "Write a message",
   "empty_desc": "Start the conversation: your trip members will see new messages here",
   "empty_title": "No messages yet",
   "group_title": "Group chat",

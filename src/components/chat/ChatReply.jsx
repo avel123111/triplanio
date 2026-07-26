@@ -53,40 +53,44 @@ export default function ChatReply({ text, time, onAsk }) {
 
   return (
     <div className="chat-reply">
-      {/* Same rule as a human run: the avatar starts at the name and rides the
-          top edge down a long answer instead of scrolling out of sight. */}
-      <div className="chat-run__av">
-        <TriplanioAvatar />
-      </div>
-      <div className="chat-reply__body">
-        <div className="chat-reply__who">
-          <b>{TRIPLANIO_BOT_NAME}</b>
-          <span className="chat-reply__tag">{t('chat.assistant_tag')}</span>
-          <span className="tm">{time}</span>
+      {/* The avatar's sticky travel is bounded by THIS row, which ends with the
+          answer itself — the actions below are deliberately outside it, so the
+          avatar comes to rest at the bottom of the message and not at the bottom
+          of the "Copy / Ask again" buttons. */}
+      <div className="chat-reply__row">
+        <div className="chat-run__av">
+          <TriplanioAvatar />
         </div>
-
-        <div className={'chat-reply__card' + (clamped ? ' is-clamped' : '')}>
-          {/* CLAMP_H is the single source: it both measures the overflow and
-              clips the text. The CSS only owns `overflow: hidden`. */}
-          <div ref={textRef} className="chat-reply__text" style={clamped ? { maxHeight: CLAMP_H } : undefined}>
-            <ChatMarkdown text={text} linkClassName="cm-a cm-a--brand" />
+        <div className="chat-reply__body">
+          <div className="chat-reply__who">
+            <b>{TRIPLANIO_BOT_NAME}</b>
+            <span className="chat-reply__tag">{t('chat.assistant_tag')}</span>
+            <span className="tm">{time}</span>
           </div>
-          {overflows && (
-            <button type="button" className="chat-reply__more" onClick={() => setExpanded((v) => !v)}>
-              <span>{expanded ? t('chat.reply_less') : t('chat.reply_more')}</span>
-              <Icon name="chev" size={13} style={{ transform: expanded ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
-            </button>
-          )}
-        </div>
 
-        <div className="chat-reply__acts">
-          <Btn variant="ghost" size="sm" icon={copied ? 'check' : 'copy'} onClick={copy}>
-            {copied ? t('common.copied') : t('common.copy')}
-          </Btn>
-          {onAsk && (
-            <Btn variant="ghost" size="sm" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
-          )}
+          <div className={'chat-reply__card' + (clamped ? ' is-clamped' : '')}>
+            {/* CLAMP_H is the single source: it both measures the overflow and
+                clips the text. The CSS only owns `overflow: hidden`. */}
+            <div ref={textRef} className="chat-reply__text" style={clamped ? { maxHeight: CLAMP_H } : undefined}>
+              <ChatMarkdown text={text} linkClassName="cm-a cm-a--brand" />
+            </div>
+            {overflows && (
+              <button type="button" className="chat-reply__more" onClick={() => setExpanded((v) => !v)}>
+                <span>{expanded ? t('chat.reply_less') : t('chat.reply_more')}</span>
+                <Icon name="chev" size={13} style={{ transform: expanded ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
+              </button>
+            )}
+          </div>
         </div>
+      </div>
+
+      <div className="chat-reply__acts">
+        <Btn variant="ghost" size="sm" icon={copied ? 'check' : 'copy'} onClick={copy}>
+          {copied ? t('common.copied') : t('common.copy')}
+        </Btn>
+        {onAsk && (
+          <Btn variant="ghost" size="sm" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
+        )}
       </div>
     </div>
   );

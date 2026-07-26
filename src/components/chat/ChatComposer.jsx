@@ -133,16 +133,35 @@ const ChatComposer = forwardRef(function ChatComposer(
                 overlay renders the text with @Triplanio tinted, the textarea
                 shows only the caret. Both layers MUST keep identical metrics or
                 the caret drifts — see memory/triplanio-chat-caret-drift. */}
-            <div
-              ref={ovRef}
-              aria-hidden="true"
-              className="chat-ov"
-              dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
-            />
+            {/* The hint is drawn HERE, not by the textarea's own placeholder.
+                A native placeholder is laid out by the field, so a long hint
+                wrapped on a narrow screen and — since the auto-grow measures
+                `scrollHeight` — opened the input to two rows before a single
+                character was typed. A <div> can be truncated properly: one line
+                with a real ellipsis, at any width, in any language. The textarea
+                keeps the same text as its `aria-label`, which is a better label
+                than a placeholder anyway. */}
+            {text ? (
+              <div
+                ref={ovRef}
+                aria-hidden="true"
+                className="chat-ov"
+                dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
+              />
+            ) : (
+              <div ref={ovRef} aria-hidden="true" className="chat-ov">
+                <span className="chat-ov__ph">{placeholder}</span>
+              </div>
+            )}
             <textarea
               ref={taRef}
               className="chat-ta"
-              placeholder={placeholder}
+              aria-label={placeholder}
+              /* No autocomplete/inputmode tricks here: `autocomplete="off"` was
+                 tried against iOS's password/card row above the keyboard and
+                 changed nothing — that bar is system UI, drawn for ordinary text
+                 fields whatever the field says. Only a native shell can remove
+                 it (WKWebView's inputAccessoryView). */
               value={text}
               rows={1}
               onChange={(e) => {
