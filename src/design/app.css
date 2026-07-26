@@ -2266,7 +2266,11 @@ h4,
    answer now sits in a full-width panel on the canonical `.surface-panel` skin,
    marked as AI by a gradient spine rather than a fill. Long answers clamp with a
    fade and expand on demand. */
-.chat-reply { display: flex; gap: 12px; margin-top: 32px; }
+/* The answer and its actions are two stacked rows, not one: the sticky avatar is
+   bounded by `__row`, so it stops at the bottom of the MESSAGE. Keeping the
+   actions inside that row made it ride down to the bottom of the buttons. */
+.chat-reply { display: flex; flex-direction: column; gap: 8px; margin-top: 32px; }
+.chat-reply__row { display: flex; gap: 12px; }
 .chat-reply__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .chat-reply__who { display: flex; align-items: center; gap: 8px; min-height: 24px; }
 .chat-reply__who b { color: var(--ai-ink); }
@@ -2287,7 +2291,9 @@ h4,
 .chat-reply__more { color: var(--ai-ink); background: none; border: 0; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
 .chat-reply__more:hover { text-decoration: underline; }
 .chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
-.chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: -8px; }
+/* Sits under the answer, aligned with it: 44px = the avatar gutter (32) plus the
+   row gap (12); -8px pulls the ghost buttons' own padding back to that edge. */
+.chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: 36px; }
 /* Secondary actions sit under the answer — muted until hovered, so they never
    compete with the answer itself. */
 .chat-reply__acts .btn { color: var(--muted); }

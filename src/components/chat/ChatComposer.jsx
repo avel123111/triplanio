@@ -157,12 +157,11 @@ const ChatComposer = forwardRef(function ChatComposer(
               ref={taRef}
               className="chat-ta"
               aria-label={placeholder}
-              /* A chat message is never a saved value, so nothing here should be
-                 autofilled. NOTE: this does NOT remove iOS's password/card row
-                 above the keyboard — that bar is system UI, drawn for ordinary
-                 text fields regardless of this attribute, and only a native
-                 shell can suppress it. */
-              autoComplete="off"
+              /* No autocomplete/inputmode tricks here: `autocomplete="off"` was
+                 tried against iOS's password/card row above the keyboard and
+                 changed nothing — that bar is system UI, drawn for ordinary text
+                 fields whatever the field says. Only a native shell can remove
+                 it (WKWebView's inputAccessoryView). */
               value={text}
               rows={1}
               onChange={(e) => {
