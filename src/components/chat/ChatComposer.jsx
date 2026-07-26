@@ -65,6 +65,8 @@ const ChatComposer = forwardRef(function ChatComposer(
   useLayoutEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
+    // The placeholder can no longer make this grow: `.chat-ta:placeholder-shown`
+    // keeps the hint on one line, so `scrollHeight` on an empty field is one row.
     ta.style.height = 'auto';
     ta.style.height = Math.min(ta.scrollHeight, maxHeight) + 'px';
     ta.style.overflowY = ta.scrollHeight > maxHeight ? 'auto' : 'hidden';
