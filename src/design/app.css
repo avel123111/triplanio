@@ -627,6 +627,7 @@ h4,
 .ts-startctl__date,
 .ts-cal__wdc,
 .ts-cal__day,
+.ts-time__lbl,     /* TRIP-277: подпись «Часы»/«Минуты» = подпись дня недели */
 .chat-head__sub,   /* TRIP-296: подзаголовок шапки комнаты → Meta+Golos */
 .chat-name .tm,
 .chat-reply__who .tm,
@@ -2009,15 +2010,18 @@ h4,
 .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); display: grid; place-items: center; }
 .ts-cal__day:hover { background: var(--wash); }
 .ts-cal__day.on { background: var(--brand); color: #fff; }
-/* Clock — same head / caption / chip-grid parts as the month, 6 columns instead
-   of 7. The chips ARE `.ts-cal__day`: one skin for a day and for an hour. */
+/* Clock — the month's parts (head · caption · chip grid) at 6 columns. The chips
+   ARE `.ts-cal__day`, so the SKIN of a day and of an hour is one rule; the
+   layout, though, is written out here instead of overriding `.ts-cal__head/
+   __grid/__wdc`. Those overrides depended on source order, and a stylesheet
+   that lost this block rendered the clock as a 7-column month with a
+   space-between head — a whole failure mode that self-contained rules cannot
+   have. min-height = .ts-step so the first row lines up with the weekday row. */
 .ts-time { display: flex; flex-direction: column; width: 178px; }
 .ts-cal--datetime .ts-time { border-left: 1px solid var(--line); padding-left: 12px; }
-/* min-height = .ts-step, so the clock's first row lines up with the month's
-   weekday row instead of floating a few pixels off. */
-.ts-time__head { justify-content: center; gap: 1px; min-height: 26px; }
-.ts-time__grid { grid-template-columns: repeat(6, 1fr); }
-.ts-time__lbl { text-align: left; margin: 10px 0 4px; }
+.ts-time__head { display: flex; align-items: center; justify-content: center; gap: 1px; min-height: 26px; margin-bottom: 8px; }
+.ts-time__grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+.ts-time__lbl { display: block; color: var(--muted); text-align: left; padding: 2px 0; margin: 10px 0 4px; }
 .ts-time__head + .ts-time__lbl { margin-top: 0; }
 .ts-time__seg { width: 2.6ch; padding: 2px 0; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: center; font-variant-numeric: tabular-nums; }
 .ts-time__seg::placeholder { color: var(--muted-2); }

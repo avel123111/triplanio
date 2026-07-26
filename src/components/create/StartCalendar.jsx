@@ -57,8 +57,8 @@ function TimeSeg({ value, max, onCommit, label }) {
 function TimeGrid({ label, values, selected, onPick }) {
   return (
     <>
-      <span className="ts-cal__wdc ts-time__lbl">{label}</span>
-      <div className="ts-cal__grid ts-time__grid">
+      <span className="ts-time__lbl">{label}</span>
+      <div className="ts-time__grid">
         {values.map((v) => (
           <button
             key={v}
@@ -78,7 +78,7 @@ function TimePanel({ value, onChange }) {
   const set = (h, m) => onChange?.(`${h || '00'}:${m || '00'}`);
   return (
     <div className="ts-time">
-      <div className="ts-cal__head ts-time__head">
+      <div className="ts-time__head">
         <TimeSeg value={hh} max={23} label={t('common.hours')} onCommit={(h) => set(h, mm)} />
         <span className="ts-cal__title">:</span>
         <TimeSeg value={mm} max={59} label={t('common.minutes')} onCommit={(m) => set(hh, m)} />
