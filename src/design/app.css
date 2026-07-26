@@ -2370,6 +2370,12 @@ h4,
 .chat-ov { position: absolute; inset: 0; color: var(--ink); pointer-events: none; overflow: hidden; }
 .chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; border: 0; outline: 0; resize: none; overflow-y: hidden; display: block; min-height: 40px; }
 .chat-ta::placeholder { color: var(--muted-2); }
+/* While the field is EMPTY the hint stays on one line and is clipped at the right
+   edge. Without this it wrapped on a narrow screen, and since the auto-grow
+   measures `scrollHeight` — which counts the placeholder — the input opened to
+   two rows before a single character was typed. Typing drops
+   `:placeholder-shown`, so real text wraps as usual. */
+.chat-ta:placeholder-shown { white-space: nowrap; text-overflow: ellipsis; }
 /* Mobile (≤640px) bumps .textarea to 16px to stop iOS zoom-on-focus (see the
    .input/.select/.textarea rule in the responsive section). The overlay is a
    <div>, not a .textarea, so it stayed 14px → 16-vs-14 advance mismatch pushed
