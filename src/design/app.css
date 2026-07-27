@@ -103,9 +103,9 @@
   --scrim:            rgba(23,20,40,.45);
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
 
-  /* Event types (+ink +soft; -soft-2 only on transfer) */
+  /* Event types (+ink +soft) */
   --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11);
-  --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12); --ev-transfer-soft-2:rgba(21,162,176,.18);
+  --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12);
   /* overnight/night accent (indigo) — night pill + "+1" marker + overnight toggle (TRIP-176) */
   --night:#6366F1; --night-ink:#4F46E5; --night-soft:rgba(99,102,241,.13);
   --ev-activity:#E0568F; --ev-activity-ink:#BC2F6A; --ev-activity-soft:rgba(224,86,143,.12);
@@ -263,7 +263,7 @@
 
   /* Event types — dark */
   --ev-hotel:#8E9CF5; --ev-hotel-ink:#8E9CF5; --ev-hotel-soft:rgba(142,156,245,.16);
-  --ev-transfer:#38C6D4; --ev-transfer-ink:#38C6D4; --ev-transfer-soft:rgba(56,198,212,.16); --ev-transfer-soft-2:rgba(56,198,212,.24);
+  --ev-transfer:#38C6D4; --ev-transfer-ink:#38C6D4; --ev-transfer-soft:rgba(56,198,212,.16);
   --night:#818CF8; --night-ink:#A5B4FC; --night-soft:rgba(99,102,241,.20);
   --ev-activity:#F178A8; --ev-activity-ink:#F178A8; --ev-activity-soft:rgba(241,120,168,.16);
   --ev-car:#4ECB86; --ev-car-ink:#4ECB86; --ev-car-soft:rgba(78,203,134,.16);
@@ -423,7 +423,6 @@ h3,
 .invite__tx h3,
 .ti b,
 .stepper button,
-.route .rt,
 .sheet-h h3,
 .ev-dlg-info h2,
 .ev-dlg-price .amt,
@@ -526,13 +525,11 @@ h4,
 .te-actchip,
 .bt b,
 .gt b,
-.route .rc,
 .mrow .mn,
 .tl3-card .meta,
 .tl3-card--tr .rv-mode,
 .tl3-warn b,
 .tl3-warn button,
-.tl3-empty,
 .settings-identity .field__label,
 .acct-content,
 .acct-nav a,
@@ -645,7 +642,6 @@ h4,
 .ti span,
 .gt span,
 .stepper .n,
-.route .ra,
 .addr div,
 .notes,
 .bud-leg,
@@ -691,8 +687,6 @@ h4,
 .ev-dlg-price .cur,
 .bk-link,
 .warn-banner span,
-.tx-btn,
-.seg-card-ti .rl,
 .bk-link .pb,
 .lp-ti span,
 .tmk__core,
@@ -821,7 +815,6 @@ h4,
 .te-th,
 .te-endlabel,
 .te-wptag,
-.sl2,
 .tl3-dh .datechip .m,
 .tl3-today,
 .cityrail .cr-h,
@@ -831,7 +824,6 @@ h4,
 .ev-dlg-eyebrow,
 .ev-sec-lbl,
 .kv .k,
-.seg-card-ti .ey,
 .ev-dlg .field__label,
 .lp .field__label,
 .sec-lbl .sl,
@@ -866,7 +858,6 @@ h4,
 .cm-code,
 .te-dts,
 .bt span,
-.route .rd,
 .tl3-ev .time,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
@@ -899,7 +890,6 @@ h4,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
 .acct-plan__line b,
-.tx-btn:hover, .tx-btn.act,
 .s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
 .bgt-stat__s b,
 .ptrip h1, .ptrip h2, .ptrip h3,
@@ -1112,7 +1102,6 @@ h4,
  border-radius: 999px; background: var(--warm); color: white;
  display: grid; place-items: center;
 }
-.app-side__item-badge.is-quiet { background: var(--line); color: var(--muted); }
 
 /* Editor screen (>880px): the left trip menu is the full sidebar — identical to
    every other screen — rendered in a static 220px column (.ts-sidecol). Neutralise
@@ -1188,16 +1177,9 @@ h4,
 .btn--block { width: 100%; }
 .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
 
-/* Shared "lift on hover" card — declarative replacement for JS onMouseEnter style
-   mutation. The base border lives here (not inline) so :hover can win over it. */
-.dz-lift { border: 1px solid var(--line); transition: border-color .14s var(--ease-out), box-shadow .14s var(--ease-out), transform .14s var(--ease-out); }
-.dz-lift:hover { border-color: var(--line-hover); transform: translateY(-1px); box-shadow: var(--shadow-soft); }
-.dz-lift:active { transform: translateY(0); }
-.dz-lift--transfer { border-left: 3px solid var(--ev-transfer); }
-.dz-lift--transfer:hover { border-left-color: var(--ev-transfer); }
-@media (prefers-reduced-motion: reduce) { .dz-lift:hover { transform: none; } }
-/* Border-only hover (list rows). */
-/* Strong card lift (collection cards): -2px + card shadow. */
+/* Strong card lift (collection cards): -2px + card shadow. Declarative replacement
+   for JS onMouseEnter style mutation; the base border lives here (not inline) so
+   :hover can win over it. */
 .dz-lift-card { border: 1px solid var(--line); transition: border-color .15s var(--ease-out), box-shadow .15s var(--ease-out), transform .15s var(--ease-out); }
 .dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--shadow-card); }
 .dz-lift-card:active { transform: translateY(0); }
@@ -1776,11 +1758,6 @@ h4,
   .invite__tx p { margin: 6px auto 0; }
   .invite__act { width: 100%; }
   .invite__act .btn { flex: 1; justify-content: center; }
-}
-
-/* Tighter app-main padding on small screens */
-@media (max-width: 1100px) {
-  .planner-2col { grid-template-columns: 1fr !important; }
 }
 
 
@@ -2890,13 +2867,6 @@ h4,
 .lp-stepper__tx span { color: var(--muted); }
 
 
-/* .kv / .kv .k / .kv .v are defined once in the EVENT/SERVICE DIALOGS block below. */
-.route { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; padding: 16px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 14px; }
-.route .rd { color: var(--muted); }
-.route .rt { color: var(--ink); }
-.route .rc { color: var(--ink-2); margin-top: 3px; }
-.route .ra { color: var(--muted); margin-top: 1px; }
-.route .end { text-align: right; }
 
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
@@ -3193,8 +3163,6 @@ h4,
 .tl3-warn button { font: inherit; color: #fff; background: var(--warning-ink); border: 0; border-radius: var(--r-pill); padding: 8px 15px; cursor: pointer; flex: none; transition: transform .14s var(--ease-spring); }
 .tl3-warn button:active { transform: scale(.95); }
 
-.tl3-empty { margin: 2px 0 2px 62px; padding: 14px 16px; border-radius: 16px; border: 2px dashed var(--line-strong); color: var(--muted-2); }
-
 /* City scroll-rail — right column of the timeline (namespaced .cr-*) */
 .cityrail { position: sticky; top: 8px; }
 .cityrail .cr-h { color: var(--muted); margin-bottom: 14px; }
@@ -3256,7 +3224,7 @@ h4,
   /* compact row: number + name(+dates) + nights (hotel/activity icons hidden).
      Scoped to the editor so the planner's flex .te-row--plan is untouched (no
      leaked grid-template / margins). */
-  .ts-screen .te-row, .ts-screen .te-seamrow { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
+  .ts-screen .te-row { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
   .ts-screen .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
   /* hide hotel/activity presence icons in city rows on mobile */
   .ts-screen .te-cell--hotel, .ts-screen .te-cell--act { display: none !important; }
@@ -4139,14 +4107,6 @@ h4,
 .ai-blk.parsed .ai-blk-ic{background:var(--success);}
 .ai-blk.parsed .ai-blk-ti b{color:var(--success-ink);}
 
-/* ─── Toggle switch ─────────────────────────────────────────────────────── */
-.sw-wrap{position:relative;display:inline-block;width:34px;height:19px;flex:none;}
-.sw-wrap input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0;}
-.sw-track{position:absolute;inset:0;background:var(--line-strong);border-radius:999px;transition:background .14s;}
-.sw-wrap input:checked~.sw-track{background:var(--brand);}
-.sw-knob{position:absolute;top:2px;left:2px;width:15px;height:15px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .14s;}
-.sw-wrap input:checked~.sw-knob{left:17px;}
-
 /* ─── Document row ──────────────────────────────────────────────────────── */
 .doc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
@@ -4162,8 +4122,8 @@ h4,
 /* ═══════════════════════════════════════════════════════════════════════════
    EVENT/SERVICE DIALOGS — Lumo redesign (view + edit), 2026-06-08
    Self-contained .ev-dlg system. Uses --ev-color/--ev-soft/--ev-ink set on the
-   .ev-dlg root by the caller. Additive: does not touch legacy panel classes
-   (.route/.notes used by the trip-editor left panels).
+   .ev-dlg root by the caller. Additive: does not touch the legacy panel class
+   .notes used by the trip-editor left panels.
    ═══════════════════════════════════════════════════════════════════════════ */
 .ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
 .ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;flex:none;}
@@ -4192,7 +4152,6 @@ h4,
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
 /* key/value grid */
 .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
-.kv-grid.kv1{grid-template-columns:1fr;}
 .kv{display:flex;flex-direction:column;gap:2px;}
 .kv.full{grid-column:1/-1;}
 .kv .k{ color:var(--muted);}
@@ -4251,10 +4210,6 @@ h4,
 .hv-row__k{flex:none; color:var(--muted);}
 .hv-row__sp{flex:1;}
 .hv-row__v{ color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;}
-.hv-row--link{text-decoration:none;cursor:pointer;transition:background .12s;}
-.hv-row--link:hover{background:var(--surface-2);}
-.hv-row--link .hv-row__ic{color:var(--primary);}
-.hv-row__lbl{flex:1; color:var(--primary);}
 .hv-notes{padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface-2); color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
@@ -4308,21 +4263,6 @@ h4,
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
-/* transport type grid */
-.tx-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
-.tx-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:9px 4px;border-radius:10px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer;font:inherit; transition:all .13s;}
-.tx-btn svg{width:17px;height:17px;}
-.tx-btn:hover,.tx-btn.act{border-color:var(--ev-transfer);color:var(--ev-transfer-ink);background:var(--ev-transfer-soft);}
-/* layover segment cards */
-.seg-card{border:1px solid var(--line-2);border-radius:13px;overflow:hidden;background:var(--surface);}
-.seg-card-hd{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--ev-transfer-soft);cursor:pointer;}
-.seg-card-ic{width:30px;height:30px;border-radius:9px;background:var(--ev-transfer-soft-2);color:var(--ev-transfer-ink);display:grid;place-items:center;flex:none;}
-.seg-card-ic svg{width:14px;height:14px;}
-.seg-card-ti{flex:1;min-width:0;}
-.seg-card-ti .ey{ color:var(--ev-transfer-ink);display:block; }
-.seg-card-ti .rl{display:flex;align-items:center;gap:5px; color:var(--ink);}
-.seg-card-ti .rl svg{width:11px;height:11px;color:var(--muted);}
-.seg-card-body{padding:11px 12px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:8px;}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
 .bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center; color:#fff;flex:none;overflow:hidden;}
