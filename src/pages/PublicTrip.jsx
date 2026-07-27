@@ -12,6 +12,7 @@ import { localizeVisits } from '@/lib/trip-cities';
 import { tripStats, tripDateSpan } from '@/lib/trip-stats';
 import { transferKind } from '@/lib/transport';
 import { formatDuration } from '@/lib/time';
+import { formatDateRange } from '@/lib/trip-dates';
 import './PublicTrip.css';
 
 // Where the marketing chrome's section anchors / brand should point when this
@@ -241,14 +242,18 @@ export default function PublicTrip() {
   }
   if (error || !trip) return <NotFound message={t('public.not_found')} t={t} />;
 
-  // Collapse a same-month span to "4 – 16 Jul" (matches the mockup); keep the
-  // full "28 Jun – 4 Jul" form across months.
+  // Within one month the mockup drops the repeated month from the left end
+  // ("4 – 16 Jul"); across months both ends are spelled out ("28 Jun – 4 Jul").
   const dateRange = (() => {
     if (!spanStart || !spanEnd) return '';
+    const full = formatDateRange(spanStart, spanEnd, fmt);
+    // A one-day trip already came back as ONE date (the shared TRIP-230 rule):
+    // there is no left end left to shorten, so bail out before the month case.
+    if (full === fmt(spanEnd)) return full;
     const a = new Date(spanStart);
     const b = new Date(spanEnd);
     const sameMonth = a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth();
-    return sameMonth ? `${a.getUTCDate()} – ${fmt(spanEnd)}` : `${fmt(spanStart)} – ${fmt(spanEnd)}`;
+    return sameMonth ? `${a.getUTCDate()} – ${fmt(spanEnd)}` : full;
   })();
   const ownerName = owner?.display_name || '';
 

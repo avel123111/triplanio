@@ -2,13 +2,15 @@ import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { withOwnerRow } from '@/lib/members';
 
-// Members summary widget (Lumo .wdg + .mrow). Shared by the trip Overview and
-// the timeline rail. Owns member ordering + profile resolution so the "who's
-// going" list is identical everywhere it appears.
+// "Who's going" widget on the trip Overview (Lumo .wdg + .mrow). Owns the
+// member ordering.
+//
+// `profiles` (id → { full_name, avatar_url, … }) is passed in rather than
+// fetched here: it ships with the trip content so names land together with the
+// rows instead of trickling in (TRIP-230, see getTripDetails).
 //
 // Ordering: owner first, then admins, viewers, offline, pending. The owner is
 // often tracked via trip.created_by rather than a trip_members row, so it's
@@ -16,6 +18,7 @@ import { withOwnerRow } from '@/lib/members';
 export default function MembersSummaryCard({
   trip,
   members = [],
+  profiles = {},
   user,
   canManage = false,
   isLoading = false,
@@ -23,12 +26,6 @@ export default function MembersSummaryCard({
   onInvite,
 }) {
   const { t } = useI18n();
-
-  const profileIds = useMemo(
-    () => [...members.map((m) => m.user_id), trip?.created_by, user?.id].filter(Boolean),
-    [members, trip?.created_by, user?.id],
-  );
-  const profiles = useUserProfiles(profileIds, trip?.id);
 
   const orderedMembers = useMemo(() => {
     const ownerId = trip?.created_by || user?.id || '';

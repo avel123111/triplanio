@@ -1440,6 +1440,12 @@ h4,
   /* тип — из канона .t-micro (co-selector, TRIP-165) */
   border-radius: var(--r-pill);
   background: var(--surface-2); color: var(--ink-2);
+  /* Бейдж НИКОГДА не тянется на ширину контейнера: в колоночном флексе
+     `align-items: stretch` задаёт ребёнку cross-size (= ширину), и пилюля
+     разъезжается во всю строку (TRIP-230: плашка Free trip на ≤640px).
+     Ширина по контенту — часть определения пилюли, поэтому лечим здесь,
+     а не точечным хаком у каждого владельца. */
+  width: fit-content;
 }
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
@@ -3437,7 +3443,7 @@ h4,
    subtitle (like Telegram's CTA) — NOT inline in the title (wraps differently
    per title length) and NOT a trailing chip (squeezes the description into a
    narrow column). Identical placement for every channel card. */
-.acct-chan__main > .badge { display: flex; width: fit-content; margin-top: 8px; }
+.acct-chan__main > .badge { display: flex; margin-top: 8px; }
 .acct-chan__ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; } .acct-chan__ic svg { width: 20px; height: 20px; }
 .acct-chan__main { flex: 1; min-width: 0; }
 .acct-chan__t { color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { replaceMentions } from '@/lib/mention';
+import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import './ChatMarkdown.css';
 
 /**
@@ -60,10 +61,17 @@ export default function ChatMarkdown({
 
   const rep = (children) => replaceSentinelInChildren(children, mentionStyle, mentionClassName);
 
+  // react-markdown has already dropped dangerous schemes, but it does NOT add a
+  // missing one: "[x](google.com)" stays relative and navigates inside the app
+  // (TRIP-230). Anything that already carries a scheme (mailto:, tel:, https:)
+  // or is an in-page anchor is passed through untouched.
+  const mdHref = (href) =>
+    (!href || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('#') ? href : normalizeExternalUrl(href));
+
   const components = useMemo(() => ({
     p:          ({ children }) => <p className="cm-p">{rep(children)}</p>,
     a:          ({ children, href }) => (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={linkClassName}>
+      <a href={mdHref(href)} target="_blank" rel="noopener noreferrer" className={linkClassName}>
         {rep(children)}
       </a>
     ),

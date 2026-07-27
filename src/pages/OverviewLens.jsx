@@ -19,6 +19,7 @@ export default function OverviewLens({
   budgetExpenses = [],
   budgetCategories = [],
   members = [],
+  memberProfiles = {},
   services = [],
   user,
   isLoading = false,
@@ -122,6 +123,7 @@ export default function OverviewLens({
           <MembersSummaryCard
             trip={trip}
             members={members}
+            profiles={memberProfiles}
             user={user}
             canManage={canManage}
             isLoading={contentLoading}
