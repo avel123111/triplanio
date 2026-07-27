@@ -231,7 +231,6 @@ export function useI18nFormat() {
     fmtCurrencyName: (code) => localizeCurrencyName(code, lang),
     fmtMoney: (amount, currency, opts) => formatMoney(amount, currency, lang, opts),
     fmtNumber: (value, opts) => formatNumber(value, lang, opts),
-    // "5 минут назад" — for notification/message timestamps.
     fmtRelative: (value) => formatRelativeTime(value, lang),
     plural: (count, keyPrefix, vars) => pluralize(t, count, keyPrefix, lang, vars),
     // Distance is always stored/computed in km; convert to the user's unit system
