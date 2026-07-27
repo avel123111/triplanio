@@ -57,8 +57,7 @@
   --surface-3: #FAFAFE;
   --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
   --wash-2: var(--surface-3);
-  --input:  var(--line-strong);
-  --secondary: var(--surface-2); --secondary-ink: var(--ink-2);
+  --secondary: var(--surface-2);
   --accent: var(--brand-soft); --accent-ink: var(--brand);
   --popover: var(--surface); --popover-ink: var(--ink);
 
@@ -70,7 +69,6 @@
   --danger:    hsl(var(--destructive));  /* ← index.css --destructive (Lumo #E24A52) */
   --danger-soft: rgba(226,74,82,.12);
   --danger-ink: #B41F30;
-  --danger-fg: #fff;
   --warning:   #E2920E;
   --warning-soft: rgba(226,146,14,.15);
   --warning-ink: #8A5A12;
@@ -103,20 +101,19 @@
 
   /* Overlays / scrims */
   --scrim:            rgba(23,20,40,.45);
-  --overlay-grad:     linear-gradient(180deg, transparent 38%, rgba(10,12,26,.80));
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
 
   /* Event types (+ink +soft-2; legacy -soft-12 aliases -soft-2) */
-  --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11); --ev-hotel-soft-2:rgba(84,112,230,.17); --ev-hotel-soft-12:var(--ev-hotel-soft-2);
-  --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12); --ev-transfer-soft-2:rgba(21,162,176,.18); --ev-transfer-soft-12:var(--ev-transfer-soft-2);
+  --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11);
+  --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12); --ev-transfer-soft-2:rgba(21,162,176,.18);
   /* overnight/night accent (indigo) — night pill + "+1" marker + overnight toggle (TRIP-176) */
   --night:#6366F1; --night-ink:#4F46E5; --night-soft:rgba(99,102,241,.13);
-  --ev-activity:#E0568F; --ev-activity-ink:#BC2F6A; --ev-activity-soft:rgba(224,86,143,.12); --ev-activity-soft-2:rgba(224,86,143,.18); --ev-activity-soft-12:var(--ev-activity-soft-2);
-  --ev-car:#2FA866; --ev-car-ink:#12703E; --ev-car-soft:rgba(47,168,102,.12); --ev-car-soft-2:rgba(47,168,102,.18); --ev-car-soft-12:var(--ev-car-soft-2);
-  --ev-esim:#2173C8; --ev-esim-ink:#1358A0; --ev-esim-soft:rgba(33,115,200,.11); --ev-esim-soft-2:rgba(33,115,200,.18);
-  --ev-insurance:#E2920E; --ev-insurance-ink:#7A4E08; --ev-insurance-soft:rgba(226,146,14,.13); --ev-insurance-soft-2:rgba(226,146,14,.22);
-  --ev-deadline:#E14B5A; --ev-deadline-ink:#B41F30; --ev-deadline-soft:rgba(225,75,90,.12); --ev-deadline-soft-2:rgba(225,75,90,.18); --ev-deadline-soft-12:var(--ev-deadline-soft-2);
-  --ev-service:#E07A4E; --ev-service-ink:#A8451E; --ev-service-soft:rgba(224,122,78,.12); --ev-service-soft-2:rgba(224,122,78,.18);
+  --ev-activity:#E0568F; --ev-activity-ink:#BC2F6A; --ev-activity-soft:rgba(224,86,143,.12);
+  --ev-car:#2FA866; --ev-car-ink:#12703E; --ev-car-soft:rgba(47,168,102,.12);
+  --ev-esim:#2173C8; --ev-esim-ink:#1358A0; --ev-esim-soft:rgba(33,115,200,.11);
+  --ev-insurance:#E2920E; --ev-insurance-ink:#7A4E08; --ev-insurance-soft:rgba(226,146,14,.13);
+  --ev-deadline:#E14B5A; --ev-deadline-ink:#B41F30; --ev-deadline-soft:rgba(225,75,90,.12);
+  --ev-service:#E07A4E; --ev-service-ink:#A8451E; --ev-service-soft:rgba(224,122,78,.12);
 
   /* Category / chart palette */
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
@@ -130,8 +127,6 @@
   --r-control:var(--r-btn); --r-seg-track:var(--r-control); --r-seg-btn:calc(var(--r-control) - 4px);
   --radius-card: var(--r-card);
   --radius-btn:  var(--r-btn);
-  --radius-sm:   var(--r-sm);
-  --radius-pill: var(--r-pill);
 
   /* Shadows (Lumo names + legacy aliases) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
@@ -172,10 +167,9 @@
   --track-caps: 0.14em;          /* трекинг капс-лейблов (канон .t-micro ← label макета; было .12, макет .14) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
-     ease-out for enter/hover/press, ease-in-out for on-screen movement. */
+     ease-out for enter/hover/press, ease-spring for playful overshoot. */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);   /* Lumo */
   --ease-spring: cubic-bezier(0.34, 1.25, 0.5, 1); /* Lumo — playful overshoot */
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   /* Type scale — единственная санкционированная лесенка (var(--fs-*), не сырой px).
      ★TRIP-183 — плотная шкала канона «Экзо» (из приложенного файла типографики).
@@ -234,7 +228,6 @@
   --success-ink: #6FD6A8;
   --danger-soft: rgba(242,106,114,.16);
   --danger-ink: #F89AA0;
-  --danger-fg: #1A0508;
   --warning:   #F0B24A;
   --warning-soft: rgba(240,178,74,.16);
   --warning-ink: #F5C778;
@@ -266,19 +259,18 @@
 
   /* Overlays / scrims — dark */
   --scrim:            rgba(0,0,0,.62);
-  --overlay-grad:     linear-gradient(180deg, transparent 38%, rgba(0,0,0,.86));
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.55));
 
   /* Event types — dark */
-  --ev-hotel:#8E9CF5; --ev-hotel-ink:#8E9CF5; --ev-hotel-soft:rgba(142,156,245,.16); --ev-hotel-soft-2:rgba(142,156,245,.24);
+  --ev-hotel:#8E9CF5; --ev-hotel-ink:#8E9CF5; --ev-hotel-soft:rgba(142,156,245,.16);
   --ev-transfer:#38C6D4; --ev-transfer-ink:#38C6D4; --ev-transfer-soft:rgba(56,198,212,.16); --ev-transfer-soft-2:rgba(56,198,212,.24);
   --night:#818CF8; --night-ink:#A5B4FC; --night-soft:rgba(99,102,241,.20);
-  --ev-activity:#F178A8; --ev-activity-ink:#F178A8; --ev-activity-soft:rgba(241,120,168,.16); --ev-activity-soft-2:rgba(241,120,168,.24);
-  --ev-car:#4ECB86; --ev-car-ink:#4ECB86; --ev-car-soft:rgba(78,203,134,.16); --ev-car-soft-2:rgba(78,203,134,.24);
-  --ev-esim:#6FB2FF; --ev-esim-ink:#94C6FF; --ev-esim-soft:rgba(111,178,255,.15); --ev-esim-soft-2:rgba(111,178,255,.24);
-  --ev-insurance:#F0B24A; --ev-insurance-ink:#F6C978; --ev-insurance-soft:rgba(240,178,74,.15); --ev-insurance-soft-2:rgba(240,178,74,.24);
-  --ev-deadline:#F2737F; --ev-deadline-ink:#F2737F; --ev-deadline-soft:rgba(242,115,127,.16); --ev-deadline-soft-2:rgba(242,115,127,.24);
-  --ev-service:#F0936B; --ev-service-ink:#F0936B; --ev-service-soft:rgba(240,147,107,.16); --ev-service-soft-2:rgba(240,147,107,.24);
+  --ev-activity:#F178A8; --ev-activity-ink:#F178A8; --ev-activity-soft:rgba(241,120,168,.16);
+  --ev-car:#4ECB86; --ev-car-ink:#4ECB86; --ev-car-soft:rgba(78,203,134,.16);
+  --ev-esim:#6FB2FF; --ev-esim-ink:#94C6FF; --ev-esim-soft:rgba(111,178,255,.15);
+  --ev-insurance:#F0B24A; --ev-insurance-ink:#F6C978; --ev-insurance-soft:rgba(240,178,74,.15);
+  --ev-deadline:#F2737F; --ev-deadline-ink:#F2737F; --ev-deadline-soft:rgba(242,115,127,.16);
+  --ev-service:#F0936B; --ev-service-ink:#F0936B; --ev-service-soft:rgba(240,147,107,.16);
 
   /* Shadows — dark */
   --sh-1:0 2px 8px -2px rgba(0,0,0,.5), 0 8px 24px -10px rgba(0,0,0,.6);
