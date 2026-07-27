@@ -1373,7 +1373,7 @@ export default function TripView() {
           tripId={tripId}
           categories={budgetCategoryOptions(budgetCategories, t)}
           mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
-          cities={visits.map((v) => v.city_name).filter(Boolean)}
+          cities={visits.filter((v) => v.city_name)}
           onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
         />
       )}
