@@ -15,6 +15,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
+import { PROFILE_COLUMNS, toProfile, type UserRow } from '../_shared/profiles.ts';
 
 const TRIPLANIO_BOT_EMAIL = 'info@triplanio.com';
 
@@ -68,17 +69,10 @@ Deno.serve(withHandler('resolveProfiles', async (req, corsHeaders) => {
     // Single batch query — no N+1
     const { data: userRows } = await supabaseAdmin
       .from('users')
-      .select('id, full_name, avatar_url, email, deleted_at')
+      .select(PROFILE_COLUMNS)
       .in('id', allowedIds);
 
-    const profiles = (userRows ?? []).map((u: { id: string; full_name: string | null; avatar_url: string | null; email: string | null; deleted_at: string | null }) => ({
-      id: u.id,
-      full_name: u.full_name || '',
-      avatar_url: u.avatar_url || '',
-      // Never expose a deleted user's email (it's a scrubbed placeholder anyway).
-      email: u.deleted_at ? '' : (u.email || ''),
-      is_deleted: !!u.deleted_at,
-    }));
+    const profiles = ((userRows ?? []) as UserRow[]).map(toProfile);
 
     return Response.json({ profiles }, { headers: corsHeaders });
 

@@ -100,6 +100,53 @@ export function formatMoney(amount, currency, lang, opts = {}) {
   }
 }
 
+// ---- Relative time --------------------------------------------------------
+// "5 минут назад" / "hace 2 días". Built on Intl.RelativeTimeFormat (built-in,
+// no dep) — the same tier as Intl.DisplayNames/NumberFormat above, and the
+// reason `date-fns` is no longer a dependency.
+//
+// Largest-fitting unit, rounded to nearest (30-day months, 365-day years), with
+// a carry so a rounded value never reaches the next unit's size: 3575s reads
+// "1 hour ago", not "60 minutes ago"; 350 days reads "1 year ago".
+const RELATIVE_UNITS = [
+  ['year', 31536000], ['month', 2592000], ['day', 86400],
+  ['hour', 3600], ['minute', 60], ['second', 1],
+];
+const relativeCache = new Map();
+function getRelativeFmt(lang) {
+  const key = lang || _activeLang;
+  if (relativeCache.has(key)) return relativeCache.get(key);
+  try {
+    const f = new Intl.RelativeTimeFormat(localeTag(key), { numeric: 'always' });
+    relativeCache.set(key, f);
+    return f;
+  } catch {
+    return null;
+  }
+}
+
+export function formatRelativeTime(value, lang, now = Date.now()) {
+  if (!value) return '';
+  const ms = value instanceof Date ? value.getTime() : Date.parse(value);
+  if (isNaN(ms)) return '';
+  const f = getRelativeFmt(lang);
+  if (!f) return '';
+
+  const seconds = (now - ms) / 1000;
+  const abs = Math.abs(seconds);
+  // Largest unit that fits; under a second there is none, so fall back to 'second'.
+  let i = RELATIVE_UNITS.findIndex(([, size]) => abs >= size);
+  if (i < 0) i = RELATIVE_UNITS.length - 1;
+  let count = Math.round(abs / RELATIVE_UNITS[i][1]);
+  // Rounding can land on the next unit's size (3575s → "60 minutes"), so carry once.
+  // A carry always leaves count at 1, so it can never cascade twice.
+  if (i > 0 && count >= Math.round(RELATIVE_UNITS[i - 1][1] / RELATIVE_UNITS[i][1])) {
+    i -= 1;
+    count = Math.round(abs / RELATIVE_UNITS[i][1]);
+  }
+  return f.format(seconds >= 0 ? -count : count, RELATIVE_UNITS[i][0]);
+}
+
 // ---- Plurals --------------------------------------------------------------
 // Returns one of three forms based on count and language.
 // Use 'one' for singular, 'few' for "2-4 / paucal", 'many' for plural-many.

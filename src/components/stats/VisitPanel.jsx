@@ -5,6 +5,7 @@ import { coverGradientCss } from '@/lib/trip-gradients';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { Icon } from '@/design/icons';
+import { formatDateRange } from '@/lib/trip-dates';
 
 // ≤640px the panel is a bottom sheet — render it through vaul (native swipe +
 // keyboard-safe) instead of the CSS-restyled Radix drawer. Above 640 it stays
@@ -42,13 +43,15 @@ function monthShort(dateStr, lang) {
   catch { return d.toLocaleDateString('en', { month: 'short' }); }
 }
 
+// "1 июл – 5 авг 2024" — the year is stated once, after the range, so it is
+// appended AFTER the shared join instead of being baked into `fmtDM` (TRIP-230).
 function dateRange(a, b, lang) {
   const A = new Date(a);
-  const B = new Date(b || a);
-  const fmtDM = (d) => `${d.getDate()} ${monthShort(d.toISOString(), lang)}`;
   if (Number.isNaN(A.getTime())) return '';
-  if (Number.isNaN(B.getTime())) return `${fmtDM(A)} ${A.getFullYear()}`;
-  return `${fmtDM(A)} – ${fmtDM(B)} ${B.getFullYear()}`;
+  const B = new Date(b || a);
+  const end = Number.isNaN(B.getTime()) ? A : B;
+  const fmtDM = (d) => `${d.getDate()} ${monthShort(d.toISOString(), lang)}`;
+  return `${formatDateRange(A, end, fmtDM)} ${end.getFullYear()}`;
 }
 
 // "Мадрид, Барселона +2" — same convention as the trip card's scope label.

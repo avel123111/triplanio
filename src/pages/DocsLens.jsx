@@ -32,6 +32,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import './DocsLens.css';
 
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
@@ -116,7 +117,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
         trip_id:    tripId,
         title:      title.trim(),
         notes:      notes.trim()   || null,
-        link_url:   linkUrl.trim() || null,
+        // Store an ABSOLUTE url: a scheme-less "google.com" is a relative path
+        // to the browser and would navigate inside the app (TRIP-230).
+        link_url:   normalizeExternalUrl(linkUrl),
         documents:  documents.length ? documents : null,
         visibility,
         created_by: user?.id ?? null,
@@ -243,6 +246,8 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <Field label={t('doc.link_label')}>
               <input
                 className="input"
+                type="url"
+                inputMode="url"
                 value={linkUrl}
                 onChange={e => setLinkUrl(e.target.value)}
                 placeholder={t('doc.link_placeholder')}
@@ -398,8 +403,10 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
             <p className="dl-dview-note">{doc.notes}</p>
           )}
 
+          {/* href is normalized on save, but rows stored before TRIP-230 still
+              hold a bare "google.com" — keep the read side safe for them too. */}
           {doc.link_url && (
-            <a className="dl-dview-link" href={doc.link_url} target="_blank" rel="noreferrer">
+            <a className="dl-dview-link" href={normalizeExternalUrl(doc.link_url)} target="_blank" rel="noreferrer">
               <Icon name="external" size={16} />
               <b>{doc.link_url}</b>
             </a>

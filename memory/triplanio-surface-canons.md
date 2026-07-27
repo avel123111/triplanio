@@ -46,7 +46,7 @@ metadata:
 алерт лимита), `.tl3-card` (карточки эвентов таймлайна - защищены отдельным
 фидбэком [[feedback-redesign-means-from-scratch]]), строки-списки (`.bookrow`,
 `.bgt-exrow`, `.acct-chan`…), вложенные recessed/inset-блоки на `--surface-3`
-(`.route`/`.addr`/`.notes`/`.doc-row`…), контролы (инпуты/кнопки/сегменты) и
+(`.addr`/`.notes`/`.doc-row`…), контролы (инпуты/кнопки/сегменты) и
 оверлеи (`.toast`/`.sheet`/`.chat-mention`/диалоги). Имена `.tp-glass-card`/`.tp-panel`/`--card-border`/`applyLook()` из тикета -
 из HTML-прототипа `Triplanio.dc.html`, в реальном React/Vite-репо их нет.
 ★Тёмная лестница поверхностей (аудит 2026-07-05): реально рендерятся РОВНО 4

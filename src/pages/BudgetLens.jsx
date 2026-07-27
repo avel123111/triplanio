@@ -30,6 +30,7 @@ import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
 import { currencySymbol } from '@/lib/budget/currencies';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
+import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constants';
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
@@ -39,18 +40,6 @@ import './BudgetLens.css';
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
 
-const SYS_ICON = {
-  accommodation: 'bed',
-  transport:     'plane',
-  activities:    'ticket',
-  services:      'esim',
-  food:          'cup',
-  shopping:      'ticket',
-  entertainment: 'ticket',
-  souvenirs:     'gift',
-  other:         'wallet',
-};
-
 const SOURCE_ICON = {
   hotel:    'bed',
   transfer: 'plane',
@@ -59,17 +48,21 @@ const SOURCE_ICON = {
   manual:   'edit',
 };
 
-// System categories carry a stable key; their display name is localized
-// (the stored `name` is an English seed). Custom categories use their name.
-const SYS_NAME_KEY = {
-  accommodation: 'budget.cat_accommodation',
-  transport:     'budget.cat_transport',
-  activities:    'budget.cat_activities',
-  services:      'budget.cat_services',
-};
-
+// Seeded categories store an icon slug (TRIP-230); older rows may still hold the
+// emoji the previous seeder wrote, which is not a design-system icon — those
+// land on the neutral wallet rather than rendering as a broken glyph.
 function catIcon(cat) {
-  return SYS_ICON[cat.system_key] || SYS_ICON[cat.icon] || cat.icon || 'wallet';
+  return cat.icon && /^[a-z]+$/i.test(cat.icon) ? cat.icon : 'wallet';
+}
+
+// Identity of the city an expense belongs to, used as the "by city" group key.
+// geonameid comes first so a city the trip visits twice stays ONE budget group;
+// a visit without a geonameid stands for itself; an expense with no visit at all
+// still groups on its frozen string, as it always did.
+function cityGroupKey(expense, visit) {
+  if (visit?.geonameid != null) return `g:${visit.geonameid}`;
+  if (visit) return `v:${visit.id}`;
+  return `s:${expense.city_name || ''}`;
 }
 
 // Budget amounts follow the Lumo design: rounded to whole units with the
@@ -129,6 +122,13 @@ function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
 
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
+// Picker value for an expense that carries only a legacy city string, with no
+// visit to point at — distinct from '' ("no city"), which clears it.
+const ORPHAN_CITY = '__orphan_city__';
+
+// `cities` — the trip's city_visits (already localized). The picker stores the
+// VISIT, not its label: a label frozen at save time is stuck in whatever language
+// the UI was in, and the two writers disagreed on that (TRIP-230).
 export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
@@ -140,7 +140,12 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const [currency, setCurrency] = useState(existing?.original_currency || mainCurrency || 'EUR');
   const [categoryId, setCategoryId] = useState(existing?.category_id || categories[0]?.id || '');
   const [date, setDate] = useState(existing?.spent_on || '');
-  const [cityName, setCityName] = useState(existing?.city_name || '');
+  // An expense saved before TRIP-230 (or one the backfill couldn't resolve
+  // unambiguously) remembers only a city STRING. Offer it as its own option:
+  // without it the picker would open on "-" and the next Save would silently
+  // wipe the city the user never touched.
+  const orphanCity = !existing?.city_visit_id ? (existing?.city_name || '') : '';
+  const [cityVisitId, setCityVisitId] = useState(existing?.city_visit_id || (orphanCity ? ORPHAN_CITY : ''));
   const [notes, setNotes] = useState(existing?.notes || '');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -158,7 +163,12 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       original_currency: currency,
       notes: notes.trim() || null,
       spent_on: date || null,
-      city_name: cityName || null,
+      city_visit_id: cityVisitId === ORPHAN_CITY ? null : (cityVisitId || null),
+      // Kept in step as a fallback label for anything reading the row without
+      // the visit (and for rows whose visit is later deleted).
+      city_name: cityVisitId === ORPHAN_CITY
+        ? orphanCity
+        : (cities.find((c) => c.id === cityVisitId)?.city_name || null),
     };
     try {
       await writeRows(isEdit
@@ -234,9 +244,10 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <FieldError issues={v.displayIssues} field="categoryId" />
         </Field>
         <Field label={t('visit.city')}>
-          <select className="select" value={cityName} onChange={e => setCityName(e.target.value)}>
+          <select className="select" value={cityVisitId} onChange={e => setCityVisitId(e.target.value)}>
             <option value="">-</option>
-            {cities.map((c, i) => <option key={i} value={c}>{c}</option>)}
+            {orphanCity && <option value={ORPHAN_CITY}>{orphanCity}</option>}
+            {cities.map((c) => <option key={c.id} value={c.id}>{c.city_name}</option>)}
           </select>
         </Field>
       </div>
@@ -406,7 +417,9 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const { user } = useAuth();
-  const [name, setName] = useState(existing?.name || '');
+  // Edit a seeded category and the field must start from what the user SEES —
+  // the localized label, not the English `name` the seeder stored (TRIP-230).
+  const [name, setName] = useState(existing ? categoryDisplayName(existing, t) : '');
   const [color, setColor] = useState(existing?.color || DEFAULT_CATEGORY_HEX);
   const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
   const [saving, setSaving] = useState(false);
@@ -418,8 +431,16 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
     setSaving(true);
     setErr('');
     try {
+      // Renaming a SEEDED category makes it the user's own: dropping system_key
+      // stops us translating over their text on the next language switch
+      // (TRIP-230). Never for kind='system' — sync_budget_expense routes booking
+      // expenses by system_key, so clearing it would orphan that routing.
+      const dropsSeedKey = existing?.kind === 'custom' && !!existing.system_key
+        && name.trim() !== categoryDisplayName(existing, t);
       await writeRows(existing
-        ? supabase.from('budget_categories').update({ name: name.trim(), color, icon }).eq('id', existing.id)
+        ? supabase.from('budget_categories')
+            .update({ name: name.trim(), color, icon, ...(dropsSeedKey ? { system_key: null } : {}) })
+            .eq('id', existing.id)
         : supabase.from('budget_categories').insert({
             trip_id: tripId,
             kind: 'custom',
@@ -484,7 +505,9 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
 // view we show the category chip + date. Manual rows expose inline edit/delete;
 // booking-linked rows open their source event (chevron).
 
-function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete, readOnly }) {
+// `cityName` is resolved by the caller from the expense's visit (falling back to
+// the frozen string), so the row shows the city in the current language.
+function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete, readOnly }) {
   const { t } = useI18n();
   const src = expense.source_kind || 'manual';
   const isManual = src === 'manual';
@@ -499,7 +522,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
         <div className="bgt-exrow__t">{expense.title || '-'}</div>
         <div className="bgt-exrow__s">
           {mode === 'city' && catName && <span className="bgt-tagx bgt-tagx--cat">{catName}</span>}
-          {mode !== 'city' && expense.city_name && <span>{expense.city_name}</span>}
+          {mode !== 'city' && cityName && <span>{cityName}</span>}
           {dateStr && <><span className="sep" />{dateStr}</>}
           {isManual
             ? <span className="bgt-tagx bgt-tagx--manual">{t('budget.manual_badge')}</span>
@@ -549,7 +572,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   // Convert an expense → { value, ok } in main currency (override-aware).
   const conv = (e) => toMainCur(e.original_amount, e.original_currency || mainCurrency, mainCurrency, fx, overrides);
 
-  const cityNames = cityVisits.map(v => v.city_name).filter(Boolean);
+  const cityOptions = cityVisits.filter(v => v.city_name);
 
   function openAddExpense() {
     if (readOnly) return;
@@ -595,21 +618,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   // Order: the four canonical system categories first (fixed canonical
   // order), then all custom categories - including "food", which was demoted
   // from system to custom and must sit with the other custom categories.
-  const cats = useMemo(() => {
-    const SYSTEM_ORDER = ['accommodation', 'transport', 'activities', 'services'];
-    const rank = (cat) => {
-      const i = SYSTEM_ORDER.indexOf(cat.system_key);
-      return i === -1 ? SYSTEM_ORDER.length + (cat.order_index ?? 99) : i;
-    };
-    const sorted = [...budgetCategories].sort((a, b) => rank(a) - rank(b));
-    return sorted.map(cat => {
-      const items = budgetExpenses.filter(e => e.category_id === cat.id);
-      let spent = 0, missingCount = 0;
-      for (const e of items) { const r = conv(e); if (r.ok) spent += r.value; else missingCount += 1; }
-      const displayName = SYS_NAME_KEY[cat.system_key] ? t(SYS_NAME_KEY[cat.system_key]) : cat.name;
-      return { ...cat, displayName, items, spent, itemCount: items.length, missingCount };
-    });
-  }, [budgetCategories, budgetExpenses, mainCurrency, fx, overrides, t]);
+  const cats = useMemo(() => budgetCategoryOptions(budgetCategories, t).map(cat => {
+    const items = budgetExpenses.filter(e => e.category_id === cat.id);
+    let spent = 0, missingCount = 0;
+    for (const e of items) { const r = conv(e); if (r.ok) spent += r.value; else missingCount += 1; }
+    return { ...cat, items, spent, itemCount: items.length, missingCount };
+  }), [budgetCategories, budgetExpenses, mainCurrency, fx, overrides, t]);
 
   const activeCat = cats.find(c => c.id === (activeCatId || cats[0]?.id)) || cats[0];
 
@@ -642,22 +656,31 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const missingCurrencies = Object.keys(missing);
   const missingTotal = useMemo(() => Object.values(missing).reduce((s, n) => s + n, 0), [missing]);
 
-  // City grouping - flatten all expenses with their category info.
+  // City grouping — flatten all expenses with their category info.
+  //
+  // Grouped by the city's IDENTITY, not by the stored label: the same city used
+  // to split in two whenever the two writers spelled it differently ('Moscow'
+  // vs 'Moskva'). The label is re-derived from the (already localized) visit, so
+  // switching language now switches the budget too.
+  const visitById = useMemo(() => new Map(cityVisits.map((v) => [v.id, v])), [cityVisits]);
+  const visitOf = (exp) => (exp.city_visit_id ? visitById.get(exp.city_visit_id) : null);
+  // Same resolution in both views; '' means "city unknown".
+  const cityLabelOf = (exp) => visitOf(exp)?.city_name || exp.city_name || '';
   const cityGroups = useMemo(() => {
-    const cityMap = {};
+    const cityMap = new Map();
     for (const cat of cats) {
       for (const exp of cat.items) {
-        const city = exp.city_name || '-';
-        if (!cityMap[city]) cityMap[city] = [];
-        cityMap[city].push({ ...exp, catColor: cat.color, catIcon: catIcon(cat), catName: cat.displayName });
+        const key = cityGroupKey(exp, visitOf(exp));
+        let g = cityMap.get(key);
+        if (!g) { g = { id: key, label: cityLabelOf(exp), items: [] }; cityMap.set(key, g); }
+        g.items.push({ ...exp, catColor: cat.color, catIcon: catIcon(cat), catName: cat.displayName });
       }
     }
-    return Object.entries(cityMap).map(([city, items]) => ({
-      city,
-      total: items.reduce((s, it) => { const r = conv(it); return s + (r.ok ? r.value : 0); }, 0),
-      items,
+    return [...cityMap.values()].map((g) => ({
+      ...g,
+      total: g.items.reduce((s, it) => { const r = conv(it); return s + (r.ok ? r.value : 0); }, 0),
     }));
-  }, [cats, fx, overrides, mainCurrency]);
+  }, [cats, visitById, fx, overrides, mainCurrency]);
 
   const expensesPlural = (n) => n === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many');
 
@@ -877,6 +900,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                     const r = conv(exp);
                     return (
                       <ExpenseRow key={exp.id} expense={exp} catColor={activeCat.color} catIcon={catIcon(activeCat)}
+                        cityName={cityLabelOf(exp)}
                         mode="category" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
                         onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} readOnly={readOnly} />
                     );
@@ -891,7 +915,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           expensesPlural={expensesPlural} onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
 
-      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expenseModal.existing ?? null} onSaved={refresh} />}
+      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onSaved={refresh} />}
       {deleteExpense && <DeleteExpenseDialog open={true} onOpenChange={(o) => { if (!o) setDeleteExpense(null); }} expense={deleteExpense} onSaved={refresh} />}
       {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onSaved={refresh} />}
       <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onSaved={refresh} />
@@ -903,8 +927,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
 function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onEdit, onDelete, onAdd, readOnly }) {
   const { t } = useI18n();
-  const [activeCity, setActiveCity] = useState(cityGroups[0]?.city || '');
-  const cur = cityGroups.find(g => g.city === activeCity) || cityGroups[0];
+  // A group is keyed by city identity (`id`); `label` is what to show.
+  const [activeCityId, setActiveCityId] = useState(cityGroups[0]?.id || '');
+  const cur = cityGroups.find(g => g.id === activeCityId) || cityGroups[0];
 
   if (cityGroups.length === 0) {
     return (
@@ -913,21 +938,21 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
     );
   }
   if (!cur) return null;
-  const cityLabel = (c) => c === '-' ? t('budget.no_city') : c;
+  const cityLabel = (g) => g.label || t('budget.no_city');
 
   return (
     <div className="bgt-drill">
       <div className="card bgt-glist" role="tablist" aria-label={t('budget.group_by_city')}>
         {cityGroups.map(g => {
-          const active = g.city === activeCity;
+          const active = g.id === activeCityId;
           return (
-            <button key={g.city} type="button" role="tab" aria-selected={active}
-              className={`bgt-glist__row ${active ? 'on' : ''}`} onClick={() => setActiveCity(g.city)}>
+            <button key={g.id} type="button" role="tab" aria-selected={active}
+              className={`bgt-glist__row ${active ? 'on' : ''}`} onClick={() => setActiveCityId(g.id)}>
               <span className="bgt-glist__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
                 <Icon name="pin" size={17} />
               </span>
               <span className="bgt-glist__m">
-                <span className="bgt-glist__n"><span className="t">{cityLabel(g.city)}</span></span>
+                <span className="bgt-glist__n"><span className="t">{cityLabel(g)}</span></span>
                 <span className="bgt-glist__c">{g.items.length} {expensesPlural(g.items.length)}</span>
               </span>
               <span className="bgt-glist__r"><span className="bgt-glist__v">{money(g.total, mainCurrency)}</span></span>
@@ -941,7 +966,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
             <Icon name="pin" size={22} />
           </div>
           <div className="bgt-detail__ti">
-            <div className="bgt-detail__n">{cityLabel(cur.city)}</div>
+            <div className="bgt-detail__n">{cityLabel(cur)}</div>
             <div className="bgt-detail__s">{cur.items.length} {expensesPlural(cur.items.length)}</div>
           </div>
           <div className="bgt-detail__amt">

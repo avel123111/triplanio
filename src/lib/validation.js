@@ -431,6 +431,23 @@ export function validateTrip({ visits = [], hotels = [], activities = [], transf
   return issues;
 }
 
+// Which computed issues an editor form may put on screen. Display only - what
+// BLOCKS a save is decided separately, by the issue level.
+//
+// A fresh create form stays quiet until the user engages with it, so it doesn't
+// nag before anything has been entered; an edit form speaks immediately, since
+// its problems are already real.
+//
+// `touched` grows through human keystrokes only, so an AI parse - which fills
+// the whole form without touching a single field - needs its own trigger, or a
+// parsed create form scores every issue and shows none of them. A parse is the
+// moment checking matters most, so it reveals like a save attempt (TRIP-277).
+export function issuesToShow(issues = [], { isEdit = false, submitted = false, aiParsed = false, touched } = {}) {
+  if (isEdit || submitted || aiParsed) return issues;
+  const seen = touched instanceof Set ? touched : new Set(touched || []);
+  return issues.filter((i) => i.field && seen.has(i.field));
+}
+
 // Collapse to AT MOST ONE issue per entity (timeline / grid anti-pile).
 // Priority: structure > entity > field; within scope, error before warning.
 // Reproduces the transfer hierarchy (no-city -> not-adjacent -> day) and

@@ -16,9 +16,9 @@
 #                   whole tree, AND fully type-checks the growing opt-in set of
 #                   files that carry a `// @ts-check` pragma (ratchet — start =
 #                   the entitlement/Pro cluster: src/lib/{limits,subscription,
-#                   tripAddons,useTripAccess}.js). Add `// @ts-check` to a file to
-#                   bring it under real type enforcement; breaking its types fails
-#                   THIS gate. Grow coverage file-by-file, no big-bang TS migration.
+#                   tripAddons}.js). Add `// @ts-check` to a file to bring it under
+#                   real type enforcement; breaking its types fails THIS gate. Grow
+#                   coverage file-by-file, no big-bang TS migration.
 #     - deno      : deno check on edge functions — green since TRIP-94 (the 14
 #                   pre-existing type errors are fixed; getTripDetails ×10,
 #                   getActiveTrips/getFxRates/checkSubscriptionStatus ×3,
