@@ -1,17 +1,18 @@
 /**
  * MembersLens - members tab inside TripView.
  *
- * Props: tripId, members, trip, user, role, isLoading, queryClient
+ * Props: tripId, members, profiles, trip, user, role, isLoading, queryClient
  *
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
+ * profiles - id → { full_name, avatar_url, … } from the SAME payload, so names
+ *   land with the rows; covers the owner, who has no trip_members row (TRIP-230)
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
@@ -262,7 +263,7 @@ function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }
 
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
-export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
+export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -273,14 +274,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   const [roleState, setRoleState] = useState(null); // null | { member }
 
   const canManage = myRole === 'owner' || myRole === 'admin';
-  // Resolve display names from profiles. Include the trip owner - they often
-  // have no trip_members row, so members.map alone misses them and the owner
-  // ends up showing the email twice.
-  const profileIds = [
-    ...members.map(m => m.user_id),
-    trip?.created_by,
-  ].filter(Boolean);
-  const profiles = useUserProfiles(profileIds, tripId);
 
   function refresh() {
     // B5: invalidate both content (members list) and shell (header avatar row)

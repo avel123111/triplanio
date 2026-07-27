@@ -43,6 +43,7 @@ import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
+import { useProfileMap } from '@/lib/useUserProfiles';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
@@ -812,10 +813,13 @@ export default function TripView() {
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
-    // Car-rental pickup/return → open the car service VIEW (not edit) like any other event.
+    // Car-rental pickup/return → open the car service VIEW (not edit) like any
+    // other event. Both points carry the SAME service id, so the event type has
+    // to travel along: it is all that tells the view which of the two addresses
+    // belongs behind "show on map" (TRIP-230).
     if (e.type === 'car-pickup' || e.type === 'car-return') {
       const svc = (services || []).find(s => s.id === e.id);
-      if (svc) setEventView({ open: true, kind: 'service', id: svc.id, warning: null });
+      if (svc) setEventView({ open: true, kind: 'service', id: svc.id, warning: null, subEvent: e.type });
       return;
     }
     let kind = null;
@@ -889,6 +893,9 @@ export default function TripView() {
   const activities       = contentData?.activities   || [];
   const transfers        = contentData?.transfers    || [];
   const members          = contentData?.members      || [];
+  // Names + avatars arrive WITH the members (TRIP-230), so every surface that
+  // lists people paints in one go instead of after a separate profile hop.
+  const memberProfiles   = useProfileMap(contentData?.profiles);
   const services         = contentData?.services     || [];
   const budget           = contentData?.budget       || null;
   const budgetCategories = contentData?.budgetCategories || [];
@@ -1144,6 +1151,7 @@ export default function TripView() {
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
             canEdit={canEditMode}
             warning={eventView.warning}
+            subEvent={eventView.subEvent}
           />
 
           {/* Lens-level crash isolation (TRIP-219 F2): a crash in one lens shows
@@ -1159,6 +1167,7 @@ export default function TripView() {
               budgetExpenses={budgetExpenses}
               budgetCategories={budgetCategories}
               members={members}
+              memberProfiles={memberProfiles}
               services={services}
               user={user}
               contentLoading={loadingContent}
@@ -1228,6 +1237,7 @@ export default function TripView() {
             <MembersLens
               tripId={tripId}
               members={members}
+              profiles={memberProfiles}
               trip={trip}
               user={user}
               role={myRole}

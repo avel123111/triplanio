@@ -53,6 +53,9 @@ export default function EventModal(props) {
   const visit = legacy ? props.event.visit : props.visit;
   const fromVisit = legacy ? props.event.fromVisit : props.fromVisit;
   const toVisit = legacy ? props.event.toVisit : props.toVisit;
+  // Which timeline point opened this entity (car pickup vs car return) — see
+  // useEventViewModel. Null for entities with a single point.
+  const subEvent = (legacy ? props.event.subEvent : props.subEvent) ?? null;
   const canEdit = legacy ? !!props.canEdit : !props.readOnly;
   const onEdit = props.onEdit;
   const onDelete = legacy ? props.onDelete : undefined;
@@ -71,7 +74,7 @@ export default function EventModal(props) {
     if (!open) { setConfirmDel(false); setDeleting(false); }
   }, [open]);
 
-  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit);
+  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEvent);
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, entity, canEdit);
 
   if (!entity || !kind || !vm) return null;
@@ -122,7 +125,7 @@ export default function EventModal(props) {
             <EventViewSections
               kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
               accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
-              externalWarning={warning}
+              externalWarning={warning} subEvent={subEvent}
             />
           )}
         </div>

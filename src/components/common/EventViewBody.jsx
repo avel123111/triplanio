@@ -593,7 +593,13 @@ function ServiceBody({ entity, accent }) {
 //  Derived view-model (shared by both shells to build their own chrome)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
+/**
+ * `subEvent` — which of the entity's timeline points was opened, for the kinds
+ * that produce more than one. A car rental has separate pickup / drop-off
+ * ADDRESSES under ONE row id, so without it "show on map" sends the return
+ * event to the pickup location (TRIP-230).
+ */
+export function useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEvent = null) {
   const { t, lang } = useI18n();
   if (!entity || !kind) return null;
   const visitCity = cityLabel(visit, lang);
@@ -645,10 +651,13 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
   }
   const priceText = fmtPrice(price, cur);
 
+  const carAddress = subEvent === 'car-return'
+    ? (entity.details?.dropoff_address || entity.details?.pickup_address)
+    : entity.details?.pickup_address;
   const mapAddress = kind === 'hotel' ? entity.address
     : kind === 'transfer' ? (entity.from_address || entity.to_address)
     : kind === 'activity' ? entity.location_address
-    : (entity.kind === 'car_rental' ? entity.details?.pickup_address : null);
+    : (entity.kind === 'car_rental' ? carAddress : null);
 
   return {
     theme, themeLabel, title, cur, price, priceText,
@@ -874,9 +883,11 @@ function EventActions({ bookingUrl, mapAddress, platformLabel, platformLogo }) {
   );
 }
 
-export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null }) {
+export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null, subEvent = null }) {
   const { t, lang } = useI18n();
-  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit);
+  // This vm — not the shell's — feeds EventActions, so `subEvent` has to reach
+  // HERE for "show on map" to honour it.
+  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEvent);
   // One banner: an explicit message from the caller (editor structural conflict)
   // plus the engine verdicts on this saved row, deduped by resolved text. Visits are
   // run through withCityName so verdicts read "…из Барселона", not "…из undefined".

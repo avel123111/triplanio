@@ -21,7 +21,7 @@ import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 
-export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null, onEditInEditor = null }) {
+export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null, subEvent = null, onEditInEditor = null }) {
   const t = useT();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -99,7 +99,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
 
   return (
     <EventModal
-      event={{ kind, entity: data, visit, fromVisit, toVisit, tripId: data.trip_id }}
+      event={{ kind, entity: data, visit, fromVisit, toVisit, subEvent, tripId: data.trip_id }}
       warning={warning}
       canEdit={canEdit}
       onClose={() => onOpenChange(false)}

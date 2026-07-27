@@ -9,6 +9,7 @@
  * include groups (defaults to all):
  *   'shell'     — cityVisits only (lightest; trip is always returned)
  *   'content'   — hotels + activities + transfers + services + members
+ *                 (+ profiles: the members' and the owner's names/avatars)
  *   'core'      — alias for shell + content (backward compat)
  *   'budget'    — budget + categories + expenses
  *   'documents' — documents
@@ -23,6 +24,7 @@
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { withHandler } from '../_shared/http.ts';
+import { PROFILE_COLUMNS, toProfile, type UserRow } from '../_shared/profiles.ts';
 
 Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // Identify caller — REQUIRED. getRequestUser returns null when there is no
@@ -167,6 +169,22 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
                        response.transfers          = pick('transfers');
                        response.services           = pick('services');
                        response.members            = pick('members');
+      // Names + avatars ride ALONG with the members (TRIP-230). They used to
+      // need a THIRD sequential client hop (shell → content → resolveProfiles),
+      // so rows appeared at different moments — and the OWNER, who has no member
+      // row and therefore no cached trip_members.user_full_name to fall back on,
+      // was always last. The ids are already in hand here, so it costs one
+      // in-datacentre query instead of a client round trip.
+      // Scope is exactly resolveProfiles': active members + the trip creator.
+      const members = (response.members as any[]) ?? [];
+      const profileIds = [...new Set([
+        ...members.filter((m) => m?.status === 'active' && m?.user_id).map((m) => m.user_id as string),
+        ...(trip.created_by ? [trip.created_by as string] : []),
+      ])];
+      const userRows = profileIds.length
+        ? (await supabaseAdmin.from('users').select(PROFILE_COLUMNS).in('id', profileIds)).data
+        : [];
+                       response.profiles           = ((userRows ?? []) as UserRow[]).map(toProfile);
     }
     if (wantDocuments) response.documents          = pick('documents');
     if (wantBudget) {
