@@ -5,10 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
-import { formatDistanceToNowStrict } from 'date-fns';
-import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton, EmptyState } from '../design/index';
 import AppHeader from '@/components/AppHeader';
@@ -17,8 +15,6 @@ import { useQueryGate } from '@/lib/useQueryGate';
 import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import '../design/app.css';
-
-const DATE_LOCALES = { ru, es, en: enUS };
 
 function dateGroup(iso) {
   if (!iso) return 'earlier';
@@ -39,8 +35,7 @@ export default function Inbox() {
   const nav = useNavigate();
   const { user } = useAuth();
   const t = useT();
-  const { lang } = useI18n();
-  const dateLocale = DATE_LOCALES[lang] || enUS;
+  const { fmtRelative } = useI18nFormat();
   const qc = useQueryClient();
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -197,7 +192,7 @@ export default function Inbox() {
                     key={n.id}
                     n={n}
                     t={t}
-                    dateLocale={dateLocale}
+                    fmtRelative={fmtRelative}
                     pending={respondInvite.isPending}
                     onRespond={(action) => {
                       if (!n.read) markOneRead.mutate(n.id);
@@ -260,7 +255,7 @@ function InboxEmpty({ onCollection }) {
   );
 }
 
-function InboxRow({ n, t, dateLocale, pending, onRespond, onMarkRead }) {
+function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
   const { data: member } = useQuery({
     queryKey: ['trip-member', n.trip_member_id],
@@ -272,7 +267,7 @@ function InboxRow({ n, t, dateLocale, pending, onRespond, onMarkRead }) {
     enabled: !!isInvite,
   });
 
-  const time = n.created_at ? formatDistanceToNowStrict(new Date(n.created_at), { addSuffix: true, locale: dateLocale }) : '';
+  const time = fmtRelative(n.created_at);
   const renderParams = (params = {}) => {
     const r = { ...params };
     if (r.role_key) { r.role = t(r.role_key); delete r.role_key; }
