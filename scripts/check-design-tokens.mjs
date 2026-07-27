@@ -47,7 +47,6 @@ const COLOR_WHITELIST = [
   'src/lib/trip-gradients.js',                          // trip-cover gradient presets (colour data)
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
   'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
-  'src/lib/notifications-catalog.js',                  // static dev reference catalog (not rendered)
   'src/components/site/SiteChrome.jsx',                // brand logo + country-flag SVGs
   'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
