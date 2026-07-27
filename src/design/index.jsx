@@ -27,7 +27,7 @@ export { useToast, toast } from '@/components/ui/use-toast';
 export { Toaster } from '@/components/ui/toaster';
 export { default as SearchSelect } from '@/components/ui/SearchSelect';
 export { default as CurrencyCombobox } from '@/components/ui/CurrencyCombobox';
-export { default as AiField } from '@/components/ui/AiField';
+export { default as AiField, AiBadge } from '@/components/ui/AiField';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules

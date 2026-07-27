@@ -1,20 +1,12 @@
 // Shared validation UI for the unified validation engine (Ф2+).
-// - useEntityValidation: runs validateEntity, returns issues + canSubmit.
 // - FieldError: inline message under a field (by canonical field token).
 // - IssuesPanel: single panel listing all issues; click -> scroll/focus field.
 // Messages resolve via t('validation.' + code, values). Place a
 // data-vfield="<token>" attribute on each field wrapper so the panel can focus it.
 import React, { useMemo, useState, useCallback } from 'react';
 import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
-import { validateEntity } from '@/lib/validation';
+import { validateEntity, issuesToShow } from '@/lib/validation';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-
-export function useEntityValidation(kind, draft, ctx) {
-  // validateEntity is cheap/pure; recompute per render is fine.
-  const issues = validateEntity(kind, draft, ctx);
-  const errors = issues.filter((i) => i.level === 'error');
-  return { issues, errors, hasErrors: errors.length > 0, canSubmit: errors.length === 0 };
-}
 
 // Hybrid display state: inline shows for TOUCHED fields; the summary panel and
 // full highlight show only after a SAVE attempt. Reusable across all modals.
@@ -27,8 +19,10 @@ export function useHybridValidation(kind, draft, ctx) {
     if (!field) return;
     setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
   }, []);
-  const displayIssues = issues.filter((i) => submitted || (i.field && touched.has(i.field)));
-  const panelIssues = submitted ? issues : [];
+  // Same reveal policy as the event editor (no AI parse on these forms). The
+  // panel is that policy with nothing touched: all or nothing, one predicate.
+  const displayIssues = issuesToShow(issues, { submitted, touched });
+  const panelIssues = issuesToShow(issues, { submitted });
   const reset = useCallback(() => { setTouched(new Set()); setSubmitted(false); }, []);
   // Run onOk only when valid; otherwise reveal everything + scroll to first error.
   const attemptSubmit = useCallback((onOk) => {

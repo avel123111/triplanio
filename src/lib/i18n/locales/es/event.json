@@ -22,7 +22,7 @@
   "ai_rate_limited": "Demasiados reconocimientos. Inténtalo de nuevo en unos minutos.",
   "ai_recognize_booking": "Reconocer reserva",
   "ai_remove_file": "Quitar archivo",
-  "ai_reset": "Restablecer",
+  "ai_reset": "Deshacer el análisis",
   "ai_textarea_ph": "Pega aquí el correo de confirmación, el número de reserva o un enlace…",
   "ai_upload_error": "No se pudo subir el archivo",
   "arrival_req": "Llegada *",
