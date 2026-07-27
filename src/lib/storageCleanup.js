@@ -51,6 +51,28 @@ export function collectDocPaths(documents, fileUrl) {
 }
 
 /**
+ * Enforce, at a commit point, the invariant "Storage holds exactly what the
+ * saved form still references": everything staged during the session that is
+ * absent from `keptDocuments` is orphaned and swept.
+ *
+ * Call ONLY after the DB write succeeded — deleting first would lose files if
+ * the write then failed. Best-effort, like every removal in this module.
+ *
+ * Anchoring on the session's full `seen` set (not just the entity's original
+ * files) makes "undo the AI parse, then save" self-cleaning: the reset drops
+ * the parsed documents from the form, so the next save sweeps them. No
+ * reset-specific deletion path is needed, and removal stays tied to a commit
+ * rather than to a reversible in-form action (TRIP-277).
+ *
+ * @param {Iterable<string>} seenPaths - every object key staged this session
+ * @param {Array<{ storage_path?: string, file_url?: string }>} [keptDocuments] - documents as saved
+ */
+export async function removeOrphanedFiles(seenPaths, keptDocuments) {
+  const kept = new Set(collectDocPaths(keptDocuments));
+  return removeTripFiles([...seenPaths].filter((p) => !kept.has(p)));
+}
+
+/**
  * Best-effort removal of object keys from the `trips` bucket (chunked, never
  * throws). Returns silently on empty input or on error (logged).
  *

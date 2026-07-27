@@ -16,7 +16,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Moon, ShieldCheck,
@@ -108,11 +108,11 @@ import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
-import { validateEntity, transferAiCityAdvisories } from '@/lib/validation';
+import { validateEntity, transferAiCityAdvisories, issuesToShow } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldStateClass } from '@/components/common/ValidationUI';
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
+import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
@@ -782,16 +782,22 @@ export default function EventEditDialog({
     [uploading, anyTimeMissing, hasBlockingError],
   );
 
-  // Reveal policy (display only — blocking stays with canSave/ORDER):
-  //  • EDIT of an existing entity → surface its issues the moment the form opens;
-  //    the problem is already real, so it must be visible without touching a field
-  //    (matches the read view, which always shows it).
-  //  • fresh CREATE → stay quiet until the user touches a field or attempts to
-  //    save, so an untouched new form doesn't nag.
-  const revealAll = isEdit || submitted;
+  // Reveal policy (display only — blocking stays with canSave/ORDER); the rule
+  // itself lives in `issuesToShow` (validation.js), where it is testable. A
+  // parse fills the form without touching any field, so without `aiParsed` a
+  // parsed create form would show none of its issues (TRIP-277).
+  const aiParsed = aiState === 'parsed';
   const displayIssues = useMemo(
-    () => issues.filter((i) => revealAll || (i.field && touched.has(i.field))),
-    [issues, revealAll, touched],
+    () => issuesToShow(issues, { isEdit, submitted, aiParsed, touched }),
+    [issues, isEdit, submitted, aiParsed, touched],
+  );
+  // The summary panel is the same policy with nothing touched: everything once
+  // revealed, silence before that. Going through the same helper rather than
+  // re-testing the condition here is deliberate — holding the predicate in two
+  // places is exactly how the AI-parse case got lost from one of them.
+  const panelIssues = useMemo(
+    () => issuesToShow(issues, { isEdit, submitted, aiParsed }),
+    [issues, isEdit, submitted, aiParsed],
   );
   // Build the DB payload for the current single entity (mirrors saveMut's branches).
   const buildCurrentPayload = () => {
@@ -843,6 +849,8 @@ export default function EventEditDialog({
       try {
         await writeRows(supabase.from(table).insert({ ...payload, created_by: user?.id }));
         invalidateTripData(qc, tripId);
+        // Same commit point as saveMut below (see removeOrphanedFiles).
+        removeOrphanedFiles(seenDocPaths.current, form.documents);
       } catch (err) {
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
         invalidateTripData(qc, tripId);
@@ -878,11 +886,13 @@ export default function EventEditDialog({
       return upsert('trip_services', entity, payload, user);
     },
     onSuccess: () => {
-      // Files detached during this edit (present originally, gone from the saved
-      // form) are now orphaned — sweep them best-effort (TRIP-117).
+      // Commit point: every file staged this session that the saved form no
+      // longer references is orphaned — sweep best-effort (TRIP-117). Anchored
+      // on `seenDocPaths`, not `originalDocPaths`, so a file uploaded THIS
+      // session and then detached (AI reset, or by hand) is swept too; the
+      // unmount sweep skips a successful save by design (TRIP-277).
       committedRef.current = true;
-      const finalPaths = new Set(collectDocPaths(form.documents));
-      removeTripFiles(originalDocPaths.current.filter((p) => !finalPaths.has(p)));
+      removeOrphanedFiles(seenDocPaths.current, form.documents);
       if (tripId) invalidateTripData(qc, tripId);
       onOpenChange(false);
     },
@@ -1298,8 +1308,8 @@ export default function EventEditDialog({
                 />
               )}
 
-              {/* Summary panel: shown per `revealAll` (edit-open or save attempt). Click row -> field. */}
-              <IssuesPanel issues={[...(revealAll ? issues : []), ...aiAdvisories]} style={{ marginTop: 12 }} />
+              {/* Summary panel: revealed on edit-open, save attempt or AI parse. Click row -> field. */}
+              <IssuesPanel issues={[...panelIssues, ...aiAdvisories]} style={{ marginTop: 12 }} />
             </fieldset>
           </div>
           )}
@@ -2045,11 +2055,14 @@ function DateRangeBlock({
   const warn = !invalid && eitherEnd(fieldHasWarning);
   return (
     <div className={`eed-dateblock${warn ? ' field--warning' : ''}`} style={style}>
+      {/* The badge marks the pair, the tint marks the end: <AiField> can't be
+          used here because it would tint BOTH cells when only one came from the
+          parse, and its badge would be clipped by `.stay-dates` (overflow:hidden
+          for the rounded border). So the shared `.ai-filled` class stays on each
+          cell and the shared <AiBadge> pins to this block, which does not clip. */}
+      {(startAi || endAi) && <AiBadge />}
       <div className="eed-dateblock__lbl t-micro">{label}</div>
       <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
-        {/* AI tint reuses the shared `.ai-filled` class rather than <AiField>:
-            `.stay-dates` is `overflow:hidden` for its rounded border, which
-            would clip AiField's badge (it sits at top:-8). Tint only here. */}
         <div className={`sd-cellwrap${startAi ? ' ai-filled' : ''}`} data-vfield={startVField}>
           <DateTimeInput variant="cell" cellLabel={startLabel} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
         </div>
