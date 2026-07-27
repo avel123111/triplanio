@@ -2867,7 +2867,6 @@ h4,
 .lp-stepper__tx span { color: var(--muted); }
 
 
-
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
 .addr div { color: var(--ink-2); }
@@ -4156,7 +4155,6 @@ h4,
 .kv.full{grid-column:1/-1;}
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
-/* route block (transfer view) */
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
 /* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
 .stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--surface-card-border);border-radius:var(--r-xl);background:var(--surface-card);overflow:hidden;}
