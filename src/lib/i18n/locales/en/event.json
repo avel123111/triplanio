@@ -22,7 +22,7 @@
   "ai_rate_limited": "Too many scans. Please try again in a few minutes.",
   "ai_recognize_booking": "Recognize booking",
   "ai_remove_file": "Remove file",
-  "ai_reset": "Undo parsing",
+  "ai_reset": "Reset",
   "ai_textarea_ph": "Paste the confirmation email, booking number, or a link here…",
   "ai_upload_error": "Could not upload the file",
   "arrival_req": "Arrival *",
