@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { DateTime } from 'luxon';
 import { sortVisits } from '@/lib/validation';
 import { uniqueCityCount } from '@/lib/trip-cities';
+import { formatDateRange } from '@/lib/trip-dates';
 
 // =====================================================================
 // TRIP MAP LENS (TRIP-33) — full-bleed map + a floating glass route panel.
@@ -26,13 +27,9 @@ function fmtShortDate(iso) {
   } catch { return ''; }
 }
 
-// City date range "1 июл – 5 июл" (single date if only one end is known).
-function fmtRange(a, b) {
-  const s = fmtShortDate(a);
-  const e = fmtShortDate(b);
-  if (s && e) return `${s} – ${e}`;
-  return s || e || '';
-}
+// City date range "1 июл – 5 июл". Collapsing (start/finish nodes and 0-night
+// layovers land on a single day) is the shared rule, not a local one.
+const fmtRange = (a, b) => formatDateRange(a, b, fmtShortDate);
 
 // Pulled-back reader zoom when focusing a single city (smaller than the editor's
 // city zoom — the city sits in its region rather than filling the frame).

@@ -16,6 +16,21 @@ export function computeTripRange(visits = []) {
   };
 }
 
+// THE date-range rule for the whole app (TRIP-230): a range whose two ends
+// render identically is ONE date, never "12 июл – 12 июл". Screens differ in how
+// they format a single date (with/without year, short/long month, own locale
+// source), so `formatOne` stays theirs — only the joining rule lives here, and
+// that is what every local copy of it got wrong.
+// Collapsing compares the FORMATTED ends, not the raw ones: two timestamps
+// within one day must collapse too, and only the rendered form knows that.
+// `start`/`end` are whatever `formatOne` understands (ISO string, Date, …).
+export function formatDateRange(start, end, formatOne, sep = ' – ') {
+  const s = start ? formatOne(start) : '';
+  const e = end ? formatOne(end) : '';
+  if (!s || !e) return s || e || '';
+  return s === e ? s : `${s}${sep}${e}`;
+}
+
 export function formatTripRange(visits = [], noDatesLabel = 'No dates yet') {
   const { start, end } = computeTripRange(visits);
   if (!start) return noDatesLabel;

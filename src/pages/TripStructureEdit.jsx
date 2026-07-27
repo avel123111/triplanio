@@ -17,7 +17,7 @@ import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
-import { formatTripRange } from '@/lib/trip-dates';
+import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Btn, Skeleton, useToast } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
@@ -1201,7 +1201,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       lead={<span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>}
       name={seg.city_name}
       conf={<Conf n={cityConf} />}
-      dates={<>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</>}>
+      dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
       <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} />
       <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
       <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>

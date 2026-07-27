@@ -110,7 +110,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { validateEntity, transferAiCityAdvisories, issuesToShow } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldStateClass } from '@/components/common/ValidationUI';
-import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
+import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
 import { aiField } from '@/lib/ai-values';
@@ -135,14 +135,6 @@ const BLOCKING_CODES = new Set(['HOTEL_ORDER', 'ACT_ORDER', 'TR_ORDER', 'SVC_ORD
 const isOvernightLocal = (startLocal, endLocal) => {
   const sd = (startLocal || '').slice(0, 10), ed = (endLocal || '').slice(0, 10);
   return !!(sd && ed && ed > sd);
-};
-
-// Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
-// browser treats it as relative and prepends the current app path → /trip/.../booking.com).
-const withScheme = (u) => {
-  if (!u) return u;
-  const s = String(u).trim();
-  return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 };
 
 // Assigns an AI-parsed value onto the form draft and records the key, so the
@@ -170,6 +162,8 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
         <div className="eed-inwrap">
           {logo && <img src={logo} alt="" className="eed-inlogo" />}
           <Input
+            type="url"
+            inputMode="url"
             value={value}
             onChange={onChange}
             placeholder="https://..."
@@ -183,7 +177,7 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
             {logo && <img src={logo} alt="" className="eed-bkpill__logo" />}
             {label}
           </span>
-          <a href={withScheme(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
+          <a href={normalizeExternalUrl(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
             <ExternalLink size={12} />{t('common.open')}
           </a>
         </div>
@@ -1407,7 +1401,7 @@ function buildHotelPayload(form, visit, tz) {
       : null,
     phone: form.phone || undefined,
     email: form.email || undefined,
-    booking_url: form.booking_url || null,
+    booking_url: normalizeExternalUrl(form.booking_url),
     documents: Array.isArray(form.documents) ? form.documents : [],
     notes: form.notes,
     details: {},
@@ -1432,7 +1426,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     to_latitude: form.to_latitude ?? null,
     to_longitude: form.to_longitude ?? null,
     booking_reference: form.booking_reference || undefined,
-    booking_url: form.booking_url || null,
+    booking_url: normalizeExternalUrl(form.booking_url),
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
     documents: Array.isArray(form.documents) ? form.documents : [],
@@ -1487,7 +1481,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     to_latitude: s.to_latitude ?? null,
     to_longitude: s.to_longitude ?? null,
     booking_reference: s.booking_reference || null,
-    booking_url: form.booking_url || null,
+    booking_url: normalizeExternalUrl(form.booking_url),
     price: s.price === '' || s.price == null ? null : Number(s.price),
     currency: s.currency || 'EUR',
     documents: i === 0 && Array.isArray(form.documents) ? form.documents : [],
@@ -1585,7 +1579,7 @@ function buildServicePayload(form, tripId, t) {
       dropoff_longitude: dropoffLng ?? undefined,
       dropoff_timezone: dropoffTz || undefined,
       booking_reference: form.booking_reference || undefined,
-      booking_url: form.booking_url || null,
+      booking_url: normalizeExternalUrl(form.booking_url),
         documents: Array.isArray(form.documents) ? form.documents : [],
       price: undefined,
       currency: undefined,
@@ -2185,14 +2179,16 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   });
   const removeSegment = (i) => setForm((prev) => (prev.segments.length <= 2 ? prev : { ...prev, segments: prev.segments.filter((_, idx) => idx !== i) }));
 
-  // Expandable cards (default expanded, like the design). A segment with an
-  // active error is always forced open so the inline message can't be hidden.
+  // Expandable cards, COLLAPSED by default (TRIP-230) — a chain opened fully
+  // expanded buries the route itself under stacked forms; a newly added segment
+  // is no exception. A segment with an active error is always forced open so
+  // the inline message can't be hidden.
   const [openMap, setOpenMap] = useState({});
   const segHasErr = (i) => (issues || []).some((it) => it.level === 'error' && typeof it.field === 'string' && it.field.startsWith(`seg${i}.`));
   const isOpen = (seg, i) => {
     if (segHasErr(i)) return true;
     if (openMap[seg.id] !== undefined) return openMap[seg.id];
-    return true;
+    return false;
   };
   const toggleOpen = (seg, i) => setOpenMap((m) => ({ ...m, [seg.id]: !isOpen(seg, i) }));
 
