@@ -103,7 +103,7 @@
   --scrim:            rgba(23,20,40,.45);
   --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
 
-  /* Event types (+ink +soft-2; legacy -soft-12 aliases -soft-2) */
+  /* Event types (+ink +soft; -soft-2 only on transfer) */
   --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11);
   --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12); --ev-transfer-soft-2:rgba(21,162,176,.18);
   /* overnight/night accent (indigo) — night pill + "+1" marker + overnight toggle (TRIP-176) */
@@ -167,7 +167,7 @@
   --track-caps: 0.14em;          /* трекинг капс-лейблов (канон .t-micro ← label макета; было .12, макет .14) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
-     ease-out for enter/hover/press, ease-spring for playful overshoot. */
+     ease-out for enter/hover/press. */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);   /* Lumo */
   --ease-spring: cubic-bezier(0.34, 1.25, 0.5, 1); /* Lumo — playful overshoot */
 
