@@ -113,6 +113,7 @@ import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldStateClas
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
+import { aiField } from '@/lib/ai-values';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
@@ -144,19 +145,12 @@ const withScheme = (u) => {
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 };
 
-// ── AI parse: one gate for "did the model actually give us this field?" ──
-// "N/A" is the single literal placeholder Gemini still emits for an absent
-// field despite the prompt forbidding it, and it must not land as text in
-// booking_reference / phone / email (TRIP-75). Deliberately NOT a general
-// placeholder sanitizer — the n8n prompt owns that; this is the last guard.
-const aiVal = (v) => (v == null || v === '' || v === 'N/A' ? null : v);
-
 // Assigns an AI-parsed value onto the form draft and records the key, so the
-// field gets the violet "AI filled" tint. The hotel and transfer handlers used
-// to carry two divergent copies of this — the transfer one skipped the "N/A"
-// check entirely, which is why transfers were the ones showing garbage.
+// field gets the violet "AI filled" tint. `aiField` (lib/ai-values.js) is the
+// one gate for "did the model actually give us this?" — every merge path below
+// goes through it, keyed by the form field name.
 const makeAiSetter = (upd, filled) => (k, v) => {
-  const clean = aiVal(v);
+  const clean = aiField(k, v);
   if (clean == null) return;
   upd[k] = clean;
   filled.add(k);
@@ -971,8 +965,9 @@ export default function EventEditDialog({
     if (ci) { upd.checkInLocal = ci; filled.add('checkInLocal'); }
     const co = combine(data.check_out_date, data.check_out_time);
     if (co) { upd.checkOutLocal = co; filled.add('checkOutLocal'); }
-    // "N/A" survives the reshape unchanged, so setIf's own guard still catches it
-    // — no separate placeholder check needed here.
+    // Typed as `datetime` in ai-values.js: the reshape below hands the
+    // datetime-local input whatever the model sent, and that input silently
+    // blanks itself on anything malformed.
     setIf('free_cancellation_until_local', data.free_cancellation_until?.replace(' ', 'T').slice(0, 16));
     if (Array.isArray(data.documents) && data.documents.length > 0) {
       upd.documents = [...(upd.documents || []), ...data.documents].slice(0, 50);
@@ -1020,19 +1015,19 @@ export default function EventEditDialog({
 
     // ── Multi-leg booking (create mode) → layover form (waypoint chain) ──
     if (segs.length > 1 && !isEdit) {
-      // Same `aiVal` gate as the flat paths — this branch used bare `|| ''` and
-      // so was the one place a literal "N/A" reached a segment field verbatim.
+      // Same `aiField` gate as the flat paths, keyed by the same form field
+      // names — so `price` / `currency` are shape-checked here too.
       const formSegs = segs.map((s) => ({
-        ...makeSegment(aiVal(s.currency) || aiVal(data.currency) || 'EUR'),
+        ...makeSegment(aiField('currency', s.currency) || aiField('currency', data.currency) || 'EUR'),
         transport_type: normType(s.transport_type),
-        from_address: aiVal(s.from_address) || '',
-        to_address: aiVal(s.to_address) || '',
+        from_address: aiField('from_address', s.from_address) || '',
+        to_address: aiField('to_address', s.to_address) || '',
         startLocal: s.departure_date ? combine(s.departure_date, s.departure_time) : '',
         endLocal: s.arrival_date ? combine(s.arrival_date, s.arrival_time) : '',
-        carrier: aiVal(s.carrier) || '',
-        flight_number: aiVal(s.flight_number) || '',
-        booking_reference: aiVal(s.booking_reference) || '',
-        price: typeof s.price === 'number' ? String(s.price) : (aiVal(s.price) || ''),
+        carrier: aiField('carrier', s.carrier) || '',
+        flight_number: aiField('flight_number', s.flight_number) || '',
+        booking_reference: aiField('booking_reference', s.booking_reference) || '',
+        price: aiField('price', s.price) || '',
         toCity: null,
       }));
       // Resolve the intermediate layover cities (to_city of all but the last leg)
@@ -1103,7 +1098,7 @@ export default function EventEditDialog({
         if (s.toCity) segAi.add(`${s.id}.toCity`);
       });
 
-      const bookingUrl = aiVal(data.booking_url);
+      const bookingUrl = aiField('booking_url', data.booking_url);
       const topFilled = new Set();
       if (bookingUrl) topFilled.add('booking_url');
 
