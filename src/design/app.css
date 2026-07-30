@@ -4919,11 +4919,17 @@ h4,
    and "Solo las necesarias" does not fit a half-width column on a 360px screen. */
 .consent__actions .btn { white-space: normal; }
 @media (max-width: 640px) {
-  /* Full width, clear of the bottom-nav dock (60px + its 8px + safe-area). The
-     offset is unconditional — the nav is not on every screen, but one rule for
-     every screen beats a per-route list of exceptions. */
+  /* Full width, sitting on the bottom edge like any other fixed panel. */
   .consent {
     left: 12px; right: 12px; width: auto; max-width: none;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Lifted ONLY when the dock is really on screen (60px + its own 8px + a gap).
+     MobileBottomNav renders nothing on the landing, login, public link, invite,
+     planner and chat — that is where the panel is seen first, and an
+     unconditional offset left a dead strip under it there. :has() reads the DOM
+     instead of duplicating that route list. */
+  body:has(.mbnav) .consent {
     bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
   }
 }
