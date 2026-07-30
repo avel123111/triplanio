@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import posthog from 'posthog-js'
 import { PostHogProvider } from '@posthog/react'
 import { initSentry } from '@/lib/sentry'
+import { setCampaign } from '@/lib/analytics'
 import App from '@/App.jsx'
 import '@/index.css'
 import '@/design/app.css'
@@ -47,6 +48,9 @@ if (posthogToken) {
     opt_out_capturing_by_default: !posthogEnabled,
   })
   posthog.register({ env: isPosthogProdHost ? 'prod' : 'dev' })
+  // Ad attribution (TRIP-316): the mark has to be persisted here, before the
+  // first render — see setCampaign() for why this cannot wait.
+  setCampaign()
 }
 
 // Must run before the first render so early errors are captured.

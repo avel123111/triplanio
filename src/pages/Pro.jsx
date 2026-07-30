@@ -105,7 +105,13 @@ export default function Pro() {
         setLoadingPlan(null);
         return;
       }
-      if (data?.url) { window.location.href = data.url; return; }
+      if (data?.url) {
+        // Between "pressed buy" (pro_upgrade_initiated) and the failure events
+        // there was no "reached Stripe" — so a session that quietly died on the
+        // way looked exactly like one that made it to the payment page.
+        track('checkout_redirected', { plan, product_code: productCode, trip_id: tripId || undefined });
+        window.location.href = data.url; return;
+      }
       setLoadingPlan(null);
     } catch (error) {
       console.error('Upgrade error:', error);

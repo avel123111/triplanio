@@ -137,9 +137,17 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     // Saved → the staged files are now referenced by the row; the close sweep
     // must skip them.
     savedRef.current = true;
-    // Split by visibility: document1_uploaded = shared (общий), document2_uploaded = private (личный).
-    track(visibility === 'private' ? 'document2_uploaded' : 'document1_uploaded', {
+    // One event split by PROPERTIES (TRIP-316). Shared vs private used to be two
+    // events, document1_/document2_uploaded, whose digits mean nothing to anyone
+    // reading the report. `file_kind` reuses the badge classifier, so "what do
+    // people actually keep here - scans or PDF bookings?" becomes answerable:
+    // there is no document TYPE (passport / insurance) anywhere in the model,
+    // the extension is all we know. Mixed kinds collapse to 'mixed'.
+    const kinds = [...new Set(documents.map((d) => fileType(d.file_name)))];
+    track('document_uploaded', {
       trip_id: tripId,
+      visibility,
+      file_kind: kinds.length > 1 ? 'mixed' : (kinds[0] || 'none'),
       has_files: !!documents.length,
       has_link: !!linkUrl.trim(),
     });
