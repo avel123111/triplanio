@@ -6,6 +6,7 @@ import {
   worldExplored, countriesList, citiesList, continentsBreakdown,
   tripsByYear, daysInTrips, favoriteCity, favoriteCountry, longestTrip,
   WORLD_COUNTRIES, dominantTone, TONE, TONE_RANK, countVisitUnits,
+  countFlights, countGround, statisticsBundle,
 } from './travel-stats.js';
 
 // trip A (2024): Madrid, Barcelona (ES) + return Madrid (dedup) → 2 cities, 1 country
@@ -132,4 +133,75 @@ test('TRIP-65: one city across locales (trip EN + manual RU) dedups by geonameid
   // dropped city_name column, so display-only rows are not lost.
   const noGn = [{ id: 3, kind: 'custom', trip_id: null, geonameid: null, name_i18n: { en: 'Atlantis' }, city_name: 'Atlantis', country_code: 'XX', start_date: '2023-01-01', end_date: '2023-01-02' }];
   assert.equal(countCities(noGn), 1);
+});
+
+// ─── TRIP-270: flights vs ground transfers ───────────────────────────────────
+// Transfer rows as the RPC ships them: { transport_type, start_date } only.
+const transfers = [
+  { transport_type: 'plane', start_date: '2024-03-01' },
+  { transport_type: 'plane', start_date: '2024-03-04' }, // layover leg = its own row
+  { transport_type: 'train', start_date: '2024-03-08' },
+  { transport_type: 'car', start_date: '2025-06-01' },
+  { transport_type: 'plane', start_date: '2025-06-05' },
+];
+
+test('TRIP-270: flights are planes, ground is everything else', () => {
+  assert.equal(countFlights(transfers), 3);
+  assert.equal(countGround(transfers), 2);
+  // The invariant the home stat-bar depends on: nothing falls between the two.
+  assert.equal(countFlights(transfers) + countGround(transfers), transfers.length);
+  assert.equal(countFlights([]), 0);
+  assert.equal(countGround([]), 0);
+  assert.equal(countFlights(), 0);
+  assert.equal(countGround(), 0);
+});
+
+test('TRIP-270: an unknown or absent transport type is ground, never vanishes', () => {
+  // A type nobody remembered to list here must still be counted — ground is
+  // "the rest", not an allow-list. A MISSING type is ground too, matching every
+  // other consumer (routing.isFlightTransport, TripView's `|| 'car'`,
+  // EventViewBody's `=== 'plane' ? flight : transfer`).
+  const odd = [
+    { transport_type: 'hyperloop', start_date: '2026-01-01' },
+    { transport_type: null, start_date: '2026-01-02' },
+    { transport_type: 'plane', start_date: '2026-01-03' },
+  ];
+  assert.equal(countFlights(odd), 1);
+  assert.equal(countGround(odd), 2);
+  assert.equal(countFlights(odd) + countGround(odd), odd.length);
+});
+
+test('TRIP-270: transfers ride the SAME year filter as points (start_date field)', () => {
+  assert.deepEqual(filterByYear(transfers, 2024).map((tr) => tr.transport_type), ['plane', 'plane', 'train']);
+  assert.equal(countFlights(filterByYear(transfers, 2024)), 2);
+  assert.equal(countGround(filterByYear(transfers, 2024)), 1);
+  assert.equal(countFlights(filterByYear(transfers, 2025)), 1);
+  assert.equal(countGround(filterByYear(transfers, 2025)), 1);
+  // A year with visits but no transfers reads 0, not the all-time number.
+  assert.equal(countFlights(filterByYear(transfers, 2023)), 0);
+  assert.equal(countGround(filterByYear(transfers, 2023)), 0);
+  assert.equal(filterByYear(transfers, 'all').length, transfers.length);
+});
+
+test('TRIP-270: statisticsBundle exposes flights/ground and defaults to 0', () => {
+  const b = statisticsBundle(pts, {}, transfers);
+  assert.equal(b.flights, 3);
+  assert.equal(b.ground, 2);
+  // Callers that pass no transfers at all (first render, RPC not back yet) get 0s.
+  const empty = statisticsBundle(pts, {});
+  assert.equal(empty.flights, 0);
+  assert.equal(empty.ground, 0);
+});
+
+test('TRIP-270: a transfer year absent from points still gets a selector button', () => {
+  // Trip crosses New Year: the visit STARTS in December (pointYear reads
+  // start_date first), the return leg departs in January. Building the year
+  // list from points alone would leave that flight uncountable in any year.
+  const nyPts = [
+    { kind: 'trip', trip_id: 'NY', geonameid: 1, city_name: 'Kyoto', country_code: 'JP', start_date: '2025-12-28', end_date: '2026-01-03' },
+  ];
+  const nyTransfers = [{ transport_type: 'plane', start_date: '2026-01-03' }];
+  assert.deepEqual(availableYears(nyPts), [2025]);
+  assert.deepEqual(availableYears([...nyPts, ...nyTransfers]), [2026, 2025]);
+  assert.equal(countFlights(filterByYear(nyTransfers, 2026)), 1);
 });

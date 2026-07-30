@@ -4616,8 +4616,6 @@ h4,
 .sfig.c-flight .ic { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
 .sfig.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
 .sfig .v { color: var(--ink); }
-.sfig .v small { color: var(--muted); margin-left: 2px; }
-.sfig.is-soon .v { color: var(--muted-2); }
 .sfig .k { color: var(--muted); }
 
 /* Base white card container (V4). Was missing — so .panel / .panel.world /
