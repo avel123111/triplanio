@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { track } from '@/lib/analytics';
+import { getSignupAttribution, track } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
@@ -416,7 +416,12 @@ export default function Login() {
       email,
       password,
       options: {
-        data: { full_name: name, language: lang },
+        // `signup_attribution` rides auth metadata because email is the ONE
+        // entry that can finish on another device — the confirmation link is
+        // often opened on a phone, where the in-memory snapshot of the visit
+        // does not exist. AuthContext reads it back when it creates the profile
+        // row (TRIP-311). Undefined when the visit carried no marks.
+        data: { full_name: name, language: lang, signup_attribution: getSignupAttribution() || undefined },
         // Land confirmed users in the app, not on the Site-URL landing page.
         emailRedirectTo: window.location.origin + postLoginPath(),
       },

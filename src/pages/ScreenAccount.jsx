@@ -13,6 +13,7 @@ import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
+import { clearConsent } from '@/lib/consent';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -883,6 +884,20 @@ export default function ScreenAccount() {
                 </div>
                 <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
               </a>
+              {/* Revoke route for signed-in people; the anonymous one is the
+                  landing footer, since the app itself has none (TRIP-311). */}
+              <button
+                type="button"
+                className="acct-divrow"
+                style={{ color: 'inherit', border: 0, background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                onClick={() => { clearConsent(); window.location.reload(); }}
+              >
+                <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="settings" size={18} /></span>
+                <div style={{ flex: 1 }}>
+                  <div className="acct-divrow__t">{t('consent.settings')}</div>
+                  <div className="acct-divrow__s">{t('consent.state')}</div>
+                </div>
+              </button>
             </div>
           </section>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
+import { clearConsent } from '@/lib/consent';
 import { Icon as BaseIcon } from '@/design/icons';
 
 /* =========================================================
@@ -189,6 +190,12 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
               <h4>{t('landing.footer.legal')}</h4>
               <a href="/privacy">{t('landing.footer.privacy')}</a>
               <a href="/terms">{t('landing.footer.terms')}</a>
+              {/* The revoke route for anonymous visitors — the app itself has no
+                  footer, so this is where someone who never signed up can change
+                  their mind (TRIP-311). */}
+              <a href="#" onClick={(e) => { e.preventDefault(); clearConsent(); window.location.reload(); }}>
+                {t('consent.settings')}
+              </a>
             </div>
           </div>
           <div style={{display:'flex',justifyContent:'flex-end'}}>

@@ -2,14 +2,32 @@
 //
 // Every custom event capture goes through track() so that adding a second
 // destination later (e.g. GA4 / an ad pixel — TRIP-227) is a one-file change
-// instead of touching every call-site. Identity (identify/reset) and the
-// env-gate / opt-out live in main.jsx (posthog.init) and AuthContext; this
-// wrapper is only for events.
+// instead of touching every call-site. Identity (identify/reset) lives in
+// AuthContext, and whether PostHog runs at all is decided by consent.js.
 //
 // Naming convention: object_action, snake_case; variant info goes in props,
 // never in the event name. No PII in props (uid only, set via identify).
+//
+// Every function here is safe to call before consent: PostHog is not initialised
+// then, and an uninitialised client is a no-op (TRIP-311). Nothing is queued —
+// events fired before someone agrees are dropped, which is the point.
 import posthog from 'posthog-js';
-import { CAMPAIGN_KEYS, resolveCampaign } from '@/lib/campaign';
+import { CAMPAIGN_KEYS, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
+
+// The query this visit STARTED with, snapshotted at import — before the router
+// can strip it, and long before consent may arrive. Memory only: writing marks
+// to the device before someone agrees is exactly what this ticket forbids.
+const visitSearch = typeof window === 'undefined' ? '' : window.location.search;
+
+// Same idea for the invite / public link someone arrived through. PostHog's own
+// storage cannot hold it yet, and by the time it can, the page that carried it
+// is gone — so K-factor attribution would silently vanish for everyone who says
+// yes, i.e. for the only people it is measurable on.
+let visitRefTripId = '';
+
+// Set once consent.js has run posthog.init(). Only the three calls that create
+// or mutate a PROFILE need it — see groupTrip.
+let analyticsOn = false;
 
 /**
  * Capture a product-analytics event.
@@ -26,11 +44,17 @@ export function track(event, props) {
  * Associate the current user + subsequent events with a trip GROUP so the North
  * Star ("active trips with ≥2 participants") is a group-level metric rather than
  * a per-person one. Call on entering a trip; `props` become group properties.
+ *
+ * Gated on `analyticsOn` unlike track(): `group` and `setPersonProperties` are
+ * the two calls with no `__loaded` check of their own, and calling them before
+ * init leaves PostHog's feature-flag loader stuck on `_requestInFlight = true`
+ * FOREVER — it survives the later init and can block flags from loading. No data
+ * leaves either way; this just keeps the client sane.
  * @param {string} tripId
  * @param {Record<string, unknown>} [props]  group props, e.g. { participant_count }
  */
 export function groupTrip(tripId, props) {
-  if (!tripId) return;
+  if (!tripId || !analyticsOn) return;
   // ponytail: sets the ACTIVE group globally (standard PostHog pattern) — events
   // fired afterwards on non-trip screens still carry the last trip until the next
   // groupTrip(). Upgrade path if that pollutes: pass per-event { groups:{trip} }.
@@ -40,28 +64,54 @@ export function groupTrip(tripId, props) {
 /**
  * Record the trip a user arrived through (invite / shared public link) as a
  * persisted super-property so every later event carries it — the basis for
- * referral attribution / K-factor. Safe while anonymous (rides localStorage).
+ * referral attribution / K-factor.
+ *
+ * Kept in memory as well, because this fires on landing — before the banner has
+ * been answered — while PostHog only exists afterwards. startAnalytics() replays
+ * it; without that, the invite and public-link entries (the whole viral funnel)
+ * would lose their source for every visitor who accepts.
  * @param {string} refTripId
  */
 export function setRefTripId(refTripId) {
   if (!refTripId) return;
-  posthog?.register?.({ ref_trip_id: String(refTripId) });
+  visitRefTripId = String(refTripId);
+  posthog?.register?.({ ref_trip_id: visitRefTripId });
+}
+
+/**
+ * Hand PostHog everything this visit accumulated while it did not exist. Called
+ * by consent.js immediately after init(), and only from there.
+ */
+export function startAnalytics() {
+  analyticsOn = true;
+  setCampaign();
+  if (visitRefTripId) posthog?.register?.({ ref_trip_id: visitRefTripId });
+}
+
+/**
+ * The signup-attribution columns for the account being created, or null.
+ * Written once, at profile creation, for EVERY visitor — refusers included.
+ * These columns are why "which campaign brought this signup" has an answer that
+ * does not depend on consent.
+ */
+export function getSignupAttribution() {
+  return readSignupAttribution(visitSearch);
 }
 
 /**
  * Record the ad campaign the user arrived through as persisted super-properties
  * (TRIP-316) — same pattern as setRefTripId, so every later event carries it.
- * Call once at start-up, BEFORE the first render: `landing_viewed` fires from an
- * effect in App.jsx, and without the mark the ad click itself is unattributed.
+ * Called from startAnalytics(), i.e. the moment PostHog comes into existence.
  *
- * The mark does not ride the URL, it rides PostHog's own storage — which is why
- * it survives the round trip through Google's OAuth screen back to /trips, where
- * the query string is long gone. Storage is per-host, so campaign links MUST
- * point at the same host the app runs on (www vs apex are different jars).
+ * Reads the snapshot, never `location.search`: consent can arrive many clicks
+ * after landing, and by then the query is gone. Once stored, the mark rides
+ * PostHog's own storage — which is how it survives the round trip through
+ * Google's OAuth screen back to /trips. Storage is per-host, so campaign links
+ * MUST point at the same host the app runs on (www vs apex are different jars).
  */
-export function setCampaign() {
+function setCampaign() {
   const decision = resolveCampaign(
-    window.location.search,
+    visitSearch,
     posthog?.get_property?.('camp_ts') || null,
     Date.now(),
   );
@@ -102,6 +152,7 @@ export function setCampaign() {
  * rides along on the person too — a report can window on it.
  */
 export function syncCampaignToPerson() {
+  if (!analyticsOn) return;
   const ts = posthog?.get_property?.('camp_ts') || '';
   if ((posthog?.get_property?.('camp_synced_ts') || '') === ts) return;
 

@@ -9,7 +9,7 @@
 // Everything else here guards the door: the query string comes from a stranger.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveCampaign, CAMPAIGN_TTL_MS } from './campaign.js';
+import { resolveCampaign, readSignupAttribution, pickSignupAttribution, CAMPAIGN_TTL_MS } from './campaign.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
 const iso = (ms) => new Date(ms).toISOString();
@@ -68,4 +68,38 @@ test('junk from the URL cannot poison the marks', () => {
   // ...and a value long enough to bloat every event is capped.
   const long = resolveCampaign(`?utm_campaign=${'x'.repeat(500)}`, null, NOW);
   assert.equal(long.set.camp_campaign.length, 200);
+});
+
+// The signup columns are the only attribution that survives a cookie refusal,
+// and the email path carries them through client-owned auth metadata straight
+// into the INSERT that creates the user row — so the whitelist below is a trust
+// boundary, not tidiness.
+test('signup attribution is read from the query, capped, and never empty-string', () => {
+  assert.deepEqual(
+    readSignupAttribution('?utm_source=google&utm_medium=cpc&utm_campaign=ru_aug&gclid=xyz'),
+    {
+      signup_utm_source: 'google',
+      signup_utm_medium: 'cpc',
+      signup_utm_campaign: 'ru_aug',
+      signup_gclid: 'xyz',
+    },
+  );
+  assert.equal(readSignupAttribution(''), null);
+  assert.equal(readSignupAttribution('?utm_source=%20%20'), null);
+  // utm_content is deliberately absent — it has no column.
+  assert.deepEqual(readSignupAttribution('?utm_content=stories'), null);
+  // A lone medium still counts here, unlike the campaign mark: nothing else carries it.
+  assert.deepEqual(readSignupAttribution('?utm_medium=email'), { signup_utm_medium: 'email' });
+  assert.equal(readSignupAttribution(`?utm_source=${'x'.repeat(500)}`).signup_utm_source.length, 200);
+});
+
+test('attribution from client-owned metadata cannot smuggle other columns', () => {
+  assert.deepEqual(
+    pickSignupAttribution({ signup_utm_source: 'google', subscription_status: 'active', is_admin: true }),
+    { signup_utm_source: 'google' },
+  );
+  assert.equal(pickSignupAttribution({ subscription_status: 'active' }), null);
+  assert.equal(pickSignupAttribution(null), null);
+  assert.equal(pickSignupAttribution('signup_utm_source=google'), null);
+  assert.equal(pickSignupAttribution({ signup_gclid: { toString: () => 'evil' } }), null);
 });

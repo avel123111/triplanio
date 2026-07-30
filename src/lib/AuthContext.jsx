@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
-import { track, syncCampaignToPerson } from '@/lib/analytics';
+import { getSignupAttribution, track, syncCampaignToPerson } from '@/lib/analytics';
+import { pickSignupAttribution } from '@/lib/campaign';
 
 const AuthContext = createContext();
 
@@ -160,6 +161,17 @@ export const AuthProvider = ({ children }) => {
             email: authUser.email,
             full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
             avatar_url: authUser.user_metadata?.avatar_url || null,
+            // Where this account came from (TRIP-311). Written here, at the ONE
+            // birth point of a user, and NOT in the login buttons: there are
+            // three OAuth entries plus email, and the fourth would be forgotten
+            // the day it is added — the same reason `user_signed_up` lives here.
+            // Account data, not tracking: recorded whatever the visitor answered
+            // on the cookie banner. Email carries the marks through auth metadata
+            // (they survive confirming on another device); every other entry
+            // keeps them in the same tab, where the start-of-visit snapshot still
+            // holds them. Filtered through pickSignupAttribution, never spread
+            // raw — `user_metadata` is client-owned.
+            ...(pickSignupAttribution(authUser.user_metadata?.signup_attribution) || getSignupAttribution() || {}),
           })
           .select()
           .single();
