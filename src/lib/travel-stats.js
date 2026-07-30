@@ -126,17 +126,21 @@ export function countTrips(points = []) {
 // can never go missing between the two screens — including a future transport
 // type nobody remembered to add here.
 //
-// An ABSENT transport_type counts as a flight, not as ground: the column is
-// nullable with DEFAULT 'plane', and transferKind() in src/lib/transport.js
-// already falls back to plane, so such a row shows a plane icon on the timeline.
-// Counting it as ground would make the tile contradict what the user sees.
-// transport.js is NOT imported: it pulls lucide-react, and this module stays
-// import-light so `node --test` can run it (same rule as trip-cities.js).
+// The predicate is STRICT equality, matching every other consumer in the app:
+// isFlightTransport() in routing.js, TripView (`transport_type || 'car'`, so a
+// missing type is a ground transfer), EventViewBody and EventSourcePanel
+// (`=== 'plane' ? tl_flight : tl_transfer`). transferKind()'s fallback-to-plane
+// in transport.js picks an ICON for an unknown value — it is not the
+// flight/transfer classification, and using it here would make the tile
+// disagree with the label the same row carries on the timeline.
+// Neither routing.js nor transport.js is imported: they pull @/lib/mapbox and
+// lucide-react respectively, and this module stays import-light so `node --test`
+// can run it (same rule as trip-cities.js).
 const FLIGHT_TYPE = 'plane';
 
-/** Flights (transport_type 'plane', or absent — see the fallback note above). */
+/** Flights (transport_type exactly 'plane') among transfer rows. */
 export function countFlights(transfers = []) {
-  return transfers.filter((tr) => (tr?.transport_type || FLIGHT_TYPE) === FLIGHT_TYPE).length;
+  return transfers.filter((tr) => tr?.transport_type === FLIGHT_TYPE).length;
 }
 /** Ground transfers = every transfer that is not a flight. */
 export function countGround(transfers = []) {

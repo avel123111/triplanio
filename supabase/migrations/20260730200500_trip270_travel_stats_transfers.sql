@@ -28,11 +28,14 @@
 --     jsonb_array_length() of this very array. One scan instead of two, and the
 --     home stat-bar's number can never disagree with the statistics screen's.
 --     The JSON key is unchanged, so Trips.jsx is untouched.
---   • `order by start_datetime, id` keeps the payload byte-stable across refetches
+--   • An undated transfer takes the timeline's own anchor (from-visit's last day,
+--     else to-visit's arrival day) — see the CTE comment. Otherwise it would count
+--     under "all time" and disappear from every single-year view.
+--   • `order by <resolved date>, id` keeps the payload byte-stable across refetches
 --     so react-query's structural sharing doesn't hand the screen a new array (and
 --     a re-render) for identical data. The id tie-break is load-bearing, not
 --     belt-and-braces: same-instant transfers DO exist (prod has a trip with 4 on
---     one timestamp), and start_datetime alone leaves their order up to the plan.
+--     one timestamp), and the date alone leaves their order up to the plan.
 --
 -- Everything else is byte-for-byte the TRIP-215 body: the set-based membership
 -- CTE, owner_pro, the other JSON keys, SECURITY DEFINER, and the pinned
@@ -91,11 +94,21 @@ begin
     -- are separate rows by construction (add_layover_transfer writes one row per
     -- segment), so a flight with one stop reads as two flights — the same unit the
     -- home stat-bar and the trip Overview already count.
+    --
+    -- start_datetime is NULLABLE (a transfer can be saved without a departure
+    -- time), so the date falls back to the SAME anchor the timeline already uses
+    -- for exactly this case (src/pages/TripView.jsx: explicit day → from-visit's
+    -- last day → to-visit's arrival day). Without it an undated transfer would
+    -- count under "all time" but vanish from every single-year view, and the two
+    -- screens would disagree about when the trip moved.
     select jsonb_agg(jsonb_build_object(
       'transport_type', tr.transport_type,
-      'start_date', (tr.start_datetime at time zone 'utc')::date
-    ) order by tr.start_datetime, tr.id) as arr
-    from public.transfers tr where tr.trip_id in (select id from my_trips)
+      'start_date', coalesce((tr.start_datetime at time zone 'utc')::date, fv.end_date, tv.start_date)
+    ) order by coalesce((tr.start_datetime at time zone 'utc')::date, fv.end_date, tv.start_date), tr.id) as arr
+    from public.transfers tr
+    left join all_visits fv on fv.id = tr.from_city_visit_id
+    left join all_visits tv on tv.id = tr.to_city_visit_id
+    where tr.trip_id in (select id from my_trips)
   ),
   trip_visits as (
     select jsonb_object_agg(trip_id::text, rows) as obj from (

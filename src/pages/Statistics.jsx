@@ -107,7 +107,11 @@ export default function Statistics() {
 
   // ── year filter (client-side; no network on switch) ──────────────────────────
   const [year, setYear] = useState('all');
-  const years = useMemo(() => availableYears(allPoints), [allPoints]);
+  // Years come from points AND transfers: a trip that crosses New Year has its
+  // visits' start_date in December while the return leg departs in January, so
+  // building the selector from points alone would leave that transfer with no
+  // year to be counted under. availableYears reads start_date on both shapes.
+  const years = useMemo(() => availableYears([...allPoints, ...allTransfers]), [allPoints, allTransfers]);
   const points = useMemo(() => filterByYear(allPoints, year), [allPoints, year]);
   // Transfer rows carry start_date too, so the SAME year filter applies to them.
   const transfers = useMemo(() => filterByYear(allTransfers, year), [allTransfers, year]);

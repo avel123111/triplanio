@@ -156,17 +156,18 @@ test('TRIP-270: flights are planes, ground is everything else', () => {
   assert.equal(countGround(), 0);
 });
 
-test('TRIP-270: an unknown transport type is ground; an absent one is a flight', () => {
+test('TRIP-270: an unknown or absent transport type is ground, never vanishes', () => {
   // A type nobody remembered to list here must still be counted — ground is
-  // "the rest", not an allow-list. A MISSING type follows transferKind() in
-  // src/lib/transport.js, which renders it as a plane, so it counts as a flight.
+  // "the rest", not an allow-list. A MISSING type is ground too, matching every
+  // other consumer (routing.isFlightTransport, TripView's `|| 'car'`,
+  // EventViewBody's `=== 'plane' ? flight : transfer`).
   const odd = [
     { transport_type: 'hyperloop', start_date: '2026-01-01' },
     { transport_type: null, start_date: '2026-01-02' },
     { transport_type: 'plane', start_date: '2026-01-03' },
   ];
-  assert.equal(countFlights(odd), 2);
-  assert.equal(countGround(odd), 1);
+  assert.equal(countFlights(odd), 1);
+  assert.equal(countGround(odd), 2);
   assert.equal(countFlights(odd) + countGround(odd), odd.length);
 });
 
@@ -190,4 +191,17 @@ test('TRIP-270: statisticsBundle exposes flights/ground and defaults to 0', () =
   const empty = statisticsBundle(pts, {});
   assert.equal(empty.flights, 0);
   assert.equal(empty.ground, 0);
+});
+
+test('TRIP-270: a transfer year absent from points still gets a selector button', () => {
+  // Trip crosses New Year: the visit STARTS in December (pointYear reads
+  // start_date first), the return leg departs in January. Building the year
+  // list from points alone would leave that flight uncountable in any year.
+  const nyPts = [
+    { kind: 'trip', trip_id: 'NY', geonameid: 1, city_name: 'Kyoto', country_code: 'JP', start_date: '2025-12-28', end_date: '2026-01-03' },
+  ];
+  const nyTransfers = [{ transport_type: 'plane', start_date: '2026-01-03' }];
+  assert.deepEqual(availableYears(nyPts), [2025]);
+  assert.deepEqual(availableYears([...nyPts, ...nyTransfers]), [2026, 2025]);
+  assert.equal(countFlights(filterByYear(nyTransfers, 2026)), 1);
 });
