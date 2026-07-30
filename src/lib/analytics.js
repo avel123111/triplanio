@@ -12,7 +12,7 @@
 // then, and an uninitialised client is a no-op (TRIP-311). Nothing is queued —
 // events fired before someone agrees are dropped, which is the point.
 import posthog from 'posthog-js';
-import { CAMPAIGN_KEYS, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
+import { CAMPAIGN_KEYS, pickSignupAttribution, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
 
 // The query this visit STARTED with, snapshotted at import — before the router
 // can strip it, and long before consent may arrive. Memory only: writing marks
@@ -25,9 +25,22 @@ const visitSearch = typeof window === 'undefined' ? '' : window.location.search;
 // yes, i.e. for the only people it is measurable on.
 let visitRefTripId = '';
 
+// Likewise the trip someone is looking at. TripView sets the group from an effect
+// keyed on the trip, so consenting later does not re-run it — without replaying,
+// every event of that session would miss the group the North Star counts on.
+let pendingGroup = null;
+
 // Set once consent.js has run posthog.init(). Only the three calls that create
 // or mutate a PROFILE need it — see groupTrip.
 let analyticsOn = false;
+
+// Survives the OAuth round trip, which the in-memory snapshot cannot: the
+// provider replaces the whole document, so the page we come back to is a fresh
+// load whose URL is `/trips?code=…`, with the campaign long gone. Written only
+// when someone actually starts a signup (see rememberAttributionForRedirect),
+// and it is signup data rather than tracking — the same category as
+// `postLoginRedirect`, which already rides sessionStorage next to it.
+const REDIRECT_KEY = 'tp-signup-attribution';
 
 /**
  * Capture a product-analytics event.
@@ -54,7 +67,8 @@ export function track(event, props) {
  * @param {Record<string, unknown>} [props]  group props, e.g. { participant_count }
  */
 export function groupTrip(tripId, props) {
-  if (!tripId || !analyticsOn) return;
+  if (!tripId) return;
+  if (!analyticsOn) { pendingGroup = { tripId, props }; return; }
   // ponytail: sets the ACTIVE group globally (standard PostHog pattern) — events
   // fired afterwards on non-trip screens still carry the last trip until the next
   // groupTrip(). Upgrade path if that pollutes: pass per-event { groups:{trip} }.
@@ -86,6 +100,30 @@ export function startAnalytics() {
   analyticsOn = true;
   setCampaign();
   if (visitRefTripId) posthog?.register?.({ ref_trip_id: visitRefTripId });
+  if (pendingGroup) {
+    groupTrip(pendingGroup.tripId, pendingGroup.props);
+    pendingGroup = null;
+  }
+}
+
+/**
+ * Keep this visit's marks for the trip through an OAuth provider. Call right
+ * before handing the page over — the snapshot above lives in the document, and
+ * the provider replaces it.
+ *
+ * Deliberately NOT done at start-up: at that point nobody has asked for anything,
+ * and writing marketing marks to the device is what this ticket removed. Here the
+ * visitor has just pressed "continue with Google", so keeping what is needed to
+ * finish that signup is part of the thing they asked for.
+ */
+export function rememberAttributionForRedirect() {
+  // Straight from the snapshot, not getSignupAttribution(): that one consumes
+  // the stash, so a second attempt after a failed sign-in would eat its own marks.
+  const marks = readSignupAttribution(visitSearch);
+  if (!marks) return;
+  try {
+    sessionStorage.setItem(REDIRECT_KEY, JSON.stringify(marks));
+  } catch { /* private mode — attribution is lost, the signup still works */ }
 }
 
 /**
@@ -93,9 +131,23 @@ export function startAnalytics() {
  * Written once, at profile creation, for EVERY visitor — refusers included.
  * These columns are why "which campaign brought this signup" has an answer that
  * does not depend on consent.
+ *
+ * Falls back to what was stashed before an OAuth redirect. Read-and-forget: the
+ * marks belong to ONE signup, and leaving them behind would credit the campaign
+ * again for whoever signs up next in the same tab.
  */
 export function getSignupAttribution() {
-  return readSignupAttribution(visitSearch);
+  const fromUrl = readSignupAttribution(visitSearch);
+  if (fromUrl) return fromUrl;
+
+  try {
+    const stashed = sessionStorage.getItem(REDIRECT_KEY);
+    if (!stashed) return null;
+    sessionStorage.removeItem(REDIRECT_KEY);
+    return pickSignupAttribution(JSON.parse(stashed));
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getSignupAttribution, track } from '@/lib/analytics';
+import { getSignupAttribution, rememberAttributionForRedirect, track } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
@@ -264,6 +264,10 @@ export default function Login() {
   const handleGoogle = async () => {
     setIsLoading(true); setError(null);
     trackAuthIntent('google');
+    // The whole document is handed to the provider, so the in-memory snapshot of
+    // this visit dies here. Every entry that leaves the page needs this line — a
+    // fourth provider added without it silently loses campaign attribution.
+    rememberAttributionForRedirect();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -284,6 +288,9 @@ export default function Login() {
   const handleOneTapCredential = async (response, nonce) => {
     setIsLoading(true);
     setError(null);
+    // One Tap does not leave the page, but it finishes with a hard navigation to
+    // postLoginPath() — a new document all the same.
+    rememberAttributionForRedirect();
     try {
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
@@ -365,6 +372,10 @@ export default function Login() {
   const handleApple = async () => {
     setIsLoading(true); setError(null);
     trackAuthIntent('apple');
+    // The whole document is handed to the provider, so the in-memory snapshot of
+    // this visit dies here. Every entry that leaves the page needs this line — a
+    // fourth provider added without it silently loses campaign attribution.
+    rememberAttributionForRedirect();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },

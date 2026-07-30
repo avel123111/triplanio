@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
-import { applyConsent, getConsent, setConsent } from '@/lib/consent';
+import {
+  applyConsent, clearAnalyticsStorage, getConsent, isAnalyticsRunning, setConsent, subscribeConsentOpen,
+} from '@/lib/consent';
 
 /**
  * Cookie-consent panel (TRIP-311). Mounted once, as a sibling of <Toaster/> and
@@ -22,19 +24,35 @@ import { applyConsent, getConsent, setConsent } from '@/lib/consent';
 export default function ConsentBanner() {
   const { t } = useI18n();
   const { user } = useAuth();
-  // Read once: the answer cannot change under us while the panel is open, and
-  // re-reading storage on every render would be a lie about where state lives.
-  const [answered, setAnswered] = useState(() => getConsent() !== null);
+  const [open, setOpen] = useState(() => getConsent() === null);
 
-  if (answered) return null;
+  // "Cookie settings" reopens this panel instead of changing anything by itself:
+  // looking at your choice must not cost you it.
+  useEffect(() => subscribeConsentOpen(() => setOpen(true)), []);
+
+  if (!open) return null;
 
   const answer = (accepted) => {
-    const record = setConsent(accepted);
-    // Pass the uid so an already-signed-in visitor becomes a person immediately
-    // — AuthContext only calls identify() on its own auth cycle, which for
-    // someone already on a screen would not come round until the next load.
-    if (accepted) applyConsent(record, user?.id);
-    setAnswered(true);
+    setConsent(accepted);
+    setOpen(false);
+
+    if (accepted) {
+      // Pass the uid so an already-signed-in visitor becomes a person
+      // immediately — AuthContext only calls identify() on its own auth cycle,
+      // which for someone already on a screen would not come round until the
+      // next load.
+      applyConsent(getConsent(), user?.id);
+      return;
+    }
+
+    // Withdrawing after PostHog has already started is the one case that needs a
+    // reload: an initialised client cannot be shut down, so the only honest way
+    // back to "analytics does not exist" is a new document. Refusing when it was
+    // never running changes nothing on screen and must not throw the page away.
+    if (isAnalyticsRunning()) {
+      clearAnalyticsStorage();
+      window.location.reload();
+    }
   };
 
   return (

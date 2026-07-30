@@ -13,10 +13,15 @@
 // TRIP-227 hangs GTM / GA4 / ad pixels off `applyConsent` — one place, so the
 // second entry point never appears.
 import posthog from 'posthog-js';
-import { startAnalytics } from '@/lib/analytics';
+import { startAnalytics, syncCampaignToPerson } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
+
+// Listeners that want the panel shown again ("Cookie settings"). A one-line
+// emitter rather than a React context: the banner is the only subscriber, and a
+// context would have to wrap the tree above the router just to carry a boolean.
+const openListeners = new Set();
 
 // Everything PostHog leaves behind, across both stores. `__ph_opt_in_out_*` has
 // TWO leading underscores so it does not match the `ph_` mask, and `dmn_chk_*`
@@ -64,14 +69,35 @@ export function setConsent(accepted) {
   return record;
 }
 
-/**
- * Forget the answer so the banner asks again (the revoke path). Callers reload
- * afterwards: with no answer left, start-up wipes PostHog's keys on its own.
- */
+/** Forget the answer. Only used on the way to asking again. */
 export function clearConsent() {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch { /* nothing stored, nothing to forget */ }
+}
+
+/**
+ * Show the panel again — what "Cookie settings" does. Deliberately changes
+ * NOTHING on its own: opening your settings must not cost you the choice you
+ * already made. The answer is only rewritten when a button in the panel is
+ * pressed.
+ */
+export function openConsentBanner() {
+  openListeners.forEach((listener) => listener());
+}
+
+/** @param {() => void} listener @returns {() => void} unsubscribe */
+export function subscribeConsentOpen(listener) {
+  openListeners.add(listener);
+  return () => openListeners.delete(listener);
+}
+
+/**
+ * Whether PostHog is live in THIS document. There is no way to un-init it, so
+ * this is what decides if withdrawing consent needs a reload to take effect.
+ */
+export function isAnalyticsRunning() {
+  return started;
 }
 
 /**
@@ -112,7 +138,14 @@ export function applyConsent(record, uid) {
   // now because writing them to the device before consent is the very thing this
   // ticket forbids, and by this point the URL that carried them is long gone.
   startAnalytics();
-  if (uid) posthog.identify(uid);
+  if (uid) {
+    posthog.identify(uid);
+    // AuthContext pairs every identify() with this, but its own call already ran
+    // as a no-op before consent. Without repeating it here the campaign never
+    // reaches the PERSON, and person properties are what attributes the purchase
+    // — that one is born on the server, where super-properties never arrive.
+    syncCampaignToPerson();
+  }
 }
 
 /**

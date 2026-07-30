@@ -13,7 +13,7 @@ import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
-import { clearConsent } from '@/lib/consent';
+import { openConsentBanner } from '@/lib/consent';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -884,13 +884,13 @@ export default function ScreenAccount() {
                 </div>
                 <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
               </a>
-              {/* Revoke route for signed-in people; the anonymous one is the
-                  landing footer, since the app itself has none (TRIP-311). */}
+              {/* Same entry for signed-in people. Reopens the panel rather than acting:
+                  "settings" that silently wipe your choice are not settings. */}
               <button
                 type="button"
                 className="acct-divrow"
                 style={{ color: 'inherit', border: 0, background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                onClick={() => { clearConsent(); window.location.reload(); }}
+                onClick={openConsentBanner}
               >
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="settings" size={18} /></span>
                 <div style={{ flex: 1 }}>
