@@ -8,36 +8,21 @@
 // Naming convention: object_action, snake_case; variant info goes in props,
 // never in the event name. No PII in props (uid only, set via identify).
 //
-// Every function here is safe to call before consent, but for two different
-// reasons (TRIP-311). Most are no-ops because PostHog is not initialised yet and
-// an uninitialised client does nothing — nothing is queued either, so events
-// fired before someone agrees are dropped, which is the point. The rest
-// (`groupTrip`, `setRefTripId`, `rememberAttributionForRedirect`) deliberately
-// hold what the visit carried, so consenting later does not start from nothing.
+// Everything here is safe to call before consent: PostHog is not initialised, an
+// uninitialised client is a no-op, and nothing is queued (TRIP-311).
 import posthog from 'posthog-js';
 import { CAMPAIGN_KEYS, pickSignupAttribution, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
 
-// The query this visit STARTED with, snapshotted at import — before the router
-// can strip it, and long before consent may arrive. Memory only: writing marks
-// to the device before someone agrees is exactly what this ticket forbids.
+// What the visit arrived with, held in memory until consent: writing marks to the
+// device before someone agrees is what this ticket forbids, and by the time they
+// agree the URL and the page that carried them are gone. startAnalytics() replays
+// all three.
 const visitSearch = typeof window === 'undefined' ? '' : window.location.search;
-
-// Same idea for the invite / public link someone arrived through. PostHog's own
-// storage cannot hold it yet, and by the time it can, the page that carried it
-// is gone — so K-factor attribution would silently vanish for everyone who says
-// yes, i.e. for the only people it is measurable on.
 let visitRefTripId = '';
-
-// Likewise the trip someone is looking at. TripView sets the group from an effect
-// keyed on the trip, so consenting later does not re-run it — without replaying,
-// every event of that session would miss the group the North Star counts on.
 let pendingGroup = null;
 
-// Flipped once consent.js has finished posthog.init(). The single source of
-// truth for "analytics is live in this document": the two calls that create or
-// mutate a PROFILE gate on it (see groupTrip), the banner asks it to decide
-// whether withdrawing needs a reload, and consent.js checks it to never init
-// twice. Set AFTER init, so a failed init cannot leave it lying.
+// Single source of truth for "analytics is live in this document". Set AFTER
+// init, so a failed init cannot leave it lying.
 let analyticsOn = false;
 
 /** @returns {boolean} whether posthog.init() has completed in this document */
@@ -46,11 +31,8 @@ export function isAnalyticsOn() {
 }
 
 // Survives the OAuth round trip, which the in-memory snapshot cannot: the
-// provider replaces the whole document, so the page we come back to is a fresh
-// load whose URL is `/trips?code=…`, with the campaign long gone. Written only
-// when someone actually starts a signup (see rememberAttributionForRedirect),
-// and it is signup data rather than tracking — the same category as
-// `postLoginRedirect`, which already rides sessionStorage next to it.
+// provider replaces the whole document. Same category as `postLoginRedirect`,
+// which already rides sessionStorage next to it.
 const REDIRECT_KEY = 'tp-signup-attribution';
 
 /**
@@ -59,28 +41,21 @@ const REDIRECT_KEY = 'tp-signup-attribution';
  * @param {Record<string, unknown>} [props]  event properties (no PII)
  */
 export function track(event, props) {
-  // The gate matters only after a withdrawal made in ANOTHER tab: this tab still
-  // holds a live, initialised client that would otherwise keep capturing — and
-  // capturing re-creates the `ph_*` keys the withdrawal just deleted. Before
-  // consent it changes nothing; an uninitialised client is already a no-op.
+  // Only matters after a withdrawal made in ANOTHER tab: capturing there would
+  // re-create the `ph_*` keys the withdrawal just deleted.
   if (!analyticsOn) return;
   posthog?.capture?.(event, props);
 }
 
-/**
- * Stop feeding an already-running PostHog. Used when consent is withdrawn in a
- * different tab: `init()` cannot be undone, but we can stop calling it, which is
- * enough to keep it silent and to stop it rewriting its storage.
- */
+/** Stop feeding an already-running PostHog — init() cannot be undone. */
 export function stopAnalytics() {
   analyticsOn = false;
 }
 
 /**
- * Drop the OAuth stash without using it — the sign-in turned out to belong to an
- * account that already exists, so there was no signup for these marks to
- * attribute. Left behind, they would be inherited by whoever registers next in
- * the same tab.
+ * Drop the OAuth stash unused: the sign-in belonged to an existing account, so
+ * there was no signup to attribute, and leaving the marks would credit them to
+ * whoever registers next in this tab.
  */
 export function forgetStashedAttribution() {
   try {
@@ -93,11 +68,9 @@ export function forgetStashedAttribution() {
  * Star ("active trips with ≥2 participants") is a group-level metric rather than
  * a per-person one. Call on entering a trip; `props` become group properties.
  *
- * Gated on `analyticsOn` unlike track(): `group` and `setPersonProperties` are
- * the only two calls with no `__loaded` check of their own, and calling them before
- * init leaves PostHog's feature-flag loader stuck on `_requestInFlight = true`
- * FOREVER — it survives the later init and can block flags from loading. No data
- * leaves either way; this just keeps the client sane.
+ * Gated unlike track(): `group` and `setPersonProperties` are the only calls with
+ * no `__loaded` check of their own, and before init they leave PostHog's
+ * feature-flag loader stuck on `_requestInFlight` for good.
  * @param {string} tripId
  * @param {Record<string, unknown>} [props]  group props, e.g. { participant_count }
  */
@@ -114,11 +87,6 @@ export function groupTrip(tripId, props) {
  * Record the trip a user arrived through (invite / shared public link) as a
  * persisted super-property so every later event carries it — the basis for
  * referral attribution / K-factor.
- *
- * Kept in memory as well, because this fires on landing — before the banner has
- * been answered — while PostHog only exists afterwards. startAnalytics() replays
- * it; without that, the invite and public-link entries (the whole viral funnel)
- * would lose their source for every visitor who accepts.
  * @param {string} refTripId
  */
 export function setRefTripId(refTripId) {
@@ -127,10 +95,7 @@ export function setRefTripId(refTripId) {
   posthog?.register?.({ ref_trip_id: visitRefTripId });
 }
 
-/**
- * Hand PostHog everything this visit accumulated while it did not exist. Called
- * by consent.js immediately after init(), and only from there.
- */
+/** Hand PostHog what this visit accumulated. Called by consent.js after init(). */
 export function startAnalytics() {
   analyticsOn = true;
   setCampaign();
@@ -142,18 +107,13 @@ export function startAnalytics() {
 }
 
 /**
- * Keep this visit's marks for the trip through an OAuth provider. Call right
- * before handing the page over — the snapshot above lives in the document, and
- * the provider replaces it.
- *
- * Deliberately NOT done at start-up: at that point nobody has asked for anything,
- * and writing marketing marks to the device is what this ticket removed. Here the
- * visitor has just pressed "continue with Google", so keeping what is needed to
- * finish that signup is part of the thing they asked for.
+ * Keep this visit's marks through an OAuth provider. Called on the button, not at
+ * start-up: pressing "continue with Google" is the request that makes storing
+ * them part of the service, before that nobody asked for anything.
  */
 export function rememberAttributionForRedirect() {
-  // Straight from the snapshot, not getSignupAttribution(): that one consumes
-  // the stash, so a second attempt after a failed sign-in would eat its own marks.
+  // Not getSignupAttribution(): that one consumes the stash, so a retry after a
+  // failed sign-in would eat its own marks.
   const marks = readSignupAttribution(visitSearch);
   if (!marks) return;
   try {
@@ -162,14 +122,11 @@ export function rememberAttributionForRedirect() {
 }
 
 /**
- * The signup-attribution columns for the account being created, or null.
- * Written once, at profile creation, for EVERY visitor — refusers included.
- * These columns are why "which campaign brought this signup" has an answer that
- * does not depend on consent.
+ * The signup-attribution columns for the account being created, or null. Written
+ * for EVERY visitor, refusers included — this is why "which campaign brought
+ * this signup" has an answer that does not depend on consent.
  *
- * Falls back to what was stashed before an OAuth redirect. Read-and-forget: the
- * marks belong to ONE signup, and leaving them behind would credit the campaign
- * again for whoever signs up next in the same tab.
+ * Read-and-forget: the marks belong to ONE signup.
  */
 export function getSignupAttribution() {
   const fromUrl = readSignupAttribution(visitSearch);
@@ -188,13 +145,11 @@ export function getSignupAttribution() {
 /**
  * Record the ad campaign the user arrived through as persisted super-properties
  * (TRIP-316) — same pattern as setRefTripId, so every later event carries it.
- * Called from startAnalytics(), i.e. the moment PostHog comes into existence.
  *
- * Reads the snapshot, never `location.search`: consent can arrive many clicks
- * after landing, and by then the query is gone. Once stored, the mark rides
- * PostHog's own storage — which is how it survives the round trip through
- * Google's OAuth screen back to /trips. Storage is per-host, so campaign links
- * MUST point at the same host the app runs on (www vs apex are different jars).
+ * Reads the snapshot, never `location.search`: consent arrives long after
+ * landing. Once stored, the mark rides PostHog's own storage, which is how it
+ * survives Google's OAuth screen. Storage is per-host, so campaign links MUST
+ * point at the same host the app runs on (www vs apex are different jars).
  */
 function setCampaign() {
   const decision = resolveCampaign(

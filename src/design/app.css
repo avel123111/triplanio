@@ -4895,11 +4895,9 @@ h4,
 
 /* ============================================================
    CONSENT BANNER (TRIP-311)
-   Non-modal by design: no scrim, no close affordance, no focus trap. Ignoring it
-   must leave the app fully usable, otherwise it reads as a cookie wall — which
-   is also why it never uses the .sheet canon (modal, z-201 + scrim).
-   z-index 96: above the mobile nav (95) so its buttons are never covered, below
-   toasts (100) and dialogs (200/201). Surface mirrors .toast on purpose.
+   Non-modal: no scrim, no close, no focus trap — ignoring it must leave the app
+   usable. z-index 96 sits above the mobile nav (95), below toasts (100) and
+   dialogs (200/201). Surface mirrors .toast.
    ============================================================ */
 .consent {
   position: fixed; z-index: 96; left: 16px; bottom: 16px;
@@ -4924,19 +4922,11 @@ h4,
     left: 12px; right: 12px; width: auto; max-width: none;
     bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
-  /* Lifted ONLY when the dock is really on screen (60px + its own 8px + a gap).
-     MobileBottomNav renders nothing on the landing, login, public link, invite,
-     planner and chat — that is where the panel is seen first, and an
-     unconditional offset left a dead strip under it there. :has() reads the DOM
-     instead of duplicating that route list. */
-  /* Same lift for the chat room: the nav is deliberately hidden on that lens and
-     the composer owns the bottom edge instead, so without this the panel lands on
-     the send button. Approximate by design - the composer grows with the text and
-     CSS cannot read its height. If a THIRD element ever claims the bottom edge,
-     stop listing them here and give the edge a shared inset variable that its
-     owner sets. */
-  body:has(.mbnav) .consent,
-  body:has(.chat-room) .consent {
+  /* Lifted only while something owns the bottom edge - the nav dock, or the chat
+     composer on the lens that hides the nav. MobileBottomNav sets the class; a
+     class rather than :has(), which the Firefox 104 build target predates.
+     Approximate for chat: the composer grows with the text. */
+  .has-bottom-dock .consent {
     bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
   }
 }

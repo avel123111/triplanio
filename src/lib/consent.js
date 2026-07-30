@@ -1,37 +1,25 @@
 // Cookie consent — the single owner of "may we run analytics" (TRIP-311).
 //
 // THE INVARIANT: `posthog.init()` is called here and nowhere else, and only for
-// someone who said yes. Until then PostHog does not exist in the browser, and an
-// uninitialised client makes every call in the codebase a no-op by construction
-// (`capture` / `identify` / `reset` are gated on `__loaded`; `register` /
-// `get_property` ride `persistence?.`). That is why there are no consent checks
-// scattered over the call-sites, why none of PostHog's own consent machinery
-// (`opt_in/opt_out`, `cookieless_mode`, `__ph_opt_in_out_*`) is used, and why the
-// version is not pinned — we depend on no library internals. CI guard 2j fails
-// the build if a second `posthog.init` appears.
-//
-// TRIP-227 hangs GTM / GA4 / ad pixels off `applyConsent` — one place, so the
-// second entry point never appears.
+// someone who said yes. An uninitialised client is a no-op by construction, so
+// there are no consent checks on the call-sites and none of PostHog's own consent
+// machinery is used — we depend on no library internals, hence no version pin.
+// CI guard 2j fails the build if a second `posthog.init` appears. TRIP-227 hangs
+// GTM / GA4 / ad pixels off `applyConsent`.
 import posthog from 'posthog-js';
 import { isAnalyticsOn, startAnalytics, stopAnalytics, syncCampaignToPerson } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
 
-// Listeners that want the panel shown again ("Cookie settings"). A one-line
-// emitter rather than a React context: the banner is the only subscriber, and a
-// context would have to wrap the tree above the router just to carry a boolean.
+// "Cookie settings" listeners. An emitter, not a context: one subscriber.
 const openListeners = new Set();
 
-// Everything PostHog leaves behind, across both stores. `__ph_opt_in_out_*` has
-// TWO leading underscores so it does not match the `ph_` mask, and `dmn_chk_*`
-// is PostHog's cross-subdomain probe — miss either and a revoke looks done while
-// a stale key still steers the next init.
+// All three masks matter: `__ph_opt_in_out_*` has two underscores so it misses
+// the `ph_` mask, and `dmn_chk_*` is the cross-subdomain probe.
 const POSTHOG_KEY = /^(ph_|__ph_opt_in_out_|dmn_chk_)/;
 
-// The production split, shared with main.jsx (the canon inspector is off here for
-// the same reason). One list — the two copies that used to sit side by side drift
-// the day a domain is added.
+// The production split, shared with main.jsx. One list, not two copies.
 const PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com']);
 export const isProdHost = PROD_HOSTS.has(window.location.hostname);
 // True local `vite dev` is the ONLY place without the vercel.json /ingest rewrite.
@@ -67,12 +55,7 @@ export function setConsent(accepted) {
   return record;
 }
 
-/**
- * Show the panel again — what "Cookie settings" does. Deliberately changes
- * NOTHING on its own: opening your settings must not cost you the choice you
- * already made. The answer is only rewritten when a button in the panel is
- * pressed.
- */
+/** Show the panel again. Changes nothing by itself — only its buttons write. */
 export function openConsentBanner() {
   openListeners.forEach((listener) => listener());
 }
@@ -83,16 +66,10 @@ export function subscribeConsentOpen(listener) {
   return () => openListeners.delete(listener);
 }
 
-// Consent belongs to the device, not to a tab. Withdrawing it reloads the tab it
-// was pressed in, but any OTHER open tab keeps a live, initialised client — and
-// the next event it captures WRITES `ph_*` back, undoing the deletion. The
-// `storage` event fires only in the other tabs, which is exactly the set that
-// needs telling. We stop calling PostHog rather than reload: a background tab
-// may hold half-finished work, and losing that to a cookie setting is worse than
-// leaving an idle client in memory.
-//
-// Deliberately one-way. A grant made elsewhere does NOT start analytics here —
-// this tab stays quiet until it reloads, which errs toward collecting less.
+// Consent is per-device. Another open tab keeps a live client whose next capture
+// WRITES `ph_*` back, undoing the deletion; `storage` fires only in those tabs.
+// We silence rather than reload — a background tab may hold unsaved work. One-way
+// on purpose: a grant elsewhere does not start analytics here.
 window.addEventListener('storage', (event) => {
   if (event.key !== STORAGE_KEY || !isAnalyticsOn()) return;
   if (parseConsent(event.newValue, Date.now())?.analytics) return;
@@ -111,10 +88,7 @@ window.addEventListener('storage', (event) => {
 export function applyConsent(record, uid) {
   if (!record) return;
 
-  // Sent for a refusal too, not only for a yes. It matches the `denied` default
-  // from index.html today, but leaving it out would mean withdrawing consent
-  // never tells Google anything — and once TRIP-227 has tags loaded, silence is
-  // the wrong signal.
+  // Sent for a refusal too: once TRIP-227 loads tags, silence is the wrong signal.
   updateGoogleConsent(record);
 
   if (!record.analytics || isAnalyticsOn() || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
@@ -137,25 +111,19 @@ export function applyConsent(record, uid) {
   });
   // `env` super-property tags every event → prod dashboards filter env=prod.
   posthog.register({ env: isProdHost ? 'prod' : 'dev' });
-  // Re-attach the marks this visit arrived with. They were held in memory until
-  // now because writing them to the device before consent is the very thing this
-  // ticket forbids, and by this point the URL that carried them is long gone.
   startAnalytics();
   if (uid) {
     posthog.identify(uid);
-    // AuthContext pairs every identify() with this, but its own call already ran
-    // as a no-op before consent. Without repeating it here the campaign never
-    // reaches the PERSON, and person properties are what attributes the purchase
-    // — that one is born on the server, where super-properties never arrive.
+    // AuthContext’s own call already ran as a no-op before consent, and only the
+    // PERSON carries the campaign into server-born events (the Stripe webhook).
     syncCampaignToPerson();
   }
 }
 
 /**
- * Remove everything PostHog stored on this device. Two callers: every start
- * without a usable answer — which is what clears the keys set before this ticket
- * shipped, with no separate migration — and the banner, when someone withdraws a
- * consent that had already started PostHog.
+ * Remove everything PostHog stored here. Runs on any start without a usable
+ * answer (which also clears pre-TRIP-311 keys, no migration needed) and on
+ * withdrawal.
  */
 export function clearAnalyticsStorage() {
   try {
@@ -174,10 +142,8 @@ export function clearAnalyticsStorage() {
 }
 
 /**
- * PostHog writes its cookie on the registrable domain (`.triplanio.com`), and a
- * delete without a matching `domain` attribute silently does nothing. Preview
- * hosts (`*.vercel.app`) get no attribute at all, so try both spellings.
- * @returns {string[]} the `domain=` attribute to append, empty string included
+ * A delete without a matching `domain` silently does nothing, and previews
+ * (`*.vercel.app`) get no attribute at all — try both spellings.
  */
 function cookieDomainAttrs() {
   const parts = window.location.hostname.split('.');
@@ -185,11 +151,9 @@ function cookieDomainAttrs() {
 }
 
 /**
- * Tell Google what it may use. The stub and the `denied` default live inline in
- * index.html so they run before any tag loads; this is only the update.
- * Advertising signals move with `marketing`, which today always equals
- * `analytics` — the banner asks about both in one sentence. They stay separate
- * fields because TRIP-227 splits the question, and then only this file changes.
+ * The stub and the `denied` default live in index.html; this is only the update.
+ * `marketing` always equals `analytics` today (one sentence asks both), but stays
+ * a separate field because TRIP-227 splits the question.
  */
 function updateGoogleConsent(record) {
   const ads = record.marketing ? 'granted' : 'denied';
