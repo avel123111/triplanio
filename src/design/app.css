@@ -4929,7 +4929,14 @@ h4,
      planner and chat — that is where the panel is seen first, and an
      unconditional offset left a dead strip under it there. :has() reads the DOM
      instead of duplicating that route list. */
-  body:has(.mbnav) .consent {
+  /* Same lift for the chat room: the nav is deliberately hidden on that lens and
+     the composer owns the bottom edge instead, so without this the panel lands on
+     the send button. Approximate by design - the composer grows with the text and
+     CSS cannot read its height. If a THIRD element ever claims the bottom edge,
+     stop listing them here and give the edge a shared inset variable that its
+     owner sets. */
+  body:has(.mbnav) .consent,
+  body:has(.chat-room) .consent {
     bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
   }
 }
