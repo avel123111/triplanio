@@ -11,13 +11,12 @@
  * Props:
  *   stream      - array of stream events (from buildEventStream)
  *   visits      - array of cityVisit rows (sorted by start_date)
- *   trip        - trip object with start_date / end_date
  *   isLoading   - boolean
  *   onOpenEvent - (streamEvent) => void
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton } from '../design/index';
+import { Skeleton, eventFamily } from '../design/index';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
@@ -30,25 +29,14 @@ const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) 
 // ── City colour palette (Lumo event-type tokens, 6 distinct) ────────────────
 // Colours are drawn from existing ev-* tokens so they stay coherent with the
 // timeline and event panels — no new hues introduced.
-const CITY_BG   = ['var(--ev-activity)','var(--ev-hotel)','var(--ev-car)','var(--ai)','var(--warm)','var(--ev-transfer)'];
-const CITY_SOFT = ['var(--ev-activity-soft)','var(--ev-hotel-soft)','var(--ev-car-soft)','var(--ai-soft)','var(--warm-soft)','var(--ev-transfer-soft)'];
-const CITY_INK  = ['var(--ev-activity-ink)','var(--ev-hotel-ink)','var(--ev-car-ink)','var(--ai-ink)','var(--warm-ink)','var(--ev-transfer-ink)'];
+const CITY_BG = ['var(--ev-activity)','var(--ev-hotel)','var(--ev-car)','var(--ai)','var(--warm)','var(--ev-transfer)'];
 
-const cityBg   = (idx) => CITY_BG  [idx % CITY_BG.length];
-const citySoft = (idx) => CITY_SOFT[idx % CITY_SOFT.length];
-const cityInk  = (idx) => CITY_INK [idx % CITY_INK.length];
+const cityBg = (idx) => CITY_BG[idx % CITY_BG.length];
 
-// ── Event-type → CSS class mapping ──────────────────────────────────────────
-const EV_CLS_MAP = {
-  'hotel-checkin':  'ev-hotel',
-  'hotel-checkout': 'ev-hotel',
-  'hotel-deadline': 'ev-deadline',
-  activity:         'ev-activity',
-  flight:           'ev-transfer',
-  transfer:         'ev-transfer',
-  car:              'ev-car',
-};
-const evCls = (type) => EV_CLS_MAP[type] || '';
+// Раскраска чипа события — через общий классификатор семейства (design/index.jsx),
+// тот же, что красит таймлайн. Своей копии словаря типов тут нет: она разъезжалась
+// с потоком (ключ `car` вместо car-pickup/car-return → аренда рендерилась без цвета).
+const evCls = (type) => `ev-${eventFamily(type)}`;
 
 // ── Inline SVG icons (no extra dependency) ──────────────────────────────────
 const IcoBack = () => (
@@ -334,7 +322,7 @@ function Legend({ visits }) {
 
 // ─── CalendarLens (main export) ───────────────────────────────────────────────
 
-export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEvent }) {
+export default function CalendarLens({ stream, visits, isLoading, onOpenEvent }) {
   const { t, lang } = useI18n();
   const MONTH_NAMES = useMemo(() => monthNames(lang),   [lang]);
   const WD_NAMES    = useMemo(() => weekdayNames(lang), [lang]);
@@ -431,7 +419,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
 
   // ── Week view data ───────────────────────────────────────────────────────
   const week = useMemo(() => {
-    if (!baseDate) return { days: [], eventsByDayArr: [], title: '', label: '' };
+    if (!baseDate) return { days: [], eventsByDayArr: [], label: '' };
 
     const weekStart = baseDate.startOf('week').plus({ weeks: weekOffset });
     const weekEnd   = weekStart.plus({ days: 6 });
@@ -481,10 +469,9 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
     return {
       days,
       eventsByDayArr,
-      title: `${MONTH_NAMES[weekStart.month]} ${weekStart.year}`,
       label: `${weekStart.day} – ${weekEnd.day}`,
     };
-  }, [stream, visits, baseDate, weekOffset, WD_NAMES, MONTH_NAMES, today]);
+  }, [stream, visits, baseDate, weekOffset, WD_NAMES, today]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   const goBack  = () => view === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1);
@@ -518,14 +505,6 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
   if (!baseDate) {
     return <div className="ncal-empty">{t('calendar.no_dates')}</div>;
   }
-
-  const headerTitle = view === 'month'
-    ? `${MONTH_NAMES[currentMonth.month]} ${currentMonth.year}`
-    : week.title;
-
-  const headerYear = view === 'month'
-    ? String(currentMonth.year)
-    : week.label ? `· ${t('calendar.week_word')} ${week.label}` : '';
 
   return (
     <div className="ov-anim--cal">

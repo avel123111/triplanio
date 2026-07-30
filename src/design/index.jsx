@@ -477,7 +477,6 @@ function _evMeta(e) {
   return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", labelKey: "" };
 }
 
-// ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────
 // Event-type → Lumo tile colour tokens (--evs soft bg / --evi ink).
 const _EV_TOK = {
   hotel:    { s: "var(--ev-hotel-soft)",    i: "var(--ev-hotel-ink)" },
@@ -486,12 +485,19 @@ const _EV_TOK = {
   car:      { s: "var(--ev-car-soft)",      i: "var(--ev-car-ink)" },
   deadline: { s: "var(--ev-deadline-soft)", i: "var(--ev-deadline-ink)" },
 };
+// Единственный классификатор «тип события потока → семейство». Словарь типов задаёт
+// buildEventStream (TripView): flight/transfer, hotel-checkin/-checkout/-deadline,
+// car-pickup/-return, activity. Семейство совпадает с суффиксом токенов --ev-*
+// и с CSS-классом .ev-* — на нём же держится раскраска чипов календаря.
+export function eventFamily(type) {
+  if (type === "flight" || type === "transfer") return "transfer";
+  if (type === "hotel-checkin" || type === "hotel-checkout") return "hotel";
+  if (type === "hotel-deadline") return "deadline";
+  if (type === "car-pickup" || type === "car-return") return "car";
+  return "activity";
+}
 function _evTok(e) {
-  if (e.type === "flight" || e.type === "transfer") return _EV_TOK.transfer;
-  if (e.type === "hotel-checkin" || e.type === "hotel-checkout") return _EV_TOK.hotel;
-  if (e.type === "hotel-deadline") return _EV_TOK.deadline;
-  if (e.type === "car-pickup" || e.type === "car-return") return _EV_TOK.car;
-  return _EV_TOK.activity;
+  return _EV_TOK[eventFamily(e.type)];
 }
 
 // Timeline event plate — Lumo "Таймлайн поездки" (.tl3-ev): time on the left
