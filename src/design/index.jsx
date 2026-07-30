@@ -502,28 +502,9 @@ function _evTok(e) {
 
 // Timeline event plate — Lumo "Таймлайн поездки" (.tl3-ev): time on the left
 // (mono), .tl3-card with a coloured .tile + title/sub. Transfers render as the
-// column .tl3-card--tr (from → mode → to). Missing-transfer → .tl3-warn.
+// column .tl3-card--tr (from → mode → to).
 export function StreamEventRow({ e, onClick }) {
   const t = useT();
-
-  if (e.type === "transfer-missing") {
-    const [hidden, setHidden] = React.useState(false);
-    if (hidden) return null;
-    return (
-      <div className="tl3-warn">
-        <span className="tile"><Icon name="warning" size={19} /></span>
-        <div className="x">
-          <b>{t('view.map_no_transfer')}</b>
-          <span>{e.from} → {e.to}</span>
-        </div>
-        <button onClick={onClick}>{t('tse.add_transfer')}</button>
-        <button onClick={() => setHidden(true)} title={t('tl.hide_warning')}
-          style={{ background: "transparent", color: "var(--warning-ink)", border: 0, padding: 6, cursor: "pointer", display: "grid", placeItems: "center", borderRadius: 8 }}>
-          <Icon name="close" size={14} />
-        </button>
-      </div>
-    );
-  }
 
   const meta = _evMeta(e);
   const price = e.price != null ? fmt(e.price, e.cur) : null;

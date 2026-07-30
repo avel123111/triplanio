@@ -187,15 +187,11 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
 }
 
 // ─── WeekView ─────────────────────────────────────────────────────────────────
-// Agenda-card design: one ncal-wdc per day, events listed chronologically.
-// Replaces the hour-grid approach — simpler, matches Lumo design language.
-
+// Agenda-card design: one ncal-wdc per day, events listed chronologically — no
+// hour grid. `days` тут всегда ровно 7: пустой массив мемо отдаёт только при
+// отсутствии baseDate, а этот случай отсечён экраном «нет дат» до рендера.
 function WeekView({ days, eventsByDayArr, onOpenEvent }) {
   const { t } = useI18n();
-
-  if (!days.length) {
-    return <div className="ncal-empty">{t('calendar.week_no_data')}</div>;
-  }
 
   return (
     <div className="ncal-wv-scroll">
@@ -267,7 +263,9 @@ function WeekView({ days, eventsByDayArr, onOpenEvent }) {
 }
 
 // ─── Legend ──────────────────────────────────────────────────────────────────
-// Two groups: Cities (dynamic, from visits) + Event types (static).
+// Только города: цвет полосы ↔ город. Легенда нужна, потому что имя города полоса
+// печатает лишь в первый день визита, а на телефоне текст в ней скрыт совсем.
+// Легенды типов событий нет — чип события несёт свой заголовок сам.
 
 function Legend({ visits }) {
   const { t } = useI18n();
@@ -287,32 +285,16 @@ function Legend({ visits }) {
       });
   }, [visits]);
 
-  const eventTypes = [
-    { color: 'var(--ev-hotel-ink)',    label: t('calendar.legend_hotel')     },
-    { color: 'var(--ev-activity-ink)', label: t('calendar.legend_activity')  },
-    { color: 'var(--ev-transfer-ink)', label: t('calendar.legend_transport') },
-    { color: 'var(--ev-deadline-ink)', label: t('calendar.legend_deadline')  },
-  ];
+  if (!uniqueCities.length) return null;
 
   return (
     <div className="ncal-legend">
-      {uniqueCities.length > 0 && (
-        <div className="ncal-legend-group">
-          <span className="ncal-legend-lbl">{t('calendar.legend_group_cities')}</span>
-          {uniqueCities.map((c, i) => (
-            <span key={i} className="ncal-leg">
-              <span className="ncal-leg-sw" style={{ background: cityBg(c.colorIdx) }} />
-              {c.name}
-            </span>
-          ))}
-        </div>
-      )}
       <div className="ncal-legend-group">
-        <span className="ncal-legend-lbl">{t('calendar.legend_group_events')}</span>
-        {eventTypes.map(({ color, label }) => (
-          <span key={label} className="ncal-leg">
-            <span className="ncal-leg-sw" style={{ background: color }} />
-            {label}
+        <span className="ncal-legend-lbl">{t('calendar.legend_group_cities')}</span>
+        {uniqueCities.map((c, i) => (
+          <span key={i} className="ncal-leg">
+            <span className="ncal-leg-sw" style={{ background: cityBg(c.colorIdx) }} />
+            {c.name}
           </span>
         ))}
       </div>

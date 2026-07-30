@@ -1,11 +1,6 @@
 {
   "free_day": "Free day",
-  "legend_activity": "Activities",
-  "legend_deadline": "Cancel deadline",
   "legend_group_cities": "Cities",
-  "legend_group_events": "Events",
-  "legend_hotel": "Stay",
-  "legend_transport": "Transfers",
   "month": "Month",
   "more_count": "more",
   "next": "Next",
@@ -14,6 +9,5 @@
   "to_trip_start": "To trip start",
   "today": "Today",
   "week": "Week",
-  "week_no_data": "No data for this week",
   "week_word": "week"
 }

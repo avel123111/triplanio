@@ -1,6 +1,11 @@
 /* =================================================================
    CalendarLens — Lumo redesign (ncal-* namespace)
    All colours via existing app.css tokens — no new values introduced.
+
+   Радиусы: тоже токены (--r-card / --r-md / --r-sm / --r-pill). Сырыми
+   осознанно оставлены только микро-скругления, лежащие НИЖЕ шкалы
+   (минимальный --r-sm = 11px): чип события, точка, полоска agenda-события
+   и свотч легенды. Свой токен под них не заводим.
    ================================================================= */
 
 /* ── Toolbar / Header ──────────────────────────────────────────── */
@@ -126,13 +131,13 @@
   padding: 0 0 8px;
   min-height: 100px;
   background: var(--surface-3);
-  box-shadow: 0 1px 3px rgba(39,36,51,.04), 0 3px 10px rgba(39,36,51,.07);
+  box-shadow: var(--sh-1);
   transition: background .18s var(--ease-out), transform .14s var(--ease-spring), box-shadow .18s;
   cursor: pointer;
 }
 .ncal-dc:hover {
   background: var(--surface-2);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-2);   /* ступень вверх от базовой --sh-1, как у .ncal-wdc */
 }
 .ncal-dc.is-out { opacity: .22; pointer-events: none; box-shadow: none; }
 .ncal-dc.is-trip { background: var(--primary-soft); }
@@ -225,7 +230,7 @@
   scrollbar-color: var(--line-strong) transparent;
 }
 .ncal-wv-scroll::-webkit-scrollbar { height: 5px; }
-.ncal-wv-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+.ncal-wv-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); }
 
 .ncal-wcols {
   display: grid;
@@ -283,7 +288,7 @@
 /* Agenda event item */
 .ncal-aev {
   display: flex; flex-direction: column; gap: 1px;
-  padding: 6px 9px 6px 11px; border-radius: 10px;
+  padding: 6px 9px 6px 11px; border-radius: var(--r-sm);
   border: none; cursor: pointer; text-align: left;
   position: relative; overflow: hidden;
   transition: filter .14s, transform .12s var(--ease-spring);
@@ -343,14 +348,6 @@
   color: var(--muted);
 }
 
-/* ── Dark mode: lighter cell shadow ────────────────────────────── */
-[data-theme="dark"] .ncal-dc {
-  box-shadow: 0 1px 4px rgba(0,0,0,.25), 0 3px 10px rgba(0,0,0,.3);
-}
-[data-theme="dark"] .ncal-dc:hover {
-  box-shadow: var(--sh-1);
-}
-
 /* ── Focus visibility (keyboard nav) ───────────────────────────── */
 .ncal-ev:focus-visible,
 .ncal-more:focus-visible,
@@ -391,7 +388,7 @@
   .ncal-wd-row { gap: 2px; margin-bottom: 5px; }
   .ncal-dgrid  { gap: 2px; }
   .ncal-wk     { margin-bottom: 2px; }
-  .ncal-dc     { min-height: 64px; padding: 0 0 5px; border-radius: 10px; }
+  .ncal-dc     { min-height: 64px; padding: 0 0 5px; border-radius: var(--r-sm); }
   .ncal-cstrip { height: 14px; font-size: 0; padding: 0; margin-bottom: 5px; }
   .ncal-cstrip-seg { font-size: 0; padding: 0; }
   .ncal-dn     { font-size: var(--fs-base); }

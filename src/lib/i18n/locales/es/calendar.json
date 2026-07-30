@@ -1,11 +1,6 @@
 {
   "free_day": "Día libre",
-  "legend_activity": "Actividades",
-  "legend_deadline": "Límite de cancelación",
   "legend_group_cities": "Ciudades",
-  "legend_group_events": "Eventos",
-  "legend_hotel": "Alojamiento",
-  "legend_transport": "Traslados",
   "month": "Mes",
   "more_count": "más",
   "next": "Siguiente",
@@ -14,6 +9,5 @@
   "to_trip_start": "Al inicio del viaje",
   "today": "Hoy",
   "week": "Semana",
-  "week_no_data": "Sin datos para esta semana",
   "week_word": "semana"
 }

@@ -528,8 +528,6 @@ h4,
 .mrow .mn,
 .tl3-card .meta,
 .tl3-card--tr .rv-mode,
-.tl3-warn b,
-.tl3-warn button,
 .settings-identity .field__label,
 .acct-content,
 .acct-nav a,
@@ -652,7 +650,6 @@ h4,
 .tl3-dh .daycity,
 .tl3-card .body .sb,
 .tl3-card--tr .rv-end span,
-.tl3-warn span,
 .cr-item .cr-dt,
 .acct-sectitle small,
 .acct-divrow__s,
@@ -3166,15 +3163,6 @@ h4,
 .tl3-card--tr .rv-mode { display: inline-flex; align-items: center; gap: 10px; color: var(--ev-transfer-ink); }
 .tl3-card--tr .rv-mode .ic { width: 28px; height: 28px; border-radius: 9px; background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); display: grid; place-items: center; flex: none; }
 .tl3-card--tr .rv-mode small { color: var(--muted); }
-
-.tl3-warn { display: flex; gap: 13px; align-items: center; padding: 13px 16px; background: var(--warning-soft); border-radius: 16px; margin: 6px 0 4px 62px; }
-.tl3-warn .tile { width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--warning) 22%, var(--surface)); color: var(--warning-ink); display: grid; place-items: center; flex: none; }
-.tl3-warn .tile svg { width: 19px; height: 19px; }
-.tl3-warn .x { flex: 1; min-width: 0; }
-.tl3-warn b { color: var(--ink); display: block; }
-.tl3-warn span { color: var(--muted); }
-.tl3-warn button { font: inherit; color: #fff; background: var(--warning-ink); border: 0; border-radius: var(--r-pill); padding: 8px 15px; cursor: pointer; flex: none; transition: transform .14s var(--ease-spring); }
-.tl3-warn button:active { transform: scale(.95); }
 
 /* City scroll-rail — right column of the timeline (namespaced .cr-*) */
 .cityrail { position: sticky; top: 8px; }
