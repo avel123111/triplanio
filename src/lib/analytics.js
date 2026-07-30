@@ -71,18 +71,39 @@ export function setCampaign(search = window.location.search, now = Date.now()) {
 }
 
 /**
- * Copy the campaign mark onto the PERSON. Super-properties only ride events
- * born in this browser; person properties are what makes SERVER events (the
- * Stripe webhook — where the purchase actually completes) attributable, because
- * person-on-events is enabled for this project. Call right after identify():
- * with `person_profiles: 'identified_only'` there is no person to write to
- * before that.
+ * Bring the PERSON in line with the mark this browser currently holds — set it,
+ * or clear it once the 30-day window has passed. Super-properties only ride
+ * events born in this browser; person properties are what makes SERVER events
+ * (the Stripe webhook, where the purchase actually completes) attributable,
+ * because person-on-events is enabled for this project.
+ *
+ * Call after EVERY identify(), not only for brand-new accounts: an existing user
+ * who clicks a retargeting ad and logs back in is exactly the case that ends in
+ * a purchase, and their new campaign would otherwise never leave the browser.
+ * Before identify there is nothing to write to (`person_profiles:
+ * 'identified_only'`), and setPersonProperties would create a profile for an
+ * anonymous visitor.
+ *
+ * `camp_synced_ts` records what we last pushed, so a repeat login — identify()
+ * runs on every page load — costs nothing instead of a $set event each time. It
+ * also makes the clear durable: the mark itself is already gone from storage by
+ * then, and only the leftover marker says the person still has to be cleaned.
  */
-export function attachCampaignToPerson() {
-  const props = {};
-  CAMPAIGN_KEYS.forEach((key) => {
-    const value = posthog?.get_property?.(key);
-    if (value) props[key] = value;
-  });
-  if (Object.keys(props).length) posthog?.setPersonProperties?.(props);
+export function syncCampaignToPerson() {
+  const ts = posthog?.get_property?.('camp_ts') || '';
+  if ((posthog?.get_property?.('camp_synced_ts') || '') === ts) return;
+
+  if (ts) {
+    const props = {};
+    CAMPAIGN_KEYS.forEach((key) => {
+      const value = posthog?.get_property?.(key);
+      if (value) props[key] = value;
+    });
+    posthog?.setPersonProperties?.(props);
+  } else {
+    // Expired or cleared: without this the person keeps the old campaign for
+    // good, and a server-side purchase a year later still credits it.
+    posthog?.unsetPersonProperties?.(CAMPAIGN_KEYS);
+  }
+  posthog?.register?.({ camp_synced_ts: ts });
 }

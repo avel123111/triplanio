@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
-import { track, attachCampaignToPerson } from '@/lib/analytics';
+import { track, syncCampaignToPerson } from '@/lib/analytics';
 
 const AuthContext = createContext();
 
@@ -183,16 +183,20 @@ export const AuthProvider = ({ children }) => {
       // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213).
       // Personal data stays in Supabase; resolve uid → user there when needed.
       posthog?.identify(authUser.id);
+      // The campaign mark follows EVERY identify, not just new accounts: a
+      // returning user who clicks a retargeting ad and signs back in is the case
+      // that ends in a purchase, and that purchase is born on the server, where
+      // only person properties reach it. Self-guarded — a repeat login writes
+      // nothing (TRIP-316 A2).
+      syncCampaignToPerson();
       // Registration (TRIP-316 A1). The `users` row is the ONE birth point of a
       // user: it is created here, exactly once, and identically for Google,
       // Apple, One Tap and email — the login buttons are not, and the fourth one
       // would be forgotten the day it is added. Fires AFTER identify so the
-      // event and the campaign mark land on the real person, not on the
-      // anonymous id ('identified_only' has no person to write to before that).
-      // Email lands here only after the confirmation link, so this counts
-      // confirmed registrations — `signup_email_sent` covers the step before.
+      // event lands on the real person, not on the anonymous id. Email lands
+      // here only after the confirmation link, so this counts confirmed
+      // registrations — `signup_email_sent` covers the step before.
       if (profileCreated) {
-        attachCampaignToPerson();
         track('user_signed_up', { method: authUser.app_metadata?.provider || 'email' });
       }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
