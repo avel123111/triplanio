@@ -113,6 +113,36 @@ export function countTrips(points = []) {
   return s.size;
 }
 
+// ─── transfers (TRIP-270) ────────────────────────────────────────────────────
+// Transfer rows arrive from the same RPC as { transport_type, start_date }. The
+// date field is named start_date so pointYear/filterByYear/availableYears apply
+// to transfers verbatim — the year filter needs no transfer-specific code.
+//
+// A flight is transport_type 'plane'; a ground transfer is EVERYTHING else
+// (train/bus/car/taxi/ferry/walk/own_transport/other — the DB CHECK on
+// transfers.transport_type, mirrored in src/lib/transport.js). Counting ground
+// as "the rest" rather than an allow-list is deliberate: it keeps
+// flights + ground === the transfer total on the home stat-bar, so a transfer
+// can never go missing between the two screens — including a future transport
+// type nobody remembered to add here.
+//
+// An ABSENT transport_type counts as a flight, not as ground: the column is
+// nullable with DEFAULT 'plane', and transferKind() in src/lib/transport.js
+// already falls back to plane, so such a row shows a plane icon on the timeline.
+// Counting it as ground would make the tile contradict what the user sees.
+// transport.js is NOT imported: it pulls lucide-react, and this module stays
+// import-light so `node --test` can run it (same rule as trip-cities.js).
+const FLIGHT_TYPE = 'plane';
+
+/** Flights (transport_type 'plane', or absent — see the fallback note above). */
+export function countFlights(transfers = []) {
+  return transfers.filter((tr) => (tr?.transport_type || FLIGHT_TYPE) === FLIGHT_TYPE).length;
+}
+/** Ground transfers = every transfer that is not a flight. */
+export function countGround(transfers = []) {
+  return transfers.length - countFlights(transfers);
+}
+
 /** { visited, total, pct } against the 195 denominator. */
 export function worldExplored(points = []) {
   const visited = countCountries(points);
@@ -231,13 +261,18 @@ export function homeStats(points = [], transfersTotal = 0) {
     world: worldExplored(points),
   };
 }
-/** "My statistics" screen bundle for the active year selection. */
-export function statisticsBundle(points = [], trips = {}) {
+/**
+ * "My statistics" screen bundle for the active year selection.
+ * `points` and `transfers` must BOTH already be year-filtered by the caller.
+ */
+export function statisticsBundle(points = [], trips = {}, transfers = []) {
   return {
     countries: countCountries(points),
     cities: countCities(points),
     continents: countContinents(points),
     trips: countTrips(points),
+    flights: countFlights(transfers),
+    ground: countGround(transfers),
     world: worldExplored(points),
     continentsBreakdown: continentsBreakdown(points),
     countriesList: countriesList(points),

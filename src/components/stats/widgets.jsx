@@ -81,13 +81,13 @@ export function AllStatsCta({ label, onClick }) {
 // All pure / props-driven, same as the Ф4 set above. Statistics.jsx derives the
 // data from travel-stats.statisticsBundle (year-filtered) and feeds these.
 
-// Summary tiles. items = [{ key, value, label, tone, icon, soon }]. `tone` maps
-// to .c-* (city/cont/trip/flight/transfer); `soon` greys a not-yet-computed value.
+// Summary tiles. items = [{ key, value, label, tone, icon }]. `tone` maps to
+// .c-* (city/cont/trip/flight/transfer).
 export function SummaryTiles({ items = [] }) {
   return (
     <div className="summary">
       {items.map((it) => (
-        <div key={it.key} className={`sfig${it.tone ? ` c-${it.tone}` : ''}${it.soon ? ' is-soon' : ''}`}>
+        <div key={it.key} className={`sfig${it.tone ? ` c-${it.tone}` : ''}`}>
           <span className="ic">{it.icon}</span>
           <div className="v">{it.value}</div>
           <div className="k">{it.label}</div>

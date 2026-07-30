@@ -94,13 +94,14 @@ export default function Statistics() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_user_travel_stats');
       if (error) throw error;
-      return data || { points: [], trips: {}, transfers_total: 0 };
+      return data || { points: [], trips: {}, transfers: [] };
     },
     enabled: !!user?.id,
     staleTime: 30_000,
   });
   const showSkeleton = isLoading && !travelStats;
   const allPoints = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
+  const allTransfers = travelStats?.transfers || [];
   const trips = travelStats?.trips || {};
   const isEmpty = allPoints.length === 0;
 
@@ -108,7 +109,9 @@ export default function Statistics() {
   const [year, setYear] = useState('all');
   const years = useMemo(() => availableYears(allPoints), [allPoints]);
   const points = useMemo(() => filterByYear(allPoints, year), [allPoints, year]);
-  const bundle = useMemo(() => statisticsBundle(points, trips), [points, trips]);
+  // Transfer rows carry start_date too, so the SAME year filter applies to them.
+  const transfers = useMemo(() => filterByYear(allTransfers, year), [allTransfers, year]);
+  const bundle = useMemo(() => statisticsBundle(points, trips, transfers), [points, trips, transfers]);
 
   // ── map UI state ──────────────────────────────────────────────────────────────
   const [showMap, setShowMap] = useState(false);
@@ -166,9 +169,9 @@ export default function Statistics() {
     { key: 'cities', value: bundle.cities, tone: 'city', label: t('stats.sb_cities'), icon: <Icon name="buildings" /> },
     { key: 'continents', value: bundle.continents, tone: 'cont', label: t('stats.sb_continents'), icon: <Icon name="layers" /> },
     { key: 'trips', value: bundle.trips, tone: 'trip', label: t('stats.sb_trips'), icon: <Icon name="suitcase" /> },
-    { key: 'flights', value: '—', soon: true, tone: 'flight', label: t('stats.sb_flights'), icon: <Icon name="plane" /> },
-    { key: 'ground', value: '—', soon: true, tone: 'transfer', label: t('stats.sb_ground'), icon: <Icon name="arrowSwap" /> },
-  ], [bundle.countries, bundle.cities, bundle.continents, bundle.trips, t]);
+    { key: 'flights', value: bundle.flights, tone: 'flight', label: t('stats.sb_flights'), icon: <Icon name="plane" /> },
+    { key: 'ground', value: bundle.ground, tone: 'transfer', label: t('stats.sb_ground'), icon: <Icon name="arrowSwap" /> },
+  ], [bundle.countries, bundle.cities, bundle.continents, bundle.trips, bundle.flights, bundle.ground, t]);
 
   const contRows = useMemo(() => {
     const bd = bundle.continentsBreakdown || {};
