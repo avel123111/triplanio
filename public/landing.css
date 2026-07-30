@@ -1082,13 +1082,20 @@ h3 {
   color: var(--muted-2);
   margin: 4px 0 14px;
 }
-.footer__col a {
+/* The cookie-settings entry is a <button> (it acts, it does not navigate), but it
+   sits among links and must look identical to them. */
+.footer__col a,
+.footer__col button {
   display: block;
   padding: 4px 0;
   color: var(--ink-2);
   font-weight: 500;
 }
-.footer__col a:hover { color: var(--brand); }
+.footer__col button {
+  border: 0; background: none; font: inherit; text-align: left; cursor: pointer;
+}
+.footer__col a:hover,
+.footer__col button:hover { color: var(--brand); }
 .footer__bottom {
   display: flex;
   justify-content: space-between;

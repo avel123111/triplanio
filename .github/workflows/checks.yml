@@ -133,6 +133,9 @@ jobs:
       - name: 2i — frontend invoke seam (no raw functions.invoke)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-invoke-seam.mjs
+      - name: 2j — analytics behind the consent gate (single posthog.init)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-posthog-init.mjs
 
   deno:
     name: Deno typecheck (edge functions)

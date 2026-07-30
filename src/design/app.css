@@ -528,8 +528,6 @@ h4,
 .mrow .mn,
 .tl3-card .meta,
 .tl3-card--tr .rv-mode,
-.tl3-warn b,
-.tl3-warn button,
 .settings-identity .field__label,
 .acct-content,
 .acct-nav a,
@@ -652,7 +650,6 @@ h4,
 .tl3-dh .daycity,
 .tl3-card .body .sb,
 .tl3-card--tr .rv-end span,
-.tl3-warn span,
 .cr-item .cr-dt,
 .acct-sectitle small,
 .acct-divrow__s,
@@ -745,13 +742,7 @@ h4,
 .eed-bkopen,
 .tcp__err,
 .docfield__count,
-.ncal-nav-txt,
-.ncal-nav-trip,
-.ncal-vtgl-btn,
-.ncal-more,
-.ncal-wdc-empty,
-.ncal-aev .atm,
-.ncal-aev .atl,
+.ncal-wdc-empty,   /* TRIP-280 инсп.: остаётся Meta, +Golos ниже («Свободный день») */
 .pt-mm .k,
 .pt-mapcap__pill,
 .pt-mapcap__tx span,
@@ -835,11 +826,8 @@ h4,
 .vpill,
 .eed-fromto,
 .bgt-stat__l,
-.ncal-wd,
-.ncal-cstrip,
-.ncal-cstrip-seg,
-.ncal-wdc-wd,
-.ncal-wdc-city,
+.ncal-wd,          /* TRIP-280 инсп.: остаётся Micro, +Golos ниже (дни недели над сеткой месяца) */
+.ncal-wdc-wd,      /* TRIP-280: близнец .ncal-wd — день недели в карточке вида «Неделя» */
 .pt-mast__kick,
 .pt-role,
 .pt-wp__tag,
@@ -863,6 +851,14 @@ h4,
 .kv .v.mono,
 .mbrow .badge--warning, /* TRIP-175 инсп.: Micro→Mono (бейдж роли «Владелец»; Pro-бейдж .badge--pro НЕ затронут) */
 .mbrow .badge--brand,   /* TRIP-175 инсп.: Micro→Mono (бейдж роли «Админ») */
+/* TRIP-280 инсп.: календарь — управляющие пилюли (Meta→Mono), плашки городов
+   (Micro→Mono) и чипы событий (off-canon→Mono). Гарнитура — Golos, см. .t-sans ниже.
+   Близнецы вида «Неделя» (.ncal-aev .atm/.atl) едут вместе с месячными,
+   иначе одно и то же событие рендерится двумя шрифтами. */
+.ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
+.ncal-cstrip, .ncal-cstrip-seg,
+.ncal-ev .tm, .ncal-ev .t,
+.ncal-aev .atm, .ncal-aev .atl,
 .confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
@@ -959,6 +955,15 @@ h4,
 .dl-empty span,          /* TRIP-275 инсп.: Meta+Golos (описания пустых состояний доков) */
 .dl-visopt__lbl span,    /* TRIP-275 инсп.: Meta+Golos (подпись опции видимости «Виден всем участникам») */
 .dl-dropzone span,       /* TRIP-275 инсп.: Meta+Golos (подпись dropzone «PDF · DOC · XLS…») */
+/* TRIP-280 инсп.: экран календаря целиком уходит с JetBrains на Golos.
+   Mono-ярус — пилюли навигации/переключателя, плашки городов, чипы событий: */
+.ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
+.ncal-cstrip, .ncal-cstrip-seg,
+.ncal-ev .tm, .ncal-ev .t,
+.ncal-aev .atm, .ncal-aev .atl,
+/* Meta-ярус — легенда и «Свободный день»; Micro-ярус — дни недели и лейблы легенды: */
+.ncal-leg, .ncal-wdc-empty,
+.ncal-wd, .ncal-wdc-wd, .ncal-legend-lbl,
 .card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
 
 /* =================================================================
@@ -3159,15 +3164,6 @@ h4,
 .tl3-card--tr .rv-mode .ic { width: 28px; height: 28px; border-radius: 9px; background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); display: grid; place-items: center; flex: none; }
 .tl3-card--tr .rv-mode small { color: var(--muted); }
 
-.tl3-warn { display: flex; gap: 13px; align-items: center; padding: 13px 16px; background: var(--warning-soft); border-radius: 16px; margin: 6px 0 4px 62px; }
-.tl3-warn .tile { width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--warning) 22%, var(--surface)); color: var(--warning-ink); display: grid; place-items: center; flex: none; }
-.tl3-warn .tile svg { width: 19px; height: 19px; }
-.tl3-warn .x { flex: 1; min-width: 0; }
-.tl3-warn b { color: var(--ink); display: block; }
-.tl3-warn span { color: var(--muted); }
-.tl3-warn button { font: inherit; color: #fff; background: var(--warning-ink); border: 0; border-radius: var(--r-pill); padding: 8px 15px; cursor: pointer; flex: none; transition: transform .14s var(--ease-spring); }
-.tl3-warn button:active { transform: scale(.95); }
-
 /* City scroll-rail — right column of the timeline (namespaced .cr-*) */
 .cityrail { position: sticky; top: 8px; }
 .cityrail .cr-h { color: var(--muted); margin-bottom: 14px; }
@@ -4620,8 +4616,6 @@ h4,
 .sfig.c-flight .ic { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
 .sfig.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
 .sfig .v { color: var(--ink); }
-.sfig .v small { color: var(--muted); margin-left: 2px; }
-.sfig.is-soon .v { color: var(--muted-2); }
 .sfig .k { color: var(--muted); }
 
 /* Base white card container (V4). Was missing — so .panel / .panel.world /
@@ -4898,3 +4892,38 @@ h4,
 .fork-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
 .fork-gap { color: var(--muted-2); padding: 0 2px; }
 @media (prefers-reduced-motion: reduce) { .fork-pg { transition: none; } }
+
+/* ============================================================
+   CONSENT BANNER (TRIP-311)
+   Non-modal by design: no scrim, no close affordance, no focus trap. Ignoring it
+   must leave the app fully usable, otherwise it reads as a cookie wall — which
+   is also why it never uses the .sheet canon (modal, z-201 + scrim).
+   z-index 96: above the mobile nav (95) so its buttons are never covered, below
+   toasts (100) and dialogs (200/201). Surface mirrors .toast on purpose.
+   ============================================================ */
+.consent {
+  position: fixed; z-index: 96; left: 16px; bottom: 16px;
+  width: calc(100% - 32px); max-width: 420px;
+  display: flex; flex-direction: column; gap: 12px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: var(--sh-3);
+}
+.consent__text p { margin: 0; color: var(--muted); }
+/* Class beats the element selector above it, so the reset does not swallow this. */
+.consent__text .consent__title { margin: 0 0 4px; color: var(--ink); }
+.consent__text a { color: var(--brand); text-decoration: underline; }
+/* Equal columns, equal buttons: refusing has to be exactly as easy as accepting.
+   Long locales wrap inside the button instead of widening one of the two. */
+.consent__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Only the wrap: the grid track already sizes the buttons, but .btn is nowrap
+   and "Solo las necesarias" does not fit a half-width column on a 360px screen. */
+.consent__actions .btn { white-space: normal; }
+@media (max-width: 640px) {
+  /* Full width, clear of the bottom-nav dock (60px + its 8px + safe-area). The
+     offset is unconditional — the nav is not on every screen, but one rule for
+     every screen beats a per-route list of exceptions. */
+  .consent {
+    left: 12px; right: 12px; width: auto; max-width: none;
+    bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}
