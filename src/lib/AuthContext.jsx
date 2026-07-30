@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
+import { track, syncCampaignToPerson } from '@/lib/analytics';
 
 const AuthContext = createContext();
 
@@ -120,6 +121,8 @@ export const AuthProvider = ({ children }) => {
     // Prevent concurrent loads for the same user
     if (loadingForRef.current === authUser.id) return;
     loadingForRef.current = authUser.id;
+    // Set by the PGRST116 branch below when THIS call inserted the profile row.
+    let profileCreated = false;
     try {
       // A silent refresh (checkUserAuth after a profile save / avatar change /
       // Stripe-return entitlement poll) updates `user` in place WITHOUT flipping
@@ -163,6 +166,7 @@ export const AuthProvider = ({ children }) => {
 
         if (createError) throw createError;
         profile = newProfile;
+        profileCreated = true;
       } else if (error) {
         throw error;
       }
@@ -179,6 +183,25 @@ export const AuthProvider = ({ children }) => {
       // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213).
       // Personal data stays in Supabase; resolve uid → user there when needed.
       posthog?.identify(authUser.id);
+      // The campaign mark follows EVERY identify, not just new accounts: a
+      // returning user who clicks a retargeting ad and signs back in is the case
+      // that ends in a purchase, and that purchase is born on the server, where
+      // only person properties reach it. Self-guarded — a repeat login writes
+      // nothing (TRIP-316 A2).
+      syncCampaignToPerson();
+      // Registration (TRIP-316 A1). The `users` row is the ONE birth point of a
+      // user: it is created here, exactly once, and identically for Google,
+      // Apple, One Tap and email — the login buttons are not, and the fourth one
+      // would be forgotten the day it is added. Fires AFTER identify so the
+      // event lands on the real person, not on the anonymous id. Email lands
+      // here only after the confirmation link, so this counts confirmed
+      // registrations — `signup_email_sent` covers the step before.
+      // No `|| 'email'` fallback: GoTrue always sets the provider (checked on
+      // prod), and a guess would quietly file a broken case under email instead
+      // of showing up as an empty bucket worth looking at.
+      if (profileCreated) {
+        track('user_signed_up', { method: authUser.app_metadata?.provider });
+      }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
       loadedUserIdRef.current = authUser.id;
