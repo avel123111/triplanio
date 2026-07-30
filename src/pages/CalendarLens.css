@@ -110,7 +110,7 @@
 }
 .ncal-wd {
   text-align: center;
-  color: var(--muted-2); padding: 5px 0;
+  color: var(--muted); padding: 5px 0;   /* TRIP-280 инсп.: цвет muted-2 → muted */
 }
 
 /* ── Month: week row + day grid ────────────────────────────────── */
@@ -268,7 +268,7 @@
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
 .ncal-wdc-wd {
-  color: var(--muted-2); margin-top: 5px;
+  color: var(--muted); margin-top: 5px;   /* TRIP-280: близнец .ncal-wd — тот же цвет */
 }
 /* Single city badge */
 .ncal-wdc-city {
@@ -297,7 +297,7 @@
   display: flex; flex-direction: column; gap: 1px;
   padding: 6px 9px 6px 11px; border-radius: 10px;
   border: none; cursor: pointer; text-align: left;
-  font-family: var(--font-ui); position: relative; overflow: hidden;
+  position: relative; overflow: hidden;
   transition: filter .14s, transform .12s var(--ease-spring);
 }
 .ncal-aev::before {
@@ -423,8 +423,9 @@
   /* Hide "К поездке" label, keep icon */
   .ncal-nav-trip .ncal-trip-label { display: none; }
   .ncal-nav-trip { padding: 5px 9px; gap: 0; }
-  .ncal-nav-txt { padding: 5px 10px; font-size: var(--fs-micro); }
-  .ncal-vtgl-btn { padding: 7px 13px; font-size: var(--fs-micro); }
+  /* размер не перебиваем: канон .t-mono уже даёт нужный кегль (--fs-micro) */
+  .ncal-nav-txt { padding: 5px 10px; }
+  .ncal-vtgl-btn { padding: 7px 13px; }
 
   /* Month cells */
   .ncal-wd-row { gap: 2px; margin-bottom: 5px; }
@@ -457,8 +458,9 @@
 
   /* Legend */
   .ncal-legend     { gap: 8px; margin-top: 18px; }
-  .ncal-legend-lbl { width: 52px; font-size: var(--fs-nano); }
-  .ncal-leg        { font-size: var(--fs-micro); gap: 5px; }
+  /* размер не перебиваем: каноны .t-micro/.t-meta уже дают нужный кегль */
+  .ncal-legend-lbl { width: 52px; }
+  .ncal-leg        { gap: 5px; }
 }
 
 @media (max-width: 400px) {
