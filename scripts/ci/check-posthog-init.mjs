@@ -14,11 +14,17 @@
  *
  * Exit: 0 ok, 1 violation, 2 internal error.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ROOT = 'src';
-const POSTHOG_INIT = /\bposthog\s*(\?\.)?\s*\.\s*init\s*\(/;
+// `dev/` too: canon-inspector is dynamically imported INTO the app, so code there
+// runs in the browser exactly like src/ does.
+const ROOTS = ['src', 'dev'];
+
+// Both spellings. `posthog?.init(` is the house style of the calls right next to
+// it (`posthog?.capture?.`), so it is the MORE likely way a second init gets
+// written — matching only the plain dot would let the realistic case through.
+const POSTHOG_INIT = /\bposthog\s*(\?\.|\.)\s*init\s*\(/;
 
 // The ONLY file allowed to start PostHog — it IS the consent gate.
 const ALLOW = new Set([
@@ -44,7 +50,8 @@ function walk(dir, out = []) {
 
 try {
   const offenders = [];
-  for (const file of walk(ROOT)) {
+  const files = ROOTS.filter(existsSync).flatMap((root) => walk(root));
+  for (const file of files) {
     const rel = file.split('\\').join('/');
     if (ALLOW.has(rel)) continue;
     if (POSTHOG_INIT.test(stripComments(readFileSync(file, 'utf8')))) offenders.push(rel);

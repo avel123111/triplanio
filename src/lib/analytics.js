@@ -59,9 +59,33 @@ const REDIRECT_KEY = 'tp-signup-attribution';
  * @param {Record<string, unknown>} [props]  event properties (no PII)
  */
 export function track(event, props) {
-  // posthog is a no-op until init runs; optional-chaining keeps call-sites safe
-  // even if analytics is disabled (dev/preview without VITE_POSTHOG_ENABLE_DEV).
+  // The gate matters only after a withdrawal made in ANOTHER tab: this tab still
+  // holds a live, initialised client that would otherwise keep capturing — and
+  // capturing re-creates the `ph_*` keys the withdrawal just deleted. Before
+  // consent it changes nothing; an uninitialised client is already a no-op.
+  if (!analyticsOn) return;
   posthog?.capture?.(event, props);
+}
+
+/**
+ * Stop feeding an already-running PostHog. Used when consent is withdrawn in a
+ * different tab: `init()` cannot be undone, but we can stop calling it, which is
+ * enough to keep it silent and to stop it rewriting its storage.
+ */
+export function stopAnalytics() {
+  analyticsOn = false;
+}
+
+/**
+ * Drop the OAuth stash without using it — the sign-in turned out to belong to an
+ * account that already exists, so there was no signup for these marks to
+ * attribute. Left behind, they would be inherited by whoever registers next in
+ * the same tab.
+ */
+export function forgetStashedAttribution() {
+  try {
+    sessionStorage.removeItem(REDIRECT_KEY);
+  } catch { /* nothing stored, nothing to forget */ }
 }
 
 /**

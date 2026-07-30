@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
-import { getSignupAttribution, track, syncCampaignToPerson } from '@/lib/analytics';
+import { forgetStashedAttribution, getSignupAttribution, track, syncCampaignToPerson } from '@/lib/analytics';
 import { pickSignupAttribution } from '@/lib/campaign';
 
 const AuthContext = createContext();
@@ -182,6 +182,11 @@ export const AuthProvider = ({ children }) => {
         profileCreated = true;
       } else if (error) {
         throw error;
+      } else {
+        // Signing in to an existing account is not a signup, so the marks the
+        // OAuth redirect carried have nothing to attribute. Dropping them here
+        // stops them being inherited by whoever registers next in this tab.
+        forgetStashedAttribution();
       }
 
       // avatar_url is passed through as stored — do NOT re-add a sanitizer here.

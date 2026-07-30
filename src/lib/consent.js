@@ -13,7 +13,7 @@
 // TRIP-227 hangs GTM / GA4 / ad pixels off `applyConsent` — one place, so the
 // second entry point never appears.
 import posthog from 'posthog-js';
-import { isAnalyticsOn, startAnalytics, syncCampaignToPerson } from '@/lib/analytics';
+import { isAnalyticsOn, startAnalytics, stopAnalytics, syncCampaignToPerson } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -82,6 +82,23 @@ export function subscribeConsentOpen(listener) {
   openListeners.add(listener);
   return () => openListeners.delete(listener);
 }
+
+// Consent belongs to the device, not to a tab. Withdrawing it reloads the tab it
+// was pressed in, but any OTHER open tab keeps a live, initialised client — and
+// the next event it captures WRITES `ph_*` back, undoing the deletion. The
+// `storage` event fires only in the other tabs, which is exactly the set that
+// needs telling. We stop calling PostHog rather than reload: a background tab
+// may hold half-finished work, and losing that to a cookie setting is worse than
+// leaving an idle client in memory.
+//
+// Deliberately one-way. A grant made elsewhere does NOT start analytics here —
+// this tab stays quiet until it reloads, which errs toward collecting less.
+window.addEventListener('storage', (event) => {
+  if (event.key !== STORAGE_KEY || !isAnalyticsOn()) return;
+  if (parseConsent(event.newValue, Date.now())?.analytics) return;
+  stopAnalytics();
+  clearAnalyticsStorage();
+});
 
 /**
  * Put the app in the state the record describes. Safe to call on every start:
