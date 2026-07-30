@@ -4892,3 +4892,38 @@ h4,
 .fork-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
 .fork-gap { color: var(--muted-2); padding: 0 2px; }
 @media (prefers-reduced-motion: reduce) { .fork-pg { transition: none; } }
+
+/* ============================================================
+   CONSENT BANNER (TRIP-311)
+   Non-modal by design: no scrim, no close affordance, no focus trap. Ignoring it
+   must leave the app fully usable, otherwise it reads as a cookie wall — which
+   is also why it never uses the .sheet canon (modal, z-201 + scrim).
+   z-index 96: above the mobile nav (95) so its buttons are never covered, below
+   toasts (100) and dialogs (200/201). Surface mirrors .toast on purpose.
+   ============================================================ */
+.consent {
+  position: fixed; z-index: 96; left: 16px; bottom: 16px;
+  width: calc(100% - 32px); max-width: 420px;
+  display: flex; flex-direction: column; gap: 12px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: var(--sh-3);
+}
+.consent__text p { margin: 0; color: var(--muted); }
+/* Class beats the element selector above it, so the reset does not swallow this. */
+.consent__text .consent__title { margin: 0 0 4px; color: var(--ink); }
+.consent__text a { color: var(--brand); text-decoration: underline; }
+/* Equal columns, equal buttons: refusing has to be exactly as easy as accepting.
+   Long locales wrap inside the button instead of widening one of the two. */
+.consent__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Only the wrap: the grid track already sizes the buttons, but .btn is nowrap
+   and "Solo las necesarias" does not fit a half-width column on a 360px screen. */
+.consent__actions .btn { white-space: normal; }
+@media (max-width: 640px) {
+  /* Full width, clear of the bottom-nav dock (60px + its 8px + safe-area). The
+     offset is unconditional — the nav is not on every screen, but one rule for
+     every screen beats a per-route list of exceptions. */
+  .consent {
+    left: 12px; right: 12px; width: auto; max-width: none;
+    bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}

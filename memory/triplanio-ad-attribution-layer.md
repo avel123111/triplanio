@@ -15,8 +15,12 @@
   `node --test`, как `trip-cities.js`), тесты `campaign.test.js`. Провязка с
   PostHog в `analytics.js`: `setCampaign()` (register/unregister) и
   `attachCampaignToPerson()` (`setPersonProperties`).
-- `setCampaign()` вызывается в `main.jsx` **до первого рендера**: `landing_viewed`
-  летит из эффекта в `App.jsx`, позже метки уже не будет на самом клике.
+- Метки визита снимаются в **переменную модуля** `analytics.js` на его загрузке
+  (до того, как роутер почистит адрес), а в PostHog переносятся из
+  `startAnalytics()` в момент согласия - PostHog до согласия не существует
+  (TRIP-311). `setCampaign()` больше не экспорт и в `main.jsx` не вызывается.
+  Метка кампании, окно 30 дней и `ref_trip_id` живут только у согласившихся;
+  у отказавшихся источник регистрации несут колонки `users.signup_utm_*`.
 - Правила: **last-touch** (новая кампания перетирает старую целиком), **окно 30
   дней** (`camp_ts` старее - метка снимается), значения режутся по 200 символов.
 - Триггер захвата - `utm_source` **или** `utm_campaign` **или** `gclid`: Google

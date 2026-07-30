@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
-import { track, syncCampaignToPerson } from '@/lib/analytics';
+import { forgetStashedAttribution, getSignupAttribution, track, syncCampaignToPerson } from '@/lib/analytics';
+import { pickSignupAttribution } from '@/lib/campaign';
 
 const AuthContext = createContext();
 
@@ -160,6 +161,18 @@ export const AuthProvider = ({ children }) => {
             email: authUser.email,
             full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
             avatar_url: authUser.user_metadata?.avatar_url || null,
+            // Where this account came from (TRIP-311). WRITTEN here, at the one
+            // birth point of a user — the same reason `user_signed_up` lives
+            // here rather than in the login buttons. (Capturing the marks before
+            // an OAuth redirect does have to happen per button: once the provider
+            // replaces the document there is no choke point left.)
+            // Account data, not tracking: recorded whatever the visitor answered
+            // on the cookie banner. Email carries the marks through auth metadata
+            // (they survive confirming on another device); OAuth recovers them
+            // from the stash left behind before the redirect. Filtered through
+            // pickSignupAttribution, never spread raw — `user_metadata` is
+            // client-owned, so an unfiltered spread would set any column.
+            ...(pickSignupAttribution(authUser.user_metadata?.signup_attribution) || getSignupAttribution() || {}),
           })
           .select()
           .single();
@@ -169,6 +182,11 @@ export const AuthProvider = ({ children }) => {
         profileCreated = true;
       } else if (error) {
         throw error;
+      } else {
+        // Signing in to an existing account is not a signup, so the marks the
+        // OAuth redirect carried have nothing to attribute. Dropping them here
+        // stops them being inherited by whoever registers next in this tab.
+        forgetStashedAttribution();
       }
 
       // avatar_url is passed through as stored — do NOT re-add a sanitizer here.

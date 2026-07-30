@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Toaster } from "@/design/index"
 import { track } from '@/lib/analytics'
 import { Analytics } from '@vercel/analytics/react'
-import { SpeedInsights } from '@vercel/speed-insights/react'
+import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
@@ -179,11 +179,16 @@ function App() {
                     <AuthenticatedApp />
                   </Router>
                   <Toaster />
+                  {/* Outside <Router> on purpose: the panel must appear on EVERY
+                      entry, including the anonymous public-trip and invite links
+                      that never reach an authenticated route (TRIP-311). */}
+                  <ConsentBanner />
                   {/* Vercel Web Analytics — SPA pageview tracking (auto-tracks
-                      react-router navigations via the History API). */}
+                      react-router navigations via the History API). Cookieless:
+                      it writes nothing to the device, so it counts visits for
+                      everyone, including people who refuse PostHog. Declared in
+                      the privacy policy under legitimate interest. */}
                   <Analytics />
-                  {/* Vercel Speed Insights — Core Web Vitals from real users. */}
-                  <SpeedInsights />
                 </MapProvider>
               </ConfirmProvider>
             </QueryClientProvider>
