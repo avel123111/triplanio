@@ -52,12 +52,8 @@ export function resolveCampaign(search, storedTs, now) {
  * @returns {Record<string, string> | null}  null when the URL carries no campaign
  */
 function readCampaignParams(search) {
-  let params;
-  try {
-    params = new URLSearchParams(search || '');
-  } catch {
-    return null; // a malformed URL must never break app start-up
-  }
+  // URLSearchParams never throws on a string, however mangled the query is.
+  const params = new URLSearchParams(search);
 
   const out = {};
   for (const [param, key] of Object.entries(CAMPAIGN_FIELDS)) {

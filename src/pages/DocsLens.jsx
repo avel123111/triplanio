@@ -142,13 +142,13 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     // reading the report. `file_kind` reuses the badge classifier, so "what do
     // people actually keep here - scans or PDF bookings?" becomes answerable:
     // there is no document TYPE (passport / insurance) anywhere in the model,
-    // the extension is all we know. Mixed kinds collapse to 'mixed'.
+    // the extension is all we know. Mixed kinds collapse to 'mixed', and no files
+    // at all (a link or a bare note) to 'none'.
     const kinds = [...new Set(documents.map((d) => fileType(d.file_name)))];
     track('document_uploaded', {
       trip_id: tripId,
       visibility,
       file_kind: kinds.length > 1 ? 'mixed' : (kinds[0] || 'none'),
-      has_files: !!documents.length,
       has_link: !!linkUrl.trim(),
     });
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });

@@ -196,8 +196,11 @@ export const AuthProvider = ({ children }) => {
       // event lands on the real person, not on the anonymous id. Email lands
       // here only after the confirmation link, so this counts confirmed
       // registrations — `signup_email_sent` covers the step before.
+      // No `|| 'email'` fallback: GoTrue always sets the provider (checked on
+      // prod), and a guess would quietly file a broken case under email instead
+      // of showing up as an empty bucket worth looking at.
       if (profileCreated) {
-        track('user_signed_up', { method: authUser.app_metadata?.provider || 'email' });
+        track('user_signed_up', { method: authUser.app_metadata?.provider });
       }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.

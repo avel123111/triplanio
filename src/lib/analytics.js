@@ -58,14 +58,17 @@ export function setRefTripId(refTripId) {
  * it survives the round trip through Google's OAuth screen back to /trips, where
  * the query string is long gone. Storage is per-host, so campaign links MUST
  * point at the same host the app runs on (www vs apex are different jars).
- * @param {string} [search]  query string to read (defaults to the current URL)
- * @param {number} [now]     injectable clock for the 30-day window
  */
-export function setCampaign(search = window.location.search, now = Date.now()) {
-  const decision = resolveCampaign(search, posthog?.get_property?.('camp_ts') || null, now);
+export function setCampaign() {
+  const decision = resolveCampaign(
+    window.location.search,
+    posthog?.get_property?.('camp_ts') || null,
+    Date.now(),
+  );
   if (!decision) return;
-  // A new campaign REPLACES the previous one wholesale: leftovers from the old
-  // click must not blend into the new one's report.
+  // Both outcomes start by dropping what is stored: a new campaign must not
+  // blend with leftovers of the old one, an expired one must stop riding events
+  // at all. Only a fresh campaign writes anything back.
   CAMPAIGN_KEYS.forEach((key) => posthog?.unregister?.(key));
   if (decision.set) posthog?.register?.(decision.set);
 }
@@ -88,6 +91,15 @@ export function setCampaign(search = window.location.search, now = Date.now()) {
  * runs on every page load — costs nothing instead of a $set event each time. It
  * also makes the clear durable: the mark itself is already gone from storage by
  * then, and only the leftover marker says the person still has to be cleaned.
+ *
+ * The marker MUST live in PostHog's own storage, not in localStorage next to
+ * the other app keys: posthog.reset() on logout wipes the mark and the marker
+ * together, so both sides come back empty and the person is left alone. A
+ * marker that outlived reset() would read "mark gone" on the next login and
+ * erase a campaign that had not expired at all — logging out would silently
+ * cost us the attribution. The flip side is the one case we cannot clean: a
+ * mark that expires AFTER a logout stays on the person, which is why `camp_ts`
+ * rides along on the person too — a report can window on it.
  */
 export function syncCampaignToPerson() {
   const ts = posthog?.get_property?.('camp_ts') || '';
@@ -100,10 +112,12 @@ export function syncCampaignToPerson() {
       if (value) props[key] = value;
     });
     posthog?.setPersonProperties?.(props);
+    posthog?.register?.({ camp_synced_ts: ts });
   } else {
-    // Expired or cleared: without this the person keeps the old campaign for
-    // good, and a server-side purchase a year later still credits it.
+    // Expired: without this the person keeps the old campaign for good, and a
+    // server-side purchase a year later still credits it. The marker goes away
+    // rather than turning into an empty string that would ride every event.
     posthog?.unsetPersonProperties?.(CAMPAIGN_KEYS);
+    posthog?.unregister?.('camp_synced_ts');
   }
-  posthog?.register?.({ camp_synced_ts: ts });
 }

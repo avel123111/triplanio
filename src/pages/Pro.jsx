@@ -85,7 +85,10 @@ export default function Pro() {
       setLoadingPlan(productCode);
       let isIframe = false;
       try { isIframe = window.self !== window.top; } catch { isIframe = true; }
-      if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoadingPlan(null); return; }
+      if (isIframe) {
+        track('checkout_error', { plan, product_code: productCode, reason: 'iframe' });
+        setErrorMsg(t('sub.iframe_alert')); setLoadingPlan(null); return;
+      }
 
       // landing-path (trip_pro_lifetime → /trip/<id>, sub → /settings) деривируется НА
       // СЕРВЕРЕ из (productCode, tripId) — returnPath клиента не шлём (ломал детерминизм
@@ -112,6 +115,10 @@ export default function Pro() {
         track('checkout_redirected', { plan, product_code: productCode, trip_id: tripId || undefined });
         window.location.href = data.url; return;
       }
+      // Server answered without an error AND without a url — the rarest branch,
+      // and until now the only silent one: the person just sees the button stop
+      // spinning. Same event as the other failures, own reason.
+      track('checkout_error', { plan, product_code: productCode, reason: 'no_url' });
       setLoadingPlan(null);
     } catch (error) {
       console.error('Upgrade error:', error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { track } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
@@ -168,6 +168,11 @@ export default function Login() {
   const [resendLeft, setResendLeft] = useState(0);       // seconds left on the resend cooldown
   const [resendFlow, setResendFlow] = useState('reset'); // which send to repeat: 'reset' | 'signup'
   const pwScore = scorePassword(password);
+  // Once per visit to the signup form. Retyping a password the client rejects
+  // must not multiply the first step of the funnel, and skipping those attempts
+  // altogether would hide the people the password rule turns away — the
+  // conversion rate would read better than it is. Cleared on every view change.
+  const signupStartedRef = useRef(false);
 
   // Password-strength labels (localized; index matches scorePassword 0..4).
   const STRENGTH_LABELS = [
@@ -221,7 +226,7 @@ export default function Login() {
   }, []);
 
   // Reset error + pw visibility on view change
-  useEffect(() => { setError(null); setShowPw(false); setShowPw2(false); }, [view]);
+  useEffect(() => { setError(null); setShowPw(false); setShowPw2(false); signupStartedRef.current = false; }, [view]);
 
   // Resend cooldown — matches Supabase's ~60s minimum interval between auth
   // emails to the same address. Hydrated from storage (persisted by email) so it
@@ -248,10 +253,12 @@ export default function Login() {
     track(view === 'signup' ? 'signup_started' : 'user_logged_in', { method });
 
   // A rejected registration never reaches AuthContext, so this screen is the
-  // only place its reason exists. The email form is registration-only; the
-  // provider buttons are shared with the login view and report from there.
-  const trackSignupFailed = (reason, method = 'email') =>
-    track('signup_failed', { method, reason });
+  // only place its reason exists. The view gate lives HERE, in one place: the
+  // provider buttons are shared with the login form, and a failed login is not
+  // a failed signup. The email form only exists on the signup view.
+  const trackSignupFailed = (reason, method = 'email') => {
+    if (view === 'signup') track('signup_failed', { method, reason });
+  };
 
   // ── Auth handlers ──
   const handleGoogle = async () => {
@@ -264,10 +271,7 @@ export default function Login() {
         queryParams: { prompt: 'select_account' },
       },
     });
-    if (error) {
-      if (view === 'signup') trackSignupFailed('oauth_error', 'google');
-      setError(error.message); setIsLoading(false);
-    }
+    if (error) { trackSignupFailed('oauth_error', 'google'); setError(error.message); setIsLoading(false); }
   };
 
   // Google One Tap credential handler - exchanges the Google JWT for a
@@ -297,7 +301,10 @@ export default function Login() {
       // register — and the Google callback is registered once on mount, so the
       // current form view is not readable here anyway. A first-timer arriving
       // this way still gets user_signed_up from AuthContext.
-      track('user_logged_in', { method: 'google_one_tap' });
+      // `method` stays the provider, same vocabulary as every other auth event
+      // (and as app_metadata.provider on user_signed_up), so a funnel can be
+      // joined on it; the entry point goes in its own property.
+      track('user_logged_in', { method: 'google', surface: 'one_tap' });
       // Success: AuthContext picks up SIGNED_IN but does not navigate, and this
       // page stays mounted on /login - redirect explicitly (same as email login
       // and the Google redirect flow's redirectTo). Keep isLoading=true so the
@@ -362,10 +369,7 @@ export default function Login() {
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },
     });
-    if (error) {
-      if (view === 'signup') trackSignupFailed('oauth_error', 'apple');
-      setError(error.message); setIsLoading(false);
-    }
+    if (error) { trackSignupFailed('oauth_error', 'apple'); setError(error.message); setIsLoading(false); }
   };
 
   const handleLogin = async (e) => {
@@ -378,7 +382,9 @@ export default function Login() {
 
   const handleSignup = async (e) => {
     e.preventDefault(); setError(null);
-    track('signup_started', { method: 'email' });
+    // Through the same helper as the provider buttons, and before the client
+    // rules run: someone the password policy turns away DID try to register.
+    if (!signupStartedRef.current) { signupStartedRef.current = true; trackAuthIntent('email'); }
     if (!meetsPasswordPolicy(password)) {
       trackSignupFailed('weak_password');
       setError(t('auth.pw_policy')); return;
@@ -488,6 +494,10 @@ export default function Login() {
       setResendLeft(cooldownLeft(sentEmail) || 60); return;
     }
     if (data?.code === 'account_not_found') { setError(t('auth.err_account_not_found')); return; }
+    // The server re-sent the confirmation link — same fact as in handleSignup,
+    // so the same event: otherwise the funnel step would mean different things
+    // depending on which button the person pressed.
+    if (data?.code === 'confirmation_resent') track('signup_email_sent', { method: 'email', resent: true });
     // success (reset_sent / confirmation_resent / ok) → restart the cooldown.
     startCooldown(sentEmail); setResendLeft(60);
   };
