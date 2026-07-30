@@ -1249,7 +1249,6 @@ export default function TripView() {
             <CalendarLens
               stream={stream}
               visits={visits}
-              trip={trip}
               isLoading={loadingContent}
               onOpenEvent={openEventView}
             />

@@ -856,10 +856,10 @@ h4,
 .mbrow .badge--brand,   /* TRIP-175 инсп.: Micro→Mono (бейдж роли «Админ») */
 /* TRIP-280 инсп.: календарь — управляющие пилюли (Meta→Mono), плашки городов
    (Micro→Mono) и чипы событий (off-canon→Mono). Гарнитура — Golos, см. .t-sans ниже.
-   Близнецы вида «Неделя» (.ncal-wdc-city, .ncal-aev .atm/.atl) едут вместе с
-   месячными, иначе один и тот же город/время рендерится двумя шрифтами. */
+   Близнецы вида «Неделя» (.ncal-aev .atm/.atl) едут вместе с месячными,
+   иначе одно и то же событие рендерится двумя шрифтами. */
 .ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
-.ncal-cstrip, .ncal-cstrip-seg, .ncal-wdc-city,
+.ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
 .confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
@@ -961,7 +961,7 @@ h4,
 /* TRIP-280 инсп.: экран календаря целиком уходит с JetBrains на Golos.
    Mono-ярус — пилюли навигации/переключателя, плашки городов, чипы событий: */
 .ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
-.ncal-cstrip, .ncal-cstrip-seg, .ncal-wdc-city,
+.ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
 /* Meta-ярус — легенда и «Свободный день»; Micro-ярус — дни недели и лейблы легенды: */

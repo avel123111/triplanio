@@ -62,7 +62,6 @@
   cursor: pointer;
 }
 .ncal-nav-txt:hover { background: var(--surface); color: var(--ink); }
-.ncal-nav-txt.is-active { background: var(--primary-soft-2); color: var(--brand); }
 .ncal-nav-div {
   width: 1px; height: 16px;
   background: var(--line-strong);
@@ -78,7 +77,6 @@
 }
 .ncal-nav-trip svg { width: 13px; height: 13px; flex: none; }
 .ncal-nav-trip:hover { background: var(--primary-soft-2); }
-.ncal-nav-trip.is-active { background: var(--primary-soft-2); }
 
 /* ── View toggle ───────────────────────────────────────────────── */
 .ncal-vtgl {
@@ -270,16 +268,6 @@
 .ncal-wdc-wd {
   color: var(--muted); margin-top: 5px;   /* TRIP-280: близнец .ncal-wd — тот же цвет */
 }
-/* Single city badge */
-.ncal-wdc-city {
-  display: inline-flex; align-items: center;
-  padding: 3px 9px; border-radius: var(--r-pill);
-  margin-top: 8px;
-}
-/* Multiple city badges row */
-.ncal-wdc-cities {
-  display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;
-}
 
 /* Card body — events list */
 .ncal-wdc-b {
@@ -349,19 +337,6 @@
   animation: ncalFadeSlideIn .22s var(--ease-out) both;
 }
 
-/* ── Silent city strip (trip days without explicit city label) ── */
-.ncal-cstrip--silent {
-  height: 20px;
-  background: var(--primary-soft-2);
-  margin-bottom: 8px;
-}
-
-/* ── All-day event in agenda view ──────────────────────────────── */
-.ncal-aev.ev-allday .atm {
-  font-size: var(--fs-nano);
-  opacity: .55;
-}
-
 /* ── Empty / no-dates ──────────────────────────────────────────── */
 .ncal-empty {
   padding: 48px 24px; text-align: center;
@@ -384,21 +359,6 @@
 .ncal-nav-txt:focus-visible,
 .ncal-nav-trip:focus-visible,
 .ncal-vtgl-btn:focus-visible {
-  outline: 2px solid var(--brand); outline-offset: 1px;
-}
-
-/* ── Highlight animation (Сегодня / К поездке nav) ─────────────── */
-@keyframes ncalCellPulse {
-  0%   { box-shadow: 0 0 0 0   var(--primary-ring); }
-  40%  { box-shadow: 0 0 0 6px var(--primary-ring); }
-  100% { box-shadow: 0 0 0 0   transparent; }
-}
-.ncal-dc.is-highlight {
-  animation: ncalCellPulse .7s var(--ease-out) both;
-  outline: 2px solid var(--brand); outline-offset: 1px;
-}
-.ncal-wdc.is-highlight {
-  animation: ncalCellPulse .7s var(--ease-out) both;
   outline: 2px solid var(--brand); outline-offset: 1px;
 }
 
@@ -451,7 +411,6 @@
   .ncal-wdc-cbar    { height: 4px; }
   .ncal-wdc-h       { padding: 10px 10px 8px; }
   .ncal-wdc-num     { font-size: var(--fs-h3); }
-  .ncal-wdc-city    { font-size: var(--fs-nano); padding: 2px 7px; margin-top: 6px; }
   .ncal-wdc-b       { padding: 7px 8px 10px; gap: 4px; }
   .ncal-aev         { padding: 5px 7px 5px 9px; border-radius: 8px; }
   .ncal-aev .atl    { font-size: var(--fs-nano); }
