@@ -889,7 +889,7 @@ export default function ScreenAccount() {
               <button
                 type="button"
                 className="acct-divrow"
-                style={{ color: 'inherit', border: 0, background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                style={{ color: 'inherit', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                 onClick={openConsentBanner}
               >
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="settings" size={18} /></span>

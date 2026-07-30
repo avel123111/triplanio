@@ -1,9 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import posthog from 'posthog-js'
-import { PostHogProvider } from '@posthog/react'
 import { initSentry } from '@/lib/sentry'
-import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
+import { applyConsent, clearAnalyticsStorage, getConsent, isProdHost } from '@/lib/consent'
 import App from '@/App.jsx'
 import '@/index.css'
 import '@/design/app.css'
@@ -30,15 +28,10 @@ initSentry()
 // and can't be the gate. Instead we gate by HOST: active everywhere EXCEPT the
 // production domain (mirrors the CORS allow-list split prod = triplanio.com/www).
 // The dynamic import stays lazy, so on production the chunk is never fetched.
-const CANON_INSPECTOR_PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com'])
-if (!CANON_INSPECTOR_PROD_HOSTS.has(window.location.hostname)) {
+if (!isProdHost) {
   import('../dev/canon-inspector/index.js')
     .then((m) => m.initCanonInspector())
     .catch(() => { /* dev tool is best-effort; never break the app */ })
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <PostHogProvider client={posthog}>
-    <App />
-  </PostHogProvider>
-)
+ReactDOM.createRoot(document.getElementById('root')).render(<App />)

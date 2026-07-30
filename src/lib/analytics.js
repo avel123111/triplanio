@@ -8,9 +8,12 @@
 // Naming convention: object_action, snake_case; variant info goes in props,
 // never in the event name. No PII in props (uid only, set via identify).
 //
-// Every function here is safe to call before consent: PostHog is not initialised
-// then, and an uninitialised client is a no-op (TRIP-311). Nothing is queued —
-// events fired before someone agrees are dropped, which is the point.
+// Every function here is safe to call before consent, but for two different
+// reasons (TRIP-311). Most are no-ops because PostHog is not initialised yet and
+// an uninitialised client does nothing — nothing is queued either, so events
+// fired before someone agrees are dropped, which is the point. The rest
+// (`groupTrip`, `setRefTripId`, `rememberAttributionForRedirect`) deliberately
+// hold what the visit carried, so consenting later does not start from nothing.
 import posthog from 'posthog-js';
 import { CAMPAIGN_KEYS, pickSignupAttribution, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
 
@@ -30,9 +33,17 @@ let visitRefTripId = '';
 // every event of that session would miss the group the North Star counts on.
 let pendingGroup = null;
 
-// Set once consent.js has run posthog.init(). Only the three calls that create
-// or mutate a PROFILE need it — see groupTrip.
+// Flipped once consent.js has finished posthog.init(). The single source of
+// truth for "analytics is live in this document": the two calls that create or
+// mutate a PROFILE gate on it (see groupTrip), the banner asks it to decide
+// whether withdrawing needs a reload, and consent.js checks it to never init
+// twice. Set AFTER init, so a failed init cannot leave it lying.
 let analyticsOn = false;
+
+/** @returns {boolean} whether posthog.init() has completed in this document */
+export function isAnalyticsOn() {
+  return analyticsOn;
+}
 
 // Survives the OAuth round trip, which the in-memory snapshot cannot: the
 // provider replaces the whole document, so the page we come back to is a fresh
@@ -59,7 +70,7 @@ export function track(event, props) {
  * a per-person one. Call on entering a trip; `props` become group properties.
  *
  * Gated on `analyticsOn` unlike track(): `group` and `setPersonProperties` are
- * the two calls with no `__loaded` check of their own, and calling them before
+ * the only two calls with no `__loaded` check of their own, and calling them before
  * init leaves PostHog's feature-flag loader stuck on `_requestInFlight = true`
  * FOREVER — it survives the later init and can block flags from loading. No data
  * leaves either way; this just keeps the client sane.

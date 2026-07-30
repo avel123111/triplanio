@@ -193,9 +193,7 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
               {/* Where an anonymous visitor changes their mind — the app itself has no
                   footer, so this is the only route for someone who never signed up.
                   Reopens the panel; nothing changes until a button in it is pressed. */}
-              <a href="#" onClick={(e) => { e.preventDefault(); openConsentBanner(); }}>
-                {t('consent.settings')}
-              </a>
+              <button type="button" onClick={openConsentBanner}>{t('consent.settings')}</button>
             </div>
           </div>
           <div style={{display:'flex',justifyContent:'flex-end'}}>

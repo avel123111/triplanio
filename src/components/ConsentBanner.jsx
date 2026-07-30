@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
+import { isAnalyticsOn } from '@/lib/analytics';
 import {
-  applyConsent, clearAnalyticsStorage, getConsent, isAnalyticsRunning, setConsent, subscribeConsentOpen,
+  applyConsent, clearAnalyticsStorage, getConsent, setConsent, subscribeConsentOpen,
 } from '@/lib/consent';
 
 /**
@@ -33,7 +34,10 @@ export default function ConsentBanner() {
   if (!open) return null;
 
   const answer = (accepted) => {
-    setConsent(accepted);
+    // Use what setConsent returns rather than re-reading storage: in private
+    // browsing the write throws, getConsent() would then come back null, and
+    // someone who just pressed "Accept all" would silently get no analytics.
+    const record = setConsent(accepted);
     setOpen(false);
 
     if (accepted) {
@@ -41,7 +45,7 @@ export default function ConsentBanner() {
       // immediately — AuthContext only calls identify() on its own auth cycle,
       // which for someone already on a screen would not come round until the
       // next load.
-      applyConsent(getConsent(), user?.id);
+      applyConsent(record, user?.id);
       return;
     }
 
@@ -49,7 +53,7 @@ export default function ConsentBanner() {
     // reload: an initialised client cannot be shut down, so the only honest way
     // back to "analytics does not exist" is a new document. Refusing when it was
     // never running changes nothing on screen and must not throw the page away.
-    if (isAnalyticsRunning()) {
+    if (isAnalyticsOn()) {
       clearAnalyticsStorage();
       window.location.reload();
     }

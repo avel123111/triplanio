@@ -22,10 +22,10 @@ const CAMPAIGN_FIELDS = {
 export const CAMPAIGN_KEYS = [...Object.values(CAMPAIGN_FIELDS), 'camp_ts'];
 
 /**
- * The same marks, as columns on `users`. This is the ONLY attribution that
- * survives a refusal: the mark above rides PostHog, which does not exist until
- * someone consents, while these are account data written once at signup
- * (TRIP-311). Same map, one parser per query string.
+ * The same marks, as columns on `users` — one parameter short, since there is no
+ * column for `utm_content`. This is the ONLY attribution that survives a refusal:
+ * the mark above rides PostHog, which does not exist until someone consents,
+ * while these are account data written once at signup (TRIP-311).
  */
 const SIGNUP_COLUMNS = {
   utm_source: 'signup_utm_source',
@@ -65,18 +65,30 @@ export function resolveCampaign(search, storedTs, now) {
  * @returns {Record<string, string> | null}  null when the URL carries no campaign
  */
 function readCampaignParams(search) {
+  const out = readParams(search, CAMPAIGN_FIELDS);
+
+  // Trigger on source / campaign / gclid. Requiring utm_campaign would drop
+  // exactly the paid clicks we need: Google auto-tagging sends gclid alone.
+  return (out?.camp_source || out?.camp_campaign || out?.camp_gclid) ? out : null;
+}
+
+/**
+ * Pull one field map out of a query string, trimmed and capped. The single place
+ * the cap is applied to URL input, so the two maps cannot drift apart on it.
+ * @param {string} search
+ * @param {Record<string, string>} fields  query parameter → output key
+ * @returns {Record<string, string> | null}  null when none of them are present
+ */
+function readParams(search, fields) {
   // URLSearchParams never throws on a string, however mangled the query is.
   const params = new URLSearchParams(search);
 
   const out = {};
-  for (const [param, key] of Object.entries(CAMPAIGN_FIELDS)) {
+  for (const [param, key] of Object.entries(fields)) {
     const value = (params.get(param) || '').trim().slice(0, MAX_VALUE_LEN);
     if (value) out[key] = value;
   }
-
-  // Trigger on source / campaign / gclid. Requiring utm_campaign would drop
-  // exactly the paid clicks we need: Google auto-tagging sends gclid alone.
-  return (out.camp_source || out.camp_campaign || out.camp_gclid) ? out : null;
+  return Object.keys(out).length ? out : null;
 }
 
 /**
@@ -87,11 +99,7 @@ function readCampaignParams(search) {
  * @returns {Record<string, string> | null}  null when the URL carries no marks
  */
 export function readSignupAttribution(search) {
-  const params = new URLSearchParams(search);
-
-  const raw = {};
-  for (const [param, column] of Object.entries(SIGNUP_COLUMNS)) raw[column] = params.get(param);
-  return pickSignupAttribution(raw);
+  return readParams(search, SIGNUP_COLUMNS);
 }
 
 /**

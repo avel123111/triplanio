@@ -161,16 +161,17 @@ export const AuthProvider = ({ children }) => {
             email: authUser.email,
             full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
             avatar_url: authUser.user_metadata?.avatar_url || null,
-            // Where this account came from (TRIP-311). Written here, at the ONE
-            // birth point of a user, and NOT in the login buttons: there are
-            // three OAuth entries plus email, and the fourth would be forgotten
-            // the day it is added — the same reason `user_signed_up` lives here.
+            // Where this account came from (TRIP-311). WRITTEN here, at the one
+            // birth point of a user — the same reason `user_signed_up` lives
+            // here rather than in the login buttons. (Capturing the marks before
+            // an OAuth redirect does have to happen per button: once the provider
+            // replaces the document there is no choke point left.)
             // Account data, not tracking: recorded whatever the visitor answered
             // on the cookie banner. Email carries the marks through auth metadata
-            // (they survive confirming on another device); every other entry
-            // keeps them in the same tab, where the start-of-visit snapshot still
-            // holds them. Filtered through pickSignupAttribution, never spread
-            // raw — `user_metadata` is client-owned.
+            // (they survive confirming on another device); OAuth recovers them
+            // from the stash left behind before the redirect. Filtered through
+            // pickSignupAttribution, never spread raw — `user_metadata` is
+            // client-owned, so an unfiltered spread would set any column.
             ...(pickSignupAttribution(authUser.user_metadata?.signup_attribution) || getSignupAttribution() || {}),
           })
           .select()

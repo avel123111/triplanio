@@ -13,7 +13,7 @@
 // TRIP-227 hangs GTM / GA4 / ad pixels off `applyConsent` — one place, so the
 // second entry point never appears.
 import posthog from 'posthog-js';
-import { startAnalytics, syncCampaignToPerson } from '@/lib/analytics';
+import { isAnalyticsOn, startAnalytics, syncCampaignToPerson } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -29,8 +29,11 @@ const openListeners = new Set();
 // a stale key still steers the next init.
 const POSTHOG_KEY = /^(ph_|__ph_opt_in_out_|dmn_chk_)/;
 
+// The production split, shared with main.jsx (the canon inspector is off here for
+// the same reason). One list — the two copies that used to sit side by side drift
+// the day a domain is added.
 const PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com']);
-const isProdHost = PROD_HOSTS.has(window.location.hostname);
+export const isProdHost = PROD_HOSTS.has(window.location.hostname);
 // True local `vite dev` is the ONLY place without the vercel.json /ingest rewrite.
 const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 // dev / preview stay silent by default so the single (free-tier) project isn't
@@ -38,11 +41,6 @@ const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname
 const analyticsEnabledHere =
   isProdHost || ['1', 'true'].includes(import.meta.env.VITE_POSTHOG_ENABLE_DEV);
 const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
-
-// A second init() is a no-op that logs a raw console.warn (the one PostHog
-// message not behind its debug flag), so a double-click on "Accept all" would
-// show up in production consoles.
-let started = false;
 
 /**
  * The visitor's current answer, or null when there isn't a usable one.
@@ -69,13 +67,6 @@ export function setConsent(accepted) {
   return record;
 }
 
-/** Forget the answer. Only used on the way to asking again. */
-export function clearConsent() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch { /* nothing stored, nothing to forget */ }
-}
-
 /**
  * Show the panel again — what "Cookie settings" does. Deliberately changes
  * NOTHING on its own: opening your settings must not cost you the choice you
@@ -93,14 +84,6 @@ export function subscribeConsentOpen(listener) {
 }
 
 /**
- * Whether PostHog is live in THIS document. There is no way to un-init it, so
- * this is what decides if withdrawing consent needs a reload to take effect.
- */
-export function isAnalyticsRunning() {
-  return started;
-}
-
-/**
  * Put the app in the state the record describes. Safe to call on every start:
  * it starts PostHog at most once and sends no opt-in event.
  *
@@ -109,12 +92,15 @@ export function isAnalyticsRunning() {
  *   appears immediately instead of waiting for the next auth cycle.
  */
 export function applyConsent(record, uid) {
-  if (!record?.analytics) return;
+  if (!record) return;
 
+  // Sent for a refusal too, not only for a yes. It matches the `denied` default
+  // from index.html today, but leaving it out would mean withdrawing consent
+  // never tells Google anything — and once TRIP-227 has tags loaded, silence is
+  // the wrong signal.
   updateGoogleConsent(record);
 
-  if (started || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
-  started = true;
+  if (!record.analytics || isAnalyticsOn() || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
 
   posthog.init(POSTHOG_TOKEN, {
     // Same-origin proxy path (TRIP-265). Post to `${origin}/ingest` on EVERY host
@@ -149,9 +135,10 @@ export function applyConsent(record, uid) {
 }
 
 /**
- * Remove everything PostHog stored on this device. Runs on every start without a
- * usable answer (revoke included, since revoking reloads) — which is also what
- * clears the keys set before this ticket shipped, with no separate migration.
+ * Remove everything PostHog stored on this device. Two callers: every start
+ * without a usable answer — which is what clears the keys set before this ticket
+ * shipped, with no separate migration — and the banner, when someone withdraws a
+ * consent that had already started PostHog.
  */
 export function clearAnalyticsStorage() {
   try {
@@ -183,8 +170,9 @@ function cookieDomainAttrs() {
 /**
  * Tell Google what it may use. The stub and the `denied` default live inline in
  * index.html so they run before any tag loads; this is only the update.
- * Advertising signals move with `marketing` because the banner names advertising
- * in the same sentence — TRIP-227 adds the tags, not another consent decision.
+ * Advertising signals move with `marketing`, which today always equals
+ * `analytics` — the banner asks about both in one sentence. They stay separate
+ * fields because TRIP-227 splits the question, and then only this file changes.
  */
 function updateGoogleConsent(record) {
   const ads = record.marketing ? 'granted' : 'denied';
