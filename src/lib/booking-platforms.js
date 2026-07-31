@@ -6,6 +6,14 @@
  * Ensure a URL has an http(s) scheme. Returns null for empty/invalid input.
  * Prevents relative-path navigation (e.g. "your.booking.com" being
  * resolved against the current page).
+ *
+ * SECURITY, do not "improve" this: anything that is not already http(s) gets the
+ * scheme PREPENDED, so a stored `javascript:…` comes back as the dead-but-inert
+ * `https://javascript:…`. Every `href` built from a DB-stored URL relies on that
+ * (document links in DocsLens / DocumentsField / EventViewBody, TRIP-281) —
+ * React 18 does NOT block javascript: URLs, its check is a dev-only warning.
+ * Teaching this function to pass through "URLs that already have a scheme" would
+ * silently re-open stored XSS.
  */
 export function normalizeExternalUrl(url) {
   if (!url || typeof url !== 'string') return null;

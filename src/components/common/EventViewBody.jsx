@@ -22,7 +22,7 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate, invalidateTripData } from '@/lib/trip-data';
-import { uploadTripFiles, persistEntityDocuments } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, persistEntityDocuments } from '@/lib/documentMutations';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { cityLabel } from '@/lib/trip-cities';
@@ -255,7 +255,7 @@ function HotelBody({ entity, docs = [] }) {
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
+              <a key={`${d.file_url}-${i}`} href={normalizeExternalUrl(d.file_url)} target="_blank" rel="noreferrer" className="doc-row">
                 <div className="di"><FileText /></div>
                 <b>{d.file_name || t('event.file_word')}</b>
                 {d.file_size && <span className="ds">{d.file_size}</span>}
@@ -401,7 +401,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
+              <a key={`${d.file_url}-${i}`} href={normalizeExternalUrl(d.file_url)} target="_blank" rel="noreferrer" className="doc-row">
                 <div className="di"><FileText /></div>
                 <b>{d.file_name || t('event.file_word')}</b>
                 {d.file_size && <span className="ds">{d.file_size}</span>}
@@ -479,7 +479,7 @@ function ActivityBody({ entity, docs = [] }) {
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
+              <a key={`${d.file_url}-${i}`} href={normalizeExternalUrl(d.file_url)} target="_blank" rel="noreferrer" className="doc-row">
                 <div className="di"><FileText /></div>
                 <b>{d.file_name || t('event.file_word')}</b>
                 {d.file_size && <span className="ds">{d.file_size}</span>}
@@ -757,15 +757,11 @@ export function useEntityDocs(kind, entity, canEdit) {
   async function uploadFiles(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
-    const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
-    if (tooBig) { toast({ description: t('event.file_too_big10'), variant: 'warning' }); return; }
     setUploading(true);
     try {
-      // Upload never returns a doc with an empty file_url (was `|| ''`); failed
-      // uploads / missing URLs come back as errors and are surfaced, not masked.
       const { uploaded, errors } = await uploadTripFiles(entity.trip_id, files);
       for (const e of errors) {
-        toast({ description: t('doc.upload_failed', { name: e.file.name }), variant: 'destructive' });
+        toast({ description: uploadErrorText(e, t), variant: 'destructive' });
       }
       if (!uploaded.length) return;
 
@@ -924,7 +920,7 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
             {docs.map((d, i) => (
               <a
                 key={`${d.file_url}-${i}`}
-                href={d.file_url}
+                href={normalizeExternalUrl(d.file_url)}
                 target="_blank"
                 rel="noreferrer"
                 className="doc-row"

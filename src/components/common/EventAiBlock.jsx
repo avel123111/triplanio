@@ -17,6 +17,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
+import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
 import {
   Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
   RefreshCw, ChevronUp, Check,
@@ -67,6 +68,11 @@ export default function EventAiBlock({
     if (!list?.length) return;
     setError(null);
     const incoming = Array.from(list).filter((f) => {
+      // `accept` only filters the picker dialog, not drag-and-drop (TRIP-281).
+      if (!isAllowedUpload(f, ALLOWED_PARSER_EXTENSIONS)) {
+        setError(t('doc.bad_format', { name: f.name }));
+        return false;
+      }
       if (f.size > MAX_FILE_BYTES) {
         setError(t('event.ai_file_too_big5', { name: f.name }));
         return false;
@@ -327,7 +333,7 @@ export default function EventAiBlock({
         type="file"
         multiple
         style={{ display: 'none' }}
-        accept=".pdf,image/*"
+        accept={PARSER_ACCEPT}
         onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
       />
     </div>

@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { uploadTripFiles } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { Icon } from '@/design/icons';
-import { fileType } from '@/lib/fileType';
+import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
+import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
@@ -22,8 +23,7 @@ export default function DocumentsField({
   maxFiles = null,
   label = '',
   iconColor = 'var(--brand)',
-  accept = '*',
-  maxFileSizeMb = 10,
+  accept = UPLOAD_ACCEPT,
   bare = false,
 }) {
   const { toast } = useToast();
@@ -49,24 +49,13 @@ export default function DocumentsField({
     const remaining = maxFiles === null ? files.length : Math.max(0, maxFiles - docs.length);
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
-    const oversize = toUpload.find(f => f.size > maxFileSizeMb * 1024 * 1024);
-    if (oversize) {
-      toast({
-        title: t('doc.file_too_big_title'),
-        description: t('doc.max_size', { mb: maxFileSizeMb }),
-        variant: 'destructive',
-      });
-      return;
-    }
     setUploadingWithCb(true);
     try {
-      // Shared upload: long-lived signed URLs, and never a doc with an empty
-      // file_url (was `|| ''`) — a missing URL surfaces as an error instead.
       const { uploaded, errors } = await uploadTripFiles(tripId, toUpload);
       for (const e of errors) {
         toast({
           title: t('event.ai_upload_error'),
-          description: e.reason === 'upload' && e.message ? e.message : t('doc.upload_failed', { name: e.file.name }),
+          description: uploadErrorText(e, t),
           variant: 'destructive',
         });
       }
@@ -115,7 +104,7 @@ export default function DocumentsField({
                 <Icon name="file" size={14} />
               </span>
               <a
-                href={d.file_url}
+                href={normalizeExternalUrl(d.file_url)}
                 target="_blank"
                 rel="noreferrer"
                 className="dl-upitem__n"
@@ -162,7 +151,7 @@ export default function DocumentsField({
               <b>{docs.length === 0
                 ? t('doc.upload_label')
                 : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
-              <span>{t('doc.upload_formats', { mb: maxFileSizeMb })}</span>
+              <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
             </>
           )}
         </div>

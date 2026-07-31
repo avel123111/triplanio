@@ -40,6 +40,27 @@ async function getRequestUser(req: Request) {
 
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/parse-booking';
 
+const STORAGE_ORIGIN = new URL(Deno.env.get('SUPABASE_URL')!).origin;
+
+/**
+ * Is this a URL for an object in OUR Storage? (TRIP-281)
+ *
+ * `fileUrls` is handed straight to the Mistral OCR node in n8n, which downloads
+ * whatever address it is given. Unchecked, a caller could aim it at any host —
+ * making us pay to fetch it, or reaching something only n8n can see (SSRF). The
+ * browser only ever sends URLs minted by `createSignedUrl`, so pinning them to
+ * our own storage origin costs nothing legitimate.
+ */
+function isOwnStorageUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    return url.origin === STORAGE_ORIGIN && url.pathname.startsWith('/storage/v1/object/');
+  } catch {
+    return false; // not a URL at all
+  }
+}
+
 Deno.serve(withHandler('parseBookingWithAi', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
@@ -51,6 +72,9 @@ Deno.serve(withHandler('parseBookingWithAi', async (req, corsHeaders) => {
     }
     if (!Array.isArray(fileUrls)) {
       return Response.json({ error: 'fileUrls must be an array' }, { status: 400, headers: corsHeaders });
+    }
+    if (!fileUrls.every(isOwnStorageUrl)) {
+      return Response.json({ error: 'fileUrls must point at Triplanio storage' }, { status: 400, headers: corsHeaders });
     }
     if (fileUrls.length === 0 && !(text && String(text).trim())) {
       return Response.json({ error: 'Provide at least one file or some text' }, { status: 400, headers: corsHeaders });
