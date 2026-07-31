@@ -1,0 +1,24 @@
+-- TRIP-311 hotfix — registration is broken on prod: the profile row cannot be
+-- created, so a confirmed new user is bounced back to the landing page.
+--
+-- WHY. `public.users` does NOT carry a table-wide INSERT/UPDATE grant for
+-- `authenticated`. Write access is granted COLUMN BY COLUMN, deliberately: that
+-- is what stops a signed-in person from setting their own `subscription_status`
+-- and handing themselves Pro. Adding a column therefore does NOT make it
+-- writable — it lands on the closed side by default.
+--
+-- 20260730211206_trip311_signup_attribution added the four `signup_*` columns
+-- but no grants, while AuthContext started sending them in the very INSERT that
+-- creates the profile. Postgres refuses the whole statement with
+-- "permission denied for table users" (that is how a column-level refusal is
+-- reported), the insert throws, AuthContext falls into its catch, and the user
+-- ends up unauthenticated on the landing page. Confirmed on prod: dozens of
+-- these errors in the Postgres log at the exact minutes of a real signup, and
+-- an auth.users row with a confirmed email and no matching public.users row.
+--
+-- INSERT only, no UPDATE: this is the birth fact of the account, written once
+-- when the profile is created and never touched again (see the column comments
+-- in the migration that added them). Keeping UPDATE out means a later bug — or
+-- a curious user with the anon key — cannot rewrite where a signup came from.
+grant insert (signup_utm_source, signup_utm_medium, signup_utm_campaign, signup_gclid)
+  on public.users to authenticated;
