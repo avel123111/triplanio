@@ -4895,11 +4895,9 @@ h4,
 
 /* ============================================================
    CONSENT BANNER (TRIP-311)
-   Non-modal by design: no scrim, no close affordance, no focus trap. Ignoring it
-   must leave the app fully usable, otherwise it reads as a cookie wall — which
-   is also why it never uses the .sheet canon (modal, z-201 + scrim).
-   z-index 96: above the mobile nav (95) so its buttons are never covered, below
-   toasts (100) and dialogs (200/201). Surface mirrors .toast on purpose.
+   Non-modal: no scrim, no close, no focus trap — ignoring it must leave the app
+   usable. z-index 96 sits above the mobile nav (95), below toasts (100) and
+   dialogs (200/201). Surface mirrors .toast.
    ============================================================ */
 .consent {
   position: fixed; z-index: 96; left: 16px; bottom: 16px;
@@ -4919,11 +4917,16 @@ h4,
    and "Solo las necesarias" does not fit a half-width column on a 360px screen. */
 .consent__actions .btn { white-space: normal; }
 @media (max-width: 640px) {
-  /* Full width, clear of the bottom-nav dock (60px + its 8px + safe-area). The
-     offset is unconditional — the nav is not on every screen, but one rule for
-     every screen beats a per-route list of exceptions. */
+  /* Full width, sitting on the bottom edge like any other fixed panel. */
   .consent {
     left: 12px; right: 12px; width: auto; max-width: none;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Lifted only while something owns the bottom edge - the nav dock, or the chat
+     composer on the lens that hides the nav. MobileBottomNav sets the class; a
+     class rather than :has(), which the Firefox 104 build target predates.
+     Approximate for chat: the composer grows with the text. */
+  .has-bottom-dock .consent {
     bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
   }
 }
