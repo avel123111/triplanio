@@ -1,10 +1,15 @@
 /**
  * Classify a file by extension for the colour-coded type badge (.dl-ftag--<type>).
- * Shared by the documents lens (DocsLens) and the reusable DocumentsField so the
- * upload field looks identical everywhere (TRIP-275).
+ * Shared by the documents lens, the reusable DocumentsField and the event read
+ * view, so an attachment carries the same badge everywhere (TRIP-275, TRIP-281).
+ *
+ * Nullish-safe on purpose: the name comes out of a jsonb `documents[]` entry,
+ * where nothing forces `file_name` to be present. A default parameter would
+ * cover only `undefined` and let an explicit `null` throw — taking down the
+ * whole screen over a missing label. Same read as `extensionOf` below.
  */
-export function fileType(name = '') {
-  const ext = (name.split('.').pop() || '').toLowerCase();
+export function fileType(name) {
+  const ext = (String(name ?? '').split('.').pop() || '').toLowerCase();
   if (ext === 'pdf') return 'pdf';
   if (['doc', 'docx'].includes(ext)) return 'doc';
   if (['xls', 'xlsx', 'csv'].includes(ext)) return 'xls';

@@ -58,6 +58,15 @@ test('every accepted extension gets a real type badge', () => {
   }
 });
 
+test('a document without a name falls back to the generic badge, it does not throw', () => {
+  // `file_name` is a plain jsonb field — nothing forces it to be there, and every
+  // surface that draws the badge renders inside the row it labels. Throwing here
+  // takes down the whole event view over a missing label (Codex review, TRIP-281).
+  for (const missing of [null, undefined, '']) {
+    assert.equal(fileType(missing), 'file', String(missing));
+  }
+});
+
 // The enforcing gate is `allowed_mime_types` on the buckets, and it lives in SQL.
 // Read the migration back rather than pin a copy here: an extension added to
 // fileType.js without its type in the migration then fails the build instead of

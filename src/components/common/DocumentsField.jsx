@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { Icon } from '@/design/icons';
-import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
+import { UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -100,9 +101,7 @@ export default function DocumentsField({
         <div className="dl-uplist">
           {docs.map((d, i) => (
             <div key={`${d.file_url}-${i}`} className="dl-upitem">
-              <span className={`dl-ftag dl-ftag--${fileType(d.file_name)}`}>
-                <Icon name="file" size={14} />
-              </span>
+              <FileTypeBadge name={d.file_name} />
               <a
                 href={normalizeExternalUrl(d.file_url)}
                 target="_blank"

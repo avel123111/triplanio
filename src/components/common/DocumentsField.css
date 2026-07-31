@@ -1,6 +1,7 @@
 /* DocumentsField — ported off Tailwind onto Lumo tokens (TRIP-53 / ретайр Tailwind, Этап 1).
    The upload field (dropzone + file rows) reuses the DocsLens reference classes
-   .dl-dropzone / .dl-uplist / .dl-upitem / .dl-ftag (DocsLens.css) so it looks
+   .dl-dropzone / .dl-uplist / .dl-upitem (DocsLens.css) plus the app-wide
+   .dl-ftag badge (design/app.css) so it looks
    identical everywhere (TRIP-275). Only the card wrapper is defined here. */
 
 /* card wrapper (non-bare) — роль panel на канонических токенах поверхностей (TRIP-189) */
