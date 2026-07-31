@@ -17,7 +17,7 @@ export default function MapControls({ projection, onToggleProjection, scheme, on
     <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {buttons.map((b) => (
         <button key={b.key} type="button" onClick={b.onClick} title={b.title} aria-label={b.title}
-          style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--sh-1)' }}>
+          style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--sh-1)' }}>
           <Icon name={b.icon} size={17} />
         </button>
       ))}

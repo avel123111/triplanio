@@ -688,7 +688,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0' }}>
-        {[1, 2, 3].map(i => <Skeleton key={i} style={{ height: 80, borderRadius: 12 }} />)}
+        {[1, 2, 3].map(i => <Skeleton key={i} style={{ height: 80, borderRadius: 'var(--r-sm)' }} />)}
       </div>
     );
   }
@@ -804,10 +804,10 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {noExpenses && (
         <div style={{
           marginTop: missingCurrencies.length > 0 ? 14 : 4, marginBottom: 18, padding: 24,
-          background: 'var(--surface)', border: '1.5px dashed var(--line-strong)', borderRadius: 14,
+          background: 'var(--surface)', border: '1.5px dashed var(--line-strong)', borderRadius: 'var(--r-btn)',
           display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap',
         }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--primary-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 'var(--r-btn)', background: 'var(--primary-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="wallet" size={24} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>

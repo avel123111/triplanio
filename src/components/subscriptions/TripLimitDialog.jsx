@@ -100,7 +100,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
       <DialogContent className="dlg--wide" aria-describedby={undefined}>
         <div style={{ padding: 20, overflowY: 'auto', maxHeight: 'calc(90vh - 32px)', WebkitOverflowScrolling: 'touch' }}>
           {/* Hero */}
-          <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
+          <div style={{ position: 'relative', borderRadius: 'var(--r-btn)', overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
             background: 'linear-gradient(110deg, var(--brand-ink) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 55%, white) 120%)', color: 'white' }}>
             <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>PRO</Badge>
             <DialogTitle asChild>
@@ -114,14 +114,14 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           </div>
 
           {/* Info strip */}
-          <div className="t-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 16, color: 'var(--muted)' }}>
+          <div className="t-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', marginBottom: 16, color: 'var(--muted)' }}>
             <Icon name="info" size={14} style={{ flexShrink: 0 }} />
             {t('sub.limit_info')}
           </div>
 
           {/* Two columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 16 }}>
+            <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: 16 }}>
               <div className="t-micro" style={{ color: 'var(--muted)', marginBottom: 12 }}>{t('sub.limit_now_free')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {freeRows.map((r, i) => (
@@ -133,7 +133,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
                 ))}
               </div>
             </div>
-            <div style={{ border: '1.5px solid var(--pro)', borderRadius: 12, padding: 16, background: 'var(--pro-soft)' }}>
+            <div style={{ border: '1.5px solid var(--pro)', borderRadius: 'var(--r-sm)', padding: 16, background: 'var(--pro-soft)' }}>
               <div className="t-micro" style={{ color: 'var(--pro-ink)', marginBottom: 12 }}>PRO</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proRows.map((node, i) => (

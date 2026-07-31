@@ -337,27 +337,27 @@ function HomeSkeleton({ viewMode }) {
     <>
       <div className="head">
         <div className="head__row">
-          <Skeleton w={60} h={60} r={16} />
+          <Skeleton w={60} h={60} r={'var(--r-md)'} />
           <div className="grow">
-            <Skeleton w={220} h={32} r={8} style={{ marginBottom: 10 }} />
+            <Skeleton w={220} h={32} r={'var(--r-sm)'} style={{ marginBottom: 10 }} />
             <Skeleton w={260} h={15} r={6} />
           </div>
         </div>
       </div>
-      <Skeleton w="100%" h={86} r={20} />
+      <Skeleton w="100%" h={86} r={'var(--r-xl)'} />
       <div className="dash-hero" style={{ marginTop: 18 }}>
-        <Skeleton w="100%" h={340} r={24} />
+        <Skeleton w="100%" h={340} r={'var(--r-card)'} />
         <div className="rail">
-          <Skeleton w="100%" h={150} r={20} />
-          <Skeleton w="100%" h={120} r={20} />
+          <Skeleton w="100%" h={150} r={'var(--r-xl)'} />
+          <Skeleton w="100%" h={120} r={'var(--r-xl)'} />
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <Skeleton w={170} h={26} r={8} style={{ marginBottom: 8 }} />
+          <Skeleton w={170} h={26} r={'var(--r-sm)'} style={{ marginBottom: 8 }} />
           <Skeleton w={140} h={14} r={6} />
         </div>
-        <Skeleton w={150} h={44} r={12} />
+        <Skeleton w={150} h={44} r={'var(--r-sm)'} />
       </div>
       <TripSkeleton viewMode={viewMode} />
     </>
@@ -370,7 +370,7 @@ function TripSkeleton({ viewMode }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
-            <Skeleton w={62} h={46} r={12} />
+            <Skeleton w={62} h={46} r={'var(--r-sm)'} />
             <div style={{ flex: 1 }}>
               <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
               <Skeleton w="32%" h={11} r={4} />

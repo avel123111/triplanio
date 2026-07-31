@@ -45,7 +45,7 @@ export default class AppErrorBoundary extends React.Component {
           background: '#f6f7f9', color: '#374257',
         }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 16, background: '#fee2e2',
+            width: 56, height: 56, borderRadius: 'var(--r-md)', background: '#fee2e2',
             display: 'grid', placeItems: 'center', fontSize: 'var(--fs-h2)',
           }}>⚠️</div>
           <h2 style={{ margin: 0, fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{c.title}</h2>
@@ -55,7 +55,7 @@ export default class AppErrorBoundary extends React.Component {
           <button
             onClick={() => window.location.href = '/'}
             style={{
-              padding: '10px 20px', borderRadius: 10, border: 'none',
+              padding: '10px 20px', borderRadius: 'var(--r-sm)', border: 'none',
               background: '#2167e2', color: 'white', fontWeight: 600,
               fontSize: 'var(--fs-strong)', cursor: 'pointer',
             }}
@@ -64,7 +64,7 @@ export default class AppErrorBoundary extends React.Component {
           </button>
           {import.meta.env.DEV && (
             <pre style={{
-              marginTop: 16, padding: 16, background: '#fff', borderRadius: 8,
+              marginTop: 16, padding: 16, background: '#fff', borderRadius: 'var(--r-sm)',
               border: '1px solid #e2e6ef', fontSize: 'var(--fs-micro)', maxWidth: '100%',
               overflow: 'auto', color: '#374257',
             }}>

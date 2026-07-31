@@ -286,7 +286,7 @@ export default function ForkPartnerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
         <div className="dlg__head">
-          <span style={{ width: 36, height: 36, borderRadius: 9, background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <span style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <ManualIcon style={{ width: 17, height: 17 }} />
           </span>
           <DialogTitle asChild><h2>{t(meta.titleKey)}</h2></DialogTitle>

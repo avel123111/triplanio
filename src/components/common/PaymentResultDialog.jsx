@@ -44,7 +44,7 @@ export default function PaymentResultDialog({
 
               {/* Status icon — 52px per P5 spec */}
               <div style={{
-                width: 52, height: 52, borderRadius: 15,
+                width: 52, height: 52, borderRadius: 'var(--r-btn)',
                 background: isSuccess ? 'var(--success-soft)' : 'var(--danger-soft)',
                 color: isSuccess ? 'var(--success-ink)' : 'var(--danger-ink)',
                 display: 'grid', placeItems: 'center', margin: '0 auto 16px',
@@ -74,7 +74,7 @@ export default function PaymentResultDialog({
 
               {/* Fail: help note */}
               {!isSuccess && (
-                <div className="t-meta" style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 8, color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
+                <div className="t-meta" style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 'var(--r-sm)', color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
                   {t('sub.fail_help')}
                 </div>
               )}

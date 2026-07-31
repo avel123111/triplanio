@@ -120,7 +120,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
         <div className="t-meta" style={{
           position: 'absolute', bottom: 14, left: 14,
           display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px',
-          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
+          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)',
           color: 'var(--muted)', boxShadow: 'var(--sh-1)',
         }}>
           <span style={{ color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
