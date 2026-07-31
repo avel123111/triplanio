@@ -16,7 +16,7 @@ import { writeRows } from '@/lib/trip-data';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { isAllowedUpload } from '@/lib/fileType';
+import { isAllowedUpload, uploadContentType } from '@/lib/fileType';
 
 /** React-query key for a trip's documents list. */
 export const DOCS_KEY = (tripId) => ['trip-docs', tripId];
@@ -46,7 +46,11 @@ export async function uploadTripFiles(tripId, files) {
   for (const file of Array.from(files || [])) {
     if (!isAllowedUpload(file)) { errors.push({ file, reason: 'format' }); continue; }
     const path = tripStoragePath(tripId, file.name);
-    const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
+    // Re-wrapping is the only way to stamp the canonical type (see
+    // uploadContentType): storage-js sends a File as multipart, where the
+    // browser owns the part's Content-Type and `contentType` is ignored.
+    const body = new File([file], file.name, { type: uploadContentType(file) });
+    const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, body);
     if (upErr) { errors.push({ file, reason: 'upload', message: upErr.message }); continue; }
     const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
     if (!urlData?.signedUrl) {

@@ -12,8 +12,15 @@ export function fileType(name = '') {
   return 'file';
 }
 
+const IMAGE_TYPE_BY_EXTENSION = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+  webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', avif: 'image/avif',
+};
+
 /**
- * Extensions accepted by every upload surface (TRIP-281).
+ * Every extension an upload surface accepts, mapped to the MIME type we store it
+ * as (TRIP-281). One dictionary, so "may we take this" and "what do we call it"
+ * cannot drift apart.
  *
  * The boundary is "a browser must never EXECUTE what we hand back": HTML and
  * SVG are the only stored formats a browser runs, so those are what this list
@@ -21,18 +28,24 @@ export function fileType(name = '') {
  * desktop Office plus an explicit "enable content" click), so legacy .doc/.xls
  * stay allowed — travellers really do receive them from agencies.
  *
- * Mirrors the vocabulary of `fileType()` above, so an accepted file always gets
- * a real type badge instead of the generic one.
+ * The keys mirror the vocabulary of `fileType()` above, so an accepted file
+ * always gets a real type badge instead of the generic one. The values must stay
+ * within `allowed_mime_types` on the `trips` bucket (migration 20260731172548),
+ * which is the enforcing gate — fileType.test.js reads that list back to check.
  */
-export const ALLOWED_IMAGE_EXTENSIONS = [
-  'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'avif',
-];
+const UPLOAD_TYPE_BY_EXTENSION = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  csv: 'text/csv',
+  ...IMAGE_TYPE_BY_EXTENSION,
+};
 
-export const ALLOWED_UPLOAD_EXTENSIONS = [
-  'pdf',
-  'doc', 'docx', 'xls', 'xlsx', 'csv',
-  ...ALLOWED_IMAGE_EXTENSIONS,
-];
+export const ALLOWED_IMAGE_EXTENSIONS = Object.keys(IMAGE_TYPE_BY_EXTENSION);
+
+export const ALLOWED_UPLOAD_EXTENSIONS = Object.keys(UPLOAD_TYPE_BY_EXTENSION);
 
 /**
  * Formats the booking parser can read: it only ever OCRs a PDF or a photo, so
@@ -72,8 +85,33 @@ export const PARSER_ACCEPT = toAccept(ALLOWED_PARSER_EXTENSIONS);
  * @returns {boolean}
  */
 export function isAllowedUpload(file, allowed = ALLOWED_UPLOAD_EXTENSIONS) {
+  return allowed.includes(extensionOf(file));
+}
+
+/** Lowercased extension of a file, or '' when it has none. */
+function extensionOf(file) {
   const name = file?.name || '';
   const dot = name.lastIndexOf('.');
-  if (dot < 1) return false; // no extension — we can't tell what it is
-  return allowed.includes(name.slice(dot + 1).toLowerCase());
+  if (dot < 1) return ''; // no extension — we can't tell what it is
+  return name.slice(dot + 1).toLowerCase();
+}
+
+/**
+ * The MIME type an accepted file must be STORED as, or null if we can't tell.
+ *
+ * We label the file by extension because the browser's own label is unreliable:
+ * it comes from the OS MIME table, which differs per machine (a `.csv` arrives
+ * as `text/plain` where Excel isn't registered, an unknown format as
+ * `application/octet-stream`). The bucket allow-list would then reject a file
+ * the extension gate just accepted, and an octet-stream `.pdf` downloads instead
+ * of previewing.
+ *
+ * Not a weakening: the browser derives its own guess from the same extension,
+ * and the bucket allow-list still binds anything uploaded outside the app.
+ *
+ * @param {File} file
+ * @returns {string|null}
+ */
+export function uploadContentType(file) {
+  return UPLOAD_TYPE_BY_EXTENSION[extensionOf(file)] || null;
 }
