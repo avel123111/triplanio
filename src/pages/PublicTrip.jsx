@@ -65,7 +65,6 @@ export default function PublicTrip() {
   // The public reader follows the landing: light theme only.
   useEffect(() => {
     const r = document.documentElement;
-    r.classList.remove('dark');
     r.setAttribute('data-theme', 'light');
   }, []);
 

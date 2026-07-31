@@ -1,6 +1,7 @@
 /* EventEditDialog — ported off Tailwind onto Lumo tokens (TRIP-53 / ретайр Tailwind, Этап 1b).
-   1:1 visual port. radius values mirror the former tailwind.config (rounded-lg = var(--radius),
-   rounded-sm = calc(var(--radius) - 8px)) so the result is pixel-identical. */
+   1:1 visual port. radius values mirror the former tailwind.config (rounded-lg = var(--r-md),
+   rounded-sm = calc(var(--r-md) - 8px)) so the result is pixel-identical. Keep the calc:
+   Tailwind's rounded-sm was 8px here, while our --r-sm is 11px — not the same radius. */
 
 .eed-stack { display: flex; flex-direction: column; gap: 12px; }          /* was space-y-3 */
 .eed-minw0 { min-width: 0; }                                              /* was min-w-0 */
@@ -27,14 +28,14 @@
 /* booking-url input with platform logo (×3 blocks) */
 .eed-inwrap { position: relative; }                                        /* was relative */
 /* logo overlay — was: w-5 h-5 absolute left-2.5 top-1/2 -translate-y-1/2 rounded-sm */
-.eed-inlogo { width: 20px; height: 20px; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); border-radius: calc(var(--radius) - 8px); }
+.eed-inlogo { width: 20px; height: 20px; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); border-radius: calc(var(--r-md) - 8px); }
 .input.eed-in--logo { padding-left: 36px; }                                /* was pl-9 */
 /* platform meta row — was: mt-1.5 flex items-center gap-2 */
 .eed-bkmeta { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
 /* platform pill — was: inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium.
    URL-detected brand-colour tint removed — neutral surface-2 background, favicon is the brand signal. */
 .eed-bkpill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); }
-.eed-bkpill__logo { width: 14px; height: 14px; border-radius: calc(var(--radius) - 8px); }   /* was w-3.5 h-3.5 rounded-sm */
+.eed-bkpill__logo { width: 14px; height: 14px; border-radius: calc(var(--r-md) - 8px); }   /* was w-3.5 h-3.5 rounded-sm */
 /* open link — was: text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 */
 .eed-bkopen { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); text-decoration: none; }
 .eed-bkopen:hover { color: var(--brand); }

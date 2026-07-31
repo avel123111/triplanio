@@ -242,7 +242,7 @@ function HotelBody({ entity, docs = [] }) {
                 <span className="hv-row__ic"><Mail /></span>
                 <span className="hv-row__k t-meta">E-mail</span>
                 <span className="hv-row__sp" />
-                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a>
+                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--brand)' }}>{entity.email}</a>
               </div>
             )}
           </div>

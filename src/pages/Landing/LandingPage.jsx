@@ -616,12 +616,11 @@ function useScrollReveal(ready) {
 export default function LandingPage() {
   const { lang, setLang: setLangCentral } = useI18n();
 
-  // Landing has only a light theme. A dark theme stored from the authed app sets
-  // `.dark` / [data-theme=dark] on <html>, which leaked dark TEXT colors onto the
+  // Landing has only a light theme. A dark theme stored from the authed app
+  // sets [data-theme=dark] on <html>, which leaked dark TEXT colors onto the
   // always-light landing. Force light here.
   useEffect(() => {
     const r = document.documentElement;
-    r.classList.remove('dark');
     r.setAttribute('data-theme', 'light');
   }, []);
 

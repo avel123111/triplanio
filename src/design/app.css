@@ -9,24 +9,22 @@
 
 :root {
   /* ===================================================================
-     SINGLE SOURCE OF TRUTH for color = the shadcn primitive tokens in
-     src/index.css (:root / .dark), authored as HSL triplets so Tailwind
-     alpha modifiers (bg-primary/30 …) keep working. The Atlantic tokens
-     below are the app's *semantic* layer: where an Atlantic token is the
-     same colour as a primitive, it ALIASES it via hsl(var(--…)) instead
-     of repeating the literal. Atlantic-only tokens (ev-*, ink-2, wash*,
-     scales, shadows, easing) are authored here. Do not reintroduce raw
-     hex/palette values in components — bind to a token below.
+     SINGLE SOURCE OF TRUTH for colour — this block and its
+     :root[data-theme="dark"] twin below. Every hue is authored HERE as a
+     literal. There is no second token layer: the shadcn HSL primitives that
+     used to live in src/index.css (:root / .dark) are gone, so a colour can
+     no longer be changed in one layer and stale in the other, and dark mode
+     is driven by ONE mechanism ([data-theme], not a `.dark` class). Legacy
+     names (--radius-*, --shadow-*, --*-soft-12, --wash*) alias the Lumo names
+     so existing components keep working. Do not reintroduce raw hex/palette
+     values in components — bind to a token below (guard 2k enforces this).
      =================================================================== */
-  /* === LUMO TOKENS (values from DESIGN_SYSTEM_LUMO). Core hues alias the
-     shadcn HSL source in index.css; the rest is authored here. Legacy names
-     (--radius-*, --shadow-*, --*-soft-12, --wash*) alias the Lumo names so
-     existing components keep working. === */
   /* Brand / primary */
   --primary-hover: #1C66B4;
   --primary-press: #18579A;
   --primary-ring:  rgba(33,115,200,.28);
-  --brand:        hsl(var(--primary));   /* ← index.css --primary (Lumo #2173C8) */
+  --brand:        #2173C8;
+  --primary-fg:   #fff;                  /* ink ON a --brand surface */
   --brand-600:    var(--primary-hover);
   --brand-700:    var(--primary-press);
   --brand-soft:   rgba(33,115,200,.10);
@@ -43,11 +41,11 @@
   --viator:       #328E6E;  /* Viator brand green — activity state button */
 
   /* Neutrals / surfaces */
-  --ink:    hsl(var(--foreground));      /* ← index.css --foreground (Lumo #272433) */
+  --ink:    #272433;
   --ink-2:  #4A4659;
   --muted:  #7A7689;
   --muted-2:#ABA7B8;
-  --line:   hsl(var(--border));          /* ← index.css --border (Lumo #E9E8F2) */
+  --line:   #E9E8F2;
   --line-2: #F1F0F8;
   --line-strong: #DBD9E7;
   --line-hover: #D2D0E0;
@@ -66,7 +64,7 @@
   --success:   #1F9A66;
   --success-soft: rgba(31,154,102,.12);
   --success-ink: #0C7A4F;
-  --danger:    hsl(var(--destructive));  /* ← index.css --destructive (Lumo #E24A52) */
+  --danger:    #E24A52;
   --danger-soft: rgba(226,74,82,.12);
   --danger-ink: #B41F30;
   --warning:   #E2920E;
@@ -193,6 +191,8 @@
   --primary-hover: #8AC1FF;
   --primary-press: #A8D2FF;
   --primary-ring:  rgba(111,178,255,.36);
+  --brand:        #6FB2FF;
+  --primary-fg:   #08182B;               /* ink ON a --brand surface — dark */
   --brand-soft:   rgba(111,178,255,.14);
   --brand-soft-12:rgba(111,178,255,.22);
   --map-route:    #6FB2FF;   /* concrete hex for Mapbox line paint — dark; mirrors --brand */
@@ -205,9 +205,11 @@
   --viator:       #2FA07C;  /* Viator green — dark theme */
 
   /* Neutrals / surfaces — dark */
+  --ink:    #EDECF4;
   --ink-2:  #C4C1D2;
   --muted:  #8C88A0;
   --muted-2:#5F5C72;
+  --line:   #33313F;
   --line-2: #262533;
   --line-strong: #403E4F;
   --line-hover: #3E3C4D;
@@ -226,6 +228,7 @@
   --success:   #3CC489;
   --success-soft: rgba(60,196,137,.16);
   --success-ink: #6FD6A8;
+  --danger:    #F26A72;
   --danger-soft: rgba(242,106,114,.16);
   --danger-ink: #F89AA0;
   --warning:   #F0B24A;
@@ -1131,9 +1134,10 @@ h4,
    ================================================================= */
 /* ===== Buttons — Lumo primitive layer (--bg/--fg/--bd variant model).
    Single base + one consistent hover (lift) / active (scale) / focus ring;
-   variants only swap the three vars. Translated to app tokens: Lumo's
-   var(--primary) → --brand (the real color; --primary is an HSL triple),
-   var(--primary-fg) → #fff. ===== */
+   variants only swap the three vars. Translated to app tokens: the Lumo
+   kit's own var(--primary) → --brand; its var(--primary-fg) → the literal
+   #fff — NOT our --primary-fg token, which flips to dark ink in dark theme
+   while the filled button keeps white text in both. ===== */
 .btn {
   --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -1487,7 +1491,7 @@ h4,
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--primary-soft); color: var(--brand); }
 .badge--solid { background: var(--brand); color: white; }
-.badge--count { background: var(--brand); color: hsl(var(--primary-foreground)); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
+.badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
 .badge--outline { background: transparent; color: var(--muted); border: 1.5px solid var(--line-strong); }
 .badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
@@ -1685,7 +1689,9 @@ h4,
   .mbnav__fab {
     position: relative; transform: translateY(-15px); width: 56px; height: 56px; border-radius: 50%;
     border: 0; cursor: pointer; display: grid; place-items: center; color: #fff; -webkit-tap-highlight-color: transparent;
-    background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--brand) 82%, #fff) 0%, var(--brand) 46%, var(--brand-press, var(--brand)) 100%);
+    /* last stop was var(--brand-press, var(--brand)) — --brand-press has never
+       existed, so it always rendered as --brand; spelled out, same pixels. */
+    background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--brand) 82%, #fff) 0%, var(--brand) 46%, var(--brand) 100%);
     box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--brand) 72%, transparent), 0 4px 10px -2px rgba(15,23,42,.3), inset 0 1px 0 rgba(255,255,255,.4);
     transition: transform .16s var(--ease-spring), box-shadow .2s;
   }
@@ -2730,7 +2736,7 @@ h4,
     .te-stepper { display: inline-flex; align-items: center; gap: 3px; background: transparent; border: 0; border-radius: var(--r-pill); padding: 3px; justify-self: center; transition: background .14s var(--ease-out); }
     .te-row:hover .te-stepper { background: var(--surface-2); }
     .te-row:hover .te-step { opacity: 1; }
-    .te-step { width: 26px; height: 26px; border: 0; background: transparent; border-radius: 50%; color: var(--primary); cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .14s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
+    .te-step { width: 26px; height: 26px; border: 0; background: transparent; border-radius: 50%; color: var(--brand); cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .14s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-step:hover { background: var(--surface); }
     .te-step:active:not(:disabled) { transform: scale(0.9); }
     .te-step:disabled { color: var(--muted-2); cursor: default; }
@@ -2744,7 +2750,7 @@ h4,
        boxes; they surface on row hover or keyboard focus. */
     .te-cellbtn--ghost { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
     .te-row:hover .te-cellbtn--ghost { opacity: 1; }
-    .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--primary); outline-offset: 1px; }
+    .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
     /* add-cell hover takes the cell's own event colour (design .edl: hotel=blue, activity=pink) */
     .te-cell--hotel .te-cellbtn--ghost:hover { color: var(--ev-hotel-ink); border-color: var(--ev-hotel); background: var(--ev-hotel-soft); }
     .te-cell--act .te-cellbtn--ghost:hover { color: var(--ev-activity-ink); border-color: var(--ev-activity); background: var(--ev-activity-soft); }
@@ -2855,17 +2861,17 @@ h4,
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
 .gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: 13px; background: transparent; border: 1.5px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
-.gadd:hover { border-color: var(--a, var(--primary)); background: color-mix(in srgb, var(--a, var(--primary)) 8%, transparent); transform: translateY(-1px); }
+.gadd:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); transform: translateY(-1px); }
 .gi { width: 34px; height: 34px; border-radius: 11px; background: var(--secondary); display: grid; place-items: center; color: var(--muted); flex: none; transition: .16s; }
 /* inside a ghost-add the icon is a DASHED placeholder (design-system .gadd .gi) */
 .gadd .gi { width: 34px; height: 34px; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
-.gadd:hover .gi { border-color: var(--a, var(--primary)); color: var(--a, var(--primary)); }
+.gadd:hover .gi { border-color: var(--a, var(--brand)); color: var(--a, var(--brand)); }
 .gt { flex: 1; min-width: 0; }
 .gt b { color: var(--muted); display: block; }
 .gt span { color: var(--muted-2); }
 
 .stepper { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
-.stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--primary); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
+.stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
 .stepper button:hover:not(:disabled) { background: var(--surface); }
 .stepper button:active:not(:disabled) { transform: scale(.9); }
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
@@ -3057,7 +3063,7 @@ h4,
 .statcard .ic {
   width: 32px; height: 32px; border-radius: 11px; flex: none;
   display: grid; place-items: center;
-  background: var(--primary-soft); color: var(--primary);
+  background: var(--primary-soft); color: var(--brand);
 }
 .statcard .ic svg { width: 17px; height: 17px; }
 .statcard .meta { display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 5px; min-width: 0; }
@@ -3133,7 +3139,7 @@ h4,
 /* Today — filled date chip + badge next to the weekday */
 .tl3-today { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); }
 .tl3-day.today .datechip { background: var(--brand); }
-.tl3-day.today .datechip .d, .tl3-day.today .datechip .m { color: hsl(var(--primary-foreground)); opacity: 1; }
+.tl3-day.today .datechip .d, .tl3-day.today .datechip .m { color: var(--primary-fg); opacity: 1; }
 
 .tl3-ev { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
@@ -3412,7 +3418,7 @@ h4,
 .acct-inbox__bd { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .acct-inbox__t { color: var(--ink); }
 .acct-inbox__s { color: var(--muted); }
-.acct-inbox__count { flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--brand); color: hsl(var(--primary-foreground)); display: inline-flex; align-items: center; justify-content: center; }
+.acct-inbox__count { flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--brand); color: var(--primary-fg); display: inline-flex; align-items: center; justify-content: center; }
 .acct-inbox > svg { color: var(--muted); flex: none; }
 .acct-chan--soon { opacity: .7; }
 .acct-chan__chev { color: var(--muted); flex: none; transition: transform .2s var(--ease-out); }
@@ -3640,7 +3646,7 @@ h4,
 .ss-list { max-height: 264px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
 .ss-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; background: transparent; border-radius: 10px; font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; }
 .ss-opt:hover, .ss-opt[data-active] { background: var(--accent); color: var(--accent-ink); }
-.ss-opt .chk { margin-left: auto; flex: none; width: 15px; height: 15px; color: var(--primary); }
+.ss-opt .chk { margin-left: auto; flex: none; width: 15px; height: 15px; color: var(--brand); }
 .ss-empty { padding: 16px; text-align: center; color: var(--muted); }
 /* bigger touch rows when the picker is shown inside a bottom-sheet */
 .sheet .ss-list { max-height: 56vh; }
@@ -3735,7 +3741,7 @@ h4,
 .tc-add:active { transform: scale(.99); }
 .tc-add__ic {
   width: 48px; height: 48px; border-radius: 16px;
-  background: var(--primary-soft); color: var(--primary);
+  background: var(--primary-soft); color: var(--brand);
   display: grid; place-items: center;
   transition: background .2s;
 }
@@ -3808,7 +3814,7 @@ h4,
 .tr--add:active { transform: translateY(0) scale(.995); }
 .tr__addic {
   width: 46px; height: 46px; border-radius: 12px; flex: none;
-  background: var(--primary-soft); color: var(--primary);
+  background: var(--primary-soft); color: var(--brand);
   display: grid; place-items: center;
   transition: background .2s;
 }
@@ -4148,9 +4154,9 @@ h4,
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
 .ev-sec{background:var(--surface-3);border:1px solid var(--line-2);border-radius:var(--r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
-.ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ev-color,var(--primary));}
-.ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--primary));flex:none;}
-.ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
+.ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ev-color,var(--brand));}
+.ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
+.ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
 /* key/value grid */
 .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 .kv{display:flex;flex-direction:column;gap:2px;}
@@ -4188,7 +4194,7 @@ h4,
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
 .hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
 .hv-plat{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:5px 12px 5px 5px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);}
-.hv-plat__ic{width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;background:var(--primary);}
+.hv-plat__ic{width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;background:var(--brand);}
 .hv-plat__ic img{width:100%;height:100%;object-fit:contain;background:#fff;}
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
@@ -4213,7 +4219,7 @@ h4,
 .hv-notes{padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface-2); color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
-.bk-link:hover{background:var(--primary-soft);color:var(--primary);}
+.bk-link:hover{background:var(--primary-soft);color:var(--brand);}
 .bk-link svg{width:12px;height:12px;color:var(--muted);}
 /* warning banner */
 .warn-banner{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;border-radius:12px;background:var(--warning-soft);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent);}
@@ -4226,7 +4232,7 @@ h4,
 /* payment status badges */
 .badge--paid{background:var(--success-soft);color:var(--success-ink);}
 .badge--partial{background:var(--warning-soft);color:var(--warning-ink);}
-.badge--on-arrival{background:var(--primary-soft);color:var(--primary);}
+.badge--on-arrival{background:var(--primary-soft);color:var(--brand);}
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv{display:flex;flex-direction:column;gap:16px;}
@@ -4259,8 +4265,8 @@ h4,
 .tv-carrier__av{width:26px;height:26px;flex:none;border-radius:var(--r-sm);background:var(--ev-transfer);color:#fff;display:flex;align-items:center;justify-content:center;}
 .tv-carrier__nm{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
-.f-sec{ color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
-.f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
+.f-sec{ color:var(--ev-color,var(--brand));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
+.f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
 
@@ -4327,8 +4333,8 @@ h4,
 .lp-h--ev .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
-.sec-lbl .sl { color: var(--ev-ink, var(--primary)); }
-.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--primary-soft); color: var(--primary); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
+.sec-lbl .sl { color: var(--ev-ink, var(--brand)); }
+.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
 .sec-lbl .addmini svg { width: 12px; height: 12px; }
 /* vertical stack used between rows */
 .gy { display: flex; flex-direction: column; gap: 9px; }
@@ -4501,7 +4507,7 @@ h4,
 .head .b1 { width: 280px; height: 280px; background: var(--brand-grad); top: -130px; right: -20px; opacity: .14; }
 .head .b2 { width: 180px; height: 180px; background: var(--ai-gradient); top: -70px; right: 22%; opacity: .10; }
 .head__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
-.head h1 .nm { color: hsl(var(--primary)); }
+.head h1 .nm { color: var(--brand); }
 .head .sub { color: var(--muted); margin-top: 8px; }
 .head .grow { flex: 1; min-width: 160px; }
 
@@ -4526,7 +4532,7 @@ h4,
 .statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
 .statbar .s { flex: 1; min-width: 0; padding: 16px 20px; display: flex; align-items: center; gap: 13px; border-left: 1px solid var(--line-2); }
 .statbar .s:first-child { border-left: 0; }
-.statbar .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--primary); }
+.statbar .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
 .statbar .ic svg { width: 19px; height: 19px; }
 .statbar .s.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .statbar .s.c-trip .ic { background: var(--ev-car-soft); color: var(--ev-car-ink); }
@@ -4559,7 +4565,7 @@ h4,
 .wring { position: relative; flex: none; }
 .wring svg { transform: rotate(-90deg); display: block; }
 .ring__track { fill: none; stroke: var(--surface-2); }
-.ring__fg { fill: none; stroke: hsl(var(--primary)); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease-out); }
+.ring__fg { fill: none; stroke: var(--brand); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease-out); }
 .ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: var(--ink); }   /* TRIP-188: инспектор канонов — «%» кольца акцент→основной (оба кольца, унификация) */
 .ring__c .l { color: var(--muted); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
@@ -4568,7 +4574,7 @@ h4,
 .nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 @media (hover: hover) { .nextcard:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
 .nextcard:active { transform: translateY(0) scale(.995); }
-.nextcard__cover { width: 64px; height: 64px; border-radius: 15px; flex: none; position: relative; overflow: hidden; display: grid; place-items: center; color: hsl(var(--primary-foreground)); }
+.nextcard__cover { width: 64px; height: 64px; border-radius: 15px; flex: none; position: relative; overflow: hidden; display: grid; place-items: center; color: var(--primary-fg); }
 .nextcard__cover svg { width: 24px; height: 24px; position: relative; z-index: 1; }
 .nextcard__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)); }
 .nextcard__tx { flex: 1; min-width: 0; }
@@ -4583,7 +4589,7 @@ h4,
 .cdu span { color: var(--muted); }
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
-.nonext .ic { width: 46px; height: 46px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+.nonext .ic { width: 46px; height: 46px; border-radius: 14px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }
 .nonext b { color: var(--ink); }
 .nonext p { color: var(--muted); margin: 0; }
@@ -4608,7 +4614,7 @@ h4,
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
 .sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s, transform .16s var(--ease-spring); }
 @media (hover: hover) { .sfig:hover { background: var(--surface); box-shadow: var(--sh-1); transform: translateY(-2px); } }
-.sfig .ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); }
+.sfig .ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); }
 .sfig .ic svg { width: 17px; height: 17px; }
 .sfig.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .sfig.c-cont .ic { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
@@ -4655,7 +4661,7 @@ h4,
 .vrow .nm { color: var(--ink); }
 .vrow .s { color: var(--muted); margin-top: 1px; display: block; }
 .vrow .c { margin-left: auto; color: var(--ink-2); background: var(--surface-2); padding: 4px 10px; border-radius: var(--r-pill); }
-.vrow.sel .c { background: var(--primary); color: hsl(var(--primary-foreground)); }
+.vrow.sel .c { background: var(--brand); color: var(--primary-fg); }
 .list-empty { padding: 28px 14px; text-align: center; color: var(--muted); column-span: all; }
 
 /* — records (4 across) — */
@@ -4685,12 +4691,12 @@ h4,
 .cbar .col { width: 100%; max-width: 60px; border-radius: 12px 12px 6px 6px; background: var(--surface-2); min-height: 6px; transition: height .9s var(--ease-out); }
 .cbar.on .col { background: var(--brand-grad); box-shadow: 0 10px 22px -10px var(--primary-ring); }
 .cbar .yr { color: var(--muted); }
-.cbar.on .yr { color: var(--primary); }
+.cbar.on .yr { color: var(--brand); }
 .chart__cap { color: var(--muted); margin-top: 14px; text-align: center; }
 
 /* — empty-state note (ghost stats hint) — */
 .empty-note { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: 18px; }
-.empty-note .en-ic { width: 42px; height: 42px; border-radius: 13px; flex: none; display: grid; place-items: center; background: var(--surface); color: var(--primary); }
+.empty-note .en-ic { width: 42px; height: 42px; border-radius: 13px; flex: none; display: grid; place-items: center; background: var(--surface); color: var(--brand); }
 .empty-note .en-ic svg { width: 22px; height: 22px; }
 .empty-note .en-tx { flex: 1; min-width: 0; }
 .empty-note .en-tx b { color: var(--ink); display: block; }
@@ -4705,7 +4711,7 @@ h4,
 .map-ctl button { width: 34px; height: 34px; border-radius: 11px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(8px); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
 @media (hover: hover) { .map-ctl button:hover { background: var(--surface); box-shadow: var(--sh-1); } }
 .map-ctl button:active { transform: scale(.92); }
-.map-ctl button.on { background: var(--primary); color: hsl(var(--primary-foreground)); border-color: transparent; }
+.map-ctl button.on { background: var(--brand); color: var(--primary-fg); border-color: transparent; }
 .map-ctl svg { width: 17px; height: 17px; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
 .map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 84%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
@@ -4717,9 +4723,9 @@ h4,
 .smk.is-clickable { cursor: pointer; }
 .smk__dot { display: block; width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface), 0 1px 5px rgba(0, 0, 0, .28); transition: transform .12s var(--ease-out); }
 .smk.is-clickable:hover .smk__dot, .smk.is-sel .smk__dot { transform: scale(1.45); }
-.smk--trip .smk__dot { background: hsl(var(--primary)); }
+.smk--trip .smk__dot { background: var(--brand); }
 .smk--future .smk__dot { background: var(--ev-activity); }
-.smk--manual .smk__dot { background: var(--surface); box-shadow: 0 0 0 2.5px hsl(var(--primary)), 0 1px 5px rgba(0, 0, 0, .28); }
+.smk--manual .smk__dot { background: var(--surface); box-shadow: 0 0 0 2.5px var(--brand), 0 1px 5px rgba(0, 0, 0, .28); }
 /* fullscreen: expand the existing singleton-map slot to a fixed overlay (no
    reparent — the same map element just fills the viewport; consumer calls resize) */
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: 100; border-radius: 0; min-height: 0; }
@@ -4743,7 +4749,7 @@ h4,
 .vp-grip { display: none; }
 @media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: 99px; background: var(--line-strong); margin: 10px auto 2px; } }
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
-.vp-h .ic { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex: none; }
+.vp-h .ic { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); flex: none; }
 .vp-h .ic svg { width: 22px; height: 22px; }
 .vp-h.city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .vp-h h3 { color: var(--ink); margin: 0; }
@@ -4758,7 +4764,7 @@ h4,
 .visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line-2); }
 .visit:last-child { border-bottom: 0; }
 .visit .when { flex: none; width: 44px; text-align: center; padding-top: 2px; }
-.visit .when .mo { color: var(--primary); }
+.visit .when .mo { color: var(--brand); }
 .visit .when .yr { color: var(--ink); }
 .visit .info { flex: 1; min-width: 0; }
 .visit .info .dt { color: var(--ink); }
@@ -4771,7 +4777,7 @@ h4,
 .triplink { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 11px; background: var(--surface-2); cursor: pointer; border: 0; font: inherit; color: var(--ink-2); transition: .15s; }
 .triplink .d { width: 16px; height: 16px; border-radius: 5px; flex: none; }
 .triplink svg { width: 14px; height: 14px; color: var(--muted); }
-@media (hover: hover) { .triplink:hover { background: var(--primary-soft); color: var(--primary); } .triplink:hover svg { color: var(--primary); } }
+@media (hover: hover) { .triplink:hover { background: var(--primary-soft); color: var(--brand); } .triplink:hover svg { color: var(--brand); } }
 .vmanual { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 
 /* ===== Fork search + filter toolbar (TRIP-176) — SHARED primitive =====

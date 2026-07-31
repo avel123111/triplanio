@@ -14,10 +14,8 @@ export function ThemeProvider({ children }) {
     const root = document.documentElement;
     const apply = (t) => {
       const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      // Drive BOTH theming systems so they never get out of sync:
-      //  - Tailwind / shadcn keys off the `.dark` class
-      //  - the design system (src/design/app.css) keys off [data-theme="dark"]
-      root.classList.toggle('dark', dark);
+      // [data-theme] is the ONLY theming switch — nothing reads a `.dark`
+      // class any more, so don't reintroduce one alongside it (TRIP-321).
       root.setAttribute('data-theme', dark ? 'dark' : 'light');
       setIsDark(dark);
     };
