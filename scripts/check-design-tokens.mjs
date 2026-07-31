@@ -2,7 +2,7 @@
 /**
  * Design-system guard.
  *
- * Scans src/ for values that bypass the design tokens and reports them in two
+ * Scans src/ for values that bypass the design tokens and reports them in three
  * tiers:
  *   • TYPOGRAPHY  — ENFORCED. Raw font sizes (text-[Npx], font-size:Npx,
  *     inline fontSize:<number>) must come from --fs-* tokens. A violation
@@ -10,6 +10,9 @@
  *     it from regressing.
  *   • COLOR       — ENFORCED (since TRIP-53). Raw hex + raw Tailwind palette
  *     classes fail the check outside COLOR_WHITELIST.
+ *   • LAYERS      — ENFORCED (since TRIP-321). A raw z-index of 10 or more —
+ *     in CSS or as a JSX `zIndex:` prop — is a new unnamed floor outside the
+ *     --z-* ladder and fails the check. Below 10 is a component-local stack.
  *
  * Whitelisted files legitimately carry raw values (external brand colours,
  * Mapbox/canvas paint that needs concrete hex, SVG illustration fills, the
@@ -124,6 +127,12 @@ const WEIGHT_LH_ALLOW = [
 //   • LandingPage      — marketing mockup chrome (fake-app visuals), not semantic app text.
 const TYPO_INLINE_VAR_ALLOW = ['src/components/AppErrorBoundary.jsx', 'src/pages/Landing/LandingPage.jsx'];
 
+// Files allowed a raw z-index (TRIP-321). landing.css is the STANDALONE marketing/
+// legal stylesheet — it is loaded WITHOUT app.css, so the --z-* tokens do not
+// resolve there at all; it owns its own tiny ladder. Anywhere else a raw layer is
+// a bug, and a genuinely local stack takes a per-line `design-token-exempt`.
+const LAYERS_ALLOW = ['public/landing.css'];
+
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {
   textPx:    /text-\[[0-9.]+px\]/,
@@ -146,6 +155,8 @@ const RE = {
   // (WEIGHT_LH_ALLOW). Ранее не сканировался → booking-эйбрау держали .04em мимо
   // канона (TRIP-165 аудит 2026-07-02). Escape для разрядки глифов — design-token-exempt.
   letterSpacingNum:/letter-spacing:\s*-?[0-9.]/,
+  // TRIP-321 — этаж ≥10 обязан быть --z-*. Кавычки: React применяет zIndex:'999'.
+  rawZIndex: /(?:z-index|zIndex):\s*['"]?(\d+)/,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
@@ -162,6 +173,7 @@ function walk(dir, out = []) {
 
 const typo = [];
 const color = [];
+const layers = []; // raw z-index off the --z-* ladder (TRIP-321)
 // Raw-colour count per whitelisted file — the unification worklist (TRIP-321).
 // A whitelisted file that reaches 0 must leave the list; see the header.
 const wlDebt = new Map(COLOR_WHITELIST.map((f) => [f, 0]));
@@ -211,6 +223,11 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
       if (RE.fontWeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (RE.lineHeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (RE.letterSpacingNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+    }
+    // layers — the overlap ladder must stay in --z-* (TRIP-321)
+    if (!dtExempt && !LAYERS_ALLOW.includes(file)) {
+      const z = line.match(RE.rawZIndex);
+      if (z && Number(z[1]) >= 10) layers.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
     // colour — scanned for EVERY file. Outside the whitelist a hit is a
     // violation; inside it, the hit is counted as remaining debt so a file that
@@ -270,6 +287,10 @@ color.slice(0, 40).forEach((l) => console.log('  • ' + l));
 if (color.length > 40) console.log(`  … and ${color.length - 40} more`);
 if (!color.length) console.log('  ✓ none');
 
+console.log(`\nLAYERS (enforced) — ${layers.length} raw z-index off the --z-* ladder:`);
+layers.forEach((l) => console.log('  ✗ ' + l));
+if (!layers.length) console.log('  ✓ none — every stacking layer is a --z-* token');
+
 // ── COLOUR WHITELIST — ratchet + unification worklist (TRIP-321) ──
 // The per-file counts below are the remaining raw-colour debt: this is the
 // Ф2 progress meter, and it is only allowed to go down.
@@ -311,6 +332,6 @@ for (const [a, o] of compAreas) {
 }
 if (!compSum) console.log('  ✓ none — every component text is on a .t-* canon');
 
-const failed = typo.length > 0 || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
+const failed = typo.length > 0 || layers.length > 0 || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
 console.log(`\n${hr}\n${failed ? '✗ FAILED' : '✓ PASSED'}\n${hr}\n`);
 process.exit(failed ? 1 : 0);

@@ -250,7 +250,8 @@ input[type="time"] {
   }
 }
 
-/* Mapbox GL — keep map controls/markers below dialog overlay (Radix uses z-index 50) */
+/* Mapbox GL — keep map controls/markers on a local stack (2), i.e. below every
+   floor of the --z-* ladder in app.css, so a dialog/sheet always covers them. */
 .mapboxgl-canvas { outline: none; }
 .mapboxgl-ctrl-bottom-left,
 .mapboxgl-ctrl-bottom-right { z-index: 2 !important; }

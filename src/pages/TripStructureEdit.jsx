@@ -1018,7 +1018,7 @@ export default function TripStructureEdit() {
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
-          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
+          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
             {showWarn && issues.length > 0 && (
               <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
@@ -1094,7 +1094,7 @@ export default function TripStructureEdit() {
            header or the left menu. Stops at the column seam, leaving the natural gap
            to the map. No scrim: the map (right half) stays interactive. Route rail
            mounted beneath. Desktop two-column only. */
-        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
         .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
         @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
         /* Warnings FAB: lift on hover, press on click. */
