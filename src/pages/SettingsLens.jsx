@@ -564,8 +564,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // Cover replaced/cleared → the previously persisted object is now orphaned.
     // Delete it best-effort, comparing object KEYS (signed-URL tokens differ but
     // the key is stable) so we never delete the key the new cover still uses (TRIP-117).
-    const prevPath = collectDocPaths([], prevCoverUrl)[0];
-    const newPath = collectDocPaths([], fields.cover_image_url)[0];
+    const prevPath = collectDocPaths([{ file_url: prevCoverUrl }])[0];
+    const newPath = collectDocPaths([{ file_url: fields.cover_image_url }])[0];
     if (prevPath && prevPath !== newPath) removeTripFiles([prevPath]);
     track('settings_saved', {
       trip_id: tripId,

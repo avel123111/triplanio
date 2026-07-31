@@ -21,9 +21,8 @@ import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { isAllowedUpload } from '@/lib/fileType';
 import { optimisticContentUpdate, invalidateTripData } from '@/lib/trip-data';
-import { uploadTripFiles, persistEntityDocuments } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, persistEntityDocuments } from '@/lib/documentMutations';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { cityLabel } from '@/lib/trip-cities';
@@ -758,18 +757,13 @@ export function useEntityDocs(kind, entity, canEdit) {
   async function uploadFiles(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
-    // `accept` only filters the picker dialog, not drag-and-drop (TRIP-281).
-    const badFormat = files.find((f) => !isAllowedUpload(f));
-    if (badFormat) { toast({ description: t('doc.bad_format', { name: badFormat.name }), variant: 'warning' }); return; }
     const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
     if (tooBig) { toast({ description: t('event.file_too_big10'), variant: 'warning' }); return; }
     setUploading(true);
     try {
-      // Upload never returns a doc with an empty file_url (was `|| ''`); failed
-      // uploads / missing URLs come back as errors and are surfaced, not masked.
       const { uploaded, errors } = await uploadTripFiles(entity.trip_id, files);
       for (const e of errors) {
-        toast({ description: t('doc.upload_failed', { name: e.file.name }), variant: 'destructive' });
+        toast({ description: uploadErrorText(e, t), variant: 'destructive' });
       }
       if (!uploaded.length) return;
 

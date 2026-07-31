@@ -22,6 +22,9 @@ import '../design/app.css';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Mirrors the `avatars` bucket's own file_size_limit — keep the two in step. */
+const MAX_AVATAR_MB = 5;
+
 // Searchable, scalable language list (Pavel: not fixed-3 — popover with search).
 // Only languages with a real locale bundle are listed; the search/popover UI is
 // ready to scale as more bundles land.
@@ -487,6 +490,12 @@ export default function ScreenAccount() {
     if (!file || !user) return;
     if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) {
       setErrorMsg(t('doc.bad_format', { name: file.name }));
+      return;
+    }
+    // Same ceiling the `avatars` bucket enforces: without this the upload came
+    // back as a raw storage error with nothing the user could act on.
+    if (file.size > MAX_AVATAR_MB * 1024 * 1024) {
+      setErrorMsg(t('doc.max_size', { mb: MAX_AVATAR_MB }));
       return;
     }
     setUploadingAvatar(true);

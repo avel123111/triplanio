@@ -6,7 +6,7 @@
 -- файл ЛЮБОГО типа размером до 52 МБ (в интерфейсе обещано 4–10 МБ). В проде уже
 -- лежали 3 объекта с `content-type: text/html` — фильтр не работал.
 --
--- Что здесь делается, тремя независимыми слоями:
+-- Что здесь делается — независимыми слоями, по одному на блок ниже:
 --
 --  1) Белый список MIME на бакетах. Это ЕДИНСТВЕННЫЙ гейт, который нельзя обойти
 --     из браузера, поэтому именно он несущий; список во фронте (`src/lib/fileType.js`)
@@ -25,11 +25,18 @@
 --
 --  2) Размер на сервере приводится к тому, что обещает интерфейс (10 МБ).
 --
---  3) `trip_documents.file_url` получает проверку СХЕМЫ. Раньше стоял только
---     кэп длины (TRIP-169), поэтому в поле можно было записать `javascript:…`,
---     и клик по «документу» исполнял чужой код на triplanio.com. Фронт уже
---     обезврежен в точках показа, но инвариант формы обязан жить в БД: это
---     единственный слой, который видят все пути записи.
+--  3) Плоские колонки `trip_documents.file_url/file_name` удаляются: они мертвы,
+--     и констрейнт на них выглядел бы защитой, не будучи ею.
+--
+--  4) Схема ссылки на файл получает проверку в БД. Раньше стоял только кэп длины
+--     (TRIP-169), поэтому вместо ссылки писалось `javascript:…`, и клик по
+--     «документу» исполнял чужой код на triplanio.com. Фронт уже обезврежен в
+--     точках показа, но инвариант формы обязан жить в БД: это единственный слой,
+--     который видят все пути записи. Проверка ставится на jsonb-массив
+--     `documents` — именно его пишет и рендерит приложение.
+--
+--  5) Черновые обложки получают папку на пользователя: префикс `_drafts/` был
+--     общим, чужой черновик читался и удалялся.
 
 -- ── 1–2. Бакеты: формат + размер ────────────────────────────────────────────
 DO $$
@@ -71,25 +78,64 @@ BEGIN
    WHERE id = 'avatars';
 END $$;
 
--- ── 3. Схема ссылки на файл ─────────────────────────────────────────────────
--- NOT VALID: проверяем только новые и изменяемые строки. Существующие данные
--- чисты (проверено на проде: 0 записей с иной схемой), но валидация задним
--- числом заблокировала бы таблицу без нужды.
+-- ── 3. Мёртвые колонки trip_documents.file_url / file_name ──────────────────
+-- ddl-guard: allow-destructive — TRIP-281, contract-фаза: плоские `file_url` и
+-- `file_name` не пишет НИКТО (единственный автор строки, DocsLens, кладёт только
+-- title/notes/link_url/documents/visibility/created_by/created_by_name; UPDATE-пути
+-- у таблицы нет вообще), значение NULL у 100% строк за всю историю (прод 7/7,
+-- dev 40/40) и ни одна из шести точек показа их не рендерит — ссылка везде берётся
+-- из массива `documents`. Читатели снимаются этим же коммитом (storageCleanup,
+-- DocsLens, personalDocsTeardown). Индексов, вью и политик на колонках нет;
+-- зависимые кэпы длины `td_file_url_len` / `td_file_name_len` уходят вместе с ними.
 ALTER TABLE public.trip_documents
-  DROP CONSTRAINT IF EXISTS td_file_url_scheme;
+  DROP COLUMN IF EXISTS file_url,
+  DROP COLUMN IF EXISTS file_name;
 
-ALTER TABLE public.trip_documents
-  ADD CONSTRAINT td_file_url_scheme
-  CHECK (file_url IS NULL OR file_url ~* '^https?://') NOT VALID;
+-- ── 4. Схема ссылки на файл ─────────────────────────────────────────────────
+-- Ссылка на загруженный файл живёт в jsonb-массиве `documents` пяти хранилищ.
+-- Подзапрос в CHECK запрещён, но `jsonb_path_exists` IMMUTABLE и работает
+-- выражением, поэтому отдельная функция не нужна: путь выбирает элементы, чей
+-- `file_url` НЕ начинается с http(s), а констрейнт требует, чтобы таких не было.
+-- Регистр не важен (flag "i"), протокол-относительная `//host` тоже отсекается.
+--
+-- Констрейнты ВАЛИДНЫЕ, а не NOT VALID: нарушений 0 в обеих базах (прод 6/45/105/23/6,
+-- dev 23/28/99/36/17 строк с документами), таблицы крошечные, и валидный констрейнт
+-- гарантирует факт, а не только будущее. Легальная запись нарушить его не может —
+-- приложение кладёт сюда подписанный URL Storage, он всегда https.
+DO $$
+DECLARE
+  -- Элемент массива документов со ссылкой не-http(s).
+  bad_url text := 'file_url ? (!(@ like_regex "^https?://" flag "i"))';
+  spec record;
+BEGIN
+  FOR spec IN
+    SELECT * FROM (VALUES
+      ('trip_documents', 'documents', 'td_documents_urls',  '$[*].'),
+      ('hotel_stays',    'documents', 'hs_documents_urls',  '$[*].'),
+      ('transfers',      'documents', 'tr_documents_urls',  '$[*].'),
+      ('activities',     'documents', 'act_documents_urls', '$[*].'),
+      -- У сервисов документы лежат внутри общего мешка `details`.
+      ('trip_services',  'details',   'ts_documents_urls',  '$.documents[*].')
+    ) AS t(tbl, col, cons, path)
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE public.%I DROP CONSTRAINT IF EXISTS %I', spec.tbl, spec.cons);
+    EXECUTE format(
+      'ALTER TABLE public.%I ADD CONSTRAINT %I CHECK (NOT jsonb_path_exists(%I, %L))',
+      spec.tbl, spec.cons, spec.col, spec.path || bad_url);
+  END LOOP;
+END $$;
 
+-- `link_url` — ссылка, которую пользователь вводит руками. Единственный писатель
+-- уже прогоняет её через normalizeExternalUrl, в обеих базах нарушений 0.
 ALTER TABLE public.trip_documents
   DROP CONSTRAINT IF EXISTS td_link_url_scheme;
 
 ALTER TABLE public.trip_documents
   ADD CONSTRAINT td_link_url_scheme
-  CHECK (link_url IS NULL OR link_url ~* '^https?://') NOT VALID;
+  CHECK (link_url IS NULL OR link_url ~* '^https?://');
 
--- ── 4. Черновые обложки — своя папка на пользователя ────────────────────────
+-- ── 5. Черновые обложки — своя папка на пользователя ────────────────────────
 -- Все четыре политики бакета `trips` (TRIP-118) пускали ЛЮБОГО залогиненного в
 -- ВЕСЬ префикс `_drafts/`: чужую отложенную обложку можно было и прочитать, и
 -- удалить. Ключ теперь `_drafts/<userId>/…` (см. `draftStoragePath`), и второй

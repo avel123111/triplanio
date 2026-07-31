@@ -28,22 +28,7 @@ const BUCKET = 'trips';
 
 interface DocRow {
   id: string;
-  documents: Array<{ storage_path?: string | null; file_url?: string | null }> | null;
-  file_url: string | null;
-}
-
-/**
- * Recover a `trips`-bucket object key from a Supabase Storage object URL
- * (signed / public / authenticated). Returns null for non-storage or non-`trips`
- * URLs. Used to best-effort reclaim legacy rows whose only file lives in the
- * top-level `file_url` with no `documents[].storage_path` (risk #3: old base44
- * URLs won't match → such a file is left for the trip-level purge).
- */
-function parseTripsPath(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const m = url.match(/\/object\/(?:sign|public|authenticated)\/trips\/([^?]+)/);
-  if (!m) return null;
-  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+  documents: Array<{ storage_path?: string | null }> | null;
 }
 
 /** All `trips`-bucket object keys referenced by one trip_documents row. */
@@ -53,8 +38,6 @@ function docStoragePaths(row: DocRow): string[] {
   for (const d of docs) {
     if (d && typeof d.storage_path === 'string' && d.storage_path) out.push(d.storage_path);
   }
-  const legacy = parseTripsPath(row.file_url);
-  if (legacy) out.push(legacy);
   return out;
 }
 
@@ -70,7 +53,7 @@ async function referencedPaths(
   if (!opts.tripIds.length) return set;
   const { data, error } = await admin
     .from('trip_documents')
-    .select('id, documents, file_url')
+    .select('id, documents')
     .in('trip_id', opts.tripIds);
   if (error) { console.error('personalDocsTeardown: referencedPaths failed', error); return set; }
   const exclude = new Set(opts.excludeIds);
@@ -112,7 +95,7 @@ export async function purgePrivateDocsForMember(
 
   const { data, error } = await admin
     .from('trip_documents')
-    .select('id, documents, file_url')
+    .select('id, documents')
     .eq('trip_id', tripId)
     .eq('created_by', userId)
     .eq('visibility', 'private');
@@ -147,7 +130,7 @@ export async function collectPrivateDocFiles(
   if (!userId) return { paths: [], tripIds: [], docIds: [] };
   const { data, error } = await admin
     .from('trip_documents')
-    .select('id, trip_id, documents, file_url')
+    .select('id, trip_id, documents')
     .eq('created_by', userId)
     .eq('visibility', 'private');
   if (error) { console.error('personalDocsTeardown: collect (account) failed', error); return { paths: [], tripIds: [], docIds: [] }; }

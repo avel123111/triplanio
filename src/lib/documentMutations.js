@@ -16,6 +16,7 @@ import { writeRows } from '@/lib/trip-data';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
+import { isAllowedUpload } from '@/lib/fileType';
 
 /** React-query key for a trip's documents list. */
 export const DOCS_KEY = (tripId) => ['trip-docs', tripId];
@@ -31,12 +32,19 @@ export const DOCS_KEY = (tripId) => ['trip-docs', tripId];
  * Never throws; returns both the successful docs and per-file failures so the
  * caller can surface them (toast / inline) without losing the good ones.
  *
- * @returns {Promise<{ uploaded: Array<{file_url,file_name,storage_path}>, errors: Array<{file:File, reason:'upload'|'no_url', message?:string}> }>}
+ * The format gate lives HERE rather than in each screen (TRIP-281): `accept` on
+ * the input only filters the picker dialog, drag-and-drop walks straight past it,
+ * and every document surface funnels through this function — so one check covers
+ * all of them and a future caller cannot forget it. The enforcing gate is still
+ * the bucket's MIME allow-list; this one fails fast with a nameable file.
+ *
+ * @returns {Promise<{ uploaded: Array<{file_url,file_name,storage_path}>, errors: Array<{file:File, reason:'format'|'upload'|'no_url', message?:string}> }>}
  */
 export async function uploadTripFiles(tripId, files) {
   const uploaded = [];
   const errors = [];
   for (const file of Array.from(files || [])) {
+    if (!isAllowedUpload(file)) { errors.push({ file, reason: 'format' }); continue; }
     const path = tripStoragePath(tripId, file.name);
     const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
     if (upErr) { errors.push({ file, reason: 'upload', message: upErr.message }); continue; }
@@ -51,6 +59,24 @@ export async function uploadTripFiles(tripId, files) {
     uploaded.push({ file_url: urlData.signedUrl, file_name: file.name, storage_path: path });
   }
   return { uploaded, errors };
+}
+
+/**
+ * User-facing text for one entry of {@link uploadTripFiles}' `errors`.
+ *
+ * Lives with the error contract so every document surface words the same failure
+ * the same way — the reason codes are defined here, and nothing outside this
+ * module has to know them.
+ *
+ * @param {{file: File, reason: string, message?: string}} error
+ * @param {(key: string, vars?: object) => string} t
+ * @returns {string}
+ */
+export function uploadErrorText(error, t) {
+  if (error.reason === 'format') return t('doc.bad_format', { name: error.file.name });
+  // Storage's own wording beats a generic line when we have it.
+  if (error.reason === 'upload' && error.message) return error.message;
+  return t('doc.upload_failed', { name: error.file.name });
 }
 
 /**

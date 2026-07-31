@@ -38,7 +38,7 @@ export default function TripCoverPicker({
   const sweepIfStaged = (url) => {
     if (url && stagedUrls.current.has(url)) {
       stagedUrls.current.delete(url);
-      removeTripFiles(collectDocPaths([], url));
+      removeTripFiles(collectDocPaths([{ file_url: url }]));
     }
   };
 

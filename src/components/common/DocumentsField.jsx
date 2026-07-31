@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { uploadTripFiles } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText } from '@/lib/documentMutations';
 import { Icon } from '@/design/icons';
-import { fileType, isAllowedUpload, UPLOAD_ACCEPT } from '@/lib/fileType';
+import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -50,13 +50,6 @@ export default function DocumentsField({
     const remaining = maxFiles === null ? files.length : Math.max(0, maxFiles - docs.length);
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
-    // `accept` only filters the picker dialog — drag-and-drop bypasses it, so the
-    // format has to be checked here too (TRIP-281).
-    const badFormat = toUpload.find(f => !isAllowedUpload(f));
-    if (badFormat) {
-      toast({ description: t('doc.bad_format', { name: badFormat.name }), variant: 'destructive' });
-      return;
-    }
     const oversize = toUpload.find(f => f.size > maxFileSizeMb * 1024 * 1024);
     if (oversize) {
       toast({
@@ -68,13 +61,11 @@ export default function DocumentsField({
     }
     setUploadingWithCb(true);
     try {
-      // Shared upload: long-lived signed URLs, and never a doc with an empty
-      // file_url (was `|| ''`) — a missing URL surfaces as an error instead.
       const { uploaded, errors } = await uploadTripFiles(tripId, toUpload);
       for (const e of errors) {
         toast({
           title: t('event.ai_upload_error'),
-          description: e.reason === 'upload' && e.message ? e.message : t('doc.upload_failed', { name: e.file.name }),
+          description: uploadErrorText(e, t),
           variant: 'destructive',
         });
       }

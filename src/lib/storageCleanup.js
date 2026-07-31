@@ -23,15 +23,19 @@ import { TRIP_BUCKET, parseStorageObjectUrl } from '@/lib/storage';
 
 /**
  * Collect the `trips`-bucket object keys referenced by a `documents[]` array
- * (each `{ file_url, file_name, storage_path }`) plus an optional top-level
- * legacy `file_url`. Prefers the explicit `storage_path`; falls back to parsing
- * the object key out of a Storage URL. Non-`trips` / external URLs are skipped.
+ * (each `{ file_url, file_name, storage_path }`). Prefers the explicit
+ * `storage_path`; falls back to parsing the object key out of a Storage URL.
+ * Non-`trips` / external URLs are skipped.
+ *
+ * A bare URL with no document around it (a trip cover) is passed as a one-element
+ * array — `collectDocPaths([{ file_url: coverUrl }])`. It does NOT need a second
+ * parameter; the removed one existed only for the dead `trip_documents.file_url`
+ * column (TRIP-281).
  *
  * @param {Array<{ storage_path?: string, file_url?: string }>} [documents]
- * @param {string} [fileUrl] - optional legacy top-level URL (e.g. trip_documents.file_url)
  * @returns {string[]} deduped object keys
  */
-export function collectDocPaths(documents, fileUrl) {
+export function collectDocPaths(documents) {
   const out = [];
   const push = (path) => { if (typeof path === 'string' && path) out.push(path); };
   const fromUrl = (url) => {
@@ -45,7 +49,6 @@ export function collectDocPaths(documents, fileUrl) {
     if (typeof d.storage_path === 'string' && d.storage_path) push(d.storage_path);
     else fromUrl(d.file_url);
   }
-  fromUrl(fileUrl);
 
   return [...new Set(out)];
 }

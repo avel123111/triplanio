@@ -19,8 +19,8 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
-import { uploadTripFiles, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
-import { fileType, isAllowedUpload, UPLOAD_ACCEPT } from '@/lib/fileType';
+import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
+import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
@@ -93,18 +93,12 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     if (!files?.length) return;
     setUploading(true); setErr('');
     try {
-      const accepted = Array.from(files).filter((f) => {
-        // `accept` only filters the picker dialog, not drag-and-drop (TRIP-281).
-        if (!isAllowedUpload(f)) { setErr(t('doc.bad_format', { name: f.name })); return false; }
+      const withinSize = Array.from(files).filter((f) => {
         if (f.size > 10 * 1024 * 1024) { setErr(t('doc.file_too_big', { name: f.name })); return false; }
         return true;
       });
-      // Shared upload: never yields a doc with an empty file_url (was `|| ''`);
-      // a failed upload / missing signed URL surfaces as an error instead.
-      const { uploaded, errors } = await uploadTripFiles(tripId, accepted);
-      for (const e of errors) {
-        setErr(e.reason === 'upload' && e.message ? e.message : t('doc.upload_failed', { name: e.file.name }));
-      }
+      const { uploaded, errors } = await uploadTripFiles(tripId, withinSize);
+      for (const e of errors) setErr(uploadErrorText(e, t));
       if (uploaded.length) setDocuments(prev => [...prev, ...uploaded]);
     } finally {
       setUploading(false);
@@ -382,7 +376,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     }
     // Row gone → its files are now orphaned (unique uuid keys, single reference).
     // Best-effort sweep; never blocks the delete (TRIP-117).
-    await removeTripFiles(collectDocPaths(doc.documents, doc.file_url));
+    await removeTripFiles(collectDocPaths(doc.documents));
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
     close();
   }
