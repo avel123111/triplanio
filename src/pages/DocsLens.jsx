@@ -19,7 +19,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
-import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
@@ -93,11 +93,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     if (!files?.length) return;
     setUploading(true); setErr('');
     try {
-      const withinSize = Array.from(files).filter((f) => {
-        if (f.size > 10 * 1024 * 1024) { setErr(t('doc.file_too_big', { name: f.name })); return false; }
-        return true;
-      });
-      const { uploaded, errors } = await uploadTripFiles(tripId, withinSize);
+      const { uploaded, errors } = await uploadTripFiles(tripId, files);
       for (const e of errors) setErr(uploadErrorText(e, t));
       if (uploaded.length) setDocuments(prev => [...prev, ...uploaded]);
     } finally {
@@ -320,7 +316,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 <>
                   <Icon name="upload" size={24} />
                   <b>{documents.length === 0 ? t('doc.upload_label') : t('doc.add_more_files')}</b>
-                  <span>{t('doc.upload_formats', { mb: 10 })}</span>
+                  <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
                 </>
               )}
             </div>

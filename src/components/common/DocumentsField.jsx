@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { uploadTripFiles, uploadErrorText } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { Icon } from '@/design/icons';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
@@ -24,7 +24,6 @@ export default function DocumentsField({
   label = '',
   iconColor = 'var(--brand)',
   accept = UPLOAD_ACCEPT,
-  maxFileSizeMb = 10,
   bare = false,
 }) {
   const { toast } = useToast();
@@ -50,15 +49,6 @@ export default function DocumentsField({
     const remaining = maxFiles === null ? files.length : Math.max(0, maxFiles - docs.length);
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
-    const oversize = toUpload.find(f => f.size > maxFileSizeMb * 1024 * 1024);
-    if (oversize) {
-      toast({
-        title: t('doc.file_too_big_title'),
-        description: t('doc.max_size', { mb: maxFileSizeMb }),
-        variant: 'destructive',
-      });
-      return;
-    }
     setUploadingWithCb(true);
     try {
       const { uploaded, errors } = await uploadTripFiles(tripId, toUpload);
@@ -161,7 +151,7 @@ export default function DocumentsField({
               <b>{docs.length === 0
                 ? t('doc.upload_label')
                 : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
-              <span>{t('doc.upload_formats', { mb: maxFileSizeMb })}</span>
+              <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
             </>
           )}
         </div>

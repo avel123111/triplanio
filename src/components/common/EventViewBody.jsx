@@ -757,8 +757,6 @@ export function useEntityDocs(kind, entity, canEdit) {
   async function uploadFiles(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
-    const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
-    if (tooBig) { toast({ description: t('event.file_too_big10'), variant: 'warning' }); return; }
     setUploading(true);
     try {
       const { uploaded, errors } = await uploadTripFiles(entity.trip_id, files);

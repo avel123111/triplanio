@@ -22,6 +22,15 @@ import { isAllowedUpload, uploadContentType } from '@/lib/fileType';
 export const DOCS_KEY = (tripId) => ['trip-docs', tripId];
 
 /**
+ * Ceiling for a document upload, in MB. Matches `file_size_limit` on the `trips`
+ * bucket (migration 20260731172548) — the server rejects anything larger, so a
+ * bigger number here would only turn a clear message into a raw storage error.
+ * Surfaces that promise the limit in their UI read it from here, so the promise
+ * and the check can never drift apart.
+ */
+export const MAX_UPLOAD_MB = 10;
+
+/**
  * Upload files to the trip bucket and mint signed URLs.
  *
  * Guarantees a returned doc ALWAYS has a real `file_url` — the previous
@@ -32,19 +41,23 @@ export const DOCS_KEY = (tripId) => ['trip-docs', tripId];
  * Never throws; returns both the successful docs and per-file failures so the
  * caller can surface them (toast / inline) without losing the good ones.
  *
- * The format gate lives HERE rather than in each screen (TRIP-281): `accept` on
- * the input only filters the picker dialog, drag-and-drop walks straight past it,
- * and every document surface funnels through this function — so one check covers
- * all of them and a future caller cannot forget it. The enforcing gate is still
- * the bucket's MIME allow-list; this one fails fast with a nameable file.
+ * The format and size gates live HERE rather than in each screen (TRIP-281):
+ * `accept` on the input only filters the picker dialog, drag-and-drop walks
+ * straight past it, and every document surface funnels through this function — so
+ * one check covers all of them, a future caller cannot forget it, and a bad file
+ * only costs itself (the rest of the batch still uploads). The enforcing gates
+ * stay on the bucket (MIME allow-list + `file_size_limit`); these fail fast, by name.
  *
- * @returns {Promise<{ uploaded: Array<{file_url,file_name,storage_path}>, errors: Array<{file:File, reason:'format'|'upload'|'no_url', message?:string}> }>}
+ * @param {string} tripId
+ * @param {Iterable<File>} files
+ * @returns {Promise<{ uploaded: Array<{file_url,file_name,storage_path}>, errors: Array<{file:File, reason:'format'|'size'|'upload'|'no_url', message?:string}> }>}
  */
 export async function uploadTripFiles(tripId, files) {
   const uploaded = [];
   const errors = [];
   for (const file of Array.from(files || [])) {
     if (!isAllowedUpload(file)) { errors.push({ file, reason: 'format' }); continue; }
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) { errors.push({ file, reason: 'size' }); continue; }
     const path = tripStoragePath(tripId, file.name);
     // Re-wrapping is the only way to stamp the canonical type (see
     // uploadContentType): storage-js sends a File as multipart, where the
@@ -77,10 +90,12 @@ export async function uploadTripFiles(tripId, files) {
  * @returns {string}
  */
 export function uploadErrorText(error, t) {
-  if (error.reason === 'format') return t('doc.bad_format', { name: error.file.name });
+  const name = error.file.name;
+  if (error.reason === 'format') return t('doc.bad_format', { name });
+  if (error.reason === 'size') return t('doc.file_too_big', { name, mb: MAX_UPLOAD_MB });
   // Storage's own wording beats a generic line when we have it.
   if (error.reason === 'upload' && error.message) return error.message;
-  return t('doc.upload_failed', { name: error.file.name });
+  return t('doc.upload_failed', { name });
 }
 
 /**
