@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { Upload, Loader2, Check } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
-import { TRIP_BUCKET, SIGNED_URL_TTL, DRAFT_PREFIX, tripStoragePath } from '@/lib/storage';
+import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
+import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useAuth } from '@/lib/AuthContext';
 import './TripCoverPicker.css';
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
@@ -24,6 +26,7 @@ export default function TripCoverPicker({
   showPreview = true,
 }) {
   const t = useT();
+  const { user } = useAuth();
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -52,17 +55,30 @@ export default function TripCoverPicker({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) {
+      setError(t('doc.bad_format', { name: file.name }));
+      return;
+    }
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(t('trip.cover_too_large'));
+      return;
+    }
+    // A draft cover is keyed by its uploader, so without a session there is no
+    // folder RLS would let us write to.
+    if (!tripId && !user?.id) {
+      setError(t('trip.cover_upload_failed'));
       return;
     }
     setError('');
     setUploading(true);
     try {
-      // Before the trip exists, park the file under `_drafts/`; finalizeDraftCover
+      // Before the trip exists, park the file in the uploader's own draft folder
+      // (`_drafts/<userId>/…`, the only one RLS lets them touch); finalizeDraftCover
       // moves it under `<tripId>/` on trip creation. The bucket is private, so the
       // cover is served via a long-lived signed URL (not a public URL).
-      const path = tripStoragePath(tripId || DRAFT_PREFIX, file.name);
+      const path = tripId
+        ? tripStoragePath(tripId, file.name)
+        : draftStoragePath(user.id, file.name);
       const { error: uploadErr } = await supabase.storage
         .from(TRIP_BUCKET)
         .upload(path, file, { cacheControl: '3600', upsert: true });
@@ -132,7 +148,7 @@ export default function TripCoverPicker({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           onChange={handleUpload}
           className="tcp__file"
         />

@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles } from '@/lib/documentMutations';
 import { Icon } from '@/design/icons';
-import { fileType } from '@/lib/fileType';
+import { fileType, isAllowedUpload, UPLOAD_ACCEPT } from '@/lib/fileType';
+import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
@@ -22,7 +23,7 @@ export default function DocumentsField({
   maxFiles = null,
   label = '',
   iconColor = 'var(--brand)',
-  accept = '*',
+  accept = UPLOAD_ACCEPT,
   maxFileSizeMb = 10,
   bare = false,
 }) {
@@ -49,6 +50,13 @@ export default function DocumentsField({
     const remaining = maxFiles === null ? files.length : Math.max(0, maxFiles - docs.length);
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
+    // `accept` only filters the picker dialog — drag-and-drop bypasses it, so the
+    // format has to be checked here too (TRIP-281).
+    const badFormat = toUpload.find(f => !isAllowedUpload(f));
+    if (badFormat) {
+      toast({ description: t('doc.bad_format', { name: badFormat.name }), variant: 'destructive' });
+      return;
+    }
     const oversize = toUpload.find(f => f.size > maxFileSizeMb * 1024 * 1024);
     if (oversize) {
       toast({
@@ -115,7 +123,7 @@ export default function DocumentsField({
                 <Icon name="file" size={14} />
               </span>
               <a
-                href={d.file_url}
+                href={normalizeExternalUrl(d.file_url)}
                 target="_blank"
                 rel="noreferrer"
                 className="dl-upitem__n"

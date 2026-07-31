@@ -144,7 +144,7 @@ export const FUNCTIONS = {
 //     share-cards/share-maps проскользнули незамеченными).
 export const BUCKETS = {
   avatars: { public: true,  policies: ['insert', 'update', 'delete'], note: 'публичный; детерм. ключ <uid>/avatar, БЕЗ SELECT (TRIP-48)' },
-  trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы + _can_access_trip_file (DEFINER)' },
+  trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы + _can_access_trip_file (DEFINER); черновая обложка — только своя папка _drafts/<uid>/ (TRIP-281)' },
 };
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
