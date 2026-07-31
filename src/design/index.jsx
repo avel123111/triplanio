@@ -5,6 +5,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
+import { detectPartner } from '@/lib/externalBrands';
 import { transferKind } from '@/lib/transport';
 
 // =====================================================================
@@ -336,30 +337,8 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
 };
 
 // ---- Partner logo helper ----
-const PARTNERS = {
-  "booking.com":   { color: "#003580", label: "Booking",     short: "B" },
-  "airbnb":        { color: "#ff385c", label: "Airbnb",      short: "A" },
-  "marriott":      { color: "#a8945c", label: "Marriott",    short: "M" },
-  "agoda":         { color: "#fe424d", label: "Agoda",       short: "A" },
-  "renfe":         { color: "#7a1f3a", label: "Renfe",       short: "R" },
-  "cp.pt":         { color: "#2f6ba8", label: "CP",          short: "CP" },
-  "lufthansa":     { color: "#05164d", label: "Lufthansa",   short: "L" },
-  "tap":           { color: "#c81f3a", label: "TAP",         short: "T" },
-  "expedia":       { color: "#fcc60a", label: "Expedia",     short: "E" },
-  "rentalcars":    { color: "#222e72", label: "RentalCars",  short: "R" },
-  "sixt":          { color: "#ff6600", label: "Sixt",        short: "S" },
-  "holafly":       { color: "#5ac6c1", label: "Holafly",     short: "H" },
-};
-
-// Not exported: only PartnerLogo and PartnerPill below resolve a partner.
-function detectPartner(url) {
-  if (!url) return null;
-  const u = url.toLowerCase();
-  for (const [k, v] of Object.entries(PARTNERS)) {
-    if (u.includes(k)) return { key: k, ...v };
-  }
-  return null;
-}
+// Бренд-цвета партнёров живут в lib/externalBrands (единственный дом внешних
+// брендов), а не рядом с компонентом, который их рисует.
 
 export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);
