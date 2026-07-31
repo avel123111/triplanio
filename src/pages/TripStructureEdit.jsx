@@ -1048,11 +1048,11 @@ export default function TripStructureEdit() {
 
 
       <style>{`
-        .ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
+        .ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
         .ts-step:hover { background: var(--wash); }
         .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
-        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); }
+        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
         /* TRIP-186: левая колонка «оголена» — контейнерная рамка/радиус/фон и
            маржины убраны, рейл и заголовок «Маршрут» лежат прямо на канвасе, а
            список растягивается. Карта справа рамку сохраняет. */
@@ -1070,7 +1070,7 @@ export default function TripStructureEdit() {
            иначе scoped-специфичность styled-jsx перебила бы .tp-caption. */
         .ts-routehead__sub { color: var(--muted); }
         .ts-routehead__sp { flex: 1; }
-        .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+        .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
         .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
         .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
         .ts-startctl__date:hover { background: var(--wash); }
@@ -1081,7 +1081,7 @@ export default function TripStructureEdit() {
         .ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .ts-cal__wd { margin-bottom: 4px; }
         .ts-cal__wdc { text-align: center; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
-        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); display: grid; place-items: center; }
+        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: var(--r-sm); cursor: pointer; color: var(--ink); display: grid; place-items: center; }
         .ts-cal__day:hover { background: var(--wash); }
         .ts-cal__day.on { background: var(--brand); color: #fff; }
         /* In the mobile bottom-sheet the calendar spans the sheet width. */

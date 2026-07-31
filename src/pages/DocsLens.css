@@ -5,7 +5,7 @@
 
 /* ─── Section header icon tile ────────────────────────────────── */
 .dl-sec-ic {
-  width: 34px; height: 34px; border-radius: 11px;
+  width: 34px; height: 34px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: none;
 }
 .dl-sec-ic svg { width: 17px; height: 17px; }
@@ -19,7 +19,7 @@
   display: flex; flex-direction: column; gap: 10px;
   padding: 16px;
   background: var(--surface);
-  border-radius: 16px;
+  border-radius: var(--r-md);
   box-shadow: var(--sh-1);
   cursor: pointer; text-align: left; width: 100%;
 }
@@ -28,7 +28,7 @@
 .dl-card__top  { display: flex; align-items: flex-start; gap: 11px; }
 
 .dl-card__ic {
-  width: 42px; height: 42px; border-radius: 12px;
+  width: 42px; height: 42px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: none;
 }
 .dl-card__ic svg { width: 20px; height: 20px; }
@@ -69,7 +69,7 @@
 .dl-filechips { display: flex; flex-direction: column; gap: 6px; }
 .dl-filechip  {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 10px; border-radius: 10px;
+  padding: 7px 10px; border-radius: var(--r-sm);
   background: var(--surface-3); border: 1px solid var(--line);
 }
 /* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
@@ -88,7 +88,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 /* ─── Link row (in card: visual only; in detail: real link) ───── */
 .dl-linkrow {
   display: flex; align-items: center; gap: 9px;
-  padding: 9px 11px; border-radius: 10px;
+  padding: 9px 11px; border-radius: var(--r-sm);
   background: var(--ev-hotel-soft); text-decoration: none;
 }
 .dl-linkrow b {
@@ -101,7 +101,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
   font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; min-height: 160px;
-  border: 1.5px dashed var(--line-strong); border-radius: 16px;
+  border: 1.5px dashed var(--line-strong); border-radius: var(--r-md);
   background: transparent; color: var(--muted);
   cursor: pointer; text-align: center; padding: 18px;
   transition: border-color .18s, background .18s, color .18s, transform .16s var(--ease-spring);
@@ -122,7 +122,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 }
 
 .dl-addcard__ic {
-  width: 46px; height: 46px; border-radius: 14px;
+  width: 46px; height: 46px; border-radius: var(--r-btn);
   background: var(--surface-2); display: grid; place-items: center;
   transition: background .18s;
 }
@@ -131,11 +131,11 @@ a.dl-filechip__n:hover { color: var(--brand); }
 /* ─── Empty state ─────────────────────────────────────────────── */
 .dl-empty {
   text-align: center; padding: 40px 20px;
-  border: 1.5px dashed var(--line); border-radius: 16px;
+  border: 1.5px dashed var(--line); border-radius: var(--r-md);
   background: var(--surface-3);
 }
 .dl-empty__ic {
-  width: 62px; height: 62px; border-radius: 18px;
+  width: 62px; height: 62px; border-radius: var(--r-md);
   display: grid; place-items: center; margin: 0 auto 14px;
 }
 .dl-empty__ic svg { width: 28px; height: 28px; }
@@ -157,12 +157,12 @@ a.dl-filechip__n:hover { color: var(--brand); }
 .dl-visopt {
   font: inherit;
   display: flex; align-items: center; gap: 10px; padding: 12px;
-  border: 1.5px solid var(--line-strong); border-radius: 14px;
+  border: 1.5px solid var(--line-strong); border-radius: var(--r-btn);
   cursor: pointer; background: var(--surface-3); text-align: left;
   transition: border-color .16s, background .16s;
 }
 .dl-visopt__ic {
-  width: 34px; height: 34px; border-radius: 10px;
+  width: 34px; height: 34px; border-radius: var(--r-sm);
   background: var(--surface-2); color: var(--muted);
   display: grid; place-items: center; flex: none;
   transition: background .16s, color .16s;
@@ -179,7 +179,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 /* ─── Dialog: dropzone ────────────────────────────────────────── */
 .dl-dropzone {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 22px; border-radius: 12px;
+  padding: 22px; border-radius: var(--r-sm);
   border: 1.6px dashed var(--line-strong); background: var(--surface-3);
   cursor: pointer; text-align: center;
   transition: border-color .16s, background .16s;
@@ -197,7 +197,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 .dl-uplist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .dl-upitem {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: 10px;
+  padding: 8px 10px; border-radius: var(--r-sm);
   background: var(--surface-3); border: 1px solid var(--line-2);
 }
 .dl-upitem__n {
@@ -221,7 +221,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 }
 .dl-dview-link {
   display: flex; align-items: center; gap: 10px;
-  padding: 11px 13px; border-radius: 12px;
+  padding: 11px 13px; border-radius: var(--r-sm);
   background: var(--ev-hotel-soft); text-decoration: none;
   margin-bottom: 12px;
 }
