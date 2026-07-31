@@ -15,7 +15,7 @@
   box-sizing: border-box;
   border-width: 0;
   border-style: solid;
-  border-color: hsl(var(--border));
+  border-color: var(--line);
 }
 html,
 :host {
@@ -168,83 +168,25 @@ img, video {
 }
 
 /* ===================================================================
-   SINGLE SOURCE OF TRUTH for colour. These shadcn primitive tokens
-   (HSL triplets, kept as the authored base — formerly fed Tailwind alpha
-   modifiers; now consumed by src/design/app.css via hsl(var(--…))).
-   Change a brand/ink/border colour HERE, once.
+   Font-family tokens only. COLOUR lives in ONE place — src/design/app.css
+   (:root + :root[data-theme="dark"]). Do not add a colour token here: a
+   shadcn HSL primitive layer used to sit in this file and it cost us a
+   duplicate of every hue plus a second dark-mode switch (a `.dark` class
+   next to [data-theme="dark"]), so every theme change had to be made twice
+   or it half-applied silently.
    =================================================================== */
 :root {
-  /* Triplanio — Lumo (light) — values generated from Lumo hex */
-  --background: 220 60% 99%;             /* bg #fbfcfe — unified with app.css --bg */
-  --foreground: 252 17% 17%;             /* ink #272433 */
-  --card: 0 0% 100%;                     /* surface #FFFFFF */
-  --card-foreground: 252 17% 17%;
-  --popover-foreground: 252 17% 17%;
-  --primary: 211 72% 46%;               /* primary #2173C8 */
-  --primary-foreground: 0 0% 100%;
-  --secondary-foreground: 253 12% 31%;  /* ink-2 #4A4659 */
-  --muted-foreground: 253 7% 50%;       /* muted #7A7689 */
-  --accent-foreground: 211 72% 46%;
-  --destructive: 357 72% 59%;           /* danger #E24A52 */
-  --destructive-foreground: 0 0% 100%;
-  --border: 246 28% 93%;                /* line #E9E8F2 */
-  --ring: 211 72% 46%;
-  --chart-1: 211 72% 46%;
-  --chart-2: 155 66% 36%;
-  --chart-3: 16 67% 54%;
-  --chart-4: 357 72% 59%;
-  --chart-5: 254 82% 68%;
-  --radius: 1rem;                       /* Lumo r-md 16px (ui-kit base) */
   --font-sans: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* TRIP-165 — единая суперсемья */
   --font-display: 'Exo 2', ui-sans-serif, system-ui, sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
-  --sidebar-background: 0 0% 100%;
-  --sidebar-foreground: 252 17% 17%;
-  --sidebar-primary: 211 72% 46%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 36% 95%;
-  --sidebar-accent-foreground: 253 12% 31%;
-  --sidebar-border: 246 28% 93%;
-  --sidebar-ring: 211 72% 46%;
-}
-
-.dark {
-  /* Triplanio — Lumo (dark) — values generated from Lumo hex */
-  --background: 233 40% 8%;              /* bg #0c0e1c */
-  --foreground: 248 27% 94%;            /* ink #EDECF4 */
-  --card: 233 21% 15%;                  /* surface #1f212f */
-  --card-foreground: 248 27% 94%;
-  --popover-foreground: 248 27% 94%;
-  --primary: 212 100% 72%;             /* primary #6FB2FF */
-  --primary-foreground: 212 68% 10%;
-  --secondary-foreground: 251 16% 79%;
-  --muted-foreground: 250 11% 58%;
-  --accent-foreground: 212 100% 72%;
-  --destructive: 356 84% 68%;          /* danger #F26A72 */
-  --destructive-foreground: 351 68% 6%;
-  --border: 249 12% 22%;               /* line #33313F */
-  --ring: 212 100% 72%;
-  --chart-1: 212 100% 72%;
-  --chart-2: 154 54% 50%;
-  --chart-3: 18 82% 68%;
-  --chart-4: 356 84% 68%;
-  --chart-5: 256 100% 77%;
-  --sidebar-background: 245 19% 13%;    /* sidebar-bg #1B1A26 */
-  --sidebar-foreground: 248 27% 94%;
-  --sidebar-primary: 212 100% 72%;
-  --sidebar-primary-foreground: 212 68% 10%;
-  --sidebar-accent: 244 15% 19%;
-  --sidebar-accent-foreground: 251 16% 79%;
-  --sidebar-border: 249 12% 22%;
-  --sidebar-ring: 212 100% 72%;
 }
 
 /* Base element styles — was @layer base { } with @apply (now plain CSS). */
 * {
-  outline-color: hsl(var(--ring) / 0.5);   /* was @apply outline-ring/50 */
+  outline-color: color-mix(in srgb, var(--brand) 50%, transparent);   /* was @apply outline-ring/50 */
 }
 body {
-  background: hsl(var(--background));        /* was bg-background */
-  color: hsl(var(--foreground));            /* was text-foreground */
+  background: var(--bg);                    /* was bg-background */
+  color: var(--ink);                        /* was text-foreground */
   font-family: var(--font-sans);            /* was font-sans */
   -webkit-font-smoothing: antialiased;      /* was antialiased */
   -moz-osx-font-smoothing: grayscale;
@@ -252,8 +194,7 @@ body {
 }
 /* Mobile-friendly: avoid accidental text selection on tappable elements. */
 button,
-[role="tab"],
-.nav-link {
+[role="tab"] {
   user-select: none;
   -webkit-user-select: none;
 }
@@ -308,7 +249,8 @@ input[type="time"] {
   }
 }
 
-/* Mapbox GL — keep map controls/markers below dialog overlay (Radix uses z-index 50) */
+/* Mapbox GL — keep map controls/markers on a local stack (2), i.e. below every
+   floor of the --z-* ladder in app.css, so a dialog/sheet always covers them. */
 .mapboxgl-canvas { outline: none; }
 .mapboxgl-ctrl-bottom-left,
 .mapboxgl-ctrl-bottom-right { z-index: 2 !important; }

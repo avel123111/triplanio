@@ -178,7 +178,7 @@
 }
 .ncal-dc.is-trip .ncal-dn { color: var(--brand); }
 .ncal-dc.is-today .ncal-dn {
-  background: var(--brand); color: hsl(var(--primary-foreground));
+  background: var(--brand); color: var(--primary-fg);
   border-radius: var(--r-pill);
   padding: 4px 8px; min-width: 0;
   box-shadow: 0 4px 14px -4px var(--brand-glow);
@@ -266,7 +266,7 @@
   display: inline-block;
 }
 .ncal-wdc.is-today .ncal-wdc-num {
-  background: var(--brand); color: hsl(var(--primary-foreground));
+  background: var(--brand); color: var(--primary-fg);
   border-radius: var(--r-pill); padding: 3px 10px;
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
@@ -409,7 +409,7 @@
   .ncal-wdc-h       { padding: 10px 10px 8px; }
   .ncal-wdc-num     { font-size: var(--fs-h3); }
   .ncal-wdc-b       { padding: 7px 8px 10px; gap: 4px; }
-  .ncal-aev         { padding: 5px 7px 5px 9px; border-radius: 8px; }
+  .ncal-aev         { padding: 5px 7px 5px 9px; border-radius: var(--r-sm); }
   .ncal-aev .atl    { font-size: var(--fs-nano); }
 
   /* Legend */

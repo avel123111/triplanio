@@ -176,7 +176,7 @@ export default function Inbox() {
 
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} w="100%" h={64} r={12} />)}
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} w="100%" h={64} r={'var(--r-sm)'} />)}
           </div>
         ) : notifications.length === 0 ? (
           <InboxEmpty onCollection={() => nav('/trips')} />
@@ -235,7 +235,7 @@ function InboxEmpty({ onCollection }) {
                 }}
               >
                 <span style={{
-                  width: 34, height: 34, borderRadius: 10, flex: 'none',
+                  width: 34, height: 34, borderRadius: 'var(--r-sm)', flex: 'none',
                   background: 'var(--brand-soft)', color: 'var(--brand)',
                   display: 'grid', placeItems: 'center',
                 }}>

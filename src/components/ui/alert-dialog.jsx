@@ -10,21 +10,21 @@ const AlertDialogPortal = AlertDialogPrimitive.Portal
 const AlertDialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn("dlg-backdrop", className)}
-    style={{ zIndex: 300 }}
+    style={{ zIndex: 'var(--z-confirm)' }}
     {...props}
     ref={ref} />
 ))
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
 // Content — .dlg-modal + .dlg .dlg--sm card. className forwarded to inner card.
-// z-index 301 ensures ConfirmDialog always renders above any Dialog (z-index 201).
+// The --z-confirm floor keeps ConfirmDialog above any Dialog (--z-modal).
 const AlertDialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
       className="dlg-modal"
-      style={{ zIndex: 301 }}
+      style={{ zIndex: 'calc(var(--z-confirm) + 1)' }}
       {...props}>
       <div className={cn("dlg dlg--sm", className)}>
         {children}

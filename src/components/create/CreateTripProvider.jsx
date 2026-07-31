@@ -171,7 +171,7 @@ export function CreateTripProvider({ children }) {
       {copying && (
         <div
           className="dlg-backdrop"
-          style={{ zIndex: 400, display: 'grid', placeItems: 'center' }}
+          style={{ zIndex: 'var(--z-blocking)', display: 'grid', placeItems: 'center' }}
           role="status"
           aria-live="polite"
           aria-busy="true"

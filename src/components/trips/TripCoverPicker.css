@@ -8,7 +8,7 @@
   position: relative;
   width: 100%;
   height: 120px;
-  border-radius: var(--radius);            /* rounded-lg = var(--radius) (16px) */
+  border-radius: var(--r-md);              /* rounded-lg (16px) */
   overflow: hidden;
   border: 1px solid var(--line);
   background: var(--surface-2);            /* bg-muted */

@@ -22,7 +22,7 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate, invalidateTripData } from '@/lib/trip-data';
-import { uploadTripFiles, persistEntityDocuments } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, persistEntityDocuments } from '@/lib/documentMutations';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { cityLabel } from '@/lib/trip-cities';
@@ -33,12 +33,43 @@ import { validateEntity } from '@/lib/validation';
 // not "…в undefined". One helper reused at every seam (load + display).
 const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
 import {
-  Map as MapIcon, MapPin, Calendar, FileText,
+  Map as MapIcon, MapPin, Calendar,
   BedDouble, Car as CarIcon, Ticket,
   ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { transferKind } from '@/lib/transport';
+
+/**
+ * The read-only list of an entity's attachments — one implementation for all four
+ * bodies (hotel / transfer / activity / service), which render the same rows
+ * inside different section chrome.
+ *
+ * The leading glyph is the shared `FileTypeBadge` — the same one the document
+ * field and the documents lens draw, so one attachment looks identical in the
+ * read view and in the edit form.
+ */
+function DocRows({ docs }) {
+  const { t } = useI18n();
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {docs.map((d, i) => (
+        <a
+          key={`${d.file_url}-${i}`}
+          href={normalizeExternalUrl(d.file_url)}
+          target="_blank"
+          rel="noreferrer"
+          className="doc-row"
+        >
+          <FileTypeBadge name={d.file_name} />
+          <b>{d.file_name || t('event.file_word')}</b>
+          {d.file_size && <span className="ds">{d.file_size}</span>}
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export function eventTheme(kind, entity) {
   if (kind === 'hotel') {
@@ -242,7 +273,7 @@ function HotelBody({ entity, docs = [] }) {
                 <span className="hv-row__ic"><Mail /></span>
                 <span className="hv-row__k t-meta">E-mail</span>
                 <span className="hv-row__sp" />
-                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a>
+                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--brand)' }}>{entity.email}</a>
               </div>
             )}
           </div>
@@ -253,15 +284,7 @@ function HotelBody({ entity, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -399,15 +422,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -477,15 +492,7 @@ function ActivityBody({ entity, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -757,15 +764,11 @@ export function useEntityDocs(kind, entity, canEdit) {
   async function uploadFiles(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
-    const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
-    if (tooBig) { toast({ description: t('event.file_too_big10'), variant: 'warning' }); return; }
     setUploading(true);
     try {
-      // Upload never returns a doc with an empty file_url (was `|| ''`); failed
-      // uploads / missing URLs come back as errors and are surfaced, not masked.
       const { uploaded, errors } = await uploadTripFiles(entity.trip_id, files);
       for (const e of errors) {
-        toast({ description: t('doc.upload_failed', { name: e.file.name }), variant: 'destructive' });
+        toast({ description: uploadErrorText(e, t), variant: 'destructive' });
       }
       if (!uploaded.length) return;
 
@@ -920,21 +923,7 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
           Hotel/transfer/activity render their own docs+notes inside their body. */}
       {kind === 'service' && docs.length > 0 && (
         <Section title={`${t('activity.documents_label')} · ${docs.length}`} accent={accent}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a
-                key={`${d.file_url}-${i}`}
-                href={d.file_url}
-                target="_blank"
-                rel="noreferrer"
-                className="doc-row"
-              >
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </Section>
       )}
 

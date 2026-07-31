@@ -955,19 +955,19 @@ export default function TripStructureEdit() {
           </div>
 
           {draggingId != null && ordered[ordered.length - 1]?.kind !== 'end' && (
-            <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
+            <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 'var(--r-sm)', border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
           {outOfPlanTransfers.length > 0 && (
-            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 12, background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
+            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 'var(--r-sm)', background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
               <div className="eyebrow" style={{ marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {t('tse.transfers_out_of_plan')}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {outOfPlanTransfers.map((tr) => (
-                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', color: 'var(--ink)' }}>
+                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 'var(--r-pill)', background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', color: 'var(--ink)' }}>
                     <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {nodeName(tr.from_city_visit_id)} → {nodeName(tr.to_city_visit_id)}
                   </button>
                 ))}
@@ -1002,7 +1002,7 @@ export default function TripStructureEdit() {
         {/* RIGHT - full-height map (always on; hidden on phones via CSS);
             warnings live in a collapsible overlay widget */}
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
+          <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 'var(--r-md)', border: '1px solid var(--line)' }}>
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
@@ -1018,9 +1018,9 @@ export default function TripStructureEdit() {
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
-          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
+          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
             {showWarn && issues.length > 0 && (
-              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
+              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', boxShadow: 'var(--sh-3)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
               </div>
             )}
@@ -1030,12 +1030,12 @@ export default function TripStructureEdit() {
               aria-label={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
               title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
               style={{ position: 'relative', width: 56, height: 56, borderRadius: '50%', border: 'none', flexShrink: 0,
-                cursor: issues.length ? 'pointer' : 'default', display: 'grid', placeItems: 'center', boxShadow: 'var(--shadow-pop)',
+                cursor: issues.length ? 'pointer' : 'default', display: 'grid', placeItems: 'center', boxShadow: 'var(--sh-3)',
                 background: issues.length ? 'var(--warning)' : 'var(--success)', color: '#fff' }}
             >
               <Icon name={issues.length ? 'warning' : 'check'} size={23} />
               {issues.length > 0 && (
-                <span className="t-micro" style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 999, background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="t-micro" style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 'var(--r-pill)', background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   {issues.length > 99 ? '99+' : issues.length}
                 </span>
               )}
@@ -1048,11 +1048,11 @@ export default function TripStructureEdit() {
 
 
       <style>{`
-        .ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
+        .ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
         .ts-step:hover { background: var(--wash); }
         .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
-        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); }
+        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
         /* TRIP-186: левая колонка «оголена» — контейнерная рамка/радиус/фон и
            маржины убраны, рейл и заголовок «Маршрут» лежат прямо на канвасе, а
            список растягивается. Карта справа рамку сохраняет. */
@@ -1070,7 +1070,7 @@ export default function TripStructureEdit() {
            иначе scoped-специфичность styled-jsx перебила бы .tp-caption. */
         .ts-routehead__sub { color: var(--muted); }
         .ts-routehead__sp { flex: 1; }
-        .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+        .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
         .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
         .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
         .ts-startctl__date:hover { background: var(--wash); }
@@ -1081,7 +1081,7 @@ export default function TripStructureEdit() {
         .ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .ts-cal__wd { margin-bottom: 4px; }
         .ts-cal__wdc { text-align: center; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
-        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); display: grid; place-items: center; }
+        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: var(--r-sm); cursor: pointer; color: var(--ink); display: grid; place-items: center; }
         .ts-cal__day:hover { background: var(--wash); }
         .ts-cal__day.on { background: var(--brand); color: #fff; }
         /* In the mobile bottom-sheet the calendar spans the sheet width. */
@@ -1094,7 +1094,7 @@ export default function TripStructureEdit() {
            header or the left menu. Stops at the column seam, leaving the natural gap
            to the map. No scrim: the map (right half) stays interactive. Route rail
            mounted beneath. Desktop two-column only. */
-        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
         .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
         @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
         /* Warnings FAB: lift on hover, press on click. */
@@ -1300,7 +1300,7 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7 }}>
           {POINT_TYPES.map((pt) => {
             const dis = disabledFor(pt.id), active = type === pt.id;
-            return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
+            return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 'var(--r-sm)', cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
               <Icon name={pt.icon} size={17} /><span className="t-meta">{t(pt.labelKey)}</span>
             </button>;
           })}

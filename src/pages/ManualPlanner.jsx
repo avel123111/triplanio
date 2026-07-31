@@ -288,7 +288,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {geoState === 'ask' && (
         <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="pin" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -318,12 +318,12 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 14px',
                 background: selected ? 'var(--brand-soft)' : 'var(--surface)',
                 border: '1.5px solid ' + (selected ? 'var(--brand)' : 'var(--line)'),
-                borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
+                borderRadius: 'var(--r-sm)', cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
               }}
                 onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
                 onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line)'; }}
               >
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <Icon name="plane" size={14} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -343,7 +343,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {geoState === 'denied' && (
         <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="lock" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -444,7 +444,7 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
           <button onClick={() => addCity()} className="t-body" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '12px 16px', background: 'transparent',
-            border: '1.5px dashed var(--line)', borderRadius: 12, cursor: 'pointer',
+            border: '1.5px dashed var(--line)', borderRadius: 'var(--r-sm)', cursor: 'pointer',
             color: 'var(--muted)',
           }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
@@ -482,9 +482,9 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <h2 className="section-sub">{t('planner.step_return')}</h2>
       <div className={'field-row' + (canHome ? ' cols-2' : '')} style={{ marginBottom: 14 }}>
         {canHome && (
-          <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
                 <Icon name="flag" size={16} />
               </div>
               <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
@@ -495,9 +495,9 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
           </button>
         )}
 
-        <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="globe" size={16} />
             </div>
             <div className="t-subheading">{t('planner.return_other')}</div>
@@ -520,7 +520,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         </div>
       )}
 
-      <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <Icon name="info" size={14} style={{ color: 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
         <div className="t-meta" style={{ color: 'var(--muted)' }}>
           {t('planner.return_info')}
@@ -571,7 +571,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
   if (savedOk) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 18, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
+        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 'var(--r-md)', background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
           <Icon name="check" size={36} />
         </div>
         <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
@@ -594,7 +594,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
       </div>
 
       {/* Trip card preview */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 16 }}>
         <div style={{ height: 120, background: heroBg, position: 'relative' }}>
           {hasPhoto && (
             <img src={cover.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -682,7 +682,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
       )}
 
       {saving && (
-        <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div className="spin" style={{ width: 16, height: 16, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', flexShrink: 0 }} />
           <div className="t-body" style={{ flex: 1, color: 'var(--ink-2)' }}>{t('planner.saving_msg')}</div>
         </div>
@@ -1158,7 +1158,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 'var(--r-md)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
               <Icon name="lock" size={28} />
             </div>
             <h2 className="t-heading" style={{ margin: '0 0 8px' }}>{t('planner.limit_title')}</h2>

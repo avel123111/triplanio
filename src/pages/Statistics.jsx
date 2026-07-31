@@ -37,7 +37,7 @@ import '../design/app.css';
 // permanent "0" bar only adds noise.
 const CONT_ORDER = ['EU', 'AS', 'NA', 'AF', 'SA', 'OC'];
 const CONT_COLOR = {
-  EU: 'hsl(var(--primary))', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
+  EU: 'var(--brand)', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
   AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)',
 };
 
@@ -50,25 +50,25 @@ function StatsScreenSkeleton() {
       <div className="head">
         <div className="head__row">
           <div className="grow">
-            <Skeleton w={210} h={30} r={8} style={{ marginBottom: 10 }} />
+            <Skeleton w={210} h={30} r={'var(--r-sm)'} style={{ marginBottom: 10 }} />
             <Skeleton w={280} h={15} r={6} />
           </div>
-          <Skeleton w={220} h={40} r={12} />
+          <Skeleton w={220} h={40} r={'var(--r-sm)'} />
         </div>
       </div>
-      <Skeleton w="100%" h={420} r={24} style={{ marginTop: 18 }} />
+      <Skeleton w="100%" h={420} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <div className="summary" style={{ marginTop: 18 }}>
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={20} />)}
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={'var(--r-xl)'} />)}
       </div>
-      <Skeleton w="100%" h={220} r={24} style={{ marginTop: 18 }} />
+      <Skeleton w="100%" h={220} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={180} h={22} r={6} /></div>
-      <Skeleton w="100%" h={240} r={24} />
+      <Skeleton w="100%" h={240} r={'var(--r-card)'} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={140} h={22} r={6} /></div>
       <div className="records">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={20} />)}
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={'var(--r-xl)'} />)}
       </div>
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={160} h={22} r={6} /></div>
-      <Skeleton w="100%" h={220} r={24} />
+      <Skeleton w="100%" h={220} r={'var(--r-card)'} />
     </>
   );
 }
@@ -368,7 +368,7 @@ export default function Statistics() {
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}>
-                      <i className="d" style={r.tone === 'manual' ? { background: 'var(--surface)', boxShadow: 'inset 0 0 0 2px hsl(var(--primary))' } : { background: r.color }} />
+                      <i className="d" style={r.tone === 'manual' ? { background: 'var(--surface)', boxShadow: 'inset 0 0 0 2px var(--brand)' } : { background: r.color }} />
                       {r.label}{r.count ? ` · ${r.count}` : ''}
                     </span>
                   ))}

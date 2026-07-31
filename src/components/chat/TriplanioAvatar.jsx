@@ -25,7 +25,7 @@ export default function TriplanioAvatar({ size = 'md' }) {
   const avatarUrl = profiles?.[TRIPLANIO_BOT_USER_ID]?.avatar_url || '';
   const px        = SIZE_PX[size] || SIZE_PX.md;
   const svgPx     = SVG_SIZE[size] || SVG_SIZE.md;
-  const baseStyle = { width: px, height: px, borderRadius: '9999px', flex: 'none' };
+  const baseStyle = { width: px, height: px, borderRadius: 'var(--r-pill)', flex: 'none' };
 
   if (avatarUrl) {
     return (

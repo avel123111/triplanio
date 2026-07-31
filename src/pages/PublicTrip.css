@@ -98,7 +98,7 @@
 .pt-cstop__sub img{width:22px;height:15px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.10)}
 .pt-cstop__sub b{color:var(--ink-2)}
 .pt-cstop__hotel{display:inline-flex;align-items:center;gap:10px;margin-top:18px;color:var(--ink-2)}
-.pt-cstop__hotel .ic{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)}
+.pt-cstop__hotel .ic{width:32px;height:32px;border-radius:var(--r-sm);flex:none;display:grid;place-items:center;background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)}
 .pt-cstop__hotel .ic svg{width:17px;height:17px}
 
 /* Anchors (start/finish): the number badge carries a flag glyph instead of a
@@ -127,7 +127,7 @@
 .pt-act .day{margin-left:auto;color:var(--muted);white-space:nowrap;background:var(--surface-2);padding:3px 9px;border-radius:var(--r-pill)}
 
 .pt-cleg{padding:4px 0 34px calc(var(--num) + var(--gap))}
-.pt-cleg__pill{display:inline-flex;align-items:center;gap:10px;padding:11px 16px;border-radius:13px;background:var(--ev-transfer-soft);color:var(--ev-transfer-ink)}
+.pt-cleg__pill{display:inline-flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r-btn);background:var(--ev-transfer-soft);color:var(--ev-transfer-ink)}
 .pt-cleg__pill svg{width:17px;height:17px;flex:none}
 .pt-cleg__pill .dur{opacity:.9}
 .pt-cleg__pill .sep{opacity:.4}
@@ -152,7 +152,7 @@
 .pt-cta__act{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 
 /* ── mobile sticky CTA ── */
-.pt-scta{position:fixed;left:0;right:0;bottom:0;z-index:50;display:none;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:saturate(180%) blur(16px);border-top:1px solid var(--line)}
+.pt-scta{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-header);display:none;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:saturate(180%) blur(16px);border-top:1px solid var(--line)}
 .pt-scta .tx{flex:1;min-width:0}
 .pt-scta .tx b{display:block;color:var(--ink)}
 .pt-scta .tx span{color:var(--muted)}
@@ -160,8 +160,7 @@
 /* ── states ── */
 .pt-center{min-height:100vh;display:grid;place-items:center;padding:0 24px;text-align:center}
 .pt-center .ic{width:56px;height:56px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;margin:0 auto 16px;color:var(--muted)}
-.pt-spin{width:26px;height:26px;border:3px solid var(--line-strong);border-right-color:var(--brand);border-radius:50%;animation:pt-spin .7s linear infinite}
-@keyframes pt-spin{to{transform:rotate(360deg)}}
+.pt-spin{width:26px;height:26px;border:3px solid var(--line-strong);border-right-color:var(--brand);border-radius:50%;animation:aispin .7s linear infinite}
 
 /* ── reveal ── */
 .pt-reveal{opacity:0;transform:translateY(14px);transition:opacity .6s var(--ease-out),transform .6s var(--ease-out)}

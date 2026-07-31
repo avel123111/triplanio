@@ -245,7 +245,7 @@ export default function Autocomplete({
           onWheel={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
           style={{
-            position: 'absolute', left: box.left, top: box.top, width: box.width, zIndex: 250,
+            position: 'absolute', left: box.left, top: box.top, width: box.width, zIndex: 'var(--z-popover)',
             maxHeight: box.maxH, overflowX: 'hidden', overflowY: 'auto',
             overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
           }}

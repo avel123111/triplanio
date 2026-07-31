@@ -1833,12 +1833,12 @@ function TransferLegCard({
   return (
     // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
     // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    <div style={isMulti ? { border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
+    <div style={isMulti ? { border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
           style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
+          <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
             <TIcon size={16} />
           </span>
           <span style={{ minWidth: 0, flex: 1 }}>
@@ -2135,7 +2135,7 @@ function SegTransportGrid({ value, onChange, color }) {
         const active = value === k.id; const Ic = k.Icon;
         return (
           <button key={k.id} type="button" className="t-meta" onClick={() => onChange(k.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer' }}>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
             <Ic size={16} />{t(k.labelKey)}
           </button>
         );
@@ -2231,7 +2231,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
             {!isLast && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
                 <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
-                <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color }}>
+                <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 'var(--r-pill)', whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color }}>
                   <Repeat size={12} style={{ flexShrink: 0 }} />
                   {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span>{layCity}</span>
                   {layDate && <span className="num" style={{ opacity: 0.7 }}>· {layDate}</span>}
@@ -2245,7 +2245,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
       })}
 
       <button type="button" className="t-meta" onClick={addSegment}
-        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 10, background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 'var(--r-sm)', background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
         {t('event.add_layover')}
       </button>
     </div>

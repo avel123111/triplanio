@@ -20,7 +20,7 @@ export function SystemStub({ icon, tone = 'brand', title, body, primary, seconda
       minHeight: 'calc(100vh - 120px)', padding: 32, textAlign: 'center',
     }}>
       <div style={{
-        width: 96, height: 96, borderRadius: 24, background: bg, color: fg,
+        width: 96, height: 96, borderRadius: 'var(--r-card)', background: bg, color: fg,
         display: 'grid', placeItems: 'center', marginBottom: 28,
       }}>
         <Icon name={icon} size={42} />

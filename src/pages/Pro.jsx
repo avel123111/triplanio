@@ -241,7 +241,7 @@ export default function Pro() {
                   <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[0, 1, 2, 3].map((j) => <Skeleton key={j} w={`${88 - j * 7}%`} h={11} />)}
                   </div>
-                  <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={11} /></div>
+                  <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={'var(--r-sm)'} /></div>
                 </div>
               ))
             : cards.map((c) => (
@@ -309,14 +309,14 @@ export default function Pro() {
             the banner will show or not. */}
         {!hidePerTrip && pricesLoading && !prices && (
           <div className="pro-trip-bar">
-            <Skeleton w={44} h={44} r={12} />
+            <Skeleton w={44} h={44} r={'var(--r-sm)'} />
             <div style={{ flex: 1, minWidth: 220 }}>
               <Skeleton w="42%" h={16} />
               <div style={{ marginTop: 8 }}><Skeleton w="66%" h={11} /></div>
             </div>
             <div className="pro-trip-bar__actions">
               <Skeleton w={70} h={22} />
-              <Skeleton w={92} h={38} r={11} />
+              <Skeleton w={92} h={38} r={'var(--r-sm)'} />
             </div>
           </div>
         )}

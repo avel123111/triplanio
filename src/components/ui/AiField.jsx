@@ -14,7 +14,7 @@ export function AiBadge() {
         position: 'absolute',
         top: -8,
         right: 8,
-        zIndex: 10,
+        zIndex: 10, // design-token-exempt: локальный стек внутри поля, не этаж приложения
         pointerEvents: 'none',
         color: '#fff',
         background: 'var(--ai)',

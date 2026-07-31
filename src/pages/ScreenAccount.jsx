@@ -17,9 +17,13 @@ import { openConsentBanner } from '@/lib/consent';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
+import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
 import '../design/app.css';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Mirrors the `avatars` bucket's own file_size_limit — keep the two in step. */
+const MAX_AVATAR_MB = 5;
 
 // Searchable, scalable language list (Pavel: not fixed-3 — popover with search).
 // Only languages with a real locale bundle are listed; the search/popover UI is
@@ -484,17 +488,30 @@ export default function ScreenAccount() {
 
   const handleAvatarUpload = async (file) => {
     if (!file || !user) return;
+    if (!isAllowedUpload(file, ALLOWED_IMAGE_EXTENSIONS)) {
+      setErrorMsg(t('doc.bad_format', { name: file.name }));
+      return;
+    }
+    // Same ceiling the `avatars` bucket enforces: without this the upload came
+    // back as a raw storage error with nothing the user could act on.
+    if (file.size > MAX_AVATAR_MB * 1024 * 1024) {
+      setErrorMsg(t('doc.max_size', { mb: MAX_AVATAR_MB }));
+      return;
+    }
     setUploadingAvatar(true);
     setErrorMsg(null);
     try {
       // Deterministic key: one object per user, no extension. upsert overwrites
       // it in place, so stale variants can never accumulate and no listing sweep
-      // is needed (TRIP-48). The browser renders <img> by Content-Type (passed
-      // below), not the URL suffix, and avatar_url carries a ?t= cache-buster.
+      // is needed (TRIP-48). The browser renders <img> by the stored Content-Type,
+      // not the URL suffix, and avatar_url carries a ?t= cache-buster. That type
+      // comes from the multipart part the browser builds out of `file` — passing
+      // a `contentType` option here would do nothing (storage-js only applies it
+      // to non-Blob bodies), so the MIME allow-list on the bucket is the gate.
       const path = `${user.id}/avatar`;
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type || undefined });
+        .upload(path, file, { upsert: true });
       if (uploadErr) throw uploadErr;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       const url = `${publicUrl}?t=${Date.now()}`;
@@ -692,7 +709,7 @@ export default function ScreenAccount() {
                 <input
                   ref={avatarInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                  accept={IMAGE_ACCEPT}
                   style={{ display: 'none' }}
                   onChange={e => handleAvatarUpload(e.target.files?.[0])}
                 />
