@@ -1020,7 +1020,7 @@ export default function TripStructureEdit() {
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
           <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
             {showWarn && issues.length > 0 && (
-              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
+              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--sh-3)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
               </div>
             )}
@@ -1030,7 +1030,7 @@ export default function TripStructureEdit() {
               aria-label={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
               title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
               style={{ position: 'relative', width: 56, height: 56, borderRadius: '50%', border: 'none', flexShrink: 0,
-                cursor: issues.length ? 'pointer' : 'default', display: 'grid', placeItems: 'center', boxShadow: 'var(--shadow-pop)',
+                cursor: issues.length ? 'pointer' : 'default', display: 'grid', placeItems: 'center', boxShadow: 'var(--sh-3)',
                 background: issues.length ? 'var(--warning)' : 'var(--success)', color: '#fff' }}
             >
               <Icon name={issues.length ? 'warning' : 'check'} size={23} />

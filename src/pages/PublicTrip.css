@@ -160,8 +160,7 @@
 /* ── states ── */
 .pt-center{min-height:100vh;display:grid;place-items:center;padding:0 24px;text-align:center}
 .pt-center .ic{width:56px;height:56px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;margin:0 auto 16px;color:var(--muted)}
-.pt-spin{width:26px;height:26px;border:3px solid var(--line-strong);border-right-color:var(--brand);border-radius:50%;animation:pt-spin .7s linear infinite}
-@keyframes pt-spin{to{transform:rotate(360deg)}}
+.pt-spin{width:26px;height:26px;border:3px solid var(--line-strong);border-right-color:var(--brand);border-radius:50%;animation:aispin .7s linear infinite}
 
 /* ── reveal ── */
 .pt-reveal{opacity:0;transform:translateY(14px);transition:opacity .6s var(--ease-out),transform .6s var(--ease-out)}

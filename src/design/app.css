@@ -15,7 +15,7 @@
      used to live in src/index.css (:root / .dark) are gone, so a colour can
      no longer be changed in one layer and stale in the other, and dark mode
      is driven by ONE mechanism ([data-theme], not a `.dark` class). Legacy
-     names (--radius-*, --shadow-*, --*-soft-12, --wash*) alias the Lumo names
+     names (--radius-*, --*-soft-12, --wash*) alias the Lumo names
      so existing components keep working. Do not reintroduce raw hex/palette
      values in components — bind to a token below (guard 2k enforces this).
      =================================================================== */
@@ -126,13 +126,10 @@
   --radius-card: var(--r-card);
   --radius-btn:  var(--r-btn);
 
-  /* Shadows (Lumo names + legacy aliases) */
+  /* Shadows (Lumo scale) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
   --sh-2:0 4px 12px -4px rgba(39,36,51,.10), 0 18px 48px -16px rgba(39,36,51,.20);
   --sh-3:0 8px 20px -6px rgba(39,36,51,.14), 0 30px 70px -22px rgba(39,36,51,.30);
-  --shadow-soft: var(--sh-1);
-  --shadow-card: var(--sh-2);
-  --shadow-pop:  var(--sh-3);
 
   /* === Канонические поверхности (TRIP-189) — ЕДИНЫЙ источник для всех
      карточек/панелей/виджетов. Ровно две роли:
@@ -1208,7 +1205,7 @@ h4,
    for JS onMouseEnter style mutation; the base border lives here (not inline) so
    :hover can win over it. */
 .dz-lift-card { border: 1px solid var(--line); transition: border-color .15s var(--ease-out), box-shadow .15s var(--ease-out), transform .15s var(--ease-out); }
-.dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--shadow-card); }
+.dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--sh-2); }
 .dz-lift-card:active { transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
 .btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
@@ -2147,7 +2144,7 @@ h4,
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
-  box-shadow: var(--shadow-pop);
+  box-shadow: var(--sh-3);
   width: 100%;
   max-width: 560px;
   max-height: 90vh;
@@ -2521,7 +2518,7 @@ h4,
 .pop {
   background: var(--popover); color: var(--popover-ink);
   border: 1px solid var(--line); border-radius: var(--r-card);
-  box-shadow: var(--shadow-pop); padding: 14px; outline: none;
+  box-shadow: var(--sh-3); padding: 14px; outline: none;
   animation: popIn .14s var(--ease-out);
 }
 @keyframes popIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
@@ -2725,7 +2722,7 @@ h4,
     .te-grip:active { cursor: grabbing; }
     /* Pointer-drag: the lifted row floats above the list (its transform follows the
        pointer; on release it springs into its slot — managed inline in JS). */
-    .te-row.is-dragging { z-index: var(--z-drag); background: var(--surface); border-color: var(--brand); box-shadow: var(--shadow-pop), 0 0 0 3px var(--brand-soft); transform: scale(1.03); transition: transform .18s var(--ease-spring); cursor: grabbing; }
+    .te-row.is-dragging { z-index: var(--z-drag); background: var(--surface); border-color: var(--brand); box-shadow: var(--sh-3), 0 0 0 3px var(--brand-soft); transform: scale(1.03); transition: transform .18s var(--ease-spring); cursor: grabbing; }
     .te-row.is-dragging .te-cityname { color: var(--ink); }
     /* Reduced-motion: keep the brand ring + shadow (clear "picked up" cue) but drop
        the scale pop. The JS-driven inline transform during follow stays — that's the
@@ -3295,7 +3292,7 @@ h4,
   position: relative; background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--r-md);
   padding: 16px; display: flex; flex-direction: column; min-height: 150px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--sh-1);
   transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s;
 }
 @media (hover:hover) { .addon-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); } }

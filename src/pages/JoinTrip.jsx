@@ -31,8 +31,7 @@ const STYLES = `
   padding:8px 14px;border-radius:999px;margin-bottom:22px;}
 .jt-chip svg{width:15px;height:15px;}
 .jt-spinner{width:46px;height:46px;margin:6px auto 22px;border-radius:50%;
-  border:4px solid rgba(33,115,200,.16);border-top-color:#2173C8;animation:jt-spin .8s linear infinite;}
-@keyframes jt-spin{to{transform:rotate(360deg);}}
+  border:4px solid rgba(33,115,200,.16);border-top-color:#2173C8;animation:aispin .8s linear infinite;}
 .jt-badge{width:64px;height:64px;margin:4px auto 22px;border-radius:50%;background:#FAECE7;
   display:flex;align-items:center;justify-content:center;}
 .jt-badge svg{width:30px;height:30px;color:#D85A30;}
