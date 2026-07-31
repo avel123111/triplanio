@@ -33,12 +33,45 @@ import { validateEntity } from '@/lib/validation';
 // not "…в undefined". One helper reused at every seam (load + display).
 const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
 import {
-  Map as MapIcon, MapPin, Calendar, FileText,
+  Map as MapIcon, MapPin, Calendar,
   BedDouble, Car as CarIcon, Ticket,
   ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
-import { CardSim } from '@/design/icons';
+import { CardSim, Icon } from '@/design/icons';
+import { fileType } from '@/lib/fileType';
 import { transferKind } from '@/lib/transport';
+
+/**
+ * The read-only list of an entity's attachments — one implementation for all four
+ * bodies (hotel / transfer / activity / service), which render the same rows
+ * inside different section chrome.
+ *
+ * The leading glyph is the shared `.dl-ftag--<type>` chip (DocsLens.css) keyed by
+ * `fileType()` — the same chip the document field and the documents lens draw, so
+ * one attachment looks identical in the read view and in the edit form.
+ */
+function DocRows({ docs }) {
+  const { t } = useI18n();
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {docs.map((d, i) => (
+        <a
+          key={`${d.file_url}-${i}`}
+          href={normalizeExternalUrl(d.file_url)}
+          target="_blank"
+          rel="noreferrer"
+          className="doc-row"
+        >
+          <span className={`dl-ftag dl-ftag--${fileType(d.file_name)}`}>
+            <Icon name="file" size={14} />
+          </span>
+          <b>{d.file_name || t('event.file_word')}</b>
+          {d.file_size && <span className="ds">{d.file_size}</span>}
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export function eventTheme(kind, entity) {
   if (kind === 'hotel') {
@@ -58,10 +91,12 @@ export function eventTheme(kind, entity) {
   }
   // transfer
   const tt = entity?.transport_type;
-  const { Icon } = transferKind(tt);
+  // Aliased: in this module `Icon` is the design-system component, so the
+  // transport glyph must not borrow the name — the two take different props.
+  const { Icon: KindIcon } = transferKind(tt);
   return {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
-    Icon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
+    Icon: KindIcon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
   };
 }
 
@@ -253,15 +288,7 @@ function HotelBody({ entity, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={normalizeExternalUrl(d.file_url)} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -399,15 +426,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={normalizeExternalUrl(d.file_url)} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -477,15 +496,7 @@ function ActivityBody({ entity, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={normalizeExternalUrl(d.file_url)} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -916,21 +927,7 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
           Hotel/transfer/activity render their own docs+notes inside their body. */}
       {kind === 'service' && docs.length > 0 && (
         <Section title={`${t('activity.documents_label')} · ${docs.length}`} accent={accent}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a
-                key={`${d.file_url}-${i}`}
-                href={normalizeExternalUrl(d.file_url)}
-                target="_blank"
-                rel="noreferrer"
-                className="doc-row"
-              >
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </Section>
       )}
 

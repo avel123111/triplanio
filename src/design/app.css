@@ -4132,11 +4132,13 @@ h4,
 .ai-blk.parsed .ai-blk-ic{background:var(--success);}
 .ai-blk.parsed .ai-blk-ti b{color:var(--success-ink);}
 
-/* ─── Document row ──────────────────────────────────────────────────────── */
+/* ─── Document row ──────────────────────────────────────────────────────────
+   The leading glyph is the shared `.dl-ftag--<type>` chip (DocsLens.css), the
+   same one the document field draws. The row styles its own frame and text only:
+   restyling the chip here would make one attachment look different in the read
+   view and in the edit form. */
 .doc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
-.doc-row .di{width:28px;height:28px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;flex:none;}
-.doc-row .di svg{width:13px;height:13px;color:var(--muted);}
 .doc-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .doc-row .ds{ color:var(--muted-2); }
 
