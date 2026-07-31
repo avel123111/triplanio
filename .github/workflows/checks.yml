@@ -141,6 +141,7 @@ jobs:
         run: node scripts/ci/check-posthog-init.mjs
       - name: 2k — design tokens (typography/colour + whitelist ratchet)
         if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run check:design
 
   deno:

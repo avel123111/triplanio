@@ -21,12 +21,21 @@
  *   2. an entry whose file has 0 raw colour left     — done, delete the line so
  *      the file becomes protected (that is the whole point of cleaning it);
  *   3. more entries than WHITELIST_LIMIT             — the list grew, i.e. some
- *      change bought itself an exemption instead of using a token.
+ *      change bought itself an exemption instead of using a token;
+ *   4. WHITELIST_LIMIT higher than on the PR base    — see below.
+ * Rule 4 is what makes this a real ratchet. Rules 1-3 all live inside THIS file,
+ * so a change can add a whitelist entry and raise the ceiling in the same commit
+ * and rule 3 still passes. The ceiling is therefore also compared against the
+ * base revision (BASE_REF, as in scripts/ci/*): it may go down, never up.
  * Need a genuinely raw colour in an otherwise clean file? Annotate THAT LINE
  * with `design-token-exempt` — never re-add the whole file.
  *
+ * Env: BASE_REF (default origin/dev). Unresolvable ref → rule 4 is skipped
+ * (local runs outside a checkout with the base fetched); rules 1-3 still apply.
+ *
  * Run: npm run check:design
  */
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -62,6 +71,21 @@ const COLOR_WHITELIST = [
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
 const WHITELIST_LIMIT = 18;
+
+// The ceiling on the PR base, so raising it cannot be self-approved by editing
+// this file. null = base not resolvable (no such ref, or the base predates this
+// constant) → rule 4 is skipped rather than guessed.
+const BASE_REF = process.env.BASE_REF || 'origin/dev';
+const baseLimit = (() => {
+  try {
+    const src = execFileSync('git', ['show', `${BASE_REF}:scripts/check-design-tokens.mjs`], {
+      encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return Number(src.match(/^const WHITELIST_LIMIT = (\d+)/m)?.[1] ?? NaN) || null;
+  } catch {
+    return null; // ref missing (shallow clone / fresh fork) — not a violation
+  }
+})();
 
 // Files allowed to contain raw FONT SIZES.
 const TYPO_WHITELIST = [
@@ -259,8 +283,15 @@ wlClean.forEach((f) => console.log(`  ✗ clean — 0 raw colour left; delete th
 if (COLOR_WHITELIST.length > WHITELIST_LIMIT) {
   console.log(`  ✗ whitelist grew — ${COLOR_WHITELIST.length} entries > limit ${WHITELIST_LIMIT}. Use a per-line \`design-token-exempt\`, not a file exemption.`);
 }
-const wlFailed = wlStale.length > 0 || wlClean.length > 0 || COLOR_WHITELIST.length > WHITELIST_LIMIT;
-if (!wlFailed) console.log('  ✓ ratchet intact — every entry exists and still carries debt');
+const ceilingRaised = baseLimit !== null && WHITELIST_LIMIT > baseLimit;
+if (ceilingRaised) {
+  console.log(`  ✗ ceiling raised — WHITELIST_LIMIT ${baseLimit} → ${WHITELIST_LIMIT} vs ${BASE_REF}. The ratchet only turns down: bind the colour to a token, or annotate that line \`design-token-exempt\`.`);
+}
+const wlFailed = wlStale.length > 0 || wlClean.length > 0 || COLOR_WHITELIST.length > WHITELIST_LIMIT || ceilingRaised;
+if (!wlFailed) {
+  const vs = baseLimit === null ? `${BASE_REF} unavailable — ceiling not compared` : `ceiling ${WHITELIST_LIMIT} ≤ ${baseLimit} on ${BASE_REF}`;
+  console.log(`  ✓ ratchet intact — every entry exists and still carries debt; ${vs}`);
+}
 
 // ── TRIP-165 typography-composition report (report-only) ──
 const compAreas = Object.entries(typoComp).sort((a, b) => {
