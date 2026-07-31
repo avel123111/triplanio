@@ -451,7 +451,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               {t('trip.delete')}
             </Btn>
           )}
-          <div style={{ flex: 1 }} />
+          <div className="grow" />
           <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
         </div>
       </DialogContent>

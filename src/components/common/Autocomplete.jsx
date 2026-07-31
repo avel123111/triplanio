@@ -232,7 +232,7 @@ export default function Autocomplete({
             aria-hidden="true"
             style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}
           >
-            <Icon name="refresh" size={15} className="spin" style={{ color: 'var(--muted-2)' }} />
+            <Icon name="refresh" size={15} className="spin muted-2" />
           </span>
         )}
       </div>

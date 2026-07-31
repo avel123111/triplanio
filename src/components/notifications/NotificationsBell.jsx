@@ -146,7 +146,7 @@ export default function NotificationsBell({ triggerClassName }) {
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
-          <div className="t-ui" style={{ flex: 1 }}>{t('notif.title')}</div>
+          <div className="t-ui grow">{t('notif.title')}</div>
           {unread > 0 && (
             <button className="bell-dd__mark" onClick={() => markAllRead.mutate()}>
               {t('notif.mark_all_read')}

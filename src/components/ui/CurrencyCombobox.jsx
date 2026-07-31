@@ -22,7 +22,7 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
         <>
           <span className="t-mono" style={{ width: 40, flex: 'none' }}>{c.code}</span>
           <span className="t-meta" style={{ flex: 1, minWidth: 0, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-          <span className="t-meta" style={{ color: 'var(--muted)' }}>{c.symbol}</span>
+          <span className="t-meta muted">{c.symbol}</span>
         </>
       )}
       placeholder={t('common.choose')}

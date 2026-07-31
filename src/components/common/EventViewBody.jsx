@@ -209,7 +209,7 @@ function HotelBody({ entity, docs = [] }) {
               <div className="stay-dates__t t-meta">{fmtTime(entity.check_in_datetime)}</div>
             </div>
             <div className="stay-dates__mid">
-              <Calendar size={14} style={{ color: 'var(--muted-2)' }} />
+              <Calendar size={14} className="muted-2" />
               {nights != null && <span className="t-meta">{t('fork.stay22_nights', { count: nights })}</span>}
             </div>
             <div className="stay-dates__cell">
@@ -456,7 +456,7 @@ function ActivityBody({ entity, docs = [] }) {
               <div className="stay-dates__t t-meta">{fmtTime(entity.start_datetime)}</div>
             </div>
             <div className="stay-dates__mid">
-              <ArrowRight size={14} style={{ color: 'var(--muted-2)' }} />
+              <ArrowRight size={14} className="muted-2" />
               {dur && <span className="t-meta">{dur}</span>}
             </div>
             <div className="stay-dates__cell">
@@ -578,7 +578,7 @@ function ServiceBody({ entity, accent }) {
         <div className="kv-grid">
           <KV label={t('event.pickup_where')}>
             {sameLocation ? (
-              <span className="t-meta" style={{ color: 'var(--muted)' }}>{t('event.return_same')}</span>
+              <span className="t-meta muted">{t('event.return_same')}</span>
             ) : (
               <div>{d.dropoff_address}</div>
             )}

@@ -266,7 +266,7 @@ export default function Pro() {
                         <span className="plan-price__period" style={{ textDecoration: 'line-through' }}>{c.oldPrice}</span>
                       )}
                     </div>
-                    <div className="t-meta" style={{ color: 'var(--muted)' }}>{c.caption}</div>
+                    <div className="t-meta muted">{c.caption}</div>
 
                     <div className="plan-divider" />
 

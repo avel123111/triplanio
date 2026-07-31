@@ -107,7 +107,7 @@ const ChatComposer = forwardRef(function ChatComposer(
               className="chat-mention__row"
             >
               <TriplanioAvatar />
-              <span style={{ flex: 1 }}>
+              <span className="grow">
                 <b>{TRIPLANIO_BOT_NAME}</b>
                 <span>{t('chat.mention_all_hint')}</span>
               </span>

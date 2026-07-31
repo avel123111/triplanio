@@ -786,7 +786,7 @@ export default function ScreenAccount() {
                       <>
                         <span className="acct-lang__flag">{l.flag}</span>
                         <span>{l.native}</span>
-                        <span className="t-meta" style={{ color: 'var(--muted)' }}>{l.sub}</span>
+                        <span className="t-meta muted">{l.sub}</span>
                       </>
                     )}
                     searchPlaceholder={t('common.search')}
@@ -853,14 +853,14 @@ export default function ScreenAccount() {
             <div className="card" style={{ marginBottom: 16 }}>
               <div className="acct-subhead" style={{ marginBottom: 6 }}>E-mail</div>
               <div className="acct-divrow">
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('account.notif_invites')}</div>
                   <div className="acct-divrow__s">{t('account.notif_invites_desc')}</div>
                 </div>
                 <Toggle on={notifyInvites} onChange={setNotifyInvites} />
               </div>
               <div className="acct-divrow">
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('account.notif_updates')}</div>
                   <div className="acct-divrow__s">{t('account.notif_updates_desc')}</div>
                 </div>
@@ -887,19 +887,19 @@ export default function ScreenAccount() {
               </div>
               <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="shield" size={18} /></span>
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('account.privacy_title')}</div>
                   <div className="acct-divrow__s">{t('account.privacy_desc')}</div>
                 </div>
-                <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
+                <Icon name="external" size={13} className="muted-2" />
               </a>
               <a className="acct-divrow" href="/terms" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="file" size={18} /></span>
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('account.terms_title')}</div>
                   <div className="acct-divrow__s">{t('account.terms_desc')}</div>
                 </div>
-                <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
+                <Icon name="external" size={13} className="muted-2" />
               </a>
               {/* Same entry for signed-in people. Reopens the panel rather than acting:
                   "settings" that silently wipe your choice are not settings. */}
@@ -910,7 +910,7 @@ export default function ScreenAccount() {
                 onClick={openConsentBanner}
               >
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="settings" size={18} /></span>
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('consent.settings')}</div>
                   <div className="acct-divrow__s">{t('consent.state')}</div>
                 </div>
