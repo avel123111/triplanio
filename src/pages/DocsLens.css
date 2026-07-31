@@ -20,7 +20,7 @@
   padding: 16px;
   background: var(--surface);
   border-radius: 16px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--sh-1);
   cursor: pointer; text-align: left; width: 100%;
 }
 .dl-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
@@ -283,6 +283,5 @@ a.dl-filechip__n:hover { color: var(--brand); }
 .dl-spinner {
   width: 15px; height: 15px; flex: none;
   border: 2px solid var(--brand); border-right-color: transparent;
-  border-radius: 50%; animation: dl-spin .7s linear infinite;
+  border-radius: 50%; animation: aispin .7s linear infinite;
 }
-@keyframes dl-spin { to { transform: rotate(360deg); } }

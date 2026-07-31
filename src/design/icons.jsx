@@ -14,8 +14,8 @@ import {
 // Единый источник иконок.
 //   1) BRAND  — бренд/eSIM-глифы (нет в lucide): Simple Icons + Phosphor.
 //   2) LUCIDE — карта name → компонент lucide (единый stroke=2).
-//   3) ICONS  — легаси-набор; используется только как fallback для имён,
-//               которых нет в LUCIDE/BRAND (мёртвые глифы — оставлены про запас).
+//   3) ICONS  — легаси-набор; fallback только для имён вне LUCIDE/BRAND.
+//               Имя из LUCIDE перекрывает одноимённый глиф здесь → тот мёртв.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _Icon = ({ size = 18, children, style }) => (
@@ -122,39 +122,22 @@ const ICONS = {
   brand: <><path d="M5 5h14v6a8 8 0 0 1-14 0z" fill="currentColor" stroke="none"/><path d="M12 11l-3-3 3 3 3-3" stroke="white" strokeWidth="2"/></>,
   home: <><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></>,
   collection: <><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></>,
-  undo: <><path d="M9 7L4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-1"/></>,
   bus: <><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="19" r="1"/><circle cx="16" cy="19" r="1"/></>,
-  car: <><path d="M5 16v2M19 16v2"/><rect x="3" y="10" width="18" height="6" rx="2"/><path d="M5 10l2-4h10l2 4"/></>,
   ferry: <><path d="M3 17c2 2 4 0 6 0s4 2 6 0 4 0 6 0"/><path d="M5 14l7-7 7 7"/><path d="M8 14V9h8v5"/></>,
   walk: <><circle cx="13" cy="4" r="1.5"/><path d="M9 22l3-7-3-3v-4l5 1 3 5"/></>,
   cup: <><path d="M5 8h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z"/><path d="M17 9h2a2 2 0 0 1 0 4h-2"/></>,
-  ruler: <><path d="M3.5 14.5l7-7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4l-7 7a1 1 0 0 1-1.4 0L3.5 15.9a1 1 0 0 1 0-1.4z"/><path d="M8 10l1.5 1.5M10.5 7.5L12 9M5.5 12.5L7 14"/></>,
   card: <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18"/></>,
-  filter: <><path d="M4 5h16l-6 8v6l-4-2v-4z"/></>,
   settings: <><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></>,
-  checkSm: <><path d="M5 12l4 4 10-10"/></>,
   unlink: <><path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M5.17 11.75l-1.71 1.71a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="8" y1="2" x2="8" y2="5"/><line x1="2" y1="8" x2="5" y2="8"/><line x1="16" y1="19" x2="16" y2="22"/><line x1="19" y1="16" x2="22" y2="16"/></>,
   copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v11"/></>,
   download: <><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/></>,
   arrowD: <><path d="M12 5v14M6 13l6 6 6-6"/></>,
   ai: <><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/></>,
   error: <><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></>,
-  thumbUp: <><path d="M7 21V11l4-7c1.5 0 2 1.5 2 3v3h5a2 2 0 0 1 2 2.5l-2 8a2 2 0 0 1-2 1.5H7z"/><path d="M7 11H4v10h3"/></>,
-  thumbDown: <><path d="M17 3v10l-4 7c-1.5 0-2-1.5-2-3v-3H6a2 2 0 0 1-2-2.5l2-8A2 2 0 0 1 8 2h9z"/><path d="M17 13h3V3h-3"/></>,
   eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></>,
   eyeOff: <><path d="M3 3l18 18"/><path d="M10 6c.7-.1 1.3-.1 2-.1 6.5 0 10 6.1 10 6.1a16 16 0 0 1-3.5 4M6 7C3.4 8.8 2 12 2 12s3.5 6.1 10 6.1c2 0 3.7-.5 5.2-1.3"/><path d="M14 14a3 3 0 0 1-4-4"/></>,
   vote: <><path d="M4 17l8-12 8 12-8 4z"/><path d="M4 17l8 4 8-4"/></>,
-  cloud: <><path d="M6 18h11a4 4 0 0 0 0-8 5 5 0 0 0-9.5-1.5A4 4 0 0 0 6 18z"/></>,
-  'cloud-sun': <><circle cx="6" cy="8" r="2.5"/><path d="M3 8h.5M8.5 5l.4-.4M8.5 11l.4.4M2.6 11l.4-.4"/><path d="M9 18h10a3.5 3.5 0 0 0 0-7 4.5 4.5 0 0 0-8.5-1A3.5 3.5 0 0 0 9 18z"/></>,
-  rain: <><path d="M6 14h11a4 4 0 0 0 0-8 5 5 0 0 0-9.5-1.5A4 4 0 0 0 6 14z"/><path d="M9 18l-1 3M13 18l-1 3M17 18l-1 3"/></>,
-  picture: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="9.5" r="2"/><path d="M3 17l5-4 4 3 4-5 5 5"/></>,
-  notification: <><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></>,
   pdf: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 14h2a1 1 0 0 1 0 2H8v-2zM8 14v4M13 18v-4h1.5a1.5 1.5 0 0 1 0 3H13"/></>,
-  excel: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13l4 5M13 13l-4 5"/></>,
-  rocket: <><path d="M12 3c4 2 6 6 6 11l-3 3-3-2-3 2-3-3c0-5 2-9 6-11z"/><circle cx="12" cy="10" r="1.5"/><path d="M8 19l-2 2 4-1M16 19l2 2-4-1"/></>,
-  thermo: <><path d="M12 3a2 2 0 0 1 2 2v9a4 4 0 1 1-4 0V5a2 2 0 0 1 2-2z"/><circle cx="12" cy="17.5" r="1.5" fill="currentColor"/></>,
-  globe2: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></>,
-  gift: <><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18"/><path d="M12 8V3M8 8S7 3 12 3s4 5 4 5"/></>,
 };
 
 // ── Единый компонент Icon ────────────────────────────────────────────────────
@@ -165,7 +148,7 @@ export const Icon = ({ name, size = 18, style, className, color, strokeWidth = 2
   const L = LUCIDE[name];
   if (L) return <L size={size} color={color} style={style} className={className} strokeWidth={strokeWidth} />;
 
-  // Fallback: легаси-глиф (мёртвые имена оставлены про запас)
+  // Fallback: легаси-глиф
   return <_Icon size={size} style={color ? { color, ...style } : style}>{ICONS[name] || null}</_Icon>;
 };
 
