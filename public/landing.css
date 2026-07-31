@@ -172,7 +172,6 @@ a { color: inherit; text-decoration: none; }
   background: var(--warm);
   display: inline-block;
 }
-.eyebrow--plain::before { display: none; }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
@@ -1159,9 +1158,6 @@ html.reveal--ready .reveal.is-in { animation: revealIn .6s ease both; }
   color: var(--brand);
 }
 .tag-eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
-
-/* utility — divider line */
-.hr-soft { height: 1px; background: var(--line); border: 0; }
 
 /* Mobile: keep CTA visible in header */
 @media (max-width: 600px) {
