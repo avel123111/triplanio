@@ -32,23 +32,19 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import './DocsLens.css';
 
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-// fileType() (colour-coded type badge) lives in @/lib/fileType — shared with the
-// reusable DocumentsField so the upload field looks identical everywhere (TRIP-275).
 
 /** Inline file chip used in both cards and the detail dialog. */
 function FileChip({ file }) {
-  const type = fileType(file.file_name);
   return (
     <div className="dl-filechip">
-      <span className={`dl-ftag dl-ftag--${type}`}>
-        <Icon name="file" size={15} />
-      </span>
+      <FileTypeBadge name={file.file_name} />
       <span className="dl-filechip__n">{file.file_name}</span>
     </div>
   );
@@ -272,9 +268,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               <div className="dl-uplist">
                 {documents.map((d, i) => (
                   <div key={i} className="dl-upitem">
-                    <span className={`dl-ftag dl-ftag--${fileType(d.file_name)}`}>
-                      <Icon name="file" size={14} />
-                    </span>
+                    <FileTypeBadge name={d.file_name} />
                     <span className="dl-upitem__n">{d.file_name}</span>
                     <button
                       type="button"
@@ -421,9 +415,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               <div className="dl-dview-files">
                 {doc.documents.map((f, i) => (
                   <div key={i} className="dl-filechip">
-                    <span className={`dl-ftag dl-ftag--${fileType(f.file_name)}`}>
-                      <Icon name="file" size={14} />
-                    </span>
+                    <FileTypeBadge name={f.file_name} />
                     <a
                       href={normalizeExternalUrl(f.file_url)}
                       target="_blank"

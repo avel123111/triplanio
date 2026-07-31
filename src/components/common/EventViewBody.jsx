@@ -37,8 +37,8 @@ import {
   BedDouble, Car as CarIcon, Ticket,
   ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
-import { CardSim, Icon } from '@/design/icons';
-import { fileType } from '@/lib/fileType';
+import { CardSim } from '@/design/icons';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { transferKind } from '@/lib/transport';
 
 /**
@@ -46,9 +46,9 @@ import { transferKind } from '@/lib/transport';
  * bodies (hotel / transfer / activity / service), which render the same rows
  * inside different section chrome.
  *
- * The leading glyph is the shared `.dl-ftag--<type>` chip (DocsLens.css) keyed by
- * `fileType()` — the same chip the document field and the documents lens draw, so
- * one attachment looks identical in the read view and in the edit form.
+ * The leading glyph is the shared `FileTypeBadge` — the same one the document
+ * field and the documents lens draw, so one attachment looks identical in the
+ * read view and in the edit form.
  */
 function DocRows({ docs }) {
   const { t } = useI18n();
@@ -62,9 +62,7 @@ function DocRows({ docs }) {
           rel="noreferrer"
           className="doc-row"
         >
-          <span className={`dl-ftag dl-ftag--${fileType(d.file_name)}`}>
-            <Icon name="file" size={14} />
-          </span>
+          <FileTypeBadge name={d.file_name} />
           <b>{d.file_name || t('event.file_word')}</b>
           {d.file_size && <span className="ds">{d.file_size}</span>}
         </a>
@@ -91,12 +89,10 @@ export function eventTheme(kind, entity) {
   }
   // transfer
   const tt = entity?.transport_type;
-  // Aliased: in this module `Icon` is the design-system component, so the
-  // transport glyph must not borrow the name — the two take different props.
-  const { Icon: KindIcon } = transferKind(tt);
+  const { Icon } = transferKind(tt);
   return {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
-    Icon: KindIcon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
+    Icon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
   };
 }
 

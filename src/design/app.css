@@ -2908,7 +2908,7 @@ h4,
 /* Notes block — Lumo .notes: surface-3 card with hairline border. */
 .notes { color: var(--ink-2); padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
 /* Document upload field (dropzone + file rows) — unified on the DocsLens
-   reference classes .dl-dropzone / .dl-uplist / .dl-upitem / .dl-ftag (DocsLens.css),
+   reference classes .dl-dropzone / .dl-uplist / .dl-upitem (DocsLens.css),
    reused by DocumentsField so the field looks identical everywhere (TRIP-275). */
 /* Planning left list: hide the scrollbar entirely (still scrolls). */
 .ts-leftscroll { scrollbar-width: none; -ms-overflow-style: none; }
@@ -4132,11 +4132,25 @@ h4,
 .ai-blk.parsed .ai-blk-ic{background:var(--success);}
 .ai-blk.parsed .ai-blk-ti b{color:var(--success-ink);}
 
+/* ─── Document format badge ─────────────────────────────────────────────────
+   Leads every document row on every screen that shows one (documents lens,
+   document field, event read view) — one look for one attachment, wherever it
+   appears. Rendered only by `FileTypeBadge`; a screen must not restyle it, or
+   the same file starts looking different depending on where you opened it.
+   The `dl-` prefix does not scope it to the documents lens. */
+.dl-ftag {
+  width: 32px; height: 32px; border-radius: 9px;
+  display: grid; place-items: center; flex: none;
+}
+.dl-ftag svg { width: 15px; height: 15px; }
+.dl-ftag--pdf  { background: var(--danger-soft);   color: var(--danger-ink); }
+.dl-ftag--doc  { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
+.dl-ftag--xls  { background: var(--ev-car-soft);   color: var(--ev-car-ink); }
+.dl-ftag--img  { background: var(--ai-soft);       color: var(--ai-ink); }
+.dl-ftag--file { background: var(--surface-2);     color: var(--muted); }
+
 /* ─── Document row ──────────────────────────────────────────────────────────
-   The leading glyph is the shared `.dl-ftag--<type>` chip (DocsLens.css), the
-   same one the document field draws. The row styles its own frame and text only:
-   restyling the chip here would make one attachment look different in the read
-   view and in the edit form. */
+   Frame and text of one attachment row; the leading badge is `.dl-ftag` above. */
 .doc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
 .doc-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

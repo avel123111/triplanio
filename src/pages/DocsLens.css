@@ -72,16 +72,8 @@
   padding: 7px 10px; border-radius: 10px;
   background: var(--surface-3); border: 1px solid var(--line);
 }
-.dl-ftag {
-  width: 32px; height: 32px; border-radius: 9px;
-  display: grid; place-items: center; flex: none;
-}
-.dl-ftag svg { width: 15px; height: 15px; }
-.dl-ftag--pdf  { background: var(--danger-soft);   color: var(--danger-ink); }
-.dl-ftag--doc  { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
-.dl-ftag--xls  { background: var(--ev-car-soft);   color: var(--ev-car-ink); }
-.dl-ftag--img  { background: var(--ai-soft);       color: var(--ai-ink); }
-.dl-ftag--file { background: var(--surface-2);     color: var(--muted); }
+/* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
+   design/app.css next to `.doc-row`, since three screens draw it. */
 .dl-filechip__n {
   flex: 1; min-width: 0;
   color: var(--ink);
