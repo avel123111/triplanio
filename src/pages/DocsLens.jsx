@@ -167,7 +167,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
         {/* ── Header ── */}
         <div className="dlg__head">
           <span style={{
-            width: 36, height: 36, borderRadius: 9,
+            width: 36, height: 36, borderRadius: 'var(--r-sm)',
             background: 'var(--brand-soft)', color: 'var(--brand)',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
@@ -379,7 +379,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
         {/* ── Header ── */}
         <div className="dlg__head">
           <span style={{
-            width: 36, height: 36, borderRadius: 9,
+            width: 36, height: 36, borderRadius: 'var(--r-sm)',
             background: 'var(--brand-soft)', color: 'var(--brand)',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
@@ -658,9 +658,9 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   if (isLoading || parentLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Skeleton w="100%" h={44} r={22} />
-        <Skeleton w="100%" h={180} r={12} />
-        <Skeleton w="100%" h={180} r={12} />
+        <Skeleton w="100%" h={44} r={'var(--r-xl)'} />
+        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
+        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
       </div>
     );
   }

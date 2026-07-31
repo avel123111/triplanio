@@ -340,7 +340,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[1,2,3].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 12 }} />)}
+        {[1,2,3].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 'var(--r-sm)' }} />)}
       </div>
     );
   }

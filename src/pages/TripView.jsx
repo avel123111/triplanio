@@ -325,9 +325,9 @@ function SkeletonTimeline() {
           <Skeleton w={120} h={14} r={6} style={{ marginBottom: 12 }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[1, 2].map(i => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
+              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '12px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
                 <Skeleton w={52} h={16} r={4} />
-                <Skeleton w={32} h={32} r={8} />
+                <Skeleton w={32} h={32} r={'var(--r-sm)'} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <Skeleton w="60%" h={13} r={4} />
                   <Skeleton w="40%" h={11} r={4} />
@@ -346,7 +346,7 @@ function SkeletonTimeline() {
 function RightRailSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Skeleton w="100%" h={150} r={14} />
+      <Skeleton w="100%" h={150} r={'var(--r-btn)'} />
     </div>
   );
 }
@@ -390,7 +390,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 14px', background: 'var(--warning-soft)',
-      border: '1.5px dashed var(--warning)', borderRadius: 12,
+      border: '1.5px dashed var(--warning)', borderRadius: 'var(--r-sm)',
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
@@ -665,7 +665,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px',
                   background: 'transparent', border: '1.5px dashed var(--line)',
-                  borderRadius: 10, color: 'var(--muted)',
+                  borderRadius: 'var(--r-sm)', color: 'var(--muted)',
                 }}>
                   <Icon name="info" size={14} />
                   <div className="t-meta" style={{ flex: 1 }}>{t('view.empty_day')}</div>

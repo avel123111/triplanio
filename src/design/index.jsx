@@ -185,7 +185,7 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
     padding: "48px 24px", textAlign: "center", color: "var(--muted)",
   }}>
     <div style={{
-      width: 64, height: 64, borderRadius: 16,
+      width: 64, height: 64, borderRadius: 'var(--r-md)',
       background: kind === "error" ? "var(--danger-soft)" : kind === "locked" ? "var(--pro-soft-2)" : "var(--brand-soft)",
       color: kind === "error" ? "var(--danger)" : kind === "locked" ? "var(--pro-ink)" : "var(--brand)",
       display: "grid", placeItems: "center", marginBottom: 16,
@@ -246,7 +246,7 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
     disabled={busy || undefined}
     style={{
       width: 36, height: 21, padding: 0, border: "none",
-      borderRadius: 999,
+      borderRadius: 'var(--r-pill)',
       background: locked ? "var(--wash)" : on ? "var(--brand)" : "var(--line)",
       position: "relative", flexShrink: 0,
       opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
@@ -286,7 +286,7 @@ export const RoleBadge = ({ role, size = "md", status }) => {
     <span className="t-micro" style={{
       display: "inline-flex", alignItems: "center", gap: 5,
       padding: size === "sm" ? "2px 7px 2px 5px" : "3px 9px 3px 6px",
-      borderRadius: 999, background: m.soft, color: m.color,
+      borderRadius: 'var(--r-pill)', background: m.soft, color: m.color,
     }}>
       <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
       {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
@@ -316,7 +316,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
       <DialogContent className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
         <div className="dlg__head">
           {icon && (
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name={icon} size={17} />
             </div>
           )}
@@ -569,7 +569,7 @@ export function StreamEventRow({ e, onClick }) {
 
 function _InfoChip({ icon, color, children }) {
   return (
-    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)", color: "var(--ink-2)" }}>
+    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line-2)", color: "var(--ink-2)" }}>
       <Icon name={icon} size={13} style={{ color }} />
       {children}
     </span>

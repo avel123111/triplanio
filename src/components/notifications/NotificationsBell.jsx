@@ -134,7 +134,7 @@ export default function NotificationsBell({ triggerClassName }) {
               aria-hidden
               style={{
                 position: 'absolute', top: 4, right: 4,
-                width: 11, height: 11, borderRadius: 999,
+                width: 11, height: 11, borderRadius: 'var(--r-pill)',
                 background: 'var(--danger)',
                 border: '2px solid var(--surface)',
                 boxShadow: '0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent)',
