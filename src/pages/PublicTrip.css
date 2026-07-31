@@ -152,7 +152,7 @@
 .pt-cta__act{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 
 /* ── mobile sticky CTA ── */
-.pt-scta{position:fixed;left:0;right:0;bottom:0;z-index:50;display:none;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:saturate(180%) blur(16px);border-top:1px solid var(--line)}
+.pt-scta{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-header);display:none;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:saturate(180%) blur(16px);border-top:1px solid var(--line)}
 .pt-scta .tx{flex:1;min-width:0}
 .pt-scta .tx b{display:block;color:var(--ink)}
 .pt-scta .tx span{color:var(--muted)}
