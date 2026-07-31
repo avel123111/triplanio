@@ -13,6 +13,10 @@
  *   • LAYERS      — ENFORCED (since TRIP-321). A raw z-index of 10 or more —
  *     in CSS or as a JSX `zIndex:` prop — is a new unnamed floor outside the
  *     --z-* ladder and fails the check. Below 10 is a component-local stack.
+ *   • BREAKPOINTS — ENFORCED as a count ratchet (since TRIP-321). A breakpoint
+ *     cannot be a token (custom properties are invalid in media features), so
+ *     the scale lives here: the number of off-scale @media widths may fall,
+ *     never rise.
  *
  * Whitelisted files legitimately carry raw values (external brand colours,
  * Mapbox/canvas paint that needs concrete hex, SVG illustration fills, the
@@ -79,14 +83,21 @@ const WHITELIST_LIMIT = 18;
 // this file. null = base not resolvable (no such ref, or the base predates this
 // constant) → rule 4 is skipped rather than guessed.
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
-const baseLimit = (() => {
+const baseSrc = (() => {
   try {
-    const src = execFileSync('git', ['show', `${BASE_REF}:scripts/check-design-tokens.mjs`], {
+    return execFileSync('git', ['show', `${BASE_REF}:scripts/check-design-tokens.mjs`], {
       encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
     });
-    return Number(src.match(/^const WHITELIST_LIMIT = (\d+)/m)?.[1] ?? NaN) || null;
   } catch {
     return null; // ref missing (shallow clone / fresh fork) — not a violation
+  }
+})();
+const baseConst = (name) => (baseSrc ? Number(baseSrc.match(new RegExp(`^const ${name} = (\\d+)`, 'm'))?.[1] ?? NaN) || null : null);
+const baseLimit = (() => {
+  try {
+    return baseConst('WHITELIST_LIMIT');
+  } catch {
+    return null;
   }
 })();
 
@@ -133,6 +144,18 @@ const TYPO_INLINE_VAR_ALLOW = ['src/components/AppErrorBoundary.jsx', 'src/pages
 // a bug, and a genuinely local stack takes a per-line `design-token-exempt`.
 const LAYERS_ALLOW = ['public/landing.css'];
 
+// Sanctioned responsive scale (TRIP-321). A breakpoint CANNOT be a token: custom
+// properties are not allowed in media-feature values, so `@media (max-width:
+// var(--bp))` is invalid CSS and the numbers must stay literal. The scale is
+// therefore held by this guard instead of by the stylesheet.
+// Off-scale breakpoints are GRANDFATHERED as a ratchet (same rules as
+// COLOR_WHITELIST): the count may fall, never rise. Normalising an existing one
+// moves where the layout switches, so each is a visual decision, not a sweep.
+// landing.css is exempt — standalone marketing page with its own responsive design.
+const BREAKPOINTS = [640, 880];
+const BREAKPOINT_ALLOW = ['public/landing.css'];
+const BREAKPOINT_LIMIT = 27;
+
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {
   textPx:    /text-\[[0-9.]+px\]/,
@@ -157,6 +180,8 @@ const RE = {
   letterSpacingNum:/letter-spacing:\s*-?[0-9.]/,
   // TRIP-321 — этаж ≥10 обязан быть --z-*. Кавычки: React применяет zIndex:'999'.
   rawZIndex: /(?:z-index|zIndex):\s*['"]?(\d+)/,
+  // TRIP-321 — брейкпоинт вне шкалы BREAKPOINTS.
+  mediaWidth: /\((?:max|min)-width:\s*(\d+)px\)/g,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
@@ -174,6 +199,7 @@ function walk(dir, out = []) {
 const typo = [];
 const color = [];
 const layers = []; // raw z-index off the --z-* ladder (TRIP-321)
+const bp = [];     // @media widths off the BREAKPOINTS scale (TRIP-321)
 // Raw-colour count per whitelisted file — the unification worklist (TRIP-321).
 // A whitelisted file that reaches 0 must leave the list; see the header.
 const wlDebt = new Map(COLOR_WHITELIST.map((f) => [f, 0]));
@@ -228,6 +254,11 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
     if (!dtExempt && !LAYERS_ALLOW.includes(file)) {
       const z = line.match(RE.rawZIndex);
       if (z && Number(z[1]) >= 10) layers.push(`${loc}  ${line.trim().slice(0, 90)}`);
+    }
+    if (!dtExempt && !BREAKPOINT_ALLOW.includes(file)) {
+      for (const m of line.matchAll(RE.mediaWidth)) {
+        if (!BREAKPOINTS.includes(Number(m[1]))) bp.push(`${loc}  ${m[0]}`);
+      }
     }
     // colour — scanned for EVERY file. Outside the whitelist a hit is a
     // violation; inside it, the hit is counted as remaining debt so a file that
@@ -291,6 +322,23 @@ console.log(`\nLAYERS (enforced) — ${layers.length} raw z-index off the --z-* 
 layers.forEach((l) => console.log('  ✗ ' + l));
 if (!layers.length) console.log('  ✓ none — every stacking layer is a --z-* token');
 
+// Ратчет тугой: счётчик обязан РАВНЯТЬСЯ потолку. Вырос — новый брейкпоинт;
+// упал — нормализовали существующий, значит опусти BREAKPOINT_LIMIT тем же
+// коммитом, иначе останется люфт, в который молча влезет следующий. Плюс сам
+// потолок сверяется с базой PR, чтобы его нельзя было поднять «за компанию».
+const baseBpLimit = baseConst('BREAKPOINT_LIMIT');
+const bpRose = bp.length > BREAKPOINT_LIMIT;
+const bpFell = bp.length < BREAKPOINT_LIMIT;
+const bpCeilingRaised = baseBpLimit !== null && BREAKPOINT_LIMIT > baseBpLimit;
+const bpOver = bpRose || bpFell || bpCeilingRaised;
+console.log(`\nBREAKPOINTS (ratchet — ${bp.length}/${BREAKPOINT_LIMIT}) — off the ${BREAKPOINTS.join('/')} scale:`);
+bp.slice(0, 40).forEach((l) => console.log('  • ' + l));
+if (bpRose) console.log(`  ✗ count rose to ${bp.length} — a new off-scale breakpoint. Use ${BREAKPOINTS.join(' or ')}, or annotate the line \`design-token-exempt\` with a reason.`);
+if (bpFell) console.log(`  ✗ count fell to ${bp.length} — lower BREAKPOINT_LIMIT to ${bp.length} in this commit, or the slack lets the next one back in.`);
+if (bpCeilingRaised) console.log(`  ✗ ceiling raised — BREAKPOINT_LIMIT ${baseBpLimit} → ${BREAKPOINT_LIMIT} vs ${BASE_REF}. The ratchet only turns down.`);
+else if (bp.length) console.log(`  ✓ ratchet intact — no new off-scale breakpoint (normalising an existing one moves the layout switch: visual decision, not a sweep)`);
+else console.log('  ✓ none');
+
 // ── COLOUR WHITELIST — ratchet + unification worklist (TRIP-321) ──
 // The per-file counts below are the remaining raw-colour debt: this is the
 // Ф2 progress meter, and it is only allowed to go down.
@@ -332,6 +380,6 @@ for (const [a, o] of compAreas) {
 }
 if (!compSum) console.log('  ✓ none — every component text is on a .t-* canon');
 
-const failed = typo.length > 0 || layers.length > 0 || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
+const failed = typo.length > 0 || layers.length > 0 || bpOver || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
 console.log(`\n${hr}\n${failed ? '✗ FAILED' : '✓ PASSED'}\n${hr}\n`);
 process.exit(failed ? 1 : 0);
