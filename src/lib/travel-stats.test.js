@@ -53,8 +53,8 @@ test('dominantTone — "most real" wins, tokens bound', () => {
   assert.equal(dominantTone([{ kind: 'trip', start_date: '2099-01-01' }]), 'future', `today=${today.toISOString()}`);
   assert.equal(dominantTone([]), 'trip');
   assert.equal(TONE_RANK.trip < TONE_RANK.manual && TONE_RANK.manual < TONE_RANK.future, true);
-  assert.equal(TONE.trip, 'hsl(var(--primary))');
-  assert.equal(TONE.manual, 'hsl(var(--primary))');
+  assert.equal(TONE.trip, 'var(--brand)');
+  assert.equal(TONE.manual, 'var(--brand)');
   assert.equal(TONE.future, 'var(--ev-activity)');
 });
 

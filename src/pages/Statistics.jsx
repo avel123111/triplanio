@@ -37,7 +37,7 @@ import '../design/app.css';
 // permanent "0" bar only adds noise.
 const CONT_ORDER = ['EU', 'AS', 'NA', 'AF', 'SA', 'OC'];
 const CONT_COLOR = {
-  EU: 'hsl(var(--primary))', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
+  EU: 'var(--brand)', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
   AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)',
 };
 
@@ -368,7 +368,7 @@ export default function Statistics() {
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}>
-                      <i className="d" style={r.tone === 'manual' ? { background: 'var(--surface)', boxShadow: 'inset 0 0 0 2px hsl(var(--primary))' } : { background: r.color }} />
+                      <i className="d" style={r.tone === 'manual' ? { background: 'var(--surface)', boxShadow: 'inset 0 0 0 2px var(--brand)' } : { background: r.color }} />
                       {r.label}{r.count ? ` · ${r.count}` : ''}
                     </span>
                   ))}

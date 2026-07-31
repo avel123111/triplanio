@@ -199,11 +199,8 @@ export default function Login() {
   useEffect(() => {
     const r = document.documentElement;
     const prevTheme = r.getAttribute('data-theme');
-    const prevDark = r.classList.contains('dark');
-    r.classList.remove('dark');
     r.setAttribute('data-theme', 'light');
     return () => {
-      if (prevDark) r.classList.add('dark');
       if (prevTheme) r.setAttribute('data-theme', prevTheme);
     };
   }, []);

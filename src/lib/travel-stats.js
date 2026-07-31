@@ -56,7 +56,7 @@ export function pointType(p, today = new Date()) {
 // trip + manual share the brand hue (manual reads "lighter" — a hollow marker /
 // lower-opacity fill); future is the rose accent (--ev-activity). Priority for a
 // place with mixed visit types stays trip > manual > future (TONE_RANK below).
-export const TONE = { trip: 'hsl(var(--primary))', manual: 'hsl(var(--primary))', future: 'var(--ev-activity)' };
+export const TONE = { trip: 'var(--brand)', manual: 'var(--brand)', future: 'var(--ev-activity)' };
 // "Most real" wins (trip > manual > future) so a city visited on a trip never
 // looks merely "planned" when several visit types share a pin/place.
 export const TONE_RANK = { trip: 0, manual: 1, future: 2 };
