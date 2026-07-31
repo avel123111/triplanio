@@ -155,12 +155,8 @@ const RE = {
   // (WEIGHT_LH_ALLOW). Ранее не сканировался → booking-эйбрау держали .04em мимо
   // канона (TRIP-165 аудит 2026-07-02). Escape для разрядки глифов — design-token-exempt.
   letterSpacingNum:/letter-spacing:\s*-?[0-9.]/,
-  // TRIP-321 — лесенка перекрытия живёт ТОЛЬКО в --z-* (app.css). Сырой
-  // z-index от 10 и выше = новый безымянный этаж, который её ломает; ниже 10 —
-  // локальный стек внутри компонента, он лесенку не трогает. Оба написания:
-  // `z-index:` (CSS и <style> в JSX) и `zIndex:` (инлайн-проп) — этажи уже
-  // прятались в JSX мимо CSS-скана. Escape на строку: design-token-exempt.
-  rawZIndex: /(?:z-index|zIndex):\s*(\d+)/,
+  // TRIP-321 — этаж ≥10 обязан быть --z-*. Кавычки: React применяет zIndex:'999'.
+  rawZIndex: /(?:z-index|zIndex):\s*['"]?(\d+)/,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
