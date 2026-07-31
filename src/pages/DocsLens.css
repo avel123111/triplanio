@@ -91,12 +91,10 @@ a.dl-filechip__n:hover { color: var(--brand); }
   padding: 9px 11px; border-radius: 10px;
   background: var(--ev-hotel-soft); text-decoration: none;
 }
-.dl-linkrow__icon { width: 15px; height: 15px; color: var(--ev-hotel-ink); flex: none; }
 .dl-linkrow b {
   color: var(--ev-hotel-ink); flex: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.dl-linkrow__go { width: 13px; height: 13px; color: var(--ev-hotel-ink); opacity: .55; }
 
 /* ─── Add-card ghost placeholder in grid ─────────────────────── */
 .dl-addcard {

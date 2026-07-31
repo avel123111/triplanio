@@ -4,11 +4,6 @@
    Tailwind's rounded-sm was 8px here, while our --r-sm is 11px — not the same radius. */
 
 .eed-stack { display: flex; flex-direction: column; gap: 12px; }          /* was space-y-3 */
-.eed-minw0 { min-width: 0; }                                              /* was min-w-0 */
-
-/* price/currency/status — was: grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 */
-.eed-grid3 { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px; }
-@media (min-width: 640px) { .eed-grid3 { grid-template-columns: repeat(3, 1fr); } }
 
 /* transport-kind picker — was: grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3 */
 .eed-typegrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }

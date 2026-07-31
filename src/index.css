@@ -194,8 +194,7 @@ body {
 }
 /* Mobile-friendly: avoid accidental text selection on tappable elements. */
 button,
-[role="tab"],
-.nav-link {
+[role="tab"] {
   user-select: none;
   -webkit-user-select: none;
 }

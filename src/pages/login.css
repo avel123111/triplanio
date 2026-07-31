@@ -197,10 +197,6 @@
   box-shadow: 0 0 0 4px var(--brand-soft);
 }
 .auth-input--trail { padding-right: 44px; }
-.auth-input--error {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-soft);
-}
 
 .input-trail {
   position: absolute;
