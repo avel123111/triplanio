@@ -8,18 +8,26 @@
  *     inline fontSize:<number>) must come from --fs-* tokens. A violation
  *     fails the check (exit 1). Typography is fully migrated, so this protects
  *     it from regressing.
- *   • COLOR       — REPORT ONLY (for now). Raw hex + raw Tailwind palette
- *     classes. Colours are still being migrated to the Lumo system, so these
- *     are listed but do NOT fail. Flip COLOR_ENFORCED to true once the Lumo
- *     colour pass lands.
+ *   • COLOR       — ENFORCED (since TRIP-53). Raw hex + raw Tailwind palette
+ *     classes fail the check outside COLOR_WHITELIST.
  *
  * Whitelisted files legitimately carry raw values (external brand colours,
  * Mapbox/canvas paint that needs concrete hex, SVG illustration fills, the
  * token-definition stylesheets, and work explicitly deferred).
  *
+ * COLOR_WHITELIST is a RATCHET (TRIP-321): it is the unification worklist, so it
+ * may only ever shrink. Three rules keep it honest and all three FAIL the check:
+ *   1. an entry naming a file that no longer exists  — stale, delete the line;
+ *   2. an entry whose file has 0 raw colour left     — done, delete the line so
+ *      the file becomes protected (that is the whole point of cleaning it);
+ *   3. more entries than WHITELIST_LIMIT             — the list grew, i.e. some
+ *      change bought itself an exemption instead of using a token.
+ * Need a genuinely raw colour in an otherwise clean file? Annotate THAT LINE
+ * with `design-token-exempt` — never re-add the whole file.
+ *
  * Run: npm run check:design
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const COLOR_ENFORCED = true; // Lumo colour pass landed (TRIP-53): raw colour now fails CI
@@ -27,24 +35,19 @@ const COLOR_ENFORCED = true; // Lumo colour pass landed (TRIP-53): raw colour no
 const ROOT = 'src';
 
 // Files allowed to contain raw COLOUR values (hex / palette classes).
+// RATCHET — may only shrink. See the header for the three rules; lower
+// WHITELIST_LIMIT to the new length every time an entry is retired.
 const COLOR_WHITELIST = [
   'src/lib/externalBrands.js',                         // external brand registry
-  'src/components/bookings/buildBookingPlatforms.jsx', // partner brand styles
   'src/lib/avatarRamp.js',                             // avatar colour source
   'src/pages/login.css',                               // isolated; pending Lumo
   'src/index.css', 'src/design/app.css',               // token DEFINITIONS
-  'src/pages/BudgetLens.jsx',                           // CAT_COLORS data-viz; pending Lumo --cat-*
   'src/design/index.jsx',                              // weather palette; pending Lumo
-  'src/lib/map/mapStyle.js',                            // Mapbox paint needs concrete hex (route/marker colours)
-  'src/lib/map/captureMap.js',                          // canvas map-capture (share image) needs concrete hex — as mapStyle.js
-  'src/lib/map/markers.js',                             // marker DOM uses #fff border/text
-  'src/pages/ManualPlanner.jsx',                        // planner accent hex defaults
-  'src/lib/booking-platforms.js',                       // external partner brand classes
-  'src/components/chat/TriplanioAvatar.jsx',            // SVG illustration fills
-  'src/components/AppErrorBoundary.jsx',                // crash screen — must not depend on tokens/CSS
-  'src/components/views/StaySectionExpandable.jsx',     // pending colour pass (deferred w/ timeline)
+  'src/lib/map/captureMap.js',                         // canvas map-capture (share image) needs concrete hex
+  'src/components/chat/TriplanioAvatar.jsx',           // SVG illustration fills
+  'src/components/AppErrorBoundary.jsx',               // crash screen — must not depend on tokens/CSS
   // — Added with the Lumo colour finale (TRIP-53): raw-by-nature sources —
-  'src/lib/trip-gradients.js',                          // trip-cover gradient presets (colour data)
+  'src/lib/trip-gradients.js',                         // trip-cover gradient presets (colour data)
   'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
   'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
   'src/components/site/SiteChrome.jsx',                // brand logo + country-flag SVGs
@@ -55,6 +58,10 @@ const COLOR_WHITELIST = [
   'src/pages/PublicTrip.css',                          // public read-only page styles
   'public/landing.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];
+
+// Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
+// lowering this number in the same commit; nothing may ever raise it.
+const WHITELIST_LIMIT = 18;
 
 // Files allowed to contain raw FONT SIZES.
 const TYPO_WHITELIST = [
@@ -131,6 +138,9 @@ function walk(dir, out = []) {
 
 const typo = [];
 const color = [];
+// Raw-colour count per whitelisted file — the unification worklist (TRIP-321).
+// A whitelisted file that reaches 0 must leave the list; see the header.
+const wlDebt = new Map(COLOR_WHITELIST.map((f) => [f, 0]));
 
 // ── TRIP-165 typography-composition report (REPORT-ONLY until migration done) ──
 // Measures the remaining "not yet on a .t-* canon" surface so we can track the
@@ -178,8 +188,16 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
       if (RE.lineHeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (RE.letterSpacingNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
-    // colour
-    if (!COLOR_WHITELIST.includes(file)) {
+    // colour — scanned for EVERY file. Outside the whitelist a hit is a
+    // violation; inside it, the hit is counted as remaining debt so a file that
+    // reaches 0 can be forced off the list instead of silently staying exempt.
+    {
+      const whitelisted = COLOR_WHITELIST.includes(file);
+      // One raw-colour hit: a violation, or — on a whitelisted file — one unit of debt.
+      const recordHit = () => {
+        if (whitelisted) wlDebt.set(file, wlDebt.get(file) + 1);
+        else color.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      };
       const isTokenDef = /--[a-z0-9-]+\s*:/.test(line); // skip token definitions
       // Pure white / black are theme-neutral (white text on a brand surface,
       // black scrims) — they don't fragment the palette the way a raw brand/
@@ -191,8 +209,8 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
       const exempt = line.includes('design-token-exempt');
       const hexes = line.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
       const nonNeutralHex = hexes.some((h) => !/^#(fff|ffffff|000|000000)$/i.test(h));
-      if (!exempt && !isTokenDef && nonNeutralHex)            color.push(`${loc}  ${line.trim().slice(0, 90)}`);
-      if (!exempt && !isCss && RE.paletteCls.test(line))      color.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (!exempt && !isTokenDef && nonNeutralHex)            recordHit();
+      if (!exempt && !isCss && RE.paletteCls.test(line))      recordHit();
     }
     // typography composition (report-only) — only component files, not canon/token defs
     // Skip lines with a container-computed fontSize (e.g. `fontSize: size * 0.55`) —
@@ -228,6 +246,22 @@ color.slice(0, 40).forEach((l) => console.log('  • ' + l));
 if (color.length > 40) console.log(`  … and ${color.length - 40} more`);
 if (!color.length) console.log('  ✓ none');
 
+// ── COLOUR WHITELIST — ratchet + unification worklist (TRIP-321) ──
+// The per-file counts below are the remaining raw-colour debt: this is the
+// Ф2 progress meter, and it is only allowed to go down.
+const wlStale = COLOR_WHITELIST.filter((f) => !existsSync(f));
+const wlClean = COLOR_WHITELIST.filter((f) => existsSync(f) && wlDebt.get(f) === 0);
+const wlTotal = [...wlDebt.values()].reduce((a, b) => a + b, 0);
+console.log(`\nCOLOUR WHITELIST (ratchet — ${COLOR_WHITELIST.length}/${WHITELIST_LIMIT} entries) — ${wlTotal} raw colour(s) still exempt:`);
+[...wlDebt.entries()].sort((a, b) => b[1] - a[1]).forEach(([f, n]) => console.log(`    ${String(n).padStart(3)}  ${f}`));
+wlStale.forEach((f) => console.log(`  ✗ stale — file no longer exists, delete the entry: ${f}`));
+wlClean.forEach((f) => console.log(`  ✗ clean — 0 raw colour left; delete the entry and lower WHITELIST_LIMIT: ${f}`));
+if (COLOR_WHITELIST.length > WHITELIST_LIMIT) {
+  console.log(`  ✗ whitelist grew — ${COLOR_WHITELIST.length} entries > limit ${WHITELIST_LIMIT}. Use a per-line \`design-token-exempt\`, not a file exemption.`);
+}
+const wlFailed = wlStale.length > 0 || wlClean.length > 0 || COLOR_WHITELIST.length > WHITELIST_LIMIT;
+if (!wlFailed) console.log('  ✓ ratchet intact — every entry exists and still carries debt');
+
 // ── TRIP-165 typography-composition report (report-only) ──
 const compAreas = Object.entries(typoComp).sort((a, b) => {
   const sum = (o) => o.offSize + o.inlineWeight + o.inlineLh + o.inlineLs + o.inlineFamily;
@@ -246,6 +280,6 @@ for (const [a, o] of compAreas) {
 }
 if (!compSum) console.log('  ✓ none — every component text is on a .t-* canon');
 
-const failed = typo.length > 0 || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0);
+const failed = typo.length > 0 || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
 console.log(`\n${hr}\n${failed ? '✗ FAILED' : '✓ PASSED'}\n${hr}\n`);
 process.exit(failed ? 1 : 0);
