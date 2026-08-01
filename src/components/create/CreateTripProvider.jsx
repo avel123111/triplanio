@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { track } from '@/lib/analytics';
@@ -33,7 +33,7 @@ import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 const CreateTripContext = createContext({
   openChoice: () => {},
   startCreate: () => {},
-  startCopy: () => {},
+  startCopy: async () => {}, // async: matches the real implementation's contract
   copying: false,
 });
 
@@ -111,9 +111,21 @@ export function CreateTripProvider({ children }) {
   // resolve-true/false, not the async `onConfirm` mode: the limit gate runs
   // BETWEEN the confirmation and the copy, so a spinner on the confirm button
   // would sit over the wrong work — the blocking overlay below is the feedback.
+  //
+  // The ref guards the one gap the modals do not: two clicks landing in the same
+  // frame, before the confirm has painted. ConfirmProvider answers `false` to the
+  // superseded prompt, so without it a double-click flashes the dialog open,
+  // shut, then open again. Every later step is behind a modal already.
+  const copyPromptRef = useRef(false);
   const startCopy = useCallback(async (tripId) => {
-    if (!tripId) return;
-    const ok = await confirm({ title: t('confirm.copy_trip.title') });
+    if (!tripId || copyPromptRef.current) return;
+    copyPromptRef.current = true;
+    let ok;
+    try {
+      ok = await confirm({ title: t('confirm.copy_trip.title') });
+    } finally {
+      copyPromptRef.current = false;
+    }
     if (!ok) return;
     setPending({ kind: 'copy', tripId });
     setLimitOpen(true);

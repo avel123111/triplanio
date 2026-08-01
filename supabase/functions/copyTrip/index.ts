@@ -37,10 +37,13 @@ const COPY_PREFIX: Record<string, string> = {
 /**
  * Strip an already-present prefix, in ANY language, before adding the caller's.
  * Copying a copy must stay "Копия: Rome", not grow "Копия: Copy of Rome" on
- * every round. Built FROM COPY_PREFIX so adding a locale needs no second edit
- * (the values are plain words — no regex metacharacters to escape).
+ * every round. Built FROM COPY_PREFIX so adding a locale needs no second edit —
+ * and each value is regex-escaped, so a future prefix carrying punctuation
+ * (`Cópia (de) `) cannot silently turn into a metacharacter.
  */
-const COPY_PREFIX_RE = new RegExp(`^(?:${Object.values(COPY_PREFIX).join('|')})+`);
+const COPY_PREFIX_RE = new RegExp(
+  `^(?:${Object.values(COPY_PREFIX).map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})+`,
+);
 
 /** trips_title_len CHECK (TRIP-169) — the prefix must not push the copy over it. */
 const TITLE_MAX = 300;
@@ -94,17 +97,21 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
     // --- Name the copy in the caller's language ---
     // The caller owns the copy, so their language is the right one. Falls back to
     // English when the profile has no language set (or an unknown one).
-    const { data: caller } = await supabaseAdmin
+    // Deliberately NOT fatal — a copy named in English beats no copy at all. But
+    // it is logged: everything else here fails loudly, so a silent read would be
+    // the one blind spot left in the function.
+    const { data: caller, error: callerErr } = await supabaseAdmin
       .from('users')
       .select('language')
       .eq('id', user.id)
       .single();
+    if (callerErr) console.warn(`copyTrip: reading caller language failed, naming the copy in English: ${callerErr.message}`);
     const prefix = COPY_PREFIX[caller?.language ?? ''] ?? COPY_PREFIX.en;
     // Trim by CODE POINTS, not with `.slice()`: Postgres char_length() counts code
     // points while a JS string index is a UTF-16 unit, so slicing a title whose
     // 300th character is an emoji would cut a surrogate pair in half and hand
     // Postgres invalid UTF-8.
-    const copyTitle = [...(prefix + String(sourceTrip.title).replace(COPY_PREFIX_RE, ''))]
+    const copyTitle = [...(prefix + sourceTrip.title.replace(COPY_PREFIX_RE, ''))]
       .slice(0, TITLE_MAX)
       .join('');
 
@@ -313,7 +320,13 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
       // orphaned half-copy sitting in the user's trip list is invisible.
       const { error: rollbackErr } = await supabaseAdmin.from('trips').delete().eq('id', newTripId);
       if (rollbackErr) {
-        throw new Error(`${(e as Error).message}; rollback failed too, trip ${newTripId} is orphaned: ${rollbackErr.message}`);
+        // `cause` keeps the ORIGINAL error (and its stack) attached — a bare
+        // `new Error(msg)` would hand Sentry a stack pointing at this line and
+        // hide which table actually failed, exactly when we most need it.
+        throw new Error(
+          `copyTrip: rollback failed, trip ${newTripId} is orphaned: ${rollbackErr.message}`,
+          { cause: e },
+        );
       }
       throw e; // withHandler reports it to Sentry and answers 500
     }
