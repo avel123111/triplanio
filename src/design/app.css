@@ -1034,7 +1034,7 @@ h4,
 /* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
    поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
 .app-header__logo {
-  width: 38px; height: 38px; flex: 0 0 auto; border-radius: 6px; display: grid; place-items: center;
+  width: 38px; height: 38px; flex: 0 0 auto; border-radius: var(--r-sm); display: grid; place-items: center;
   overflow: hidden;
 }
 .app-header__logo img { width: 38px; height: 38px; display: block; border-radius: var(--r-sm); }
@@ -1061,7 +1061,7 @@ h4,
   position: relative;
   width: 34px; height: 34px;
   display: grid; place-items: center;
-  border-radius: 5px;
+  border-radius: var(--r-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
@@ -1405,7 +1405,10 @@ h4,
   appearance: none;
   width: 17px; height: 17px;
   border: 1.5px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  /* Браузер зажимает радиус до половины стороны, поэтому на стороне 17px даже
+     наименьшая ступень шкалы (--r-sm, 11px) даёт идеальный круг - чекбокс
+     становится неотличим от радиокнопки. */
+  border-radius: 5px;   /* design-token-exempt: ниже шкалы радиус - это форма, а не ступень */
   background: var(--surface);
   display: inline-grid; place-items: center;
   transition: background .15s ease, border-color .15s ease;
@@ -1415,8 +1418,10 @@ h4,
 .checkbox input:checked::after {
   content: "";
   width: 9px; height: 5px;
-  border-left: 1.8px solid #fff;
-  border-bottom: 1.8px solid #fff;
+  /* Галка лежит НА --brand, поэтому её цвет - --primary-fg, а не литерал #fff:
+     тот же случай, что и .hv-plat__ic. */
+  border-left: 1.8px solid var(--primary-fg);
+  border-bottom: 1.8px solid var(--primary-fg);
   transform: rotate(-45deg) translate(1px, -1px);
 }
 .checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
@@ -2478,7 +2483,7 @@ h4,
 @keyframes dockUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 /* ONE header row — the former tab strip held a single always-active tab. */
 .dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line-2); }
-.dock-panel__head .icon-btn { width: 32px; height: 32px; border-radius: var(--r-sm); }
+.dock-panel__head .icon-btn { width: 32px; height: 32px; }   /* только размер: радиус общий, из базового .icon-btn */
 .dock-panel__head .avatar { width: 26px; height: 26px; }
 .dock-panel__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .dock-panel__id b { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2678,11 +2683,6 @@ h4,
  border: 1px solid var(--line);
  color: var(--ink);
 }
-/* Skeleton pulse */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: .45; }
-}
 
 /* Validation: red border on a field wrapper flagged with .tv-invalid (data-vfield) */
 .tv-invalid input,
@@ -2804,7 +2804,6 @@ h4,
        animation: a filled animation pins opacity and breaks the fade-out. */
     .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; display: flex; justify-content: center; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
-    @keyframes teSeamIn { from { opacity: 0; transform: translateY(50%) scale(0.94); } to { opacity: 1; transform: translateY(50%) scale(1); } }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
     .te-seam__pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1.5px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
@@ -4223,7 +4222,10 @@ h4,
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
 .hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
 .hv-plat{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:5px 12px 5px 5px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);}
-.hv-plat__ic{width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;background:var(--brand);}
+/* Буква-плейсхолдер платформы (когда логотипа нет) лежит НА --brand, поэтому её
+   цвет - --primary-fg, а не литерал #fff: в тёмной теме --brand светло-голубой,
+   и белым по нему выходит 2.2:1. */
+.hv-plat__ic{width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--primary-fg);overflow:hidden;background:var(--brand);}
 .hv-plat__ic img{width:100%;height:100%;object-fit:contain;background:#fff;}
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
