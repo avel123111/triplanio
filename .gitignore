@@ -46,3 +46,6 @@ dist_chk*/
 
 # Vercel CLI local (pulled env / project link)
 .vercel
+
+# Playwright MCP artefacts (snapshots/screenshots) land in cwd of the worktree
+.playwright-mcp/
