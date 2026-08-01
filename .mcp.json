@@ -42,15 +42,8 @@
       }
     },
     "playwright": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@0.0.78",
-        "--headless",
-        "--isolated",
-        "--browser",
-        "chromium"
-      ],
+      "command": "sh",
+      "args": ["scripts/agent/playwright-mcp.sh"],
       "env": {
         "PLAYWRIGHT_BROWSERS_PATH": "/data/.cache/ms-playwright"
       }
