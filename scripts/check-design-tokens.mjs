@@ -3,7 +3,8 @@
  * Design-system guard.
  *
  * Scans src/ for values that bypass the design tokens and reports them in four
- * tiers:
+ * tiers (the structural ones - layers, breakpoints, radii - also scan public/,
+ * static .html pages included; see STRUCTURAL below):
  *   • TYPOGRAPHY  — ENFORCED. Raw font sizes (text-[Npx], font-size:Npx,
  *     inline fontSize:<number>) must come from --fs-* tokens. A violation
  *     fails the check (exit 1). Typography is fully migrated, so this protects
@@ -166,10 +167,14 @@ const WEIGHT_LH_ALLOW = [
 //   • LandingPage      — marketing mockup chrome (fake-app visuals), not semantic app text.
 const TYPO_INLINE_VAR_ALLOW = ['src/components/AppErrorBoundary.jsx', 'src/pages/Landing/LandingPage.jsx'];
 
-// Files allowed a raw z-index (TRIP-321). landing.css is the STANDALONE marketing/
-// legal stylesheet — it is loaded WITHOUT app.css, so the --z-* tokens do not
-// resolve there at all; it owns its own tiny ladder. Anywhere else a raw layer is
-// a bug, and a genuinely local stack takes a per-line `design-token-exempt`.
+// Files allowed a raw z-index (TRIP-321). landing.css owns its own small ladder.
+// It is NOT an isolated sheet: SiteChrome injects it on the `/` and
+// `/public/trip/:id` React routes, where app.css is already loaded, so --z-*
+// resolves there and both sets share one root stacking context. The exemption
+// therefore holds only while landing's numbers stay clear of the ladder - a
+// `z-index: 300` added there would sit on the confirm floor unnoticed.
+// Static public/*.html ARE isolated (they load only /landing.css), so a local
+// stack there takes a per-line `design-token-exempt`, not a file exemption.
 const LAYERS_ALLOW = ['public/landing.css'];
 
 // Sanctioned responsive scale (TRIP-321). A breakpoint CANNOT be a token: custom
@@ -183,7 +188,11 @@ const LAYERS_ALLOW = ['public/landing.css'];
 // Normalising an existing one moves where the layout switches, so each is a
 // visual decision, not a sweep.
 // landing.css is exempt — standalone marketing page with its own responsive design.
-const BREAKPOINTS = [640, 880];
+// 768 - третья ЛЕГАЛЬНАЯ ступень (решение Pavel, TRIP-321 Ф9): «брейкпоинт меню»
+// из src/hooks/use-mobile.jsx, на котором выпадашки становятся шторками, а
+// диалоги drawer'ами. Переставить его = сменить поведение на планшетах, то есть
+// продуктовое решение, а не уборка, поэтому он вписан в шкалу, а не вычищен.
+const BREAKPOINTS = [640, 768, 880];
 const BREAKPOINT_ALLOW = ['public/landing.css'];
 
 // ── RADII (TRIP-321 Ф8) ──────────────────────────────────────────────────────
@@ -237,13 +246,25 @@ const RE = {
   // канона (TRIP-165 аудит 2026-07-02). Escape для разрядки глифов — design-token-exempt.
   letterSpacingNum:/letter-spacing:\s*-?[0-9.]/,
   // TRIP-321 — этаж ≥10 обязан быть --z-*. Кавычки: React применяет zIndex:'999'.
-  rawZIndex: /(?:z-index|zIndex):\s*['"]?(\d+)/,
+  // Флаг g обязателен: без него на строке разбирается только ПЕРВАЯ декларация.
+  // Отсюда же ограничение - звать ТОЛЬКО через matchAll (он берёт копию регекса);
+  // .test()/.exec() на общем g-регексе тащат lastIndex между вызовами и начнут
+  // пропускать строки через одну.
+  rawZIndex: /(?:z-index|zIndex)\s*:\s*['"]?(\d+)/gi,
   // TRIP-321 — брейкпоинт вне шкалы BREAKPOINTS.
   // Прелюдия @media целиком (может быть многострочной) — до открывающей «{».
   mediaPrelude: /@media([^{]*)\{/g,
   // Ширина внутри прелюдии: legacy `max-width: 700px` И range `width <= 700px`
   // / `700px <= width`. Иначе новый брейкпоинт заезжает через range-синтаксис.
   mediaWidth: /(?:(?:min-|max-)?width\s*[:<>=]+\s*(\d+)px)|(?:(\d+)px\s*[<>=]+\s*width)/g,
+  // TRIP-321 Ф9 - брейкпоинты, живущие в JS: они переключают саму РАЗМЕТКУ
+  // (выпадашка↔шторка, диалог↔drawer), но @media-скану не видны вовсе. Строка
+  // внутри matchMedia() - та же прелюдия, поэтому разбирается тем же mediaWidth.
+  // Шаблонная `${X - 1}px` литеральных цифр не несёт и сюда не попадает: её
+  // источник - сама константа, так что двойного счёта нет.
+  matchMediaCall: /matchMedia\(\s*[`'"]([^`'"]*)[`'"]/g,
+  jsBreakpointConst: /(?:const|let|var)\s+\w*BREAKPOINT\w*\s*=\s*(\d+)/gi,
+  innerWidthCompare: /innerWidth\s*([<>])=?\s*(\d+)/g,
   // TRIP-321 Ф8 — радиус в CSS и в инлайновом JSX (borderRadius: '12px' / 12).
   // Значение обрывается и на ЗАПЯТОЙ: в JSX-объекте она разделяет свойства, и
   // без неё захват уезжает в соседние (`borderRadius: 4, fontWeight: 700` читался
@@ -258,36 +279,60 @@ const RE = {
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
 
+// .html входит ради статических страниц public/: они несут свою вёрстку, и
+// структурные ярусы обязаны её видеть. В src/ .html нет, поэтому дом
+// типографики и цвета этим не меняется.
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     const s = statSync(p);
     if (s.isDirectory()) walk(p, out);
-    else if (/\.(jsx?|css)$/.test(name)) out.push(p);
+    else if (/\.(jsx?|css|html)$/.test(name)) out.push(p);
   }
   return out;
 }
 
 const typo = [];
 const color = [];
-const layers = []; // raw z-index off the --z-* ladder (TRIP-321)
 // Off-scale ширины файла как МУЛЬТИМНОЖЕСТВО {ширина: сколько раз}. Скан идёт по
 // целым прелюдиям @media, а не построчно: прелюдия бывает многострочной, и тогда
 // построчный разбор её просто не видит.
 const offScaleWidths = (text) => {
   const out = new Map();
   if (!text) return out;
+  // Ключ - НАПРАВЛЕНИЕ плюс ширина («max:700»), а не голое число: переворот
+  // min↔max меняет, по какую сторону брейкпоинта применяется правило, то есть
+  // сдвигает точку переключения раскладки, но по самому числу неотличим и
+  // проезжал храповик молча.
+  const add = (dir, px) => {
+    if (!Number.isFinite(px) || BREAKPOINTS.includes(px)) return;
+    const k = `${dir}:${px}`;
+    out.set(k, (out.get(k) || 0) + 1);
+  };
   // Комментарии вырезаем (закомментированный @media — не брейкпоинт), но маркер
   // design-token-exempt сохраняем: иначе escape-люк в прелюдии не сработает.
   const body = text.replace(/\/\*[\s\S]*?\*\//g, (m) => (m.includes('design-token-exempt') ? ' design-token-exempt ' : ' '));
-  for (const q of body.matchAll(RE.mediaPrelude)) {
-    if (q[1].includes('design-token-exempt')) continue;
-    for (const w of q[1].matchAll(RE.mediaWidth)) {
-      const px = Number(w[1] ?? w[2]);
-      if (!Number.isFinite(px) || BREAKPOINTS.includes(px)) continue;
-      out.set(px, (out.get(px) || 0) + 1);
+  const scanPrelude = (prelude) => {
+    if (prelude.includes('design-token-exempt')) return;
+    for (const w of prelude.matchAll(RE.mediaWidth)) {
+      // w[1] — legacy `min-/max-width: Npx`; w[2] — range `Npx <= width`.
+      // Направление выводится и из range-синтаксиса: `width <= 700px` это max,
+      // а `700px <= width` — min. Общий ключ «range» схлопывал бы их в один, то
+      // есть переворот, записанный через range, проехал бы храповик молча.
+      const dir = /max-width/.test(w[0]) ? 'max'
+        : /min-width/.test(w[0]) ? 'min'
+        : w[1] !== undefined ? (/</.test(w[0]) ? 'max' : 'min')   // width <op> Npx
+        : (/</.test(w[0]) ? 'min' : 'max');                       // Npx <op> width
+      add(dir, Number(w[1] ?? w[2]));
     }
-  }
+  };
+  for (const q of body.matchAll(RE.mediaPrelude)) scanPrelude(q[1]);
+  // Те же ширины, но из JS (почему - см. RE.matchMediaCall).
+  for (const q of body.matchAll(RE.matchMediaCall)) scanPrelude(q[1]);
+  for (const q of body.matchAll(RE.jsBreakpointConst)) add('const', Number(q[1]));
+  // `innerWidth < N` это тот же max-width, `> N` — min-width. Направление тут
+  // тоже обязано быть в ключе, иначе переворот сравнения проедет храповик.
+  for (const q of body.matchAll(RE.innerWidthCompare)) add(q[1] === '<' ? 'max' : 'min', Number(q[2]));
   return out;
 };
 
@@ -393,7 +438,17 @@ const area = (f) => {
 const typoComp = {}; // area -> { offSize, inlineWeight, inlineLh, inlineLs, inlineFamily }
 const bump = (f, k) => { const a = area(f); (typoComp[a] ||= { offSize: 0, inlineWeight: 0, inlineLh: 0, inlineLs: 0, inlineFamily: 0 })[k]++; };
 
+// SCANNED - дом типографики и цвета: src/ плюс лендинг. Прочие статические
+// страницы public/ (юр. тексты, og-заглушки) сюда нельзя: у них свой шрифт, а
+// цветовой белый список - ХРАПОВИК, куда записи добавлять запрещено, так что
+// без записи они сразу валят CI.
 const SCANNED = [...walk(ROOT), 'public/landing.css'];
+// STRUCTURAL - дом слоёв, брейкпоинтов и радиусов: ВЕСЬ public/, включая .html.
+// Эти три оси не про текст, поэтому статические страницы им подчиняются даже со
+// своей типографикой - а дыра была именно там: privacy/terms.html держали свой
+// z-index, свои @media и вторую шкалу радиусов (--radius-card/--radius-btn) вне
+// поля зрения гарда.
+const STRUCTURAL = [...new Set([...SCANNED, ...walk('public')])];
 for (const file of SCANNED) {
   const isCss = file.endsWith('.css');
   const lines = readFileSync(file, 'utf8').split('\n');
@@ -422,11 +477,6 @@ for (const file of SCANNED) {
       if (RE.fontWeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (RE.lineHeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (RE.letterSpacingNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
-    }
-    // layers — the overlap ladder must stay in --z-* (TRIP-321)
-    if (!dtExempt && !LAYERS_ALLOW.includes(file)) {
-      const z = line.match(RE.rawZIndex);
-      if (z && Number(z[1]) >= 10) layers.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
     // colour — scanned for EVERY file. Outside the whitelist a hit is a
     // violation; inside it, the hit is counted as remaining debt so a file that
@@ -486,6 +536,21 @@ color.slice(0, 40).forEach((l) => console.log('  • ' + l));
 if (color.length > 40) console.log(`  … and ${color.length - 40} more`);
 if (!color.length) console.log('  ✓ none');
 
+// ── LAYERS (TRIP-321 Ф9) ── свой проход по STRUCTURAL, а не строка в главном
+// цикле: этаж - вещь структурная, и public/*.html держат собственные z-index.
+const layers = [];  // сырой z-index мимо шкалы --z-*
+for (const file of STRUCTURAL) {
+  if (LAYERS_ALLOW.includes(file)) continue;
+  readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+    if (line.includes('design-token-exempt')) return;
+    // Значение в отчёт: на строке с двумя декларациями иначе две одинаковые
+    // записи, и непонятно, какой именно этаж мимо шкалы.
+    for (const z of line.matchAll(RE.rawZIndex)) {
+      if (Number(z[1]) >= 10) layers.push(`${file}:${i + 1}  z-index:${z[1]}  ${line.trim().slice(0, 90)}`);
+    }
+  });
+}
+
 console.log(`\nLAYERS (enforced) — ${layers.length} raw z-index off the --z-* ladder:`);
 layers.forEach((l) => console.log('  ✗ ' + l));
 if (!layers.length) console.log('  ✓ none — every stacking layer is a --z-* token');
@@ -497,15 +562,15 @@ if (!layers.length) console.log('  ✓ none — every stacking layer is a --z-* 
 // суммарное число не изменилось.
 const bpNew = [];
 let bpTotal = 0;
-for (const file of SCANNED) {
+for (const file of STRUCTURAL) {
   if (BREAKPOINT_ALLOW.includes(file)) continue;
   const now = offScaleWidths(readFileSync(file, 'utf8'));
   for (const n of now.values()) bpTotal += n;
   if (!baseSrc) continue;                       // база недоступна — сверять не с чем
   const was = offScaleWidths(baseFile(file));   // null → пустая карта (файл новый)
-  for (const [px, n] of now) {
-    const had = was.get(px) || 0;
-    if (n > had) bpNew.push(`${file}  ${px}px ×${n - had}` + (had ? ` (было ×${had})` : ' (новая ширина)'));
+  for (const [key, n] of now) {                 // key = «направление:ширина», см. offScaleWidths
+    const had = was.get(key) || 0;
+    if (n > had) bpNew.push(`${file}  ${key}px ×${n - had}` + (had ? ` (было ×${had})` : ' (новая ширина)'));
   }
 }
 const bpOver = bpNew.length > 0;
@@ -520,20 +585,26 @@ const radiiDebt = [];   // правило 1: сырые радиусы >= пол
 const radiiClamp = [];  // правило 2: правила, СТАВШИЕ круглыми против базы
 let radiiDebtTotal = 0;
 let clampedTotal = 0;
-for (const file of SCANNED) {
+for (const file of STRUCTURAL) {
   if (RADII_ALLOW.includes(file)) continue;
-  const isCss = file.endsWith('.css');
+  // Два РАЗНЫХ признака, и путать их нельзя. Голая единица (`borderRadius: 16`)
+  // подразумевается только в JSX; в CSS и в <style> статической страницы это
+  // невалидно, и считать её долгом значит выдумывать нарушение.
+  const isJsx = /\.jsx?$/.test(file);
+  // А вот РАЗМЕЧЕННЫЙ правилами CSS есть и в .css, и внутри <style> у .html —
+  // значит вырождение обязано проверяться в обоих, иначе охрана public/ покрывает
+  // только половину забора.
+  const hasCssRules = !isJsx;
   const src = readFileSync(file, 'utf8');
   // Правило 1 АБСОЛЮТНОЕ, без сверки с базой: долг доведён до нуля, поэтому
   // дедовщина не нужна, и правило одинаково работает локально и на PR dev→main.
-  for (const [px, n] of rawRadiiAtOrAboveFloor(src, !isCss)) {
+  for (const [px, n] of rawRadiiAtOrAboveFloor(src, isJsx)) {
     radiiDebtTotal += n;
     radiiDebt.push(`${file}  ${px}px ×${n}`);
   }
-  // Вырождение ищем только в CSS: в JSX размер и радиус живут в разных местах.
-  const nowClamp = isCss ? clampedRules(src) : new Map();
+  const nowClamp = hasCssRules ? clampedRules(src) : new Map();
   clampedTotal += nowClamp.size;
-  if (!isCss || !baseSrc) continue;                        // база недоступна, сверять не с чем
+  if (!hasCssRules || !baseSrc) continue;                  // база недоступна, сверять не с чем
   const wasClamp = clampedRules(baseFile(file));
   for (const [sel, eff] of nowClamp) {
     if (wasClamp.has(sel)) continue;                       // уже зажималось = дедовщина
