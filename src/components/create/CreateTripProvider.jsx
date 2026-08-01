@@ -115,12 +115,15 @@ export function CreateTripProvider({ children }) {
   // mode: the limit gate runs BETWEEN the confirmation and the actual copy, so a
   // spinner on the confirm button would be sitting over the wrong work. In-flight
   // feedback is the blocking overlay below.
+  //
+  // No `confirmLabel` — the default "Confirm" is what leaving and deleting a trip
+  // already use. Note the trap: `common.copy` / `share.copy` read like a fit, but
+  // they mean "copy to CLIPBOARD" (the AI reply text, an invite link). Duplicating
+  // an entity is a different action that merely shares the word in Russian, so
+  // binding to them would break this button the day the clipboard wording changes.
   const startCopy = useCallback(async (tripId) => {
     if (!tripId) return;
-    const ok = await confirm({
-      title: t('confirm.copy_trip.title'),
-      confirmLabel: t('common.copy'),
-    });
+    const ok = await confirm({ title: t('confirm.copy_trip.title') });
     if (!ok) return;
     setPending({ kind: 'copy', tripId });
     setLimitOpen(true);
