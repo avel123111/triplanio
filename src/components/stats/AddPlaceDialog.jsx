@@ -111,12 +111,12 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const foot = (
     <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
       {isEdit && (
-        <Btn variant="danger" size="sm" onClick={remove} disabled={saving} style={{ marginRight: 'auto' }}>
+        <Btn variant="danger" onClick={remove} disabled={saving} style={{ marginRight: 'auto' }}>
           {t('stats.delete_btn')}
         </Btn>
       )}
-      <Btn variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
-      <Btn variant="primary" size="sm" icon="check" onClick={submit} disabled={saving}>
+      <Btn variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
+      <Btn variant="primary" icon="check" onClick={submit} disabled={saving}>
         {isEdit ? t('stats.save_btn') : t('stats.add_btn')}
       </Btn>
     </div>

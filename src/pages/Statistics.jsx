@@ -329,7 +329,7 @@ export default function Statistics() {
                   ))}
                 </div>
               )}
-              <Btn variant="soft" size="sm" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
+              <Btn variant="soft" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
             </div>
           </div>
         </div>
@@ -342,7 +342,7 @@ export default function Statistics() {
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>
-            <Btn variant="primary" size="sm" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
+            <Btn variant="primary" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
           </div>
         )}
 

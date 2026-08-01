@@ -1155,7 +1155,7 @@ h4,
   --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   /* тип — из канона .t-ui (co-selector, TRIP-165) */
-  padding: 12px 20px; border-radius: var(--r-btn);
+  padding: 9px 15px; border-radius: var(--r-btn);
   background: var(--bg); color: var(--fg); border: 1px solid var(--bd);
   cursor: pointer; white-space: nowrap;
   transition: transform .16s var(--ease-spring), background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
@@ -1193,14 +1193,18 @@ h4,
    потому незаметен. */
 .btn--ai, .btn--pro { background-origin: border-box; background-size: 170% 170%; }
 .btn--ai:hover, .btn--pro:hover { background-position: 100% 0; }
-/* Размеров кнопки в приложении ДВА: базовый и --sm. Крупная (--lg) была
-   маркетинговой: из шести употреблений четыре стояли на лендинге и публичной
-   странице, а те берут СВОЮ копию из landing.css, и она там остаётся вместе с
-   собственной адаптивной подгонкой. Внутри приложения --lg жила только на
-   экране 404, поэтому здесь её нет — не выражай размер, которого у продукта нет.
-   Иконочная (--icon, 42×42) выпилена как мёртвая: ноль потребителей, а реальные
-   иконочные кнопки давно живут на отдельном .icon-btn (34×34). */
-.btn--sm { padding: 9px 15px; }                        /* размер из канона .t-ui (TRIP-165) */
+/* У кнопки ОДИН размер, и модификаторов размера нет вообще.
+   Было три: базовый 44px, --sm 38px, --lg 54px. Различие базового и --sm
+   (6px, шрифт тот же) на экране не читается — один и тот же экран настроек
+   держал 4 больших и 3 маленьких, и этого никто не замечал, то есть разделение
+   не делало работы. Прежний --sm стал базой: 38px берёт обязательный порог
+   тач-таргета WCAG 2.2 AA (24x24) с запасом, не берёт рекомендованные 44
+   (AAA / Apple HIG) — осознанный размен, диалоги на мобиле всё равно тянут
+   кнопку на всю ширину.
+   --lg была маркетинговой: четыре из шести её мест на лендинге и публичной
+   странице, а те берут свою копию из landing.css — там она и осталась.
+   --icon (42x42) выпилена как мёртвая: ноль потребителей, реальные иконочные
+   кнопки живут на отдельном .icon-btn (34x34). */
 .btn--block { width: 100%; }
 .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
 

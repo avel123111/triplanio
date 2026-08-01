@@ -98,7 +98,7 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
       <div className="pt">{t('trip_menu.free_trip_title')}</div>
       <p>{t('trip.pro_locked_lenses')}</p>
       {isOwner ? (
-        <Btn variant="primary" size="sm" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+        <Btn variant="primary" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
       ) : (
         <button className="lockmsg" onClick={onProInfo}>
           <Icon name="lock" size={14} />

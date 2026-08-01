@@ -453,7 +453,7 @@ export default function PublicTrip() {
       {/* ── Mobile sticky CTA ── */}
       <div className="pt-scta">
         <div className="tx"><b>{t('public.scta_title')}</b><span>{t('public.scta_sub')}</span></div>
-        <a className="btn btn--primary btn--sm" href={SITE}>{t('public.scta_btn')}</a>
+        <a className="btn btn--primary" href={SITE}>{t('public.scta_btn')}</a>
       </div>
     </div>
   );

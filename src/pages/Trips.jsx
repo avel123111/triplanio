@@ -138,7 +138,7 @@ function NoNextCard({ variant, onPlan, t }) {
         <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
       </div>
       {!isEmpty && (
-        <Btn variant="primary" size="sm" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
+        <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
       )}
     </div>
   );
