@@ -106,21 +106,11 @@ export function CreateTripProvider({ children }) {
 
   // Copy goes through the exact same gate as create, behind a confirm.
   //
-  // The confirm lives HERE, in the seam every copy entry point funnels through,
-  // not on the screen that hosts the button — a second entry point (a "…" menu,
-  // a card action) then inherits it by construction instead of forking the
-  // behaviour of one element (TRIP-140).
-  //
-  // Deliberately the plain resolve-true/false confirm, NOT the async `onConfirm`
-  // mode: the limit gate runs BETWEEN the confirmation and the actual copy, so a
-  // spinner on the confirm button would be sitting over the wrong work. In-flight
-  // feedback is the blocking overlay below.
-  //
-  // No `confirmLabel` — the default "Confirm" is what leaving and deleting a trip
-  // already use. Note the trap: `common.copy` / `share.copy` read like a fit, but
-  // they mean "copy to CLIPBOARD" (the AI reply text, an invite link). Duplicating
-  // an entity is a different action that merely shares the word in Russian, so
-  // binding to them would break this button the day the clipboard wording changes.
+  // Confirm + gate live HERE, in the seam every entry point funnels through, so a
+  // second one inherits them instead of forking the behaviour (TRIP-140). Plain
+  // resolve-true/false, not the async `onConfirm` mode: the limit gate runs
+  // BETWEEN the confirmation and the copy, so a spinner on the confirm button
+  // would sit over the wrong work — the blocking overlay below is the feedback.
   const startCopy = useCallback(async (tripId) => {
     if (!tripId) return;
     const ok = await confirm({ title: t('confirm.copy_trip.title') });
