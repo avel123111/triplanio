@@ -15,6 +15,7 @@ set -e
 MCP_VERSION=0.0.78
 SENTINEL_LIB=/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0
 AUTH_STATE="${PLAYWRIGHT_AUTH_STATE:-/data/.cyrus-playwright-auth.json}"
+AUTH_SCRIPT="$PWD/scripts/agent/playwright-auth.mjs"
 
 export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/data/.cache/ms-playwright}"
 
@@ -24,8 +25,19 @@ if [ ! -f "$SENTINEL_LIB" ]; then
 fi
 
 # Состояние сессии: кука обхода Vercel Deployment Protection + залогиненный
-# тестовый пользователь dev. Готовится скриптом playwright-auth.mjs рядом,
-# протухает вместе с refresh-токеном Supabase - тогда просто пересоздаётся.
+# тестовый пользователь dev. Протухает вместе с refresh-токеном Supabase, поэтому
+# пересоздаём сами - если файла нет или он старше недели, а креды есть в окружении.
+# Пароль живёт ТОЛЬКО в окружении: memory/ лежит в гите, туда секреты нельзя.
+if [ -n "$VERCEL_BYPASS_SECRET" ] && [ -n "$PW_TEST_EMAIL" ] && [ -n "$PW_TEST_PASSWORD" ] &&
+   { [ ! -f "$AUTH_STATE" ] || [ -n "$(find "$AUTH_STATE" -mtime +7 2>/dev/null)" ]; }; then
+  echo "playwright-mcp: обновляю сессию dev" >&2
+  # NODE_PATH берём из дерева, которое npx только что развернул: playwright-core
+  # оттуда гарантированно той же версии, что и браузер, ожидаемый сервером.
+  npx -y -p "@playwright/mcp@$MCP_VERSION" sh -c \
+    'NODE_PATH=$(echo "$PATH" | cut -d: -f1 | sed "s#/\.bin\$##") node "$0"' \
+    "$AUTH_SCRIPT" >&2 || echo "playwright-mcp: обновить сессию не вышло, работаю с тем, что есть" >&2
+fi
+
 if [ -f "$AUTH_STATE" ]; then
   set -- --storage-state "$AUTH_STATE"
 else
