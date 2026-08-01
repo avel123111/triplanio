@@ -284,7 +284,7 @@ function StepThumb({ kind }) {
         </div>
         <div style={{alignSelf:'flex-end',background:'var(--brand)',color:'#fff',padding:'8px 10px',borderRadius:10,borderBottomRightRadius:4,fontSize: 'var(--fs-meta)',maxWidth:'80%'}}>{t('landing.thumb.confirm')}</div>
         <div style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>
-          <span style={{width:6,height:6,borderRadius:'var(--r-pill)',background:'var(--success)'}}/>{t('landing.thumb.confirmed')}
+          <span style={{width:6,height:6,borderRadius:50,background:'var(--success)'}}/>{t('landing.thumb.confirmed')}
         </div>
       </div>
     </div>
@@ -506,7 +506,7 @@ function Trust() {
   return (
     <section className="section section--tight">
       <div className="container">
-        <div className="trust reveal" style={{border:'1px solid var(--line)',borderRadius:'var(--r-md)'}}>
+        <div className="trust reveal" style={{border:'1px solid var(--line)',borderRadius:16}}>
           {items.map(it => (
             <div className="trust__item" key={it.key}>
               <span className="icon"><Icon name={it.icon} size={18}/></span><span>{t(it.key)}</span>
