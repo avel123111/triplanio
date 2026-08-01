@@ -169,10 +169,10 @@ export function ForkToolbar({
           <div className="s22f-panel">{children}</div>
           {/* Actions live OUTSIDE the filter card (design) */}
           <div className="s22f-panelfoot">
-            <button type="button" className="btn btn--quiet btn--sm" onClick={onReset}>
+            <button type="button" className="btn btn--quiet" onClick={onReset}>
               <RotateCcw size={14} />{t('fork.f_reset')}
             </button>
-            <button type="button" className="btn btn--primary btn--sm" onClick={onApply}>
+            <button type="button" className="btn btn--primary" onClick={onApply}>
               <Search size={14} />{t('fork.f_search')}
             </button>
           </div>

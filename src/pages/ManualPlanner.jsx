@@ -295,7 +295,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
           </div>
-          <Btn variant="primary" size="sm" onClick={requestGeo}>{t('planner.allow')}</Btn>
+          <Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>
         </div>
       )}
 
@@ -350,7 +350,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
           </div>
-          <Btn variant="ghost" size="sm" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
+          <Btn variant="ghost" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
         </div>
       )}
 

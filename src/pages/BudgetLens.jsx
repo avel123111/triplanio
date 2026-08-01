@@ -708,8 +708,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         <span className="bgt-head__sp" />
         {!readOnly && (
           <>
-            <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
-            <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
+            <Btn variant="ghost" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+            <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
           </>
         )}
       </div>
@@ -795,7 +795,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {/* ░ MISSING-RATE WARNING ░ */}
       {missingCurrencies.length > 0 && (
         <Severity level="warning" title={t('budget.rates_missing', { currencies: missingCurrencies.join(', ') })}
-          action={readOnly ? undefined : <Btn variant="quiet" size="sm" onClick={openFxDialog}>{t('budget.set_rate_manual')}</Btn>}>
+          action={readOnly ? undefined : <Btn variant="quiet" onClick={openFxDialog}>{t('budget.set_rate_manual')}</Btn>}>
           {missingCurrencies.map(cur => `${missing[cur]} ${expensesPlural(missing[cur])} · ${cur}`).join(', ')} {t('budget.not_in_total')}
         </Severity>
       )}
@@ -826,7 +826,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </div>
         <div className="bgt-ctl__spacer" />
         {grouping === 'category' && !readOnly && (
-          <Btn variant="soft" size="sm" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
+          <Btn variant="soft" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
       </div>
 
@@ -888,7 +888,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               </div>
               {activeCat.kind === 'custom' && !readOnly && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
-                  <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
+                  <Btn variant="ghost" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
                 </div>
               )}
               {activeCat.items.length === 0 ? (

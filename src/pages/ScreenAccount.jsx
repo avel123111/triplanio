@@ -121,7 +121,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
               <>
                 <div className="acct-plan__line">{t('account.details_unavailable')}</div>
                 <div className="acct-plan__acts">
-                  <Btn variant="soft" size="sm" icon="refresh" disabled={detailsLoading} onClick={onRetryDetails}>
+                  <Btn variant="soft" icon="refresh" disabled={detailsLoading} onClick={onRetryDetails}>
                     {t('account.details_retry')}
                   </Btn>
                 </div>
@@ -153,11 +153,11 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
             )}
             <div className="acct-plan__acts">
               {yearlyPrice && (
-                <Btn variant="soft" size="sm" icon="arrow" disabled={portalLoading} onClick={onManage}>
+                <Btn variant="soft" icon="arrow" disabled={portalLoading} onClick={onManage}>
                   {t('account.switch_yearly', { price: yearlyPrice })}
                 </Btn>
               )}
-              <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
+              <Btn variant="ghost" icon="external" disabled={portalLoading} onClick={onManage}>
                 {portalLoading ? t('account.opening') : t('account.billing_portal')}
               </Btn>
             </div>
@@ -181,7 +181,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
           <div className="acct-plan__side">
             <div className="acct-plan__line"><Badge variant="success" icon="check">{t('account.active')}</Badge>{plan?.subscriptionEnd && <span className="num">{t('account.renews')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></span>}</div>
             <div className="acct-plan__acts">
-              <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
+              <Btn variant="ghost" icon="external" disabled={portalLoading} onClick={onManage}>
                 {portalLoading ? t('account.opening') : t('account.billing_portal')}
               </Btn>
               <button className="acct-linktext" onClick={onManage}>{t('account.cancel_until_year_end')}</button>
@@ -206,7 +206,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
         <div className="acct-plan__side">
           <div className="acct-plan__line">{t('account.cancelled_desc')}</div>
           <div className="acct-plan__acts">
-            <Btn variant="primary" size="sm" icon="refresh" disabled={portalLoading} onClick={onManage}>
+            <Btn variant="primary" icon="refresh" disabled={portalLoading} onClick={onManage}>
               {portalLoading ? t('account.opening') : t('account.resume')}
             </Btn>
           </div>
@@ -303,8 +303,8 @@ function ReminderChannels() {
                       </div>
                       <div className="muted t-mono" style={{ marginTop: 1 }}>{nick(a)}</div>
                     </div>
-                    <Btn variant="ghost" size="sm" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
-                    <Btn variant="ghost" size="sm" icon="unlink" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
+                    <Btn variant="ghost" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
+                    <Btn variant="ghost" icon="unlink" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
                   </div>
                 ))}
                 <div className="acct-tghint"><Icon name="info" size={13} /><span>{t('telegram.account_hint')}</span></div>
@@ -318,7 +318,7 @@ function ReminderChannels() {
               <div className="acct-chan__t">Telegram</div>
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
             </div>
-            <Btn variant="soft" size="sm" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
+            <Btn variant="soft" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
           </div>
         )}
         {soon}
@@ -665,7 +665,7 @@ export default function ScreenAccount() {
       {errorMsg && (
         <div style={{ maxWidth: 1120, margin: '16px auto 0', padding: '0 24px', width: '100%', boxSizing: 'border-box' }}>
           <Severity level="error" title={t('account.error_title')}
-            action={<Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>{t('common.close')}</Btn>}>
+            action={<Btn variant="ghost" onClick={() => setErrorMsg(null)}>{t('common.close')}</Btn>}>
             {errorMsg}
           </Severity>
         </div>
@@ -717,9 +717,9 @@ export default function ScreenAccount() {
                   <div className="acct-hero__name">{displayName(user.email, user.full_name)}</div>
                   <div className="acct-hero__mail">{user.email}</div>
                   <div className="acct-hero__actions">
-                    <Btn variant="secondary" size="sm" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
+                    <Btn variant="secondary" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
                     {avatarUrl && (
-                      <Btn variant="danger" size="sm" icon="trash" onClick={handleRemoveAvatar}>{t('account.remove_avatar')}</Btn>
+                      <Btn variant="danger" icon="trash" onClick={handleRemoveAvatar}>{t('account.remove_avatar')}</Btn>
                     )}
                   </div>
                 </div>
@@ -883,7 +883,7 @@ export default function ScreenAccount() {
                     <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a> · {t('account.support_reply')}
                   </div>
                 </div>
-                <Btn variant="secondary" size="sm" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
+                <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </div>
               <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="shield" size={18} /></span>
@@ -936,7 +936,7 @@ export default function ScreenAccount() {
                 <Severity level="warning" title={t('account.cancel_sub_first')}>
                   {t('account.delete_blocked_desc')}
                   <div style={{ marginTop: 8 }}>
-                    <Btn variant="ghost" size="sm" icon="external" loading={portalLoading} onClick={handleManageSubscription}>
+                    <Btn variant="ghost" icon="external" loading={portalLoading} onClick={handleManageSubscription}>
                       {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
                     </Btn>
                   </div>
@@ -948,10 +948,10 @@ export default function ScreenAccount() {
                   {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
                   <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
-                    <Btn variant="danger-solid" size="sm" loading={deletingAccount} disabled={deleteInput !== t('account.delete_word')} onClick={performDeleteAccount}>
+                    <Btn variant="danger-solid" loading={deletingAccount} disabled={deleteInput !== t('account.delete_word')} onClick={performDeleteAccount}>
                       {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
                     </Btn>
-                    <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>
+                    <Btn variant="ghost" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>
                   </div>
                 </Severity>
               )}
