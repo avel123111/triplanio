@@ -897,7 +897,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           participant, including a viewer. Pro status + Pro-only addons and
           documents are stripped from the copy server-side. */}
       <Card title={t('settings.copy_trip_title')} subtitle={t('settings.copy_trip_desc')}>
-        <Btn variant="soft" icon="copy" loading={copying} onClick={() => startCopy(tripId)}>
+        <Btn variant="soft" icon="copy" loading={copying} onClick={() => void startCopy(tripId)}>
           {t('settings.copy_trip_btn')}
         </Btn>
       </Card>

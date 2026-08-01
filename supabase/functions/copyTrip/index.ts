@@ -4,7 +4,7 @@
  * POST body: { tripId }
  *
  * Duplicates a trip the caller has access to:
- *   - trip (title prefixed with "Copy of ")
+ *   - trip (title prefixed in the caller's language, see COPY_PREFIX)
  *   - city_visits
  *   - hotel_stays
  *   - activities
@@ -21,6 +21,32 @@ import { jsonError, readJson, withHandler } from '../_shared/http.ts';
 import { PRO_ONLY_ADDONS } from '../_shared/proAddons.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
+
+/**
+ * Title prefix for the copy, in the caller's language. The title is STORED data
+ * resolved once (at copy time), not UI text, so it cannot go through the
+ * frontend `t()` — same reason the DB notification triggers carry their own
+ * per-language strings keyed off `users.language`.
+ */
+const COPY_PREFIX: Record<string, string> = {
+  en: 'Copy of ',
+  ru: 'Копия: ',
+  es: 'Copia de ',
+};
+
+/**
+ * Strip an already-present prefix, in ANY language, before adding the caller's.
+ * Copying a copy must stay "Копия: Rome", not grow "Копия: Copy of Rome" on
+ * every round. Built FROM COPY_PREFIX so adding a locale needs no second edit —
+ * and each value is regex-escaped, so a future prefix carrying punctuation
+ * (`Cópia (de) `) cannot silently turn into a metacharacter.
+ */
+const COPY_PREFIX_RE = new RegExp(
+  `^(?:${Object.values(COPY_PREFIX).map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})+`,
+);
+
+/** trips_title_len CHECK (TRIP-169) — the prefix must not push the copy over it. */
+const TITLE_MAX = 300;
 
 Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -68,11 +94,32 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
       copyDetails.addons = sanitizedAddons;
     }
 
+    // --- Name the copy in the caller's language ---
+    // The caller owns the copy, so their language is the right one. Falls back to
+    // English when the profile has no language set (or an unknown one).
+    // Deliberately NOT fatal — a copy named in English beats no copy at all. But
+    // it is logged: everything else here fails loudly, so a silent read would be
+    // the one blind spot left in the function.
+    const { data: caller, error: callerErr } = await supabaseAdmin
+      .from('users')
+      .select('language')
+      .eq('id', user.id)
+      .single();
+    if (callerErr) console.warn(`copyTrip: reading caller language failed, naming the copy in English: ${callerErr.message}`);
+    const prefix = COPY_PREFIX[caller?.language ?? ''] ?? COPY_PREFIX.en;
+    // Trim by CODE POINTS, not with `.slice()`: Postgres char_length() counts code
+    // points while a JS string index is a UTF-16 unit, so slicing a title whose
+    // 300th character is an emoji would cut a surrogate pair in half and hand
+    // Postgres invalid UTF-8.
+    const copyTitle = [...(prefix + sourceTrip.title.replace(COPY_PREFIX_RE, ''))]
+      .slice(0, TITLE_MAX)
+      .join('');
+
     // --- Create new trip ---
     const { data: newTrip, error: tripErr } = await supabaseAdmin
       .from('trips')
       .insert({
-        title: `Copy of ${sourceTrip.title}`,
+        title: copyTitle,
         description: sourceTrip.description,
         // The copy is born WITHOUT any documents (Pavel decision 2026-06-24):
         // the cover image is a Storage-backed document, so it is never copied.
@@ -105,18 +152,36 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
 
     const newTripId = newTrip.id;
 
-    // --- Load city_visits ---
-    const { data: cityVisits } = await supabaseAdmin
-      .from('city_visits')
-      .select('*')
-      .eq('trip_id', tripId);
+    /** Read the source rows of one child table, failing loudly. */
+    const loadRows = async (table: string) => {
+      const { data, error } = await supabaseAdmin.from(table).select('*').eq('trip_id', tripId);
+      if (error) throw new Error(`copyTrip: reading ${table} failed: ${error.message}`);
+      return data ?? [];
+    };
 
-    // Map old city_visit_id → new city_visit_id
-    const cityVisitIdMap: Record<string, string> = {};
+    /** Insert the copied rows of one child table, failing loudly. No-op when empty. */
+    const insertRows = async (table: string, rows: Record<string, unknown>[]) => {
+      if (rows.length === 0) return;
+      const { error } = await supabaseAdmin.from(table).insert(rows);
+      if (error) throw new Error(`copyTrip: copying ${table} failed: ${error.message}`);
+    };
 
-    if (cityVisits && cityVisits.length > 0) {
+    // From here the copy row exists but is still empty. Everything below runs
+    // under a compensating delete: a partial copy handed back as `ok: true` is
+    // worse than a clean failure — the user saw a success, navigated into it, and
+    // silently lost bookings. Every child table is ON DELETE CASCADE on trips.id,
+    // so dropping the trip takes whatever already landed with it. A bare DELETE
+    // is enough here — the two things deleteTrip tears down first (Telegram
+    // integrations, Storage documents) cannot exist yet on a seconds-old copy.
+    try {
+      // --- Load city_visits ---
+      const cityVisits = await loadRows('city_visits');
+
+      // Map old city_visit_id → new city_visit_id
+      const cityVisitIdMap: Record<string, string> = {};
+
       for (const cv of cityVisits) {
-        const { data: newCv } = await supabaseAdmin
+        const { data: newCv, error: cvErr } = await supabaseAdmin
           .from('city_visits')
           .insert({
             trip_id: newTripId,
@@ -139,17 +204,15 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
           .select('id')
           .single();
 
-        if (newCv) cityVisitIdMap[cv.id] = newCv.id;
+        // A missed visit is not cosmetic: every hotel / activity / transfer that
+        // pointed at it would silently land with a null city_visit_id.
+        if (cvErr || !newCv) throw new Error(`copyTrip: copying city_visits failed: ${cvErr?.message ?? 'no row returned'}`);
+        cityVisitIdMap[cv.id] = newCv.id;
       }
-    }
 
-    // --- Copy hotel_stays ---
-    const { data: hotels } = await supabaseAdmin
-      .from('hotel_stays')
-      .select('*')
-      .eq('trip_id', tripId);
+      // --- Copy hotel_stays ---
+      const hotels = await loadRows('hotel_stays');
 
-    if (hotels && hotels.length > 0) {
       // Explicit column projection (TRIP-169): the copy is decoupled from the
       // physical schema — a new hotel_stays column is NOT silently duplicated
       // until it is added here on purpose. id/created_at/updated_at are DB-owned;
@@ -178,16 +241,11 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
         documents: [], // copy is born without documents (Pavel 2026-06-24)
         created_by: user.id,
       }));
-      await supabaseAdmin.from('hotel_stays').insert(newHotels);
-    }
+      await insertRows('hotel_stays', newHotels);
 
-    // --- Copy activities ---
-    const { data: activities } = await supabaseAdmin
-      .from('activities')
-      .select('*')
-      .eq('trip_id', tripId);
+      // --- Copy activities ---
+      const activities = await loadRows('activities');
 
-    if (activities && activities.length > 0) {
       const newActivities = activities.map((a) => ({
         trip_id: newTripId,
         city_visit_id: a.city_visit_id ? (cityVisitIdMap[a.city_visit_id] ?? null) : null,
@@ -204,16 +262,11 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
         documents: [], // copy is born without documents (Pavel 2026-06-24)
         created_by: user.id,
       }));
-      await supabaseAdmin.from('activities').insert(newActivities);
-    }
+      await insertRows('activities', newActivities);
 
-    // --- Copy transfers ---
-    const { data: transfers } = await supabaseAdmin
-      .from('transfers')
-      .select('*')
-      .eq('trip_id', tripId);
+      // --- Copy transfers ---
+      const transfers = await loadRows('transfers');
 
-    if (transfers && transfers.length > 0) {
       const newTransfers = transfers.map((t) => ({
         trip_id: newTripId,
         from_city_visit_id: t.from_city_visit_id ? (cityVisitIdMap[t.from_city_visit_id] ?? null) : null,
@@ -239,16 +292,11 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
         documents: [], // copy is born without documents (Pavel 2026-06-24)
         created_by: user.id,
       }));
-      await supabaseAdmin.from('transfers').insert(newTransfers);
-    }
+      await insertRows('transfers', newTransfers);
 
-    // --- Copy trip_services ---
-    const { data: services } = await supabaseAdmin
-      .from('trip_services')
-      .select('*')
-      .eq('trip_id', tripId);
+      // --- Copy trip_services ---
+      const services = await loadRows('trip_services');
 
-    if (services && services.length > 0) {
       const newServices = services.map((s) => {
         // Drop the `documents` key from details — copy is born without documents
         // (Pavel 2026-06-24). Rest of details (provider/booking data) is preserved.
@@ -265,7 +313,22 @@ Deno.serve(withHandler('copyTrip', async (req, corsHeaders) => {
           created_by: user.id,
         };
       });
-      await supabaseAdmin.from('trip_services').insert(newServices);
+      await insertRows('trip_services', newServices);
+    } catch (e) {
+      // Rolling back can itself fail. Say so in the rethrown message rather than
+      // dropping it: otherwise Sentry only ever sees the original error and the
+      // orphaned half-copy sitting in the user's trip list is invisible.
+      const { error: rollbackErr } = await supabaseAdmin.from('trips').delete().eq('id', newTripId);
+      if (rollbackErr) {
+        // `cause` keeps the ORIGINAL error (and its stack) attached — a bare
+        // `new Error(msg)` would hand Sentry a stack pointing at this line and
+        // hide which table actually failed, exactly when we most need it.
+        throw new Error(
+          `copyTrip: rollback failed, trip ${newTripId} is orphaned: ${rollbackErr.message}`,
+          { cause: e },
+        );
+      }
+      throw e; // withHandler reports it to Sentry and answers 500
     }
 
     return Response.json({ ok: true, tripId: newTripId }, { headers: corsHeaders });
