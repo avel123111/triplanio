@@ -207,7 +207,7 @@ export default function EventAiBlock({
           </div>
           <div className="ai-blk-ti">
             {/* Заблокировано (Free): замок вместо PRO-бейджа (дизайн-система TRIP-187) */}
-            <b>{t('event.ai_fill_title')}<Lock size={12} style={{ color: 'var(--muted)' }} /></b>
+            <b>{t('event.ai_fill_title')}<Lock size={12} className="muted" /></b>
             <span>{t('event.ai_locked_hint')}</span>
           </div>
           <button type="button" className="btn btn--pro btn--sm" onClick={onUpgrade}>
@@ -314,7 +314,7 @@ export default function EventAiBlock({
               <Upload style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_pdf_screenshot')}
             </button>
             <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
-            <div style={{ flex: 1 }} />
+            <div className="grow" />
             <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
               <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
             </button>

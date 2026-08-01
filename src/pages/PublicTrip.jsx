@@ -465,7 +465,7 @@ function NotFound({ message, t }) {
       <div>
         <div className="ic"><Plane size={24} /></div>
         <h1 className="t-heading" style={{ marginBottom: 8 }}>{t('public.oops')}</h1>
-        <p style={{ color: 'var(--muted)' }}>{message}</p>
+        <p className="muted">{message}</p>
       </div>
     </div></div>
   );

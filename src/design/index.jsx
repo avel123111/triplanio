@@ -167,7 +167,7 @@ export const Card = ({ variant = "", title, subtitle, action, children, classNam
   <div className={`card ${variant ? "card--" + variant : ""} ${className}`} style={style}>
     {(title || subtitle || action) && (
       <div className="card-h">
-        <div style={{ flex: 1 }}>
+        <div className="grow">
           {title && <h3>{title}</h3>}
           {subtitle && <div className="muted t-meta">{subtitle}</div>}
         </div>

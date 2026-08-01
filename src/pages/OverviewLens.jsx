@@ -78,7 +78,7 @@ export default function OverviewLens({
               {[0, 1, 2].map((i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0' }}>
                   <span className="ov-bar" style={{ width: 34, height: 34, borderRadius: '50%', flex: 'none' }} />
-                  <div style={{ flex: 1 }}>{bar('60%', 13, 5)}{bar('40%', 11, 5, 6)}</div>
+                  <div className="grow">{bar('60%', 13, 5)}{bar('40%', 11, 5, 6)}</div>
                 </div>
               ))}
               {bar('100%', 42, 'var(--r-sm)', 14)}

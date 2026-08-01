@@ -210,7 +210,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         {isEdit && (
           <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting || saving}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
         )}
-        <div style={{ flex: 1 }} />
+        <div className="grow" />
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>
           {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
@@ -285,7 +285,7 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
   return (
     <Dialog title={t('trip.delete')} icon="trash" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <div style={{ flex: 1 }} />
+        <div className="grow" />
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
       </>}>
@@ -364,7 +364,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
 
   return (
     <Dialog title={t('budget.fx_button')} icon="arrowSwap" size="" open={open} onOpenChange={onOpenChange} foot={<>
-      <div style={{ flex: 1 }} />
+      <div className="grow" />
       <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
@@ -464,7 +464,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   return (
     <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="grid" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <div style={{ flex: 1 }} />
+        <div className="grow" />
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>

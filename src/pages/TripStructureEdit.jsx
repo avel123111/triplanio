@@ -1252,7 +1252,7 @@ function GridEndpoint({ node, date, onRemove }) {
   return (
     <div className="te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
-      <div className="te-citycell" style={{ flex: 1 }}>
+      <div className="te-citycell grow">
         <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
         <div className="te-cityline">
           <span className="te-cityname">{node.city_name}</span>
