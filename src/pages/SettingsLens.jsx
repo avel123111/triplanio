@@ -93,7 +93,7 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
       <div className="addon-card__desc">{t(feat.descKey)}</div>
       {proLocked && !feat.locked && (
         <div className="addon-card__foot">
-          <Btn variant="soft" size="sm" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
+          <Btn variant="soft" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
         </div>
       )}
     </div>
@@ -368,7 +368,7 @@ function TelegramSection({ tripId }) {
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </div>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
-          <Btn variant="quiet" size="sm" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
+          <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
         </div>
       ))}
       <Btn variant="ghost" icon="plus" onClick={openConnect}>
@@ -795,7 +795,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
             </div>
             {isOwner ? (
-              <Btn variant="primary" size="sm" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+              <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
               <button className="lockmsg" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>
                 <Icon name="lock" size={14} />

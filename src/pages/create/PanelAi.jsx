@@ -52,13 +52,13 @@ export default function PanelAi({ ctx }) {
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           {aiState === 'generating' ? (
-            <Btn variant="ai" size="sm" disabled>
+            <Btn variant="ai" disabled>
               {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
             </Btn>
           ) : aiState === 'draft' ? (
-            <Btn variant="ai" size="sm" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
+            <Btn variant="ai" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
           ) : (
-            <Btn variant="ai" size="sm" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
+            <Btn variant="ai" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
           )}
         </div>
       </div>

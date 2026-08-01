@@ -234,8 +234,8 @@ function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTri
 
         {showPending && (
           <div className="brow__acts">
-            <Btn variant="primary" size="sm" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="ghost" size="sm" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+            <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+            <Btn variant="ghost" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </div>
         )}
         {isInvite && member?.status === 'active' && (

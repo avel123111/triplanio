@@ -210,7 +210,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       <div className="muted t-body" style={{ marginBottom: 12 }}>{t('trip.share_desc')}</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, minWidth: 0 }} onClick={(e) => e.target.select()} />
-        <Btn variant="primary" size="sm" icon="check" loading={loading} onClick={copyLink} disabled={!shareUrl}>
+        <Btn variant="primary" icon="check" loading={loading} onClick={copyLink} disabled={!shareUrl}>
           {loading ? t('share.generating') : (copied ? t('trip.link_copied') : t('share.copy'))}
         </Btn>
       </div>
