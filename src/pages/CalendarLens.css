@@ -130,15 +130,13 @@
   overflow: hidden;
   padding: 0 0 8px;
   min-height: 100px;
-  background: var(--surface-3);
-  box-shadow: var(--sh-1);
-  transition: background .18s var(--ease-out), transform .14s var(--ease-spring), box-shadow .18s;
+  /* Клетка дня — поверхность в потоке, поэтому --surface, а ховер уходит в --bg,
+     как у карточек и строк (TRIP-325). До этого база стояла на --surface-3, а
+     ховер на --surface-2 — оба схлопнулись в --bg, и ховер пропал бы совсем. */
+  background: var(--surface);
   cursor: pointer;
 }
-.ncal-dc:hover {
-  background: var(--surface-2);
-  box-shadow: var(--sh-2);   /* ступень вверх от базовой --sh-1, как у .ncal-wdc */
-}
+.ncal-dc:hover { background: var(--bg); }
 .ncal-dc.is-out { opacity: .22; pointer-events: none; box-shadow: none; }
 .ncal-dc.is-trip { background: var(--primary-soft); }
 .ncal-dc.is-trip:hover { background: var(--primary-soft-2); }
@@ -181,7 +179,6 @@
   background: var(--brand); color: var(--primary-fg);
   border-radius: var(--r-pill);
   padding: 4px 8px; min-width: 0;
-  box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
 
 /* ── Events list in month cell ─────────────────────────────────── */
@@ -249,7 +246,7 @@
   display: flex; flex-direction: column;
   transition: transform .2s var(--ease-spring), box-shadow .22s;
 }
-.ncal-wdc:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
+.ncal-wdc:hover { background: var(--bg); }
 
 /* City colour bar at very top of card */
 .ncal-wdc-cbar { height: 5px; flex: none; }
@@ -268,7 +265,6 @@
 .ncal-wdc.is-today .ncal-wdc-num {
   background: var(--brand); color: var(--primary-fg);
   border-radius: var(--r-pill); padding: 3px 10px;
-  box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
 .ncal-wdc-wd {
   color: var(--muted); margin-top: 5px;   /* TRIP-280: близнец .ncal-wd — тот же цвет */

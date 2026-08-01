@@ -72,14 +72,13 @@ const COLOR_WHITELIST = [
   'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
   // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
-  'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
   'public/landing.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];
 
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
-const WHITELIST_LIMIT = 17;
+const WHITELIST_LIMIT = 16;
 
 // The ceiling on the PR base, so raising it cannot be self-approved by editing
 // this file. null = base not resolvable (no such ref, or the base predates this

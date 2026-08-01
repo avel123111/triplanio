@@ -12,30 +12,29 @@ const LOGO_URL = '/triplanio-logo.png';
 
 const STYLES = `
 .jt-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  font-family:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
-  background:radial-gradient(900px 480px at 50% -8%,rgba(33,115,200,.12),transparent 62%),radial-gradient(700px 420px at 100% 110%,rgba(98,166,240,.10),transparent 60%),#F4F7FC;}
-.jt-card{width:100%;max-width:440px;background:#fff;border:1px solid #E9E8F2;border-radius:var(--r-card);
-  box-shadow:0 18px 50px -20px rgba(22,41,74,.28);padding:48px 40px 40px;text-align:center;}
+  font-family:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;color:var(--ink);
+  background:var(--bg);}
+.jt-card{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:48px 40px 40px;text-align:center;}
 .jt-logo{height:38px;width:auto;margin:0 auto 30px;display:block;}
 .jt-card h1{margin:0;}
-.jt-lede{color:#7A7689;margin:12px 0 0;}
-.jt-btn{color:#fff;
-  background:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);border:none;border-radius:var(--r-btn);width:100%;
-  padding:15px 22px;margin-top:28px;cursor:pointer;box-shadow:0 10px 24px -8px rgba(33,115,200,.55);
-  transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
-.jt-btn:hover{transform:translateY(-2px);box-shadow:0 16px 32px -10px rgba(33,115,200,.62);}
-.jt-btn:active{transform:translateY(0);}
-.jt-btn--ghost{background:transparent;color:#2173C8;box-shadow:none;border:1.5px solid #E9E8F2;margin-top:14px;}
-.jt-btn--ghost:hover{background:rgba(33,115,200,.06);border-color:#62A6F0;transform:none;}
-.jt-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(33,115,200,.08);color:#2173C8;
+.jt-lede{color:var(--muted);margin:12px 0 0;}
+.jt-btn{color:var(--primary-fg);
+  background:var(--brand);border:none;border-radius:var(--r-btn);width:100%;
+  padding:15px 22px;margin-top:28px;cursor:pointer;
+  transition:background .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+.jt-btn:hover{background:var(--primary-hover);}
+.jt-btn--ghost{background:transparent;color:var(--brand);border:1.5px solid var(--line);margin-top:14px;}
+.jt-btn--ghost:hover{background:var(--brand-soft);border-color:var(--brand);}
+.jt-chip{display:inline-flex;align-items:center;gap:8px;background:var(--brand-soft);color:var(--brand);
   padding:8px 14px;border-radius:var(--r-pill);margin-bottom:22px;}
 .jt-chip svg{width:15px;height:15px;}
 .jt-spinner{width:46px;height:46px;margin:6px auto 22px;border-radius:50%;
-  border:4px solid rgba(33,115,200,.16);border-top-color:#2173C8;animation:aispin .8s linear infinite;}
-.jt-badge{width:64px;height:64px;margin:4px auto 22px;border-radius:50%;background:#FAECE7;
+  border:4px solid var(--brand-soft);border-top-color:var(--brand);animation:aispin .8s linear infinite;}
+.jt-badge{width:64px;height:64px;margin:4px auto 22px;border-radius:50%;background:var(--warm-soft);
   display:flex;align-items:center;justify-content:center;}
-.jt-badge svg{width:30px;height:30px;color:#D85A30;}
-@media(max-width:480px){.jt-card{padding:38px 24px 30px;border-radius:var(--r-xl);}.jt-card h1{font-size:var(--fs-h3);}}
+.jt-badge svg{width:30px;height:30px;color:var(--warm);}
+@media(max-width:480px){.jt-card{padding:38px 24px 30px;}.jt-card h1{font-size:var(--fs-h3);}}
 `;
 
 export default function JoinTrip() {

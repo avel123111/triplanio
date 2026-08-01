@@ -108,7 +108,7 @@
 .bgt-iconbtn--danger:hover { background: var(--danger-soft); color: var(--danger); }
 
 @media (hover: hover) {
-  .bgt-exrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
+  .bgt-exrow:hover { background: var(--bg); }
   .bgt-exrow .bgt-exrow__acts { opacity: 0; transition: opacity .16s; }
   .bgt-exrow:hover .bgt-exrow__acts { opacity: 1; }
 }
