@@ -1,4 +1,5 @@
 {
+  "copy_trip.title": "Are you sure you want to copy this trip?",
   "delete_pro_trip.body": "This is a Pro trip - the one-time upgrade you paid for will be lost. Are you sure?",
   "delete_pro_trip.title": "You are deleting a Pro trip",
   "leave_trip.body": "You will lose access, and your personal documents in this trip will be permanently deleted. You can return only with a new invite."

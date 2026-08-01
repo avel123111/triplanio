@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Dialog, useToast } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 
@@ -26,7 +27,7 @@ import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
  * API (useCreateTrip):
  *   openChoice()      — open the manual/AI choice sheet
  *   startCreate(pick) — 'manual' | 'ai': run the limit gate, then open the planner
- *   startCopy(tripId) — run the SAME limit gate, then duplicate the trip
+ *   startCopy(tripId) — confirm, then the SAME limit gate, then duplicate the trip
  *   copying           — true while a copy is in flight (disable the menu item)
  */
 const CreateTripContext = createContext({
@@ -86,6 +87,7 @@ export function CreateTripProvider({ children }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
+  const confirm = useConfirm();
 
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [limitOpen, setLimitOpen]   = useState(false);
@@ -102,12 +104,27 @@ export function CreateTripProvider({ children }) {
     setLimitOpen(true);
   }, []);
 
-  // Copy goes through the exact same gate as create.
-  const startCopy = useCallback((tripId) => {
+  // Copy goes through the exact same gate as create, behind a confirm.
+  //
+  // The confirm lives HERE, in the seam every copy entry point funnels through,
+  // not on the screen that hosts the button — a second entry point (a "…" menu,
+  // a card action) then inherits it by construction instead of forking the
+  // behaviour of one element (TRIP-140).
+  //
+  // Deliberately the plain resolve-true/false confirm, NOT the async `onConfirm`
+  // mode: the limit gate runs BETWEEN the confirmation and the actual copy, so a
+  // spinner on the confirm button would be sitting over the wrong work. In-flight
+  // feedback is the blocking overlay below.
+  const startCopy = useCallback(async (tripId) => {
     if (!tripId) return;
+    const ok = await confirm({
+      title: t('confirm.copy_trip.title'),
+      confirmLabel: t('common.copy'),
+    });
+    if (!ok) return;
     setPending({ kind: 'copy', tripId });
     setLimitOpen(true);
-  }, []);
+  }, [confirm, t]);
 
   // Server enforces the limit again inside copyTrip; this client gate just keeps
   // the UX consistent with create (Pro modal instead of a destructive toast).
