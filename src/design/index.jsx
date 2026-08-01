@@ -35,11 +35,11 @@ export { default as AiField, AiBadge } from '@/components/ui/AiField';
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
-export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className = "", style: styleProp }) => {
+export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
   const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (deleted) {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "xl" ? 26 : size === "sm" ? 12 : 15} /></div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "sm" ? 12 : 15} /></div>;
   }
   if (kind === "ai") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
@@ -137,9 +137,9 @@ export const Field = ({ label, hint, sub, ai, error, warning, children, required
 // `loading` renders the canonical Lumo in-button spinner (.btn .spin) in place
 // of the leading icon, disables the button and flags aria-busy — the single
 // source of truth for "operation in flight" feedback across the app.
-export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
-    className={`btn btn--${variant} ${size ? "btn--" + size : ""} ${block ? "btn--block" : ""} ${className}`}
+    className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
@@ -155,17 +155,16 @@ export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled,
 );
 
 // ----- Badge -----
-export const Badge = ({ variant = "", icon, dot, children, style }) => (
+export const Badge = ({ variant = "", icon, children, style }) => (
   <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
-    {dot && <span className="dot" />}
     {icon && <Icon name={icon} size={11} />}
     {children}
   </span>
 );
 
 // ----- Card -----
-export const Card = ({ variant = "", title, subtitle, action, children, className = "", style }) => (
-  <div className={`card ${variant ? "card--" + variant : ""} ${className}`} style={style}>
+export const Card = ({ title, subtitle, action, children, className = "", style }) => (
+  <div className={`card ${className}`} style={style}>
     {(title || subtitle || action) && (
       <div className="card-h">
         <div className="grow">

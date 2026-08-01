@@ -435,7 +435,6 @@ h2,
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
-.avatar--xl,
 .invite__tx h3,
 .ti b,
 .stepper button,
@@ -1176,8 +1175,6 @@ h4,
 .btn--danger { --bg: var(--danger-soft); --fg: var(--danger-ink); --bd: transparent; }
 .btn--danger:hover { --bg: color-mix(in srgb, var(--danger) 22%, transparent); }
 .btn--danger-solid { --bg: var(--danger); --fg: #fff; --bd: transparent; }
-.btn--danger-ghost { --bg: transparent; --fg: var(--danger-ink); --bd: transparent; }
-.btn--danger-ghost:hover { --bg: var(--danger-soft); }
 /* AI CTA — design-system: white text in light, dark text in dark (the dark-theme
    ai-gradient is brighter, so dark text reads better there). */
 .btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); box-shadow: 0 8px 20px -7px var(--ai); }
@@ -1326,8 +1323,6 @@ h4,
 .cbadge-popup .mapboxgl-popup-tip { display: none; }
 
 .card { padding: 18px; }
-.card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }
-.card--quiet { background: var(--surface); border-color: var(--line-2); }
 .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .card-h h3 { flex: 1; }
 
@@ -1513,14 +1508,11 @@ h4,
   .pro-up--inline .lockmsg { width: 100%; }
 }
 .badge--success { background: var(--success-soft); color: var(--success); }
-.badge--danger { background: var(--danger-soft); color: var(--danger); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--primary-soft); color: var(--brand); }
-.badge--solid { background: var(--brand); color: white; }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
 .badge--outline { background: transparent; color: var(--muted); border: 1.5px solid var(--line-strong); }
-.badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
 /* Severity (Lumo .sev — soft plate with a tinted icon chip) */
 .sev {
@@ -1553,7 +1545,6 @@ h4,
  border: 1.5px solid var(--surface);
 }
 .avatar--lg { width: 36px; height: 36px; }
-.avatar--xl { width: 56px; height: 56px; }
 .avatar--sm { width: 22px; height: 22px; }
 .avatar--ai { background: var(--ai-gradient) !important; }
 .avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1.5px dashed var(--line); }
@@ -3054,7 +3045,6 @@ h4,
 .mrow .fl1 { flex: 1; min-width: 0; }
 .mrow .mn { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mrow .me { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mrow .badge .dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; flex: none; }
 .ov-invite { margin-top: 14px; transition: transform .12s var(--ease-out); }
 .ov-invite:active { transform: scale(.985); }
 
