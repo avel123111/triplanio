@@ -131,7 +131,7 @@
   background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   cursor: pointer;
   transition: background .15s ease, border-color .15s ease;
 }
