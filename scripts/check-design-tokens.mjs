@@ -20,6 +20,15 @@
  *     alone would be bypassable — normalise one 768px, add a 777px, same total.
  *     Range syntax and multiline preludes are parsed; escape hatch is
  *     `design-token-exempt` inside the @media prelude.
+ *   • RADII       — ENFORCED (since TRIP-321 Ф8) as two separate rules.
+ *     (1) ABSOLUTE: a raw radius at or above the scale floor (--r-sm, 11px)
+ *     fails, because that value IS expressible by the scale. Below the floor
+ *     the scale has no step at all: that is shape, and stays a literal.
+ *     (2) DEGENERATION, a ratchet vs BASE_REF: the browser clamps a radius to
+ *     half the shorter side, so a legal step can silently render as a circle.
+ *     Detecting it needs whole RULES parsed, since width/height and
+ *     border-radius routinely sit on different lines. Rationale, the scale and
+ *     the grandfathering all live at RADIUS_TOKENS below.
  *
  * Whitelisted files legitimately carry raw values (external brand colours,
  * Mapbox/canvas paint that needs concrete hex, SVG illustration fills, the
@@ -177,6 +186,34 @@ const LAYERS_ALLOW = ['public/landing.css'];
 const BREAKPOINTS = [640, 880];
 const BREAKPOINT_ALLOW = ['public/landing.css'];
 
+// ── RADII (TRIP-321 Ф8) ──────────────────────────────────────────────────────
+// Шкала радиусов (зеркало --r-* из app.css). Пол шкалы делит забор надвое:
+//   • >= пола и сырой  → долг: такое значение шкала выразить МОЖЕТ, привяжись;
+//   • <  пола и сырой  → легально: ступени там нет вообще, это форма (волосяная
+//     линия, точка, скруглённый конец штриха), а не шаг шкалы.
+const RADIUS_TOKENS = {
+  '--r-sm': 11, '--r-btn': 14, '--r-md': 16, '--r-xl': 20, '--r-card': 24, '--r-pill': 999,
+  '--r-control': 14, '--r-seg-track': 14, '--r-seg-btn': 10,
+};
+// Пол именно --r-sm, а не минимум карты: --r-seg-btn (10px) ниже, но это
+// производная ступень сегмент-контрола, а не самостоятельный шаг общей шкалы.
+const RADIUS_FLOOR = RADIUS_TOKENS['--r-sm'];
+// Таблетка заведомо больше любой стороны: зажимается всегда и намеренно.
+const RADIUS_PILL = RADIUS_TOKENS['--r-pill'];
+const RADII_ALLOW = ['public/landing.css'];    // автономный лендинг со своей шкалой
+
+// ВЫРОЖДЕНИЕ. Браузер зажимает радиус до половины меньшей стороны, и зажимается
+// НОВОЕ значение: на элементе 14px ступень 8px даёт 7px, то есть идеальный круг
+// (так чекбокс и уехал в прод радиокнопкой на Ф3b). Связать размер с радиусом
+// можно только разбором ПРАВИЛА целиком: width/height и border-radius сплошь и
+// рядом на разных строках, и построчный скан их вместе не видит - именно
+// поэтому проверка той фазы регрессию пропустила.
+// Порог тут абсолютным быть НЕ может: все 12 уже зажатых правил легальны (2-3px
+// точки и рейлы со скруглённым концом; пять из них - флекс-идиома min-width:0,
+// где сторона по сути не задана). Регрессию отличает не величина, а то, что
+// элемент СТАЛ круглым, поэтому храповик к базе PR, как у брейкпоинтов: уже
+// зажатое дедовщинное, новое зажатое валит CI.
+
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {
   textPx:    /text-\[[0-9.]+px\]/,
@@ -207,6 +244,16 @@ const RE = {
   // Ширина внутри прелюдии: legacy `max-width: 700px` И range `width <= 700px`
   // / `700px <= width`. Иначе новый брейкпоинт заезжает через range-синтаксис.
   mediaWidth: /(?:(?:min-|max-)?width\s*[:<>=]+\s*(\d+)px)|(?:(\d+)px\s*[<>=]+\s*width)/g,
+  // TRIP-321 Ф8 — радиус в CSS и в инлайновом JSX (borderRadius: '12px' / 12).
+  // Значение обрывается и на ЗАПЯТОЙ: в JSX-объекте она разделяет свойства, и
+  // без неё захват уезжает в соседние (`borderRadius: 4, fontWeight: 700` читался
+  // как радиус 700). В CSS у border-radius запятых не бывает, обрыв безвреден.
+  // Поугловая форма (border-top-left-radius / borderBottomRightRadius) тоже
+  // считается радиусом: иначе `border-top-left-radius: 16px` заезжает без писка.
+  anyRadius: /border-?(?:(?:top|bottom)-?(?:left|right)-?)?radius:\s*([^;}\n,]+)/gi,
+  // Правило целиком: «селектор { декларации }». Внутренние правила @media-блока
+  // матчатся сами по себе, потому что своих скобок внутри не имеют.
+  cssRule:   /([^{}@]+)\{([^{}]*)\}/g,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
@@ -243,7 +290,88 @@ const offScaleWidths = (text) => {
   }
   return out;
 };
-const bp = [];     // @media widths off the BREAKPOINTS scale (TRIP-321)
+
+// ── RADII (TRIP-321 Ф8) ──────────────────────────────────────────────────────
+// Разбить значение по пробелам ВЕРХНЕГО уровня: `calc(var(--r-md) - 8px)` внутри
+// обязан содержать пробелы по синтаксису, и наивный split рвёт его на куски,
+// после чего значение молча читается как 16 вместо 8.
+const topLevelParts = (v) => {
+  const out = []; let buf = ''; let depth = 0;
+  for (const ch of v) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (/\s/.test(ch) && depth === 0) { if (buf) out.push(buf); buf = ''; continue; }
+    buf += ch;
+  }
+  if (buf) out.push(buf);
+  return out;
+};
+// Длина в пикселях: литерал, токен шкалы или calc(токен ± Npx). Всё прочее
+// (проценты, em, неизвестный var) → null = «не наше дело», а не 0. Меряет и
+// радиусы, и стороны (width/height): вырождение сравнивает одно с другим.
+const lengthPx = (v) => {
+  if (!v) return null;
+  v = v.trim().replace(/\/\*[\s\S]*?\*\//g, '').trim().replace(/^['"]|['"]$/g, '');
+  const c = v.match(/^calc\(\s*var\(\s*(--[a-z0-9-]+)\s*\)\s*([+-])\s*([\d.]+)px\s*\)$/);
+  if (c) { const b = RADIUS_TOKENS[c[1]]; return b === undefined ? null : (c[2] === '+' ? b + Number(c[3]) : b - Number(c[3])); }
+  const t = v.match(/^var\(\s*(--[a-z0-9-]+)/);
+  if (t) return RADIUS_TOKENS[t[1]] ?? null;
+  const m = v.match(/^([\d.]+)(?:px)?$/);      // JSX допускает голое число: borderRadius: 12
+  return m ? Number(m[1]) : null;
+};
+// Долг правила 1: сырые радиусы >= пола, мультимножество {значение: сколько раз}.
+const rawRadiiAtOrAboveFloor = (text, isJsx) => {
+  const out = new Map();
+  if (!text) return out;
+  for (const line of text.split('\n')) {
+    if (line.includes('design-token-exempt')) continue;
+    for (const m of line.matchAll(RE.anyRadius)) {
+      // split('/') отсекает хвост: вертикальные радиусы эллипса и `/* … */`.
+      for (const part of topLevelParts(m[1].split('/')[0])) {
+        // ТОЛЬКО литерал; токен и calc(токен) не долг. В JSX единица
+        // подразумевается, и голое `borderRadius: 16` это те же 16px: не считать
+        // его значит не видеть основную форму инлайновых стилей.
+        const lit = part.match(isJsx ? /^['"]?([\d.]+)(?:px)?['"]?$/ : /^([\d.]+)px$/);
+        if (!lit) continue;
+        const px = Number(lit[1]);
+        if (px >= RADIUS_FLOOR && px < RADIUS_PILL) out.set(px, (out.get(px) || 0) + 1);
+      }
+    }
+  }
+  return out;
+};
+// Правила, где радиус зажимается в круг: {селектор: эффективный радиус}. Ключ
+// селектор, а не строка: он переживает сдвиг файла, а номер строки нет.
+const clampedRules = (text) => {
+  const out = new Map();
+  if (!text) return out;
+  for (const m of text.matchAll(RE.cssRule)) {
+    const body = m[2];
+    if (!/border-radius/.test(body) || body.includes('design-token-exempt')) continue;
+    const decl = (prop) => {
+      const r = body.match(new RegExp(`(?:^|[;{\\s])${prop}\\s*:\\s*([^;]+)`));
+      return r ? r[1].trim() : null;
+    };
+    const raw = decl('border-radius');
+    if (!raw || raw.includes('%')) continue;              // 50% = примитив формы, не шкала
+    const radii = topLevelParts(raw.split('/')[0]).map(lengthPx).filter((v) => v !== null);
+    if (!radii.length) continue;
+    const radius = Math.max(...radii);
+    if (radius >= RADIUS_PILL) continue;                  // --r-pill: намеренная таблетка
+    const sides = [lengthPx(decl('width')) ?? lengthPx(decl('min-width')),
+                   lengthPx(decl('height')) ?? lengthPx(decl('min-height'))].filter((v) => v !== null);
+    if (!sides.length) continue;                          // размер не задан здесь, судить не можем
+    const side = Math.min(...sides);
+    // Сторона 0 - это `min-width: 0`, стандартный enabler сжатия во флексе, а не
+    // размер элемента. Без этой отсечки любое правило, куда добавили min-width:0,
+    // падало бы с «СТАЛО КРУГОМ»: ложное срабатывание, от которого гард отключают.
+    if (!side) continue;
+    if (radius < side / 2) continue;                      // ложится целиком, формы не меняет
+    const sel = m[1].replace(/\/\*[\s\S]*?\*\//g, ' ').trim().replace(/\s+/g, ' ');
+    out.set(sel, Math.min(radius, side / 2));
+  }
+  return out;
+};
 // Raw-colour count per whitelisted file — the unification worklist (TRIP-321).
 // A whitelisted file that reaches 0 must leave the list; see the header.
 const wlDebt = new Map(COLOR_WHITELIST.map((f) => [f, 0]));
@@ -387,6 +515,42 @@ if (bpOver) console.log(`  ✗ new off-scale breakpoint vs ${BASE_REF}. Use ${BR
 else if (!baseSrc) console.log(`  ✓ ${BASE_REF} unavailable — composition not compared`);
 else console.log('  ✓ ratchet intact — no off-scale width appeared vs ' + BASE_REF + ' (normalising one moves the layout switch: visual decision, not a sweep)');
 
+// ── RADII (TRIP-321 Ф8) ── обоснование обоих правил см. у RADIUS_TOKENS.
+const radiiDebt = [];   // правило 1: сырые радиусы >= пола шкалы
+const radiiClamp = [];  // правило 2: правила, СТАВШИЕ круглыми против базы
+let radiiDebtTotal = 0;
+let clampedTotal = 0;
+for (const file of SCANNED) {
+  if (RADII_ALLOW.includes(file)) continue;
+  const isCss = file.endsWith('.css');
+  const src = readFileSync(file, 'utf8');
+  // Правило 1 АБСОЛЮТНОЕ, без сверки с базой: долг доведён до нуля, поэтому
+  // дедовщина не нужна, и правило одинаково работает локально и на PR dev→main.
+  for (const [px, n] of rawRadiiAtOrAboveFloor(src, !isCss)) {
+    radiiDebtTotal += n;
+    radiiDebt.push(`${file}  ${px}px ×${n}`);
+  }
+  // Вырождение ищем только в CSS: в JSX размер и радиус живут в разных местах.
+  const nowClamp = isCss ? clampedRules(src) : new Map();
+  clampedTotal += nowClamp.size;
+  if (!isCss || !baseSrc) continue;                        // база недоступна, сверять не с чем
+  const wasClamp = clampedRules(baseFile(file));
+  for (const [sel, eff] of nowClamp) {
+    if (wasClamp.has(sel)) continue;                       // уже зажималось = дедовщина
+    radiiClamp.push(`${file}  {${sel.slice(-58)}}  рисуется ${eff}px = круг`);
+  }
+}
+const radiiOver = radiiDebt.length > 0 || radiiClamp.length > 0;
+console.log(`\nRADII (enforced) — ${radiiDebtTotal} сырых >= ${RADIUS_FLOOR}px (пол шкалы) · ${clampedTotal} зажатых в круг (grandfathered):`);
+radiiDebt.forEach((l) => console.log('  ✗ сырой радиус: ' + l));
+radiiClamp.forEach((l) => console.log('  ✗ СТАЛО КРУГОМ: ' + l));
+if (radiiDebt.length) console.log(`  ✗ радиус >= ${RADIUS_FLOOR}px шкала выражает: привяжись к --r-*, либо пометь строку \`design-token-exempt\` с причиной.`);
+if (radiiClamp.length) console.log('  ✗ браузер зажимает радиус до половины МЕНЬШЕЙ стороны, и зажимается НОВОЕ значение: элемент стал круглым (так чекбокс превратился в радиокнопку). Возьми ступень ниже или оставь литерал.');
+if (!radiiOver) {
+  const vs = baseSrc ? `новых вырождений против ${BASE_REF} нет` : `${BASE_REF} unavailable — вырождение не сверялось`;
+  console.log(`  ✓ ни одного сырого радиуса >= пола шкалы; ${vs}`);
+}
+
 // ── COLOUR WHITELIST — ratchet + unification worklist (TRIP-321) ──
 // The per-file counts below are the remaining raw-colour debt: this is the
 // Ф2 progress meter, and it is only allowed to go down.
@@ -428,6 +592,6 @@ for (const [a, o] of compAreas) {
 }
 if (!compSum) console.log('  ✓ none — every component text is on a .t-* canon');
 
-const failed = typo.length > 0 || layers.length > 0 || bpOver || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
+const failed = typo.length > 0 || layers.length > 0 || bpOver || radiiOver || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
 console.log(`\n${hr}\n${failed ? '✗ FAILED' : '✓ PASSED'}\n${hr}\n`);
 process.exit(failed ? 1 : 0);
