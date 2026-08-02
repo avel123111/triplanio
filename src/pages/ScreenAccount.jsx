@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Toggle, Severity, SearchSelect, useToast,
+  Badge, Btn, Severity, SearchSelect, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useProStatus } from '@/lib/useProStatus';
+import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
@@ -344,23 +344,10 @@ export default function ScreenAccount() {
   const { theme, setTheme } = useTheme();
   const nav = useNavigate();
 
-  // In-app notifications — reuse the bell's query key so the cache is shared
-  // (no extra fetch) and the unread count stays in sync across the app.
-  const { data: inboxNotifs = [] } = useQuery({
-    queryKey: ['notifications', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.email,
-  });
-  const unreadCount = inboxNotifs.filter(n => !n.read).length;
+  // In-app notifications — the card needs ONE number, so it asks for one number
+  // (shared seam, head-only count) instead of pulling 30 full rows to filter
+  // them client-side.
+  const unreadCount = useUnreadNotificationCount();
 
   let searchParams;
   try {
@@ -383,8 +370,6 @@ export default function ScreenAccount() {
   // ── Profile form ───────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [notifyInvites, setNotifyInvites] = useState(true);
-  const [notifyUpdates, setNotifyUpdates] = useState(true);
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   const { toast } = useToast();
@@ -419,19 +404,14 @@ export default function ScreenAccount() {
   // on their own (DB write + checkUserAuth), so the Save button never governs the
   // avatar — including it here made the button blink active→inactive for the
   // moment between the optimistic setAvatarUrl and `user` refreshing. Save only
-  // governs the name + notify toggles.
-  const profileDirty =
-    fullName      !== (user?.full_name || '') ||
-    notifyInvites !== (user?.notify_email_invites !== false) ||
-    notifyUpdates !== (user?.notify_email_updates !== false);
+  // governs the display name.
+  const profileDirty = fullName !== (user?.full_name || '');
 
   // ── Seed form from user profile ────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     setFullName(user.full_name || '');
     setAvatarUrl(user.avatar_url || '');
-    setNotifyInvites(user.notify_email_invites !== false);
-    setNotifyUpdates(user.notify_email_updates !== false);
   }, [user]); // eslint-disable-line
 
   // Stripe-return polling + user refresh is owned globally by StripeReturnModals
@@ -468,12 +448,7 @@ export default function ScreenAccount() {
     try {
       const { error } = await supabase
         .from('users')
-        .update({
-          full_name:            fullName,
-          avatar_url:           avatarUrl,
-          notify_email_invites: notifyInvites,
-          notify_email_updates: notifyUpdates,
-        })
+        .update({ full_name: fullName, avatar_url: avatarUrl })
         .eq('id', user.id);
       if (error) throw error;
       await checkUserAuth?.();
@@ -765,7 +740,7 @@ export default function ScreenAccount() {
 
               {/* Language */}
               <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="globe" size={16} /></span>
+                <span className="acct-ic-tile"><Icon name="globe" size={16} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="acct-divrow__t">{t('account.pref_language')}</div>
                   <div className="acct-divrow__s">{t('account.pref_language_sub')}</div>
@@ -816,7 +791,7 @@ export default function ScreenAccount() {
 
               {/* Unit system */}
               <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="route" size={16} /></span>
+                <span className="acct-ic-tile"><Icon name="route" size={16} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="acct-divrow__t">{t('account.units')}</div>
                   <div className="acct-divrow__s">{t('account.units_sub')}</div>
@@ -835,37 +810,26 @@ export default function ScreenAccount() {
           <section id="acct-notify">
             <h2 className="acct-sectitle">{t('account.email_notifs')}</h2>
 
-            {/* In-app notifications — quick link to the inbox with unread count */}
-            <button type="button" className="acct-inbox" style={{ marginBottom: 16 }} onClick={() => nav('/inbox')}>
-              <span className="acct-inbox__ic"><Icon name="bell" size={18} /></span>
-              <span className="acct-inbox__bd">
-                <span className="acct-inbox__t">{t('account.inbox_title')}</span>
-                <span className="acct-inbox__s">{t('account.inbox_sub')}</span>
-              </span>
-              {unreadCount > 0 && (
-                <span className="acct-inbox__count" aria-label={t('account.inbox_unread', { count: unreadCount })}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-              <Icon name="arrowR" size={16} />
-            </button>
-
+            {/* In-app notifications — quick link to the inbox with unread count.
+                Same row grammar as every other navigational row on this screen
+                (Privacy / Terms / cookie settings below): a .card holding
+                .acct-divrow, not a bespoke card-shaped button. */}
             <div className="card" style={{ marginBottom: 16 }}>
-              <div className="acct-subhead" style={{ marginBottom: 6 }}>E-mail</div>
-              <div className="acct-divrow">
+              <button type="button" className="acct-divrow" onClick={() => nav('/inbox')}>
+                <span className="acct-ic-tile"><Icon name="bell" size={18} /></span>
                 <div className="grow">
-                  <div className="acct-divrow__t">{t('account.notif_invites')}</div>
-                  <div className="acct-divrow__s">{t('account.notif_invites_desc')}</div>
+                  <div className="acct-divrow__t">{t('account.inbox_title')}</div>
+                  <div className="acct-divrow__s">{t('account.inbox_sub')}</div>
                 </div>
-                <Toggle on={notifyInvites} onChange={setNotifyInvites} />
-              </div>
-              <div className="acct-divrow">
-                <div className="grow">
-                  <div className="acct-divrow__t">{t('account.notif_updates')}</div>
-                  <div className="acct-divrow__s">{t('account.notif_updates_desc')}</div>
-                </div>
-                <Toggle on={notifyUpdates} onChange={setNotifyUpdates} />
-              </div>
+                {/* The button's accessible name comes from its subtree, so the
+                    count is spoken as part of the row. (The old markup carried an
+                    aria-label on a bare <span> — a generic role takes no
+                    name-from-author, so it was never announced.) */}
+                {unreadCount > 0 && (
+                  <Badge variant="count">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
+                )}
+                <Icon name="arrowR" size={16} className="muted-2" />
+              </button>
             </div>
 
             <ReminderChannels />
@@ -876,7 +840,7 @@ export default function ScreenAccount() {
             <h2 className="acct-sectitle">{t('account.nav_help')}</h2>
             <div className="card">
               <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="chat" size={18} /></span>
+                <span className="acct-ic-tile"><Icon name="chat" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('account.contact_us')}</div>
                   <div className="acct-divrow__s">
@@ -885,7 +849,7 @@ export default function ScreenAccount() {
                 </div>
                 <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </div>
-              <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener">
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="shield" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.privacy_title')}</div>
@@ -893,7 +857,7 @@ export default function ScreenAccount() {
                 </div>
                 <Icon name="external" size={13} className="muted-2" />
               </a>
-              <a className="acct-divrow" href="/terms" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a className="acct-divrow" href="/terms" target="_blank" rel="noreferrer noopener">
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="file" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.terms_title')}</div>
@@ -906,7 +870,6 @@ export default function ScreenAccount() {
               <button
                 type="button"
                 className="acct-divrow"
-                style={{ color: 'inherit', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                 onClick={openConsentBanner}
               >
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="settings" size={18} /></span>
@@ -923,6 +886,9 @@ export default function ScreenAccount() {
             <h2 className="acct-sectitle">{t('account.nav_session')}</h2>
 
             <div className="card card--danger" style={{ marginBottom: 16 }}>
+              {/* Not `:only-child` once a Severity panel opens below, so the flush
+                  padding is declared here rather than by the card rule — otherwise
+                  the row would jump 13px the moment the confirm panel appears. */}
               <div className="acct-divrow" style={{ border: 'none', padding: 0 }}>
                 <span className="acct-ic-tile" style={{ background: 'var(--danger-soft)', color: 'var(--danger-ink)' }}><Icon name="trash" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
@@ -958,7 +924,7 @@ export default function ScreenAccount() {
             </div>
 
             <div className="card">
-              <div className="acct-divrow" style={{ border: 'none', padding: 0 }}>
+              <div className="acct-divrow">
                 <span className="acct-ic-tile" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}><Icon name="arrow" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('account.logout_title')}</div>

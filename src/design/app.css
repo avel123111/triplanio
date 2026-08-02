@@ -488,7 +488,6 @@ h4,
 .banner p,
 .acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
-.acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
@@ -676,8 +675,6 @@ h4,
 .acct-linktext,
 .acct-lang__flag,
 .acct-chan__s,
-.acct-inbox__s,
-.acct-inbox__count,
 .acct-tghint,
 .toast__body span,
 .ss-empty,
@@ -944,7 +941,6 @@ h4,
 .acct-chan__s,           /* TRIP-175 инсп.: Meta+Golos (подпись канала уведомлений) */
 .addon-card__desc,       /* TRIP-175 инсп.: Meta+Golos (описание аддона; канон meta выше) */
 .settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta+Golos (описания в настройках; из #446-Mono) */
-.acct-inbox__s,          /* TRIP-175 инсп.: Meta+Golos (подпись «Входящие») */
 .app-header__trip-meta,  /* TRIP-175 инсп.: Meta+Golos (мета трипа в шапке) */
 .fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
 .chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
@@ -3342,9 +3338,19 @@ h4,
 /* divided rows (notifications, help, danger) */
 .acct-divrow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line-2); }
 .acct-divrow:last-child { border-bottom: none; }
+/* The row IS the control when it's a link or a button. Without this every such
+   call site re-declared the same reset inline (4 of them did). */
+a.acct-divrow,
+button.acct-divrow { width: 100%; background: none; border: 0; text-align: left; text-decoration: none; color: inherit; }
+/* A row alone in its card: the card's own 18px padding is the whole frame, so
+   the row must not add its 13px on top (that is the fat-card look). */
+.card > .acct-divrow:only-child { padding: 0; }
 .acct-divrow__t { color: var(--ink); }
 .acct-divrow__s { color: var(--muted); }
-.acct-ic-tile { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
+/* Brand tint is the tile's default. A row needing another tint overrides both
+   background AND color inline: --wash (legal), --danger-soft (delete account),
+   --ai-soft (theme), --surface-2 (sign out). */
+.acct-ic-tile { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
 .acct-ic-tile svg { width: 18px; height: 18px; }
 
 /* profile hero */
@@ -3421,16 +3427,6 @@ h4,
 .acct-chan__t { color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acct-chan__s { color: var(--muted); margin-top: 2px; }
 .acct-chan--btn { cursor: pointer; width: 100%; text-align: left; font-family: inherit; } .acct-chan--btn:hover { border-color: var(--line-hover); background: var(--surface-3); }
-/* In-app notifications quick-link card (account → /inbox) */
-.acct-inbox { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); cursor: pointer; text-align: left; font-family: inherit; color: var(--ink); transition: border-color .2s var(--ease-out), background .2s var(--ease-out), transform .12s var(--ease-out); }
-.acct-inbox:hover { border-color: var(--line-hover); background: var(--surface-3); }
-.acct-inbox:active { transform: scale(.99); }
-.acct-inbox__ic { width: 38px; height: 38px; border-radius: var(--r-sm); flex: none; display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); }
-.acct-inbox__bd { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.acct-inbox__t { color: var(--ink); }
-.acct-inbox__s { color: var(--muted); }
-.acct-inbox__count { flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--brand); color: var(--primary-fg); display: inline-flex; align-items: center; justify-content: center; }
-.acct-inbox > svg { color: var(--muted); flex: none; }
 .acct-chan--soon { opacity: .7; }
 .acct-chan__chev { color: var(--muted); flex: none; transition: transform .2s var(--ease-out); }
 .acct-chan--btn[aria-expanded="true"] .acct-chan__chev { transform: rotate(90deg); }

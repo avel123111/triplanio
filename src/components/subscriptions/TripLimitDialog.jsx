@@ -72,7 +72,8 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           {/* Transient loading state has no visible heading — sr-only Title carries the name. */}
           <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('sub.limit_hero_title')}</DialogTitle>
           <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
-            <div className="animate-spin" style={{ width: 24, height: 24, border: '3px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
+            {/* `.spin` carries the rotation — Tailwind's animate-spin is gone since TRIP-53. */}
+            <div className="spin" style={{ width: 24, height: 24, border: '3px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
           </div>
         </DialogContent>
       </Dialog>
