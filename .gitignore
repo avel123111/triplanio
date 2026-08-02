@@ -47,6 +47,11 @@ dist_chk*/
 # Vercel CLI local (pulled env / project link)
 .vercel
 
+# Граф кода (команда /graph). Собирается за ~10 c в каждой сессии заново и
+# НЕ коммитится: 3 МБ на каждый PR + конфликты, а главное — устаревшая карта
+# хуже отсутствующей, ей поверят. Что не индексируется — в .graphifyignore.
+graphify-out/
+
 # Playwright MCP artefacts. Snapshots and console logs идут в --output-dir,
 # а вот скриншот с относительным filename сервер кладёт относительно КОРНЯ
 # воркспейса, то есть в корень репо. Вторая строка - сетка безопасности на этот
