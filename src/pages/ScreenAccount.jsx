@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
@@ -9,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useProStatus } from '@/lib/useProStatus';
+import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
@@ -344,23 +344,10 @@ export default function ScreenAccount() {
   const { theme, setTheme } = useTheme();
   const nav = useNavigate();
 
-  // In-app notifications — reuse the bell's query key so the cache is shared
-  // (no extra fetch) and the unread count stays in sync across the app.
-  const { data: inboxNotifs = [] } = useQuery({
-    queryKey: ['notifications', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.email,
-  });
-  const unreadCount = inboxNotifs.filter(n => !n.read).length;
+  // In-app notifications — the card needs ONE number, so it asks for one number
+  // (shared seam, head-only count) instead of pulling 30 full rows to filter
+  // them client-side.
+  const unreadCount = useUnreadNotificationCount();
 
   let searchParams;
   try {
