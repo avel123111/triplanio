@@ -19,11 +19,11 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
   // wide bar CSS pulls `duration` behind `distance` to restore the mockup's
   // desktop order: cities · countries · transfers · km · days.
   const items = [
-    { key: 'cities', tone: 'city', value: s.cities, label: t('overview.stat_cities'), icon: <Icon name="buildings" size={20} /> },
-    { key: 'countries', value: s.countries, label: t('overview.stat_countries'), icon: <Icon name="globe" size={20} /> },
-    { key: 'transfers', tone: 'transfer', value: s.transfers, label: t('overview.stat_transfers'), icon: <Icon name="arrowSwap" size={20} /> },
-    { key: 'duration', tone: 'duration', value: s.days, label: t('overview.unit_days'), icon: <Icon name="calendar" size={20} /> },
-    { key: 'distance', tone: 'distance', value: dist.value, label: dist.unit, icon: <Icon name="route" size={20} /> },
+    { key: 'cities', tone: 'city', value: s.cities, label: t('overview.stat_cities'), icon: <Icon name="buildings" /> },
+    { key: 'countries', value: s.countries, label: t('overview.stat_countries'), icon: <Icon name="globe" /> },
+    { key: 'transfers', tone: 'transfer', value: s.transfers, label: t('overview.stat_transfers'), icon: <Icon name="arrowSwap" /> },
+    { key: 'duration', tone: 'duration', value: s.days, label: t('overview.unit_days'), icon: <Icon name="calendar" /> },
+    { key: 'distance', tone: 'distance', value: dist.value, label: dist.unit, icon: <Icon name="route" /> },
   ];
 
   return <StatBar items={items} className="surface-panel" />;

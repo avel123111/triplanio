@@ -3063,11 +3063,6 @@ h4,
  align-items: center; justify-content: center; gap: 8px;
 }
 
-/* ---- stat row ----
-   Overview trip stats render through the shared .statbar polosa (TRIP-278);
-   see the .statbar block below. Panel skin is applied via `surface-panel` on
-   the element; margin reset for the overview column lives beside .statbar. */
-
 /* ---- entrance: staggered reveal (decorative) ---- */
 @keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ov-anim { animation: ovIn .42s var(--ease-out) both; }
@@ -4547,9 +4542,11 @@ h4,
    carries the wrapped order so the 2-col layout below needs no re-ordering. */
 .statbar .s.c-duration { order: 1; }
 .statbar .v { color: var(--ink); font-variant-numeric: tabular-nums; }
-.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .045em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* caps micro-label (mockup v01) — tracking from the system's caps token, not a
+   fourth ad-hoc value; the .t-meta canon underneath supplies family/size/weight */
+.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line-2); flex: none; }
-.statbar .cta button, .statbar .cta .btn, .statbar .cta .b { width: 100%; }
+.statbar .cta button { width: 100%; }
 /* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
 .ov-col .statbar { margin-top: 0; }
 /* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
@@ -4558,11 +4555,11 @@ h4,
 @media (max-width: 640px) {
   .statbar { flex-wrap: wrap; }
   .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
-  .statbar .s::before { inset: 13px auto 13px 0; display: none; }
-  .statbar .s:nth-child(even)::before { display: block; }
+  .statbar .s::before { inset: 13px auto 13px 0; }
+  .statbar .s:nth-child(odd)::before { display: none; }   /* left column starts a row */
   .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line-2); }
   .statbar .s.c-duration { order: 0; }
-  .statbar .s.c-distance { flex: 1 0 100%; border-top: 1px solid var(--line-2); }
+  .statbar .s.c-distance { flex: 1 0 100%; }
   .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; }
 }
 /* The overview bar reflows on its own (column) width, not the viewport: it stays
@@ -4573,11 +4570,11 @@ h4,
 @container (max-width: 880px) {
   .ov-col .statbar { flex-wrap: wrap; }
   .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
-  .ov-col .statbar .s::before { inset: 13px auto 13px 0; display: none; }
-  .ov-col .statbar .s:nth-child(even)::before { display: block; }
+  .ov-col .statbar .s::before { inset: 13px auto 13px 0; }
+  .ov-col .statbar .s:nth-child(odd)::before { display: none; }   /* left column starts a row */
   .ov-col .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line-2); }
   .ov-col .statbar .s.c-duration { order: 0; }
-  .ov-col .statbar .s.c-distance { flex: 1 0 100%; border-top: 1px solid var(--line-2); }
+  .ov-col .statbar .s.c-distance { flex: 1 0 100%; }
 }
 
 .dash-hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-top: 18px; }
@@ -4632,8 +4629,6 @@ h4,
    adds only the sections that had no equivalent (.summary/.world/.vlist/.records/
    .chart, map controls/legend, fullscreen, visit panel).
    ═══════════════════════════════════════════════════════════════════════════ */
-
-/* stat-bar trailing CTA: see the canonical .statbar block above (TRIP-278 collapse). */
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
