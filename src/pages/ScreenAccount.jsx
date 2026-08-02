@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Toggle, Severity, SearchSelect, useToast,
+  Badge, Btn, Severity, SearchSelect, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -383,8 +383,6 @@ export default function ScreenAccount() {
   // ── Profile form ───────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [notifyInvites, setNotifyInvites] = useState(true);
-  const [notifyUpdates, setNotifyUpdates] = useState(true);
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   const { toast } = useToast();
@@ -419,19 +417,14 @@ export default function ScreenAccount() {
   // on their own (DB write + checkUserAuth), so the Save button never governs the
   // avatar — including it here made the button blink active→inactive for the
   // moment between the optimistic setAvatarUrl and `user` refreshing. Save only
-  // governs the name + notify toggles.
-  const profileDirty =
-    fullName      !== (user?.full_name || '') ||
-    notifyInvites !== (user?.notify_email_invites !== false) ||
-    notifyUpdates !== (user?.notify_email_updates !== false);
+  // governs the display name.
+  const profileDirty = fullName !== (user?.full_name || '');
 
   // ── Seed form from user profile ────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     setFullName(user.full_name || '');
     setAvatarUrl(user.avatar_url || '');
-    setNotifyInvites(user.notify_email_invites !== false);
-    setNotifyUpdates(user.notify_email_updates !== false);
   }, [user]); // eslint-disable-line
 
   // Stripe-return polling + user refresh is owned globally by StripeReturnModals
@@ -468,12 +461,7 @@ export default function ScreenAccount() {
     try {
       const { error } = await supabase
         .from('users')
-        .update({
-          full_name:            fullName,
-          avatar_url:           avatarUrl,
-          notify_email_invites: notifyInvites,
-          notify_email_updates: notifyUpdates,
-        })
+        .update({ full_name: fullName, avatar_url: avatarUrl })
         .eq('id', user.id);
       if (error) throw error;
       await checkUserAuth?.();
@@ -849,24 +837,6 @@ export default function ScreenAccount() {
               )}
               <Icon name="arrowR" size={16} />
             </button>
-
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div className="acct-subhead" style={{ marginBottom: 6 }}>E-mail</div>
-              <div className="acct-divrow">
-                <div className="grow">
-                  <div className="acct-divrow__t">{t('account.notif_invites')}</div>
-                  <div className="acct-divrow__s">{t('account.notif_invites_desc')}</div>
-                </div>
-                <Toggle on={notifyInvites} onChange={setNotifyInvites} />
-              </div>
-              <div className="acct-divrow">
-                <div className="grow">
-                  <div className="acct-divrow__t">{t('account.notif_updates')}</div>
-                  <div className="acct-divrow__s">{t('account.notif_updates_desc')}</div>
-                </div>
-                <Toggle on={notifyUpdates} onChange={setNotifyUpdates} />
-              </div>
-            </div>
 
             <ReminderChannels />
           </section>
