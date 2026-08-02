@@ -361,7 +361,8 @@ h1, h2, h3, h4 {
 .hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel,
 /* контролы: кнопки, пилюли, чипы */
 .cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
-.pro-up .lockmsg, .map-ctl button, .map-legend .c, .mapfs-close {
+.pro-up .lockmsg, .map-ctl button, .map-legend .c, .mapfs-close,
+.chat-bubble--them {
   background: var(--surface);
   border: 1px solid var(--line);
 }
@@ -2261,7 +2262,7 @@ h4,
 .chat-bubble { padding: 11px 15px; border-radius: var(--r-md); word-break: break-word; }
 /* Incoming = surface + hairline (not a grey fill): on a light room the fill read
    as a second background layer. */
-.chat-bubble--them { background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-bottom-left-radius: 6px; }
+.chat-bubble--them { color: var(--ink); border-bottom-left-radius: 6px; }   /* фон+граница — из общего блока поверхностей */
 .chat-bubble--me { background: var(--brand); border: 1px solid transparent; color: #fff; border-bottom-right-radius: 6px; }
 [data-theme="dark"] .chat-bubble--me { color: #0c1424; }
 .chat-bubble--pending { opacity: .7; }

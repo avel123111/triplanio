@@ -17,8 +17,11 @@
   --brand:#2173C8;
   --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
   --ink:#272433; --ink-2:#4A4659; --muted:#7A7689; --muted-2:#ABA7B8;
-  --bg:#fcfcfc; --surface:#FFFFFF; --surface-2:#EEEEF7; --surface-3:#FAFAFE;
-  --line:#E9E8F2; --line-strong:#DBD9E7;
+  /* TRIP-326: зеркало держит ТУ ЖЕ холодно-серую шкалу, что и :root в app.css.
+     Раньше здесь оставалась прежняя фиолетовая — публичный экран расходился
+     с приложением по фону и границам. Меняешь нейтрали в app.css — правь и тут. */
+  --bg:#f7f9fa; --surface:#FFFFFF; --surface-2:#EEF1F4; --surface-3:#F5F8FA;
+  --line:#E6EAEE; --line-strong:#D5DAE0; --line-hover:#C8CED6;
   --primary-hover:#1C66B4; --primary-ring:rgba(33,115,200,.28); --primary-soft:rgba(33,115,200,.10);
 
   font-family:var(--font-ui);
