@@ -43,6 +43,11 @@ graphify explain  "$ARGUMENTS"   # все связи: кто зовёт, ког�
 graphify affected "$ARGUMENTS"   # blast radius: кого заденет правка
 ```
 
+**Если `affected` вернул пустой список — это НЕ «никто не использует».** При
+совпадении имён (`Dialog` есть и в `design/`, и в `components/ui/`) он молча
+отдаёт пустоту; `explain` в том же случае честно пишет `Ambiguous: … matches 2
+nodes`. Пустой ответ → прогони `explain` и повтори с полным id узла.
+
 ## Шаг 4. Что доложить
 
 Коротко и по делу:
