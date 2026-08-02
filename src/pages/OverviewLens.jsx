@@ -43,13 +43,8 @@ export default function OverviewLens({
     const dot = <span className="ov-bar" style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', flex: 'none' }} />;
     return (
       <div className="ovwrap" aria-busy="true">
-        <div className="ov-col">
-          {/* map card */}
-          <div className="wdg ov-mapcard">
-            <div className="wdg-h">{dot}{bar('38%', 16, 6)}</div>
-            <div className="ov-bar" style={{ height: 280, borderRadius: 0 }} />
-          </div>
-          {/* stat bar */}
+        {/* stat bar — full width above both columns */}
+        <div className="ov-anim">
           <div className="statbar surface-panel">
             {Array.from({ length: 5 }).map((_, i) => (
               <div className="s" key={i}>
@@ -57,6 +52,13 @@ export default function OverviewLens({
                 <div className="grow">{bar('55%', 22, 6)}{bar('80%', 10, 5, 7)}</div>
               </div>
             ))}
+          </div>
+        </div>
+        <div className="ov-col">
+          {/* map card */}
+          <div className="wdg ov-mapcard">
+            <div className="wdg-h">{dot}{bar('38%', 16, 6)}</div>
+            <div className="ov-bar" style={{ height: 280, borderRadius: 0 }} />
           </div>
         </div>
         <div className="ov-col">
@@ -91,6 +93,14 @@ export default function OverviewLens({
 
   return (
     <div className="ovwrap">
+      {/* Stats span the full overview width: five icon+value+label cells need
+          ~765px to sit in one row, which the 1.6fr map column only reaches past
+          a ~1600px viewport — the mockup assumes the full available width. The
+          wrapper is load-bearing (it carries the span + the size container), so
+          it cannot be folded into TripStatRow's own className. */}
+      <div className="ov-anim">
+        <TripStatRow visits={visits} transfers={transfers} trip={trip} orderedVisits={orderedVisits} />
+      </div>
       <div className="ov-col">
         <div className="ov-anim">
           <RouteMapCard
@@ -99,9 +109,6 @@ export default function OverviewLens({
             active={active}
             onOpen={onOpenMap}
           />
-        </div>
-        <div className="ov-anim">
-          <TripStatRow visits={visits} transfers={transfers} trip={trip} orderedVisits={orderedVisits} />
         </div>
       </div>
 

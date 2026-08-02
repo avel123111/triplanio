@@ -2996,10 +2996,13 @@ h4,
   align-items: start;
 }
 .ov-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-/* Left column = size container so the stat-bar reflows to its own width, not the
-   viewport (mockup v01 @container): 5-across when the column is wide, 2-col when
-   the 2-column overview squeezes it on mid-width desktops (TRIP-278). */
-.ovwrap .ov-col:first-child { container-type: inline-size; }
+/* A direct child of the grid (today: the stat bar) spans both columns and is a
+   size container, so the bar reflows on its OWN width rather than the viewport
+   (mockup v01 @container). It has to: the trip sidebar makes the available width
+   non-monotonic across its own breakpoint (see the shell note near .trip-body),
+   so no viewport breakpoint describes it. The bar must stay a DESCENDANT of this
+   element — an element cannot match its own container query (TRIP-278). */
+.ovwrap > .ov-anim { grid-column: 1 / -1; container-type: inline-size; }
 
 /* ---- widget shell ---- */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тень только на ховере как affordance */
@@ -3066,9 +3069,11 @@ h4,
 /* ---- entrance: staggered reveal (decorative) ---- */
 @keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ov-anim { animation: ovIn .42s var(--ease-out) both; }
-.ovwrap .ov-col:first-child .ov-anim:nth-child(2) { animation-delay: 60ms; }
+/* Stat bar leads (it is the grid's first child), then the columns ladder in. */
+.ovwrap .ov-col:first-child .ov-anim:nth-child(1) { animation-delay: 60ms; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(1) { animation-delay: 50ms; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(2) { animation-delay: 110ms; }
+.ovwrap .ov-col:last-child .ov-anim:nth-child(3) { animation-delay: 170ms; }
 /* Calendar lens: a slightly larger, longer entrance for a more dynamic feel. */
 @keyframes ovInCal { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .ov-anim--cal { animation: ovInCal .5s var(--ease-out) both; }
@@ -4542,13 +4547,18 @@ h4,
    carries the wrapped order so the 2-col layout below needs no re-ordering. */
 .statbar .s.c-duration { order: 1; }
 .statbar .v { color: var(--ink); font-variant-numeric: tabular-nums; }
-/* caps micro-label (mockup v01) — tracking from the system's caps token, not a
-   fourth ad-hoc value; the .t-meta canon underneath supplies family/size/weight */
-.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* caps micro-label (mockup v01). Tracking is deliberately NOT set: the .t-meta
+   canon underneath pins letter-spacing to 0, the mono face already reads as
+   spaced in caps, and widening it truncated the longest labels («ПУТЕШЕСТВИЯ»
+   measured 90px against a 95px half-cell, 73px without). NB the capsed tier of
+   the taxonomy is .t-micro (it is the one carrying --track-caps) — if this label
+   should ever be re-tiered, that is the question to settle, not the tracking. */
+.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line-2); flex: none; }
 .statbar .cta button { width: 100%; }
-/* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
-.ov-col .statbar { margin-top: 0; }
+/* On the overview the grid gap supplies the rhythm, so drop the bar's own top
+   margin (it is a grid item there, not a flow sibling) (TRIP-278). */
+.ovwrap .statbar { margin-top: 0; }
 /* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
    only left of the right-hand column, rows are separated horizontally, and the
    last stat (distance on the trip bar, CTA on /trips) takes a full-width row. */
@@ -4562,19 +4572,19 @@ h4,
   .statbar .s.c-distance { flex: 1 0 100%; }
   .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; }
 }
-/* The overview bar reflows on its own (column) width, not the viewport: it stays
-   5-across only while the column is genuinely wide (≈830px min-content for five
-   icon+value+label cells) and drops to the 2-col shape above once the two-column
-   overview squeezes it — the common case on ≤1400px desktops, where the left
-   column sits around 550-680px. Threshold is the sanctioned 880 (TRIP-321). */
+/* The overview bar reflows on its own width (its wrapper is the size container),
+   not the viewport: five icon+value+label cells need ~765px measured to sit in
+   one row without clipping a label, so below the sanctioned 880 (TRIP-321) it
+   takes the 2-col shape above. The margin between 765 and 880 is deliberate
+   slack for longer locales. */
 @container (max-width: 880px) {
-  .ov-col .statbar { flex-wrap: wrap; }
-  .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
-  .ov-col .statbar .s::before { inset: 13px auto 13px 0; }
-  .ov-col .statbar .s:nth-child(odd)::before { display: none; }   /* left column starts a row */
-  .ov-col .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line-2); }
-  .ov-col .statbar .s.c-duration { order: 0; }
-  .ov-col .statbar .s.c-distance { flex: 1 0 100%; }
+  .ovwrap .statbar { flex-wrap: wrap; }
+  .ovwrap .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .ovwrap .statbar .s::before { inset: 13px auto 13px 0; }
+  .ovwrap .statbar .s:nth-child(odd)::before { display: none; }   /* left column starts a row */
+  .ovwrap .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line-2); }
+  .ovwrap .statbar .s.c-duration { order: 0; }
+  .ovwrap .statbar .s.c-distance { flex: 1 0 100%; }
 }
 
 .dash-hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-top: 18px; }
