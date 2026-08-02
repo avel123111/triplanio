@@ -1,0 +1,401 @@
+{
+  "note": "CI guard 2l (TRIP-282). Ceilings only go DOWN. Regenerate with: node scripts/ci/check-inline-styles.mjs --write",
+  "files": {
+    "src/components/AppErrorBoundary.jsx": {
+      "count": 6,
+      "clusters": {}
+    },
+    "src/components/bookings/AddBookingPanel.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/components/bookings/ForkPartnerModal.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/components/bookings/PartnerResultCard.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/bookings/Stay22HotelList.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/bookings/ViatorActivityList.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/bookings/forkList.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/chat/ChatComposer.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/chat/ChatReply.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/chat/ChatWidget.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/chat/TriplanioAvatar.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/common/AddressAutocomplete.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/components/common/Autocomplete.jsx": {
+      "count": 6,
+      "clusters": {}
+    },
+    "src/components/common/CityPanel.jsx": {
+      "count": 10,
+      "clusters": {}
+    },
+    "src/components/common/ConfirmDialog.jsx": {
+      "count": 4,
+      "clusters": {}
+    },
+    "src/components/common/DocumentsField.jsx": {
+      "count": 4,
+      "clusters": {}
+    },
+    "src/components/common/EventAiBlock.jsx": {
+      "count": 9,
+      "clusters": {
+        "style={{width:N,height:N,marginRight:N}}": 4
+      }
+    },
+    "src/components/common/EventEditDialog.jsx": {
+      "count": 56,
+      "clusters": {
+        "style={{marginTop:N}}": 6,
+        "style={{width:N,height:N}}": 3,
+        "style={{flexShrink:N}}": 3,
+        "style={{display:'flex',flexDirection:'column',gap:N}}": 3
+      }
+    },
+    "src/components/common/EventModal.jsx": {
+      "count": 7,
+      "clusters": {
+        "style={{width:N,height:N,marginRight:N}}": 3
+      }
+    },
+    "src/components/common/EventPanels.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/components/common/EventSourcePanel.jsx": {
+      "count": 4,
+      "clusters": {}
+    },
+    "src/components/common/EventViewBody.jsx": {
+      "count": 7,
+      "clusters": {}
+    },
+    "src/components/common/GeoAttribution.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/common/PaymentResultDialog.jsx": {
+      "count": 9,
+      "clusters": {}
+    },
+    "src/components/common/ProUpsellModal.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/components/common/TelegramUnlinkDialog.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/common/TimezoneHint.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/common/ValidationUI.jsx": {
+      "count": 19,
+      "clusters": {}
+    },
+    "src/components/common/cityOptionRow.jsx": {
+      "count": 4,
+      "clusters": {}
+    },
+    "src/components/create/CreateTripProvider.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/components/create/StartCalendar.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/notifications/NotificationsBell.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/site/SiteChrome.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/components/stats/AddPlaceDialog.jsx": {
+      "count": 9,
+      "clusters": {}
+    },
+    "src/components/stats/VisitPanel.jsx": {
+      "count": 4,
+      "clusters": {}
+    },
+    "src/components/stats/widgets.jsx": {
+      "count": 11,
+      "clusters": {}
+    },
+    "src/components/subscriptions/TripLimitDialog.jsx": {
+      "count": 24,
+      "clusters": {}
+    },
+    "src/components/trip/TripStartControl.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/trips/BudgetSummaryCard.jsx": {
+      "count": 7,
+      "clusters": {
+        "style={{width:'N%',height:N,borderRadius:'var(--r-sm)',marginTop:N}}": 3
+      }
+    },
+    "src/components/trips/MembersSummaryCard.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/components/trips/ServicesCard.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/components/trips/ShareDialog.jsx": {
+      "count": 13,
+      "clusters": {
+        "style={{marginBottom:N}}": 4
+      }
+    },
+    "src/components/trips/ShareMapPreview.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/components/trips/TripAccessError.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/trips/TripCoverPicker.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/trips/TripLoadError.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/trips/TripSidebar.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/trips/TripStatRow.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/ui/AiField.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/ui/CurrencyCombobox.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/components/ui/SearchSelect.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/components/ui/Sheet.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/ui/alert-dialog.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/components/ui/popover.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/ui/toast.jsx": {
+      "count": 1,
+      "clusters": {}
+    },
+    "src/components/views/MapView.jsx": {
+      "count": 4,
+      "clusters": {}
+    },
+    "src/components/views/StatsMap.jsx": {
+      "count": 4,
+      "clusters": {}
+    },
+    "src/design/index.jsx": {
+      "count": 26,
+      "clusters": {}
+    },
+    "src/lib/PageNotFound.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/lib/map/MapControls.jsx": {
+      "count": 2,
+      "clusters": {}
+    },
+    "src/pages/BudgetLens.jsx": {
+      "count": 35,
+      "clusters": {
+        "style={{marginTop:N}}": 14,
+        "style={{marginBottom:N}}": 3
+      }
+    },
+    "src/pages/CalendarLens.jsx": {
+      "count": 8,
+      "clusters": {}
+    },
+    "src/pages/ChatLens.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/pages/DocsLens.jsx": {
+      "count": 29,
+      "clusters": {
+        "style={{marginBottom:N}}": 5,
+        "style={{marginTop:N}}": 3,
+        "style={{color:'var(--brand)'}}": 3
+      }
+    },
+    "src/pages/Inbox.jsx": {
+      "count": 14,
+      "clusters": {}
+    },
+    "src/pages/Landing/LandingPage.jsx": {
+      "count": 96,
+      "clusters": {
+        "style={{marginTop:N}}": 5,
+        "style={{marginBottom:N}}": 5,
+        "style={{padding:N}}": 3,
+        "style={{color:'var(--muted)',marginBottom:N}}": 3,
+        "style={{display:'grid',gap:N}}": 3,
+        "style={{color:'var(--muted)',marginRight:N}}": 3,
+        "style={{left:'N%',top:'N%'}}": 3,
+        "style={{display:'inline-block',width:N,height:N,background:'rgba(N,N,N,.N)',borderRadius:N,marginRight:N}}": 3
+      }
+    },
+    "src/pages/Login.jsx": {
+      "count": 15,
+      "clusters": {
+        "style={{marginTop:N}}": 6
+      }
+    },
+    "src/pages/ManualPlanner.jsx": {
+      "count": 86,
+      "clusters": {
+        "style={{marginBottom:N}}": 10,
+        "style={{flex:N,minWidth:N}}": 5,
+        "style={{color:'var(--inkN)',marginBottom:N,maxWidth:N}}": 4,
+        "style={{marginTop:N}}": 4,
+        "style={{marginBottom:N,color:'var(--ink)'}}": 3
+      }
+    },
+    "src/pages/MembersLens.jsx": {
+      "count": 21,
+      "clusters": {
+        "style={{marginTop:N}}": 8,
+        "style={{flex:N,display:'flex',alignItems:'center',justifyContent:'center',gap:N}}": 3
+      }
+    },
+    "src/pages/OverviewLens.jsx": {
+      "count": 5,
+      "clusters": {}
+    },
+    "src/pages/Pro.jsx": {
+      "count": 19,
+      "clusters": {
+        "style={{marginTop:N}}": 5
+      }
+    },
+    "src/pages/PublicTrip.jsx": {
+      "count": 9,
+      "clusters": {}
+    },
+    "src/pages/ScreenAccount.jsx": {
+      "count": 43,
+      "clusters": {
+        "style={{flex:N,minWidth:N}}": 8,
+        "style={{background:'var(--primary-soft)',color:'var(--brand)'}}": 4,
+        "style={{background:'var(--wash)',color:'var(--muted)'}}": 3
+      }
+    },
+    "src/pages/ScreenMap.jsx": {
+      "count": 3,
+      "clusters": {}
+    },
+    "src/pages/SettingsLens.jsx": {
+      "count": 54,
+      "clusters": {
+        "style={{marginBottom:N}}": 9,
+        "style={{display:'flex',gap:N}}": 4,
+        "style={{width:N,height:N,borderRadius:'var(--r-sm)',background:tgBrand.bg,color:tgBrand.fg,display:'grid',placeItems:'center',flexShrink:N}}": 3,
+        "style={{display:'flex',flexDirection:'column',gap:N}}": 3,
+        "style={{flex:N,minWidth:N}}": 3,
+        "style={{display:'flex',alignItems:'center',gap:N,padding:'NpxN'}}": 3
+      }
+    },
+    "src/pages/Statistics.jsx": {
+      "count": 14,
+      "clusters": {
+        "style={{marginTop:N}}": 7
+      }
+    },
+    "src/pages/TripStructureEdit.jsx": {
+      "count": 44,
+      "clusters": {
+        "style={{gridColumn:N}}": 4,
+        "style={{color:'var(--warning)'}}": 4
+      }
+    },
+    "src/pages/TripView.jsx": {
+      "count": 25,
+      "clusters": {
+        "style={{display:'flex',flexDirection:'column',gap:N}}": 4,
+        "style={{marginBottom:N}}": 3
+      }
+    },
+    "src/pages/Trips.jsx": {
+      "count": 27,
+      "clusters": {
+        "style={{marginBottom:N}}": 4,
+        "style={{background:bg||undefined}}": 3
+      }
+    },
+    "src/pages/create/FlowMap.jsx": {
+      "count": 7,
+      "clusters": {}
+    },
+    "src/pages/create/FlowProgress.jsx": {
+      "count": 7,
+      "clusters": {}
+    },
+    "src/pages/create/PanelAi.jsx": {
+      "count": 20,
+      "clusters": {}
+    },
+    "src/pages/create/anchors.jsx": {
+      "count": 5,
+      "clusters": {}
+    }
+  }
+}
