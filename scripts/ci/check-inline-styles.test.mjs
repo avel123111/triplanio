@@ -47,6 +47,10 @@ function fixture(t, { base = {}, head = {}, renames = [] }) {
   git(dir, ['init', '-q', '-b', 'main']);
   git(dir, ['config', 'user.email', 'guard@test']);
   git(dir, ['config', 'user.name', 'guard']);
+  // A developer's global gpgsign / hooksPath would otherwise break the fixture
+  // and report it as a guard failure.
+  git(dir, ['config', 'commit.gpgsign', 'false']);
+  git(dir, ['config', 'core.hooksPath', '/dev/null']);
 
   for (const [p, body] of Object.entries(base)) put(dir, p, body);
   put(dir, '.keep', '');
@@ -65,11 +69,11 @@ function fixture(t, { base = {}, head = {}, renames = [] }) {
   return { dir, baseRef };
 }
 
-function run({ dir, baseRef }, args = [], refOverride) {
+function run({ dir, baseRef }, { args = [], ref, cwd } = {}) {
   const r = spawnSync(process.execPath, [GUARD, ...args], {
-    cwd: dir,
+    cwd: cwd ? join(dir, cwd) : dir,
     encoding: 'utf8',
-    env: { ...process.env, BASE_REF: refOverride ?? baseRef },
+    env: { ...process.env, BASE_REF: ref ?? baseRef },
   });
   return { code: r.status, out: `${r.stdout}${r.stderr}` };
 }
@@ -94,7 +98,7 @@ test('a committed baseline artifact no longer exists (it was the bypass)', () =>
 
 test('--write is gone: the guard refuses the flag instead of rewriting a ceiling', (t) => {
   const f = fixture(t, { base: { 'src/A.jsx': repeated(4) }, head: { 'src/A.jsx': repeated(9) } });
-  const r = run(f, ['--write']);
+  const r = run(f, { args: ['--write'] });
   assert.notEqual(r.code, 0, '--write must not be a way to bless a regression');
   assert.match(r.out, /unknown flag|--write/i);
 });
@@ -163,16 +167,29 @@ export const C = () => <b/>;\n`,
 });
 
 test('a URL inside a string is not the start of a comment', (t) => {
-  const head = {
-    'src/A.jsx': `const u = 'https://triplanio.com';
-export const C = () => <a href={u} style={{ color: 'red' }}/>;\n`,
-  };
-  // One inline style in a new file → must fail for THAT reason (count 1 > 0),
-  // and must not silently swallow the rest of the file as a comment.
-  const f = fixture(t, { base: {}, head });
-  const r = run(f);
-  assert.equal(r.code, 1);
-  assert.match(r.out, /1 inline/);
+  // Both spellings: `https://` (guarded by the preceding `:`) and the
+  // protocol-relative `//cdn…`, which has no colon in front of it and used to
+  // blank out the rest of the line — hiding the style that followed.
+  for (const src of [
+    `const u = 'https://triplanio.com';\nexport const C = () => <a href={u} style={{ color: 'red' }}/>;\n`,
+    `export const C = () => <img src="//cdn.example/x.png" style={{ margin: 4 }}/>;\n`,
+  ]) {
+    const f = fixture(t, { base: {}, head: { 'src/A.jsx': src } });
+    const r = run(f);
+    assert.equal(r.code, 1, `a URL must not swallow the style after it:\n${src}`);
+    assert.match(r.out, /1 inline/);
+  }
+});
+
+test('a renamed file is judged against its OLD path, not against zero', (t) => {
+  // Guards the `{ path: new, base: old }` branch: without it a rename would
+  // reset the ratchet to 0 and let the file grow freely on the way through.
+  const f = fixture(t, {
+    base: { 'src/Old.jsx': unique(2) },
+    renames: [['src/Old.jsx', 'src/New.jsx']],
+    head: { 'src/New.jsx': unique(5) },
+  });
+  assert.equal(run(f).code, 1, 'renaming must not reset the ceiling');
 });
 
 test('git mv with no content change → pass', (t) => {
@@ -198,9 +215,17 @@ test('an untouched file is not re-judged', (t) => {
 
 test('unresolvable BASE_REF is skipped, not guessed', (t) => {
   const f = fixture(t, { base: {}, head: { 'src/New.jsx': unique(40) } });
-  const r = run(f, [], 'refs/heads/no-such-branch');
+  const r = run(f, { ref: 'refs/heads/no-such-branch' });
   assert.equal(r.code, 0, 'a shallow clone or fresh fork must not fail the build');
   assert.match(r.out, /skip/i);
+});
+
+test('run from a subdirectory still judges the whole diff', (t) => {
+  // `src/` and the file reads resolve from cwd, so a run from anywhere but the
+  // repo root used to report "0 changed file(s) — OK" on any amount of dirt.
+  // "Nothing to check" and "checked, clean" must never print the same verdict.
+  const f = fixture(t, { base: {}, head: { 'src/New.jsx': unique(4) } });
+  assert.equal(run(f, { cwd: 'src' }).code, 1, 'a subdirectory run must not go green');
 });
 
 test('non-src files are out of scope', (t) => {

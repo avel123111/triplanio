@@ -50,8 +50,9 @@
  * Deliberately dumb: a regex over source text with comments blanked out, no
  * parse. It measures the smell (hand-written repetition), not correctness.
  *
- * Tested end to end in check-inline-styles.test.mjs — including all three
- * bypasses above, which is what the first cut lacked.
+ * The file list comes from the COMMITTED diff, the content from the worktree —
+ * so locally it judges what you have committed. What each rule does and does
+ * not catch is written down as executable tests, in check-inline-styles.test.mjs.
  *
  * Env: BASE_REF (default origin/dev). Unresolvable ref → skipped, not guessed.
  * Exit: 0 ok, 1 violation, 2 internal error.
@@ -76,17 +77,19 @@ if (unknown.length) {
 }
 
 const git = (args) =>
-  execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+  execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 
 /* ------------------------------- scanning -------------------------------- */
 
 /** Blank out comments, preserving length and newlines so offsets stay valid.
- *  `//` is ignored when preceded by `:` so that `https://…` inside a string is
- *  not read as the start of a comment. */
+ *  `//` right after `:` or a quote is a URL, not a comment — `https://…` and the
+ *  protocol-relative `src="//cdn…"`. Getting that wrong blanks the rest of the
+ *  line and hides the style that follows it. */
+const URLISH_BEFORE_SLASHES = [':', '"', "'", '`'];
 function blankComments(src) {
   const out = src.split('');
   for (let i = 0; i < src.length; i++) {
-    if (src[i] === '/' && src[i + 1] === '/' && src[i - 1] !== ':') {
+    if (src[i] === '/' && src[i + 1] === '/' && !URLISH_BEFORE_SLASHES.includes(src[i - 1])) {
       while (i < src.length && src[i] !== '\n') out[i++] = ' ';
     } else if (src[i] === '/' && src[i + 1] === '*') {
       const end = src.indexOf('*/', i + 2);
@@ -111,17 +114,15 @@ function scan(src) {
   const lineOf = (idx) => src.slice(0, idx).split('\n').length - 1;
   const lines = src.split('\n');
 
-  const clusters = {};
+  const clusters = Object.create(null);
   let count = 0;
   for (const m of masked.matchAll(INLINE)) {
     const from = lineOf(m.index);
     const to = lineOf(m.index + m[0].length);
     // The reason may sit on any line the style spans, or on the line after it.
-    let exempt = false;
-    for (let l = from; l <= to + 1 && l < lines.length; l++) {
-      if (lines[l].includes(EXEMPT)) exempt = true;
-    }
-    if (exempt) continue;
+    // It therefore frees EVERY style on that line — do not park an unrelated
+    // one next to a marker.
+    if (lines.slice(from, to + 2).some((l) => l.includes(EXEMPT))) continue;
     count++;
     const k = shape(m[0]);
     clusters[k] = (clusters[k] || 0) + 1;
@@ -138,6 +139,11 @@ try {
   process.exit(0);
 }
 
+// Everything below is relative to the repo root (the `src/` pathspec, the file
+// reads). Run from a subdirectory without this and the guard finds no files and
+// reports OK — "nothing to check" must never print the same verdict as "clean".
+process.chdir(git(['rev-parse', '--show-toplevel']).trim());
+
 let touched;
 try {
   // --find-renames so `git mv` of an untouched file is not read as "a brand-new
@@ -153,7 +159,7 @@ try {
     })
     .filter((f) => f && SCANNED.test(f.path));
 } catch (e) {
-  console.error(`::error::check-inline-styles: cannot diff against ${BASE_REF}: ${e.message}`);
+  console.error(`::error::check-inline-styles: cannot diff against ${BASE_REF}: ${e.stderr || e.message}`);
   process.exit(2);
 }
 
@@ -180,7 +186,7 @@ for (const file of touched) {
   // R1 — the count ratchet.
   if (now.count > was.count) {
     errors.push(
-      `${file.path}: ${now.count} inline style objects, ${file.base ? `${was.count} on ${BASE_REF}` : 'new file (base 0)'}` +
+      `${file.path}: ${now.count} inline style object(s), ${file.base ? `${was.count} on ${BASE_REF}` : 'new file (base 0)'}` +
       '\n    → move the declarations into the class they belong to (one rule on the EXISTING' +
       '\n      class, e.g. `button.x {…}`). If the value comes from data and no class can own' +
       `\n      it, mark the line: // ${EXEMPT}: <reason>`,
@@ -208,5 +214,9 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`check-inline-styles: ${scanned} changed file(s) checked against ${BASE_REF} — OK`);
+console.log(
+  scanned
+    ? `check-inline-styles: ${scanned} changed file(s) checked against ${BASE_REF} — OK`
+    : `check-inline-styles: no source files touched against ${BASE_REF} — nothing to check`,
+);
 process.exit(0);

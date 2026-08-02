@@ -38,10 +38,13 @@ import { useAuth } from '@/lib/AuthContext';
 /** One row budget for every consumer — the deepest page (the Inbox) sets it. */
 const LIST_LIMIT = 100;
 
+/** Rows the bell popover renders: the head of that same list. */
+export const BELL_ROWS = 30;
+
 /**
  * The notification list, newest first. Rows are scoped to the caller by RLS
- * (`user_id = auth.uid()`). `enabled: false` keeps a mounted-but-closed consumer
- * (the bell) off the wire without unsharing the cache entry.
+ * (`user_id = auth.uid()`). `enabled: false` keeps a mounted-but-closed
+ * consumer off the wire without unsharing the cache entry.
  */
 export function useNotificationList({ enabled = true } = {}) {
   const { user } = useAuth();
@@ -93,12 +96,13 @@ export function useNotificationActions() {
   const { user } = useAuth();
   const invalidate = () => qc.invalidateQueries({ queryKey: ['notifications'] });
 
+  // Both writes state `user_id` even though RLS already scopes them to
+  // auth.uid(). A write whose blast radius rests entirely on a policy staying
+  // correct is how TRIP-124 happened; the predicate costs nothing and says out
+  // loud what the row set is.
   const markAllRead = useMutation({
     mutationFn: async () => {
-      // `user_id` is stated even though RLS already scopes the UPDATE to
-      // auth.uid(): an unbounded UPDATE whose blast radius depends entirely on
-      // a policy staying correct is how TRIP-124 happened. Defence in depth.
-      if (!user?.id) return;
+      if (!user?.id) return; // no session: nothing to mark, and .eq(undefined) would 400
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
@@ -111,7 +115,12 @@ export function useNotificationActions() {
 
   const markOneRead = useMutation({
     mutationFn: async (notifId) => {
-      const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notifId);
+      if (!user?.id) return;
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('id', notifId);
       if (error) throw error;
     },
     onSuccess: invalidate,

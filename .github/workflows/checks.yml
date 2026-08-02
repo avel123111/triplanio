@@ -28,9 +28,9 @@
 #                   catches syntax, NOT types, so this is the only type gate for
 #                   functions.
 #
-# Node 22: the project's `npm test` uses `node --test "src/**/*.test.js"` whose
-# glob is expanded by Node's test runner only on Node 21+ (Node 20 fails with
-# "Could not find"). Pin 22 so `npm test` runs as written.
+# Node 22: the project's `npm test` uses `node --test "src/**/*.test.js"
+# "scripts/**/*.test.mjs"` whose globs are expanded by Node's test runner only on
+# Node 21+ (Node 20 fails with "Could not find"). Pin 22 so `npm test` runs as written.
 name: checks
 
 on:
