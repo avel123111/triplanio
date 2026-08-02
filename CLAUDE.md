@@ -17,9 +17,10 @@ works now), never changelogs; small facts go into the nearest existing topic;
 - Dev server: `npm run dev` (vite)
 - Lint: `npm run lint` (`eslint . --quiet`) / fix: `npm run lint:fix`
 - Typecheck: `npm run typecheck` (`tsc -p ./jsconfig.json`)
-- Tests: `npm test` (`node --test "src/**/*.test.js"`) — coverage is thin; add tests around Pro-gating and Stripe
+- Tests: `npm test` (`node --test "src/**/*.test.js" "scripts/**/*.test.mjs"`) — coverage is thin; add tests around Pro-gating and Stripe
 - Design-token guard: `npm run check:design` (typography blocks, color reports)
-- Inline-style ratchet: `npm run check:inline` (CI guard 2l; `--write` lowers the baseline after a cleanup)
+- Inline-style ratchet: `npm run check:inline` (CI guard 2l; diffs touched files against `BASE_REF` — no baseline file, no `--write`)
+- **A CI guard is code: it gets a test.** `scripts/ci/check-inline-styles.test.mjs` is the template — build a throwaway git repo, run the guard as a subprocess, assert the exit code. 2l shipped with three green bypasses because nothing tested it (TRIP-282); the other eleven guards still have no test.
 
 ## Hard rules (project conventions — do not violate)
 1. **Analyze before code.** For any change: read the relevant base44 files + full dependency chain, check the redesign screen, write a plan, get Pavel's approval — *then* code. No guessing logic not found in code.

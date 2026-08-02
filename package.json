@@ -11,7 +11,7 @@
     "check:design": "node scripts/check-design-tokens.mjs",
     "check:inline": "node scripts/ci/check-inline-styles.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
-    "test": "node --test \"src/**/*.test.js\"",
+    "test": "node --test \"src/**/*.test.js\" \"scripts/**/*.test.mjs\"",
     "preview": "vite preview"
   },
   "dependencies": {

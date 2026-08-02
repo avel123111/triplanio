@@ -86,6 +86,7 @@ jobs:
   #   2i check-invoke-seam           — raw supabase.functions.invoke() outside src/lib/invokeFn.js
   #   2j check-posthog-init          — analytics behind the consent gate (single posthog.init)
   #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
+  #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -145,6 +146,7 @@ jobs:
         run: npm run check:design
       - name: 2l — inline-style ratchet (repeats belong in the class)
         if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-inline-styles.mjs
 
   deno:

@@ -740,7 +740,7 @@ export default function ScreenAccount() {
 
               {/* Language */}
               <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="globe" size={16} /></span>
+                <span className="acct-ic-tile"><Icon name="globe" size={16} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="acct-divrow__t">{t('account.pref_language')}</div>
                   <div className="acct-divrow__s">{t('account.pref_language_sub')}</div>
@@ -791,7 +791,7 @@ export default function ScreenAccount() {
 
               {/* Unit system */}
               <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="route" size={16} /></span>
+                <span className="acct-ic-tile"><Icon name="route" size={16} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="acct-divrow__t">{t('account.units')}</div>
                   <div className="acct-divrow__s">{t('account.units_sub')}</div>
@@ -816,7 +816,7 @@ export default function ScreenAccount() {
                 .acct-divrow, not a bespoke card-shaped button. */}
             <div className="card" style={{ marginBottom: 16 }}>
               <button type="button" className="acct-divrow" onClick={() => nav('/inbox')}>
-                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="bell" size={18} /></span>
+                <span className="acct-ic-tile"><Icon name="bell" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.inbox_title')}</div>
                   <div className="acct-divrow__s">{t('account.inbox_sub')}</div>
@@ -840,7 +840,7 @@ export default function ScreenAccount() {
             <h2 className="acct-sectitle">{t('account.nav_help')}</h2>
             <div className="card">
               <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="chat" size={18} /></span>
+                <span className="acct-ic-tile"><Icon name="chat" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('account.contact_us')}</div>
                   <div className="acct-divrow__s">

@@ -3347,7 +3347,10 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .card > .acct-divrow:only-child { padding: 0; }
 .acct-divrow__t { color: var(--ink); }
 .acct-divrow__s { color: var(--muted); }
-.acct-ic-tile { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
+/* The brand tint is the tile's DEFAULT, not something four call sites hand-write
+   (TRIP-282, guard 2l): rows that need another tint override both properties
+   inline, as they already did. */
+.acct-ic-tile { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
 .acct-ic-tile svg { width: 18px; height: 18px; }
 
 /* profile hero */
