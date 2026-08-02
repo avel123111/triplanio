@@ -4,9 +4,15 @@
 // All builders accept an optional `t` translator (from useI18nFormat) so that
 // labels like "Find on …" / "Book on …" are localized. When `t` is not passed
 // we fall back to the platform name (e.g. just "Booking.com") to avoid a crash.
+//
+// Partner logos are vendored locally under public/partners/<key>.<ext> (TRIP-245),
+// the same canon as the SVG country flags in public/flags (CountryFlag, TRIP-177).
+// We never hotlink a third-party CDN for a fixed partner brand icon: a foreign
+// CDN can block hotlinks by Referer, swap/remove the file, or rate-limit us. The
+// only dynamic favicon left is for arbitrary user-entered booking URLs (faviconUrl
+// in booking-platforms.js), where the host is unknown at build time.
 
 import { DateTime } from 'luxon';
-import { faviconUrl } from '@/lib/booking-platforms';
 import { countryNameEn } from '@/lib/countryNamesEn';
 import { sortVisits } from '@/lib/validation';
 
@@ -78,9 +84,7 @@ export function activityPlatforms(visit, t, lang) {
       key: 'viator',
       label: findOn(t, 'Viator'),
       hint: cityEn,
-      // Canonical TravelPayouts brand SVG (icon 47); the generic Google favicon
-      // fallback is unreliable for viator.com — see GetYourGuide below.
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/47@svg',
+      logo: '/partners/viator.svg',
       url: viatorDest
         ? `https://www.viator.com/x/d${viatorDest}-ttd?${VIATOR_REF}`
         : `https://www.viator.com/?${VIATOR_REF}`,
@@ -91,7 +95,7 @@ export function activityPlatforms(visit, t, lang) {
       key: 'getyourguide',
       label: findOn(t, 'GetYourGuide'),
       hint: cityEn,
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/108@svg',
+      logo: '/partners/getyourguide.svg',
       // Stay22 allez smart-link (item 4.1). The GYG location id (cities.
       // getyourguide_id) is intentionally unused for now; address = English
       // city+country, dates = the city-visit window.
@@ -103,7 +107,7 @@ export function activityPlatforms(visit, t, lang) {
       key: 'tripadvisor',
       label: findOn(t, 'Tripadvisor'),
       hint: cityEn,
-      logo: 'https://img.logo.dev/tripadvisor.com?token=live_6a1a28fd-6420-4492-aeb0-b297461d9de2&size=512&retina=true&format=png',
+      logo: '/partners/tripadvisor.png',
       // Stay22 allez smart-link (item 4.2). Placed before the RU partners.
       url: allez('tripadvisor', { addr, checkin, checkout }),
       provider: 'stay22',
@@ -118,7 +122,7 @@ export function activityPlatforms(visit, t, lang) {
         key: 'tripster',
         label: findOn(t, 'Tripster'),
         hint: cityEn,
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/11@svg',
+        logo: '/partners/tripster.svg',
         // Deep-link by the city's Tripster slug (cities.tripster_slug); when the
         // city has no slug, the attributed TravelPayouts homepage fallback link.
         url: tripsterSlug
@@ -131,7 +135,7 @@ export function activityPlatforms(visit, t, lang) {
         key: 'sputnik8',
         label: findOn(t, 'Sputnik8'),
         hint: cityEn,
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/21@svg',
+        logo: '/partners/sputnik8.svg',
         // Deep-link by the city's Sputnik8 slug (cities.sp8_slug, TRIP-236) —
         // name_en did not match the partner's slug and 404'd. No slug → the
         // attributed TravelPayouts fallback link.
@@ -181,7 +185,7 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'booking',
       label: bookOn(t, 'Booking.com'),
       hint: cityQuery,
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/84@svg',
+      logo: '/partners/booking.svg',
       url: allez('booking', { addr, checkin, checkout }),
       provider: 'stay22',
       fallback: !hasGeo,
@@ -190,7 +194,7 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'expedia',
       label: bookOn(t, 'Expedia'),
       hint: cityQuery,
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/594@svg',
+      logo: '/partners/expedia.svg',
       url: allez('expedia', { addr, checkin, checkout }),
       provider: 'stay22',
       fallback: !hasGeo,
@@ -199,7 +203,7 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'agoda',
       label: bookOn(t, 'Agoda'),
       hint: cityQuery,
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/c/ce/Agoda_transparent_logo.png',
+      logo: '/partners/agoda.png',
       url: allez('agoda', { addr, checkin, checkout }),
       provider: 'stay22',
       fallback: !hasGeo,
@@ -208,7 +212,7 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'airbnb',
       label: bookOn(t, 'Airbnb'),
       hint: cityQuery,
-      logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQX6GCk5wcmJslbQm4aLeP-IQORcZl_G2SbjZksD7yGTqWLH7tS_FHdBgU&s=10',
+      logo: '/partners/airbnb.png',
       url: allez('airbnb', { addr, checkin, checkout }),
       provider: 'stay22',
       fallback: !hasGeo,
@@ -219,7 +223,7 @@ export function hotelPlatforms(visit, t, lang) {
         key: 'ostrovok',
         label: bookOn(t, 'Островок'),
         hint: cityQuery,
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/459@svg',
+        logo: '/partners/ostrovok.svg',
         url: tpLink(459, 7038, ostrovokUrl),
         provider: 'travelpayouts',
         fallback: !(countryEn && cityEnSlug),
@@ -228,7 +232,7 @@ export function hotelPlatforms(visit, t, lang) {
         key: 'yandextravel',
         label: bookOn(t, 'Яндекс Путешествия'),
         hint: cityQuery,
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/193@svg',
+        logo: '/partners/yandextravel.svg',
         url: tpLink(193, 5916, yandexUrl),
         provider: 'travelpayouts',
         fallback: !cityEnSlug,
@@ -247,7 +251,7 @@ export function carRentalPlatforms(trip, t) {
       key: 'getrentacar',
       label: findOn(t, 'GetRentacar'),
       hint: t ? t('service.car_getrentacar_hint') : 'Car rental worldwide',
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/222@svg',
+      logo: '/partners/getrentacar.svg',
       url: withSubId('https://getrentacar.tpx.lt/RB21f57P'),
       provider: 'travelpayouts',
       fallback: false,
@@ -256,7 +260,7 @@ export function carRentalPlatforms(trip, t) {
       key: 'economybookings',
       label: findOn(t, 'EconomyBookings'),
       hint: t ? t('service.car_getrentacar_hint') : 'Car rental worldwide',
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/10@svg',
+      logo: '/partners/economybookings.svg',
       url: withSubId('https://economybookings.tpx.lt/EozXdo4z?erid=2VtzqvEF14M'),
       provider: 'travelpayouts',
       fallback: false,
@@ -288,7 +292,7 @@ export function esimPlatforms(visits, t) {
       key: 'airalo',
       label: bookOn(t, 'Airalo'),
       hint: t ? t('service.esim_choice_airalo_hint') : 'eSIM for travel',
-      logo: 'https://www.airalo.com/favicon.ico',
+      logo: '/partners/airalo.svg',
       url: withSubId(airaloUrl),
       provider: 'travelpayouts',
       fallback: !countrySlug,
@@ -297,7 +301,7 @@ export function esimPlatforms(visits, t) {
       key: 'yesim',
       label: bookOn(t, 'Yesim'),
       hint: t ? t('service.esim_choice_yesim_hint') : 'eSIM for travel',
-      logo: 'https://yesim.app/favicon.ico',
+      logo: '/partners/yesim.svg',
       url: withSubId(yesimUrl),
       provider: 'travelpayouts',
       fallback: !countrySlug,
@@ -315,7 +319,7 @@ export function insurancePlatforms(t, lang) {
       key: 'safetywing',
       label: bookOn(t, 'SafetyWing'),
       hint: t ? t('service.insurance_safetywing_hint') : 'Nomad insurance · from $45/mo',
-      logo: 'https://s3-eu-west-1.amazonaws.com/tpd/logos/5b026ad311a7aa000198b534/0x0.png',
+      logo: '/partners/safetywing.webp',
       url: 'https://safetywing.com/',
       // No provider → logged as NULL (no active affiliate link) → fallback=true.
       fallback: true,
@@ -324,7 +328,7 @@ export function insurancePlatforms(t, lang) {
       key: 'ektatraveling',
       label: bookOn(t, 'Ekta Traveling'),
       hint: t ? t('service.insurance_ektatraveling_hint') : 'Travel & medical insurance',
-      logo: 'https://content.flexlinks.com/sharedimages/ProgramSquareLogo/233032.png',
+      logo: '/partners/ektatraveling.svg',
       url: 'https://ektatraveling.com/',
       // No provider → logged as NULL (static homepage link) → fallback=true.
       fallback: true,
@@ -335,7 +339,7 @@ export function insurancePlatforms(t, lang) {
         key: 'sravni',
         label: bookOn(t, 'Сравни.ру'),
         hint: t ? t('service.insurance_sravni_hint') : 'Compare insurance',
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/49@svg',
+        logo: '/partners/sravni.svg',
         url: withSubId('https://sravni.tpx.lt/PB179obo?erid=2VtzqvjtkhF'),
         provider: 'travelpayouts',
         fallback: false,
@@ -344,7 +348,7 @@ export function insurancePlatforms(t, lang) {
         key: 'tripinsurance',
         label: bookOn(t, 'Tripinsurance'),
         hint: t ? t('service.insurance_tripinsurance_hint') : 'Travel insurance',
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/55@svg',
+        logo: '/partners/tripinsurance.svg',
         url: withSubId('https://tripinsurance.tpx.lt/JKNaa6My?erid=2VtzqvmNjyb'),
         provider: 'travelpayouts',
         fallback: false,
@@ -375,7 +379,7 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
     {
       key: 'skyscanner',
       label: findFlightsOn(t, 'Skyscanner'),
-      logo: faviconUrl('skyscanner.com'),
+      logo: '/partners/skyscanner.png',
       url: 'https://skyscanner.com/',
       // No provider → logged as NULL (inactive program) → fallback=true.
       fallback: true,
@@ -383,7 +387,7 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
     {
       key: 'omio',
       label: findTicketsOn(t, 'Omio'),
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/91@svg',
+      logo: '/partners/omio.svg',
       url: 'https://www.omio.com/',
       // No provider → logged as NULL (inactive program) → fallback=true.
       fallback: true,
@@ -393,7 +397,7 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
       // before the RU partners. No dynamic route deep-link → not a fallback.
       key: 'kayak',
       label: findFlightsOn(t, 'KAYAK'),
-      logo: 'https://cdn.brandfetch.io/iduQqxpzgy/w/2048/h/2048/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1667568076297',
+      logo: '/partners/kayak.png',
       url: 'https://kayak.stay22.com/triplanio/h6UP7-oqKi',
       provider: 'stay22',
       fallback: false,
@@ -404,7 +408,7 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
         key: 'aviasales',
         label: findFlightsOn(t, 'Aviasales'),
         hint: `${from} → ${to}`,
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/100@svg',
+        logo: '/partners/aviasales.svg',
         url: tpLink(100, 4114, aviasalesUrl),
         provider: 'travelpayouts',
         fallback: !(fromIata && toIata && flightDate),
@@ -415,7 +419,7 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
         key: 'yandextravel',
         label: findTicketsOn(t, 'Яндекс Путешествия'),
         hint: `${from} → ${to}`,
-        logo: 'https://img.wway.io/travelpayouts/brands/icon/193@svg',
+        logo: '/partners/yandextravel.svg',
         url: withSubId('https://yandex.tpx.lt/dovrPB5u?erid=2Vtzqw6eae5'),
         provider: 'travelpayouts',
         fallback: false,

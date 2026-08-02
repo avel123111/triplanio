@@ -22,9 +22,9 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate, invalidateTripData } from '@/lib/trip-data';
-import { uploadTripFiles, persistEntityDocuments } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, persistEntityDocuments } from '@/lib/documentMutations';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
+import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { cityLabel } from '@/lib/trip-cities';
 import { validateEntity } from '@/lib/validation';
 
@@ -33,12 +33,43 @@ import { validateEntity } from '@/lib/validation';
 // not "…в undefined". One helper reused at every seam (load + display).
 const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
 import {
-  Map as MapIcon, Calendar, FileText,
+  Map as MapIcon, MapPin, Calendar,
   BedDouble, Car as CarIcon, Ticket,
   ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { transferKind } from '@/lib/transport';
+
+/**
+ * The read-only list of an entity's attachments — one implementation for all four
+ * bodies (hotel / transfer / activity / service), which render the same rows
+ * inside different section chrome.
+ *
+ * The leading glyph is the shared `FileTypeBadge` — the same one the document
+ * field and the documents lens draw, so one attachment looks identical in the
+ * read view and in the edit form.
+ */
+function DocRows({ docs }) {
+  const { t } = useI18n();
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {docs.map((d, i) => (
+        <a
+          key={`${d.file_url}-${i}`}
+          href={normalizeExternalUrl(d.file_url)}
+          target="_blank"
+          rel="noreferrer"
+          className="doc-row"
+        >
+          <FileTypeBadge name={d.file_name} />
+          <b>{d.file_name || t('event.file_word')}</b>
+          {d.file_size && <span className="ds">{d.file_size}</span>}
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export function eventTheme(kind, entity) {
   if (kind === 'hotel') {
@@ -178,7 +209,7 @@ function HotelBody({ entity, docs = [] }) {
               <div className="stay-dates__t t-meta">{fmtTime(entity.check_in_datetime)}</div>
             </div>
             <div className="stay-dates__mid">
-              <Calendar size={14} style={{ color: 'var(--muted-2)' }} />
+              <Calendar size={14} className="muted-2" />
               {nights != null && <span className="t-meta">{t('fork.stay22_nights', { count: nights })}</span>}
             </div>
             <div className="stay-dates__cell">
@@ -217,7 +248,7 @@ function HotelBody({ entity, docs = [] }) {
       )}
 
       {/* Booking details */}
-      {(entity.booking_reference || entity.phone || entity.email || bookingUrl) && (
+      {(entity.booking_reference || entity.phone || entity.email) && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
           <div className="hv-rows">
@@ -242,15 +273,8 @@ function HotelBody({ entity, docs = [] }) {
                 <span className="hv-row__ic"><Mail /></span>
                 <span className="hv-row__k t-meta">E-mail</span>
                 <span className="hv-row__sp" />
-                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a>
+                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--brand)' }}>{entity.email}</a>
               </div>
-            )}
-            {bookingUrl && (
-              <a className="hv-row hv-row--link" href={bookingUrl} target="_blank" rel="noreferrer">
-                <span className="hv-row__ic"><ExternalLink /></span>
-                <span className="hv-row__lbl t-ui">{t('event.view_booking')}</span>
-                <ExternalLink size={15} style={{ color: 'var(--muted-2)' }} />
-              </a>
             )}
           </div>
         </div>
@@ -260,15 +284,7 @@ function HotelBody({ entity, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -308,7 +324,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
   const carrier = entity.carrier || '';
   const priceText = fmtPrice(entity.price, entity.currency);
-  const hasDetails = entity.booking_reference || carrier || entity.flight_number || entity.booking_url;
+  const hasDetails = entity.booking_reference || carrier || entity.flight_number;
   const notes = entity.notes;
   return (
     <div className="tv">
@@ -398,14 +414,6 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
                 <span className="hv-row__v t-strong mono">{entity.flight_number}</span>
               </div>
             )}
-            {/* TRIP-176: ссылка на бронь в transfer view (была только в hotel/activity) */}
-            {entity.booking_url && (
-              <a className="hv-row hv-row--link" href={entity.booking_url} target="_blank" rel="noreferrer">
-                <span className="hv-row__ic"><ExternalLink /></span>
-                <span className="hv-row__lbl t-ui">{t('event.view_booking')}</span>
-                <ExternalLink size={15} style={{ color: 'var(--muted-2)' }} />
-              </a>
-            )}
           </div>
         </div>
       )}
@@ -414,15 +422,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -456,7 +456,7 @@ function ActivityBody({ entity, docs = [] }) {
               <div className="stay-dates__t t-meta">{fmtTime(entity.start_datetime)}</div>
             </div>
             <div className="stay-dates__mid">
-              <ArrowRight size={14} style={{ color: 'var(--muted-2)' }} />
+              <ArrowRight size={14} className="muted-2" />
               {dur && <span className="t-meta">{dur}</span>}
             </div>
             <div className="stay-dates__cell">
@@ -492,15 +492,7 @@ function ActivityBody({ entity, docs = [] }) {
       {docs.length > 0 && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </div>
       )}
 
@@ -586,7 +578,7 @@ function ServiceBody({ entity, accent }) {
         <div className="kv-grid">
           <KV label={t('event.pickup_where')}>
             {sameLocation ? (
-              <span className="t-meta" style={{ color: 'var(--muted)' }}>{t('event.return_same')}</span>
+              <span className="t-meta muted">{t('event.return_same')}</span>
             ) : (
               <div>{d.dropoff_address}</div>
             )}
@@ -608,7 +600,13 @@ function ServiceBody({ entity, accent }) {
 //  Derived view-model (shared by both shells to build their own chrome)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
+/**
+ * `subEvent` — which of the entity's timeline points was opened, for the kinds
+ * that produce more than one. A car rental has separate pickup / drop-off
+ * ADDRESSES under ONE row id, so without it "show on map" sends the return
+ * event to the pickup location (TRIP-230).
+ */
+export function useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEvent = null) {
   const { t, lang } = useI18n();
   if (!entity || !kind) return null;
   const visitCity = cityLabel(visit, lang);
@@ -660,10 +658,13 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
   }
   const priceText = fmtPrice(price, cur);
 
+  const carAddress = subEvent === 'car-return'
+    ? (entity.details?.dropoff_address || entity.details?.pickup_address)
+    : entity.details?.pickup_address;
   const mapAddress = kind === 'hotel' ? entity.address
     : kind === 'transfer' ? (entity.from_address || entity.to_address)
     : kind === 'activity' ? entity.location_address
-    : (entity.kind === 'car_rental' ? entity.details?.pickup_address : null);
+    : (entity.kind === 'car_rental' ? carAddress : null);
 
   return {
     theme, themeLabel, title, cur, price, priceText,
@@ -763,15 +764,11 @@ export function useEntityDocs(kind, entity, canEdit) {
   async function uploadFiles(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
-    const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
-    if (tooBig) { toast({ description: t('event.file_too_big10'), variant: 'warning' }); return; }
     setUploading(true);
     try {
-      // Upload never returns a doc with an empty file_url (was `|| ''`); failed
-      // uploads / missing URLs come back as errors and are surfaced, not masked.
       const { uploaded, errors } = await uploadTripFiles(entity.trip_id, files);
       for (const e of errors) {
-        toast({ description: t('doc.upload_failed', { name: e.file.name }), variant: 'destructive' });
+        toast({ description: uploadErrorText(e, t), variant: 'destructive' });
       }
       if (!uploaded.length) return;
 
@@ -845,8 +842,55 @@ export function entityViewIssues(kind, entity, { visit, fromVisit, toVisit } = {
   return raw.filter((i) => !VIEW_ISSUE_SKIP.test(i.code));
 }
 
-export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null }) {
+/**
+ * "Open booking" + "Show on map" — the only place either action is rendered, so
+ * every shell showing an event (dialog, editor panel) offers the same pair under
+ * the same conditions.
+ *
+ * Both `bookingUrl` and `mapAddress` are already resolved per-kind by
+ * `useEventViewModel`; a kind without one (an activity has no booking_url
+ * column) simply never gets that button. The map opens Google Maps by address
+ * rather than coordinates — the address is the field users actually fill in.
+ */
+function EventActions({ bookingUrl, mapAddress, platformLabel, platformLogo }) {
+  const { t } = useI18n();
+  if (!bookingUrl && !mapAddress) return null;
+  return (
+    <div className="ev-actions-top">
+      {bookingUrl && (
+        <a href={normalizeExternalUrl(bookingUrl)} target="_blank" rel="noreferrer" className="bk-link">
+          {platformLogo ? (
+            <span className="pb" style={{ background: 'var(--surface-2)', overflow: 'hidden' }}>
+              <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </span>
+          ) : platformLabel ? (
+            <span className="pb" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}>
+              {platformLabel.charAt(0).toUpperCase()}
+            </span>
+          ) : null}
+          {t('event.view_booking')}
+          <ExternalLink />
+        </a>
+      )}
+      {mapAddress && (
+        <button
+          type="button"
+          className="bk-link"
+          onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
+        >
+          <MapPin />
+          {t('event.show_on_map')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null, subEvent = null }) {
   const { t, lang } = useI18n();
+  // This vm — not the shell's — feeds EventActions, so `subEvent` has to reach
+  // HERE for "show on map" to honour it.
+  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEvent);
   // One banner: an explicit message from the caller (editor structural conflict)
   // plus the engine verdicts on this saved row, deduped by resolved text. Visits are
   // run through withCityName so verdicts read "…из Барселона", not "…из undefined".
@@ -864,6 +908,12 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
           <div>{warnings.map((w, k) => <div key={k}>{w}</div>)}</div>
         </div>
       )}
+      {vm && (
+        <EventActions
+          bookingUrl={vm.bookingUrl} mapAddress={vm.mapAddress}
+          platformLabel={vm.platformLabel} platformLogo={vm.platformLogo}
+        />
+      )}
       {kind === 'hotel' && <HotelBody entity={entity} docs={docs} />}
       {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} docs={docs} />}
       {kind === 'activity' && <ActivityBody entity={entity} docs={docs} />}
@@ -873,21 +923,7 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
           Hotel/transfer/activity render their own docs+notes inside their body. */}
       {kind === 'service' && docs.length > 0 && (
         <Section title={`${t('activity.documents_label')} · ${docs.length}`} accent={accent}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {docs.map((d, i) => (
-              <a
-                key={`${d.file_url}-${i}`}
-                href={d.file_url}
-                target="_blank"
-                rel="noreferrer"
-                className="doc-row"
-              >
-                <div className="di"><FileText /></div>
-                <b>{d.file_name || t('event.file_word')}</b>
-                {d.file_size && <span className="ds">{d.file_size}</span>}
-              </a>
-            ))}
-          </div>
+          <DocRows docs={docs} />
         </Section>
       )}
 

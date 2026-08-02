@@ -1,22 +1,28 @@
-import { pluralCategory } from '@/lib/i18n/format';
-// Helpers for the trip chat: queries, read-markers, unread counters.
+// Helpers for the trip chat: chat_id lookup, message paging, sending, unread
+// counter and the shared realtime channel. Read markers are written inline by
+// the lens and the widget (a plain upsert), so this module no longer wraps them.
 //
 // All queries pivot on chat_id (from the chats table - one "group" chat per
 // trip) and on user_id (uuid) rather than user_email.
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
+import { displayName } from '@/lib/displayName';
+import { pluralCategory } from '@/lib/i18n/format';
 import { withOwnerRow } from '@/lib/members';
+import { mergeIncomingMessage } from '@/lib/chat-merge';
 
 // Keyed by chat_id (not tripId): the chat widget and the chat lens are never
 // mounted together, so ONE cache per chat_id is shared between them — switching
 // lenses reuses it instead of refetching (TRIP-208: was 3 separate caches).
 export const CHAT_MESSAGES_KEY = (chatId) => ['chat-msgs', chatId];
-export const CHAT_READ_KEY     = (tripId, userId) => ['chat-read', tripId, userId];
-export const CHAT_ID_KEY       = (tripId) => ['chat-id', tripId];
-export const CHAT_UNREAD_KEY   = (tripId, userId) => ['chat-unread', tripId, userId];
+// Not exported: only this module builds these keys.
+const CHAT_ID_KEY     = (tripId) => ['chat-id', tripId];
+const CHAT_UNREAD_KEY = (tripId, userId) => ['chat-unread', tripId, userId];
 
 // ── Resolve group chat id from tripId ─────────────────────────────────────────
 
@@ -57,55 +63,33 @@ export function pluralPeople(n, t, lang) {
   return `${n} ${t(`chat.people_${cat}`)}`;
 }
 
-// ── Timestamp helpers ─────────────────────────────────────────────────────────
-
-function parseUtcMs(s) {
-  if (!s) return 0;
-  if (s instanceof Date) return s.getTime();
-  let str = String(s);
-  if (!/[zZ]$/.test(str) && !/[+-]\d{2}:?\d{2}$/.test(str)) str += 'Z';
-  const t = new Date(str).getTime();
-  return Number.isFinite(t) ? t : 0;
-}
-
-function toUtcIso(s) {
-  if (!s) return new Date().toISOString();
-  const ms = parseUtcMs(s);
-  return ms ? new Date(ms).toISOString() : new Date().toISOString();
-}
-
-// ── Count unread (used by tests / local computation) ─────────────────────────
-
-export function countUnread(messages, lastReadAt, myUserId) {
-  if (!Array.isArray(messages) || messages.length === 0) return 0;
-  const cutoff = parseUtcMs(lastReadAt);
-  let n = 0;
-  for (const m of messages) {
-    if (m.user_id === myUserId) continue;
-    const t = parseUtcMs(m.created_at);
-    if (t > cutoff) n += 1;
-  }
-  return n;
-}
-
 // ── Fetch messages ────────────────────────────────────────────────────────────
 //
 // ONE shared message cache per chat_id (TRIP-208): both the chat widget and the
 // chat lens use this hook, so they no longer keep two independent caches of the
 // same rows. `enabled` lets the widget stay lazy (fetch only when opened) while
 // the lens fetches on mount.
+
+// One page of history. The lens opens on the newest page and walks backwards on
+// demand; anything older is fetched by fetchOlderMessages.
+export const CHAT_PAGE = 200;
+
 export function useChatMessages(chatId, { enabled = true } = {}) {
   return useQuery({
     queryKey: CHAT_MESSAGES_KEY(chatId),
     queryFn: async () => {
+      // NEWEST page: order DESC + limit, then reverse for display. The old
+      // `.limit(200)` with ASC order returned the OLDEST 200 rows, so past 200
+      // messages every newer one silently stopped loading (TRIP-292) — that fix
+      // dropped the cap entirely; this restores it on the correct end.
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('chat_id', chatId)
-        .order('created_at', { ascending: true })
-        .limit(200);
+        .order('created_at', { ascending: false })
+        .limit(CHAT_PAGE);
       if (error) throw error;
-      return data || [];
+      return (data || []).reverse();
     },
     enabled: !!chatId && enabled,
     // Catch up any messages missed while unmounted on (re)mount; realtime keeps
@@ -115,37 +99,151 @@ export function useChatMessages(chatId, { enabled = true } = {}) {
   });
 }
 
-// Apply an incoming realtime INSERT to the shared message cache: de-dupe by id,
-// drop this user's optimistic ('opt-') placeholder, append. Shared by the widget
-// and the lens so the append logic lives in ONE place (TRIP-208).
-export function appendChatMessage(qc, chatId, msg) {
-  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => {
-    if (old.find((m) => m.id === msg.id)) return old;
-    const filtered = old.filter((m) =>
-      !(String(m.id).startsWith('opt-') && m.user_id === msg.user_id),
-    );
-    return [...filtered, msg];
-  });
+// Apply an incoming row (realtime INSERT or UPDATE, or the row the send RPC
+// returned) to the shared message cache. Shared by the widget and the lens so
+// the merge lives in ONE place (TRIP-208); the rule itself is pure and
+// unit-tested in chat-merge.js.
+// A failed assistant run is NOT reported from here. The browser looked like the
+// right place (it sees every terminal status and carries the right Sentry
+// environment), but the alert would fire once PER OPEN TAB — every participant
+// watching the chat reports the same timeout. Alerting belongs where the state
+// changes exactly once: the pg_cron watchdog closes a hung run and posts the
+// event itself. The other outcomes are already covered — a webhook failure is
+// the edge function's own 502, a failure inside n8n is reported by n8n, and a
+// Pro/rate refusal is the system working as intended.
+export function applyChatRow(qc, chatId, msg) {
+  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => mergeIncomingMessage(old, msg));
 }
 
-// ── Fetch my read marker ──────────────────────────────────────────────────────
+// One page of history older than `beforeIso`, oldest→newest (display order).
+export async function fetchOlderMessages(chatId, beforeIso) {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('chat_id', chatId)
+    .lt('created_at', beforeIso)
+    .order('created_at', { ascending: false })
+    .limit(CHAT_PAGE);
+  if (error) throw error;
+  return (data || []).reverse();
+}
 
-export function useMyChatRead(tripId, { enabled = true } = {}) {
+// ── Sending ───────────────────────────────────────────────────────────────────
+//
+// ONE send path for the lens and the widget (they used to carry two copies that
+// had already drifted: a failed send kept the text in the lens and silently
+// dropped it in the widget).
+//
+// The client no longer writes the row: it calls send_chat_message and passes
+// only the text. The server sets the author from auth.uid(), the timestamp, the
+// name, caps the length, dedupes by client_msg_id and — in the SAME transaction —
+// marks the row as awaiting the assistant when the text addresses it. That last
+// part is why the decision moved server-side: writing the message and asking the
+// assistant used to be two client operations, so a tab closed in between left a
+// message that would never be answered (TRIP-296).
+
+/** Assistant-run statuses, split by what the UI does with them. */
+const AI_RUN_OPEN = new Set(['queued', 'running']);
+const AI_RUN_BAD  = new Set(['failed', 'timeout']);
+
+/** Is the assistant working on any message in this list? The "Triplanio typing"
+ *  indicator reads server state now, so every participant sees the same thing,
+ *  it survives a reload, and only a terminal status can switch it off. */
+export function isAiThinking(msgs = []) {
+  return msgs.some((m) => AI_RUN_OPEN.has(m.ai_status));
+}
+
+/** Is this message's assistant run finished badly (refused, failed, timed out)? */
+export function aiRunFailed(msg) {
+  return AI_RUN_BAD.has(msg?.ai_status);
+}
+
+/** Nudge the edge function to run the assistant for an already-queued message.
+ *  Nothing is reported back here on purpose: the outcome is written to the row
+ *  by the server (failed / done), and a nudge that never arrives is closed by the
+ *  watchdog — so there is no client-side state left to get out of sync. */
+function nudgeAssistant(messageId) {
+  invokeFn('callTriplanioAi', { body: { message_id: messageId } })
+    .catch((err) => console.error('callTriplanioAi failed', err));
+}
+
+export function useChatSend(chatId, tripId) {
+  const qc = useQueryClient();
   const { user } = useAuth();
-  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && !!user?.id && enabled });
-  return useQuery({
-    queryKey: CHAT_READ_KEY(tripId, user?.id),
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('chat_reads')
-        .select('*')
-        .eq('chat_id', chatId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      return data || null;
-    },
-    enabled: !!chatId && !!user?.id && enabled,
-    refetchOnMount: 'always',
+  const [sending, setSending] = useState(false);
+  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
+
+  const patchRow = useCallback((id, fields) => {
+    qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) =>
+      old.map((m) => (m.id === id ? { ...m, ...fields } : m)));
+  }, [qc, chatId]);
+
+  // `retryOf` re-sends an existing failed row (same client_msg_id → the server
+  // returns the original row if the first attempt actually landed).
+  const send = useCallback(async (text, retryOf) => {
+    const content = (text || '').trim();
+    if (!chatId || !content) return;
+    const clientId = retryOf?.client_msg_id || crypto.randomUUID();
+
+    if (retryOf) {
+      patchRow(clientId, { __pending: true, __failed: false });
+    } else {
+      setSending(true);
+      qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => [...old, {
+        id: clientId,
+        client_msg_id: clientId,
+        chat_id: chatId,
+        trip_id: tripId,
+        user_id: user?.id,
+        user_full_name: myName,
+        text: content,
+        created_at: new Date().toISOString(),
+        __pending: true,
+      }]);
+    }
+
+    const { data, error } = await supabase.rpc('send_chat_message', {
+      p_chat_id: chatId,
+      p_text: content,
+      p_client_msg_id: clientId,
+    });
+    if (!retryOf) setSending(false);
+
+    if (error || !data) {
+      // Keep the message ON SCREEN, marked "not sent" with a retry action: the
+      // composer has already been cleared, so dropping the row would lose the
+      // user's text with nothing to tell them.
+      console.error('Chat send failed:', error);
+      patchRow(clientId, { __pending: false, __failed: true });
+      return;
+    }
+
+    applyChatRow(qc, chatId, data);
+    // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
+    // The server decided which it is, so the event can no longer disagree with
+    // whether the assistant was actually called.
+    track(data.ai_status ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
+    if (data.ai_status === 'queued') nudgeAssistant(data.id);
+  }, [chatId, tripId, qc, patchRow, user?.id, myName]);
+
+  // "Retry" under a message: re-send it if it never reached the server, or ask
+  // the assistant again if it was the ANSWER that failed.
+  const retry = useCallback((msg) => {
+    if (msg.__failed) return send(msg.text, msg);
+    patchRow(msg.id, { ai_status: 'queued', ai_error: null });
+    return nudgeAssistant(msg.id);
+  }, [send, patchRow]);
+
+  return { send, retry, sending };
+}
+
+// Prepend an older page to the shared cache, skipping rows we already hold. The
+// cache stays a FLAT oldest→newest array — no infinite-query page shape — so
+// applyChatRow, the widget and the unread counter are untouched.
+export function prependChatMessages(qc, chatId, older) {
+  qc.setQueryData(CHAT_MESSAGES_KEY(chatId), (old = []) => {
+    const have = new Set(old.map((m) => m.id));
+    return [...older.filter((m) => !have.has(m.id)), ...old];
   });
 }
 
@@ -188,8 +286,10 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
 
 // ── Shared realtime: ONE channel per chat_id per client (TRIP-208 Ф2-2b) ──────
 //
-// Every chat consumer needs the SAME event: "a row was INSERTed into
-// chat_messages for this chat". Previously each consumer opened its own
+// Every chat consumer needs the SAME event: "a row of this chat changed" — an
+// INSERT (a message arrived) or an UPDATE (the assistant run on a message moved
+// to running / done / failed / timeout, which is how every participant's
+// "Triplanio typing" indicator turns on and off). Previously each consumer opened its own
 // supabase.channel(), so a single trip screen held THREE duplicate channels to
 // one chat_id (sidebar badge + widget unread + widget's own) and every message
 // was WAL-decoded / RLS-checked / delivered 3× to the same browser. Consumers
@@ -201,50 +301,53 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
 // channel name is safe (the old random suffix existed only to dodge the
 // "can't add callbacks after subscribe()" throw from two .subscribe() calls
 // sharing a name - which no longer happens).
-const chatInsertRegistry = new Map(); // chatId -> { channel, subscribers:Set<fn> }
+const chatRowRegistry = new Map(); // chatId -> { channel, subscribers:Set<fn> }
 
-export function subscribeChatInserts(chatId, onInsert) {
+function subscribeChatRows(chatId, onRow) {
   if (!chatId) return () => {};
-  let entry = chatInsertRegistry.get(chatId);
+  let entry = chatRowRegistry.get(chatId);
   if (!entry) {
     const subscribers = new Set();
     const channel = supabase
-      .channel(`chat-inserts-${chatId}`)
+      .channel(`chat-rows-${chatId}`)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'chat_messages',
         filter: `chat_id=eq.${chatId}`,
       }, (payload) => {
-        for (const fn of subscribers) fn(payload.new);
+        // A DELETE payload carries no new row — nothing to merge (and nobody can
+        // delete a message any more: the grant is revoked).
+        if (!payload.new?.id) return;
+        for (const fn of subscribers) fn(payload.new, payload.eventType);
       })
       .subscribe();
     entry = { channel, subscribers };
-    chatInsertRegistry.set(chatId, entry);
+    chatRowRegistry.set(chatId, entry);
   }
-  entry.subscribers.add(onInsert);
+  entry.subscribers.add(onRow);
   return () => {
-    entry.subscribers.delete(onInsert);
+    entry.subscribers.delete(onRow);
     if (entry.subscribers.size === 0) {
       supabase.removeChannel(entry.channel);
-      chatInsertRegistry.delete(chatId);
+      chatRowRegistry.delete(chatId);
     }
   };
 }
 
-/** Register `onInsert(newRow)` for a chat's inserts for the life of the
- *  component, sharing one underlying channel per chat_id (see registry above).
- *  `onInsert` may change every render without re-subscribing (held in a ref). */
-export function useChatInserts(chatId, onInsert, { enabled = true } = {}) {
-  const cbRef = useRef(onInsert);
-  cbRef.current = onInsert;
-  // Deps are ONLY [chatId, enabled] by design: onInsert is read through cbRef, so
+/** Register `onRow(newRow, eventType)` for a chat's row changes for the life of
+ *  the component, sharing one underlying channel per chat_id (see registry
+ *  above). `onRow` may change every render without re-subscribing (held in a ref). */
+export function useChatRows(chatId, onRow, { enabled = true } = {}) {
+  const cbRef = useRef(onRow);
+  cbRef.current = onRow;
+  // Deps are ONLY [chatId, enabled] by design: onRow is read through cbRef, so
   // a caller passing a fresh inline callback (closing over tripId/qc) every render
-  // does NOT re-subscribe. Don't add onInsert here. `enabled` is destructured to a
+  // does NOT re-subscribe. Don't add onRow here. `enabled` is destructured to a
   // primitive, so the options-object identity never triggers a re-subscribe.
   useEffect(() => {
     if (!chatId || !enabled) return undefined;
-    return subscribeChatInserts(chatId, (msg) => cbRef.current?.(msg));
+    return subscribeChatRows(chatId, (msg, ev) => cbRef.current?.(msg, ev));
   }, [chatId, enabled]);
 }
 
@@ -253,31 +356,13 @@ export function useChatInserts(chatId, onInsert, { enabled = true } = {}) {
 // Keeps the unread badge live by refreshing the count on a new message. Rides the
 // shared channel above (mounting it in both the sidebar and the widget no longer
 // opens two channels). It does NOT touch the message cache: the widget/lens each
-// append to the shared cache via their own useChatInserts, so the badge only
-// needs to invalidate unread.
-export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
+// merge into the shared cache via their own useChatRows, so the badge only
+// needs to invalidate unread — and only on an INSERT: an assistant-status UPDATE
+// changes no counts, and re-counting on each would triple the queries.
+function useChatLiveSubscription(tripId, { enabled = true } = {}) {
   const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
   const qc = useQueryClient();
-  useChatInserts(chatId, () => {
-    qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
+  useChatRows(chatId, (_row, ev) => {
+    if (ev === 'INSERT') qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
   }, { enabled: !!chatId && enabled });
-}
-
-// ── Mark read ─────────────────────────────────────────────────────────────────
-
-export async function markChatRead(tripId, userId, lastReadAt) {
-  const ts = toUtcIso(lastReadAt);
-  const { data: chat } = await supabase
-    .from('chats').select('id').eq('trip_id', tripId).eq('type', 'group').single();
-  if (!chat?.id || !userId) return null;
-  const { data, error } = await supabase
-    .from('chat_reads')
-    .upsert(
-      { chat_id: chat.id, user_id: userId, trip_id: tripId, last_read_at: ts },
-      { onConflict: 'chat_id,user_id' },
-    )
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
 }

@@ -37,6 +37,7 @@ export default function StatsMap({
   onCountryClick = null,
   sizeSignal = null,
   selected = null,
+  cooperativeGestures = true,
   children,
 }) {
   const containerRef = useRef(null);
@@ -47,8 +48,11 @@ export default function StatsMap({
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, resize,
   // marker cleanup on unmount). projection follows the map/globe toggle.
+  // cooperativeGestures is the caller's call: the two-finger guard exists so an
+  // in-page map doesn't swallow page scroll — a full-screen one has no page left
+  // to scroll (same as the trip map lens, full-bleed by construction).
   const { mapRef, ready, canFit, error } = useMapSurface(containerRef, {
-    markersRef, scheme: colorScheme, projection, basemapTheme: 'monochrome',
+    markersRef, scheme: colorScheme, projection, basemapTheme: 'monochrome', cooperativeGestures,
   });
 
   // Keep latest click handlers without forcing the draw effect to re-run.
@@ -221,7 +225,7 @@ export default function StatsMap({
       <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
       {!ready && (
         <div className="t-body" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--muted)', background: 'var(--surface)', zIndex: 2 }}>
-          {error ? `Map error: ${error}` : <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
+          {error ? `Map error: ${error}` : <div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%' }} />}
         </div>
       )}
       {children}

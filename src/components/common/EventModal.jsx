@@ -15,9 +15,8 @@
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
-import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
-  Edit2, Trash2, ExternalLink, MapPin, X,
+  Edit2, Trash2, X,
 } from 'lucide-react';
 import {
   useEventViewModel, useEntityDocs, EventViewSections,
@@ -54,6 +53,9 @@ export default function EventModal(props) {
   const visit = legacy ? props.event.visit : props.visit;
   const fromVisit = legacy ? props.event.fromVisit : props.fromVisit;
   const toVisit = legacy ? props.event.toVisit : props.toVisit;
+  // Which timeline point opened this entity (car pickup vs car return) — see
+  // useEventViewModel. Null for entities with a single point.
+  const subEvent = (legacy ? props.event.subEvent : props.subEvent) ?? null;
   const canEdit = legacy ? !!props.canEdit : !props.readOnly;
   const onEdit = props.onEdit;
   const onDelete = legacy ? props.onDelete : undefined;
@@ -72,11 +74,11 @@ export default function EventModal(props) {
     if (!open) { setConfirmDel(false); setDeleting(false); }
   }, [open]);
 
-  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit);
+  const vm = useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEvent);
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, entity, canEdit);
 
   if (!entity || !kind || !vm) return null;
-  const { theme, themeLabel, title, priceText, bookingUrl, mapAddress, platformLabel, platformLogo } = vm;
+  const { theme, themeLabel, title, priceText } = vm;
   const eyebrow = getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel);
 
   return (
@@ -120,47 +122,11 @@ export default function EventModal(props) {
               </div>
             </div>
           ) : (
-            <>
-              {(bookingUrl || mapAddress) && (
-                <div className="ev-actions-top">
-                  {bookingUrl && (
-                    <a
-                      href={normalizeExternalUrl(bookingUrl)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="bk-link"
-                    >
-                      {platformLogo ? (
-                        <span className="pb" style={{ background: 'var(--surface-2)', overflow: 'hidden' }}>
-                          <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </span>
-                      ) : platformLabel ? (
-                        <span className="pb" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}>
-                          {(platformLabel || '?').charAt(0).toUpperCase()}
-                        </span>
-                      ) : null}
-                      {t('event.view_booking')}
-                      <ExternalLink />
-                    </a>
-                  )}
-                  {mapAddress && (
-                    <button
-                      type="button"
-                      className="bk-link"
-                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
-                    >
-                      <MapPin />
-                      {t('service.car_view_on_map')}
-                    </button>
-                  )}
-                </div>
-              )}
-              <EventViewSections
-                kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
-                accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
-                externalWarning={warning}
-              />
-            </>
+            <EventViewSections
+              kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}
+              accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}
+              externalWarning={warning} subEvent={subEvent}
+            />
           )}
         </div>
 
@@ -170,12 +136,11 @@ export default function EventModal(props) {
         <div className="ev-dlg-ft">
           {confirmDel ? (
             <>
-              <Btn variant="ghost" size="sm" onClick={() => setConfirmDel(false)} disabled={deleting}>
+              <Btn variant="ghost" onClick={() => setConfirmDel(false)} disabled={deleting}>
                 {t('trip.form_cancel')}
               </Btn>
               <Btn
                 variant="danger-solid"
-                size="sm"
                 disabled={deleting}
                 onClick={async () => {
                   if (!onDelete) return;
@@ -189,12 +154,12 @@ export default function EventModal(props) {
           ) : (
             <>
               {canEdit && onDelete && (
-                <Btn variant="danger" size="sm" onClick={() => setConfirmDel(true)}>
+                <Btn variant="danger" onClick={() => setConfirmDel(true)}>
                   <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.delete')}
                 </Btn>
               )}
               {canEdit && onEdit && (
-                <Btn variant="primary" size="sm" onClick={onEdit} style={{ '--bg': theme.color }}>
+                <Btn variant="primary" onClick={onEdit} style={{ '--bg': theme.color }}>
                   <Edit2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.edit_trip')}
                 </Btn>
               )}

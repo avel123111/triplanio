@@ -136,6 +136,12 @@ export default function ForkPartnerModal({
 
   const count = platforms.length;
 
+  // The Booking / Viator pill that feeds the branded button inside the search
+  // states (reused link); the list builds the full descriptor via
+  // buildStatePartner. Null when that partner isn't in the list.
+  const bookingP = platforms.find((p) => p.key === 'booking') || null;
+  const viatorP = platforms.find((p) => p.key === 'viator') || null;
+
   const handleManual = () => {
     onOpenChange(false);
     onManual?.();
@@ -211,12 +217,12 @@ export default function ForkPartnerModal({
       {/* Live Stay22 stays — hotel fork, panel only. Query/state lifted to the
           editor (TRIP-140); this list is presentational. FE-only. */}
       {type === 'hotel' && variant === 'panel' && stay22 && (
-        <Stay22HotelList {...stay22} currency={tripCurrency} tripId={tripId} />
+        <Stay22HotelList {...stay22} currency={tripCurrency} tripId={tripId} statePlatform={bookingP} />
       )}
 
       {/* Live Viator activities — activity fork, panel only. Fetched on open, FE-only. */}
       {type === 'activity' && variant === 'panel' && (
-        <ViatorActivityList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} />
+        <ViatorActivityList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} statePlatform={viatorP} />
       )}
     </>
   );
@@ -229,7 +235,7 @@ export default function ForkPartnerModal({
       .fork-manual { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface); border: 1.5px solid var(--fk); box-shadow: 0 0 0 3px var(--fk-soft); font-family: var(--font-ui); transition: transform .16s var(--ease-spring), box-shadow .18s; }
       .fork-manual:hover { transform: translateY(-1px); box-shadow: 0 0 0 3px var(--fk-soft), var(--sh-1); }
       .fork-manual:active { transform: scale(.99); }
-      .fork-manual__ic { width: 38px; height: 38px; border-radius: 11px; background: var(--fk); color: #fff; display: grid; place-items: center; flex: none; box-shadow: 0 5px 13px -6px var(--fk); }
+      .fork-manual__ic { width: 38px; height: 38px; border-radius: var(--r-sm); background: var(--fk); color: #fff; display: grid; place-items: center; flex: none; box-shadow: 0 5px 13px -6px var(--fk); }
       .fork-manual__tx { flex: 1; min-width: 0; }
       .fork-manual__tx b { display: block; color: var(--ink); }
       .fork-manual__tx span { display: block; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -280,7 +286,7 @@ export default function ForkPartnerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
         <div className="dlg__head">
-          <span style={{ width: 36, height: 36, borderRadius: 9, background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <span style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <ManualIcon style={{ width: 17, height: 17 }} />
           </span>
           <DialogTitle asChild><h2>{t(meta.titleKey)}</h2></DialogTitle>

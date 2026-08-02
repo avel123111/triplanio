@@ -7,61 +7,39 @@ import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
  * if available, otherwise falls back to a branded robot SVG on a gradient circle.
  *
  * Props:
- *   - size:      'xs' | 'sm' | 'md'  (default 'sm')
- *   - ring:      boolean - adds a soft ring
- *   - tripId:    trip context for the avatar lookup
- *   - avatarUrl: optional pre-resolved URL - skips the lookup
- *   - className: extra classes for the outer element
+ *   - size: 'xs' | 'md'  (default 'md')
+ *
+ * `ring`, `className`, `tripId` and `avatarUrl` were dropped — no call site ever
+ * passed them, so the pre-resolved-URL branch of the lookup was unreachable too.
+ * The scale carries only the two steps chat actually uses, for the same reason.
  */
-// px sizes (were Tailwind w-5/w-7/w-9 = 20/28/36px)
-const SIZE_PX = {
-  xs: 20,
-  sm: 28,
-  md: 36,
-};
+// `xs` is the disc INSIDE the 26px "Triplanio печатает" pill: the design draws
+// it as a 26px avatar with a 2px surface ring, i.e. 22px of visible gradient
+// with room to breathe. Without that step the disc filled the pill edge to edge
+// and looked like it was bursting out of it.
+const SIZE_PX = { xs: 22, md: 32 };  // md = stream + assistant reply + mention row
+const SVG_SIZE = { xs: 12, md: 20 };
 
-const SVG_SIZE = {
-  xs: 14,
-  sm: 18,
-  md: 22,
-};
-
-function useBotAvatar(tripId, providedUrl) {
-  const shouldFetch = providedUrl == null;
-  const profiles = useUserProfiles(shouldFetch ? [TRIPLANIO_BOT_USER_ID] : [], tripId);
-  if (!shouldFetch) return providedUrl;
-  return profiles?.[TRIPLANIO_BOT_USER_ID]?.avatar_url || '';
-}
-
-export default function TriplanioAvatar({
-  size = 'sm',
-  ring = false,
-  tripId,
-  avatarUrl: providedAvatarUrl,
-  className = '',
-}) {
-  const avatarUrl = useBotAvatar(tripId, providedAvatarUrl);
-  const px        = SIZE_PX[size] || SIZE_PX.sm;
-  const svgPx     = SVG_SIZE[size] || SVG_SIZE.sm;
-  // ring-2 ring-primary/30 → 2px soft primary ring via box-shadow
-  const ringStyle = ring ? { boxShadow: '0 0 0 2px var(--primary-ring)' } : null;
-  const baseStyle = { width: px, height: px, borderRadius: '9999px', flex: 'none' };
+export default function TriplanioAvatar({ size = 'md' }) {
+  const profiles  = useUserProfiles([TRIPLANIO_BOT_USER_ID]);
+  const avatarUrl = profiles?.[TRIPLANIO_BOT_USER_ID]?.avatar_url || '';
+  const px        = SIZE_PX[size] || SIZE_PX.md;
+  const svgPx     = SVG_SIZE[size] || SVG_SIZE.md;
+  const baseStyle = { width: px, height: px, borderRadius: 'var(--r-pill)', flex: 'none' };
 
   if (avatarUrl) {
     return (
       <img
         src={avatarUrl}
         alt="Triplanio"
-        className={className}
-        style={{ ...baseStyle, objectFit: 'cover', ...ringStyle }}
+        style={{ ...baseStyle, objectFit: 'cover' }}
       />
     );
   }
 
   return (
     <div
-      className={className}
-      style={{ ...baseStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--assistant-grad)', ...ringStyle }}
+      style={{ ...baseStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--assistant-grad)' }}
       aria-label="Triplanio"
     >
       <svg width={svgPx} height={svgPx} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

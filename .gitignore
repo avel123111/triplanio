@@ -46,3 +46,12 @@ dist_chk*/
 
 # Vercel CLI local (pulled env / project link)
 .vercel
+
+# Playwright MCP artefacts. Snapshots and console logs идут в --output-dir,
+# а вот скриншот с относительным filename сервер кладёт относительно КОРНЯ
+# воркспейса, то есть в корень репо. Вторая строка - сетка безопасности на этот
+# случай: картинок в корне у нас нет, всё лежит в public/.
+.playwright-mcp/
+/*.png
+/*.jpg
+/*.jpeg

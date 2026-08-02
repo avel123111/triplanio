@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
@@ -39,10 +39,11 @@ import MembersLens, { InviteDialog } from './MembersLens';
 import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
-import ChatLens from './ChatLens';
+import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
+import { useProfileMap } from '@/lib/useUserProfiles';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
@@ -286,12 +287,17 @@ function LoadingScreen({ lens = 'overview', user, isPro, isDark, onToggleTheme, 
           </div>
         </aside>
         <div className="trip-content">
-          <main className="trip-screen-body">
+          {/* Chat is a full-bleed room, exactly as when it is loaded — otherwise
+              the skeleton sits in a padded body and the whole screen jumps. */}
+          <main className={'trip-screen-body' + (lens === 'chat' ? ' trip-screen-body--flush' : '')}>
             {/* Same building blocks as the loaded layout, so nothing reshuffles
-                when shell → content resolves. Lens-aware so the Overview (default)
-                doesn't flash a timeline skeleton first. */}
+                when shell → content resolves. Lens-aware: overview and chat each
+                get their OWN skeleton, instead of flashing a timeline (plus a
+                right rail the chat lens does not even have). */}
             {lens === 'overview' ? (
               <OverviewLens isLoading />
+            ) : lens === 'chat' ? (
+              <ChatLensSkeleton />
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <SkeletonTimeline />
@@ -319,9 +325,9 @@ function SkeletonTimeline() {
           <Skeleton w={120} h={14} r={6} style={{ marginBottom: 12 }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[1, 2].map(i => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
+              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '12px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
                 <Skeleton w={52} h={16} r={4} />
-                <Skeleton w={32} h={32} r={8} />
+                <Skeleton w={32} h={32} r={'var(--r-sm)'} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <Skeleton w="60%" h={13} r={4} />
                   <Skeleton w="40%" h={11} r={4} />
@@ -340,7 +346,7 @@ function SkeletonTimeline() {
 function RightRailSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Skeleton w="100%" h={150} r={14} />
+      <Skeleton w="100%" h={150} r={'var(--r-btn)'} />
     </div>
   );
 }
@@ -384,14 +390,14 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 14px', background: 'var(--warning-soft)',
-      border: '1.5px dashed var(--warning)', borderRadius: 12,
+      border: '1.5px dashed var(--warning)', borderRadius: 'var(--r-sm)',
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div className="t-ui" style={{ flex: 1 }}>
+      <div className="t-ui grow">
         {t('trip.no_transfer', { from, to })}
       </div>
-      <Btn variant="primary" size="sm" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
+      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
       <button onClick={() => setHidden(true)} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--warning)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
         <Icon name="close" size={12} />
       </button>
@@ -659,10 +665,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px',
                   background: 'transparent', border: '1.5px dashed var(--line)',
-                  borderRadius: 10, color: 'var(--muted)',
+                  borderRadius: 'var(--r-sm)', color: 'var(--muted)',
                 }}>
                   <Icon name="info" size={14} />
-                  <div className="t-meta" style={{ flex: 1 }}>{t('view.empty_day')}</div>
+                  <div className="t-meta grow">{t('view.empty_day')}</div>
                 </div>
               )}
             </>
@@ -807,10 +813,13 @@ export default function TripView() {
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
-    // Car-rental pickup/return → open the car service VIEW (not edit) like any other event.
+    // Car-rental pickup/return → open the car service VIEW (not edit) like any
+    // other event. Both points carry the SAME service id, so the event type has
+    // to travel along: it is all that tells the view which of the two addresses
+    // belongs behind "show on map" (TRIP-230).
     if (e.type === 'car-pickup' || e.type === 'car-return') {
       const svc = (services || []).find(s => s.id === e.id);
-      if (svc) setEventView({ open: true, kind: 'service', id: svc.id, warning: null });
+      if (svc) setEventView({ open: true, kind: 'service', id: svc.id, warning: null, subEvent: e.type });
       return;
     }
     let kind = null;
@@ -863,7 +872,7 @@ export default function TripView() {
     queryKey: TRIP_SHELL_KEY(tripId),
     // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
     // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_SHELL_INCLUDE }),
     enabled: !!tripId,
     retry: false,
   });
@@ -873,7 +882,7 @@ export default function TripView() {
     queryKey: TRIP_CONTENT_KEY(tripId),
     // Same self-healing path — without it a 401 here silently rendered an empty
     // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: ['content', 'budget'] }),
+    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
     enabled: !!tripId && !loadingShell,
     retry: false,
   });
@@ -884,6 +893,9 @@ export default function TripView() {
   const activities       = contentData?.activities   || [];
   const transfers        = contentData?.transfers    || [];
   const members          = contentData?.members      || [];
+  // Names + avatars arrive WITH the members (TRIP-230), so every surface that
+  // lists people paints in one go instead of after a separate profile hop.
+  const memberProfiles   = useProfileMap(contentData?.profiles);
   const services         = contentData?.services     || [];
   const budget           = contentData?.budget       || null;
   const budgetCategories = contentData?.budgetCategories || [];
@@ -1038,11 +1050,12 @@ export default function TripView() {
   // Trip actions (Share / Edit / Settings / Members) all live in the left trip
   // menu (TripSidebar); Copy trip moved into the Settings lens. The header
   // carries no duplicate action buttons.
-  // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own
-  // internal scroll. Everything else = the default scrolling body.
+  // Map and chat are both edge-to-edge, no-scroll surfaces that own their inner
+  // scrolling (TRIP-296: the chat lens became a full-bleed room, so its former
+  // `--chat` modifier was an exact duplicate of `--flush`). Everything else =
+  // the default scrolling body.
   const screenBodyClass = 'trip-screen-body'
-    + (shownLens === 'map' ? ' trip-screen-body--flush' : '')
-    + (shownLens === 'chat' ? ' trip-screen-body--chat' : '');
+    + (shownLens === 'map' || shownLens === 'chat' ? ' trip-screen-body--flush' : '');
 
   return (
     <div className="trip-shell">
@@ -1138,6 +1151,7 @@ export default function TripView() {
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
             canEdit={canEditMode}
             warning={eventView.warning}
+            subEvent={eventView.subEvent}
           />
 
           {/* Lens-level crash isolation (TRIP-219 F2): a crash in one lens shows
@@ -1153,6 +1167,7 @@ export default function TripView() {
               budgetExpenses={budgetExpenses}
               budgetCategories={budgetCategories}
               members={members}
+              memberProfiles={memberProfiles}
               services={services}
               user={user}
               contentLoading={loadingContent}
@@ -1222,6 +1237,7 @@ export default function TripView() {
             <MembersLens
               tripId={tripId}
               members={members}
+              profiles={memberProfiles}
               trip={trip}
               user={user}
               role={myRole}
@@ -1233,7 +1249,6 @@ export default function TripView() {
             <CalendarLens
               stream={stream}
               visits={visits}
-              trip={trip}
               isLoading={loadingContent}
               onOpenEvent={openEventView}
             />
@@ -1357,7 +1372,7 @@ export default function TripView() {
           tripId={tripId}
           categories={budgetCategoryOptions(budgetCategories, t)}
           mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
-          cities={visits.map((v) => v.city_name).filter(Boolean)}
+          cities={visits.filter((v) => v.city_name)}
           onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
         />
       )}
@@ -1395,8 +1410,6 @@ export default function TripView() {
       {!isPhone && isLensVisible(trip, 'chat') && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
         <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

@@ -35,7 +35,7 @@ export function ForkListSkeleton({ count = 4 }) {
     <div className="fork-list" aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
         <div className="pcard pcard--sk" key={i}>
-          <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={11} /></div>
+          <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={'var(--r-sm)'} /></div>
           <div className="pcard__body">
             <Skeleton w="70%" h={14} />
             <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
@@ -43,7 +43,7 @@ export function ForkListSkeleton({ count = 4 }) {
           <div className="pcard__bar">
             <Skeleton w={80} h={14} />
             <span className="pcard__spacer" />
-            <Skeleton w={70} h={30} r={10} />
+            <Skeleton w={70} h={30} r={'var(--r-sm)'} />
           </div>
         </div>
       ))}
@@ -51,17 +51,58 @@ export function ForkListSkeleton({ count = 4 }) {
   );
 }
 
-// Empty / error state — canon TRIP-189 dashed surface. `variant` = 'err' | 'emp';
-// `action` is an optional trailing node (retry / reset button).
-export function ForkState({ variant, icon, title, body, action = null }) {
+// Empty / error / no-match state — shared medal surface (TRIP-287 redesign).
+// `variant` = 'err' | 'emp' | 'nomatch' drives the accent (red / blue / yellow),
+// identical across both fork lists. `icon` fills the medal, `spark` is the small
+// corner badge. `action` is the optional retry/reset button; `partner` renders
+// the branded "find on <partner>" button (Booking for hotels, Viator for
+// activities) shown in every state — its link mirrors the partner pill above.
+export function ForkState({ variant, icon, spark = null, title, body, action = null, partner = null }) {
+  const { t } = useI18nFormat();
   return (
     <div className={`fork-state fork-state--${variant}`}>
-      <span className="fork-si">{icon}</span>
+      <div className="fork-state__art">
+        <span className="fork-state__glow" aria-hidden="true" />
+        <span className="fork-si">{icon}{spark ? <span className="fork-state__spark">{spark}</span> : null}</span>
+      </div>
       <b>{title}</b>
       <p>{body}</p>
-      {action}
+      {(action || partner) && (
+        <div className="fork-state__actions">
+          {action}
+          {partner && (
+            <a
+              className="btn btn--brand btn--block"
+              href={partner.url} target="_blank" rel="noreferrer" onClick={partner.onClick}
+              style={{ '--bg': partner.color, '--fg': '#fff', '--bd': 'transparent' }}
+            >
+              <span className="btn__brandlogo"><img src={partner.logo} alt="" /></span>
+              {t('booking.find_on', { name: partner.name })}
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+// Branded state partner — the Booking (hotels) / Viator (activities) fallback
+// shown in every search state. Brand constants (display name, white-chip logo,
+// button colour, click type) live HERE so both lists + the modal can't drift.
+// `platform` is that partner's entry from hotelPlatforms/activityPlatforms
+// (null / no url → no button); the click reuses the pill's exact affiliate link,
+// logged under the fork_state_button campaign.
+const STATE_BRANDS = {
+  booking: { name: 'Booking.com', logo: '/partners/booking-transparent.png', color: 'var(--bk)', type: 'hotel' },
+  viator: { name: 'Viator', logo: '/partners/viator.svg', color: 'var(--viator)', type: 'activity' },
+};
+export function buildStatePartner(platform, brandKey, logClick) {
+  if (!platform?.url) return null;
+  const b = STATE_BRANDS[brandKey];
+  return {
+    name: b.name, logo: b.logo, color: b.color, url: platform.url,
+    onClick: () => logClick({ partner: brandKey, type: b.type, link: platform.url, provider: platform.provider || brandKey, campaign: 'fork_state_button', fallback: !!platform.fallback }),
+  };
 }
 
 // Pager — prev · windowed page numbers · next. `onGoto(p)` is the single nav hook
@@ -128,10 +169,10 @@ export function ForkToolbar({
           <div className="s22f-panel">{children}</div>
           {/* Actions live OUTSIDE the filter card (design) */}
           <div className="s22f-panelfoot">
-            <button type="button" className="btn btn--quiet btn--sm" onClick={onReset}>
+            <button type="button" className="btn btn--quiet" onClick={onReset}>
               <RotateCcw size={14} />{t('fork.f_reset')}
             </button>
-            <button type="button" className="btn btn--primary btn--sm" onClick={onApply}>
+            <button type="button" className="btn btn--primary" onClick={onApply}>
               <Search size={14} />{t('fork.f_search')}
             </button>
           </div>

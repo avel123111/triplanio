@@ -1,20 +1,12 @@
 // Shared validation UI for the unified validation engine (Ф2+).
-// - useEntityValidation: runs validateEntity, returns issues + canSubmit.
 // - FieldError: inline message under a field (by canonical field token).
 // - IssuesPanel: single panel listing all issues; click -> scroll/focus field.
 // Messages resolve via t('validation.' + code, values). Place a
 // data-vfield="<token>" attribute on each field wrapper so the panel can focus it.
 import React, { useMemo, useState, useCallback } from 'react';
 import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
-import { validateEntity } from '@/lib/validation';
+import { validateEntity, issuesToShow } from '@/lib/validation';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-
-export function useEntityValidation(kind, draft, ctx) {
-  // validateEntity is cheap/pure; recompute per render is fine.
-  const issues = validateEntity(kind, draft, ctx);
-  const errors = issues.filter((i) => i.level === 'error');
-  return { issues, errors, hasErrors: errors.length > 0, canSubmit: errors.length === 0 };
-}
 
 // Hybrid display state: inline shows for TOUCHED fields; the summary panel and
 // full highlight show only after a SAVE attempt. Reusable across all modals.
@@ -27,8 +19,10 @@ export function useHybridValidation(kind, draft, ctx) {
     if (!field) return;
     setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
   }, []);
-  const displayIssues = issues.filter((i) => submitted || (i.field && touched.has(i.field)));
-  const panelIssues = submitted ? issues : [];
+  // Same reveal policy as the event editor (no AI parse on these forms). The
+  // panel is that policy with nothing touched: all or nothing, one predicate.
+  const displayIssues = issuesToShow(issues, { submitted, touched });
+  const panelIssues = issuesToShow(issues, { submitted });
   const reset = useCallback(() => { setTouched(new Set()); setSubmitted(false); }, []);
   // Run onOk only when valid; otherwise reveal everything + scroll to first error.
   const attemptSubmit = useCallback((onOk) => {
@@ -73,6 +67,21 @@ export function fieldHasError(issues, field) {
   return (issues || []).some((i) => i.field === field && i.level === 'error');
 }
 
+// True when `field` carries a non-blocking warning and no error - for
+// amber-border styling on the wrapper. An error owns the field's colour.
+export function fieldHasWarning(issues, field) {
+  const issue = pickFieldIssue(issues || [], field);
+  return !!issue && issue.level !== 'error';
+}
+
+// Wrapper class for a field's validation state: `.tv-invalid` (red) or
+// `.field--warning` (amber), never both. Single source for every form wrapper.
+export function fieldStateClass(issues, field) {
+  const issue = pickFieldIssue(issues || [], field);
+  if (!issue) return '';
+  return issue.level === 'error' ? 'tv-invalid' : 'field--warning';
+}
+
 function focusField(field) {
   if (!field) return;
   const el = document.querySelector(`[data-vfield="${CSS.escape(field)}"]`);
@@ -103,7 +112,7 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
             onClick={() => focusField(it.field)}
             style={{
               display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left',
-              padding: '8px 11px', borderRadius: 10, border: `1px solid color-mix(in srgb, ${stripe} 40%, transparent)`,
+              padding: '8px 11px', borderRadius: 'var(--r-sm)', border: `1px solid color-mix(in srgb, ${stripe} 40%, transparent)`,
               background: bg, color: 'var(--ink)', cursor: it.field ? 'pointer' : 'default',
             }}
           >
@@ -164,20 +173,20 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
   if (list.length === 0) return null;
   const Chevron = expanded ? ChevronDown : ChevronRight;
   return (
-    <div style={{ border: '1px solid var(--line)', borderRadius: 16, background: 'var(--surface)', overflow: 'hidden', ...style }}>
+    <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--surface)', overflow: 'hidden', ...style }}>
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
         style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}
       >
-        <span style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <AlertTriangle size={16} />
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span className="t-ui" style={{ display: 'block', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
           <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
         </span>
-        <span className="t-meta" style={{ minWidth: 24, height: 24, padding: '0 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{list.length}</span>
+        <span className="t-meta" style={{ minWidth: 24, height: 24, padding: '0 7px', borderRadius: 'var(--r-pill)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{list.length}</span>
         <Chevron size={16} style={{ color: 'var(--muted)', flexShrink: 0 }} />
       </button>
       {expanded && (
@@ -192,7 +201,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                 onClick={() => onOpen?.(it)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line-2)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer' }}
               >
-                <span style={{ width: 34, height: 34, borderRadius: 9, background: d.soft, color: d.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: d.soft, color: d.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <d.Icon size={16} />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>

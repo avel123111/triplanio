@@ -37,7 +37,7 @@ import '../design/app.css';
 // permanent "0" bar only adds noise.
 const CONT_ORDER = ['EU', 'AS', 'NA', 'AF', 'SA', 'OC'];
 const CONT_COLOR = {
-  EU: 'hsl(var(--primary))', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
+  EU: 'var(--brand)', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
   AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)',
 };
 
@@ -50,25 +50,25 @@ function StatsScreenSkeleton() {
       <div className="head">
         <div className="head__row">
           <div className="grow">
-            <Skeleton w={210} h={30} r={8} style={{ marginBottom: 10 }} />
+            <Skeleton w={210} h={30} r={'var(--r-sm)'} style={{ marginBottom: 10 }} />
             <Skeleton w={280} h={15} r={6} />
           </div>
-          <Skeleton w={220} h={40} r={12} />
+          <Skeleton w={220} h={40} r={'var(--r-sm)'} />
         </div>
       </div>
-      <Skeleton w="100%" h={420} r={24} style={{ marginTop: 18 }} />
+      <Skeleton w="100%" h={420} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <div className="summary" style={{ marginTop: 18 }}>
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={20} />)}
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={'var(--r-xl)'} />)}
       </div>
-      <Skeleton w="100%" h={220} r={24} style={{ marginTop: 18 }} />
+      <Skeleton w="100%" h={220} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={180} h={22} r={6} /></div>
-      <Skeleton w="100%" h={240} r={24} />
+      <Skeleton w="100%" h={240} r={'var(--r-card)'} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={140} h={22} r={6} /></div>
       <div className="records">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={20} />)}
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={'var(--r-xl)'} />)}
       </div>
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={160} h={22} r={6} /></div>
-      <Skeleton w="100%" h={220} r={24} />
+      <Skeleton w="100%" h={220} r={'var(--r-card)'} />
     </>
   );
 }
@@ -94,21 +94,28 @@ export default function Statistics() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_user_travel_stats');
       if (error) throw error;
-      return data || { points: [], trips: {}, transfers_total: 0 };
+      return data || { points: [], trips: {}, transfers: [] };
     },
     enabled: !!user?.id,
     staleTime: 30_000,
   });
   const showSkeleton = isLoading && !travelStats;
   const allPoints = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
+  const allTransfers = travelStats?.transfers || [];
   const trips = travelStats?.trips || {};
   const isEmpty = allPoints.length === 0;
 
   // ── year filter (client-side; no network on switch) ──────────────────────────
   const [year, setYear] = useState('all');
-  const years = useMemo(() => availableYears(allPoints), [allPoints]);
+  // Years come from points AND transfers: a trip that crosses New Year has its
+  // visits' start_date in December while the return leg departs in January, so
+  // building the selector from points alone would leave that transfer with no
+  // year to be counted under. availableYears reads start_date on both shapes.
+  const years = useMemo(() => availableYears([...allPoints, ...allTransfers]), [allPoints, allTransfers]);
   const points = useMemo(() => filterByYear(allPoints, year), [allPoints, year]);
-  const bundle = useMemo(() => statisticsBundle(points, trips), [points, trips]);
+  // Transfer rows carry start_date too, so the SAME year filter applies to them.
+  const transfers = useMemo(() => filterByYear(allTransfers, year), [allTransfers, year]);
+  const bundle = useMemo(() => statisticsBundle(points, trips, transfers), [points, trips, transfers]);
 
   // ── map UI state ──────────────────────────────────────────────────────────────
   const [showMap, setShowMap] = useState(false);
@@ -166,9 +173,9 @@ export default function Statistics() {
     { key: 'cities', value: bundle.cities, tone: 'city', label: t('stats.sb_cities'), icon: <Icon name="buildings" /> },
     { key: 'continents', value: bundle.continents, tone: 'cont', label: t('stats.sb_continents'), icon: <Icon name="layers" /> },
     { key: 'trips', value: bundle.trips, tone: 'trip', label: t('stats.sb_trips'), icon: <Icon name="suitcase" /> },
-    { key: 'flights', value: '—', soon: true, tone: 'flight', label: t('stats.sb_flights'), icon: <Icon name="plane" /> },
-    { key: 'ground', value: '—', soon: true, tone: 'transfer', label: t('stats.sb_ground'), icon: <Icon name="arrowSwap" /> },
-  ], [bundle.countries, bundle.cities, bundle.continents, bundle.trips, t]);
+    { key: 'flights', value: bundle.flights, tone: 'flight', label: t('stats.sb_flights'), icon: <Icon name="plane" /> },
+    { key: 'ground', value: bundle.ground, tone: 'transfer', label: t('stats.sb_ground'), icon: <Icon name="arrowSwap" /> },
+  ], [bundle.countries, bundle.cities, bundle.continents, bundle.trips, bundle.flights, bundle.ground, t]);
 
   const contRows = useMemo(() => {
     const bd = bundle.continentsBreakdown || {};
@@ -322,7 +329,7 @@ export default function Statistics() {
                   ))}
                 </div>
               )}
-              <Btn variant="soft" size="sm" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
+              <Btn variant="soft" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
             </div>
           </div>
         </div>
@@ -335,7 +342,7 @@ export default function Statistics() {
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>
-            <Btn variant="primary" size="sm" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
+            <Btn variant="primary" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
           </div>
         )}
 
@@ -351,6 +358,7 @@ export default function Statistics() {
                 onCountryClick={openCountry}
                 sizeSignal={fs ? 'fs' : 'win'}
                 selected={panel ? { kind: panel.kind, key: panel.key } : null}
+                cooperativeGestures={!fs}
               >
                 <div className="map-ctl">
                   <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><Icon name="globe" /></button>
@@ -360,7 +368,7 @@ export default function Statistics() {
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}>
-                      <i className="d" style={r.tone === 'manual' ? { background: 'var(--surface)', boxShadow: 'inset 0 0 0 2px hsl(var(--primary))' } : { background: r.color }} />
+                      <i className="d" style={r.tone === 'manual' ? { background: 'var(--surface)', boxShadow: 'inset 0 0 0 2px var(--brand)' } : { background: r.color }} />
                       {r.label}{r.count ? ` · ${r.count}` : ''}
                     </span>
                   ))}

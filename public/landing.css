@@ -27,7 +27,6 @@
 
   --radius-card: 18px;
   --radius-btn: 12px;
-  --radius-sm: 10px;
 
   --shadow-soft: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 24px -8px rgba(15, 23, 42, .08);
   --shadow-card: 0 1px 2px rgba(15, 23, 42, .03), 0 10px 30px -12px rgba(15, 23, 42, .14);
@@ -173,7 +172,6 @@ a { color: inherit; text-decoration: none; }
   background: var(--warm);
   display: inline-block;
 }
-.eyebrow--plain::before { display: none; }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
@@ -1083,13 +1081,20 @@ h3 {
   color: var(--muted-2);
   margin: 4px 0 14px;
 }
-.footer__col a {
+/* The cookie-settings entry is a <button> (it acts, it does not navigate), but it
+   sits among links and must look identical to them. */
+.footer__col a,
+.footer__col button {
   display: block;
   padding: 4px 0;
   color: var(--ink-2);
   font-weight: 500;
 }
-.footer__col a:hover { color: var(--brand); }
+.footer__col button {
+  border: 0; background: none; font: inherit; text-align: left; cursor: pointer;
+}
+.footer__col a:hover,
+.footer__col button:hover { color: var(--brand); }
 .footer__bottom {
   display: flex;
   justify-content: space-between;
@@ -1153,9 +1158,6 @@ html.reveal--ready .reveal.is-in { animation: revealIn .6s ease both; }
   color: var(--brand);
 }
 .tag-eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
-
-/* utility — divider line */
-.hr-soft { height: 1px; background: var(--line); border: 0; }
 
 /* Mobile: keep CTA visible in header */
 @media (max-width: 600px) {

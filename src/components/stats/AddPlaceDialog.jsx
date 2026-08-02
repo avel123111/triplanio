@@ -111,12 +111,12 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const foot = (
     <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
       {isEdit && (
-        <Btn variant="danger" size="sm" onClick={remove} disabled={saving} style={{ marginRight: 'auto' }}>
+        <Btn variant="danger" onClick={remove} disabled={saving} style={{ marginRight: 'auto' }}>
           {t('stats.delete_btn')}
         </Btn>
       )}
-      <Btn variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
-      <Btn variant="primary" size="sm" icon="check" onClick={submit} disabled={saving}>
+      <Btn variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
+      <Btn variant="primary" icon="check" onClick={submit} disabled={saving}>
         {isEdit ? t('stats.save_btn') : t('stats.add_btn')}
       </Btn>
     </div>
@@ -141,7 +141,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-btn)', background: 'var(--surface)' }}>
               <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
               <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
-              <button type="button" onClick={() => setPicking(true)} className="t-meta" style={{ border: 0, background: 'transparent', color: 'var(--primary)', cursor: 'pointer', padding: 0 }}>
+              <button type="button" onClick={() => setPicking(true)} className="t-meta" style={{ border: 0, background: 'transparent', color: 'var(--brand)', cursor: 'pointer', padding: 0 }}>
                 {t('stats.change_city')}
               </button>
             </div>

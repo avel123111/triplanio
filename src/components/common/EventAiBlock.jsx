@@ -17,6 +17,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
+import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
 import {
   Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
   RefreshCw, ChevronUp, Check,
@@ -67,6 +68,11 @@ export default function EventAiBlock({
     if (!list?.length) return;
     setError(null);
     const incoming = Array.from(list).filter((f) => {
+      // `accept` only filters the picker dialog, not drag-and-drop (TRIP-281).
+      if (!isAllowedUpload(f, ALLOWED_PARSER_EXTENSIONS)) {
+        setError(t('doc.bad_format', { name: f.name }));
+        return false;
+      }
       if (f.size > MAX_FILE_BYTES) {
         setError(t('event.ai_file_too_big5', { name: f.name }));
         return false;
@@ -201,10 +207,10 @@ export default function EventAiBlock({
           </div>
           <div className="ai-blk-ti">
             {/* Заблокировано (Free): замок вместо PRO-бейджа (дизайн-система TRIP-187) */}
-            <b>{t('event.ai_fill_title')}<Lock size={12} style={{ color: 'var(--muted)' }} /></b>
+            <b>{t('event.ai_fill_title')}<Lock size={12} className="muted" /></b>
             <span>{t('event.ai_locked_hint')}</span>
           </div>
-          <button type="button" className="btn btn--pro btn--sm" onClick={onUpgrade}>
+          <button type="button" className="btn btn--pro" onClick={onUpgrade}>
             <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('trips.go_pro')}
           </button>
         </div>
@@ -250,7 +256,7 @@ export default function EventAiBlock({
             <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</b>
             <span>{t('event.ai_highlighted_hint')}</span>
           </div>
-          <button type="button" className="btn btn--ghost btn--sm" onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}>
+          <button type="button" className="btn btn--ghost" onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}>
             <RefreshCw style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_reset')}
           </button>
           <button type="button" className="ai-blk-x" onClick={() => setState('available')} aria-label={t('event.collapse')}>
@@ -304,12 +310,12 @@ export default function EventAiBlock({
             placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
           />
           <div className="ai-input-row">
-            <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()}>
+            <button type="button" className="btn btn--ghost" onClick={() => inputRef.current?.click()}>
               <Upload style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_pdf_screenshot')}
             </button>
             <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
-            <div style={{ flex: 1 }} />
-            <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
+            <div className="grow" />
+            <button type="button" className="btn btn--ai" onClick={runParse} disabled={!text.trim() && files.length === 0}>
               <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
             </button>
           </div>
@@ -327,7 +333,7 @@ export default function EventAiBlock({
         type="file"
         multiple
         style={{ display: 'none' }}
-        accept=".pdf,image/*"
+        accept={PARSER_ACCEPT}
         onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
       />
     </div>

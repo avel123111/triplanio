@@ -189,7 +189,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   const previewBox = {
     position: 'relative',
     height: 'min(46vh, 400px)', aspectRatio: ratio,
-    borderRadius: 14, overflow: 'hidden',
+    borderRadius: 'var(--r-btn)', overflow: 'hidden',
     background: 'var(--surface)', border: '1px solid var(--line)',
   };
   const statusBadgeStyle = {
@@ -210,7 +210,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       <div className="muted t-body" style={{ marginBottom: 12 }}>{t('trip.share_desc')}</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, minWidth: 0 }} onClick={(e) => e.target.select()} />
-        <Btn variant="primary" size="sm" icon="check" loading={loading} onClick={copyLink} disabled={!shareUrl}>
+        <Btn variant="primary" icon="check" loading={loading} onClick={copyLink} disabled={!shareUrl}>
           {loading ? t('share.generating') : (copied ? t('trip.link_copied') : t('share.copy'))}
         </Btn>
       </div>
@@ -236,7 +236,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
                 ? <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} overlaySvg={overlay?.svg} slot={overlay?.slot} cardW={overlay?.w} cardH={overlay?.h} />
                 : (cardUrl
                   ? <img src={cardUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <Skeleton w="100%" h="100%" r={14} />)}
+                  : <Skeleton w="100%" h="100%" r={'var(--r-btn)'} />)}
               <Badge style={statusBadgeStyle}>{stage === 'edit' ? t('share.card_preview') : t('share.card_ready_badge')}</Badge>
             </div>
           </div>
@@ -251,7 +251,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
                 <div className="t-label" style={{ marginBottom: 7 }}>{t('share.card_bg')}</div>
                 {/* Only the Standard background for now; more styles land here later. */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 13, overflow: 'hidden', border: '2.5px solid var(--brand)', boxShadow: '0 0 0 3px var(--brand-soft)', background: 'var(--primary-soft)' }}>
+                  <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 'var(--r-btn)', overflow: 'hidden', border: '2.5px solid var(--brand)', boxShadow: '0 0 0 3px var(--brand-soft)', background: 'var(--primary-soft)' }}>
                     <span className="t-nano" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'rgba(20,25,35,.55)', color: '#fff', textAlign: 'center', padding: '2px 0' }}>{t('share.card_bg_standard')}</span>
                   </div>
                 </div>

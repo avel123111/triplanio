@@ -1,5 +1,4 @@
 {
   "dropoff_event": "Car return",
-  "fallback_name": "Car rental",
   "pickup_event": "Car pickup"
 }

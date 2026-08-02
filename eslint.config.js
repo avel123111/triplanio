@@ -82,6 +82,13 @@ export default [
       "unused-imports": pluginUnusedImports,
     },
     rules: {
+      // Spelled out because THIS `rules` key replaces the one spread in from
+      // pluginJs.configs.recommended above, so nothing from `recommended`
+      // actually reaches these files. Without it, code that references an
+      // identifier it never imported lints clean and only fails at runtime as a
+      // ReferenceError — how a booking/map action shipped dead (TRIP-277).
+      // Enabling it costs nothing: zero violations across the linted tree.
+      "no-undef": "error",
       "no-unused-vars": "off",
       "react/jsx-uses-vars": "error",
       "react/jsx-uses-react": "error",

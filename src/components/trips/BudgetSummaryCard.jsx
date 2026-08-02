@@ -73,11 +73,11 @@ export default function BudgetSummaryCard({
       <div className="wdg-b">
         {isLoading ? (
           <>
-            <div className="ov-bar" style={{ width: '55%', height: 26, borderRadius: 8 }} />
-            <div className="ov-bar" style={{ width: '100%', height: 11, borderRadius: 999, marginTop: 14 }} />
-            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 8, marginTop: 12 }} />
-            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 8, marginTop: 8 }} />
-            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 8, marginTop: 8 }} />
+            <div className="ov-bar" style={{ width: '55%', height: 26, borderRadius: 'var(--r-sm)' }} />
+            <div className="ov-bar" style={{ width: '100%', height: 11, borderRadius: 'var(--r-pill)', marginTop: 14 }} />
+            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 'var(--r-sm)', marginTop: 12 }} />
+            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 'var(--r-sm)', marginTop: 8 }} />
+            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 'var(--r-sm)', marginTop: 8 }} />
           </>
         ) : budget ? (
           <>

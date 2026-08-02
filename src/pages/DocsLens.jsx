@@ -19,7 +19,8 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
-import { uploadTripFiles, insertTripDocument, deleteTripDocument, DOCS_KEY } from '@/lib/documentMutations';
+import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
+import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
@@ -30,31 +31,20 @@ import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
+import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import './DocsLens.css';
 
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-/** Classify a file by extension for the colour-coded type badge. */
-function fileType(name = '') {
-  const ext = (name.split('.').pop() || '').toLowerCase();
-  if (ext === 'pdf') return 'pdf';
-  if (['doc', 'docx'].includes(ext)) return 'doc';
-  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'xls';
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'avif'].includes(ext)) return 'img';
-  return 'file';
-}
-
 /** Inline file chip used in both cards and the detail dialog. */
 function FileChip({ file }) {
-  const type = fileType(file.file_name);
   return (
     <div className="dl-filechip">
-      <span className={`dl-ftag dl-ftag--${type}`}>
-        <Icon name="file" size={15} />
-      </span>
+      <FileTypeBadge name={file.file_name} />
       <span className="dl-filechip__n">{file.file_name}</span>
     </div>
   );
@@ -93,22 +83,14 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   const qc           = useQueryClient();
   const { user }     = useAuth();
   const v    = useHybridValidation('document', { title });
-  const inv  = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const inv  = (f) => fieldStateClass(v.displayIssues, f);
 
   async function uploadFiles(files) {
     if (!files?.length) return;
     setUploading(true); setErr('');
     try {
-      const okSize = Array.from(files).filter((f) => {
-        if (f.size > 10 * 1024 * 1024) { setErr(t('doc.file_too_big', { name: f.name })); return false; }
-        return true;
-      });
-      // Shared upload: never yields a doc with an empty file_url (was `|| ''`);
-      // a failed upload / missing signed URL surfaces as an error instead.
-      const { uploaded, errors } = await uploadTripFiles(tripId, okSize);
-      for (const e of errors) {
-        setErr(e.reason === 'upload' && e.message ? e.message : t('doc.upload_failed', { name: e.file.name }));
-      }
+      const { uploaded, errors } = await uploadTripFiles(tripId, files);
+      for (const e of errors) setErr(uploadErrorText(e, t));
       if (uploaded.length) setDocuments(prev => [...prev, ...uploaded]);
     } finally {
       setUploading(false);
@@ -123,7 +105,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
         trip_id:    tripId,
         title:      title.trim(),
         notes:      notes.trim()   || null,
-        link_url:   linkUrl.trim() || null,
+        // Store an ABSOLUTE url: a scheme-less "google.com" is a relative path
+        // to the browser and would navigate inside the app (TRIP-230).
+        link_url:   normalizeExternalUrl(linkUrl),
         documents:  documents.length ? documents : null,
         visibility,
         created_by: user?.id ?? null,
@@ -141,10 +125,18 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     // Saved → the staged files are now referenced by the row; the close sweep
     // must skip them.
     savedRef.current = true;
-    // Split by visibility: document1_uploaded = shared (общий), document2_uploaded = private (личный).
-    track(visibility === 'private' ? 'document2_uploaded' : 'document1_uploaded', {
+    // One event split by PROPERTIES (TRIP-316). Shared vs private used to be two
+    // events, document1_/document2_uploaded, whose digits mean nothing to anyone
+    // reading the report. `file_kind` reuses the badge classifier, so "what do
+    // people actually keep here - scans or PDF bookings?" becomes answerable:
+    // there is no document TYPE (passport / insurance) anywhere in the model,
+    // the extension is all we know. Mixed kinds collapse to 'mixed', and no files
+    // at all (a link or a bare note) to 'none'.
+    const kinds = [...new Set(documents.map((d) => fileType(d.file_name)))];
+    track('document_uploaded', {
       trip_id: tripId,
-      has_files: !!documents.length,
+      visibility,
+      file_kind: kinds.length > 1 ? 'mixed' : (kinds[0] || 'none'),
       has_link: !!linkUrl.trim(),
     });
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
@@ -175,7 +167,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
         {/* ── Header ── */}
         <div className="dlg__head">
           <span style={{
-            width: 36, height: 36, borderRadius: 9,
+            width: 36, height: 36, borderRadius: 'var(--r-sm)',
             background: 'var(--brand-soft)', color: 'var(--brand)',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
@@ -250,6 +242,8 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <Field label={t('doc.link_label')}>
               <input
                 className="input"
+                type="url"
+                inputMode="url"
                 value={linkUrl}
                 onChange={e => setLinkUrl(e.target.value)}
                 placeholder={t('doc.link_placeholder')}
@@ -274,9 +268,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               <div className="dl-uplist">
                 {documents.map((d, i) => (
                   <div key={i} className="dl-upitem">
-                    <span className={`dl-ftag dl-ftag--${fileType(d.file_name)}`}>
-                      <Icon name="file" size={14} />
-                    </span>
+                    <FileTypeBadge name={d.file_name} />
                     <span className="dl-upitem__n">{d.file_name}</span>
                     <button
                       type="button"
@@ -305,7 +297,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
+                accept={UPLOAD_ACCEPT}
                 style={{ display: 'none' }}
                 onChange={e => uploadFiles(e.target.files)}
               />
@@ -318,7 +310,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 <>
                   <Icon name="upload" size={24} />
                   <b>{documents.length === 0 ? t('doc.upload_label') : t('doc.add_more_files')}</b>
-                  <span>PDF · DOC · XLS · IMG &nbsp;·&nbsp; max 10 MB</span>
+                  <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
                 </>
               )}
             </div>
@@ -374,7 +366,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     }
     // Row gone → its files are now orphaned (unique uuid keys, single reference).
     // Best-effort sweep; never blocks the delete (TRIP-117).
-    await removeTripFiles(collectDocPaths(doc.documents, doc.file_url));
+    await removeTripFiles(collectDocPaths(doc.documents));
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
     close();
   }
@@ -387,7 +379,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
         {/* ── Header ── */}
         <div className="dlg__head">
           <span style={{
-            width: 36, height: 36, borderRadius: 9,
+            width: 36, height: 36, borderRadius: 'var(--r-sm)',
             background: 'var(--brand-soft)', color: 'var(--brand)',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
@@ -405,8 +397,10 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
             <p className="dl-dview-note">{doc.notes}</p>
           )}
 
+          {/* href is normalized on save, but rows stored before TRIP-230 still
+              hold a bare "google.com" — keep the read side safe for them too. */}
           {doc.link_url && (
-            <a className="dl-dview-link" href={doc.link_url} target="_blank" rel="noreferrer">
+            <a className="dl-dview-link" href={normalizeExternalUrl(doc.link_url)} target="_blank" rel="noreferrer">
               <Icon name="external" size={16} />
               <b>{doc.link_url}</b>
             </a>
@@ -421,11 +415,9 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               <div className="dl-dview-files">
                 {doc.documents.map((f, i) => (
                   <div key={i} className="dl-filechip">
-                    <span className={`dl-ftag dl-ftag--${fileType(f.file_name)}`}>
-                      <Icon name="file" size={14} />
-                    </span>
+                    <FileTypeBadge name={f.file_name} />
                     <a
-                      href={f.file_url}
+                      href={normalizeExternalUrl(f.file_url)}
                       target="_blank"
                       rel="noreferrer"
                       className="dl-filechip__n"
@@ -459,7 +451,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               {t('trip.delete')}
             </Btn>
           )}
-          <div style={{ flex: 1 }} />
+          <div className="grow" />
           <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
         </div>
       </DialogContent>
@@ -574,7 +566,6 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
       {canAdd && (
         <Btn
           variant="soft"
-          size="sm"
           icon="plus"
           style={!isShared ? { background: 'var(--warm-soft)', color: 'var(--warm-ink)' } : undefined}
           onClick={() => onOpenAdd?.()}>
@@ -666,9 +657,9 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   if (isLoading || parentLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Skeleton w="100%" h={44} r={22} />
-        <Skeleton w="100%" h={180} r={12} />
-        <Skeleton w="100%" h={180} r={12} />
+        <Skeleton w="100%" h={44} r={'var(--r-xl)'} />
+        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
+        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
       </div>
     );
   }
@@ -754,7 +745,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           <div>
             <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
               {t('doc.section_private')}
-              <Badge variant="count" style={{ background: 'var(--warm)', color: 'hsl(var(--primary-foreground))' }}>
+              <Badge variant="count" style={{ background: 'var(--warm)', color: 'var(--primary-fg)' }}>
                 {personalTotal}
               </Badge>
             </h3>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
+import { openConsentBanner } from '@/lib/consent';
 import { Icon as BaseIcon } from '@/design/icons';
 
 /* =========================================================
@@ -189,6 +190,10 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
               <h4>{t('landing.footer.legal')}</h4>
               <a href="/privacy">{t('landing.footer.privacy')}</a>
               <a href="/terms">{t('landing.footer.terms')}</a>
+              {/* Where an anonymous visitor changes their mind — the app itself has no
+                  footer, so this is the only route for someone who never signed up.
+                  Reopens the panel; nothing changes until a button in it is pressed. */}
+              <button type="button" onClick={openConsentBanner}>{t('consent.settings')}</button>
             </div>
           </div>
           <div style={{display:'flex',justifyContent:'flex-end'}}>

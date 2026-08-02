@@ -1,17 +1,18 @@
 /**
  * MembersLens - members tab inside TripView.
  *
- * Props: tripId, members, trip, user, role, isLoading, queryClient
+ * Props: tripId, members, profiles, trip, user, role, isLoading, queryClient
  *
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
+ * profiles - id → { full_name, avatar_url, … } from the SAME payload, so names
+ *   land with the rows; covers the owner, who has no trip_members row (TRIP-230)
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
@@ -19,7 +20,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
@@ -68,7 +69,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
-  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(v.displayIssues, f);
 
   // Generate (or reuse) a real invite link when the "link" tab is active.
   // The role is bound to the token server-side, so switching role re-fetches.
@@ -262,7 +263,7 @@ function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }
 
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
-export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
+export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -273,14 +274,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   const [roleState, setRoleState] = useState(null); // null | { member }
 
   const canManage = myRole === 'owner' || myRole === 'admin';
-  // Resolve display names from profiles. Include the trip owner - they often
-  // have no trip_members row, so members.map alone misses them and the owner
-  // ends up showing the email twice.
-  const profileIds = [
-    ...members.map(m => m.user_id),
-    trip?.created_by,
-  ].filter(Boolean);
-  const profiles = useUserProfiles(profileIds, tripId);
 
   function refresh() {
     // B5: invalidate both content (members list) and shell (header avatar row)
@@ -347,7 +340,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[1,2,3].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 12 }} />)}
+        {[1,2,3].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 'var(--r-sm)' }} />)}
       </div>
     );
   }
@@ -416,7 +409,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               {/* Actions */}
               <div className="mbrow__acts">
                 {m.status === 'offline' && canManage && (
-                  <Btn variant="ghost" size="sm" icon="send"
+                  <Btn variant="ghost" icon="send"
                     onClick={() => setPromoteState({ member: m })}>
                     {t('members.invite')}
                   </Btn>

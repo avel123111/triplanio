@@ -3,14 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
-import { formatDistanceToNowStrict } from 'date-fns';
-import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '@/design/icons';
 import { Btn, EmptyState, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
-
-const DATE_LOCALES = { ru, es, en: enUS };
 
 // Render `text` but wrap occurrences of given values in styled <span>s.
 // Used to bold the inviter name and emphasize the trip name in invite rows.
@@ -52,8 +48,7 @@ export function notifMeta(type = '') {
 
 export default function NotificationsBell({ triggerClassName }) {
   const t = useT();
-  const { lang } = useI18n();
-  const dateLocale = DATE_LOCALES[lang] || enUS;
+  const { fmtRelative } = useI18nFormat();
   const qc = useQueryClient();
   const { user } = useAuth();
   const nav = useNavigate();
@@ -139,7 +134,7 @@ export default function NotificationsBell({ triggerClassName }) {
               aria-hidden
               style={{
                 position: 'absolute', top: 4, right: 4,
-                width: 11, height: 11, borderRadius: 999,
+                width: 11, height: 11, borderRadius: 'var(--r-pill)',
                 background: 'var(--danger)',
                 border: '2px solid var(--surface)',
                 boxShadow: '0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent)',
@@ -151,7 +146,7 @@ export default function NotificationsBell({ triggerClassName }) {
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
-          <div className="t-ui" style={{ flex: 1 }}>{t('notif.title')}</div>
+          <div className="t-ui grow">{t('notif.title')}</div>
           {unread > 0 && (
             <button className="bell-dd__mark" onClick={() => markAllRead.mutate()}>
               {t('notif.mark_all_read')}
@@ -172,7 +167,7 @@ export default function NotificationsBell({ triggerClassName }) {
                 key={n.id}
                 n={n}
                 t={t}
-                dateLocale={dateLocale}
+                fmtRelative={fmtRelative}
                 pending={respondInvite.isPending}
                 onRespond={(action) => {
                   if (!n.read) markOneRead.mutate(n.id);
@@ -195,7 +190,7 @@ export default function NotificationsBell({ triggerClassName }) {
   );
 }
 
-function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip }) {
+function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTrip }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
   const { data: member } = useQuery({
     queryKey: ['trip-member', n.trip_member_id],
@@ -207,7 +202,7 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
     enabled: !!isInvite,
   });
 
-  const time = n.created_at ? formatDistanceToNowStrict(new Date(n.created_at), { addSuffix: true, locale: dateLocale }) : '';
+  const time = fmtRelative(n.created_at);
   const renderParams = (params = {}) => {
     const resolved = { ...params };
     if (resolved.role_key) { resolved.role = t(resolved.role_key); delete resolved.role_key; }
@@ -239,8 +234,8 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
 
         {showPending && (
           <div className="brow__acts">
-            <Btn variant="primary" size="sm" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="ghost" size="sm" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+            <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+            <Btn variant="ghost" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </div>
         )}
         {isInvite && member?.status === 'active' && (

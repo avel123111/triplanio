@@ -93,7 +93,7 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
       <div className="addon-card__desc">{t(feat.descKey)}</div>
       {proLocked && !feat.locked && (
         <div className="addon-card__foot">
-          <Btn variant="soft" size="sm" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
+          <Btn variant="soft" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
         </div>
       )}
     </div>
@@ -175,8 +175,8 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
       </div>
 
       {stage === 'generating' && (
-        <div style={{ padding: '22px 18px', textAlign: 'center', background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12 }}>
-          <div style={{ width: 44, height: 44, margin: '0 auto 12px', borderRadius: 12, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
+        <div style={{ padding: '22px 18px', textAlign: 'center', background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
+          <div style={{ width: 44, height: 44, margin: '0 auto 12px', borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
             <Icon name="telegram" size={20} />
           </div>
           <div className="t-ui" style={{ marginBottom: 6 }}>
@@ -188,18 +188,18 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
       )}
 
       {stage === 'error' && (
-        <div className="t-body" style={{ padding: 14, background: 'var(--danger-soft)', borderRadius: 12 }}>
+        <div className="t-body" style={{ padding: 14, background: 'var(--danger-soft)', borderRadius: 'var(--r-sm)' }}>
           {errText}
         </div>
       )}
 
       {stage === 'idle' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="telegram" size={17} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="grow">
               <div className="t-ui">{t('telegram.not_connected_title')}</div>
               <div className="muted t-meta">{t('settings.tg_for_trip')}</div>
             </div>
@@ -229,11 +229,11 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
       {stage === 'connecting' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: tgBrand.bgSoft, border: `1px solid ${tgBrand.border}`, borderRadius: 12, marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: tgBrand.bgSoft, border: `1px solid ${tgBrand.border}`, borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="telegram" size={17} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="grow">
               <div className="t-ui">{t('settings.tg_waiting')}</div>
               <div className="muted t-meta">
                 <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
@@ -242,20 +242,20 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             </div>
           </div>
 
-          <div className="t-meta" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 14 }}>
+          <div className="t-meta" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 10 }}>
-              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
+              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 'var(--r-pill)', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
+              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 'var(--r-pill)', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
               <div>{t('settings.tg_step2')}</div>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
-            <div style={{ flex: 1 }} />
+            <div className="grow" />
             <Btn variant="primary" icon="check" onClick={checkNow}>{t('settings.tg_pressed_start')}</Btn>
           </div>
         </>
@@ -263,11 +263,11 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
       {stage === 'connected' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--success-soft)', border: '1px solid color-mix(in oklab, var(--success) 25%, transparent)', borderRadius: 12, marginBottom: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'color-mix(in oklab, var(--success) 22%, transparent)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--success-soft)', border: '1px solid color-mix(in oklab, var(--success) 25%, transparent)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'color-mix(in oklab, var(--success) 22%, transparent)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="check" size={17} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="grow">
               <div className="t-ui">{t('settings.tg_linked')}</div>
               <div className="muted t-meta">{t('settings.tg_just_now')}</div>
             </div>
@@ -340,8 +340,8 @@ function TelegramSection({ tripId }) {
 
   if (accounts.length === 0) {
     return (
-      <div style={{ padding: 20, background: 'var(--wash)', borderRadius: 12, textAlign: 'center' }}>
-        <div style={{ width: 48, height: 48, margin: '0 auto 10px', borderRadius: 12, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
+      <div style={{ padding: 20, background: 'var(--wash)', borderRadius: 'var(--r-sm)', textAlign: 'center' }}>
+        <div style={{ width: 48, height: 48, margin: '0 auto 10px', borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
           <Icon name="telegram" size={22} />
         </div>
         <div className="t-ui" style={{ marginBottom: 4 }}>{t('telegram.not_connected_title')}</div>
@@ -359,8 +359,8 @@ function TelegramSection({ tripId }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {accounts.map(a => (
-        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="telegram" size={17} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -368,7 +368,7 @@ function TelegramSection({ tripId }) {
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </div>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
-          <Btn variant="quiet" size="sm" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
+          <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
         </div>
       ))}
       <Btn variant="ghost" icon="plus" onClick={openConnect}>
@@ -399,7 +399,7 @@ function ApproverRow({ member, profile, locked }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <Avatar name={name} photo={profile?.avatar_url || ''} deleted={isDeleted} size="sm" />
-      <div style={{ flex: 1 }}>
+      <div className="grow">
         <div className="t-ui">{name}</div>
         <div className="muted t-meta">{roleLabel}</div>
       </div>
@@ -564,8 +564,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // Cover replaced/cleared → the previously persisted object is now orphaned.
     // Delete it best-effort, comparing object KEYS (signed-URL tokens differ but
     // the key is stable) so we never delete the key the new cover still uses (TRIP-117).
-    const prevPath = collectDocPaths([], prevCoverUrl)[0];
-    const newPath = collectDocPaths([], fields.cover_image_url)[0];
+    const prevPath = collectDocPaths([{ file_url: prevCoverUrl }])[0];
+    const newPath = collectDocPaths([{ file_url: fields.cover_image_url }])[0];
     if (prevPath && prevPath !== newPath) removeTripFiles([prevPath]);
     track('settings_saved', {
       trip_id: tripId,
@@ -795,7 +795,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
             </div>
             {isOwner ? (
-              <Btn variant="primary" size="sm" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+              <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
               <button className="lockmsg" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>
                 <Icon name="lock" size={14} />
@@ -805,7 +805,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           </div>
         )}
         <div className="card-h">
-          <div style={{ flex: 1 }}><h3>{t('settings.optional_features')}</h3></div>
+          <div className="grow"><h3>{t('settings.optional_features')}</h3></div>
         </div>
         <div className="addon-grid">
           {FEATURES
@@ -835,9 +835,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 <Toggle on={chatWidget} busy={busyToggle === 'chat_widget'} onChange={toggleChatWidget} />
               </div>
 
-              <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{
-                  position: 'relative', width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                  position: 'relative', width: 44, height: 44, borderRadius: 'var(--r-btn)', flexShrink: 0,
                   background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)',
                   color: 'white', display: 'grid', placeItems: 'center',
                   opacity: chatWidget ? 1 : 0.35, transition: 'opacity .15s ease',
@@ -855,7 +855,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
           {/* Warnings / display - extensible bag of trip-level display toggles. */}
           <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 'var(--r-sm)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="t-label">{t('settings.warn_bookings_title')}</div>   {/* TRIP-175 инсп.: UI→Label */}
                 <div className="muted t-meta">{t('settings.warn_bookings_desc')}</div>
@@ -897,7 +897,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           participant, including a viewer. Pro status + Pro-only addons and
           documents are stripped from the copy server-side. */}
       <Card title={t('settings.copy_trip_title')} subtitle={t('settings.copy_trip_desc')}>
-        <Btn variant="soft" icon="copy" loading={copying} onClick={() => startCopy(tripId)}>
+        <Btn variant="soft" icon="copy" loading={copying} onClick={() => void startCopy(tripId)}>
           {t('settings.copy_trip_btn')}
         </Btn>
       </Card>
@@ -907,7 +907,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {myRole !== 'owner' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-              <div style={{ flex: 1 }}>
+              <div className="grow">
                 <div className="t-ui">{t('settings.leave_trip')}</div>
                 <div className="muted t-meta">{t('settings.leave_desc')}</div>
               </div>
@@ -917,7 +917,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {myRole === 'owner' && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="t-ui">{t('settings.leave_trip')}</div>
                   <div className="muted t-meta">{t('settings.leave_owner_blocked')}</div>
                 </div>
@@ -925,7 +925,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="t-ui">{t('settings.delete_trip')}</div>
                   <div className="muted t-meta">{t('settings.delete_desc')}</div>
                 </div>

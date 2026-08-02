@@ -16,7 +16,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Moon, ShieldCheck,
@@ -39,15 +39,26 @@ function Input({ className = '', ...p }) {
 function Textarea({ className = '', ...p }) {
   return <textarea className={`textarea ${className}`} {...p} />;
 }
-function Checkbox({ checked, onCheckedChange, className = '' }) {
+
+// A boolean row: switch + title/hint, optionally revealing a dependent field.
+// Both booleans in this dialog (hotel "free cancellation", car-rental "return
+// elsewhere") are this exact shape, so they share one shell and stay identical.
+// The title/hint toggle on click — `.eed-fclabel` has always advertised
+// `cursor: pointer`, and the car-rental row was a real <label> before. `children`
+// sits OUTSIDE that hit area so a nested input never flips the switch.
+function SwitchRow({ on, onChange, title, hint, children }) {
+  const flip = () => onChange(!on);
   return (
-    <input
-      type="checkbox"
-      checked={!!checked}
-      onChange={(e) => onCheckedChange?.(e.target.checked)}
-      className={className}
-      style={{ width: 16, height: 16, accentColor: 'var(--brand)', cursor: 'pointer', flexShrink: 0 }}
-    />
+    <div className="eed-fcbox">
+      <div className="eed-fclabel">
+        <Toggle on={on} onChange={onChange} label={title} />
+        <div className="eed-fcbody">
+          <div className="eed-fctitle" onClick={flip}>{title}</div>
+          {hint && <div className="eed-fchint" onClick={flip}>{hint}</div>}
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -97,11 +108,12 @@ import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
-import { validateEntity, transferAiCityAdvisories } from '@/lib/validation';
-import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
-import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
+import { validateEntity, transferAiCityAdvisories, issuesToShow } from '@/lib/validation';
+import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldStateClass } from '@/components/common/ValidationUI';
+import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
+import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
+import { aiField } from '@/lib/ai-values';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
@@ -125,12 +137,15 @@ const isOvernightLocal = (startLocal, endLocal) => {
   return !!(sd && ed && ed > sd);
 };
 
-// Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
-// browser treats it as relative and prepends the current app path → /trip/.../booking.com).
-const withScheme = (u) => {
-  if (!u) return u;
-  const s = String(u).trim();
-  return /^https?:\/\//i.test(s) ? s : `https://${s}`;
+// Assigns an AI-parsed value onto the form draft and records the key, so the
+// field gets the violet "AI filled" tint. `aiField` (lib/ai-values.js) is the
+// one gate for "did the model actually give us this?" — every merge path below
+// goes through it, keyed by the form field name.
+const makeAiSetter = (upd, filled) => (k, v) => {
+  const clean = aiField(k, v);
+  if (clean == null) return;
+  upd[k] = clean;
+  filled.add(k);
 };
 
 // Shared "Booking URL" field: input with a favicon overlay (derived from the
@@ -147,6 +162,8 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
         <div className="eed-inwrap">
           {logo && <img src={logo} alt="" className="eed-inlogo" />}
           <Input
+            type="url"
+            inputMode="url"
             value={value}
             onChange={onChange}
             placeholder="https://..."
@@ -160,7 +177,7 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
             {logo && <img src={logo} alt="" className="eed-bkpill__logo" />}
             {label}
           </span>
-          <a href={withScheme(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
+          <a href={normalizeExternalUrl(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
             <ExternalLink size={12} />{t('common.open')}
           </a>
         </div>
@@ -558,6 +575,13 @@ export default function EventEditDialog({
     ? SERVICE_META[form.service_kind]
     : baseMeta;
   const [aiFields, setAiFields] = useState(new Set());
+  // Whole-form snapshot taken right before a parse merges its result in, so
+  // "Reset" can undo the parse. A per-key walk over `aiFields` would not be
+  // enough: the merge also writes keys it never records there (geocoded
+  // lat/lng, `hasLayovers`, the rebuilt `segments` array), which would survive
+  // the reset and leave a map pin or a leg chain from a booking that is no
+  // longer on screen.
+  const preAiForm = useRef(null);
   // Six-state AI flow per the prototype: locked / available / idle /
   // uploaded / parsing / parsed. Starts as 'checking' (non-interactive) until
   // checkSubscriptionStatus resolves — then Pro → 'available', non-Pro → 'locked'.
@@ -604,7 +628,7 @@ export default function EventEditDialog({
     const k = initialKind || 'hotel';
     setCurrentKind(k);
     setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind }));
-    setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]);
+    setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]); preAiForm.current = null;
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
     setAiState('checking'); // re-gate the parser on every open until Pro is re-checked
@@ -655,7 +679,10 @@ export default function EventEditDialog({
     if (isEdit) return;
     setCurrentKind(k);
     setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
-    setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]);
+    // Drop the snapshot too: switching kind rebuilds the form but leaves aiState
+    // at 'parsed', so the block still offers "Reset" — without this it would
+    // restore a hotel-shaped snapshot into a transfer form.
+    setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]); preAiForm.current = null;
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
   };
@@ -743,16 +770,22 @@ export default function EventEditDialog({
     [uploading, anyTimeMissing, hasBlockingError],
   );
 
-  // Reveal policy (display only — blocking stays with canSave/ORDER):
-  //  • EDIT of an existing entity → surface its issues the moment the form opens;
-  //    the problem is already real, so it must be visible without touching a field
-  //    (matches the read view, which always shows it).
-  //  • fresh CREATE → stay quiet until the user touches a field or attempts to
-  //    save, so an untouched new form doesn't nag.
-  const revealAll = isEdit || submitted;
+  // Reveal policy (display only — blocking stays with canSave/ORDER); the rule
+  // itself lives in `issuesToShow` (validation.js), where it is testable. A
+  // parse fills the form without touching any field, so without `aiParsed` a
+  // parsed create form would show none of its issues (TRIP-277).
+  const aiParsed = aiState === 'parsed';
   const displayIssues = useMemo(
-    () => issues.filter((i) => revealAll || (i.field && touched.has(i.field))),
-    [issues, revealAll, touched],
+    () => issuesToShow(issues, { isEdit, submitted, aiParsed, touched }),
+    [issues, isEdit, submitted, aiParsed, touched],
+  );
+  // The summary panel is the same policy with nothing touched: everything once
+  // revealed, silence before that. Going through the same helper rather than
+  // re-testing the condition here is deliberate — holding the predicate in two
+  // places is exactly how the AI-parse case got lost from one of them.
+  const panelIssues = useMemo(
+    () => issuesToShow(issues, { isEdit, submitted, aiParsed }),
+    [issues, isEdit, submitted, aiParsed],
   );
   // Build the DB payload for the current single entity (mirrors saveMut's branches).
   const buildCurrentPayload = () => {
@@ -804,6 +837,8 @@ export default function EventEditDialog({
       try {
         await writeRows(supabase.from(table).insert({ ...payload, created_by: user?.id }));
         invalidateTripData(qc, tripId);
+        // Same commit point as saveMut below (see removeOrphanedFiles).
+        removeOrphanedFiles(seenDocPaths.current, form.documents);
       } catch (err) {
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
         invalidateTripData(qc, tripId);
@@ -839,11 +874,13 @@ export default function EventEditDialog({
       return upsert('trip_services', entity, payload, user);
     },
     onSuccess: () => {
-      // Files detached during this edit (present originally, gone from the saved
-      // form) are now orphaned — sweep them best-effort (TRIP-117).
+      // Commit point: every file staged this session that the saved form no
+      // longer references is orphaned — sweep best-effort (TRIP-117). Anchored
+      // on `seenDocPaths`, not `originalDocPaths`, so a file uploaded THIS
+      // session and then detached (AI reset, or by hand) is swept too; the
+      // unmount sweep skips a successful save by design (TRIP-277).
       committedRef.current = true;
-      const finalPaths = new Set(collectDocPaths(form.documents));
-      removeTripFiles(originalDocPaths.current.filter((p) => !finalPaths.has(p)));
+      removeOrphanedFiles(seenDocPaths.current, form.documents);
       if (tripId) invalidateTripData(qc, tripId);
       onOpenChange(false);
     },
@@ -884,11 +921,10 @@ export default function EventEditDialog({
 
   // ── AI extract handlers ────────────────────────────────────────────────
   const handleHotelExtract = async (data, fileUrl, fileName) => {
+    preAiForm.current = form;
     const filled = new Set();
     const upd = { ...form };
-    // Drop literal "N/A" the LLM emits for absent fields (it otherwise lands as
-    // garbage text in booking_reference/phone/email…). TRIP-75.
-    const setIf = (k, v) => { if (v != null && v !== '' && v !== 'N/A') { upd[k] = v; filled.add(k); } };
+    const setIf = makeAiSetter(upd, filled);
     setIf('name', data.name);
     setIf('address', data.address);
     setIf('booking_reference', data.booking_reference);
@@ -923,10 +959,10 @@ export default function EventEditDialog({
     if (ci) { upd.checkInLocal = ci; filled.add('checkInLocal'); }
     const co = combine(data.check_out_date, data.check_out_time);
     if (co) { upd.checkOutLocal = co; filled.add('checkOutLocal'); }
-    if (data.free_cancellation_until && data.free_cancellation_until !== 'N/A') {
-      upd.free_cancellation_until_local = data.free_cancellation_until.replace(' ', 'T').slice(0, 16);
-      filled.add('free_cancellation_until_local');
-    }
+    // Typed as `datetime` in ai-values.js: the reshape below hands the
+    // datetime-local input whatever the model sent, and that input silently
+    // blanks itself on anything malformed.
+    setIf('free_cancellation_until_local', data.free_cancellation_until?.replace(' ', 'T').slice(0, 16));
     if (Array.isArray(data.documents) && data.documents.length > 0) {
       upd.documents = [...(upd.documents || []), ...data.documents].slice(0, 50);
       filled.add('documents');
@@ -947,6 +983,7 @@ export default function EventEditDialog({
   };
 
   const handleTransferExtract = async (data, fileUrl, fileName) => {
+    preAiForm.current = form;
     // New parser shape: data.transfers[] (legs) + data.waypoints[] (intermediate
     // layover cities, each with a date). Fall back to the legacy data.segments[].
     const segs = Array.isArray(data.transfers) && data.transfers.length > 0
@@ -972,18 +1009,19 @@ export default function EventEditDialog({
 
     // ── Multi-leg booking (create mode) → layover form (waypoint chain) ──
     if (segs.length > 1 && !isEdit) {
+      // Same `aiField` gate as the flat paths, keyed by the same form field
+      // names — so `price` / `currency` are shape-checked here too.
       const formSegs = segs.map((s) => ({
-        ...makeSegment(s.currency || data.currency || 'EUR'),
+        ...makeSegment(aiField('currency', s.currency) || aiField('currency', data.currency) || 'EUR'),
         transport_type: normType(s.transport_type),
-        from_address: s.from_address || '',
-        to_address: s.to_address || '',
+        from_address: aiField('from_address', s.from_address) || '',
+        to_address: aiField('to_address', s.to_address) || '',
         startLocal: s.departure_date ? combine(s.departure_date, s.departure_time) : '',
         endLocal: s.arrival_date ? combine(s.arrival_date, s.arrival_time) : '',
-        carrier: s.carrier || '',
-        flight_number: s.flight_number || '',
-        booking_reference: s.booking_reference || '',
-        price: typeof s.price === 'number' ? String(s.price) : (s.price || ''),
-        currency: s.currency || data.currency || 'EUR',
+        carrier: aiField('carrier', s.carrier) || '',
+        flight_number: aiField('flight_number', s.flight_number) || '',
+        booking_reference: aiField('booking_reference', s.booking_reference) || '',
+        price: aiField('price', s.price) || '',
         toCity: null,
       }));
       // Resolve the intermediate layover cities (to_city of all but the last leg)
@@ -1054,14 +1092,15 @@ export default function EventEditDialog({
         if (s.toCity) segAi.add(`${s.id}.toCity`);
       });
 
+      const bookingUrl = aiField('booking_url', data.booking_url);
       const topFilled = new Set();
-      if (data.booking_url) topFilled.add('booking_url');
+      if (bookingUrl) topFilled.add('booking_url');
 
       setForm((prev) => ({
         ...prev,
         hasLayovers: true,
         segments: formSegs,
-        booking_url: data.booking_url || prev.booking_url,
+        booking_url: bookingUrl || prev.booking_url,
         documents: docs.length ? [...(prev.documents || []), ...docs].slice(0, 50) : prev.documents,
       }));
       setAiFields(topFilled);
@@ -1073,7 +1112,7 @@ export default function EventEditDialog({
     // ── Single leg - flat-form fill (unchanged behavior) ──
     const filled = new Set();
     const upd = { ...form, hasLayovers: false, segments: [] };
-    const setIf = (k, v) => { if (v != null && v !== '') { upd[k] = v; filled.add(k); } };
+    const setIf = makeAiSetter(upd, filled);
     const first = segs[0] || {};
     setIf('booking_url', data.booking_url);
     setIf('carrier', first.carrier);
@@ -1172,7 +1211,19 @@ export default function EventEditDialog({
                 onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
                 onUpgrade={openUpgrade}
                 parsedFieldCount={aiFields.size + aiSegFields.size}
-                onReset={() => { setAiFields(new Set()); setAiSegFields(new Set()); setAiAdvisories([]); }}
+                onReset={() => {
+                  // Undo the parse itself, not just its highlight. Restoring the
+                  // pre-parse snapshot empties the form in create mode (nothing
+                  // was there before) and puts the saved values back in edit mode,
+                  // instead of blanking data the parse merely overwrote.
+                  // Documents parsed in are unlinked here too; the uploaded files
+                  // themselves stay in Storage - removing them is a separate call.
+                  if (preAiForm.current) setForm(preAiForm.current);
+                  preAiForm.current = null;
+                  setAiFields(new Set());
+                  setAiSegFields(new Set());
+                  setAiAdvisories([]);
+                }}
               />
             )}
 
@@ -1246,8 +1297,8 @@ export default function EventEditDialog({
                 />
               )}
 
-              {/* Summary panel: shown per `revealAll` (edit-open or save attempt). Click row -> field. */}
-              <IssuesPanel issues={[...(revealAll ? issues : []), ...aiAdvisories]} style={{ marginTop: 12 }} />
+              {/* Summary panel: revealed on edit-open, save attempt or AI parse. Click row -> field. */}
+              <IssuesPanel issues={[...panelIssues, ...aiAdvisories]} style={{ marginTop: 12 }} />
             </fieldset>
           </div>
           )}
@@ -1350,7 +1401,7 @@ function buildHotelPayload(form, visit, tz) {
       : null,
     phone: form.phone || undefined,
     email: form.email || undefined,
-    booking_url: form.booking_url || null,
+    booking_url: normalizeExternalUrl(form.booking_url),
     documents: Array.isArray(form.documents) ? form.documents : [],
     notes: form.notes,
     details: {},
@@ -1375,7 +1426,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     to_latitude: form.to_latitude ?? null,
     to_longitude: form.to_longitude ?? null,
     booking_reference: form.booking_reference || undefined,
-    booking_url: form.booking_url || null,
+    booking_url: normalizeExternalUrl(form.booking_url),
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
     documents: Array.isArray(form.documents) ? form.documents : [],
@@ -1430,7 +1481,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     to_latitude: s.to_latitude ?? null,
     to_longitude: s.to_longitude ?? null,
     booking_reference: s.booking_reference || null,
-    booking_url: form.booking_url || null,
+    booking_url: normalizeExternalUrl(form.booking_url),
     price: s.price === '' || s.price == null ? null : Number(s.price),
     currency: s.currency || 'EUR',
     documents: i === 0 && Array.isArray(form.documents) ? form.documents : [],
@@ -1528,7 +1579,7 @@ function buildServicePayload(form, tripId, t) {
       dropoff_longitude: dropoffLng ?? undefined,
       dropoff_timezone: dropoffTz || undefined,
       booking_reference: form.booking_reference || undefined,
-      booking_url: form.booking_url || null,
+      booking_url: normalizeExternalUrl(form.booking_url),
         documents: Array.isArray(form.documents) ? form.documents : [],
       price: undefined,
       currency: undefined,
@@ -1556,7 +1607,7 @@ function SectionHeader({ children }) {
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.hotel.color;
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   // Filled-field counts drive the accordion badges (how many booking details /
   // documents are set without expanding the group).
   const bookingFilled = [form.booking_url, form.booking_reference, form.phone, form.email].filter(Boolean).length;
@@ -1594,8 +1645,8 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
         return (
           <DateRangeBlock
             label={t('event.stay_dates')} accent={color} issues={issues}
-            startLabel={t('event.checkin_req')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz}
-            endLabel={t('event.checkout_req')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz}
+            startLabel={t('event.checkin_req')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz} startAi={aiFields.has('checkInLocal')}
+            endLabel={t('event.checkout_req')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz} endAi={aiFields.has('checkOutLocal')}
             midText={n > 0 ? t('fork.stay22_nights', { count: n }) : null}
           />
         );
@@ -1629,27 +1680,25 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
         </AiField>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
-        <div className="eed-fcbox">
-          <div className="eed-fclabel">
-            <Toggle on={!!form.free_cancellation} onChange={(v) => setField('free_cancellation', !!v)} label={t('event.free_cancel_have')} />
-            <div className="eed-fcbody">
-              <div className="eed-fctitle">{t('event.free_cancel_have')}</div>
-              <div className="eed-fchint">{t('event.free_cancel_hint')}</div>
-              {form.free_cancellation && (
-                <div className="eed-fcdate">
-                  <AiField active={aiFields.has('free_cancellation_until_local')}>
-                    <DateTimeInput
-                      value={form.free_cancellation_until_local}
-                      onChange={(v) => setField('free_cancellation_until_local', v)}
-                      onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
-                    />
-                  </AiField>
-                  <TimezoneHint tz={tz} />
-                </div>
-              )}
+        <SwitchRow
+          on={!!form.free_cancellation}
+          onChange={(v) => setField('free_cancellation', !!v)}
+          title={t('event.free_cancel_have')}
+          hint={t('event.free_cancel_hint')}
+        >
+          {form.free_cancellation && (
+            <div className="eed-fcdate">
+              <AiField active={aiFields.has('free_cancellation_until_local')}>
+                <DateTimeInput
+                  value={form.free_cancellation_until_local}
+                  onChange={(v) => setField('free_cancellation_until_local', v)}
+                  onTimeMissingChange={(v) => setTime('freeCancel', !!form.free_cancellation && v)}
+                />
+              </AiField>
+              <TimezoneHint tz={tz} />
             </div>
-          </div>
-        </div>
+          )}
+        </SwitchRow>
       </AiField>
 
       <Accordion title={t('event.booking_details')} subtitle={t('event.booking_details_hint')} badge={bookingFilled}>
@@ -1774,7 +1823,7 @@ function TransferLegCard({
   fromName, toName, toCityEditable, layoverCityPh,
   startTz, endTz, issues, color, t,
 }) {
-  const invF = (name) => (fieldHasError(issues, vf(name)) ? 'tv-invalid' : '');
+  const invF = (name) => fieldStateClass(issues, vf(name));
   const tk = TRANSPORT_OF(leg.transport_type);
   const TIcon = tk.Icon;
   // Within-leg duration (departure → arrival) for the date-block hint —
@@ -1784,12 +1833,12 @@ function TransferLegCard({
   return (
     // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
     // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    <div style={isMulti ? { border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
+    <div style={isMulti ? { border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
           style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
+          <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
             <TIcon size={16} />
           </span>
           <span style={{ minWidth: 0, flex: 1 }}>
@@ -1804,7 +1853,7 @@ function TransferLegCard({
           {collapsible && <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />}
         </button>
         {onRemove && (
-          <button type="button" className="btn btn--quiet btn--sm" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
+          <button type="button" className="btn btn--quiet" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
             <Trash2 size={14} />
           </button>
         )}
@@ -1869,8 +1918,8 @@ function TransferLegCard({
         <DateRangeBlock
           style={{ marginTop: 14 }}
           label={t('event.dep_arr')} accent={color} issues={issues}
-          startLabel={t('event.departure_req')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz}
-          endLabel={t('event.arrival_req')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz}
+          startLabel={t('event.departure_req')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz} startAi={aiHas('startLocal')}
+          endLabel={t('event.arrival_req')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz} endAi={aiHas('endLocal')}
           midText={durMin != null ? fmtDur(durMin, t) : null}
         />
         {/* Overnight — DERIVED from the dates, not a user toggle. day_change is a pure
@@ -1984,23 +2033,33 @@ const fmtDur = (m, t) => {
 // activity so the layout stays identical across all three forms.
 function DateRangeBlock({
   label, accent, midText, issues, style,
-  startLabel, startValue, onStart, onStartMissing, startVField, startTz,
-  endLabel, endValue, onEnd, onEndMissing, endVField, endTz,
+  startLabel, startValue, onStart, onStartMissing, startVField, startTz, startAi,
+  endLabel, endValue, onEnd, onEndMissing, endVField, endTz, endAi,
 }) {
-  const invalid = (startVField && fieldHasError(issues, startVField))
-    || (endVField && fieldHasError(issues, endVField));
+  const eitherEnd = (test) => (startVField && test(issues, startVField))
+    || (endVField && test(issues, endVField));
+  const invalid = eitherEnd(fieldHasError);
+  // Day-tolerance warnings (TR_DEP_DAY / TR_ARR_DAY) land on these two fields;
+  // a hard error on either end outranks them, so only one tint shows at a time.
+  const warn = !invalid && eitherEnd(fieldHasWarning);
   return (
-    <div className="eed-dateblock" style={style}>
+    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`} style={style}>
+      {/* The badge marks the pair, the tint marks the end: <AiField> can't be
+          used here because it would tint BOTH cells when only one came from the
+          parse, and its badge would be clipped by `.stay-dates` (overflow:hidden
+          for the rounded border). So the shared `.ai-filled` class stays on each
+          cell and the shared <AiBadge> pins to this block, which does not clip. */}
+      {(startAi || endAi) && <AiBadge />}
       <div className="eed-dateblock__lbl t-micro">{label}</div>
       <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
-        <div className="sd-cellwrap" data-vfield={startVField}>
+        <div className={`sd-cellwrap${startAi ? ' ai-filled' : ''}`} data-vfield={startVField}>
           <DateTimeInput variant="cell" cellLabel={startLabel} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
         </div>
         <div className="stay-dates__mid">
           <ArrowRight size={14} style={{ color: accent || 'var(--muted-2)' }} />
           {midText && <span className="t-meta">{midText}</span>}
         </div>
-        <div className="sd-cellwrap" data-vfield={endVField}>
+        <div className={`sd-cellwrap${endAi ? ' ai-filled' : ''}`} data-vfield={endVField}>
           <DateTimeInput variant="cell" cellLabel={endLabel} value={endValue} onChange={onEnd} onTimeMissingChange={onEndMissing} />
         </div>
       </div>
@@ -2027,6 +2086,10 @@ function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
   const date = s.date || e.date || '';
   const durMin = layoverMins(form.startLocal, form.endLocal);
   const invalid = fieldHasError(issues, 'start') || fieldHasError(issues, 'end');
+  // Same amber state as DateRangeBlock: both blocks are the start/end pair, so
+  // they must flag validation identically even though no activity warning
+  // targets these fields today.
+  const warn = !invalid && (fieldHasWarning(issues, 'start') || fieldHasWarning(issues, 'end'));
   const emit = (d, st, et) => {
     setField('startLocal', d && st ? `${d}T${st}` : '');
     setField('endLocal', d && et ? `${d}T${et}` : '');
@@ -2034,7 +2097,7 @@ function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
     setTime('end', !!d && !et);
   };
   return (
-    <div className="eed-dateblock">
+    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`}>
       <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
       <div data-vfield="start">
         <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
@@ -2072,7 +2135,7 @@ function SegTransportGrid({ value, onChange, color }) {
         const active = value === k.id; const Ic = k.Icon;
         return (
           <button key={k.id} type="button" className="t-meta" onClick={() => onChange(k.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer' }}>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
             <Ic size={16} />{t(k.labelKey)}
           </button>
         );
@@ -2116,14 +2179,16 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   });
   const removeSegment = (i) => setForm((prev) => (prev.segments.length <= 2 ? prev : { ...prev, segments: prev.segments.filter((_, idx) => idx !== i) }));
 
-  // Expandable cards (default expanded, like the design). A segment with an
-  // active error is always forced open so the inline message can't be hidden.
+  // Expandable cards, COLLAPSED by default (TRIP-230) — a chain opened fully
+  // expanded buries the route itself under stacked forms; a newly added segment
+  // is no exception. A segment with an active error is always forced open so
+  // the inline message can't be hidden.
   const [openMap, setOpenMap] = useState({});
   const segHasErr = (i) => (issues || []).some((it) => it.level === 'error' && typeof it.field === 'string' && it.field.startsWith(`seg${i}.`));
   const isOpen = (seg, i) => {
     if (segHasErr(i)) return true;
     if (openMap[seg.id] !== undefined) return openMap[seg.id];
-    return true;
+    return false;
   };
   const toggleOpen = (seg, i) => setOpenMap((m) => ({ ...m, [seg.id]: !isOpen(seg, i) }));
 
@@ -2166,7 +2231,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
             {!isLast && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
                 <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
-                <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color }}>
+                <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 'var(--r-pill)', whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color }}>
                   <Repeat size={12} style={{ flexShrink: 0 }} />
                   {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span>{layCity}</span>
                   {layDate && <span className="num" style={{ opacity: 0.7 }}>· {layDate}</span>}
@@ -2180,7 +2245,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
       })}
 
       <button type="button" className="t-meta" onClick={addSegment}
-        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 10, background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 'var(--r-sm)', background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
         {t('event.add_layover')}
       </button>
     </div>
@@ -2190,7 +2255,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
@@ -2249,7 +2314,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
 
 function EsimServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.esim')}</SectionHeader>
@@ -2289,7 +2354,7 @@ function EsimServiceFields({ form, setField, issues, onTouch, setUploading, trip
 
 function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
@@ -2354,7 +2419,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, onT
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.service.color;
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const inv = (f) => fieldStateClass(issues, f);
   return (
     <>
       <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
@@ -2399,17 +2464,12 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       </div>
 
       <SectionHeader color={color}>{t('event.return_section')}</SectionHeader>
-      <label className="ch-row">
-        <input
-          type="checkbox"
-          checked={!!form.return_different_location}
-          onChange={(e) => setField('return_different_location', e.target.checked)}
-        />
-        <div className="cr-b">
-          <b>{t('event.return_diff_place')}</b>
-          {!form.return_different_location && <span>{t('event.return_same_suffix')}</span>}
-        </div>
-      </label>
+      <SwitchRow
+        on={!!form.return_different_location}
+        onChange={(v) => setField('return_different_location', !!v)}
+        title={t('event.return_diff_place')}
+        hint={form.return_different_location ? null : t('event.return_same_suffix')}
+      />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {form.return_different_location && (
           <div>

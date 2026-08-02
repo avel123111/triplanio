@@ -28,7 +28,7 @@ export default function PanelAi({ ctx }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Title */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--ai-gradient)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <Icon name="sparkles" size={22} />
         </div>
         <div>
@@ -52,21 +52,21 @@ export default function PanelAi({ ctx }) {
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           {aiState === 'generating' ? (
-            <Btn variant="ai" size="sm" disabled>
+            <Btn variant="ai" disabled>
               {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
             </Btn>
           ) : aiState === 'draft' ? (
-            <Btn variant="ai" size="sm" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
+            <Btn variant="ai" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
           ) : (
-            <Btn variant="ai" size="sm" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
+            <Btn variant="ai" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
           )}
         </div>
       </div>
 
       {/* Assistant status reply */}
-      <div className="t-body" style={{ padding: 14, background: 'var(--ai-soft)', borderRadius: 12, color: 'var(--ink-2)' }}>
+      <div className="t-body" style={{ padding: 14, background: 'var(--ai-soft)', borderRadius: 'var(--r-sm)', color: 'var(--ink-2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="sparkles" size={11} /></span>
+          <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ai-gradient)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="sparkles" size={11} /></span>
           <b className="t-meta" style={{ color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</b>
           {aiState === 'generating' && <span className="ai-dots" style={{ color: 'var(--ai)', marginLeft: 'auto' }}><span /><span /><span /></span>}
         </div>
@@ -81,7 +81,7 @@ export default function PanelAi({ ctx }) {
               can be added right here or skipped (same add-start control as step 2). */}
           <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
           {cities.map((c, i) => (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
               <div className="t-meta" style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
@@ -98,7 +98,7 @@ export default function PanelAi({ ctx }) {
       {aiState === 'prompt' && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
-            <button key={p} onClick={() => setPrompt(p)} className="t-meta" style={{ padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999, cursor: 'pointer', color: 'var(--ink-2)' }}>{p}</button>
+            <button key={p} onClick={() => setPrompt(p)} className="t-meta" style={{ padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', cursor: 'pointer', color: 'var(--ink-2)' }}>{p}</button>
           ))}
         </div>
       )}

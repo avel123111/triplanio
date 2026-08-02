@@ -56,7 +56,7 @@ export function pointType(p, today = new Date()) {
 // trip + manual share the brand hue (manual reads "lighter" — a hollow marker /
 // lower-opacity fill); future is the rose accent (--ev-activity). Priority for a
 // place with mixed visit types stays trip > manual > future (TONE_RANK below).
-export const TONE = { trip: 'hsl(var(--primary))', manual: 'hsl(var(--primary))', future: 'var(--ev-activity)' };
+export const TONE = { trip: 'var(--brand)', manual: 'var(--brand)', future: 'var(--ev-activity)' };
 // "Most real" wins (trip > manual > future) so a city visited on a trip never
 // looks merely "planned" when several visit types share a pin/place.
 export const TONE_RANK = { trip: 0, manual: 1, future: 2 };
@@ -111,6 +111,40 @@ export function countTrips(points = []) {
   const s = new Set();
   for (const p of points) { if (p?.kind === 'trip' && p.trip_id) s.add(p.trip_id); }
   return s.size;
+}
+
+// ─── transfers (TRIP-270) ────────────────────────────────────────────────────
+// Transfer rows arrive from the same RPC as { transport_type, start_date }. The
+// date field is named start_date so pointYear/filterByYear/availableYears apply
+// to transfers verbatim — the year filter needs no transfer-specific code.
+//
+// A flight is transport_type 'plane'; a ground transfer is EVERYTHING else
+// (train/bus/car/taxi/ferry/walk/own_transport/other — the DB CHECK on
+// transfers.transport_type, mirrored in src/lib/transport.js). Counting ground
+// as "the rest" rather than an allow-list is deliberate: it keeps
+// flights + ground === the transfer total on the home stat-bar, so a transfer
+// can never go missing between the two screens — including a future transport
+// type nobody remembered to add here.
+//
+// The predicate is STRICT equality, matching every other consumer in the app:
+// isFlightTransport() in routing.js, TripView (`transport_type || 'car'`, so a
+// missing type is a ground transfer), EventViewBody and EventSourcePanel
+// (`=== 'plane' ? tl_flight : tl_transfer`). transferKind()'s fallback-to-plane
+// in transport.js picks an ICON for an unknown value — it is not the
+// flight/transfer classification, and using it here would make the tile
+// disagree with the label the same row carries on the timeline.
+// Neither routing.js nor transport.js is imported: they pull @/lib/mapbox and
+// lucide-react respectively, and this module stays import-light so `node --test`
+// can run it (same rule as trip-cities.js).
+const FLIGHT_TYPE = 'plane';
+
+/** Flights (transport_type exactly 'plane') among transfer rows. */
+export function countFlights(transfers = []) {
+  return transfers.filter((tr) => tr?.transport_type === FLIGHT_TYPE).length;
+}
+/** Ground transfers = every transfer that is not a flight. */
+export function countGround(transfers = []) {
+  return transfers.length - countFlights(transfers);
 }
 
 /** { visited, total, pct } against the 195 denominator. */
@@ -231,13 +265,18 @@ export function homeStats(points = [], transfersTotal = 0) {
     world: worldExplored(points),
   };
 }
-/** "My statistics" screen bundle for the active year selection. */
-export function statisticsBundle(points = [], trips = {}) {
+/**
+ * "My statistics" screen bundle for the active year selection.
+ * `points` and `transfers` must BOTH already be year-filtered by the caller.
+ */
+export function statisticsBundle(points = [], trips = {}, transfers = []) {
   return {
     countries: countCountries(points),
     cities: countCities(points),
     continents: countContinents(points),
     trips: countTrips(points),
+    flights: countFlights(transfers),
+    ground: countGround(transfers),
     world: worldExplored(points),
     continentsBreakdown: continentsBreakdown(points),
     countriesList: countriesList(points),

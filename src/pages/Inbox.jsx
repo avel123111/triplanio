@@ -5,10 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
-import { formatDistanceToNowStrict } from 'date-fns';
-import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton, EmptyState } from '../design/index';
 import AppHeader from '@/components/AppHeader';
@@ -17,8 +15,6 @@ import { useQueryGate } from '@/lib/useQueryGate';
 import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
 import '../design/app.css';
-
-const DATE_LOCALES = { ru, es, en: enUS };
 
 function dateGroup(iso) {
   if (!iso) return 'earlier';
@@ -39,8 +35,7 @@ export default function Inbox() {
   const nav = useNavigate();
   const { user } = useAuth();
   const t = useT();
-  const { lang } = useI18n();
-  const dateLocale = DATE_LOCALES[lang] || enUS;
+  const { fmtRelative } = useI18nFormat();
   const qc = useQueryClient();
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -165,7 +160,7 @@ export default function Inbox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>{t('notif.inbox_title')}</h1>
           {notifications.length > 0 && unreadCount > 0 && (
-            <Btn variant="ghost" size="sm" onClick={() => markAllRead.mutate()}>{t('notif.mark_all_read')}</Btn>
+            <Btn variant="ghost" onClick={() => markAllRead.mutate()}>{t('notif.mark_all_read')}</Btn>
           )}
         </div>
 
@@ -181,7 +176,7 @@ export default function Inbox() {
 
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} w="100%" h={64} r={12} />)}
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} w="100%" h={64} r={'var(--r-sm)'} />)}
           </div>
         ) : notifications.length === 0 ? (
           <InboxEmpty onCollection={() => nav('/trips')} />
@@ -197,7 +192,7 @@ export default function Inbox() {
                     key={n.id}
                     n={n}
                     t={t}
-                    dateLocale={dateLocale}
+                    fmtRelative={fmtRelative}
                     pending={respondInvite.isPending}
                     onRespond={(action) => {
                       if (!n.read) markOneRead.mutate(n.id);
@@ -240,7 +235,7 @@ function InboxEmpty({ onCollection }) {
                 }}
               >
                 <span style={{
-                  width: 34, height: 34, borderRadius: 10, flex: 'none',
+                  width: 34, height: 34, borderRadius: 'var(--r-sm)', flex: 'none',
                   background: 'var(--brand-soft)', color: 'var(--brand)',
                   display: 'grid', placeItems: 'center',
                 }}>
@@ -260,7 +255,7 @@ function InboxEmpty({ onCollection }) {
   );
 }
 
-function InboxRow({ n, t, dateLocale, pending, onRespond, onMarkRead }) {
+function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
   const { data: member } = useQuery({
     queryKey: ['trip-member', n.trip_member_id],
@@ -272,7 +267,7 @@ function InboxRow({ n, t, dateLocale, pending, onRespond, onMarkRead }) {
     enabled: !!isInvite,
   });
 
-  const time = n.created_at ? formatDistanceToNowStrict(new Date(n.created_at), { addSuffix: true, locale: dateLocale }) : '';
+  const time = fmtRelative(n.created_at);
   const renderParams = (params = {}) => {
     const r = { ...params };
     if (r.role_key) { r.role = t(r.role_key); delete r.role_key; }
@@ -309,8 +304,8 @@ function InboxRow({ n, t, dateLocale, pending, onRespond, onMarkRead }) {
       <div className="nrow__acts">
         {showPending ? (
           <>
-            <Btn variant="primary" size="sm" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="ghost" size="sm" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+            <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+            <Btn variant="ghost" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </>
         ) : isInvite && member?.status === 'active' ? (
           <Badge variant="success" icon="check">{t('notif.accepted')}</Badge>

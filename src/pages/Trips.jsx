@@ -10,7 +10,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -77,26 +77,21 @@ function coverBg(trip) {
   return coverGradientCss(trip.cover_gradient);
 }
 
-// ─── Avatar stack — uses the same Avatar component as MembersLens/OverviewLens
-const AvatarStack = ({ members, maxShow = 3, white = false }) => {
+// ─── Avatar stack — the canonical <AvatarStack> from the design system. This
+// file used to carry its own copy (third implementation of the same element),
+// with its own `.av-stack` CSS twin of `.avatar-stack`.
+const TripAvatars = ({ members, maxShow = 3, white = false }) => {
   if (!members || members.length === 0) return null;
-  const shown    = members.slice(0, maxShow);
-  const overflow = members.length - maxShow;
   return (
-    <div className={`av-stack${white ? ' av-stack--white' : ''}`}>
-      {shown.map((m, i) => (
-        <Avatar
-          key={m.user_id ?? i}
-          name={displayName(m.email, m.full_name)}
-          photo={m.avatar_url || ''}
-          deleted={m.is_deleted}
-          size="sm"
-        />
-      ))}
-      {overflow > 0 && (
-        <Avatar name={`+${overflow}`} size="sm" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }} />
-      )}
-    </div>
+    <AvatarStack
+      max={maxShow}
+      className={white ? 'avatar-stack--white' : ''}
+      people={members.map((m) => ({
+        name: displayName(m.email, m.full_name),
+        photo: m.avatar_url || '',
+        deleted: m.is_deleted,
+      }))}
+    />
   );
 };
 
@@ -118,7 +113,7 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span className="t-mono" style={{ color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
+        <span className="t-mono muted-2">{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
@@ -143,7 +138,7 @@ function NoNextCard({ variant, onPlan, t }) {
         <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
       </div>
       {!isEmpty && (
-        <Btn variant="primary" size="sm" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
+        <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
       )}
     </div>
   );
@@ -235,7 +230,7 @@ const TripCard = ({ trip, onClick }) => {
             <span className="tc__glass">
               {roleLabel(t, trip.role)}
             </span>
-            <AvatarStack members={trip.members} maxShow={3} white />
+            <TripAvatars members={trip.members} maxShow={3} white />
           </div>
         )}
       </div>
@@ -278,7 +273,7 @@ const TripRow = ({ trip, onClick }) => {
         <span className="tr__date tab tr-hideS">{trip.days}</span>
         {trip.isShared && (
           <div className="tr-hideS">
-            <AvatarStack members={trip.members} maxShow={2} />
+            <TripAvatars members={trip.members} maxShow={2} />
           </div>
         )}
         {trip.isShared && (
@@ -342,27 +337,27 @@ function HomeSkeleton({ viewMode }) {
     <>
       <div className="head">
         <div className="head__row">
-          <Skeleton w={60} h={60} r={16} />
+          <Skeleton w={60} h={60} r={'var(--r-md)'} />
           <div className="grow">
-            <Skeleton w={220} h={32} r={8} style={{ marginBottom: 10 }} />
+            <Skeleton w={220} h={32} r={'var(--r-sm)'} style={{ marginBottom: 10 }} />
             <Skeleton w={260} h={15} r={6} />
           </div>
         </div>
       </div>
-      <Skeleton w="100%" h={86} r={20} />
+      <Skeleton w="100%" h={86} r={'var(--r-xl)'} />
       <div className="dash-hero" style={{ marginTop: 18 }}>
-        <Skeleton w="100%" h={340} r={24} />
+        <Skeleton w="100%" h={340} r={'var(--r-card)'} />
         <div className="rail">
-          <Skeleton w="100%" h={150} r={20} />
-          <Skeleton w="100%" h={120} r={20} />
+          <Skeleton w="100%" h={150} r={'var(--r-xl)'} />
+          <Skeleton w="100%" h={120} r={'var(--r-xl)'} />
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <Skeleton w={170} h={26} r={8} style={{ marginBottom: 8 }} />
+          <Skeleton w={170} h={26} r={'var(--r-sm)'} style={{ marginBottom: 8 }} />
           <Skeleton w={140} h={14} r={6} />
         </div>
-        <Skeleton w={150} h={44} r={12} />
+        <Skeleton w={150} h={44} r={'var(--r-sm)'} />
       </div>
       <TripSkeleton viewMode={viewMode} />
     </>
@@ -375,8 +370,8 @@ function TripSkeleton({ viewMode }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
-            <Skeleton w={62} h={46} r={12} />
-            <div style={{ flex: 1 }}>
+            <Skeleton w={62} h={46} r={'var(--r-sm)'} />
+            <div className="grow">
               <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
               <Skeleton w="32%" h={11} r={4} />
             </div>

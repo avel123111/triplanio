@@ -57,6 +57,30 @@ const COL_DEF_RE = new RegExp(`^"?([a-z_][a-z0-9_]*)"?\\s+${RAW_TEXT}`, 'i');
 // Lines that are never a user-column decl (DDL verbs, constraints, bodies).
 const SKIP_LINE = /^(?:--|check\b|constraint\b|create\b|comment\b|grant\b|revoke\b|insert\b|update\b|select\b|with\b|drop\b|\))/i;
 
+/**
+ * Lines inside a dollar-quoted body ($function$ … $function$). A plpgsql
+ * `declare v_title text;` is indistinguishable from a column definition to
+ * COL_DEF_RE, so recreating a function that has text locals used to fail this
+ * guard (hit in TRIP-230). A column can never be declared inside a function
+ * body, so the body is out of scope. Returns TRIMMED body lines, because that
+ * is all the diff scan below has — added lines carry no line numbers.
+ */
+function dollarQuotedLines(sql) {
+  const out = new Set();
+  let tag = null;
+  for (const line of sql.split('\n')) {
+    if (tag) {
+      out.add(line.trim());
+      if (line.includes(tag)) tag = null;
+      continue;
+    }
+    const open = line.match(/\$([a-z_]*)\$/i);
+    // Opening tag only if it is not closed again on the same line.
+    if (open && !line.slice(open.index + open[0].length).includes(open[0])) tag = open[0];
+  }
+  return out;
+}
+
 const errors = [];
 
 for (const file of changed) {
@@ -78,8 +102,10 @@ for (const file of changed) {
     .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
     .map((l) => l.slice(1).trim());
 
+  const bodyLines = dollarQuotedLines(full);
+
   for (const line of added) {
-    if (!line) continue;
+    if (!line || bodyLines.has(line)) continue;
     // ADD COLUMN can appear on an `alter table …` line, so check it first,
     // independent of the DDL-verb skip list.
     let m = line.match(ADD_COL_RE);

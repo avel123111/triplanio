@@ -51,8 +51,17 @@ export const SIGNED_URL_TTL = 315360000;
 
 /**
  * Prefix for cover images uploaded before a trip exists (create form / AI
- * wizard). Moved under `<tripId>/` once the trip is saved. Swept by age, never
- * by deleteTrip (a real trip prefix is always a UUID, never `_drafts`).
+ * wizard). Moved under `<tripId>/` once the trip is saved; deleteTrip never
+ * sweeps this prefix (a real trip prefix is always a UUID, never `_drafts`).
+ *
+ * Drafts are keyed `_drafts/<userId>/…` (see `draftStoragePath`): the RLS policy
+ * on the bucket lets a user touch only their OWN draft folder. Before TRIP-281
+ * the whole `_drafts/` namespace was shared, so any signed-in user could read or
+ * delete anyone else's pending cover.
+ *
+ * An abandoned draft is never collected — an earlier comment here promised an
+ * age-based sweep that was never written. The prefix is bounded by the bucket's
+ * format + size limits, not by a cleanup job.
  */
 export const DRAFT_PREFIX = '_drafts';
 
@@ -73,6 +82,18 @@ export function tripStoragePath(prefix, fileName) {
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}/${uid}-${safeStorageName(fileName)}`;
+}
+
+/**
+ * Storage key for a cover uploaded before its trip exists:
+ *   `_drafts/<userId>/<uid>-<safeName>`
+ *
+ * @param {string} userId - the uploader (auth.uid()); scopes the RLS policy
+ * @param {string} fileName - original filename (sanitised internally)
+ * @returns {string} storage object key
+ */
+export function draftStoragePath(userId, fileName) {
+  return tripStoragePath(`${DRAFT_PREFIX}/${userId}`, fileName);
 }
 
 /**

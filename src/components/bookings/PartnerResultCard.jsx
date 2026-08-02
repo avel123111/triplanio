@@ -79,7 +79,7 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
         {price}
         <span className="pcard__spacer" />
         <a
-          className="btn btn--primary btn--sm pcard__go"
+          className="btn btn--primary pcard__go"
           href={link}
           target="_blank"
           rel="noreferrer"

@@ -15,9 +15,10 @@ const PopoverContent = React.forwardRef(({ className, align = "center", sideOffs
       ref={ref}
       align={align}
       sideOffset={sideOffset}
-      // Floating dropdowns must sit ABOVE dialogs (.dlg-modal z-index 201) so the
-      // address/currency lists aren't clipped behind an open modal.
-      style={{ zIndex: 250, ...style }}
+      // Floating dropdowns must sit ABOVE dialogs (--z-popover is above the
+      // --z-modal floor .dlg-modal uses) so the address/currency lists aren't
+      // clipped behind an open modal.
+      style={{ zIndex: 'var(--z-popover)', ...style }}
       className={["pop", className].filter(Boolean).join(" ")}
       {...props} />
   </PopoverPrimitive.Portal>

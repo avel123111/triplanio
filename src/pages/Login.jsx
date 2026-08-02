@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { track } from '@/lib/analytics';
+import React, { useState, useEffect, useRef } from 'react';
+import { getSignupAttribution, rememberAttributionForRedirect, track } from '@/lib/analytics';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { Checkbox } from '@/design/index';
 import './login.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -167,6 +168,11 @@ export default function Login() {
   const [resendLeft, setResendLeft] = useState(0);       // seconds left on the resend cooldown
   const [resendFlow, setResendFlow] = useState('reset'); // which send to repeat: 'reset' | 'signup'
   const pwScore = scorePassword(password);
+  // Once per visit to the signup form. Retyping a password the client rejects
+  // must not multiply the first step of the funnel, and skipping those attempts
+  // altogether would hide the people the password rule turns away — the
+  // conversion rate would read better than it is. Cleared on every view change.
+  const signupStartedRef = useRef(false);
 
   // Password-strength labels (localized; index matches scorePassword 0..4).
   const STRENGTH_LABELS = [
@@ -193,11 +199,8 @@ export default function Login() {
   useEffect(() => {
     const r = document.documentElement;
     const prevTheme = r.getAttribute('data-theme');
-    const prevDark = r.classList.contains('dark');
-    r.classList.remove('dark');
     r.setAttribute('data-theme', 'light');
     return () => {
-      if (prevDark) r.classList.add('dark');
       if (prevTheme) r.setAttribute('data-theme', prevTheme);
     };
   }, []);
@@ -220,7 +223,7 @@ export default function Login() {
   }, []);
 
   // Reset error + pw visibility on view change
-  useEffect(() => { setError(null); setShowPw(false); setShowPw2(false); }, [view]);
+  useEffect(() => { setError(null); setShowPw(false); setShowPw2(false); signupStartedRef.current = false; }, [view]);
 
   // Resend cooldown — matches Supabase's ~60s minimum interval between auth
   // emails to the same address. Hydrated from storage (persisted by email) so it
@@ -238,10 +241,30 @@ export default function Login() {
 
   const goto = (v) => setView(v);
 
+  // One provider button, two meanings depending on which form is open: from the
+  // signup view it is an intent to REGISTER (TRIP-316 B — the microconversion an
+  // ad campaign can actually optimise for, there will be 5-10x more of these
+  // than registrations), anywhere else a login attempt. Registration itself is
+  // counted once, server-side of this screen, in AuthContext.
+  const trackAuthIntent = (method) =>
+    track(view === 'signup' ? 'signup_started' : 'user_logged_in', { method });
+
+  // A rejected registration never reaches AuthContext, so this screen is the
+  // only place its reason exists. The view gate lives HERE, in one place: the
+  // provider buttons are shared with the login form, and a failed login is not
+  // a failed signup. The email form only exists on the signup view.
+  const trackSignupFailed = (reason, method = 'email') => {
+    if (view === 'signup') track('signup_failed', { method, reason });
+  };
+
   // ── Auth handlers ──
   const handleGoogle = async () => {
     setIsLoading(true); setError(null);
-    track('user_logged_in', { method: 'google' });
+    trackAuthIntent('google');
+    // The whole document is handed to the provider, so the in-memory snapshot of
+    // this visit dies here. Every entry that leaves the page needs this line — a
+    // fourth provider added without it silently loses campaign attribution.
+    rememberAttributionForRedirect();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -249,7 +272,7 @@ export default function Login() {
         queryParams: { prompt: 'select_account' },
       },
     });
-    if (error) { setError(error.message); setIsLoading(false); }
+    if (error) { trackSignupFailed('oauth_error', 'google'); setError(error.message); setIsLoading(false); }
   };
 
   // Google One Tap credential handler - exchanges the Google JWT for a
@@ -262,6 +285,9 @@ export default function Login() {
   const handleOneTapCredential = async (response, nonce) => {
     setIsLoading(true);
     setError(null);
+    // One Tap does not leave the page, but it finishes with a hard navigation to
+    // postLoginPath() — a new document all the same.
+    rememberAttributionForRedirect();
     try {
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
@@ -273,6 +299,16 @@ export default function Login() {
         setIsLoading(false);
         return;
       }
+      // The fourth way in, and until now the only silent one. Tracked on SUCCESS
+      // (unlike the redirect flows, which can only report the click) and always
+      // as a login: the prompt appears by itself, so it carries no intent to
+      // register — and the Google callback is registered once on mount, so the
+      // current form view is not readable here anyway. A first-timer arriving
+      // this way still gets user_signed_up from AuthContext.
+      // `method` stays the provider, same vocabulary as every other auth event
+      // (and as app_metadata.provider on user_signed_up), so a funnel can be
+      // joined on it; the entry point goes in its own property.
+      track('user_logged_in', { method: 'google', surface: 'one_tap' });
       // Success: AuthContext picks up SIGNED_IN but does not navigate, and this
       // page stays mounted on /login - redirect explicitly (same as email login
       // and the Google redirect flow's redirectTo). Keep isLoading=true so the
@@ -332,12 +368,16 @@ export default function Login() {
 
   const handleApple = async () => {
     setIsLoading(true); setError(null);
-    track('user_logged_in', { method: 'apple' });
+    trackAuthIntent('apple');
+    // The whole document is handed to the provider, so the in-memory snapshot of
+    // this visit dies here. Every entry that leaves the page needs this line — a
+    // fourth provider added without it silently loses campaign attribution.
+    rememberAttributionForRedirect();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: { redirectTo: window.location.origin + postLoginPath() },
     });
-    if (error) { setError(error.message); setIsLoading(false); }
+    if (error) { trackSignupFailed('oauth_error', 'apple'); setError(error.message); setIsLoading(false); }
   };
 
   const handleLogin = async (e) => {
@@ -350,7 +390,13 @@ export default function Login() {
 
   const handleSignup = async (e) => {
     e.preventDefault(); setError(null);
-    if (!meetsPasswordPolicy(password)) { setError(t('auth.pw_policy')); return; }
+    // Through the same helper as the provider buttons, and before the client
+    // rules run: someone the password policy turns away DID try to register.
+    if (!signupStartedRef.current) { signupStartedRef.current = true; trackAuthIntent('email'); }
+    if (!meetsPasswordPolicy(password)) {
+      trackSignupFailed('weak_password');
+      setError(t('auth.pw_policy')); return;
+    }
     setIsLoading(true);
 
     // Preflight: Supabase hides whether an email already exists, so ask the
@@ -359,12 +405,16 @@ export default function Login() {
     const { data: pre, error: preErr } = await invokeFn('signupPrecheck', {
       body: { email, redirectTo: window.location.origin + postLoginPath() },
     });
-    if (preErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
-    if (pre?.code === 'rate_limited') { setError(t('auth.err_rate_limited')); setIsLoading(false); return; }
-    if (pre?.code === 'retry_soon') { setError(t('auth.err_retry_soon')); setIsLoading(false); return; }
-    if (pre?.code === 'email_exists') { setError(t('auth.err_email_exists')); setIsLoading(false); return; }
+    // Every rejection carries its own reason: without it the gap between
+    // "opened the form" and "registered" is one number that cannot be acted on
+    // — unclear whether people did not want to or simply could not (TRIP-316 B).
+    if (preErr) { trackSignupFailed('precheck_failed'); setError(t('auth.err_generic')); setIsLoading(false); return; }
+    if (pre?.code === 'rate_limited') { trackSignupFailed('rate_limited'); setError(t('auth.err_rate_limited')); setIsLoading(false); return; }
+    if (pre?.code === 'retry_soon') { trackSignupFailed('retry_soon'); setError(t('auth.err_retry_soon')); setIsLoading(false); return; }
+    if (pre?.code === 'email_exists') { trackSignupFailed('email_exists'); setError(t('auth.err_email_exists')); setIsLoading(false); return; }
     if (pre?.code === 'confirmation_resent') {
       // Account exists but was never confirmed — the server re-sent the link.
+      track('signup_email_sent', { method: 'email', resent: true });
       startCooldown(email);
       setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); return;
     }
@@ -374,13 +424,22 @@ export default function Login() {
       email,
       password,
       options: {
-        data: { full_name: name, language: lang },
+        // `signup_attribution` rides auth metadata because email is the ONE
+        // entry that can finish on another device — the confirmation link is
+        // often opened on a phone, where the in-memory snapshot of the visit
+        // does not exist. AuthContext reads it back when it creates the profile
+        // row (TRIP-311). Undefined when the visit carried no marks.
+        data: { full_name: name, language: lang, signup_attribution: getSignupAttribution() || undefined },
         // Land confirmed users in the app, not on the Site-URL landing page.
         emailRedirectTo: window.location.origin + postLoginPath(),
       },
     });
-    if (error) { setError(error.message); setIsLoading(false); }
-    else { track('user_signed_up', { method: 'email' }); startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
+    if (error) { trackSignupFailed('signup_error'); setError(error.message); setIsLoading(false); }
+    // NOT a registration: confirming the address is mandatory (Supabase Auth
+    // mailer_autoconfirm = false), so at this point the person is on the "check
+    // your inbox" screen and may never come back. `user_signed_up` fires later,
+    // in AuthContext, when the confirmed account first opens the app.
+    else { track('signup_email_sent', { method: 'email' }); startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
   };
 
   // Set a new password during a Supabase recovery session (reached via the
@@ -448,6 +507,10 @@ export default function Login() {
       setResendLeft(cooldownLeft(sentEmail) || 60); return;
     }
     if (data?.code === 'account_not_found') { setError(t('auth.err_account_not_found')); return; }
+    // The server re-sent the confirmation link — same fact as in handleSignup,
+    // so the same event: otherwise the funnel step would mean different things
+    // depending on which button the person pressed.
+    if (data?.code === 'confirmation_resent') track('signup_email_sent', { method: 'email', resent: true });
     // success (reset_sent / confirmation_resent / ok) → restart the cooldown.
     startCooldown(sentEmail); setResendLeft(60);
   };
@@ -515,10 +578,7 @@ export default function Login() {
                   </div>
 
                   <div className="row-between">
-                    <label className="check">
-                      <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-                      <span>{t('auth.remember')}</span>
-                    </label>
+                    <Checkbox checked={remember} onChange={setRemember} label={t('auth.remember')} />
                   </div>
 
                   <button type="submit" className="btn-primary" disabled={isLoading}>

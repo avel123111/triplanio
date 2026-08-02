@@ -16,9 +16,9 @@
 #                   whole tree, AND fully type-checks the growing opt-in set of
 #                   files that carry a `// @ts-check` pragma (ratchet — start =
 #                   the entitlement/Pro cluster: src/lib/{limits,subscription,
-#                   tripAddons,useTripAccess}.js). Add `// @ts-check` to a file to
-#                   bring it under real type enforcement; breaking its types fails
-#                   THIS gate. Grow coverage file-by-file, no big-bang TS migration.
+#                   tripAddons}.js). Add `// @ts-check` to a file to bring it under
+#                   real type enforcement; breaking its types fails THIS gate. Grow
+#                   coverage file-by-file, no big-bang TS migration.
 #     - deno      : deno check on edge functions — green since TRIP-94 (the 14
 #                   pre-existing type errors are fixed; getTripDetails ×10,
 #                   getActiveTrips/getFxRates/checkSubscriptionStatus ×3,
@@ -79,10 +79,13 @@ jobs:
   #   2b check-destructive-migrations — DROP/RENAME/ALTER…DROP without opt-in marker
   #   2c check-verify-jwt            — new externally-callable fn missing config.toml pin
   #   2d check-i18n                  — duplicate keys + new hardcoded UI strings
+  #   2e check-security-tiers        — grants/policies/EXECUTE drift vs the tier manifest
   #   2f check-dialog-radix          — raw Radix dialog import outside the shell whitelist
   #   2g check-column-caps           — new user text column without a length cap (domain/CHECK)
   #   2h check-edge-sentry           — ANY edge function without withHandler/captureEdgeError/manual
   #   2i check-invoke-seam           — raw supabase.functions.invoke() outside src/lib/invokeFn.js
+  #   2j check-posthog-init          — analytics behind the consent gate (single posthog.init)
+  #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -133,6 +136,13 @@ jobs:
       - name: 2i — frontend invoke seam (no raw functions.invoke)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-invoke-seam.mjs
+      - name: 2j — analytics behind the consent gate (single posthog.init)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-posthog-init.mjs
+      - name: 2k — design tokens (typography/colour + whitelist ratchet)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: npm run check:design
 
   deno:
     name: Deno typecheck (edge functions)

@@ -1,7 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { uploadTripFiles } from '@/lib/documentMutations';
-import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
+import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentMutations';
+import { Icon } from '@/design/icons';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
+import { UPLOAD_ACCEPT } from '@/lib/fileType';
+import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
@@ -21,8 +24,7 @@ export default function DocumentsField({
   maxFiles = null,
   label = '',
   iconColor = 'var(--brand)',
-  accept = '*',
-  maxFileSizeMb = 10,
+  accept = UPLOAD_ACCEPT,
   bare = false,
 }) {
   const { toast } = useToast();
@@ -48,24 +50,13 @@ export default function DocumentsField({
     const remaining = maxFiles === null ? files.length : Math.max(0, maxFiles - docs.length);
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
-    const oversize = toUpload.find(f => f.size > maxFileSizeMb * 1024 * 1024);
-    if (oversize) {
-      toast({
-        title: t('doc.file_too_big_title'),
-        description: t('doc.max_size', { mb: maxFileSizeMb }),
-        variant: 'destructive',
-      });
-      return;
-    }
     setUploadingWithCb(true);
     try {
-      // Shared upload: long-lived signed URLs, and never a doc with an empty
-      // file_url (was `|| ''`) — a missing URL surfaces as an error instead.
       const { uploaded, errors } = await uploadTripFiles(tripId, toUpload);
       for (const e of errors) {
         toast({
           title: t('event.ai_upload_error'),
-          description: e.reason === 'upload' && e.message ? e.message : t('doc.upload_failed', { name: e.file.name }),
+          description: uploadErrorText(e, t),
           variant: 'destructive',
         });
       }
@@ -97,7 +88,7 @@ export default function DocumentsField({
       {!bare && (
         <div className="docfield__head">
           <div className="docfield__title">
-            <Paperclip className="ico" size={16} style={{ color: iconColor }} />
+            <Icon name="paperclip" size={16} className="ico" style={{ color: iconColor }} />
             <span className="docfield__name">{label || t('event.documents')}</span>
             {docs.length > 0 && (
               <span className="docfield__count">· {docs.length}</span>
@@ -107,29 +98,26 @@ export default function DocumentsField({
       )}
 
       {docs.length > 0 && (
-        <div className="docfield__list">
+        <div className="dl-uplist">
           {docs.map((d, i) => (
-            <div key={`${d.file_url}-${i}`} className="docrow">
-              <span className="di"><Paperclip size={16} /></span>
-              <b style={{ flex: 1, minWidth: 0 }}>
-                <a
-                  href={d.file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="docrow__link"
-                  style={{ color: 'inherit', textDecoration: 'none' }}
-                >
-                  {d.file_name || t('event.file_word')}
-                </a>
-              </b>
+            <div key={`${d.file_url}-${i}`} className="dl-upitem">
+              <FileTypeBadge name={d.file_name} />
+              <a
+                href={normalizeExternalUrl(d.file_url)}
+                target="_blank"
+                rel="noreferrer"
+                className="dl-upitem__n"
+                style={{ color: 'var(--brand)' }}
+              >
+                {d.file_name || t('event.file_word')}
+              </a>
               <button
                 type="button"
                 onClick={() => removeAt(i)}
-                className="docrow__rm"
-                style={{ width: 24, height: 24, borderRadius: 6, color: 'var(--muted)' }}
+                className="dl-upitem__rm"
                 aria-label={t('doc.remove_doc_aria')}
               >
-                <X size={16} />
+                <Icon name="close" size={13} />
               </button>
             </div>
           ))}
@@ -141,30 +129,28 @@ export default function DocumentsField({
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className="upload"
+          className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
         >
           <input
             ref={inputRef}
             type="file"
             multiple
-            className="docfield__file"
             accept={accept}
+            style={{ display: 'none' }}
             onChange={(e) => uploadFiles(e.target.files)}
           />
           {uploading ? (
-            <>
-              <Loader2 className="spin" style={{ color: 'var(--primary)' }} />
-              <b>{t('common.loading')}</b>
-            </>
-          ) : docs.length === 0 ? (
-            <>
-              <Upload />
-              <b>{t('doc.upload_files', { mb: maxFileSizeMb })}</b>
-            </>
+            <div className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)' }}>
+              <span className="dl-spinner" />
+              {t('common.loading')}
+            </div>
           ) : (
             <>
-              <Plus />
-              <b>{t('doc.add_more_files')}{maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}</b>
+              <Icon name="upload" size={24} />
+              <b>{docs.length === 0
+                ? t('doc.upload_label')
+                : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
+              <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
             </>
           )}
         </div>

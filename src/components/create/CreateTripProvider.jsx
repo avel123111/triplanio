@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { track } from '@/lib/analytics';
@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Dialog, useToast } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 
@@ -26,13 +27,13 @@ import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
  * API (useCreateTrip):
  *   openChoice()      — open the manual/AI choice sheet
  *   startCreate(pick) — 'manual' | 'ai': run the limit gate, then open the planner
- *   startCopy(tripId) — run the SAME limit gate, then duplicate the trip
+ *   startCopy(tripId) — confirm, then the SAME limit gate, then duplicate the trip
  *   copying           — true while a copy is in flight (disable the menu item)
  */
 const CreateTripContext = createContext({
   openChoice: () => {},
   startCreate: () => {},
-  startCopy: () => {},
+  startCopy: async () => {}, // async: matches the real implementation's contract
   copying: false,
 });
 
@@ -86,6 +87,7 @@ export function CreateTripProvider({ children }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
+  const confirm = useConfirm();
 
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [limitOpen, setLimitOpen]   = useState(false);
@@ -102,12 +104,32 @@ export function CreateTripProvider({ children }) {
     setLimitOpen(true);
   }, []);
 
-  // Copy goes through the exact same gate as create.
-  const startCopy = useCallback((tripId) => {
-    if (!tripId) return;
+  // Copy goes through the exact same gate as create, behind a confirm.
+  //
+  // Confirm + gate live HERE, in the seam every entry point funnels through, so a
+  // second one inherits them instead of forking the behaviour (TRIP-140). Plain
+  // resolve-true/false, not the async `onConfirm` mode: the limit gate runs
+  // BETWEEN the confirmation and the copy, so a spinner on the confirm button
+  // would sit over the wrong work — the blocking overlay below is the feedback.
+  //
+  // The ref guards the one gap the modals do not: two clicks landing in the same
+  // frame, before the confirm has painted. ConfirmProvider answers `false` to the
+  // superseded prompt, so without it a double-click flashes the dialog open,
+  // shut, then open again. Every later step is behind a modal already.
+  const copyPromptRef = useRef(false);
+  const startCopy = useCallback(async (tripId) => {
+    if (!tripId || copyPromptRef.current) return;
+    copyPromptRef.current = true;
+    let ok;
+    try {
+      ok = await confirm({ title: t('confirm.copy_trip.title') });
+    } finally {
+      copyPromptRef.current = false;
+    }
+    if (!ok) return;
     setPending({ kind: 'copy', tripId });
     setLimitOpen(true);
-  }, []);
+  }, [confirm, t]);
 
   // Server enforces the limit again inside copyTrip; this client gate just keeps
   // the UX consistent with create (Pro modal instead of a destructive toast).
@@ -171,7 +193,7 @@ export function CreateTripProvider({ children }) {
       {copying && (
         <div
           className="dlg-backdrop"
-          style={{ zIndex: 400, display: 'grid', placeItems: 'center' }}
+          style={{ zIndex: 'var(--z-blocking)', display: 'grid', placeItems: 'center' }}
           role="status"
           aria-live="polite"
           aria-busy="true"

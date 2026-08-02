@@ -14,7 +14,7 @@
  * <TripView>; it publishes them through MobileNavContext so this global nav can
  * trigger them. Lens navigation reuses the existing window.__navigate bridge.
  */
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/index';
@@ -63,6 +63,10 @@ export default function MobileBottomNav() {
   const { openChoice } = useCreateTrip();
   const path = loc.pathname;
 
+  // Chat lens (TRIP-296): the room hands its whole bottom edge to the composer,
+  // so the floating nav would sit on top of the send button.
+  const onChatLens = /^\/trip\/[^/]+\/?$/.test(path) && sp.get('lens') === 'chat';
+
   // Routes that own their navigation / aren't app screens → no bottom nav.
   const hidden =
     path === '/' ||
@@ -72,7 +76,20 @@ export default function MobileBottomNav() {
     path.startsWith('/plan-trip-ai') ||
     path.startsWith('/public') ||
     path.startsWith('/join') ||
-    /^\/trip\/[^/]+\/edit\/?$/.test(path);
+    /^\/trip\/[^/]+\/edit\/?$/.test(path) ||
+    onChatLens;
+
+  // Flag the root while something owns the bottom edge — this dock, or the chat
+  // composer on the one lens that hides it. The consent banner is a sibling of
+  // the router and can see neither, so it reads this class to know whether to
+  // lift (TRIP-311). A class, not `:has()`: the build target includes Firefox
+  // 104, which predates it — see the note above `.checkbox input:disabled`.
+  const bottomOwned = !hidden || onChatLens;
+  useEffect(() => {
+    document.documentElement.classList.toggle('has-bottom-dock', bottomOwned);
+    return () => document.documentElement.classList.remove('has-bottom-dock');
+  }, [bottomOwned]);
+
   if (hidden) return null;
 
   const onTrip = /^\/trip\/[^/]+\/?$/.test(path);

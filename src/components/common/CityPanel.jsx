@@ -15,8 +15,9 @@ import CountryFlag from '@/components/common/CountryFlag';
 import { Btn } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
+import { formatDateRange } from '@/lib/trip-dates';
 const money = (p, c) => fmtPrice(p, c) || '';
-function rangeText(a, b) { const da = fmtDate(a), db = fmtDate(b); if (!da) return ''; return db && db !== da ? `${da} – ${db}` : da; }
+const rangeText = (a, b) => formatDateRange(a, b, fmtDate);
 
 // Lumo section label: coloured uppercase tag (.sl) + optional addmini action.
 function SectionLabel({ children, color, action }) {
@@ -29,7 +30,7 @@ function SectionLabel({ children, color, action }) {
 }
 // Lumo ghost-add row (.gadd): dashed, filled secondary icon, muted text.
 function GhostAdd({ icon, label, sub, accent, onClick }) {
-  const a = accent || 'var(--primary)';
+  const a = accent || 'var(--brand)';
   return (
     <button className="gadd" onClick={onClick} style={{ '--a': a }}>
       <span className="gi"><Icon name={icon || 'plus'} size={17} /></span>

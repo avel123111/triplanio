@@ -101,7 +101,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
       <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
       {!ready && (
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--surface)', zIndex: 2 }}>
-          <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+          <div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%' }} />
         </div>
       )}
 
@@ -120,11 +120,11 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
         <div className="t-meta" style={{
           position: 'absolute', bottom: 14, left: 14,
           display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px',
-          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
-          color: 'var(--muted)', boxShadow: 'var(--shadow-soft)',
+          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)',
+          color: 'var(--muted)', boxShadow: 'var(--sh-1)',
         }}>
           <span style={{ color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
-          <span style={{ color: 'var(--muted-2)' }}>·</span>
+          <span className="muted-2">·</span>
           <span style={{ color: 'var(--ink-2)' }}>{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
         </div>
       )}

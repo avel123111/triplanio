@@ -1,6 +1,5 @@
 {
   "brand": "Triplanio",
-  "cta_copy": "Copy itinerary",
   "cta_plan": "Plan your own",
   "cta_sub": "Copy it for yourself or build your own — with cities, transfers and a map. In Triplanio, free.",
   "cta_title": "Like this itinerary?",
@@ -8,7 +7,6 @@
   "mast_kick": "Itinerary",
   "meta_cities": "cities",
   "meta_countries": "countries",
-  "meta_days": "days",
   "meta_distance": "on the road",
   "meta_transfers": "transfers",
   "mode_bus": "Bus",
@@ -27,7 +25,6 @@
   "oops": "Oops",
   "people_eyebrow": "Company",
   "people_title": "Trip companions",
-  "read_only": "Read-only",
   "role_end": "Finish",
   "role_start": "Start",
   "role_waypoint": "Stopover",
@@ -38,7 +35,5 @@
   "shared_sub": "shared this trip",
   "subtitle_days_few": "days",
   "subtitle_days_many": "days",
-  "subtitle_days_one": "day",
-  "tab_map": "Map",
-  "tab_timeline": "Timeline"
+  "subtitle_days_one": "day"
 }

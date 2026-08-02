@@ -44,7 +44,7 @@ function SidebarBody({
             <Icon name={item.icon} size={15} />
             <span className="app-side__label">{t(item.labelKey)}</span>
             {item.id === 'chat' && chatUnread > 0 && (
-              <span className="app-side__item-badge t-meta" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
+              <span className="app-side__item-badge t-meta" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 'var(--r-pill)', minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
                 {chatUnread > 99 ? '99+' : chatUnread}
               </span>
             )}
@@ -98,7 +98,7 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
       <div className="pt">{t('trip_menu.free_trip_title')}</div>
       <p>{t('trip.pro_locked_lenses')}</p>
       {isOwner ? (
-        <Btn variant="primary" size="sm" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+        <Btn variant="primary" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
       ) : (
         <button className="lockmsg" onClick={onProInfo}>
           <Icon name="lock" size={14} />

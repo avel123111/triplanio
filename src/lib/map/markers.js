@@ -97,7 +97,12 @@ export function createMarkerEl(labels, { onClick, icon, onHover } = {}) {
   el.className = classes.join(' ');
   el.innerHTML = `<span class="tmk__halo"></span><span class="tmk__pulse"></span><span class="tmk__core">${core}</span>`;
 
-  if (onClick) el.addEventListener('click', onClick);
+  // Swallow the pin's own click so it never bubbles up to the map canvas 'click'
+  // (Mapbox mounts HTML markers inside the canvas container, so a bubbling click
+  // would ALSO fire map 'click' — on the Map lens that re-cleared the selection the
+  // pin had just set, making pin clicks look dead). A marker click is never a map
+  // click.
+  if (onClick) el.addEventListener('click', (e) => { e.stopPropagation(); onClick(e); });
   // onHover(entering:boolean) — lets a parent mirror pin hover into a list/badge
   // (Map lens tooltip). The pin's own :hover look stays pure CSS.
   if (onHover) {

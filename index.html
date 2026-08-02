@@ -2,6 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Google Consent Mode v2 default (TRIP-311). Runs before anything else can
+         load a tag, and deliberately calls a FUNCTION: dataLayer.push([...]) with
+         an array is silently ignored for consent commands. Everything Google can
+         store stays denied until the visitor answers the banner; consent.js sends
+         the update. Functionality/security are granted — they are the storage the
+         service cannot run without. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { window.dataLayer.push(arguments); }
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'granted',
+        security_storage: 'granted'
+      });
+    </script>
     <link rel="icon" type="image/svg+xml" href="/triplanio-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="google-site-verification" content="Jtn6m7Y4ILNIefFuOmuzt63AyuQohMoUmxVg8kJyiow" />

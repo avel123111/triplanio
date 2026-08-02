@@ -94,7 +94,7 @@ export default function SearchSelect({
                 data-active={selected ? '' : undefined}
                 onClick={() => pick(o)}
               >
-                {renderOption ? renderOption(o, selected) : <span style={{ flex: 1 }}>{getKey(o)}</span>}
+                {renderOption ? renderOption(o, selected) : <span className="grow">{getKey(o)}</span>}
                 {selected && <Check className="chk" />}
               </button>
             );

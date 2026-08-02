@@ -5,6 +5,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
+import { detectPartner } from '@/lib/externalBrands';
 import { transferKind } from '@/lib/transport';
 
 // =====================================================================
@@ -27,18 +28,18 @@ export { useToast, toast } from '@/components/ui/use-toast';
 export { Toaster } from '@/components/ui/toaster';
 export { default as SearchSelect } from '@/components/ui/SearchSelect';
 export { default as CurrencyCombobox } from '@/components/ui/CurrencyCombobox';
-export { default as AiField } from '@/components/ui/AiField';
+export { default as AiField, AiBadge } from '@/components/ui/AiField';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
-export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className = "", style: styleProp }) => {
+export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
   const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (deleted) {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "xl" ? 26 : size === "sm" ? 12 : 15} /></div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "sm" ? 12 : 15} /></div>;
   }
   if (kind === "ai") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
@@ -57,9 +58,12 @@ export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className
 };
 
 // ----- AvatarStack -----
-export const AvatarStack = ({ people = [], max = 4, size = "sm" }) => (
-  <div className="avatar-stack">
-    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} kind={p.kind} size={size} />)}
+// `people` rows carry the same fields as <Avatar>: name + optional photo/deleted/kind.
+// Photos matter — the chat header stacks real member avatars, and without them the
+// stack fell back to initials while the same people showed photos two lines below.
+export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
+  <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
+    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
     {people.length > max && (
       <div className={`avatar avatar--${size}`} style={{ background: "var(--wash)", color: "var(--muted)", border: "1.5px solid var(--surface)" }}>
         +{people.length - max}
@@ -133,9 +137,9 @@ export const Field = ({ label, hint, sub, ai, error, warning, children, required
 // `loading` renders the canonical Lumo in-button spinner (.btn .spin) in place
 // of the leading icon, disables the button and flags aria-busy — the single
 // source of truth for "operation in flight" feedback across the app.
-export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
-    className={`btn btn--${variant} ${size ? "btn--" + size : ""} ${block ? "btn--block" : ""} ${className}`}
+    className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
@@ -151,20 +155,19 @@ export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled,
 );
 
 // ----- Badge -----
-export const Badge = ({ variant = "", icon, dot, children, style }) => (
+export const Badge = ({ variant = "", icon, children, style }) => (
   <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
-    {dot && <span className="dot" />}
     {icon && <Icon name={icon} size={11} />}
     {children}
   </span>
 );
 
 // ----- Card -----
-export const Card = ({ variant = "", title, subtitle, action, children, className = "", style }) => (
-  <div className={`card ${variant ? "card--" + variant : ""} ${className}`} style={style}>
+export const Card = ({ title, subtitle, action, children, className = "", style }) => (
+  <div className={`card ${className}`} style={style}>
     {(title || subtitle || action) && (
       <div className="card-h">
-        <div style={{ flex: 1 }}>
+        <div className="grow">
           {title && <h3>{title}</h3>}
           {subtitle && <div className="muted t-meta">{subtitle}</div>}
         </div>
@@ -182,7 +185,7 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
     padding: "48px 24px", textAlign: "center", color: "var(--muted)",
   }}>
     <div style={{
-      width: 64, height: 64, borderRadius: 16,
+      width: 64, height: 64, borderRadius: 'var(--r-md)',
       background: kind === "error" ? "var(--danger-soft)" : kind === "locked" ? "var(--pro-soft-2)" : "var(--brand-soft)",
       color: kind === "error" ? "var(--danger)" : kind === "locked" ? "var(--pro-ink)" : "var(--brand)",
       display: "grid", placeItems: "center", marginBottom: 16,
@@ -206,25 +209,53 @@ export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
   }} />
 );
 
+// ----- Checkbox -----
+// A real <input type="checkbox"> under the `.checkbox` skin (app.css), so native
+// keyboard, focus and <label> semantics come for free.
+//
+// Checkbox vs Toggle: a checkbox is a value you pick and then submit (a form
+// field, a filter applied by a button); a Toggle is a setting that takes effect
+// the moment you flip it. Don't swap one for the other to look tidier.
+export const Checkbox = ({ checked, onChange, label, disabled, className = "" }) => (
+  <label className={`checkbox ${className}`}>
+    <input
+      type="checkbox"
+      checked={!!checked}
+      disabled={disabled || undefined}
+      onChange={(e) => onChange?.(e.target.checked)}
+    />
+    {label && <span>{label}</span>}
+  </label>
+);
+
 // ----- Toggle -----
 // `busy` shows an in-knob spinner and blocks interaction while the change is
 // being persisted server-side — toggles never report a state the backend
 // hasn't confirmed (no optimistic flips).
+// Rendered as a real switch: `type="button"` keeps a Toggle inside a <form>
+// from submitting it, and `aria-checked` is what carries the on/off state to a
+// screen reader (`aria-label` on its own only supplies the name).
 export const Toggle = ({ on, onChange, locked, busy, label }) => (
   <button
+    type="button"
+    role="switch"
+    aria-checked={!!on}
+    aria-label={label}
+    aria-busy={busy || undefined}
     onClick={() => !locked && !busy && onChange && onChange(!on)}
     disabled={busy || undefined}
-    aria-busy={busy || undefined}
     style={{
       width: 36, height: 21, padding: 0, border: "none",
-      borderRadius: 999,
+      borderRadius: 'var(--r-pill)',
       background: locked ? "var(--wash)" : on ? "var(--brand)" : "var(--line)",
       position: "relative", flexShrink: 0,
       opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
       transition: "background .15s ease",
     }}
-    aria-label={label}
   >
+    {/* Bleeds the hit area from the painted 36×21 track out to the 44px minimum
+        touch target. Sits before the knob so the knob still paints on top. */}
+    <span aria-hidden="true" style={{ position: "absolute", inset: "-12px -4px" }} />
     <span style={{
       position: "absolute", top: 2, left: on ? 17 : 2,
       width: 17, height: 17, borderRadius: "50%",
@@ -241,33 +272,6 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
 // Canonical money formatter (locale-aware, decimals only when present).
 export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 
-// ----- DismissibleSeverity -----
-export const DismissibleSeverity = ({ level = "info", title, children, onDismiss, action, icon }) => {
-  const t = useT();
-  const [open, setOpen] = React.useState(true);
-  if (!open) return null;
-  return (
-    <div className={`sev sev--${level}`} style={{ position: "relative" }}>
-      <span className="sev__icon">
-        <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
-      </span>
-      <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
-        {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
-        {children}
-        {action && <div style={{ marginTop: 8 }}>{action}</div>}
-      </div>
-      <button onClick={() => { setOpen(false); onDismiss?.(); }} className="dz-xbtn" style={{
-        position: "absolute", top: 8, right: 8,
-        width: 22, height: 22, borderRadius: 6, border: "none",
-        color: "var(--muted)", cursor: "pointer",
-        display: "grid", placeItems: "center",
-      }} title={t('common.close')} aria-label={t('common.close')}>
-        <Icon name="close" size={12} />
-      </button>
-    </div>
-  );
-};
-
 // ----- RoleBadge with icon -----
 export const RoleBadge = ({ role, size = "md", status }) => {
   const t = useT();
@@ -282,7 +286,7 @@ export const RoleBadge = ({ role, size = "md", status }) => {
     <span className="t-micro" style={{
       display: "inline-flex", alignItems: "center", gap: 5,
       padding: size === "sm" ? "2px 7px 2px 5px" : "3px 9px 3px 6px",
-      borderRadius: 999, background: m.soft, color: m.color,
+      borderRadius: 'var(--r-pill)', background: m.soft, color: m.color,
     }}>
       <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
       {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
@@ -312,7 +316,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
       <DialogContent className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
         <div className="dlg__head">
           {icon && (
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name={icon} size={17} />
             </div>
           )}
@@ -332,29 +336,8 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
 };
 
 // ---- Partner logo helper ----
-const PARTNERS = {
-  "booking.com":   { color: "#003580", label: "Booking",     short: "B" },
-  "airbnb":        { color: "#ff385c", label: "Airbnb",      short: "A" },
-  "marriott":      { color: "#a8945c", label: "Marriott",    short: "M" },
-  "agoda":         { color: "#fe424d", label: "Agoda",       short: "A" },
-  "renfe":         { color: "#7a1f3a", label: "Renfe",       short: "R" },
-  "cp.pt":         { color: "#2f6ba8", label: "CP",          short: "CP" },
-  "lufthansa":     { color: "#05164d", label: "Lufthansa",   short: "L" },
-  "tap":           { color: "#c81f3a", label: "TAP",         short: "T" },
-  "expedia":       { color: "#fcc60a", label: "Expedia",     short: "E" },
-  "rentalcars":    { color: "#222e72", label: "RentalCars",  short: "R" },
-  "sixt":          { color: "#ff6600", label: "Sixt",        short: "S" },
-  "holafly":       { color: "#5ac6c1", label: "Holafly",     short: "H" },
-};
-
-export function detectPartner(url) {
-  if (!url) return null;
-  const u = url.toLowerCase();
-  for (const [k, v] of Object.entries(PARTNERS)) {
-    if (u.includes(k)) return { key: k, ...v };
-  }
-  return null;
-}
+// Бренд-цвета партнёров живут в lib/externalBrands (единственный дом внешних
+// брендов), а не рядом с компонентом, который их рисует.
 
 export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);
@@ -388,7 +371,8 @@ export const PartnerLogo = ({ url, size = 18 }) => {
   );
 };
 
-export const PartnerPill = ({ url, fallback }) => {
+// Not exported: rendered only by StreamEventRow below.
+const PartnerPill = ({ url, fallback }) => {
   const t = useT();
   const p = detectPartner(url);
   return (
@@ -400,58 +384,8 @@ export const PartnerPill = ({ url, fallback }) => {
 };
 
 // =====================================================================
-// BOOKING SUGGESTION CARD - used by AI in chats
-// =====================================================================
-export function BookingSuggestionCard({ type, name, partner, url, price, cur, rating, sub, extras }) {
-  const t = useT();
-  const p = detectPartner(url || partner);
-  return (
-    <div style={{
-      background: "var(--surface)",
-      border: "1.5px solid var(--ai-soft-12)",
-      borderRadius: 12, padding: 12,
-      display: "flex", gap: 12, maxWidth: 360,
-    }}>
-      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0 }}>
-        <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "ticket"} size={20} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="t-ui" style={{ marginBottom: 2 }}>{name}</div>
-        <div className="muted t-meta">{sub}</div>
-        {rating && (
-          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
-            <Badge variant="success">{rating}/10</Badge>
-            <span className="muted t-meta">{p?.label || partner}</span>
-          </div>
-        )}
-        {extras && (
-          <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {extras.map((e, i) => <Badge key={i} variant="quiet">{e}</Badge>)}
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <div className="num t-ui">{fmt(price, cur)}</div>
-          <div style={{ flex: 1 }} />
-          <Btn variant="ghost" size="sm" icon="external">{p?.label || t('common.open')}</Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =====================================================================
 // SHARED TIMELINE UTILITIES - exported so all screens can use them
 // =====================================================================
-
-// ----- Utility: group event stream by date -----
-export function groupByDate(events) {
-  const groups = {};
-  for (const e of events) {
-    if (!groups[e.date]) groups[e.date] = [];
-    groups[e.date].push(e);
-  }
-  return Object.entries(groups).map(([date, items]) => ({ date, items }));
-}
 
 const _WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const _MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
@@ -521,7 +455,6 @@ function _evMeta(e) {
   return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", labelKey: "" };
 }
 
-// ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────
 // Event-type → Lumo tile colour tokens (--evs soft bg / --evi ink).
 const _EV_TOK = {
   hotel:    { s: "var(--ev-hotel-soft)",    i: "var(--ev-hotel-ink)" },
@@ -530,38 +463,26 @@ const _EV_TOK = {
   car:      { s: "var(--ev-car-soft)",      i: "var(--ev-car-ink)" },
   deadline: { s: "var(--ev-deadline-soft)", i: "var(--ev-deadline-ink)" },
 };
+// Единственный классификатор «тип события потока → семейство». Словарь типов задаёт
+// buildEventStream (TripView): flight/transfer, hotel-checkin/-checkout/-deadline,
+// car-pickup/-return, activity. Семейство совпадает с суффиксом токенов --ev-*
+// и с CSS-классом .ev-* — на нём же держится раскраска чипов календаря.
+export function eventFamily(type) {
+  if (type === "flight" || type === "transfer") return "transfer";
+  if (type === "hotel-checkin" || type === "hotel-checkout") return "hotel";
+  if (type === "hotel-deadline") return "deadline";
+  if (type === "car-pickup" || type === "car-return") return "car";
+  return "activity";
+}
 function _evTok(e) {
-  if (e.type === "flight" || e.type === "transfer") return _EV_TOK.transfer;
-  if (e.type === "hotel-checkin" || e.type === "hotel-checkout") return _EV_TOK.hotel;
-  if (e.type === "hotel-deadline") return _EV_TOK.deadline;
-  if (e.type === "car-pickup" || e.type === "car-return") return _EV_TOK.car;
-  return _EV_TOK.activity;
+  return _EV_TOK[eventFamily(e.type)];
 }
 
 // Timeline event plate — Lumo "Таймлайн поездки" (.tl3-ev): time on the left
 // (mono), .tl3-card with a coloured .tile + title/sub. Transfers render as the
-// column .tl3-card--tr (from → mode → to). Missing-transfer → .tl3-warn.
+// column .tl3-card--tr (from → mode → to).
 export function StreamEventRow({ e, onClick }) {
   const t = useT();
-
-  if (e.type === "transfer-missing") {
-    const [hidden, setHidden] = React.useState(false);
-    if (hidden) return null;
-    return (
-      <div className="tl3-warn">
-        <span className="tile"><Icon name="warning" size={19} /></span>
-        <div className="x">
-          <b>{t('view.map_no_transfer')}</b>
-          <span>{e.from} → {e.to}</span>
-        </div>
-        <button onClick={onClick}>{t('tse.add_transfer')}</button>
-        <button onClick={() => setHidden(true)} title={t('tl.hide_warning')}
-          style={{ background: "transparent", color: "var(--warning-ink)", border: 0, padding: 6, cursor: "pointer", display: "grid", placeItems: "center", borderRadius: 8 }}>
-          <Icon name="close" size={14} />
-        </button>
-      </div>
-    );
-  }
 
   const meta = _evMeta(e);
   const price = e.price != null ? fmt(e.price, e.cur) : null;
@@ -626,7 +547,7 @@ export function StreamEventRow({ e, onClick }) {
 
 function _InfoChip({ icon, color, children }) {
   return (
-    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)", color: "var(--ink-2)" }}>
+    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line-2)", color: "var(--ink-2)" }}>
       <Icon name={icon} size={13} style={{ color }} />
       {children}
     </span>
