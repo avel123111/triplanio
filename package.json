@@ -10,6 +10,7 @@
     "lint:fix": "eslint . --fix",
     "check:design": "node scripts/check-design-tokens.mjs",
     "check:inline": "node scripts/ci/check-inline-styles.mjs",
+    "check:prefixes": "node scripts/ci/check-css-prefixes.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "test": "node --test \"src/**/*.test.js\" \"scripts/**/*.test.mjs\"",
     "preview": "vite preview"
