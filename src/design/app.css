@@ -45,14 +45,20 @@
   --ink-2:  #4A4659;
   --muted:  #7A7689;
   --muted-2:#ABA7B8;
-  --line:   #E9E8F2;
-  --line-2: #F1F0F8;
-  --line-strong: #DBD9E7;
-  --line-hover: #D2D0E0;
-  --bg:      #fbfcfe;
+  /* Граница — ОДНА на всё (TRIP-326): карточки, панели, меню трипа, шапка,
+     разделители. Подобрана под пару фон #f7f9fa ↔ карточка #ffffff и читается на
+     обеих. Отдельными остаются только контрольные границы (--line-strong /
+     --line-hover): полю ввода нужна более заметная рамка, иначе оно перестаёт
+     читаться как поле. Оттенок всех нейтралей переведён из фиолетового в
+     холодно-серый — рядом с #f7f9fa старая фиолетовая шкала читалась как брак. */
+  --line:   #E6EAEE;
+  --line-2: var(--line);                 /* алиас TRIP-326: схлопнут в --line */
+  --line-strong: #D5DAE0;
+  --line-hover: #C8CED6;
+  --bg:      #f7f9fa;
   --surface: #FFFFFF;
-  --surface-2: #EEEEF7;
-  --surface-3: #FAFAFE;
+  --surface-2: #EEF1F4;
+  --surface-3: #F5F8FA;
   --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
   --wash-2: var(--surface-3);
   --secondary: var(--surface-2);
@@ -129,20 +135,19 @@
   --sh-2:0 4px 12px -4px rgba(39,36,51,.10), 0 18px 48px -16px rgba(39,36,51,.20);
   --sh-3:0 8px 20px -6px rgba(39,36,51,.14), 0 30px 70px -22px rgba(39,36,51,.30);
 
-  /* === Канонические поверхности (TRIP-189) — ЕДИНЫЙ источник для всех
-     карточек/панелей/виджетов. Ровно две роли:
-       .surface-glass — «плавающая» (тень + backdrop-blur): полоса Города/Страны
-         и карточки на /trips;
-       .surface-panel — «плоская» (без тени и блюра): панели на экране трипа
-         (Overview/Бюджет/Участники).
-     Обе роли делят фон/бордер/радиус; отличаются только тенью и блюром.
-     Значения фона и бордера переопределяются для тёмной темы ниже. === */
+  /* === Канонические поверхности (TRIP-189, переработано TRIP-326) — ЕДИНЫЙ
+     источник для всех карточек/панелей/виджетов. Роль ОДНА и плоская: заливка
+     --surface-card + граница --line + радиус --r-xl, без прозрачности, блюра и
+     тени. Прежнее деление на «плавающую» (.surface-glass) и «плоскую»
+     (.surface-panel) снято вместе со стеклом: отличались они только тенью и
+     блюром, а их больше нет. Оба имени остаются как алиасы одной роли, чтобы не
+     переписывать разметку. Значение фона переопределяется для тёмной ниже. === */
   --r-xl: 20px;
-  --surface-card:        rgba(255,255,255,.72); /* light — слегка прозрачный, чтобы blur давал матовое стекло */
-  --surface-card-border: rgba(45,55,115,.22);
-  --shadow-glass:        0 18px 50px -26px rgba(0,0,0,.5);
-  --glass-blur:          16px;
-  --header-bg:           rgba(251,252,254,.78); /* матовое стекло верхней панели — light (opaque-фолбэк = --surface) */
+  --surface-card: var(--surface);
+  --surface-card-border: var(--line);    /* алиас TRIP-326: схлопнут в --line */
+  /* Хром — шапка приложения и меню трипа. В светлой это карточечный белый, в
+     тёмной (ниже) сливается с фоном. */
+  --header-bg:    var(--surface);
 
   --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
@@ -222,19 +227,23 @@
   --ink-2:  #C4C1D2;
   --muted:  #8C88A0;
   --muted-2:#5F5C72;
-  --line:   #33313F;
-  --line-2: #262533;
-  --line-strong: #403E4F;
-  --line-hover: #3E3C4D;
+  /* Одна граница на всё (TRIP-326) — подобрана так, чтобы читаться И на фоне
+     #0c0e1c, И на карточке #1f212f: одним цветом обведены карточки, панели,
+     шапка, меню трипа и разделители. */
+  --line:   #2B2D3E;
+  --line-2: var(--line);                 /* алиас TRIP-326: схлопнут в --line */
+  --line-strong: #383A4D;
+  --line-hover: #33354A;
   --bg:      #0c0e1c;
   --surface: #1f212f;
   --surface-2: #2A2937;
   --surface-3: #1B1A26;
 
-  /* Канонические поверхности — тёмная (TRIP-189): стекло поверх #0c0e1c */
-  --surface-card:        rgba(255,255,255,.07);
-  --surface-card-border: rgba(255,255,255,.17);
-  --header-bg:           rgba(12,14,28,.6); /* матовое стекло верхней панели — dark */
+  /* Канонические поверхности — тёмная (TRIP-326): непрозрачная заливка, без
+     стекла. Хром (шапка + меню трипа) сливается с фоном — граница отделяет. */
+  --surface-card: var(--surface);
+  --surface-card-border: var(--line);    /* алиас TRIP-326: схлопнут в --line */
+  --header-bg:    var(--bg);
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -307,30 +316,10 @@ body {
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;   /* TRIP-165 — цифры выровнены во всём приложении */
 }
-/* TRIP-186 — мягкий фоновый градиент «Тишина» по центру-сверху канваса (обе
-   темы). body::before покрывает экраны БЕЗ непрозрачной оболочки (логин, вью). */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  /* TRIP-188: центр эллипса над верхней кромкой (−8%) → плотная часть жмётся к
-     самому верху, не «плавает» серединой экрана; альфа мягче (обе темы). */
-  background: radial-gradient(130% 80% at 50% -8%, rgba(146,164,232,.24), transparent 62%);
-}
-:root[data-theme="dark"] body::before {
-  background: radial-gradient(130% 80% at 50% -8%, rgba(124,138,205,.20), transparent 62%);
-}
-/* ЕДИНЫЙ фон на всё приложение. Градиент — на ОДНОМ фикс-слое body::before выше.
-   Проблема была в том, что каждый полноэкранный шелл красил свой непрозрачный
-   --bg/--surface и перекрывал этот слой (у списков .app-shell, у редактора
-   .ts-screen + его колонки, у трип-экранов .trip-shell — свой фон). Делаем их
-   ПРОЗРАЧНЫМИ (!important перебивает и инлайн, и CSS) — сквозь них виден один и
-   тот же канвас с градиентом. Карточки/панели поверх остаются непрозрачными. */
-.app-shell, .ts-screen, .ts-col-left, .ts-col-right, .trip-shell, .flow-page {
-  background: transparent !important;
-}
+/* TRIP-326: фоновый градиент выпилен — сплошной --bg на всё. Хак
+   «transparent !important» на шеллах существовал только ради него и удалён
+   вместе с ним. Шеллы заново не красим — background у них не задан, они
+   наследуют от body. */
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--brand); text-decoration: none; }
@@ -998,18 +987,10 @@ h4,
   display: flex; align-items: center; gap: 14px;
   padding: 0 18px;
   position: sticky; top: 0; z-index: var(--z-header);
-  background: var(--surface);               /* непрозрачный фолбэк без backdrop-filter */
+  background: var(--header-bg);             /* TRIP-326: всегда непрозрачный; light=#ffffff, dark=--bg */
   color: var(--ink);
   height: 60px; min-height: 60px;           /* фикс-высота: на неё завязаны calc(100vh - 56px) лэйауты */
-  border-bottom: 1px solid var(--surface-card-border);
-}
-/* Матовое стекло только где backdrop-filter поддержан; иначе остаётся --surface. */
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .app-header {
-    background: var(--header-bg);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  }
+  border-bottom: 1px solid var(--line);
 }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
@@ -1091,7 +1072,7 @@ h4,
    (editor), which own their own column + drawer behaviour. */
 .app-side {
   border-right: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
   height: calc(100vh - 56px);
   padding: 16px 10px;
   position: sticky; top: 56px;
@@ -1215,27 +1196,19 @@ h4,
 @media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
-/* Канонические роли поверхностей (TRIP-189) — ЕДИНЫЙ источник вида карточек.
-   Ровно два скина: .surface-glass (плавающая — тень + backdrop-blur) и
-   .surface-panel (плоская). Каждый примитив подключается к своей роли здесь же
-   через групповой селектор, а свою внутреннюю раскладку (падинги/хедеры/overflow)
-   доопределяет в собственном блоке ниже по файлу. Значения — только из токенов
-   --surface-card / --surface-card-border / --r-xl / --shadow-glass / --glass-blur. */
+/* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
+   карточек. Одна плоская роль, без blur, без теней. .surface-glass и
+   .surface-panel остаются как алиасы для совместимости разметки: оба дают
+   одинаковый результат. Внутреннюю раскладку (падинги/хедеры/overflow)
+   каждый примитив доопределяет в собственном блоке ниже по файлу. */
 .surface-glass,
+.surface-panel,
 .statbar,                  /* /trips — полоса Города/Страны */
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
 .nonext,                   /* /trips — пусто «следующий трип» */
 .tr,                       /* /trips — строка трипа (list-view) */
-.tl3-card {                /* таймлайн трипа — карточки эвентов (TRIP-199) */
-  background: var(--surface-card);
-  border: 1px solid var(--surface-card-border);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-glass);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-}
-.surface-panel,
+.tl3-card,                 /* таймлайн трипа — карточки эвентов (TRIP-199) */
 .card,
 .statcard,
 .wdg,
@@ -1247,9 +1220,8 @@ h4,
 .chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
 .pl-lastcard {             /* карточка последней брони (планнер) */
   background: var(--surface-card);
-  border: 1px solid var(--surface-card-border);
+  border: 1px solid var(--line);
   border-radius: var(--r-xl);
-  box-shadow: none;
 }
 
 /* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
@@ -1295,16 +1267,14 @@ h4,
 .peek-sheet .map-route__head { padding-top: 2px; border-bottom: 0; }
 .peek-sheet .map-route__list { overflow: visible; padding: 8px 8px 0; }
 
-/* City badge (TRIP-33): translucent glass label next to the active city's pin on
-   the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
-   never eats pin/route clicks. Built in src/lib/map/markers.js (createCityBadgeEl). */
+/* City badge (TRIP-33): label next to the active city's pin on the Map lens.
+   TRIP-326: glass снят — непрозрачный --surface. Метка passiv (не ест клики). */
 .cbadge {
   display: inline-flex; align-items: flex-start; gap: 8px;
   padding: 6px 10px; border-radius: var(--r-sm); max-width: 240px;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-card-border);
-  box-shadow: var(--shadow-glass);
-  backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--sh-1);
   pointer-events: none;
 }
 .cbadge .cflag { height: 14px; border-radius: 2px; flex: none; margin-top: 1px; } /* top-aligned with the name line */
@@ -1334,8 +1304,8 @@ h4,
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
 .acc { margin-bottom: 12px; overflow: hidden; }
-.acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
-.acc__head:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+.acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
+.acc__head:hover { background: var(--wash); } /* TRIP-326: opacity→opaque token */
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .acc__title { color: var(--ink); }
 .acc__sub { color: var(--muted); }
@@ -1676,13 +1646,14 @@ h4,
     display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-nav);
     padding: 0 14px calc(8px + env(safe-area-inset-bottom)); pointer-events: none;
   }
+  /* TRIP-326: backdrop-filter и color-mix(transparent) сняты — непрозрачная
+     поверхность с тенью достаточно отделяет нав от контента. */
   .mbnav__dock {
     pointer-events: auto; position: relative; margin: 0 auto; max-width: 460px; height: 60px;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 2px; padding: 0 6px;
-    background: color-mix(in srgb, var(--surface) 82%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.7); backdrop-filter: blur(20px) saturate(1.7);
-    border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--r-xl);
-    box-shadow: 0 14px 36px -12px rgba(15,23,42,.42), 0 3px 10px -4px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55);
+    background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-xl);
+    box-shadow: 0 8px 24px -8px rgba(15,23,42,.28), 0 2px 8px -2px rgba(15,23,42,.14);
   }
   .mbnav__item {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -2180,14 +2151,12 @@ h4,
    held two static cards that were display:none below 768px anyway, and a card
    border around a full-screen surface is a card-in-a-card. */
 .chat-room { display: flex; flex-direction: column; height: 100%; min-height: 0; position: relative; }
-/* Same frosted bar as the global .app-header — the room header is a second tier
-   of the same chrome, not a plain content strip. */
+/* Same bar as the global .app-header — the room header is a second tier
+   of the same chrome. TRIP-326: backdrop-filter снят, непрозрачный --header-bg. */
 .chat-head {
   display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 24px;
   border-bottom: 1px solid var(--line); flex: none;
   background: var(--header-bg);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
 }
 .chat-head__id { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; flex: 1; }
 .chat-head__id h3 { margin: 0; color: var(--ink); }
@@ -2526,20 +2495,13 @@ h4,
 
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
 /* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */
+/* TRIP-326: glass снят — непрозрачный --surface с тенью. */
 .bell-dd-pop {
   padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden;
   border-radius: var(--r-xl);
-  /* Матовое стекло, но читаемое: --surface на 90% + блюр (полностью прозрачный
-     --surface-card был бы нечитаем над лентой). Радиус/бордер/тень — канон glass. */
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  border: 1px solid var(--surface-card-border);
-  box-shadow: var(--shadow-glass);
-}
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .bell-dd-pop {
-    -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
-    backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
-  }
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--sh-2);
 }
 .bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
 /* Title takes the slack and truncates so the action pill always fits on one line. */
@@ -3152,7 +3114,7 @@ h4,
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-199); тут только раскладка */
 .tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
-@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-glass); } }
+@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); } }
 .tl3-card .tile { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
 .tl3-card .tile svg { width: 20px; height: 20px; }
 /* body keeps a real min-width so the meta (price + partner pill) wraps to a new
@@ -3222,7 +3184,7 @@ h4,
   .ts-screen .ts-drawer.is-open { pointer-events: auto; }
   .ts-screen .ts-drawer__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s var(--ease-out); }
   .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
-  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--surface); }
+  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--header-bg); } /* TRIP-326 */
   .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
 }
 
@@ -3726,13 +3688,14 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .tc__foot { display: flex; align-items: center; gap: 7px; margin-top: 13px; flex-wrap: wrap; }
 .tc__foot .avatar-stack { margin-left: auto; }
 
-/* frost-glass chip for "Совместный" and role */
+/* Chip for "Совместный" and role — lives on top of a photo with a dark scrim.
+   TRIP-326: backdrop-filter убран; тонкий белый фон оставлен — на фото нужен,
+   иначе белый непрозрачный чип режет любое изображение. */
 .tc__glass {
- background: rgba(255,255,255,.18); color: #fff;
- border: 1px solid rgba(255,255,255,.30); border-radius: var(--r-pill);
+ background: rgba(255,255,255,.22); color: #fff;
+ border: 1px solid rgba(255,255,255,.32); border-radius: var(--r-pill);
  padding: 4px 11px;
  display: inline-flex; align-items: center; gap: 5px;
- -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .tc__glass svg { width: 12px; height: 12px; }
 
@@ -3881,28 +3844,15 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    ================================================================ */
 
 /* ── Page shell ── */
+/* TRIP-326: ambient gradient blooms (::before/::after) выпилены вместе с
+   градиентом канваса. isolation: isolate снят за ненадобностью. */
 .pro-page {
   position: relative;
-  isolation: isolate;
-}
-/* Ambient gradient blooms */
-.pro-page::before,
-.pro-page::after {
-  content: ''; position: fixed; border-radius: 50%;
-  pointer-events: none; z-index: 0;
-}
-.pro-page::before {
-  width: 520px; height: 520px; top: -130px; right: -90px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 9%, transparent) 0%, transparent 65%);
-}
-.pro-page::after {
-  width: 340px; height: 340px; bottom: -80px; left: -60px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--pro) 7%, transparent) 0%, transparent 68%);
 }
 
 /* ── Main content zone — natural height, centered (canonical standalone shell,
    same as Statistics/Account: layout width + padding come from the inline style
-   on <main>; this only stacks children + lifts them above the ambient blooms). ── */
+   on <main>). ── */
 .pro-main {
   position: relative; z-index: 1;
   display: flex; flex-direction: column; gap: 14px;
@@ -4487,7 +4437,7 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 /* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
    Booking navy token. Activities: glass star pill (.pcard__score--star). */
 .pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px /* design-token-exempt: асимметричный уголок бейджа рейтинга, форма а не шкала */; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
-.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); backdrop-filter: blur(var(--glass-blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4); padding: 0 7px; }
+.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
 /* Supplier badge — bottom-left on the photo (logo, letter fallback). */
@@ -4529,10 +4479,10 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    selector maps to ≤640px here). */
 .blob { position: absolute; border-radius: 50%; filter: blur(12px); pointer-events: none; z-index: 0; }
 
+/* TRIP-326: .head .b1/.b2 (ambient gradient blobs) — мёртвый код, ни одно JSX
+   их не рендерит; выпилены вместе с градиентом канваса. */
 .head { position: relative; margin-bottom: 4px; }
-.head .b1 { width: 280px; height: 280px; background: var(--brand-grad); top: -130px; right: -20px; opacity: .14; }
-.head .b2 { width: 180px; height: 180px; background: var(--ai-gradient); top: -70px; right: 22%; opacity: .10; }
-.head__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
+.head__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; position: relative; }
 .head h1 .nm { color: var(--brand); }
 .head .sub { color: var(--muted); margin-top: 8px; }
 .head .grow { flex: 1; min-width: 160px; }
@@ -4581,8 +4531,8 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 @media (max-width: 640px) { .dash-hero .mapwrap { min-height: 280px; } }
 .rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-/* скин (glass) — тень/бордер/радиус как у .surface-glass; фон остаётся wash (под картой) (TRIP-189) */
-.mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--surface-card-border); box-shadow: var(--shadow-glass); }
+/* бордер/радиус как у канон-поверхности; фон остаётся wash (под картой). TRIP-326: тень снята вместе со стеклом */
+.mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--line); }
 .map-skel { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); gap: 8px; z-index: 1; }
 
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
@@ -4734,13 +4684,14 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
 .map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: 6px; }
-.map-ctl button { width: 34px; height: 34px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(8px); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
-@media (hover: hover) { .map-ctl button:hover { background: var(--surface); box-shadow: var(--sh-1); } }
+/* TRIP-326: color-mix(transparent) + backdrop-filter сняты — непрозрачный --surface. */
+.map-ctl button { width: 34px; height: 34px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
+@media (hover: hover) { .map-ctl button:hover { background: var(--surface-2); box-shadow: var(--sh-1); } }
 .map-ctl button:active { transform: scale(.92); }
 .map-ctl button.on { background: var(--brand); color: var(--primary-fg); border-color: transparent; }
 .map-ctl svg { width: 17px; height: 17px; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
-.map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 84%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
+.map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
 .map-legend .d { width: 11px; height: 11px; border-radius: 4px; }
 /* Mini city markers for the stats/home travel map (createMiniMarkerEl). Tiny dots
    over the country fill — much smaller than the trip Ring pins. trip = solid brand,
@@ -4755,7 +4706,8 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 /* fullscreen: expand the existing singleton-map slot to a fixed overlay (no
    reparent — the same map element just fills the viewport; consumer calls resize) */
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; }
-.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(8px); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+/* TRIP-326: glass снят. */
+.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
 .mapfs-close svg { width: 18px; height: 18px; }
 /* Fullscreen sits above the app header (--z-overlay is above --z-header). On
    mobile, push the controls below the header band (54px) + notch so the close +
