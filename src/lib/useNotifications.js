@@ -2,54 +2,64 @@
  * One seam for the in-app notifications inbox (TRIP-282).
  *
  * Three screens read the same table — the bell in every AppHeader, the Inbox
- * page and the account screen. They go through this module rather than each
- * hand-rolling a useQuery, because same key must mean same data: three queries
- * sharing `['notifications', email]` while asking for different row counts
- * coalesce into one cache entry and whichever mounts first wins (the Inbox
- * would show 30 rows or the bell 100, depending on the entry point). Hence the
- * row budget is part of the key.
+ * page and the account screen. Two queries serve all three:
  *
- * The unread COUNT is deliberately not derived from that capped list: a badge
- * computed from `limit 30` silently tops out at 30, so the account screen's
- * "99+" branch could never render. It gets its own `head`-only count query —
- * one number over the wire instead of 30 full rows.
+ *   the LIST   one query, one row budget, shared by everyone who needs rows.
+ *   the COUNT  one number, `head`-only, for the badge.
+ *
+ * Both halves are deliberate. Before this seam all three screens hand-rolled a
+ * useQuery under the SAME key `['notifications', email]` but with different
+ * limits (30/100/30); React Query coalesces on the key, so one request served
+ * all three and whoever mounted first decided how many rows the others saw.
+ * Putting the limit IN the key fixes the lying, but splits one request into
+ * two — so instead there is one limit for everybody and the bell renders the
+ * head of the same list. Same data by construction, not by convention.
+ *
+ * The count is not derived from the list: a badge computed off `limit N` tops
+ * out at N, so the account screen's "99+" branch could never render.
+ *
+ * The bell does NOT fetch rows until its popover opens (`enabled`). It is
+ * mounted in the AppHeader of every screen, so a list it fetches "just in case"
+ * is a `SELECT *` on every page the user visits, for a panel most of them never
+ * open. Closed bell = one number.
  *
  * `read IS NOT TRUE` (not `= false`) mirrors the JS predicate `!n.read` the
  * screens used: the column is nullable, so an explicit `= false` would skip a
  * NULL row that the UI counts as unread.
  *
  * Invalidation stays prefix-based on `['notifications']`, so one invalidate
- * still refreshes every list AND the count.
+ * still refreshes the list AND the count.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 
-/** Rows the bell popover needs vs. the rows the Inbox page needs. */
-export const NOTIF_LIMIT = { BELL: 30, INBOX: 100 };
+/** One row budget for every consumer — the deepest page (the Inbox) sets it. */
+const LIST_LIMIT = 100;
 
 /**
  * The notification list, newest first. Rows are scoped to the caller by RLS
- * (`user_id = auth.uid()`).
+ * (`user_id = auth.uid()`). `enabled: false` keeps a mounted-but-closed consumer
+ * (the bell) off the wire without unsharing the cache entry.
  */
-export function useNotificationList(limit = NOTIF_LIMIT.BELL) {
+export function useNotificationList({ enabled = true } = {}) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['notifications', user?.email, 'list', limit],
+    queryKey: ['notifications', user?.email, 'list'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(LIST_LIMIT);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.email,
+    enabled: enabled && !!user?.email,
     // Override the global refetchOnWindowFocus:false (TRIP-208 Ф2-2a): there is
     // no polling and no realtime, so a tab the user returns to would otherwise
-    // sit on a stale bell until they navigated.
+    // sit on stale rows until they navigated.
     refetchOnWindowFocus: true,
   });
 }
@@ -80,13 +90,19 @@ export function useUnreadNotificationCount() {
  */
 export function useNotificationActions() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const invalidate = () => qc.invalidateQueries({ queryKey: ['notifications'] });
 
   const markAllRead = useMutation({
     mutationFn: async () => {
+      // `user_id` is stated even though RLS already scopes the UPDATE to
+      // auth.uid(): an unbounded UPDATE whose blast radius depends entirely on
+      // a policy staying correct is how TRIP-124 happened. Defence in depth.
+      if (!user?.id) return;
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
+        .eq('user_id', user.id)
         .not('read', 'is', true);
       if (error) throw error;
     },

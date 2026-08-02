@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/lib/ThemeContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { useNotificationList, useUnreadNotificationCount, useNotificationActions, NOTIF_LIMIT } from '@/lib/useNotifications';
+import { useNotificationList, useUnreadNotificationCount, useNotificationActions } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
@@ -41,13 +41,12 @@ export default function Inbox() {
 
   const [filter, setFilter] = useState('all');
 
-  // Shared seam (src/lib/useNotifications.js). The Inbox reads a deeper page
-  // than the bell; the row budget is part of the cache key, so the two can no
-  // longer overwrite each other.
+  // Shared seam (src/lib/useNotifications.js) — the same single list the bell
+  // renders the head of.
   const {
     data: notifications = [], isLoading,
     error: notifError, isPending: notifPending, fetchStatus: notifFetchStatus, refetch: refetchNotifs,
-  } = useNotificationList(NOTIF_LIMIT.INBOX);
+  } = useNotificationList();
   const { markAllRead, markOneRead, respondInvite } = useNotificationActions();
 
   const unreadCount = useUnreadNotificationCount();

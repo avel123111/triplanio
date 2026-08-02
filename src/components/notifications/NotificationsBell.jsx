@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { useNotificationList, useUnreadNotificationCount, useNotificationActions, NOTIF_LIMIT } from '@/lib/useNotifications';
+import { useNotificationList, useUnreadNotificationCount, useNotificationActions } from '@/lib/useNotifications';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
@@ -53,11 +53,16 @@ export default function NotificationsBell({ triggerClassName }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
 
-  // Shared seam (src/lib/useNotifications.js) — the bell, the Inbox page and the
-  // account screen must not each hand-roll this query.
-  const { data: notifications = [], isLoading } = useNotificationList(NOTIF_LIMIT.BELL);
+  // Shared seam (src/lib/useNotifications.js). Closed bell = one number: the
+  // header is mounted on every screen, so fetching rows for a panel nobody
+  // opened would put a `SELECT *` on every page in the app.
+  const { data: rows = [], isLoading } = useNotificationList({ enabled: open });
   const unread = useUnreadNotificationCount();
   const { markAllRead, markOneRead, respondInvite } = useNotificationActions();
+
+  // The popover shows the head of the shared list; the Inbox page shows all of
+  // it. One query, one cache entry, no way for the two to disagree.
+  const notifications = rows.slice(0, 30);
 
   if (!user) return null;
 
