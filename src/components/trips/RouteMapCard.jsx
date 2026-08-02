@@ -20,7 +20,7 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
       <div className="wdg-h">
         <span className="wi wi--primary"><Icon name="map" size={17} /></span>
         <h4>{t('overview.map_title')}</h4>
-        <button className="btn btn--ghost btn--sm ov-openbtn" onClick={onOpen}>
+        <button className="btn btn--ghost ov-openbtn" onClick={onOpen}>
           {t('overview.open')}
           <Icon name="chev" size={14} />
         </button>

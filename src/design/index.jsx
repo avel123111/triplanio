@@ -5,6 +5,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
+import { detectPartner } from '@/lib/externalBrands';
 import { transferKind } from '@/lib/transport';
 
 // =====================================================================
@@ -34,11 +35,11 @@ export { default as AiField, AiBadge } from '@/components/ui/AiField';
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
-export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className = "", style: styleProp }) => {
+export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
   const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (deleted) {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "xl" ? 26 : size === "sm" ? 12 : 15} /></div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "sm" ? 12 : 15} /></div>;
   }
   if (kind === "ai") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
@@ -136,9 +137,9 @@ export const Field = ({ label, hint, sub, ai, error, warning, children, required
 // `loading` renders the canonical Lumo in-button spinner (.btn .spin) in place
 // of the leading icon, disables the button and flags aria-busy — the single
 // source of truth for "operation in flight" feedback across the app.
-export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
-    className={`btn btn--${variant} ${size ? "btn--" + size : ""} ${block ? "btn--block" : ""} ${className}`}
+    className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
@@ -154,20 +155,19 @@ export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled,
 );
 
 // ----- Badge -----
-export const Badge = ({ variant = "", icon, dot, children, style }) => (
+export const Badge = ({ variant = "", icon, children, style }) => (
   <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
-    {dot && <span className="dot" />}
     {icon && <Icon name={icon} size={11} />}
     {children}
   </span>
 );
 
 // ----- Card -----
-export const Card = ({ variant = "", title, subtitle, action, children, className = "", style }) => (
-  <div className={`card ${variant ? "card--" + variant : ""} ${className}`} style={style}>
+export const Card = ({ title, subtitle, action, children, className = "", style }) => (
+  <div className={`card ${className}`} style={style}>
     {(title || subtitle || action) && (
       <div className="card-h">
-        <div style={{ flex: 1 }}>
+        <div className="grow">
           {title && <h3>{title}</h3>}
           {subtitle && <div className="muted t-meta">{subtitle}</div>}
         </div>
@@ -336,30 +336,8 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
 };
 
 // ---- Partner logo helper ----
-const PARTNERS = {
-  "booking.com":   { color: "#003580", label: "Booking",     short: "B" },
-  "airbnb":        { color: "#ff385c", label: "Airbnb",      short: "A" },
-  "marriott":      { color: "#a8945c", label: "Marriott",    short: "M" },
-  "agoda":         { color: "#fe424d", label: "Agoda",       short: "A" },
-  "renfe":         { color: "#7a1f3a", label: "Renfe",       short: "R" },
-  "cp.pt":         { color: "#2f6ba8", label: "CP",          short: "CP" },
-  "lufthansa":     { color: "#05164d", label: "Lufthansa",   short: "L" },
-  "tap":           { color: "#c81f3a", label: "TAP",         short: "T" },
-  "expedia":       { color: "#fcc60a", label: "Expedia",     short: "E" },
-  "rentalcars":    { color: "#222e72", label: "RentalCars",  short: "R" },
-  "sixt":          { color: "#ff6600", label: "Sixt",        short: "S" },
-  "holafly":       { color: "#5ac6c1", label: "Holafly",     short: "H" },
-};
-
-// Not exported: only PartnerLogo and PartnerPill below resolve a partner.
-function detectPartner(url) {
-  if (!url) return null;
-  const u = url.toLowerCase();
-  for (const [k, v] of Object.entries(PARTNERS)) {
-    if (u.includes(k)) return { key: k, ...v };
-  }
-  return null;
-}
+// Бренд-цвета партнёров живут в lib/externalBrands (единственный дом внешних
+// брендов), а не рядом с компонентом, который их рисует.
 
 export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);

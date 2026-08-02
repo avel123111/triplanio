@@ -293,7 +293,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <Severity
               level="error"
               title={t('sys.load_error_title')}
-              action={<Btn variant="ghost" size="sm" onClick={() => refetchMsgs()}>{t('sys.retry')}</Btn>}
+              action={<Btn variant="ghost" onClick={() => refetchMsgs()}>{t('sys.retry')}</Btn>}
             >
               {t('sys.load_error_desc')}
             </Severity>
@@ -306,7 +306,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           <div className="chat-msgs__in">
             {!historyDone && msgs.length >= CHAT_PAGE && (
               <div className="chat-hist">
-                <Btn variant="secondary" size="sm" icon="chevU" loading={loadingOlder} onClick={loadOlder}>
+                <Btn variant="secondary" icon="chevU" loading={loadingOlder} onClick={loadOlder}>
                   {t('chat.load_older')}
                 </Btn>
               </div>

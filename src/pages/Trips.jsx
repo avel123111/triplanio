@@ -113,7 +113,7 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span className="t-mono" style={{ color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
+        <span className="t-mono muted-2">{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
@@ -138,7 +138,7 @@ function NoNextCard({ variant, onPlan, t }) {
         <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
       </div>
       {!isEmpty && (
-        <Btn variant="primary" size="sm" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
+        <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
       )}
     </div>
   );
@@ -371,7 +371,7 @@ function TripSkeleton({ viewMode }) {
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
             <Skeleton w={62} h={46} r={'var(--r-sm)'} />
-            <div style={{ flex: 1 }}>
+            <div className="grow">
               <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
               <Skeleton w="32%" h={11} r={4} />
             </div>

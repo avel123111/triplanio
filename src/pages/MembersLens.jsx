@@ -409,7 +409,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
               {/* Actions */}
               <div className="mbrow__acts">
                 {m.status === 'offline' && canManage && (
-                  <Btn variant="ghost" size="sm" icon="send"
+                  <Btn variant="ghost" icon="send"
                     onClick={() => setPromoteState({ member: m })}>
                     {t('members.invite')}
                   </Btn>

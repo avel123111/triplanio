@@ -475,7 +475,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
           <Skeleton w={200} h={32} r={'var(--r-sm)'} />
-          <div style={{ flex: 1 }} />
+          <div className="grow" />
           <Skeleton w={220} h={32} r={'var(--r-xl)'} />
         </div>
         <Skeleton w="100%" h={500} r={'var(--r-md)'} />

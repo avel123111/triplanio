@@ -283,7 +283,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {/* "Рядом" section */}
       <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <span className="eyebrow" style={{ flex: 1 }}>{t('planner.nearby')}</span>
+        <span className="eyebrow grow">{t('planner.nearby')}</span>
       </div>
 
       {geoState === 'ask' && (
@@ -295,14 +295,14 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
           </div>
-          <Btn variant="primary" size="sm" onClick={requestGeo}>{t('planner.allow')}</Btn>
+          <Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>
         </div>
       )}
 
       {geoState === 'loading' && (
         <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
           <div className="spin" style={{ width: 20, height: 20, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%' }} />
-          <span className="t-body" style={{ color: 'var(--muted)' }}>{t('planner.detecting')}</span>
+          <span className="t-body muted">{t('planner.detecting')}</span>
         </div>
       )}
 
@@ -350,7 +350,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
           </div>
-          <Btn variant="ghost" size="sm" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
+          <Btn variant="ghost" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
         </div>
       )}
 
@@ -522,7 +522,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
       <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <Icon name="info" size={14} style={{ color: 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
-        <div className="t-meta" style={{ color: 'var(--muted)' }}>
+        <div className="t-meta muted">
           {t('planner.return_info')}
         </div>
       </div>
@@ -1302,7 +1302,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
                 {!isFirstStep && <Btn variant="ghost" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
-                <div className="flow-foot__spacer" style={{ flex: 1 }} />
+                <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>
             )}

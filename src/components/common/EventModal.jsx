@@ -136,12 +136,11 @@ export default function EventModal(props) {
         <div className="ev-dlg-ft">
           {confirmDel ? (
             <>
-              <Btn variant="ghost" size="sm" onClick={() => setConfirmDel(false)} disabled={deleting}>
+              <Btn variant="ghost" onClick={() => setConfirmDel(false)} disabled={deleting}>
                 {t('trip.form_cancel')}
               </Btn>
               <Btn
                 variant="danger-solid"
-                size="sm"
                 disabled={deleting}
                 onClick={async () => {
                   if (!onDelete) return;
@@ -155,12 +154,12 @@ export default function EventModal(props) {
           ) : (
             <>
               {canEdit && onDelete && (
-                <Btn variant="danger" size="sm" onClick={() => setConfirmDel(true)}>
+                <Btn variant="danger" onClick={() => setConfirmDel(true)}>
                   <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.delete')}
                 </Btn>
               )}
               {canEdit && onEdit && (
-                <Btn variant="primary" size="sm" onClick={onEdit} style={{ '--bg': theme.color }}>
+                <Btn variant="primary" onClick={onEdit} style={{ '--bg': theme.color }}>
                   <Edit2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.edit_trip')}
                 </Btn>
               )}

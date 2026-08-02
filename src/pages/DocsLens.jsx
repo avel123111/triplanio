@@ -451,7 +451,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               {t('trip.delete')}
             </Btn>
           )}
-          <div style={{ flex: 1 }} />
+          <div className="grow" />
           <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
         </div>
       </DialogContent>
@@ -566,7 +566,6 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
       {canAdd && (
         <Btn
           variant="soft"
-          size="sm"
           icon="plus"
           style={!isShared ? { background: 'var(--warm-soft)', color: 'var(--warm-ink)' } : undefined}
           onClick={() => onOpenAdd?.()}>

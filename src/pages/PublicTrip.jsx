@@ -453,7 +453,7 @@ export default function PublicTrip() {
       {/* ── Mobile sticky CTA ── */}
       <div className="pt-scta">
         <div className="tx"><b>{t('public.scta_title')}</b><span>{t('public.scta_sub')}</span></div>
-        <a className="btn btn--primary btn--sm" href={SITE}>{t('public.scta_btn')}</a>
+        <a className="btn btn--primary" href={SITE}>{t('public.scta_btn')}</a>
       </div>
     </div>
   );
@@ -465,7 +465,7 @@ function NotFound({ message, t }) {
       <div>
         <div className="ic"><Plane size={24} /></div>
         <h1 className="t-heading" style={{ marginBottom: 8 }}>{t('public.oops')}</h1>
-        <p style={{ color: 'var(--muted)' }}>{message}</p>
+        <p className="muted">{message}</p>
       </div>
     </div></div>
   );

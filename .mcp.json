@@ -40,6 +40,13 @@
       "env": {
         "POSTHOG_PERSONAL_API_KEY": "${POSTHOG_PERSONAL_API_KEY}"
       }
+    },
+    "playwright": {
+      "command": "sh",
+      "args": ["scripts/agent/playwright-mcp.sh"],
+      "env": {
+        "PLAYWRIGHT_BROWSERS_PATH": "/data/.cache/ms-playwright"
+      }
     }
   }
 }

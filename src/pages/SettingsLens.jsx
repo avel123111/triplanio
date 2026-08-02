@@ -93,7 +93,7 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
       <div className="addon-card__desc">{t(feat.descKey)}</div>
       {proLocked && !feat.locked && (
         <div className="addon-card__foot">
-          <Btn variant="soft" size="sm" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
+          <Btn variant="soft" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
         </div>
       )}
     </div>
@@ -199,7 +199,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="telegram" size={17} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="grow">
               <div className="t-ui">{t('telegram.not_connected_title')}</div>
               <div className="muted t-meta">{t('settings.tg_for_trip')}</div>
             </div>
@@ -233,7 +233,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="telegram" size={17} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="grow">
               <div className="t-ui">{t('settings.tg_waiting')}</div>
               <div className="muted t-meta">
                 <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
@@ -255,7 +255,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
-            <div style={{ flex: 1 }} />
+            <div className="grow" />
             <Btn variant="primary" icon="check" onClick={checkNow}>{t('settings.tg_pressed_start')}</Btn>
           </div>
         </>
@@ -267,7 +267,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'color-mix(in oklab, var(--success) 22%, transparent)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="check" size={17} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="grow">
               <div className="t-ui">{t('settings.tg_linked')}</div>
               <div className="muted t-meta">{t('settings.tg_just_now')}</div>
             </div>
@@ -368,7 +368,7 @@ function TelegramSection({ tripId }) {
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </div>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
-          <Btn variant="quiet" size="sm" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
+          <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
         </div>
       ))}
       <Btn variant="ghost" icon="plus" onClick={openConnect}>
@@ -399,7 +399,7 @@ function ApproverRow({ member, profile, locked }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <Avatar name={name} photo={profile?.avatar_url || ''} deleted={isDeleted} size="sm" />
-      <div style={{ flex: 1 }}>
+      <div className="grow">
         <div className="t-ui">{name}</div>
         <div className="muted t-meta">{roleLabel}</div>
       </div>
@@ -795,7 +795,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
             </div>
             {isOwner ? (
-              <Btn variant="primary" size="sm" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+              <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
               <button className="lockmsg" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>
                 <Icon name="lock" size={14} />
@@ -805,7 +805,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           </div>
         )}
         <div className="card-h">
-          <div style={{ flex: 1 }}><h3>{t('settings.optional_features')}</h3></div>
+          <div className="grow"><h3>{t('settings.optional_features')}</h3></div>
         </div>
         <div className="addon-grid">
           {FEATURES
@@ -897,7 +897,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           participant, including a viewer. Pro status + Pro-only addons and
           documents are stripped from the copy server-side. */}
       <Card title={t('settings.copy_trip_title')} subtitle={t('settings.copy_trip_desc')}>
-        <Btn variant="soft" icon="copy" loading={copying} onClick={() => startCopy(tripId)}>
+        <Btn variant="soft" icon="copy" loading={copying} onClick={() => void startCopy(tripId)}>
           {t('settings.copy_trip_btn')}
         </Btn>
       </Card>
@@ -907,7 +907,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {myRole !== 'owner' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-              <div style={{ flex: 1 }}>
+              <div className="grow">
                 <div className="t-ui">{t('settings.leave_trip')}</div>
                 <div className="muted t-meta">{t('settings.leave_desc')}</div>
               </div>
@@ -917,7 +917,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {myRole === 'owner' && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="t-ui">{t('settings.leave_trip')}</div>
                   <div className="muted t-meta">{t('settings.leave_owner_blocked')}</div>
                 </div>
@@ -925,7 +925,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-                <div style={{ flex: 1 }}>
+                <div className="grow">
                   <div className="t-ui">{t('settings.delete_trip')}</div>
                   <div className="muted t-meta">{t('settings.delete_desc')}</div>
                 </div>

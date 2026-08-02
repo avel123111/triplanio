@@ -394,10 +394,10 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div className="t-ui" style={{ flex: 1 }}>
+      <div className="t-ui grow">
         {t('trip.no_transfer', { from, to })}
       </div>
-      <Btn variant="primary" size="sm" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
+      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
       <button onClick={() => setHidden(true)} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--warning)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
         <Icon name="close" size={12} />
       </button>
@@ -668,7 +668,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
                   borderRadius: 'var(--r-sm)', color: 'var(--muted)',
                 }}>
                   <Icon name="info" size={14} />
-                  <div className="t-meta" style={{ flex: 1 }}>{t('view.empty_day')}</div>
+                  <div className="t-meta grow">{t('view.empty_day')}</div>
                 </div>
               )}
             </>

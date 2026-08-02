@@ -51,7 +51,7 @@ export function ActionMenu({ trigger, items = [], align = 'end', side = 'bottom'
               onClick={() => { setOpen(false); it.onSelect?.(); }}
             >
               {it.icon ? <Icon name={it.icon} size={18} /> : null}
-              <span style={{ flex: 1 }}>{it.label}</span>
+              <span className="grow">{it.label}</span>
             </button>
           )))}
         </Sheet>
@@ -81,7 +81,7 @@ export function ActionMenu({ trigger, items = [], align = 'end', side = 'bottom'
               onSelect={it.onSelect}
             >
               {it.icon ? <Icon name={it.icon} size={16} /> : null}
-              <span style={{ flex: 1 }}>{it.label}</span>
+              <span className="grow">{it.label}</span>
             </DropdownMenu.Item>
           )))}
         </DropdownMenu.Content>

@@ -146,7 +146,7 @@ export default function NotificationsBell({ triggerClassName }) {
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
-          <div className="t-ui" style={{ flex: 1 }}>{t('notif.title')}</div>
+          <div className="t-ui grow">{t('notif.title')}</div>
           {unread > 0 && (
             <button className="bell-dd__mark" onClick={() => markAllRead.mutate()}>
               {t('notif.mark_all_read')}
@@ -234,8 +234,8 @@ function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTri
 
         {showPending && (
           <div className="brow__acts">
-            <Btn variant="primary" size="sm" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="ghost" size="sm" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+            <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+            <Btn variant="ghost" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </div>
         )}
         {isInvite && member?.status === 'active' && (
