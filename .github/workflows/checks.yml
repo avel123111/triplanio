@@ -87,6 +87,7 @@ jobs:
   #   2j check-posthog-init          — analytics behind the consent gate (single posthog.init)
   #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
   #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
+  #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -148,6 +149,10 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-inline-styles.mjs
+      - name: 2m — CSS namespaces (a new class prefix needs approval)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-css-prefixes.mjs
 
   deno:
     name: Deno typecheck (edge functions)
