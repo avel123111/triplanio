@@ -35,11 +35,13 @@
  * (2b), `design-token-exempt` (2k), `inline-style-exempt` (2l). One marker
  * per prefix; the reason and the approval belong in the marker text.
  *
- * Deliberately dumb: comments are blanked, declaration bodies are skipped by
- * a brace walk (so `url(x.png)` and `.5px` never read as classes), classes
- * are a regex over the remaining selector text. No specificity, no cascade —
- * it measures the smell (a new namespace), not correctness. What it does and
- * does not catch is written down as executable tests in
+ * Deliberately dumb: comments and string bodies are blanked, declaration
+ * bodies are skipped by a brace walk (so `url(x.png)` and `.5px` never read as
+ * classes), classes are a regex over the remaining selector text. No
+ * specificity, no cascade — it measures the smell (a new namespace), not
+ * correctness. Known blind spot: native CSS nesting (`.a { .b {} }`) — the
+ * repo has none, and the day it does this walk must recurse into rule bodies
+ * too. What it does and does not catch is written down as executable tests in
  * check-css-prefixes.test.mjs.
  *
  * Env: BASE_REF (default origin/dev). Unresolvable ref → skipped, not
@@ -64,33 +66,73 @@ const git = (args) =>
 
 /* ------------------------------- scanning -------------------------------- */
 
-/** Blank block comments, preserving length so nothing shifts. */
-const blankComments = (src) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+/**
+ * Blank the bodies of block comments AND of strings, preserving length so
+ * nothing shifts. A brace or a dot inside text is not structure, and reading
+ * it as structure breaks the guard in both directions: `content: "{"` derails
+ * the brace walk so everything after it in the file goes unscanned (a silent
+ * green), and `[data-icon=".x"]` reads as a class (a silent red).
+ */
+function mask(src) {
+  const out = src.split('');
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === '/' && src[i + 1] === '*') {
+      const end = src.indexOf('*/', i + 2);
+      const stop = end === -1 ? src.length : end + 2;
+      for (; i < stop; i++) if (src[i] !== '\n') out[i] = ' ';
+      i--;
+    } else if (src[i] === '"' || src[i] === "'") {
+      const quote = src[i++];
+      // An unterminated string ends at the newline, the way CSS parses it —
+      // one typo must not blank the rest of the file.
+      while (i < src.length && src[i] !== quote && src[i] !== '\n') {
+        if (src[i] === '\\' && src[i + 1] && src[i + 1] !== '\n') out[i++] = ' ';
+        out[i++] = ' ';
+      }
+    }
+  }
+  return out.join('');
+}
 
 /** `.bgt-exrow` → `bgt`; `.btn--ai` → `btn`; `.tm__row` → `tm`; `.grow` → `grow`. */
 const prefixOf = (cls) => cls.split(/--|__|-/, 1)[0] || cls;
 
+// Grouping at-rules: their block holds RULES, so the walk must step inside.
+// Anything else with a block (@keyframes, @font-face, @page, @property) holds
+// declarations and no class selectors, and is skipped whole.
+const NESTS = /^@(media|supports|container|layer|scope|starting-style)/i;
+
+// `\.` inside a class name is an escaped dot, not the start of the next class.
+const CLASS = /(?<!\\)\.(-?[A-Za-z_][\w-]*)/g;
+
 /**
  * Class names from selector positions only. A brace walk keeps declaration
- * bodies (where `url(x.png)`, `rgba(0,.5,…)` live) out of the selector text;
- * @media/@supports/@container preludes recurse, @keyframes/@font-face bodies
- * hold no class selectors and are skipped whole.
+ * bodies (where `url(x.png)`, `rgba(0,.5,…)` live) out of the selector text.
  */
 function classesOf(src) {
-  const css = blankComments(src ?? '');
+  const css = mask(src ?? '');
   const found = new Set();
   let i = 0;
-  (function walk() {
+  (function walk(top) {
     let selStart = i;
     while (i < css.length) {
       const ch = css[i];
-      if (ch === '}') { i++; return; }
+      if (ch === '}') {
+        i++;
+        // A stray `}` at the top level is junk (browsers ignore it); treating
+        // it as the end of the file would leave the rest unscanned.
+        if (!top) return;
+        selStart = i;
+        continue;
+      }
+      // `@import …;`, `@charset …;`, `@layer a, b;` — a statement, not the
+      // prelude of the rule that follows it.
+      if (ch === ';') { i++; selStart = i; continue; }
       if (ch !== '{') { i++; continue; }
       const selector = css.slice(selStart, i).trim();
       i++;
-      if (/^@(media|supports|container)/.test(selector)) {
-        walk();
+      if (NESTS.test(selector)) {
+        walk(false);
       } else {
         let depth = 0;
         while (i < css.length) {
@@ -100,12 +142,12 @@ function classesOf(src) {
         }
         i++; // consume the closing }
         if (!selector.startsWith('@')) {
-          for (const m of selector.matchAll(/\.(-?[A-Za-z_][\w-]*)/g)) found.add(m[1]);
+          for (const m of selector.matchAll(CLASS)) found.add(m[1]);
         }
       }
       selStart = i;
     }
-  })();
+  })(true);
   return found;
 }
 

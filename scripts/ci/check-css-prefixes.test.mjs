@@ -113,6 +113,52 @@ test('a new prefix that hides inside @media only → still seen, fail', (t) => {
   assert.match(r.out, /new prefix "zz"/);
 });
 
+test('a statement at-rule does not hide the rule after it (@import)', (t) => {
+  // `@import …;` has no block, so its text ran on into the next selector, and a
+  // selector starting with `@` is skipped — everything in that rule vanished.
+  const f = fixture(t, {
+    base: { 'src/design/app.css': APP_CSS },
+    head: { 'src/design/app.css': '@import "./fonts.css";\n.zz-new { color: red; }\n' + APP_CSS },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /new prefix "zz"/);
+});
+
+test('a new prefix inside @layer / @scope → seen, fail', (t) => {
+  const f = fixture(t, {
+    base: { 'src/design/app.css': APP_CSS },
+    head: { 'src/design/app.css': APP_CSS + '@layer base { .zz-new { color: red; } }\n' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /new prefix "zz"/);
+});
+
+test('a brace inside a string does not blind the rest of the file', (t) => {
+  // `content: "{"` unbalances the brace walk; the walk must not read it as
+  // structure, or everything below it in the file ships unscanned.
+  const f = fixture(t, {
+    base: { 'src/design/app.css': APP_CSS },
+    head: {
+      'src/design/app.css': APP_CSS + '.btn::after { content: "{"; }\n.zz-new { color: red; }\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /new prefix "zz"/);
+});
+
+test('a stray } (bad merge) does not end the scan', (t) => {
+  const f = fixture(t, {
+    base: { 'src/design/app.css': APP_CSS },
+    head: { 'src/design/app.css': APP_CSS + '}\n.zz-new { color: red; }\n' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /new prefix "zz"/);
+});
+
 /* ────────────── what must stay green (the Ф3 clean-up path) ─────────────── */
 
 test('extending an EXISTING family is normal work → pass', (t) => {
@@ -199,6 +245,50 @@ test('a class name inside a comment is prose, not a selector', (t) => {
     head: { 'src/design/app.css': APP_CSS + '/* TODO: fold .legacy-junk into .acct-row */\n' },
   });
   assert.equal(run(f).code, 0);
+});
+
+test('a quoted attribute value is text, not a selector', (t) => {
+  const f = fixture(t, {
+    base: { 'src/design/app.css': APP_CSS },
+    head: { 'src/design/app.css': APP_CSS + '.btn[data-icon=".zzz-glyph"] { color: red; }\n' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, `a dot inside a string must not read as a class:\n${r.out}`);
+});
+
+test('an escaped dot belongs to the class name, it does not start a new one', (t) => {
+  const f = fixture(t, {
+    base: { 'src/design/app.css': APP_CSS },
+    head: { 'src/design/app.css': APP_CSS + '.acct\\.hero-alt { color: red; }\n' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('a base file with @import still supplies its prefixes to the ceiling', (t) => {
+  // The mirror of the @import hole: if the base scan loses a rule, an EXISTING
+  // family reads as new and ordinary work goes red.
+  const f = fixture(t, {
+    base: { 'src/design/app.css': '@import "./fonts.css";\n.acct-hero { color: red; }\n' },
+    head: {
+      'src/design/app.css': '@import "./fonts.css";\n.acct-hero { color: red; }\n.acct-two { color: blue; }\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('BOM, CRLF, spaceless @media and an empty rule are read, not choked on', (t) => {
+  const f = fixture(t, {
+    base: { 'src/design/app.css': APP_CSS },
+    head: {
+      'src/design/app.css':
+        '﻿' +
+        (APP_CSS + '@media(max-width:600px){.acct-hero{top:0}}\n.btn--empty{}\n').replace(/\n/g, '\r\n'),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
 });
 
 test('an untouched file with a lonely namespace is not re-judged', (t) => {
