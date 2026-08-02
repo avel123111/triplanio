@@ -35,14 +35,13 @@
  * (2b), `design-token-exempt` (2k), `inline-style-exempt` (2l). One marker
  * per prefix; the reason and the approval belong in the marker text.
  *
- * Deliberately dumb: comments and string bodies are blanked, declaration
- * bodies are skipped by a brace walk (so `url(x.png)` and `.5px` never read as
- * classes), classes are a regex over the remaining selector text. No
- * specificity, no cascade — it measures the smell (a new namespace), not
- * correctness. Known blind spot: native CSS nesting (`.a { .b {} }`) — the
- * repo has none, and the day it does this walk must recurse into rule bodies
- * too. What it does and does not catch is written down as executable tests in
- * check-css-prefixes.test.mjs.
+ * Deliberately dumb: comments and string bodies are blanked, a brace walk
+ * recurses into every block and reads only prelude (selector) positions — so
+ * `url(x.png)` and `.5px` in declarations never read as classes, while rules
+ * nested via @media/@layer/@scope AND native CSS nesting (`.a { & .b {} }`)
+ * are all seen. No specificity, no cascade — it measures the smell (a new
+ * namespace), not correctness. What it does and does not catch is written
+ * down as executable tests in check-css-prefixes.test.mjs.
  *
  * Env: BASE_REF (default origin/dev). Unresolvable ref → skipped, not
  * guessed. Exit: 0 ok, 1 violation, 2 internal error.
@@ -97,17 +96,18 @@ function mask(src) {
 /** `.bgt-exrow` → `bgt`; `.btn--ai` → `btn`; `.tm__row` → `tm`; `.grow` → `grow`. */
 const prefixOf = (cls) => cls.split(/--|__|-/, 1)[0] || cls;
 
-// Grouping at-rules: their block holds RULES, so the walk must step inside.
-// Anything else with a block (@keyframes, @font-face, @page, @property) holds
-// declarations and no class selectors, and is skipped whole.
-const NESTS = /^@(media|supports|container|layer|scope|starting-style)/i;
-
 // `\.` inside a class name is an escaped dot, not the start of the next class.
 const CLASS = /(?<!\\)\.(-?[A-Za-z_][\w-]*)/g;
 
 /**
- * Class names from selector positions only. A brace walk keeps declaration
- * bodies (where `url(x.png)`, `rgba(0,.5,…)` live) out of the selector text.
+ * Class names from prelude (selector) positions only. The walk recurses into
+ * EVERY block — @media/@layer/@scope group rules, and native CSS nesting puts
+ * rules inside rule bodies (`.a { & .b {} }`), so a whitelist of "grouping"
+ * at-rules is a bypass, not a parser (PR #641 review). Declarations never leak
+ * in: text becomes a prelude only when a `{` follows it, `;` closes a
+ * declaration (or a statement at-rule like `@import …;`) and resets the
+ * prelude, and strings are masked — so `url(x.png)`, `rgba(0,.5)` and
+ * declaration-only bodies (@keyframes steps, @font-face) contribute nothing.
  */
 function classesOf(src) {
   const css = mask(src ?? '');
@@ -125,26 +125,16 @@ function classesOf(src) {
         selStart = i;
         continue;
       }
-      // `@import …;`, `@charset …;`, `@layer a, b;` — a statement, not the
-      // prelude of the rule that follows it.
+      // A `;` ends a declaration or a statement at-rule (`@import …;`,
+      // `@charset …;`, `@layer a, b;`) — never part of the next prelude.
       if (ch === ';') { i++; selStart = i; continue; }
       if (ch !== '{') { i++; continue; }
-      const selector = css.slice(selStart, i).trim();
+      const prelude = css.slice(selStart, i).trim();
       i++;
-      if (NESTS.test(selector)) {
-        walk(false);
-      } else {
-        let depth = 0;
-        while (i < css.length) {
-          if (css[i] === '{') depth++;
-          else if (css[i] === '}') { if (depth === 0) break; depth--; }
-          i++;
-        }
-        i++; // consume the closing }
-        if (!selector.startsWith('@')) {
-          for (const m of selector.matchAll(CLASS)) found.add(m[1]);
-        }
+      if (!prelude.startsWith('@')) {
+        for (const m of prelude.matchAll(CLASS)) found.add(m[1]);
       }
+      walk(false);
       selStart = i;
     }
   })(true);
