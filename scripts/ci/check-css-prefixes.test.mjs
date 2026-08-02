@@ -159,6 +159,24 @@ test('a stray } (bad merge) does not end the scan', (t) => {
   assert.match(r.out, /new prefix "zz"/);
 });
 
+test('native CSS nesting does not hide a new namespace (PR #641 review)', (t) => {
+  // Rules live inside rule bodies too — with `&` and without. A whitelist of
+  // "grouping" at-rules skipped these bodies whole, so `.zz-new` shipped green.
+  for (const nested of [
+    '.acct-row { & .zz-new { color: red; } }\n',
+    '.acct-row { .zz-new { color: red; } }\n',
+    '@media (max-width: 640px) { .acct-row { & .zz-new { top: 0; } } }\n',
+  ]) {
+    const f = fixture(t, {
+      base: { 'src/design/app.css': APP_CSS },
+      head: { 'src/design/app.css': APP_CSS + nested },
+    });
+    const r = run(f);
+    assert.equal(r.code, 1, `nesting must be scanned:\n${nested}${r.out}`);
+    assert.match(r.out, /new prefix "zz"/);
+  }
+});
+
 /* ────────────── what must stay green (the Ф3 clean-up path) ─────────────── */
 
 test('extending an EXISTING family is normal work → pass', (t) => {
@@ -248,12 +266,35 @@ test('a class name inside a comment is prose, not a selector', (t) => {
 });
 
 test('a quoted attribute value is text, not a selector', (t) => {
+  for (const rule of [
+    '.btn[data-icon=".zzz-glyph"] { color: red; }\n',
+    'a[href$=".pdf"] { color: blue; }\n', // the PR #641 review case
+  ]) {
+    const f = fixture(t, {
+      base: { 'src/design/app.css': APP_CSS },
+      head: { 'src/design/app.css': APP_CSS + rule },
+    });
+    const r = run(f);
+    assert.equal(r.code, 0, `a dot inside a string must not read as a class:\n${rule}${r.out}`);
+  }
+});
+
+test('nesting recursion does not misread declaration-only bodies', (t) => {
+  // @keyframes steps and @font-face hold declarations; recursing into every
+  // block must not turn `url(x.woff2)` or `0%` into classes, and pseudo-only
+  // nesting (`&:hover`) adds no class at all.
   const f = fixture(t, {
     base: { 'src/design/app.css': APP_CSS },
-    head: { 'src/design/app.css': APP_CSS + '.btn[data-icon=".zzz-glyph"] { color: red; }\n' },
+    head: {
+      'src/design/app.css':
+        APP_CSS +
+        '@keyframes spin { 0% { transform: none; } 100% { transform: rotate(1turn); } }\n' +
+        '@font-face { font-family: X; src: url(x.woff2) format("woff2"); }\n' +
+        '.acct-row { &:hover { background: url(hero.png); } }\n',
+    },
   });
   const r = run(f);
-  assert.equal(r.code, 0, `a dot inside a string must not read as a class:\n${r.out}`);
+  assert.equal(r.code, 0, r.out);
 });
 
 test('an escaped dot belongs to the class name, it does not start a new one', (t) => {
