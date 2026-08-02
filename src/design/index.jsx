@@ -202,7 +202,7 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
 export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
   <div style={{
     width: w, height: h, borderRadius: r,
-    background: "linear-gradient(90deg, var(--line-2) 0%, var(--wash) 50%, var(--line-2) 100%)",
+    background: "linear-gradient(90deg, var(--line) 0%, var(--wash) 50%, var(--line) 100%)",
     backgroundSize: "200% 100%",
     animation: "shimmer 1.5s linear infinite",
     ...style,
@@ -547,7 +547,7 @@ export function StreamEventRow({ e, onClick }) {
 
 function _InfoChip({ icon, color, children }) {
   return (
-    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line-2)", color: "var(--ink-2)" }}>
+    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line)", color: "var(--ink-2)" }}>
       <Icon name={icon} size={13} style={{ color }} />
       {children}
     </span>

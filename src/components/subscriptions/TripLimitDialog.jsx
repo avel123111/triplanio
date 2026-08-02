@@ -115,7 +115,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           </div>
 
           {/* Info strip */}
-          <div className="t-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', marginBottom: 16, color: 'var(--muted)' }}>
+          <div className="t-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 16, color: 'var(--muted)' }}>
             <Icon name="info" size={14} style={{ flexShrink: 0 }} />
             {t('sub.limit_info')}
           </div>

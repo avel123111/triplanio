@@ -1833,7 +1833,7 @@ function TransferLegCard({
   return (
     // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
     // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    <div style={isMulti ? { border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
+    <div style={isMulti ? { border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
@@ -1860,7 +1860,7 @@ function TransferLegCard({
       </div>
       )}
 
-      <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line-2)' : 'none' }}>
+      <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line)' : 'none' }}>
         {isMulti && <div style={{ height: 10 }} />}
         <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
@@ -2135,7 +2135,7 @@ function SegTransportGrid({ value, onChange, color }) {
         const active = value === k.id; const Ic = k.Icon;
         return (
           <button key={k.id} type="button" className="t-meta" onClick={() => onChange(k.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
             <Ic size={16} />{t(k.labelKey)}
           </button>
         );
@@ -2237,7 +2237,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                   {layDate && <span className="num" style={{ opacity: 0.7 }}>· {layDate}</span>}
                   {layDur && <span className="num" style={{ opacity: 0.7 }}>· {layDur}</span>}
                 </span>
-                <span style={{ flex: 1, height: 1, background: 'var(--line-2)' }} />
+                <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
               </div>
             )}
           </React.Fragment>

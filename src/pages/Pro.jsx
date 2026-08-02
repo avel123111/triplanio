@@ -276,7 +276,7 @@ export default function Pro() {
                         <li key={j} className="plan-feature" style={f.on ? undefined : { color: 'var(--muted)' }}>
                           <div
                             className="plan-feature__check"
-                            style={f.on ? undefined : { background: 'none', border: '1px solid var(--line-2)', color: 'var(--muted)' }}
+                            style={f.on ? undefined : { background: 'none', border: '1px solid var(--line)', color: 'var(--muted)' }}
                           >
                             <Icon name={f.on ? 'check' : 'minus'} size={12} />
                           </div>

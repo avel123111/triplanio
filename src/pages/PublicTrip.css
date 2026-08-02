@@ -17,8 +17,11 @@
   --brand:#2173C8;
   --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
   --ink:#272433; --ink-2:#4A4659; --muted:#7A7689; --muted-2:#ABA7B8;
-  --bg:#fcfcfc; --surface:#FFFFFF; --surface-2:#EEEEF7; --surface-3:#FAFAFE;
-  --line:#E9E8F2; --line-strong:#DBD9E7;
+  /* TRIP-326: зеркало держит ТУ ЖЕ холодно-серую шкалу, что и :root в app.css.
+     Раньше здесь оставалась прежняя фиолетовая — публичный экран расходился
+     с приложением по фону и границам. Меняешь нейтрали в app.css — правь и тут. */
+  --bg:#f7f9fa; --surface:#FFFFFF; --surface-2:#EEF1F4; --surface-3:#F5F8FA;
+  --line:#E6EAEE; --line-strong:#D5DAE0; --line-hover:#C8CED6;
   --primary-hover:#1C66B4; --primary-ring:rgba(33,115,200,.28); --primary-soft:rgba(33,115,200,.10);
 
   font-family:var(--font-ui);
@@ -76,8 +79,8 @@
 .pt-left{min-width:0}
 .pt-mapcol{position:sticky;top:84px;height:calc(100vh - 110px);min-height:460px}
 .pt-mapbox{position:relative;height:100%;border-radius:var(--r-card);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-1);background:var(--surface-3)}
-/* Bottom-left glass caption: which city the camera is on + its nights. */
-.pt-mapcap{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 14px 9px 11px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(160%) blur(10px);border:1px solid var(--line);box-shadow:var(--sh-1)}
+/* Bottom-left caption: which city the camera is on + its nights. */
+.pt-mapcap{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 14px 9px 11px;border-radius:var(--r-pill);background:var(--surface);border:1px solid var(--line);box-shadow:var(--sh-1)} /* TRIP-326: glass→opaque */
 .pt-mapcap__pill{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--brand);color:#fff}
 .pt-mapcap__tx{display:flex;align-items:baseline;gap:5px;min-width:0}
 .pt-mapcap__tx b{color:var(--ink);white-space:nowrap}
@@ -152,7 +155,7 @@
 .pt-cta__act{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 
 /* ── mobile sticky CTA ── */
-.pt-scta{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-header);display:none;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:saturate(180%) blur(16px);border-top:1px solid var(--line)}
+.pt-scta{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-header);display:none;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)} /* TRIP-326: glass→opaque */
 .pt-scta .tx{flex:1;min-width:0}
 .pt-scta .tx b{display:block;color:var(--ink)}
 .pt-scta .tx span{color:var(--muted)}

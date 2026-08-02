@@ -259,7 +259,7 @@
 /* Card header */
 .ncal-wdc-h {
   padding: 13px 13px 10px; flex: none;
-  border-bottom: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line);
 }
 .ncal-wdc-num {
   color: var(--ink);
