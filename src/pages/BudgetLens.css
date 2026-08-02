@@ -78,7 +78,7 @@
 
 /* detail pane */
 .bgt-detail { padding: 20px 22px; min-height: 280px; }
-.bgt-detail__h { display: flex; align-items: center; gap: 13px; padding-bottom: 16px; border-bottom: 1px solid var(--line-2); }
+.bgt-detail__h { display: flex; align-items: center; gap: 13px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .bgt-detail__ic { width: 46px; height: 46px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; }
 .bgt-detail__ti { flex: 1; min-width: 0; }
 .bgt-detail__n { color: var(--ink); display: flex; align-items: center; gap: 8px; }
@@ -131,7 +131,7 @@
 .bgt-iconpick button.on { background: var(--primary-soft); border-color: var(--brand); color: var(--brand); }
 
 /* fx rate rows */
-.bgt-fxrow { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line-2); }
+.bgt-fxrow { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .bgt-fxrow:last-child { border-bottom: 0; }
 .bgt-fxrow__cur { width: 46px; height: 46px; border-radius: var(--r-sm); background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); display: grid; place-items: center; flex: none; }
 .bgt-fxrow__cur.miss { background: var(--danger-soft); color: var(--danger); }

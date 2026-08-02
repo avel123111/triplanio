@@ -327,7 +327,7 @@ function ThreeViewsVisual() {
   const tabs = [{id:'Timeline',labelKey:'landing.mockup.tab_timeline'},{id:'Calendar',labelKey:'landing.mockup.tab_calendar'},{id:'Map',labelKey:'landing.mockup.tab_map'}];
   return (
     <div>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid var(--line-2)'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid var(--line)'}}>
         <div className="t-meta" style={{color:'var(--muted)',textTransform:'uppercase'}}>{t('landing.mockup.trip_title')}</div>
         <div className="app-tabs">
           {tabs.map(tab => (
@@ -359,7 +359,7 @@ function ThreeViewsVisual() {
               const day=i+1, inTrip=day>=12&&day<=23;
               const city=day<16?'lis':day<18?'transfer':day<19?'por':'bcn';
               const bg=!inTrip?'transparent':city==='lis'?'rgba(33,103,226,.18)':city==='por'?'rgba(201,96,58,.18)':city==='transfer'?'repeating-linear-gradient(45deg, rgba(33,103,226,.15) 0 4px, rgba(201,96,58,.15) 4px 8px)':'rgba(31,138,91,.18)';
-              return <div key={i} className="t-micro" style={{height:38,background:bg,borderRadius:8,display:'flex',alignItems:'flex-start',justifyContent:'flex-start',padding:6,color:inTrip?'var(--ink)':'var(--muted-2)',border:inTrip?0:'1px solid var(--line-2)',textTransform:'none'}}>{day}</div>;
+              return <div key={i} className="t-micro" style={{height:38,background:bg,borderRadius:8,display:'flex',alignItems:'flex-start',justifyContent:'flex-start',padding:6,color:inTrip?'var(--ink)':'var(--muted-2)',border:inTrip?0:'1px solid var(--line)',textTransform:'none'}}>{day}</div>;
             })}
           </div>
           <div style={{display:'flex',gap:14,marginTop:12,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>

@@ -185,7 +185,7 @@ function InboxEmpty({ onCollection }) {
                 key={r.icon}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '11px 6px',
-                  borderBottom: i < rows.length - 1 ? '1px solid var(--line-2)' : 'none',
+                  borderBottom: i < rows.length - 1 ? '1px solid var(--line)' : 'none',
                 }}
               >
                 <span style={{

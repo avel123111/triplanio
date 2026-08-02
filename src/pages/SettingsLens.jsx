@@ -929,7 +929,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 </div>
                 <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
               </div>
-              <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--line)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div className="grow">
                   <div className="t-ui">{t('settings.delete_trip')}</div>
