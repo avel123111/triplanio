@@ -3338,6 +3338,13 @@ h4,
 /* divided rows (notifications, help, danger) */
 .acct-divrow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line-2); }
 .acct-divrow:last-child { border-bottom: none; }
+/* The row IS the control when it's a link or a button. Without this every such
+   call site re-declared the same reset inline (4 of them did). */
+a.acct-divrow,
+button.acct-divrow { width: 100%; background: none; border: 0; text-align: left; text-decoration: none; color: inherit; }
+/* A row alone in its card: the card's own 18px padding is the whole frame, so
+   the row must not add its 13px on top (that is the fat-card look). */
+.card > .acct-divrow:only-child { padding: 0; }
 .acct-divrow__t { color: var(--ink); }
 .acct-divrow__s { color: var(--muted); }
 .acct-ic-tile { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }

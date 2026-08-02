@@ -815,12 +815,7 @@ export default function ScreenAccount() {
                 (Privacy / Terms / cookie settings below): a .card holding
                 .acct-divrow, not a bespoke card-shaped button. */}
             <div className="card" style={{ marginBottom: 16 }}>
-              <button
-                type="button"
-                className="acct-divrow"
-                style={{ color: 'inherit', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-                onClick={() => nav('/inbox')}
-              >
+              <button type="button" className="acct-divrow" onClick={() => nav('/inbox')}>
                 <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="bell" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.inbox_title')}</div>
@@ -854,7 +849,7 @@ export default function ScreenAccount() {
                 </div>
                 <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </div>
-              <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener">
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="shield" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.privacy_title')}</div>
@@ -862,7 +857,7 @@ export default function ScreenAccount() {
                 </div>
                 <Icon name="external" size={13} className="muted-2" />
               </a>
-              <a className="acct-divrow" href="/terms" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a className="acct-divrow" href="/terms" target="_blank" rel="noreferrer noopener">
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="file" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.terms_title')}</div>
@@ -875,7 +870,6 @@ export default function ScreenAccount() {
               <button
                 type="button"
                 className="acct-divrow"
-                style={{ color: 'inherit', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                 onClick={openConsentBanner}
               >
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="settings" size={18} /></span>
@@ -892,6 +886,9 @@ export default function ScreenAccount() {
             <h2 className="acct-sectitle">{t('account.nav_session')}</h2>
 
             <div className="card card--danger" style={{ marginBottom: 16 }}>
+              {/* Not `:only-child` once a Severity panel opens below, so the flush
+                  padding is declared here rather than by the card rule — otherwise
+                  the row would jump 13px the moment the confirm panel appears. */}
               <div className="acct-divrow" style={{ border: 'none', padding: 0 }}>
                 <span className="acct-ic-tile" style={{ background: 'var(--danger-soft)', color: 'var(--danger-ink)' }}><Icon name="trash" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
@@ -927,7 +924,7 @@ export default function ScreenAccount() {
             </div>
 
             <div className="card">
-              <div className="acct-divrow" style={{ border: 'none', padding: 0 }}>
+              <div className="acct-divrow">
                 <span className="acct-ic-tile" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}><Icon name="arrow" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('account.logout_title')}</div>
