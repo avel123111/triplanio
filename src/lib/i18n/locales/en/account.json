@@ -43,7 +43,6 @@
   "identity": "Profile",
   "inbox_sub": "Invites, replies and trip updates",
   "inbox_title": "Inbox",
-  "inbox_unread": "{count} unread",
   "logout_desc": "You'll need to sign in again to open your trips. Local drafts are kept.",
   "logout_title": "Sign out",
   "nav_help": "Help & legal",

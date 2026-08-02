@@ -810,20 +810,32 @@ export default function ScreenAccount() {
           <section id="acct-notify">
             <h2 className="acct-sectitle">{t('account.email_notifs')}</h2>
 
-            {/* In-app notifications — quick link to the inbox with unread count */}
-            <button type="button" className="acct-inbox" style={{ marginBottom: 16 }} onClick={() => nav('/inbox')}>
-              <span className="acct-inbox__ic"><Icon name="bell" size={18} /></span>
-              <span className="acct-inbox__bd">
-                <span className="acct-inbox__t">{t('account.inbox_title')}</span>
-                <span className="acct-inbox__s">{t('account.inbox_sub')}</span>
-              </span>
-              {unreadCount > 0 && (
-                <span className="acct-inbox__count" aria-label={t('account.inbox_unread', { count: unreadCount })}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-              <Icon name="arrowR" size={16} />
-            </button>
+            {/* In-app notifications — quick link to the inbox with unread count.
+                Same row grammar as every other navigational row on this screen
+                (Privacy / Terms / cookie settings below): a .card holding
+                .acct-divrow, not a bespoke card-shaped button. */}
+            <div className="card" style={{ marginBottom: 16 }}>
+              <button
+                type="button"
+                className="acct-divrow"
+                style={{ color: 'inherit', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                onClick={() => nav('/inbox')}
+              >
+                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="bell" size={18} /></span>
+                <div className="grow">
+                  <div className="acct-divrow__t">{t('account.inbox_title')}</div>
+                  <div className="acct-divrow__s">{t('account.inbox_sub')}</div>
+                </div>
+                {/* The button's accessible name comes from its subtree, so the
+                    count is spoken as part of the row. (The old markup carried an
+                    aria-label on a bare <span> — a generic role takes no
+                    name-from-author, so it was never announced.) */}
+                {unreadCount > 0 && (
+                  <Badge variant="count">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
+                )}
+                <Icon name="arrowR" size={16} className="muted-2" />
+              </button>
+            </div>
 
             <ReminderChannels />
           </section>

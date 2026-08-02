@@ -43,7 +43,6 @@
   "identity": "Perfil",
   "inbox_sub": "Invitaciones, respuestas y novedades del viaje",
   "inbox_title": "Bandeja de entrada",
-  "inbox_unread": "{count} sin leer",
   "logout_desc": "Tendrás que iniciar sesión de nuevo para abrir tus viajes. Los borradores locales se conservan.",
   "logout_title": "Cerrar sesión",
   "nav_help": "Ayuda y legal",
