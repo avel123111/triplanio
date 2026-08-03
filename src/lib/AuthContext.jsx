@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
-import { forgetStashedAttribution, getSignupAttribution, track, syncCampaignToPerson } from '@/lib/analytics';
+import { forgetStashedAttribution, getSignupAttribution, track, syncCampaignToPerson, syncFirstTouchToPerson } from '@/lib/analytics';
 import { pickSignupAttribution } from '@/lib/campaign';
 
 const AuthContext = createContext();
@@ -124,6 +124,11 @@ export const AuthProvider = ({ children }) => {
     loadingForRef.current = authUser.id;
     // Set by the PGRST116 branch below when THIS call inserted the profile row.
     let profileCreated = false;
+    // The marks that branch wrote to `users.signup_utm_*`, kept so the identify
+    // further down can hand the SAME value to PostHog (TRIP-329). Held rather
+    // than re-read: recovering them consumes the OAuth stash, so a second read
+    // would come back empty.
+    let signupMarks = null;
     try {
       // A silent refresh (checkUserAuth after a profile save / avatar change /
       // Stripe-return entitlement poll) updates `user` in place WITHOUT flipping
@@ -150,6 +155,8 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (error && error.code === 'PGRST116') {
+        signupMarks = pickSignupAttribution(authUser.user_metadata?.signup_attribution)
+          || getSignupAttribution();
         // Profile doesn't exist yet - create it (first login via Google or email).
         // Avatar policy: keep ONLY a real uploaded/OAuth image. When there is
         // none, leave avatar_url null — <Avatar> renders a gradient fallback.
@@ -170,9 +177,10 @@ export const AuthProvider = ({ children }) => {
             // on the cookie banner. Email carries the marks through auth metadata
             // (they survive confirming on another device); OAuth recovers them
             // from the stash left behind before the redirect. Filtered through
-            // pickSignupAttribution, never spread raw — `user_metadata` is
-            // client-owned, so an unfiltered spread would set any column.
-            ...(pickSignupAttribution(authUser.user_metadata?.signup_attribution) || getSignupAttribution() || {}),
+            // pickSignupAttribution where `signupMarks` is assigned above, never
+            // spread raw — `user_metadata` is client-owned, so an unfiltered
+            // spread would set any column.
+            ...(signupMarks || {}),
           })
           .select()
           .single();
@@ -207,6 +215,13 @@ export const AuthProvider = ({ children }) => {
       // only person properties reach it. Self-guarded — a repeat login writes
       // nothing (TRIP-316 A2).
       syncCampaignToPerson();
+      // First touch, alongside the last-touch mark above. Only at the birth of
+      // the row, with the very value written to `users.signup_utm_*`: PostHog
+      // derives its own `$initial_*` from the address of the first event it sees
+      // a person on, and that address is always post-OAuth or post-confirmation
+      // — the marks are gone from it by then. Set-once, so later clicks cannot
+      // move it (TRIP-329).
+      if (profileCreated) syncFirstTouchToPerson(signupMarks);
       // Registration (TRIP-316 A1). The `users` row is the ONE birth point of a
       // user: it is created here, exactly once, and identically for Google,
       // Apple, One Tap and email — the login buttons are not, and the fourth one

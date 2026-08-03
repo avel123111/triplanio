@@ -34,6 +34,30 @@ const SIGNUP_COLUMNS = {
   gclid: 'signup_gclid',
 };
 
+/**
+ * The same four marks under PostHog's OWN first-touch names.
+ *
+ * PostHog fills `$initial_utm_*` itself — from the address of the first event a
+ * person is ever seen on. That address is useless to us: between the page that
+ * carried the mark and the moment a person exists (identify, at account
+ * creation) sits either Google's OAuth screen or a confirmation email, so what
+ * PostHog sees is always `/trips` with an empty query. Measured on prod: all 24
+ * persons carry `$initial_current_url = /login | /settings | /trips` and
+ * `$initial_utm_* = NULL`.
+ *
+ * So we hand it the value instead. These are PostHog's canonical property names
+ * written through its own `set_once` — not a parallel scheme: the field is the
+ * one a report already expects, it is simply filled from the snapshot that DID
+ * see the arrival. Unlike `camp_*` this must NOT get our own names: a second
+ * name for first touch is exactly what makes two dashboards disagree.
+ */
+const INITIAL_PERSON_PROPS = {
+  signup_utm_source: '$initial_utm_source',
+  signup_utm_medium: '$initial_utm_medium',
+  signup_utm_campaign: '$initial_utm_campaign',
+  signup_gclid: '$initial_gclid',
+};
+
 /** The same parameters under their own names, for passing a mark ON unchanged. */
 const CAMPAIGN_PASSTHROUGH = Object.fromEntries(
   Object.keys(CAMPAIGN_FIELDS).map((param) => [param, param]),
@@ -145,6 +169,27 @@ export function pickSignupAttribution(value) {
     if (typeof raw !== 'string') continue;
     const trimmed = raw.trim().slice(0, MAX_VALUE_LEN);
     if (trimmed) out[column] = trimmed;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * Translate the signup-attribution columns into PostHog's first-touch person
+ * properties. Same values, same moment, two stores — `users.signup_utm_*` for
+ * everyone including cookie refusers, this for whoever PostHog can see.
+ *
+ * Values arrive already trimmed and capped, from the two readers above — this is
+ * a rename, not a second door onto URL input.
+ *
+ * @param {Record<string, string> | null | undefined} marks  as written to `users`
+ * @returns {Record<string, string> | null}  null when there is nothing to say
+ */
+export function toInitialPersonProps(marks) {
+  if (!marks) return null;
+
+  const out = {};
+  for (const [column, property] of Object.entries(INITIAL_PERSON_PROPS)) {
+    if (marks[column]) out[property] = marks[column];
   }
   return Object.keys(out).length ? out : null;
 }

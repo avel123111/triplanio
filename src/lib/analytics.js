@@ -11,7 +11,7 @@
 // Everything here is safe to call before consent: PostHog is not initialised, an
 // uninitialised client is a no-op, and nothing is queued (TRIP-311).
 import posthog from 'posthog-js';
-import { CAMPAIGN_KEYS, campaignQuery, pickSignupAttribution, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
+import { CAMPAIGN_KEYS, campaignQuery, pickSignupAttribution, readSignupAttribution, resolveCampaign, toInitialPersonProps } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 
 // What the visit arrived with, held in memory until consent: writing marks to the
@@ -237,4 +237,34 @@ export function syncCampaignToPerson() {
     posthog?.unsetPersonProperties?.(CAMPAIGN_KEYS);
     posthog?.unregister?.('camp_synced_ts');
   }
+}
+
+/**
+ * Record where this account came from as PostHog's own FIRST-touch properties.
+ *
+ * Called once, at the birth of the `users` row, with the very marks written to
+ * `users.signup_utm_*` — one value, two stores, no way for them to disagree.
+ * PostHog cannot work this out on its own: it derives `$initial_*` from the
+ * address of the first event it sees a person on, and by then the visitor has
+ * been through Google's OAuth screen or a confirmation email and the marks are
+ * long gone from the URL (verified on prod: `$initial_utm_* = NULL` for all 24).
+ *
+ * Sent as set-once, which is what makes it FIRST touch: unlike the `camp_*`
+ * super-properties above, no later click can overwrite it, so a purchase born on
+ * the server can be credited to the channel that actually acquired the person
+ * rather than to the last link they happened to open.
+ *
+ * Silent for anyone who declined cookies — PostHog does not exist for them and
+ * `users.signup_utm_*` stays their only record.
+ *
+ * @param {Record<string, string> | null} marks  the signup-attribution columns
+ */
+export function syncFirstTouchToPerson(marks) {
+  if (!analyticsOn) return;
+  const props = toInitialPersonProps(marks);
+  if (!props) return;
+
+  // Second argument = set_once. Not the first: that would overwrite, and this
+  // property answers "which channel acquired this person", which cannot change.
+  posthog?.setPersonProperties?.(undefined, props);
 }
