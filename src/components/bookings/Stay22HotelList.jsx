@@ -183,7 +183,7 @@ export default function Stay22HotelList({
           },
         ].filter(Boolean)}
       >
-        <div className="s22f-grp">
+        <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
           <div className="s22f-pfields">
             <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
@@ -198,7 +198,7 @@ export default function Stay22HotelList({
           </div>
         </div>
 
-        <div className="s22f-grp">
+        <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_platform')}</div>
           <div className="s22f-selwrap">
             <select className="s22f-sel" value={pending.provider} onChange={(e) => setG('provider', e.target.value)}>
@@ -209,7 +209,7 @@ export default function Stay22HotelList({
           </div>
         </div>
 
-        <div className="s22f-grp">
+        <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
           <div className="s22f-guestgrid">
             <div className="s22f-gcard">

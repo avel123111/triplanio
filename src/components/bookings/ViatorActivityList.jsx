@@ -128,7 +128,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
           freeCancel && { key: 'free', label: t('fork.activities_free_cancel'), onRemove: removeFree },
         ].filter(Boolean)}
       >
-        <div className="s22f-grp">
+        <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
           <div className="s22f-pfields">
             <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
@@ -142,7 +142,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
             </label>
           </div>
         </div>
-        <div className="s22f-grp">
+        <div className="col col--g4">
           {/* A checkbox, not a Toggle: a draft filter that only takes effect on
               "Apply" (applyFilters), so it must not look like a flipped setting. */}
           <Checkbox

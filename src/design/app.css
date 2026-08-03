@@ -552,7 +552,7 @@ h4,
 .pt-mast__l1,
 .pt-cta p,
 .banner p,
-.acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
+.row__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
@@ -612,6 +612,10 @@ h4,
 .acct-content,
 .acct-nav a,
 .acct-plan__line,
+/* ⚠ .acct-tgrow__t - ТА ЖЕ деталь, что .row__t, но ярусом ниже: здесь t-ui
+   (12.5/600), а у .row__t - t-label (13/700). Свести их = видимая правка
+   (заголовок строки телеграма станет крупнее), поэтому она ждёт скриншота, а не
+   делается заодно. Пока строка остаётся в своём ярусе. */
 .acct-tgrow__t,
 .menu .mi,
 .toast__body b,
@@ -732,7 +736,7 @@ h4,
 .tl3-card--tr .rv-end span,
 .cr-item .cr-dt,
 .acct-sectitle small,
-.acct-divrow__s,
+.row__s,
 .acct-hero__av .ov,
 .acct-hero__mail,
 .acct-flabel,
@@ -1003,7 +1007,7 @@ h4,
 .gadd span,              /* TRIP-175 инсп.: Meta+Golos (подпись ghost-add сервиса) */
 .acct-hero__mail,        /* TRIP-175 инсп.: Meta+Golos (email в шапке аккаунта) */
 .acct-note span,         /* TRIP-175 инсп.: Meta+Golos (примечание аккаунта) */
-.acct-divrow__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
+.row__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
 .acct-chan__s,           /* TRIP-175 инсп.: Meta+Golos (подпись канала уведомлений) */
 .addon-card__desc,       /* TRIP-175 инсп.: Meta+Golos (описание аддона; канон meta выше) */
 .settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta+Golos (описания в настройках; из #446-Mono) */
@@ -1341,7 +1345,6 @@ h4,
 .map-route__marker svg { width: 13px; height: 13px; }
 .map-route__item.is-active .map-route__marker { background: var(--brand); color: #fff; border-color: var(--brand); }
 .map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.map-route__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .map-route__dates { color: var(--muted); }
 /* Phones (≤640px): the route panel is rendered inside <PeekSheet> (the non-modal
    detent sheet — see .peek-sheet in the C6 section) instead of the floating glass
@@ -1577,6 +1580,20 @@ h4,
 .sev--warning .sev__icon { background: color-mix(in srgb, var(--warning) 22%, transparent); color: var(--warning-ink); }
 .sev--error { background: var(--danger-soft); border-color: var(--danger-soft); }
 .sev--error .sev__icon { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger-ink); }
+/* success и quiet - НЕ новые понятия: обоими словами уже названы тона у .badge--*
+   и .tile--*, и из трёх примитивов их не знал только .sev. Это то же слово на
+   третьем примитиве, чтобы «зелёная плашка статуса» собиралась одинаково везде,
+   а не рисовалась руками (сейчас она нарисована дважды: .hv-cancel и ряд
+   Telegram в настройках трипа). */
+.sev--success { background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 25%, transparent); }
+.sev--success .sev__icon { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success-ink); }
+.sev--quiet { background: var(--wash); border-color: var(--line); }
+.sev--quiet .sev__icon { background: var(--surface); color: var(--ink-2); }
+/* Ось выравнивания, как .row--start у .row. По умолчанию плашка держит значок у
+   ПЕРВОЙ строки - это верно для прозы в несколько строк. У статуса же ровно две
+   строки (заголовок + подпись), и значок обязан стоять по центру пары: так уже
+   выглядят ряды каналов в аккаунте. */
+.sev--mid { align-items: center; }
 /* Detach a severity plate from the row above it when nested in a danger card
    (e.g. account deletion: cancel-subscription / confirm-delete warnings). */
 .card--danger > .sev { margin-top: 14px; }
@@ -1691,6 +1708,20 @@ h4,
    осмыслен лишь при фиксированной высоте, а такого случая в проекте нет -
    парный .col--wrap был бы модификатором без вызова. */
 .row--wrap { flex-wrap: wrap; }
+
+/* Выравнивание по верху - третья ось ряда, и такая же недостающая, как был wrap.
+   .row центрирует по умолчанию, а это неверно везде, где рядом с многострочным
+   текстом стоит элемент фиксированной высоты (значок, номер шага, аватар): номер
+   обязан стоять у ПЕРВОЙ строки, а не посередине абзаца. В репозитории таких
+   рядов 34 (26 правил в CSS + 8 инлайнов) - против 47 у wrap, тот же порядок.
+   Это достройка существующего примитива недостающей осью, а не новый элемент. */
+.row--start { align-items: flex-start; }
+
+/* Центровка ПО ГОРИЗОНТАЛИ - четвёртая ось ряда, и самая частая из недостающих:
+   в репозитории 70 мест (51 правило в CSS + 19 инлайновых рядов) против 47 у
+   wrap и 34 у start. .row центрирует поперёк, а вдоль прижимает к началу, и
+   каждый «спиннер по центру» / «пустой экран по центру» дописывал это руками. */
+.row--center { justify-content: center; }
 
 /* Гибкая ячейка, которой РАЗРЕШЕНО ужаться уже своего содержимого. Без
    min-width:0 флекс-элемент упирается в min-content и вытесняет соседей за край
@@ -2735,7 +2766,6 @@ h4,
 
 /* Inbox list — stacked date groups of rounded row-cards */
 .nlist { display: flex; flex-direction: column; gap: 20px; }
-.ngrp { display: flex; flex-direction: column; gap: 8px; }
 .ngrp__label { padding: 0 4px; color: var(--muted-2); }
 
 /* Inbox row — rounded card, hover lift, unread = soft tint + left accent */
@@ -2998,7 +3028,6 @@ h4,
 .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
-.lp-sec { display: flex; flex-direction: column; gap: 8px; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
 /* Two-button footer (delete + primary) filling the bar in a ~2/8 ratio. On
    phones the destructive button collapses to its icon (text via .btn-label-collapse). */
@@ -3425,6 +3454,10 @@ h4,
 /* Two-column zone for features / integrations / warnings. */
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .settings-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* Ряд на серой подложке. Раскладку даёт .row, здесь ТОЛЬКО скин. Подложка была
+   написана инлайном дважды на одном экране и с РАЗНЫМИ числами (gap 14 и 12);
+   всего этот шаблон в репозитории 36 раз (26 правил в CSS + 10 инлайнов). */
+.settings-plate { padding: 12px 14px; background: var(--wash); border-radius: var(--r-sm); }
 
 /* Header Save cluster (lives in the identity Card's `action` slot). */
 .settings-save { display: flex; align-items: center; gap: 10px; }
@@ -3493,20 +3526,37 @@ h4,
 .acct-sectitle { display: flex; align-items: center; gap: 9px; margin: 0 0 13px; color: var(--ink); }
 .acct-sectitle small { color: var(--muted); }
 
-/* divided rows (notifications, help, danger) */
-/* Раскладка (flex/центрирование/зазор) - на примитивах в JSX: .row .row--g7.
-   Зазор 14 -> ступень 16. Здесь остаётся только собственное: отбивка и линейка. */
-.acct-divrow { padding: 13px 0; border-bottom: 1px solid var(--line); }
-.acct-divrow:last-child { border-bottom: none; }
-/* The row IS the control when it's a link or a button. Without this every such
-   call site re-declared the same reset inline (4 of them did). */
-a.acct-divrow,
-button.acct-divrow { width: 100%; background: none; border: 0; text-align: left; text-decoration: none; color: inherit; }
-/* A row alone in its card: the card's own 18px padding is the whole frame, so
-   the row must not add its 13px on top (that is the fat-card look). */
-.card > .acct-divrow:only-child { padding: 0; }
-.acct-divrow__t { color: var(--ink); }
-.acct-divrow__s { color: var(--muted); }
+/* ═══ СТРОКА СПИСКА: значок + (заголовок · описание) + действие ═══════════════
+   Самый частый объект приложения. Был объявлен ЗАНОВО восемью семействами -
+   .acct-divrow · .acct-tgrow · .hv-row · .brow · .bookrow · .doc-row · .cr-item ·
+   .crow - с семью разными зазорами (8·10·11·11·12·13·13) и шестью разными
+   отступами, причём у семи из восьми было по одному-два применения: имя заводили
+   под экран. Плюс ещё два написания без имени вообще: штатный слот action у
+   Card и ручная сборка .row+.grow+кнопка в опасной зоне настроек.
+   Ни одно из этих расхождений НЕ ВИДНО счётчику инлайновых стилей - все они
+   написаны классами и проходят гарды как чистые. Поэтому мера прогресса задачи
+   не «сколько инлайнов», а «сколько семейств описывают один объект».
+   Здесь семейство одно - модификаторы существующего .row. Раскладку (флекс,
+   центрирование, зазор) по-прежнему даёт .row/.row--gN, ниже только собственное
+   строки: отбивка, линейка, роль контрола и типографика ячеек. */
+.row--div { padding: 13px 0; border-bottom: 1px solid var(--line); }
+.row--div:last-child { border-bottom: none; }
+/* Строка БЕЗ собственной отбивки - когда рамку целиком задаёт карточка. Раньше
+   это же делало правило по ПОЗИЦИИ (`.card > …:only-child`), и оно ломалось,
+   как только под строкой появлялась плашка Severity: приходилось дописывать
+   исключение инлайном. Модификатор ключуется на роли строки, а не на том, где
+   она стоит в дереве, поэтому не разваливается от соседа. */
+.row--flush { padding: 0; border-bottom: none; }
+/* Текстовая ячейка. Ряд был свёрстан ДВУМЯ способами в одной карточке: где
+   справа кнопка - инлайн `flex:1;min-width:160`, где справа значок - голый
+   .grow. Порог не даёт кнопке раздавить заголовок; значку он не мешает. */
+.row--div > .grow, .row--flush > .grow { min-width: 160px; }
+/* Строка САМА является контролом, когда она ссылка или кнопка. Без этого каждое
+   такое место переобъявляло один и тот же сброс инлайном (так делали четыре). */
+a.row--div, button.row--div,
+a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text-align: left; text-decoration: none; color: inherit; }
+.row__t { color: var(--ink); }
+.row__s { color: var(--muted); }
 /* .acct-ic-tile УДАЛЁН (TRIP-321 Ф12.2a): он переобъявлял геометрию .tile на
    внелестничных 38px. Вызовы -> .tile.tile--lg (40px), значок 18 -> 19px.
    Тон: 7 вызовов сели на класс (--brand/--ai/--quiet), 2 (удаление аккаунта,
@@ -3607,10 +3657,13 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    от .acct-chan сознательно (решение Pavel): другое поведение, меняются независимо. */
 .acct-tgrow { padding: 10px; border-radius: var(--r-sm); }
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
+/* Кандидат на схлопывание в .row__t + .row .row--g4 .row--wrap: это тот же
+   заголовок строки, но зазор 7 (мимо шкалы, ближайшая ступень 8) и ярус ниже
+   на полшага. Обе правки ВИДНЫ на экране, поэтому идут отдельно и со снимком. */
+.acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 /* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
    нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
    и тинт --primary-soft -> --brand-soft у .tile--brand (в тёмной .16 -> .14). */
-.acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
 
@@ -3630,8 +3683,8 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
   .acct-chan > .btn { flex: 1 1 100%; width: 100%; }
   .acct-tgrow { flex-wrap: wrap; row-gap: 10px; }
   .acct-tgrow > .btn { flex: 1 1 auto; min-width: 0; }
-  .acct-divrow { flex-wrap: wrap; row-gap: 12px; }
-  .acct-divrow > .btn { flex: 1 1 100%; width: 100%; }
+  .row--div, .row--flush { flex-wrap: wrap; row-gap: 12px; }
+  .row--div > .btn, .row--flush > .btn { flex: 1 1 100%; width: 100%; }
   .acct-prefctl { flex: 1 1 100%; }
   .acct-prefctl .input { width: 100%; min-width: 0; }
   .acct-prefctl .seg { display: flex; width: 100%; }
@@ -3896,7 +3949,6 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
  margin-top: 7px; min-width: 0;
 }
 .tc__scope svg { width: 14px; height: 14px; flex: none; opacity: .9; }
-.tc__scope span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tc__foot { display: flex; align-items: center; gap: 7px; margin-top: 13px; flex-wrap: wrap; }
 .tc__foot .avatar-stack { margin-left: auto; }
 
@@ -3971,7 +4023,6 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
  color: var(--muted);
 }
 .tr__sub svg { width: 12px; height: 12px; flex: none; color: var(--brand); }
-.tr__sub span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .tr__meta { display: flex; align-items: center; gap: 10px; flex: none; flex-wrap: wrap; }
 .tr__date { color: var(--ink-2); white-space: nowrap; }
@@ -4260,14 +4311,48 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    a transform (e.g. `translateY(-50%)` centring) — it would slide as it turns.
    Wrap it instead: the wrapper positions, the inner element spins. */
 @keyframes aispin{to{transform:rotate(360deg);}}
+/* prefix-exempt: sr — утилита доступности, а не экранное пространство имён.
+   Класс `sr-only` УЖЕ стоял в разметке 6 раз в 5 файлах, но в CSS его не было
+   ни разу: каждый вызов носил свою копию тех же пяти свойств инлайном, а в
+   LpSheet под это завели JS-константу SR_ONLY - то есть дубль осознали, но
+   вылечили не там. Ничего не рисует и на экране не видна: прячет заголовок от
+   глаз, оставляя его читалке экрана (Radix требует Title у каждого диалога). */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+  clip-path:inset(50%);white-space:nowrap;border:0;padding:0;margin:-1px;}
+
 /* generic spinner utility (replaces Tailwind animate-spin on lucide icons) */
 .spin{animation:aispin 1s linear infinite;}
+/* Кольцо. В .spin его класть НЕЛЬЗЯ: этот класс вешают в том числе на готовую
+   иконку (lucide Loader2 в TripCoverPicker), и у неё появилась бы вторая рамка.
+   Поэтому кольцо - модификатор того же семейства, а размер и тон - ручки, как
+   --tile у плитки. Сам круг был нарисован руками 11 раз в 8 файлах в шести
+   размерах (11/16/18/20/24/32) при том, что в CSS уже лежало ЧЕТЫРЕ разных
+   спиннера (.spin, .btn .spin, .ai-spin, .app-spinner) - это и есть «нет
+   примитива». Ступени сняты с мест вызова: 18 - рядом со строкой текста,
+   24 - когда грузится экран целиком. */
+.spin--ring{width:var(--spin,18px);height:var(--spin,18px);flex:none;
+  border:var(--spin-w,2px) solid var(--spin-track,var(--line));
+  border-top-color:var(--spin-head,var(--brand));
+  border-radius:var(--r-pill);}
+/* Ступени означают КОНТЕКСТ, а не просто размер: 18 - рядом со строкой текста,
+   24 - самостоятельный блок, 32 - грузится целый экран (этот размер уже был в
+   системе как .app-spinner). Толщина не отдельная ручка на каждый вызов, а
+   часть ступени - иначе она снова разъедется (в репозитории было 2/3/4px на
+   одних и тех же размерах). Четвёртой ступени быть не должно: ступень под
+   экран - это тот же зоопарк, только с общим префиксом. */
+.spin--lg{--spin:24px;--spin-w:3px;}
+.spin--xl{--spin:32px;--spin-w:4px;}
+/* Головка чернилами вместо бренда: на КАРТЕ синяя головка спорит с самой картой,
+   поэтому три экрана с картой рисовали её так. Все три объявления были
+   побайтово одинаковы (24px, 2px, дорожка --line, головка --ink). */
+.spin--ink{--spin-head:var(--ink);}
+/* Поверх затемнения (аватар в момент загрузки) кольцо обязано быть белым. */
+.spin--onscrim{--spin-track:rgba(255,255,255,.4);--spin-head:#fff;}
 /* canonical in-button spinner (Lumo design system B1 · loading state) — a
    currentColor border-circle that replaces the leading icon while <Btn loading> */
 .btn .spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:aispin .7s linear infinite;flex:none;}
 /* app-level loading spinner (was Tailwind fixed inset-0 + bordered circle) */
 .app-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
-.app-spinner{width:32px;height:32px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:var(--r-pill);animation:aispin 1s linear infinite;}
 /* locked / parsed state tints */
 .ai-blk.locked{border-color:var(--line-strong);background:var(--surface-2);}
 .ai-blk.locked .ai-blk-ic{filter:saturate(.55);}
@@ -4302,7 +4387,10 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 
 /* ─── Document row ──────────────────────────────────────────────────────────
    Frame and text of one attachment row; the leading badge is `.dl-ftag` above. */
-.doc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);text-decoration:none;color:var(--ink-2); transition:background .12s;}
+/* Раскладку даёт .row .row--g4 в разметке (зазор 8 = ступень --sp-4, ТОЧНОЕ
+   совпадение, поэтому на экране не меняется ничего). Здесь остаётся только
+   собственное строки-ссылки: подсветка при наведении и скругление. */
+.doc-row{padding:8px 10px;border-radius:var(--r-sm);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
 .doc-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .doc-row .ds{ color:var(--muted-2); }
@@ -4397,7 +4485,10 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .hv-cancel__ic svg{width:14px;height:14px;}
 .hv-cancel__tx{ color:var(--ink);}
 .hv-rows{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;}
-.hv-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);}
+/* Раскладку даёт .row .row--g6 в разметке (зазор 12 = ступень --sp-6, ТОЧНОЕ
+   совпадение). Отбивка своя: строка живёт внутри рамки .hv-rows, у которой нет
+   боковых полей, - в отличие от .row--div, что стоит в .card со своими полями. */
+.hv-row{padding:11px 14px;border-bottom:1px solid var(--line);}
 .hv-row:last-child{border-bottom:0;}
 .hv-row__ic{display:flex;flex:none;color:var(--muted);}
 .hv-row__ic svg{width:16px;height:16px;}
@@ -4890,6 +4981,25 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    против залитой плашки). Схлопнуто в один блок; вид - залитая плашка, потому
    что пунктир в системе уже занят под «добавить» (.bgt-glist__add).
    Раскладка и плитка - примитивы, здесь остаётся только шкура. */
+/* Пустое состояние. Раскладка жила ИНЛАЙНАМИ внутри самого компонента
+   EmptyState - то есть примитив системы был собран тем же способом, от которого
+   уходим. Значения перенесены один в один, вид не меняется.
+   --boxed: то же состояние, но внутри карточки или диалога - подложка, рамка и
+   вдвое меньшие отступы. Эта коробка была нарисована руками дважды в настройках
+   трипа, причём с РАЗНЫМИ числами (плитка 44 и 48, отступ 22 и 20, у одной
+   рамка есть, у другой нет) - один объект, две вёрстки. */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 48px 24px; text-align: center; color: var(--muted); }
+.empty-state > .tile { margin-bottom: 16px; }
+.empty-state__t { color: var(--ink); margin-bottom: 6px; }
+.empty-state__b { max-width: 340px; }
+.empty-state__act { margin-top: 18px; }
+.empty-state--boxed { padding: 20px 18px; background: var(--wash);
+  border: 1px solid var(--line); border-radius: var(--r-sm); }
+.empty-state--boxed > .tile { margin-bottom: 12px; }
+.empty-state--boxed .empty-state__t { margin-bottom: 4px; }
+.empty-state--boxed .empty-state__act { margin-top: 12px; }
+
 .empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: var(--sp-8); }
 .empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
@@ -4997,7 +5107,6 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
 
 .s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
-.s22f-grp { display: flex; flex-direction: column; gap: 8px; }
 .s22f-pmuted { color: var(--muted); }
 .s22f-pfields { display: flex; align-items: center; gap: 8px; }
 .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-btn); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }

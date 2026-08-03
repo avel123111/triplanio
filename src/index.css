@@ -128,6 +128,16 @@ hr, figure, p, pre {
 fieldset {
   margin: 0;
   padding: 0;
+  /* Родная рамка и min-width браузера. Сброс был неполным, поэтому КАЖДЫЙ из
+     четырёх fieldset в приложении дописывал эти две строки инлайном. */
+  border: 0;
+  min-width: 0;
+}
+/* Выключенный блок формы гасится одинаково везде. Состояние уже есть в DOM
+   (атрибут disabled), поэтому отдельный класс не нужен. */
+fieldset:disabled {
+  opacity: 0.65;
+  pointer-events: none;
 }
 legend {
   padding: 0;

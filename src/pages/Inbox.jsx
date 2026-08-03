@@ -139,7 +139,7 @@ export default function Inbox() {
         ) : (
           <div className="nlist">
             {groups.map((g) => (
-              <div key={g.label} className="ngrp">
+              <div key={g.label} className="col col--g4">
                 <div className="ngrp__label">{t(GROUP_LABEL_KEY[g.label])}</div>
                 {g.items.map((n) => (
                   <InboxRow

@@ -108,7 +108,7 @@ const AuthenticatedApp = () => {
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="app-loading">
-        <div className="app-spinner"></div>
+        <div className="spin spin--ring spin--xl spin--ink" />
       </div>
     );
   }
