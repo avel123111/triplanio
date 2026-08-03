@@ -1345,7 +1345,6 @@ h4,
 .map-route__marker svg { width: 13px; height: 13px; }
 .map-route__item.is-active .map-route__marker { background: var(--brand); color: #fff; border-color: var(--brand); }
 .map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.map-route__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .map-route__dates { color: var(--muted); }
 /* Phones (≤640px): the route panel is rendered inside <PeekSheet> (the non-modal
    detent sheet — see .peek-sheet in the C6 section) instead of the floating glass
@@ -2767,7 +2766,6 @@ h4,
 
 /* Inbox list — stacked date groups of rounded row-cards */
 .nlist { display: flex; flex-direction: column; gap: 20px; }
-.ngrp { display: flex; flex-direction: column; gap: 8px; }
 .ngrp__label { padding: 0 4px; color: var(--muted-2); }
 
 /* Inbox row — rounded card, hover lift, unread = soft tint + left accent */
@@ -3030,7 +3028,6 @@ h4,
 .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
-.lp-sec { display: flex; flex-direction: column; gap: 8px; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
 /* Two-button footer (delete + primary) filling the bar in a ~2/8 ratio. On
    phones the destructive button collapses to its icon (text via .btn-label-collapse). */
@@ -3952,7 +3949,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
  margin-top: 7px; min-width: 0;
 }
 .tc__scope svg { width: 14px; height: 14px; flex: none; opacity: .9; }
-.tc__scope span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tc__foot { display: flex; align-items: center; gap: 7px; margin-top: 13px; flex-wrap: wrap; }
 .tc__foot .avatar-stack { margin-left: auto; }
 
@@ -4027,7 +4023,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
  color: var(--muted);
 }
 .tr__sub svg { width: 12px; height: 12px; flex: none; color: var(--brand); }
-.tr__sub span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .tr__meta { display: flex; align-items: center; gap: 10px; flex: none; flex-wrap: wrap; }
 .tr__date { color: var(--ink-2); white-space: nowrap; }
@@ -5102,7 +5097,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
 
 .s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
-.s22f-grp { display: flex; flex-direction: column; gap: 8px; }
 .s22f-pmuted { color: var(--muted); }
 .s22f-pfields { display: flex; align-items: center; gap: 8px; }
 .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-btn); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
