@@ -212,7 +212,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
         <Icon name="flag" size={13} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-        <div className="t-meta" style={{ flex: 1, minWidth: 0 }}>
+        <div className="t-meta grow--fit">
           <span className="t-ui">{t('planner.final_point')}</span>{' '}
           <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
@@ -291,7 +291,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
           <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="pin" size={20} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow--fit">
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
           </div>
@@ -307,7 +307,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'allowed' && candidates.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="col col--g4">
           {candidates.map((c) => {
             const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
             const dist = fmtDistance(c.distanceKm);
@@ -326,7 +326,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 <div style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <Icon name="plane" size={14} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="grow--fit">
                   <div className="t-subheading">{c.city_name}</div>
                   <div className="muted t-meta t-sans"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
                 </div>
@@ -346,7 +346,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
           <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="lock" size={20} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow--fit">
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
           </div>
@@ -483,7 +483,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <div className={'field-row' + (canHome ? ' cols-2' : '')} style={{ marginBottom: 14 }}>
         {canHome && (
           <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="row">
               <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
                 <Icon name="flag" size={16} />
               </div>
@@ -496,7 +496,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         )}
 
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="row">
             <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="globe" size={16} />
             </div>
@@ -539,7 +539,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
       <div className="t-meta" style={{ width: 28, height: 28, borderRadius: '50%', background: icon ? (iconColor || 'var(--brand)') : 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0, border: '3px solid var(--surface)' }}>
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="grow--fit">
         <div className="te-cityname" style={{ color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
         <div className="muted t-meta" style={{ marginTop: 1 }}>{sub}</div>
       </div>
