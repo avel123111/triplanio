@@ -196,7 +196,8 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
       {stage === 'idle' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
+            <div className="tile" style={{ background: tgBrand.bg, color: tgBrand.fg }}>
               <Icon name="telegram" size={17} />
             </div>
             <div className="grow">
@@ -208,7 +209,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
           <div style={{ marginBottom: 16 }}>
             <div className="eyebrow" style={{ marginBottom: 6 }}>{t('telegram.link_label')}</div>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div className="row row--g3">
               <input className="input mono" value={url} readOnly style={{ flex: 1 }} />
               <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
             </div>
@@ -230,7 +231,8 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
       {stage === 'connecting' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: tgBrand.bgSoft, border: `1px solid ${tgBrand.border}`, borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
+            <div className="tile" style={{ background: tgBrand.bg, color: tgBrand.fg }}>
               <Icon name="telegram" size={17} />
             </div>
             <div className="grow">
@@ -270,7 +272,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
       {stage === 'connected' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--success-soft)', border: '1px solid color-mix(in oklab, var(--success) 25%, transparent)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'color-mix(in oklab, var(--success) 22%, transparent)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <div className="tile tile--success">
               <Icon name="check" size={17} />
             </div>
             <div className="grow">
@@ -363,13 +365,14 @@ function TelegramSection({ tripId }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="col col--g6">
       {accounts.map(a => (
         <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
+          <div className="tile" style={{ background: tgBrand.bg, color: tgBrand.fg }}>
             <Icon name="telegram" size={17} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow--fit">
             <div className="t-ui">{displayName(a)}</div>
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </div>
@@ -403,7 +406,7 @@ function ApproverRow({ member, profile, locked }) {
   const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div className="row">
       <Avatar name={name} photo={profile?.avatar_url || ''} deleted={isDeleted} size="sm" />
       <div className="grow">
         <div className="t-ui">{name}</div>
@@ -831,8 +834,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               Only shown when the Group Chat addon is on. */}
           {features.chat && (
             <Card title={t('settings.chat_widget_title')}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="row row--g7">
+                <div className="grow--fit">
                   <div className="t-ui">{t('settings.chat_widget_label')}</div>
                   <div className="muted t-meta">
                     {t('settings.chat_widget_desc')}
@@ -862,7 +865,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {/* Warnings / display - extensible bag of trip-level display toggles. */}
           <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 'var(--r-sm)' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="grow--fit">
                 <div className="t-label">{t('settings.warn_bookings_title')}</div>   {/* TRIP-175 инсп.: UI→Label */}
                 <div className="muted t-meta">{t('settings.warn_bookings_desc')}</div>
               </div>
@@ -882,7 +885,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
           {SHOW_HOTEL_VOTING && (
             <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="col col--g4">
                 {approvers.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked />)}
                 {viewerMems.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked={false} />)}
                 {members.length === 0 && (
@@ -910,7 +913,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="col col--g4">
           {myRole !== 'owner' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
               <div className="grow">
@@ -922,7 +925,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
           {myRole === 'owner' && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
+              <div className="row row--g6" style={{ padding: '10px 0' }}>
                 <div className="grow">
                   <div className="t-ui">{t('settings.leave_trip')}</div>
                   <div className="muted t-meta">{t('settings.leave_owner_blocked')}</div>
@@ -930,7 +933,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid var(--line)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
+              <div className="row row--g6" style={{ padding: '10px 0' }}>
                 <div className="grow">
                   <div className="t-ui">{t('settings.delete_trip')}</div>
                   <div className="muted t-meta">{t('settings.delete_desc')}</div>
