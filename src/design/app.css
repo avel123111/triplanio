@@ -1770,6 +1770,19 @@ h4,
    экраном, а не механической заменой. */
 .tile--brand  { background: var(--brand-soft);  color: var(--brand); }
 .tile--danger { background: var(--danger-soft); color: var(--danger); }
+/* TRIP-321 Ф12.2a, апрув Pavel. Заведены ВМЕСТЕ со своими первыми вызовами (аккаунт)
+   и повторяют форму двух соседей выше: фон = мягкий оттенок цвета самого значка.
+   ★ПРАВИЛО ТОНА, решение Pavel по сравнению A/B на живом экране: квадрат под значком
+   ВСЕГДА несёт оттенок этого значка. Нейтрального фона под цветным значком не
+   существует - до этого на аккаунте было ДЕВЯТЬ тонов на 15 плиток (тот же Telegram
+   рисовался и --info-soft, и --surface-2), потому что каждый писался отдельно.
+   --quiet - не исключение из правила, а тон СЕРОГО значка (у него оттенок и есть
+   нейтраль). --wash отдельным цветом не является: он объявлен как var(--surface-2).
+   Заводя новый тон, держи ту же форму - иначе зоопарк отрастает заново. */
+.tile--ai      { background: var(--ai-soft);      color: var(--ai); }
+.tile--info    { background: var(--info-soft);    color: var(--info); }
+.tile--success { background: var(--success-soft); color: var(--success); }
+.tile--quiet   { background: var(--surface-2);    color: var(--muted); }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -3481,7 +3494,9 @@ h4,
 .acct-sectitle small { color: var(--muted); }
 
 /* divided rows (notifications, help, danger) */
-.acct-divrow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+/* Раскладка (flex/центрирование/зазор) - на примитивах в JSX: .row .row--g7.
+   Зазор 14 -> ступень 16. Здесь остаётся только собственное: отбивка и линейка. */
+.acct-divrow { padding: 13px 0; border-bottom: 1px solid var(--line); }
 .acct-divrow:last-child { border-bottom: none; }
 /* The row IS the control when it's a link or a button. Without this every such
    call site re-declared the same reset inline (4 of them did). */
@@ -3492,11 +3507,12 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .card > .acct-divrow:only-child { padding: 0; }
 .acct-divrow__t { color: var(--ink); }
 .acct-divrow__s { color: var(--muted); }
-/* Brand tint is the tile's default. A row needing another tint overrides both
-   background AND color inline: --wash (legal), --danger-soft (delete account),
-   --ai-soft (theme), --surface-2 (sign out). */
-.acct-ic-tile { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
-.acct-ic-tile svg { width: 18px; height: 18px; }
+/* .acct-ic-tile УДАЛЁН (TRIP-321 Ф12.2a): он переобъявлял геометрию .tile на
+   внелестничных 38px. Вызовы -> .tile.tile--lg (40px), значок 18 -> 19px.
+   Тон: 7 вызовов сели на класс (--brand/--ai/--quiet), 2 (удаление аккаунта,
+   выход) намеренно остались инлайном - их цвет не совпадает с модификатором.
+   Дефолтный тинт был --primary-soft, у .tile--brand он --brand-soft: в светлой
+   теме это то же значение, в тёмной .16 против .14 (см. блок .tile--*). */
 
 /* profile hero */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
@@ -3555,20 +3571,30 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .acct-prefctl .input { width: auto; min-width: 210px; }
 
 /* reminder channels */
-.acct-chanlist { display: flex; flex-direction: column; gap: 10px; }
-/* align-items:flex-start so the icon always hugs the title (top) regardless of
+/* .acct-chanlist УДАЛЁН (Ф12.2a): это ровно .col - дефолтный зазор колонки (--sp-5)
+   и есть те самые 10px. */
+/* Раскладка -> .row .row--g6 в JSX (зазор 13 -> ступень 12). Остаётся своё:
+   отбивка, радиус, переход и align-items ниже.
+   align-items:flex-start so the icon always hugs the title (top) regardless of
    how many description lines or whether a CTA button is present — keeps every
    channel card visually consistent (the icon no longer floats mid-card on the
-   taller Telegram card). The trailing CTA/chevron re-centres on desktop. */
-.acct-chan { display: flex; align-items: flex-start; gap: 13px; padding: 14px; border-radius: var(--r-md); transition: border-color .2s, background .2s; }
+   taller Telegram card). The trailing CTA/chevron re-centres on desktop.
+   Это ПЕРЕОПРЕДЕЛЕНИЕ .row (у неё align-items:center) при равной специфичности -
+   держится только тем, что .acct-chan объявлен ниже .row по файлу. */
+.acct-chan { align-items: flex-start; padding: 14px; border-radius: var(--r-md); transition: border-color .2s, background .2s; }
 .acct-chan > .btn, .acct-chan__chev { align-self: center; }
 /* Status badge ("Coming soon" / "Connected") sits on its OWN line under the
    subtitle (like Telegram's CTA) — NOT inline in the title (wraps differently
    per title length) and NOT a trailing chip (squeezes the description into a
    narrow column). Identical placement for every channel card. */
 .acct-chan__main > .badge { display: flex; margin-top: 8px; }
-.acct-chan__ic { width: 42px; height: 42px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; } .acct-chan__ic svg { width: 20px; height: 20px; }
-.acct-chan__main { flex: 1; min-width: 0; }
+/* .acct-chan__ic УДАЛЁН (Ф12.2a): 42px мимо лестницы -> .tile.tile--lg (40px),
+   значок 20 -> 19px. Ступень --xl (46) тут была бы ошибкой: она несёт --r-btn и
+   молча перекрасила бы угол, а этот значок сегодня на --r-sm (полоса 42-46 в
+   лестнице - большинство, а не факт). */
+/* Раскладка -> .grow--fit в JSX: это была побайтово та же пара flex:1 + min-width:0,
+   объявленная в трёх строках от самого примитива. Имя класса остаётся - на нём
+   висит правило `> .badge` выше. */
 .acct-chan__t { color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acct-chan__s { color: var(--muted); margin-top: 2px; }
 .acct-chan--btn { cursor: pointer; width: 100%; text-align: left; font-family: inherit; } .acct-chan--btn:hover { border-color: var(--line-hover); background: var(--surface-3); }
@@ -3577,9 +3603,13 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .acct-chan--btn[aria-expanded="true"] .acct-chan__chev { transform: rotate(90deg); }
 .acct-tgtrips { margin-top: 10px; }
 .acct-tgtrips__lbl { color: var(--muted-2); margin-bottom: 8px; padding-left: 2px; }
-.acct-tgrow { display: flex; align-items: center; gap: 11px; padding: 10px; border-radius: var(--r-sm); }
+/* Раскладка -> .row .row--g6 в JSX (зазор 11 -> ступень 12). Отдельная сущность
+   от .acct-chan сознательно (решение Pavel): другое поведение, меняются независимо. */
+.acct-tgrow { padding: 10px; border-radius: var(--r-sm); }
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
-.acct-tgrow__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; } .acct-tgrow__ic svg { width: 15px; height: 15px; }
+/* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
+   нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
+   и тинт --primary-soft -> --brand-soft у .tile--brand (в тёмной .16 -> .14). */
 .acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
