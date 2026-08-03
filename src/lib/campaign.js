@@ -34,6 +34,11 @@ const SIGNUP_COLUMNS = {
   gclid: 'signup_gclid',
 };
 
+/** The same parameters under their own names, for passing a mark ON unchanged. */
+const CAMPAIGN_PASSTHROUGH = Object.fromEntries(
+  Object.keys(CAMPAIGN_FIELDS).map((param) => [param, param]),
+);
+
 // Last-touch window. Past it the mark is dropped — otherwise a single click
 // keeps claiming conversions half a year later.
 export const CAMPAIGN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -89,6 +94,23 @@ function readParams(search, fields) {
     if (value) out[key] = value;
   }
   return Object.keys(out).length ? out : null;
+}
+
+/**
+ * The campaign parameters a query string carries, re-encoded as a query string
+ * of their own — what a link leaving this visit needs in order to arrive marked.
+ *
+ * A whitelist, not a copy of the query: the address it is read from can itself
+ * BE a credential (`/public/trip/:id?t=<share_token>`), and forwarding that onto
+ * the landing page would hand the token to every later destination — the leak
+ * TRIP-330 closes, re-opened from the other side.
+ *
+ * @param {string} search  location.search
+ * @returns {string}  encoded query without the leading `?`, empty when unmarked
+ */
+export function campaignQuery(search) {
+  const carried = readParams(search, CAMPAIGN_PASSTHROUGH);
+  return carried ? new URLSearchParams(carried).toString() : '';
 }
 
 /**

@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plane } from 'lucide-react';
 import { invokeFn } from '@/lib/invokeFn';
-import { track, setRefTripId } from '@/lib/analytics';
+import { track, setRefTripId, withVisitCampaign } from '@/lib/analytics';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
@@ -16,8 +16,18 @@ import { formatDateRange } from '@/lib/trip-dates';
 import './PublicTrip.css';
 
 // Where the marketing chrome's section anchors / brand should point when this
-// page is rendered off the landing route.
-const SITE = 'https://triplanio.com/';
+// page is rendered off the landing route. `www`, not the apex: the apex only
+// 307s here, and the campaign mark is stored per host (analytics.js), so a link
+// to the apex would leave the mark in the wrong jar if that redirect ever turned
+// around.
+//
+// Every link built off this constant replaces the document, which drops the
+// in-memory attribution snapshot — and a visitor here arrived on a marked share
+// link and is exactly the new person that mark exists for, so the marks ride the
+// address across. One constant rather than one call per link: `withVisitCampaign`
+// on the CTAs alone would leave the brand, the nav and the footer silently
+// stripping the very attribution this page is supposed to produce (TRIP-329).
+const SITE = withVisitCampaign('https://www.triplanio.com/');
 // Per-city accent cycle — all existing Lumo event/accent tokens (no new tokens).
 const ACCENTS = ['var(--brand)', 'var(--ev-activity)', 'var(--ev-car)', 'var(--ai)', 'var(--pro)', 'var(--ev-transfer)'];
 

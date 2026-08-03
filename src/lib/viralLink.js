@@ -67,11 +67,29 @@ export const VIRAL_MARKS = {
  * @returns {string}
  */
 export function withViralMarks(url, kind, tripId, content) {
+  // Checked for BEING an entry, not merely for being truthy: `VIRAL_MARKS.
+  // constructor` resolves off the prototype, and a bare `if (marks)` would let
+  // it through and ship a link marked with a campaign and no source.
   const marks = VIRAL_MARKS[kind];
-  if (!url || !marks || !tripId) return url;
+  if (!url || !tripId || typeof marks?.utm_source !== 'string') return url;
 
   const params = new URLSearchParams({ ...marks, utm_campaign: `trip_${tripId}` });
   if (content) params.set('utm_content', content);
 
-  return `${url}${url.includes('?') ? '&' : '?'}${params.toString()}`;
+  return appendQuery(url, params.toString());
+}
+
+/**
+ * Hang a ready-made query string off an address, whether or not it already has
+ * one. Shared with `withVisitCampaign` (analytics.js), which puts the marks of
+ * the CURRENT visit on an outgoing link rather than minting new ones — the two
+ * halves differ in where the marks come from, not in how they are attached.
+ *
+ * @param {string} url
+ * @param {string} query  already encoded, without the leading `?`
+ * @returns {string}
+ */
+export function appendQuery(url, query) {
+  if (!url || !query) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}${query}`;
 }

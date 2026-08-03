@@ -11,7 +11,8 @@
 // Everything here is safe to call before consent: PostHog is not initialised, an
 // uninitialised client is a no-op, and nothing is queued (TRIP-311).
 import posthog from 'posthog-js';
-import { CAMPAIGN_KEYS, pickSignupAttribution, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
+import { CAMPAIGN_KEYS, campaignQuery, pickSignupAttribution, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
+import { appendQuery } from '@/lib/viralLink';
 
 // What the visit arrived with, held in memory until consent: writing marks to the
 // device before someone agrees is what this ticket forbids, and by the time they
@@ -144,6 +145,29 @@ export function rememberAttributionForRedirect() {
   try {
     sessionStorage.setItem(REDIRECT_KEY, JSON.stringify(marks));
   } catch { /* private mode — attribution is lost, the signup still works */ }
+}
+
+/**
+ * Put this visit's campaign marks on an outgoing address. For links that REPLACE
+ * the document: the snapshot above lives in memory only, so a full load starts a
+ * new document with an empty one, and `getSignupAttribution()` then finds nothing
+ * — a stranger who arrived on a marked invite or share link and pressed the very
+ * button the link exists for would register unattributed.
+ *
+ * The address carries the marks rather than the device storing them: nothing is
+ * written before consent, so the question TRIP-311 answers does not even arise,
+ * and unlike the OAuth stash next to it this survives a host change. The
+ * whitelist inside `campaignQuery` is what keeps our own `?t=<share_token>` from
+ * riding along.
+ *
+ * Pass a bare address — a fragment, if any, is appended by the caller after this
+ * (`navBase` + `#anchor` in SiteChrome), which lands it in the right order.
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function withVisitCampaign(url) {
+  return appendQuery(url, campaignQuery(visitSearch));
 }
 
 /**

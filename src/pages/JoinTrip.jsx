@@ -103,7 +103,14 @@ export default function JoinTrip() {
             </div>
             <h1 className="t-heading">{t('member.join_signin_title')}</h1>
             <p className="jt-lede t-body">{t('member.join_signin_lede')}</p>
-            <button className="jt-btn t-label" onClick={() => { window.location.href = '/login'; }}>
+            {/* nav(), not window.location — here and on the two buttons of the
+                error branch below: this is the main road a NEW person walks in
+                on, and replacing the document would drop the in-memory
+                attribution snapshot (analytics.js) before Login reads it — the
+                invite would bring the person and lose the credit (TRIP-329). An
+                invite that turned out to be expired still delivered a stranger,
+                so its way out counts the same. */}
+            <button className="jt-btn t-label" onClick={() => nav('/login')}>
               {t('member.join_signin_btn')}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
             </button>
@@ -118,7 +125,7 @@ export default function JoinTrip() {
             <h1 className="t-heading">{t('member.join_error_title')}</h1>
             <p className="jt-lede t-body">{t(errKey)}</p>
             <button className="jt-btn t-label" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
-            <button className="jt-btn jt-btn--ghost t-label" onClick={() => { window.location.href = '/'; }}>{t('member.join_home')}</button>
+            <button className="jt-btn jt-btn--ghost t-label" onClick={() => nav('/')}>{t('member.join_home')}</button>
           </>
         )}
       </div>

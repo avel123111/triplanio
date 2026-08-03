@@ -27,8 +27,11 @@ export function withViralMarks(
   tripId: string,
   content?: string,
 ): string {
+  // Checked for BEING an entry, not merely for being truthy: `VIRAL_MARKS.
+  // constructor` resolves off the prototype, and a bare `if (marks)` would let
+  // it through and ship a link marked with a campaign and no source.
   const marks = VIRAL_MARKS[kind];
-  if (!url || !marks || !tripId) return url;
+  if (!url || !tripId || typeof marks?.utm_source !== 'string') return url;
 
   const params = new URLSearchParams({ ...marks, utm_campaign: `trip_${tripId}` });
   if (content) params.set('utm_content', content);

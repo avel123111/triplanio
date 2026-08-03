@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { VIRAL_MARKS, withViralMarks } from './viralLink.js';
+import { VIRAL_MARKS, appendQuery, withViralMarks } from './viralLink.js';
 import { readSignupAttribution, resolveCampaign } from './campaign.js';
 
 const TRIP = '0f2a1c34-5b6d-4e7f-8a9b-0c1d2e3f4a5b';
@@ -54,7 +54,22 @@ test('a missing trip id, an unknown kind or no url leave the address untouched',
   const url = 'https://www.triplanio.com/join/tok';
   assert.equal(withViralMarks(url, 'invite_link', ''), url);
   assert.equal(withViralMarks(url, 'not_a_kind', TRIP), url);
+  // Inherited keys are not kinds: a bare lookup would find Object.prototype and
+  // ship a link marked with a campaign and no source.
+  assert.equal(withViralMarks(url, 'constructor', TRIP), url);
+  assert.equal(withViralMarks(url, 'toString', TRIP), url);
   assert.equal(withViralMarks('', 'invite_link', TRIP), '');
+});
+
+// Shared with withVisitCampaign (analytics.js), which forwards the marks of the
+// current visit instead of minting new ones.
+test('appendQuery hangs a query off an address with or without one already', () => {
+  assert.equal(appendQuery('https://x/', 'a=1'), 'https://x/?a=1');
+  assert.equal(appendQuery('https://x/?b=2', 'a=1'), 'https://x/?b=2&a=1');
+  // Nothing to add, nothing to change: an unmarked visit must hand its links on
+  // untouched rather than growing a bare `?`.
+  assert.equal(appendQuery('https://x/', ''), 'https://x/');
+  assert.equal(appendQuery('', 'a=1'), '');
 });
 
 test('round trip: what the link writes is what campaign.js reads back', () => {
