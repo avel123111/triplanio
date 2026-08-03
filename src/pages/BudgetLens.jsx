@@ -216,13 +216,16 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
         </Btn>
       </>}>
+      {/* Вертикальный ритм тела диалога - одна колонка со ступенью шкалы вместо
+          marginTop на каждом соседе (было 14/14/14/12/10 вручную). */}
+      <div className="col col--g7">
       <Field label={t('trip.description')}>
         <div data-vfield="title" className={inv('title')}>
           <input className="input" value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus={!isMobile} />
         </div>
         <FieldError issues={v.displayIssues} field="title" />
       </Field>
-      <div className="field-row cols-2" style={{ marginTop: 14 }}>
+      <div className="field-row cols-2">
         <Field label={t('budget.field_amount')}>
           <div className="bgt-amtgrp" data-vfield="amount" >
             <input className={`input num bgt-amtgrp__amt grow--fit ${inv('amount')}`} type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
@@ -234,7 +237,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
         </Field>
       </div>
-      <div className="field-row cols-2" style={{ marginTop: 14 }}>
+      <div className="field-row cols-2">
         <Field label={t('budget.field_category')}>
           <div data-vfield="categoryId" className={inv('categoryId')}>
             <select className="select" value={categoryId} onChange={e => { setCategoryId(e.target.value); v.markTouched('categoryId'); }}>
@@ -251,13 +254,12 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           </select>
         </Field>
       </div>
-      <div style={{ marginTop: 14 }}>
-        <Field label={t('doc.notes_label')}>
-          <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
-        </Field>
+      <Field label={t('doc.notes_label')}>
+        <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
+      </Field>
+      <IssuesPanel issues={v.panelIssues} />
+      {err && <Severity level="error">{err}</Severity>}
       </div>
-      <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
@@ -289,10 +291,12 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
       </>}>
-      <div className="t-body" style={{ color: 'var(--ink-2)' }}>
-        {t('trip.delete')} «<b style={{ color: 'var(--ink)' }}>{expense.title || '-'}</b>»?
+      <div className="col col--g7">
+        <div className="t-body" style={{ color: 'var(--ink-2)' }}>
+          {t('trip.delete')} «<b style={{ color: 'var(--ink)' }}>{expense.title || '-'}</b>»?
+        </div>
+        {err && <Severity level="error">{err}</Severity>}
       </div>
-      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
@@ -368,7 +372,8 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
-      <div className="t-ui" style={{ marginBottom: 8 }}>
+      <div className="col col--g4">
+      <div className="t-ui">
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (
@@ -400,8 +405,9 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
           })}
         </div>
       )}
-      <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
+      <IssuesPanel issues={v.panelIssues} />
+      {err && <Severity level="error">{err}</Severity>}
+      </div>
     </Dialog>
   );
 }
@@ -468,14 +474,15 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
+      <div className="col col--g7">
       <Field label={t('trip.title_label')}>
         <div data-vfield="name" className={inv('name')}>
           <input className="input" value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus={!isMobile} />
         </div>
         <FieldError issues={v.displayIssues} field="name" />
       </Field>
-      <div style={{ marginTop: 14 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.color_label')}</div>
+      <div className="col col--g4">
+        <div className="eyebrow">{t('budget.color_label')}</div>
         <div className="row row--g4 row--wrap" role="group" aria-label={t('budget.color_label')}>
           {CAT_COLORS.map(c => (
             <button key={c} type="button" className={`bgt-swatch tile tile--sm ${color === c ? 'on' : ''}`} style={{ background: c }}
@@ -483,8 +490,8 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
           ))}
         </div>
       </div>
-      <div style={{ marginTop: 14 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.icon_label')}</div>
+      <div className="col col--g4">
+        <div className="eyebrow">{t('budget.icon_label')}</div>
         <div className="bgt-iconpick row row--g4 row--wrap" role="group" aria-label={t('budget.icon_label')}>
           {CAT_ICONS_BUDGET.map(ic => (
             <button key={ic} type="button" className={`tile tile--lg ${icon === ic ? 'on' : ''}`} aria-pressed={icon === ic}
@@ -493,8 +500,9 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
           ))}
         </div>
       </div>
-      <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
+      <IssuesPanel issues={v.panelIssues} />
+      {err && <Severity level="error">{err}</Severity>}
+      </div>
     </Dialog>
   );
 }
