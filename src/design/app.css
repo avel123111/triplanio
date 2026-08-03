@@ -1714,6 +1714,12 @@ h4,
    Это достройка существующего примитива недостающей осью, а не новый элемент. */
 .row--start { align-items: flex-start; }
 
+/* Центровка ПО ГОРИЗОНТАЛИ - четвёртая ось ряда, и самая частая из недостающих:
+   в репозитории 70 мест (51 правило в CSS + 19 инлайновых рядов) против 47 у
+   wrap и 34 у start. .row центрирует поперёк, а вдоль прижимает к началу, и
+   каждый «спиннер по центру» / «пустой экран по центру» дописывал это руками. */
+.row--center { justify-content: center; }
+
 /* Гибкая ячейка, которой РАЗРЕШЕНО ужаться уже своего содержимого. Без
    min-width:0 флекс-элемент упирается в min-content и вытесняет соседей за край
    контейнера - поэтому пара `flex:1; min-width:0` в репозитории встречается 58
@@ -3519,6 +3525,12 @@ h4,
 /* Раскладка (flex/центрирование/зазор) - на примитивах в JSX: .row .row--g7.
    Зазор 14 -> ступень 16. Здесь остаётся только собственное: отбивка и линейка. */
 .acct-divrow { padding: 13px 0; border-bottom: 1px solid var(--line); }
+/* Текстовая ячейка ряда. Один и тот же ряд был свёрстан ДВУМЯ способами в одной
+   карточке: где справа кнопка - инлайн `flex:1;min-width:160` (3 раза), где
+   справа значок - голый .grow (2 раза). Порог нужен, чтобы кнопка не раздавила
+   заголовок; значку он не мешает. Правило на СУЩЕСТВУЮЩЕМ классе, а не шестое
+   имя под ту же ячейку. */
+.acct-divrow > .grow { min-width: 160px; }
 .acct-divrow:last-child { border-bottom: none; }
 /* The row IS the control when it's a link or a button. Without this every such
    call site re-declared the same reset inline (4 of them did). */
@@ -4284,6 +4296,21 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 @keyframes aispin{to{transform:rotate(360deg);}}
 /* generic spinner utility (replaces Tailwind animate-spin on lucide icons) */
 .spin{animation:aispin 1s linear infinite;}
+/* Кольцо. В .spin его класть НЕЛЬЗЯ: этот класс вешают в том числе на готовую
+   иконку (lucide Loader2 в TripCoverPicker), и у неё появилась бы вторая рамка.
+   Поэтому кольцо - модификатор того же семейства, а размер и тон - ручки, как
+   --tile у плитки. Сам круг был нарисован руками 11 раз в 8 файлах в шести
+   размерах (11/16/18/20/24/32) при том, что в CSS уже лежало ЧЕТЫРЕ разных
+   спиннера (.spin, .btn .spin, .ai-spin, .app-spinner) - это и есть «нет
+   примитива». Ступени сняты с мест вызова: 18 - рядом со строкой текста,
+   24 - когда грузится экран целиком. */
+.spin--ring{width:var(--spin,18px);height:var(--spin,18px);flex:none;
+  border:2px solid var(--spin-track,var(--line));
+  border-top-color:var(--spin-head,var(--brand));
+  border-radius:var(--r-pill);}
+.spin--lg{--spin:24px;}
+/* Поверх затемнения (аватар в момент загрузки) кольцо обязано быть белым. */
+.spin--onscrim{--spin-track:rgba(255,255,255,.4);--spin-head:#fff;}
 /* canonical in-button spinner (Lumo design system B1 · loading state) — a
    currentColor border-circle that replaces the leading icon while <Btn loading> */
 .btn .spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:aispin .7s linear infinite;flex:none;}

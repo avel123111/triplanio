@@ -127,8 +127,8 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
                 </div>
               </>
             ) : (
-              <div style={{ height: 40, display: 'grid', placeItems: 'center start' }}>
-                <div className="spin" style={{ width: 18, height: 18, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
+              <div className="row" style={{ height: 40 }}>
+                <div className="spin spin--ring" />
               </div>
             )}
           </div>
@@ -586,8 +586,8 @@ export default function ScreenAccount() {
   // ── Guard ──────────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
-        <div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
+      <div className="row row--center" style={{ paddingTop: 60 }}>
+        <div className="spin spin--ring spin--lg" />
       </div>
     );
   }
@@ -678,7 +678,7 @@ export default function ScreenAccount() {
                 >
                   {!avatarUrl && avatarInitials}
                   {uploadingAvatar
-                    ? <span className="ov" style={{ opacity: 1 }}><div className="spin" style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%' }} /></span>
+                    ? <span className="ov" style={{ opacity: 1 }}><div className="spin spin--ring spin--onscrim" /></span>
                     : <span className="ov"><Icon name="cam" size={18} /></span>}
                 </div>
                 <input
@@ -841,7 +841,7 @@ export default function ScreenAccount() {
             <div className="card">
               <div className="acct-divrow row row--g7">
                 <span className="tile tile--lg tile--brand"><Icon name="chat" size={18} /></span>
-                <div style={{ flex: 1, minWidth: 160 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('account.contact_us')}</div>
                   <div className="acct-divrow__s">
                     <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a> · {t('account.support_reply')}
@@ -895,7 +895,7 @@ export default function ScreenAccount() {
                   модификатором на самом ряду (новое имя -> апрув), поэтому не здесь. */}
               <div className="acct-divrow row row--g7" style={{ border: 'none', padding: 0 }}>
                 <span className="tile tile--lg tile--danger"><Icon name="trash" size={18} /></span>
-                <div style={{ flex: 1, minWidth: 160 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('settings.delete_account')}</div>
                   <div className="acct-divrow__s">{t('account.delete_desc')}</div>
                 </div>
@@ -930,7 +930,7 @@ export default function ScreenAccount() {
             <div className="card">
               <div className="acct-divrow row row--g7">
                 <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
-                <div style={{ flex: 1, minWidth: 160 }}>
+                <div className="grow">
                   <div className="acct-divrow__t">{t('account.logout_title')}</div>
                   <div className="acct-divrow__s">{t('account.logout_desc')}</div>
                 </div>
