@@ -387,8 +387,8 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
                 ? t('budget.fx_auto', { cur: mainCurrency })
                 : t('budget.fx_not_found', { cur: mainCurrency });
             return (
-              <div key={code} className="bgt-fxrow" data-vfield={`rate.${code}`}>
-                <div className={`bgt-fxrow__cur ${known ? '' : 'miss'}`}>{currencySymbol(code) || code}</div>
+              <div key={code} className="bgt-fxrow row row--g6" data-vfield={`rate.${code}`}>
+                <div className={`bgt-fxrow__cur tile tile--xl ${known ? '' : 'miss'}`}>{currencySymbol(code) || code}</div>
                 <div className="grow--fit">
                   <div className="bgt-fxrow__eq">1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</div>
                   <div className={`bgt-fxrow__hint ${hintCls}`}>{hint}</div>
@@ -476,18 +476,18 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
       </Field>
       <div style={{ marginTop: 14 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.color_label')}</div>
-        <div className="bgt-swatches" role="group" aria-label={t('budget.color_label')}>
+        <div className="row row--g4 row--wrap" role="group" aria-label={t('budget.color_label')}>
           {CAT_COLORS.map(c => (
-            <button key={c} type="button" className={`bgt-swatch ${color === c ? 'on' : ''}`} style={{ background: c }}
+            <button key={c} type="button" className={`bgt-swatch tile tile--sm ${color === c ? 'on' : ''}`} style={{ background: c }}
               aria-pressed={color === c} onClick={() => setColor(c)} />
           ))}
         </div>
       </div>
       <div style={{ marginTop: 14 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.icon_label')}</div>
-        <div className="bgt-iconpick" role="group" aria-label={t('budget.icon_label')}>
+        <div className="bgt-iconpick row row--g4 row--wrap" role="group" aria-label={t('budget.icon_label')}>
           {CAT_ICONS_BUDGET.map(ic => (
-            <button key={ic} type="button" className={icon === ic ? 'on' : ''} aria-pressed={icon === ic}
+            <button key={ic} type="button" className={`tile tile--lg ${icon === ic ? 'on' : ''}`} aria-pressed={icon === ic}
               style={icon === ic ? { background: color + '22', borderColor: color, color } : undefined}
               onClick={() => setIcon(ic)}><Icon name={ic} size={18} /></button>
           ))}
@@ -514,13 +514,13 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
   const dateStr = expense.spent_on ? fmtDate(expense.spent_on, loc) : '';
   const color = catColor || 'var(--brand)';
   return (
-    <div className="bgt-exrow" onClick={() => onOpen?.(expense)}>
-      <div className="bgt-exrow__d" style={{ background: color + '22', color }}>
+    <div className="bgt-exrow row row--g6" onClick={() => onOpen?.(expense)}>
+      <div className="tile tile--lg" style={{ background: color + '22', color }}>
         <Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={18} />
       </div>
       <div className="grow--fit">
         <div className="bgt-exrow__t trunc">{expense.title || '-'}</div>
-        <div className="bgt-exrow__s">
+        <div className="bgt-exrow__s row row--g4 row--wrap">
           {mode === 'city' && catName && <span className="bgt-tagx bgt-tagx--cat">{catName}</span>}
           {mode !== 'city' && cityName && <span>{cityName}</span>}
           {dateStr && <><span className="sep" />{dateStr}</>}
@@ -535,9 +535,9 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
       </div>
       {isManual ? (
         !readOnly && (
-          <div className="bgt-exrow__acts">
-            <button className="bgt-iconbtn" aria-label={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }}><Icon name="edit" size={15} /></button>
-            <button className="bgt-iconbtn bgt-iconbtn--danger" aria-label={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }}><Icon name="trash" size={15} /></button>
+          <div className="bgt-exrow__acts row row--g2">
+            <button className="icon-btn tile--sm" aria-label={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }}><Icon name="edit" size={15} /></button>
+            <button className="icon-btn bgt-exrow__del tile--sm" aria-label={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }}><Icon name="trash" size={15} /></button>
           </div>
         )
       ) : (
@@ -716,8 +716,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {/* ░ SUMMARY BAND ░ */}
       <div className="bgt-sumband">
         <div className="card bgt-donutcard">
-          <div className="bgt-donutcard__h"><b>{t('budget.by_category_title')}</b></div>
-          <div className="bgt-donutwrap">
+          <div className="bgt-donutcard__h row"><b>{t('budget.by_category_title')}</b></div>
+          <div className="bgt-donutwrap row row--g8">
             <DonutChart segments={donutSegments} total={totalSpent} mainCurrency={mainCurrency}
               hoveredId={hoveredSeg} centerLabel={t('budget.donut_total')} />
             <div className="col col--g1 grow--fit">
@@ -727,7 +727,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               {donutSegments.map(s => {
                 const pct = totalSpent > 0 ? Math.round((s.value / totalSpent) * 100) : 0;
                 return (
-                  <div key={s.id} className="bgt-dleg__row"
+                  <div key={s.id} className="bgt-dleg__row row row--g4"
                     onMouseEnter={() => setHoveredSeg(s.id)} onMouseLeave={() => setHoveredSeg(null)}>
                     <span className="bgt-dleg__d" style={{ background: s.color }} />
                     <span className="bgt-dleg__n grow--fit trunc">{s.name}</span>
@@ -742,8 +742,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
         <div className="col col--g6">
           {/* Всего потрачено */}
-          <div className="card bgt-stat bgt-stat--total">
-            <div className="bgt-stat__ic"><Icon name="wallet" size={21} /></div>
+          <div className="card bgt-stat bgt-stat--total row row--g7">
+            <div className="bgt-stat__ic tile tile--xl"><Icon name="wallet" size={21} /></div>
             <div className="grow--fit">
               <div className="bgt-stat__l">{t('budget.total_spent')}</div>
               <div className="bgt-stat__v">{money(totalSpent, mainCurrency)}</div>
@@ -755,8 +755,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           </div>
 
           {/* На одного */}
-          <div className="card bgt-stat bgt-stat--ppl">
-            <div className="bgt-stat__ic"><Icon name="user" size={21} /></div>
+          <div className="card bgt-stat bgt-stat--ppl row row--g7">
+            <div className="bgt-stat__ic tile tile--xl"><Icon name="user" size={21} /></div>
             <div className="grow--fit">
               <div className="bgt-stat__l">{t('budget.per_person_label')}</div>
               <div className="bgt-stat__v">{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
@@ -767,20 +767,20 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           </div>
 
           {/* Курсы валют */}
-          <button type="button" className="card bgt-stat bgt-stat--fx" onClick={readOnly ? undefined : openFxDialog}>
-            <div className="bgt-stat__ic"><Icon name="arrowSwap" size={21} /></div>
+          <button type="button" className="card bgt-stat bgt-stat--fx row row--g7" onClick={readOnly ? undefined : openFxDialog}>
+            <div className="bgt-stat__ic tile tile--xl"><Icon name="arrowSwap" size={21} /></div>
             <div className="grow--fit">
               <div className="bgt-stat__l">{t('budget.fx_button')}</div>
               {foreignCurrencies.length === 0 ? (
                 <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_empty')}</div>
               ) : (
                 <>
-                  <div className="bgt-fxlist">
+                  <div className="bgt-fxlist row row--wrap">
                     {foreignCurrencies.map(cur => {
                       const ov = overrides[cur];
                       const rate = ov != null ? Number(ov) : liveRateToMain(fx, cur);
                       return rate != null
-                        ? <span key={cur}>1 {cur} ≈ {Number(rate.toFixed(4))} {mainCurrency}</span>
+                        ? <span key={cur} >1 {cur} ≈ {Number(rate.toFixed(4))} {mainCurrency}</span>
                         : <span key={cur} className="miss">1 {cur} — {t('budget.fx_rate_unset')}</span>;
                     })}
                   </div>
@@ -819,12 +819,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       )}
 
       {/* ░ CONTROLS ░ */}
-      <div className="bgt-ctl">
+      <div className="bgt-ctl row row--g6 row--wrap">
         <div className="seg" role="group" aria-label={t('budget.group_by_category')}>
           <button type="button" aria-pressed={grouping === 'category'} onClick={() => setGrouping('category')}><Icon name="grid" size={14} />{t('budget.group_by_category')}</button>
           <button type="button" aria-pressed={grouping === 'city'} onClick={() => setGrouping('city')}><Icon name="pin" size={14} />{t('budget.group_by_city')}</button>
         </div>
-        <div className="bgt-ctl__spacer" />
+        <div className="grow" />
         {grouping === 'category' && !readOnly && (
           <Btn variant="soft" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
@@ -840,12 +840,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               const empty = c.itemCount === 0;
               return (
                 <button key={c.id} type="button" role="tab" aria-selected={active}
-                  className={`bgt-glist__row ${active ? 'on' : ''}`} onClick={() => setActiveCatId(c.id)}>
-                  <span className="bgt-glist__ic" style={{ background: c.color + '22', color: c.color }}>
+                  className={`bgt-glist__row row row--g6 ${active ? 'on' : ''}`} onClick={() => setActiveCatId(c.id)}>
+                  <span className="tile" style={{ background: c.color + '22', color: c.color }}>
                     <Icon name={catIcon(c)} size={17} />
                   </span>
                   <span className="grow--fit">
-                    <span className="bgt-glist__n">
+                    <span className="bgt-glist__n row row--g4">
                       <span className="t trunc">{c.displayName}</span>
                       {c.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
                     </span>
@@ -861,7 +861,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               );
             })}
             {!readOnly && (
-              <button type="button" className="bgt-glist__add" onClick={openAddCategory}>
+              <button type="button" className="bgt-glist__add row row--g4" onClick={openAddCategory}>
                 <Icon name="plus" size={15} /> {t('budget.add_category')}
               </button>
             )}
@@ -870,12 +870,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           {/* detail */}
           {activeCat && (
             <div className="card bgt-detail">
-              <div className="bgt-detail__h">
-                <div className="bgt-detail__ic" style={{ background: activeCat.color + '22', color: activeCat.color }}>
+              <div className="bgt-detail__h row row--g6">
+                <div className="tile tile--xl" style={{ background: activeCat.color + '22', color: activeCat.color }}>
                   <Icon name={catIcon(activeCat)} size={22} />
                 </div>
                 <div className="grow--fit">
-                  <div className="bgt-detail__n">
+                  <div className="bgt-detail__n row row--g4">
                     {activeCat.displayName}
                     {activeCat.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
                   </div>
@@ -895,7 +895,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
                   action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
               ) : (
-                <div className="bgt-exlist">
+                <div className="bgt-exlist col col--g4">
                   {activeCat.items.map(exp => {
                     const r = conv(exp);
                     return (
@@ -947,12 +947,12 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
           const active = g.id === activeCityId;
           return (
             <button key={g.id} type="button" role="tab" aria-selected={active}
-              className={`bgt-glist__row ${active ? 'on' : ''}`} onClick={() => setActiveCityId(g.id)}>
-              <span className="bgt-glist__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+              className={`bgt-glist__row row row--g6 ${active ? 'on' : ''}`} onClick={() => setActiveCityId(g.id)}>
+              <span className="tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
                 <Icon name="pin" size={17} />
               </span>
               <span className="grow--fit">
-                <span className="bgt-glist__n"><span className="t trunc">{cityLabel(g)}</span></span>
+                <span className="bgt-glist__n row row--g4"><span className="t trunc">{cityLabel(g)}</span></span>
                 <span className="bgt-glist__c">{g.items.length} {expensesPlural(g.items.length)}</span>
               </span>
               <span className="bgt-glist__r"><span className="bgt-glist__v">{money(g.total, mainCurrency)}</span></span>
@@ -961,12 +961,12 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
         })}
       </div>
       <div className="card bgt-detail">
-        <div className="bgt-detail__h">
-          <div className="bgt-detail__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+        <div className="bgt-detail__h row row--g6">
+          <div className="tile tile--xl" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
             <Icon name="pin" size={22} />
           </div>
           <div className="grow--fit">
-            <div className="bgt-detail__n">{cityLabel(cur)}</div>
+            <div className="bgt-detail__n row row--g4">{cityLabel(cur)}</div>
             <div className="bgt-detail__s">{cur.items.length} {expensesPlural(cur.items.length)}</div>
           </div>
           <div className="bgt-detail__amt">
@@ -974,7 +974,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
             <div className="l">{t('budget.spent_label')}</div>
           </div>
         </div>
-        <div className="bgt-exlist">
+        <div className="bgt-exlist col col--g4">
           {cur.items.map(it => {
             const r = conv(it);
             return (
