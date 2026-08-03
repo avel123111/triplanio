@@ -4331,10 +4331,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    примитива». Ступени сняты с мест вызова: 18 - рядом со строкой текста,
    24 - когда грузится экран целиком. */
 .spin--ring{width:var(--spin,18px);height:var(--spin,18px);flex:none;
-  border:2px solid var(--spin-track,var(--line));
+  border:var(--spin-w,2px) solid var(--spin-track,var(--line));
   border-top-color:var(--spin-head,var(--brand));
   border-radius:var(--r-pill);}
-.spin--lg{--spin:24px;}
+/* Ступени означают КОНТЕКСТ, а не просто размер: 18 - рядом со строкой текста,
+   24 - самостоятельный блок, 32 - грузится целый экран (этот размер уже был в
+   системе как .app-spinner). Толщина не отдельная ручка на каждый вызов, а
+   часть ступени - иначе она снова разъедется (в репозитории было 2/3/4px на
+   одних и тех же размерах). Четвёртой ступени быть не должно: ступень под
+   экран - это тот же зоопарк, только с общим префиксом. */
+.spin--lg{--spin:24px;--spin-w:3px;}
+.spin--xl{--spin:32px;--spin-w:4px;}
 /* Головка чернилами вместо бренда: на КАРТЕ синяя головка спорит с самой картой,
    поэтому три экрана с картой рисовали её так. Все три объявления были
    побайтово одинаковы (24px, 2px, дорожка --line, головка --ink). */
@@ -4346,7 +4353,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .btn .spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:aispin .7s linear infinite;flex:none;}
 /* app-level loading spinner (was Tailwind fixed inset-0 + bordered circle) */
 .app-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
-.app-spinner{width:32px;height:32px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:var(--r-pill);animation:aispin 1s linear infinite;}
 /* locked / parsed state tints */
 .ai-blk.locked{border-color:var(--line-strong);background:var(--surface-2);}
 .ai-blk.locked .ai-blk-ic{filter:saturate(.55);}

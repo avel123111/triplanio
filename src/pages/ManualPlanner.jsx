@@ -301,7 +301,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {geoState === 'loading' && (
         <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
-          <div className="spin" style={{ width: 20, height: 20, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+          <div className="spin spin--ring" />
           <span className="t-body muted">{t('planner.detecting')}</span>
         </div>
       )}
@@ -683,7 +683,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
 
       {saving && (
         <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="spin" style={{ width: 16, height: 16, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', flexShrink: 0 }} />
+          <div className="spin spin--ring" />
           <div className="t-body" style={{ flex: 1, color: 'var(--ink-2)' }}>{t('planner.saving_msg')}</div>
         </div>
       )}
@@ -1140,7 +1140,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   if (!isPro && checkingLimit && !savedOk) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="spin" style={{ width: 32, height: 32, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+        <div className="spin spin--ring spin--xl" />
       </div>
     );
   }
