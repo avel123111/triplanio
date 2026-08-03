@@ -703,9 +703,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {/* ░ HEADER: screen title + primary actions relocated from the removed
           per-screen bar. On phones the buttons hide (see BudgetLens.css): "add
           expense" becomes the FAB below and "rates" is the FX stat card. ░ */}
-      <div className="bgt-head">
+      <div className="bgt-head row">
         <h2 className="bgt-head__title">{t('trip.sidebar_budget')}</h2>
-        <span className="bgt-head__sp" />
+        <span className="grow" />
         {!readOnly && (
           <>
             <Btn variant="ghost" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
@@ -720,7 +720,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <div className="bgt-donutwrap">
             <DonutChart segments={donutSegments} total={totalSpent} mainCurrency={mainCurrency}
               hoveredId={hoveredSeg} centerLabel={t('budget.donut_total')} />
-            <div className="bgt-dleg grow--fit">
+            <div className="col col--g1 grow--fit">
               {donutSegments.length === 0 && (
                 <div className="muted t-meta" style={{ padding: '6px 8px' }}>{t('budget.no_expenses')}</div>
               )}
@@ -740,7 +740,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           </div>
         </div>
 
-        <div className="bgt-statstack">
+        <div className="col col--g6">
           {/* Всего потрачено */}
           <div className="card bgt-stat bgt-stat--total">
             <div className="bgt-stat__ic"><Icon name="wallet" size={21} /></div>
