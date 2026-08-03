@@ -326,6 +326,14 @@ body {
    «transparent !important» на шеллах существовал только ради него и удалён
    вместе с ним. Шеллы заново не красим — background у них не задан, они
    наследуют от body. */
+/* ★ЛОВУШКА (замерено, TRIP-321): `font` - ШОРТКАТ, и `font: inherit` не только
+   наследует семейство/кегль, но и СБРАСЫВАЕТ в initial всё, что шорткат не
+   называет - в том числе font-variant-numeric. То есть табличные цифры с body
+   (строка выше) до контролов НЕ доезжают, и наследуются дальше как `normal`
+   всем, что лежит ВНУТРИ контрола (`.tl3-card` - это button, `.ncal-ev` тоже).
+   Отсюда: `font-variant-numeric` на контроле или внутри него - ЖИВОЕ правило,
+   а не дубль наследования; на обычном div/span - дубль. Класс .num ниже держит
+   ровно этот случай и удалению не подлежит. */
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--brand); text-decoration: none; }
@@ -342,6 +350,9 @@ h1, h2, h3, h4 {
 }
 .muted { color: var(--muted); }
 .muted-2 { color: var(--muted-2); }
+/* Табличные цифры для КОНТРОЛОВ и их содержимого - единственное место, где это
+   объявление не дубль наследования от body (см. ловушку `font: inherit` выше).
+   На обычном div/span класс не нужен: там табличные цифры уже наследуются. */
 .num { font-variant-numeric: tabular-nums; }
 .mono { font-family: var(--font-mono); }
 
