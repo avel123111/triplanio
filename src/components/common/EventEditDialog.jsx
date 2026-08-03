@@ -1356,7 +1356,7 @@ export default function EventEditDialog({
             {/* Accessible name for the dialog. The visible <h2> lives inside the shared
                 `inner` (also used by the non-dialog panel variant), so a dedicated
                 sr-only Title carries the contract only in this Radix-dialog branch. */}
-            <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{title}</DialogTitle>
+            <DialogTitle className="sr-only">{title}</DialogTitle>
             {inner}
           </DialogContent>
         </Dialog>

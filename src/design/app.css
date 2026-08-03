@@ -4294,6 +4294,15 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    a transform (e.g. `translateY(-50%)` centring) — it would slide as it turns.
    Wrap it instead: the wrapper positions, the inner element spins. */
 @keyframes aispin{to{transform:rotate(360deg);}}
+/* prefix-exempt: sr — утилита доступности, а не экранное пространство имён.
+   Класс `sr-only` УЖЕ стоял в разметке 6 раз в 5 файлах, но в CSS его не было
+   ни разу: каждый вызов носил свою копию тех же пяти свойств инлайном, а в
+   LpSheet под это завели JS-константу SR_ONLY - то есть дубль осознали, но
+   вылечили не там. Ничего не рисует и на экране не видна: прячет заголовок от
+   глаз, оставляя его читалке экрана (Radix требует Title у каждого диалога). */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+  clip-path:inset(50%);white-space:nowrap;border:0;padding:0;margin:-1px;}
+
 /* generic spinner utility (replaces Tailwind animate-spin on lucide icons) */
 .spin{animation:aispin 1s linear infinite;}
 /* Кольцо. В .spin его класть НЕЛЬЗЯ: этот класс вешают в том числе на готовую

@@ -648,7 +648,7 @@ export default function ScreenAccount() {
 
       {/* ── TWO-PANE WORKSPACE ── */}
       <div className="acct-shell">
-        <h1 className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('account.title')}</h1>
+        <h1 className="sr-only">{t('account.title')}</h1>
 
         {/* LEFT NAV (sticky, scroll-spy) */}
         <nav className="acct-nav" aria-label={t('account.title')}>

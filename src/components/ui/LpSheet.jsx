@@ -19,8 +19,6 @@ import { Drawer } from 'vaul';
  * The breakpoint (sheet vs each host's own desktop layout) stays in the caller —
  * this is only the mobile shell.
  */
-const SR_ONLY = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' };
-
 export default function LpSheet({ open, onClose, title = '', children }) {
   return (
     <Drawer.Root open={open} onOpenChange={(o) => { if (!o) onClose?.(); }} repositionInputs={false}>
@@ -29,7 +27,7 @@ export default function LpSheet({ open, onClose, title = '', children }) {
         {/* vaul wraps Radix Dialog, which requires a Title for a11y — kept sr-only
             since the hosted panel renders its own visible heading. */}
         <Drawer.Content className="lp-sheet" aria-describedby={undefined}>
-          <Drawer.Title className="sr-only" style={SR_ONLY}>{title}</Drawer.Title>
+          <Drawer.Title className="sr-only">{title}</Drawer.Title>
           {children}
         </Drawer.Content>
       </Drawer.Portal>
