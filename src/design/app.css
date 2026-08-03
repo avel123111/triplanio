@@ -131,6 +131,15 @@
      --r-btn — two extra names for one value. Collapsed; --r-btn is the name. */
   --r-seg-btn:calc(var(--r-btn) - 4px);
 
+  /* Шкала отступов (TRIP-321 Ф11). НОРМАТИВНАЯ, не описательная: покрывает ~62%
+     нынешних значений НАМЕРЕННО. Задача - ограниченный набор, а не токен на
+     каждый пиксель, поэтому 11px (40 объявлений) и 14px (41) ступени не
+     получают: они подтягиваются к 12 и 16 при миграции своего экрана, по одному
+     и глазами. Прогон по значениям всем репозиторием запрещён - именно он в Ф3b
+     сделал чекбокс круглым. */
+  --sp-1:2px; --sp-2:4px; --sp-3:6px; --sp-4:8px; --sp-5:10px;
+  --sp-6:12px; --sp-7:16px; --sp-8:20px; --sp-9:24px;
+
   /* Shadows (Lumo scale) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
   --sh-2:0 4px 12px -4px rgba(39,36,51,.10), 0 18px 48px -16px rgba(39,36,51,.20);
@@ -1629,10 +1638,53 @@ h4,
 .seg--fill { display: flex; width: 100%; }
 .seg--fill button { flex: 1; justify-content: center; }
 
+/* ═══════════════ Примитивы раскладки (TRIP-321 Ф11) ═══════════════
+   Замер (scripts/ci/audit-design.mjs) на dev@eb5e155: одна и та же форма
+   объявляется заново в 4+ разных семействах 40 раз, это 285 правил. Верхушка -
+   ряд, колонка и «гибкая ячейка, которой можно ужаться»:
+
+     21 правило / 18 семейств :: display|flex-direction|gap        → .col
+     15 правил  / 14 семейств :: align-items|display|gap           → .row
+     58 правил  (весь src)    :: flex:1 + min-width:0              → .grow--fit
+     ~28 правил               :: nowrap+overflow+ellipsis          → .trunc
+
+   .row/.col/.grow существуют с самого начала - здесь они НЕ переписываются, к
+   ним только дописаны модификаторы. Новых семейств ровно одно: `trunc`.
+
+   Шкала отступов НОРМАТИВНАЯ, а не описательная: она покрывает ~62% нынешних
+   значений, и это сделано намеренно. 11px и 14px токена не получают - они
+   подтягиваются к 12 и 16 при миграции своего экрана, по одному и глазами
+   (массовый прогон по значениям уже сделал чекбокс круглым в Ф3b). ═════════ */
+
 /* Misc utility */
-.row { display: flex; gap: 10px; align-items: center; }
-.col { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; gap: var(--sp-5); align-items: center; }
+.col { display: flex; flex-direction: column; gap: var(--sp-5); }
 .grow { flex: 1; }
+
+/* Ступень шкалы вместо рукописного gap. Модификатор существующего семейства -
+   нового пространства имён не заводит. */
+.row--g1, .col--g1 { gap: var(--sp-1); }
+.row--g2, .col--g2 { gap: var(--sp-2); }
+.row--g3, .col--g3 { gap: var(--sp-3); }
+.row--g4, .col--g4 { gap: var(--sp-4); }
+.row--g5, .col--g5 { gap: var(--sp-5); }
+.row--g6, .col--g6 { gap: var(--sp-6); }
+.row--g7, .col--g7 { gap: var(--sp-7); }
+.row--g8, .col--g8 { gap: var(--sp-8); }
+.row--g9, .col--g9 { gap: var(--sp-9); }
+
+/* Гибкая ячейка, которой РАЗРЕШЕНО ужаться уже своего содержимого. Без
+   min-width:0 флекс-элемент упирается в min-content и вытесняет соседей за край
+   контейнера - поэтому пара `flex:1; min-width:0` в репозитории встречается 58
+   раз. Голый .grow (40 мест в JSX) НЕ трогаем: min-width:0 меняет поведение
+   ужимания, и проверять это надо экран за экраном, а не одной правкой. */
+.grow--fit { flex: 1; min-width: 0; }
+
+/* prefix-exempt: trunc — примитив обрезки строки, TRIP-321 Ф11, апрув Pavel.
+   Только сама обрезка; «разрешено ужаться» - это .grow--fit, они складываются.
+   Экран вправе отменить обрезку у себя (bgt на ≤640 переводит имена в перенос) -
+   его медиа-правило идёт ниже по каскаду и выигрывает при равной специфичности. */
+.trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
