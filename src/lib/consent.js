@@ -7,7 +7,7 @@
 // CI guard 2j fails the build if a second `posthog.init` appears. TRIP-227 hangs
 // GTM / GA4 / ad pixels off `applyConsent`.
 import posthog from 'posthog-js';
-import { isAnalyticsOn, startAnalytics, stopAnalytics, syncCampaignToPerson } from '@/lib/analytics';
+import { isAnalyticsOn, startAnalytics, stopAnalytics, stripQueryFromUrl, syncCampaignToPerson } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -108,6 +108,10 @@ export function applyConsent(record, uid) {
     capture_performance: false,
     disable_session_recording: true,
     person_profiles: 'identified_only',
+    // The last hook before a request leaves the browser, and the only one that
+    // sees BOTH bags — `sanitize_properties` is deprecated in this SDK and logs
+    // an error on every event.
+    before_send: scrubUrlProperties,
   });
   // `env` super-property tags every event → prod dashboards filter env=prod.
   posthog.register({ env: isProdHost ? 'prod' : 'dev' });
@@ -148,6 +152,40 @@ export function clearAnalyticsStorage() {
 function cookieDomainAttrs() {
   const parts = window.location.hostname.split('.');
   return parts.length >= 2 ? ['', `; domain=.${parts.slice(-2).join('.')}`] : [''];
+}
+
+/**
+ * Take the query string off every address PostHog attached to an event. It fills
+ * several properties from `location.href` / `document.referrer` by itself, and
+ * any of them can carry a whole query: `$current_url` and `$session_entry_url`
+ * both held live share tokens, `$referrer` can, and `$set_once` carries the
+ * `$initial_*` twins of all three. Naming them would leave the next one the SDK
+ * adds uncovered, so every value that IS an address is swept instead. `$pathname`
+ * / `$host` / `$referring_domain` are query-free by construction.
+ *
+ * The BAGS are named rather than walked: a `CaptureResult` has a fixed, small set
+ * of them, and `$set` / `$set_once` appear at BOTH levels (`identify` puts them
+ * beside `properties`, `setPersonProperties` one level inside it). Naming beats
+ * recursion here because `_runBeforeSend` does not catch — a throw on some future
+ * cyclic value would take capture down entirely, which is worse than a leak.
+ * `$unset` holds key NAMES, and `uuid` / `event` / `timestamp` are not addresses.
+ *
+ * @param {{properties?: Record<string, unknown>, $set?: Record<string, unknown>, $set_once?: Record<string, unknown>}} event
+ * @returns {typeof event} the same event, edited in place (never dropped)
+ */
+function scrubUrlProperties(event) {
+  const properties = event?.properties;
+  scrubUrls(properties);
+  scrubUrls(properties?.$set);
+  scrubUrls(properties?.$set_once);
+  scrubUrls(event?.$set);
+  scrubUrls(event?.$set_once);
+  return event;
+}
+
+function scrubUrls(bag) {
+  if (!bag || typeof bag !== 'object') return;
+  for (const [key, value] of Object.entries(bag)) bag[key] = stripQueryFromUrl(value);
 }
 
 /**
