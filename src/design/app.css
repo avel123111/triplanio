@@ -1101,11 +1101,14 @@ h4,
 }
 
 /* Base neutral icon button (used OUTSIDE the header too — keeps light styling). */
+/* Здесь ТОЛЬКО роль кнопки: сброс рамки/фона + нейтральный цвет (ховер ниже).
+   Геометрию .icon-btn больше не объявляет - это тот же квадрат, что и .tile, и
+   написан он ОДИН раз, в ко-селекторе `.tile, .icon-btn` в блоке примитивов.
+   Кегль иконки к ручке НЕ подключён намеренно: у кнопки он приходит из пропа
+   size в JSX (18px), а сведение к --tile-ic меняет вид в 10 местах - это
+   решение уровня экрана, со скриншотом, а не правка вслепую отсюда. */
 .icon-btn {
   position: relative;
-  width: 34px; height: 34px;
-  display: grid; place-items: center;
-  border-radius: var(--r-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
@@ -1552,8 +1555,8 @@ h4,
  border: 1px solid;
  color: var(--ink-2);
 }
-.sev__icon { flex-shrink: 0; width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; }
-.sev__icon svg { width: 17px; height: 17px; }
+/* Геометрия плитки уехала в .tile (32px -> ступень 34px, кегль иконки тот же
+   17px); .sev__icon остаётся ТОЛЬКО как крючок для тона по уровню - ниже. */
 .sev--info { background: var(--brand-soft); border-color: var(--brand-soft-12); }
 .sev--info .sev__icon { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--brand); }
 .sev--warning { background: var(--warning-soft); border-color: var(--warning-soft); }
@@ -1681,6 +1684,48 @@ h4,
    Экран вправе отменить обрезку у себя (bgt на ≤640 переводит имена в перенос) -
    его медиа-правило идёт ниже по каскаду и выигрывает при равной специфичности. */
 .trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Плитка-иконка: квадрат с радиусом, внутри отцентрирована иконка. В репозитории
+   эта форма объявлена 85 раз в 60 семействах на 22 размерах - 32/34/36 это один и
+   тот же квадрат, разница ни разу не была замечена, но стоит нам 26 классов.
+   Размер, кегль иконки и радиус - три ручки, поэтому ступень = одно
+   переопределение, а не отдельная копия геометрии. Ручки НАСЛЕДУЮТСЯ, и не только
+   плиткой в плитке: --tile читает любой потомок, который на неё завязан (сегодня
+   это .icon-btn), поэтому ступень молча переразмерит вложенную иконку-кнопку.
+   Вложенных плиток и .icon-btn внутри .tile в проекте нет - проверять при
+   переводе каждого экрана.
+   Радиус растёт вместе с размером НЕ по вкусу - так уже написано в коде: 26-40px
+   несут --r-sm (48 объявлений), 42-46 --r-btn, 48-62 --r-md; ступень это фиксирует.
+   ★ГРАНИЦА ВНИЗУ: ниже 26px репозиторий радиус не токенизирует вовсе (17-24px несут
+   рукописные 5-7px), а дефолтный --r-sm = 11px на стороне 20px даёт уже не квадрат,
+   а пилюлю - ровно ловушка Ф3b, где .checkbox 17px под 11px стал радиокнопкой.
+   Ступени мельче --sm тут НЕТ по этой же причине: она обязана нести собственный
+   --tile-r, а до появления настоящего потребителя выдумывать его - гадание.
+   position:relative СОЗНАТЕЛЬНО не здесь: он нужен только .icon-btn под метку
+   .dot, лишним он был бы у всех остальных плиток. */
+.tile, .icon-btn {
+  width: var(--tile, 34px); height: var(--tile, 34px);
+  display: grid; place-items: center;
+  border-radius: var(--tile-r, var(--r-sm));
+}
+.tile { flex: none; }
+/* <Icon size={N}> рисует svg презентационными атрибутами width/height, а CSS их
+   бьёт -> --tile-ic МОЛЧА выигрывает у пропа size. При переводе экрана ступень
+   надо выбирать под фактический size, иначе иконка съедет без единой правки JSX. */
+.tile > svg { width: var(--tile-ic, 17px); height: var(--tile-ic, 17px); }
+
+.tile--sm  { --tile: 28px; --tile-ic: 15px; }
+.tile--lg  { --tile: 40px; --tile-ic: 19px; }
+.tile--xl  { --tile: 46px; --tile-ic: 21px; --tile-r: var(--r-btn); }
+.tile--2xl { --tile: 62px; --tile-ic: 28px; --tile-r: var(--r-md); }
+
+/* Тона сняты с EmptyState: три вида пустого экрана - это весь набор, который
+   дизайн-система реально различает. --brand-soft и --primary-soft НЕ синонимы
+   (в тёмной теме .14 против .16), поэтому плитки на --primary-soft переезжают
+   сюда только вместе со своим экраном, а не механической заменой. */
+.tile--brand  { background: var(--brand-soft);  color: var(--brand); }
+.tile--danger { background: var(--danger-soft); color: var(--danger); }
+.tile--pro    { background: var(--pro-soft-2);  color: var(--pro-ink); }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -3206,8 +3251,12 @@ h4,
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-199); тут только раскладка */
 .tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
 @media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); } }
-.tl3-card .tile { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
-.tl3-card .tile svg { width: 20px; height: 20px; }
+/* Единственный экземпляр семейства, существовавший до примитива: геометрия
+   больше не переобъявляется, остались три ручки и тон по типу события.
+   44/20px - ВНЕ ступеней (ближайшая --xl это 46/21); переезд на ступень меняет
+   вид ленты, поэтому делается в PR своего экрана (Ф12.7 TripView) со скриншотом.
+   Ручка тут и есть маркер этого долга - раньше он был не виден. */
+.tl3-card .tile { --tile: 44px; --tile-ic: 20px; --tile-r: var(--r-btn); background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
 /* body keeps a real min-width so the meta (price + partner pill) wraps to a new
    flex line instead of squeezing the title into a vertical char-stack. */
 .tl3-card .body { flex: 1 1 auto; min-width: 130px; }

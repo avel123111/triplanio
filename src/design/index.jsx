@@ -75,7 +75,7 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
 // ----- Severity message -----
 export const Severity = ({ level = "info", title, children, action, icon }) => (
   <div className={`sev sev--${level}`}>
-    <span className="sev__icon">
+    <span className="tile sev__icon">
       <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
     </span>
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -179,17 +179,19 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 );
 
 // ----- Empty / Loading / Error states -----
+// kind -> тон плитки .tile--*; всё, что не error/locked (включая дефолтный empty),
+// красится в brand - так же, как было у инлайнового варианта.
+const EMPTY_TONE = { error: "danger", locked: "pro" };
+
 export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty" }) => (
   <div style={{
     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     padding: "48px 24px", textAlign: "center", color: "var(--muted)",
   }}>
-    <div style={{
-      width: 64, height: 64, borderRadius: 'var(--r-md)',
-      background: kind === "error" ? "var(--danger-soft)" : kind === "locked" ? "var(--pro-soft-2)" : "var(--brand-soft)",
-      color: kind === "error" ? "var(--danger)" : kind === "locked" ? "var(--pro-ink)" : "var(--brand)",
-      display: "grid", placeItems: "center", marginBottom: 16,
-    }}>
+    <div
+      className={`tile tile--2xl tile--${EMPTY_TONE[kind] || "brand"}`}
+      style={{ marginBottom: 16 }}
+    >
       <Icon name={icon} size={28} />
     </div>
     <h3 style={{ color: "var(--ink)", marginBottom: 6 }}>{title}</h3>
