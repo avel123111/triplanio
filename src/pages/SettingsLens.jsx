@@ -252,11 +252,11 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               inheritance. One class instead of two. */}
           <div className="t-meta t-sans" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 10 }}>
-              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 'var(--r-pill)', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
+              <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 'var(--r-pill)', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
+              <span className="badge badge--count">2</span>
               <div>{t('settings.tg_step2')}</div>
             </div>
           </div>
