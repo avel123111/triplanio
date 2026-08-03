@@ -96,13 +96,12 @@ test('the Deno mirror declares exactly the same table', () => {
     new URL('../../supabase/functions/_shared/viralLink.ts', import.meta.url),
     'utf8',
   );
-  // Single quotes only, so a copy reformatted with double quotes fails loudly
-  // here instead of going unparsed — an entry the regex silently skips would
-  // deepEqual clean while the mirror carries a kind this file never saw.
-  assert.equal(source.includes('"'), false, 'the mirror must stay single-quoted');
-
+  // Either quote style: an entry this regex misses drops out of `mirror` and
+  // the deepEqual below fails on the missing key, so nothing can go unparsed
+  // unnoticed — a separate "single quotes only" assertion added no cover and
+  // would have failed the build on the first double quote in a comment.
   const mirror = {};
-  const entry = /(\w+):\s*\{\s*utm_source:\s*'([^']+)',\s*utm_medium:\s*'([^']+)'\s*\}/g;
+  const entry = /(\w+):\s*\{\s*utm_source:\s*['"]([^'"]+)['"],\s*utm_medium:\s*['"]([^'"]+)['"]\s*\}/g;
   for (const [, kind, utm_source, utm_medium] of source.matchAll(entry)) {
     mirror[kind] = { utm_source, utm_medium };
   }
