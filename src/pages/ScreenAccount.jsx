@@ -252,16 +252,20 @@ function ReminderChannels() {
   // future, non-functional channels (visual placeholders)
   const soon = (
     <>
-      <div className="acct-chan acct-chan--soon">
-        <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--success)' }}><Icon name="whatsapp" size={20} /></span>
+      <div className="acct-chan acct-chan--soon row row--g6">
+        {/* inline-style-exempt: нейтральный фон под цветным значком - один из ДЕВЯТИ
+            тонов этого экрана; сведение к .tile--success двигает фон, это глазами */}
+        <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--success)' }}><Icon name="whatsapp" size={20} /></span>
         <div className="acct-chan__main">
           <div className="acct-chan__t">WhatsApp</div>
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </div>
       </div>
-      <div className="acct-chan acct-chan--soon">
-        <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--ai)' }}><Icon name="bell" size={20} /></span>
+      <div className="acct-chan acct-chan--soon row row--g6">
+        {/* inline-style-exempt: тот же случай - --ai на этом экране встречается и
+            тинтом (.tile--ai), и на нейтрали; расхождение решается глазами */}
+        <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--ai)' }}><Icon name="bell" size={20} /></span>
         <div className="acct-chan__main">
           <div className="acct-chan__t">{t('account.channel_push')}</div>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
@@ -276,13 +280,13 @@ function ReminderChannels() {
       <div className="acct-subhead">{t('account.channels_title')}</div>
       <div className="muted t-meta" style={{ margin: '3px 0 16px' }}>{t('account.channels_desc')}</div>
 
-      <div className="acct-chanlist">
+      <div className="col">
         {items === null ? (
           <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>
         ) : connected ? (
           <div>
-            <button className="acct-chan acct-chan--btn" aria-expanded={open} onClick={() => setOpen(v => !v)}>
-              <span className="acct-chan__ic" style={{ background: 'var(--info-soft)', color: 'var(--info)' }}><Icon name="telegram" size={20} /></span>
+            <button className="acct-chan acct-chan--btn row row--g6" aria-expanded={open} onClick={() => setOpen(v => !v)}>
+              <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
               <span className="acct-chan__main">
                 <span className="acct-chan__t">Telegram</span>
                 <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
@@ -294,11 +298,11 @@ function ReminderChannels() {
               <div className="acct-tgtrips">
                 <div className="acct-tgtrips__lbl">{t('telegram.linked_trips')}</div>
                 {items.map((a) => (
-                  <div key={a.id} className="acct-tgrow">
-                    <span className="acct-tgrow__ic"><Icon name="map" size={15} /></span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                  <div key={a.id} className="acct-tgrow row row--g6">
+                    <span className="tile tile--brand"><Icon name="map" size={15} /></span>
+                    <div className="grow--fit">
                       <div className="acct-tgrow__t">
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.trip_title}</span>
+                        <span className="trunc">{a.trip_title}</span>
                         <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
                       </div>
                       <div className="muted t-mono" style={{ marginTop: 1 }}>{nick(a)}</div>
@@ -312,8 +316,10 @@ function ReminderChannels() {
             )}
           </div>
         ) : (
-          <div className="acct-chan">
-            <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--info)' }}><Icon name="telegram" size={20} /></span>
+          <div className="acct-chan row row--g6">
+            {/* inline-style-exempt: ТОТ ЖЕ значок Telegram выше нарисован --info-soft,
+                а здесь --surface-2. Это дрейф, но сведение меняет пиксели - к Pavel */}
+            <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--info)' }}><Icon name="telegram" size={20} /></span>
             <div className="acct-chan__main">
               <div className="acct-chan__t">Telegram</div>
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
@@ -739,9 +745,9 @@ export default function ScreenAccount() {
             <div className="card">
 
               {/* Language */}
-              <div className="acct-divrow">
-                <span className="acct-ic-tile"><Icon name="globe" size={16} /></span>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="acct-divrow row row--g7">
+                <span className="tile tile--lg tile--brand"><Icon name="globe" size={16} /></span>
+                <div className="grow--fit">
                   <div className="acct-divrow__t">{t('account.pref_language')}</div>
                   <div className="acct-divrow__s">{t('account.pref_language_sub')}</div>
                 </div>
@@ -774,9 +780,9 @@ export default function ScreenAccount() {
               </div>
 
               {/* Theme */}
-              <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--ai-soft)', color: 'var(--ai)' }}><Icon name="sun" size={16} /></span>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="acct-divrow row row--g7">
+                <span className="tile tile--lg tile--ai"><Icon name="sun" size={16} /></span>
+                <div className="grow--fit">
                   <div className="acct-divrow__t">{t('settings.theme')}</div>
                   <div className="acct-divrow__s">{t('account.pref_theme_sub')}</div>
                 </div>
@@ -790,9 +796,9 @@ export default function ScreenAccount() {
               </div>
 
               {/* Unit system */}
-              <div className="acct-divrow">
-                <span className="acct-ic-tile"><Icon name="route" size={16} /></span>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="acct-divrow row row--g7">
+                <span className="tile tile--lg tile--brand"><Icon name="route" size={16} /></span>
+                <div className="grow--fit">
                   <div className="acct-divrow__t">{t('account.units')}</div>
                   <div className="acct-divrow__s">{t('account.units_sub')}</div>
                 </div>
@@ -815,8 +821,8 @@ export default function ScreenAccount() {
                 (Privacy / Terms / cookie settings below): a .card holding
                 .acct-divrow, not a bespoke card-shaped button. */}
             <div className="card" style={{ marginBottom: 16 }}>
-              <button type="button" className="acct-divrow" onClick={() => nav('/inbox')}>
-                <span className="acct-ic-tile"><Icon name="bell" size={18} /></span>
+              <button type="button" className="acct-divrow row row--g7" onClick={() => nav('/inbox')}>
+                <span className="tile tile--lg tile--brand"><Icon name="bell" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.inbox_title')}</div>
                   <div className="acct-divrow__s">{t('account.inbox_sub')}</div>
@@ -839,8 +845,8 @@ export default function ScreenAccount() {
           <section id="acct-help">
             <h2 className="acct-sectitle">{t('account.nav_help')}</h2>
             <div className="card">
-              <div className="acct-divrow">
-                <span className="acct-ic-tile"><Icon name="chat" size={18} /></span>
+              <div className="acct-divrow row row--g7">
+                <span className="tile tile--lg tile--brand"><Icon name="chat" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('account.contact_us')}</div>
                   <div className="acct-divrow__s">
@@ -849,16 +855,16 @@ export default function ScreenAccount() {
                 </div>
                 <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </div>
-              <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener">
-                <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="shield" size={18} /></span>
+              <a className="acct-divrow row row--g7" href="/privacy" target="_blank" rel="noreferrer noopener">
+                <span className="tile tile--lg tile--quiet"><Icon name="shield" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.privacy_title')}</div>
                   <div className="acct-divrow__s">{t('account.privacy_desc')}</div>
                 </div>
                 <Icon name="external" size={13} className="muted-2" />
               </a>
-              <a className="acct-divrow" href="/terms" target="_blank" rel="noreferrer noopener">
-                <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="file" size={18} /></span>
+              <a className="acct-divrow row row--g7" href="/terms" target="_blank" rel="noreferrer noopener">
+                <span className="tile tile--lg tile--quiet"><Icon name="file" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('account.terms_title')}</div>
                   <div className="acct-divrow__s">{t('account.terms_desc')}</div>
@@ -869,10 +875,10 @@ export default function ScreenAccount() {
                   "settings" that silently wipe your choice are not settings. */}
               <button
                 type="button"
-                className="acct-divrow"
+                className="acct-divrow row row--g7"
                 onClick={openConsentBanner}
               >
-                <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="settings" size={18} /></span>
+                <span className="tile tile--lg tile--quiet"><Icon name="settings" size={18} /></span>
                 <div className="grow">
                   <div className="acct-divrow__t">{t('consent.settings')}</div>
                   <div className="acct-divrow__s">{t('consent.state')}</div>
@@ -889,8 +895,14 @@ export default function ScreenAccount() {
               {/* Not `:only-child` once a Severity panel opens below, so the flush
                   padding is declared here rather than by the card rule — otherwise
                   the row would jump 13px the moment the confirm panel appears. */}
-              <div className="acct-divrow" style={{ border: 'none', padding: 0 }}>
-                <span className="acct-ic-tile" style={{ background: 'var(--danger-soft)', color: 'var(--danger-ink)' }}><Icon name="trash" size={18} /></span>
+              {/* inline-style-exempt: сброс отбивки ряда. Это заплатка-спутник правила
+                  `.card > .acct-divrow:only-child` - оно ключуется на ПОЗИЦИИ в дереве и
+                  разваливается, как только рядом появляется панель Severity. Лечится
+                  модификатором на самом ряду (новое имя -> апрув), поэтому не здесь. */}
+              <div className="acct-divrow row row--g7" style={{ border: 'none', padding: 0 }}>
+                {/* inline-style-exempt: --danger-ink темнее, чем --danger у .tile--danger;
+                    на 40px мелкой иконке это читаемость, а не вкус - сведение к Pavel */}
+                <span className="tile tile--lg" style={{ background: 'var(--danger-soft)', color: 'var(--danger-ink)' }}><Icon name="trash" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('settings.delete_account')}</div>
                   <div className="acct-divrow__s">{t('account.delete_desc')}</div>
@@ -924,8 +936,10 @@ export default function ScreenAccount() {
             </div>
 
             <div className="card">
-              <div className="acct-divrow">
-                <span className="acct-ic-tile" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}><Icon name="arrow" size={18} /></span>
+              <div className="acct-divrow row row--g7">
+                {/* inline-style-exempt: фон совпадает с .tile--quiet, но --ink-2 темнее его
+                    --muted; сведение меняет цвет значка - глазами */}
+                <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}><Icon name="arrow" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('account.logout_title')}</div>
                   <div className="acct-divrow__s">{t('account.logout_desc')}</div>
