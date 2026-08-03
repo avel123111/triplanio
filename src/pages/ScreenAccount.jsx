@@ -253,9 +253,7 @@ function ReminderChannels() {
   const soon = (
     <>
       <div className="acct-chan acct-chan--soon row row--g6">
-        {/* inline-style-exempt: нейтральный фон под цветным значком - один из ДЕВЯТИ
-            тонов этого экрана; сведение к .tile--success двигает фон, это глазами */}
-        <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--success)' }}><Icon name="whatsapp" size={20} /></span>
+        <span className="tile tile--lg tile--success"><Icon name="whatsapp" size={20} /></span>
         <div className="acct-chan__main grow--fit">
           <div className="acct-chan__t">WhatsApp</div>
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
@@ -263,9 +261,7 @@ function ReminderChannels() {
         </div>
       </div>
       <div className="acct-chan acct-chan--soon row row--g6">
-        {/* inline-style-exempt: тот же случай - --ai на этом экране встречается и
-            тинтом (.tile--ai), и на нейтрали; расхождение решается глазами */}
-        <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--ai)' }}><Icon name="bell" size={20} /></span>
+        <span className="tile tile--lg tile--ai"><Icon name="bell" size={20} /></span>
         <div className="acct-chan__main grow--fit">
           <div className="acct-chan__t">{t('account.channel_push')}</div>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
@@ -317,9 +313,7 @@ function ReminderChannels() {
           </div>
         ) : (
           <div className="acct-chan row row--g6">
-            {/* inline-style-exempt: ТОТ ЖЕ значок Telegram выше нарисован --info-soft,
-                а здесь --surface-2. Это дрейф, но сведение меняет пиксели - к Pavel */}
-            <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--info)' }}><Icon name="telegram" size={20} /></span>
+            <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
             <div className="acct-chan__main grow--fit">
               <div className="acct-chan__t">Telegram</div>
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
@@ -900,9 +894,7 @@ export default function ScreenAccount() {
                   разваливается, как только рядом появляется панель Severity. Лечится
                   модификатором на самом ряду (новое имя -> апрув), поэтому не здесь. */}
               <div className="acct-divrow row row--g7" style={{ border: 'none', padding: 0 }}>
-                {/* inline-style-exempt: --danger-ink темнее, чем --danger у .tile--danger;
-                    на 40px мелкой иконке это читаемость, а не вкус - сведение к Pavel */}
-                <span className="tile tile--lg" style={{ background: 'var(--danger-soft)', color: 'var(--danger-ink)' }}><Icon name="trash" size={18} /></span>
+                <span className="tile tile--lg tile--danger"><Icon name="trash" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('settings.delete_account')}</div>
                   <div className="acct-divrow__s">{t('account.delete_desc')}</div>
@@ -937,9 +929,7 @@ export default function ScreenAccount() {
 
             <div className="card">
               <div className="acct-divrow row row--g7">
-                {/* inline-style-exempt: фон совпадает с .tile--quiet, но --ink-2 темнее его
-                    --muted; сведение меняет цвет значка - глазами */}
-                <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}><Icon name="arrow" size={18} /></span>
+                <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div className="acct-divrow__t">{t('account.logout_title')}</div>
                   <div className="acct-divrow__s">{t('account.logout_desc')}</div>
