@@ -1,5 +1,6 @@
 // Single source of truth for all localized email/notification templates.
 // Used by inviteTripMember, resendTripInvite (and any future functions).
+import { withViralMarks } from './viralLink.ts';
 
 const BRAND = 'Triplanio';
 
@@ -7,13 +8,6 @@ type Lang = 'en' | 'ru' | 'es';
 type Role = 'admin' | 'viewer';
 
 interface L {
-  role_admin: string;
-  role_viewer: string;
-  hello: string;
-  body: (inviter: string, title: string, role: string) => string;
-  open: string;
-  signup_hint: (email: string) => string;
-  signature: string;
   invite_subject: (title: string) => string;
   resend_subject: (title: string) => string;
   notif_title: (title: string) => string;
@@ -33,15 +27,6 @@ interface L {
 
 const I18N: Record<Lang, L> = {
   en: {
-    role_admin: 'admin (with edit rights)',
-    role_viewer: 'viewer (read-only)',
-    hello: 'Hello!',
-    body: (inviter, title, role) =>
-      `${inviter} is inviting you to join planning of the trip "${title}" as a ${role}.`,
-    open: 'Open the app to accept the invitation:',
-    signup_hint: (email) =>
-      `If you don't have an account yet — first sign up with the same email (${email}), and the invitation will appear in your notifications.`,
-    signature: `— ${BRAND}`,
     invite_subject: (title) => `Invitation to trip "${title}"`,
     resend_subject: (title) => `Reminder: invitation to trip "${title}"`,
     notif_title: (title) => `You have been invited to trip "${title}"`,
@@ -60,15 +45,6 @@ const I18N: Record<Lang, L> = {
     role_label: (role) => (role === 'admin' ? 'an admin' : 'a viewer'),
   },
   ru: {
-    role_admin: 'администратора (с правом редактирования)',
-    role_viewer: 'участника (просмотр)',
-    hello: 'Здравствуйте!',
-    body: (inviter, title, role) =>
-      `${inviter} приглашает вас принять участие в планировании путешествия «${title}» в качестве ${role}.`,
-    open: 'Откройте приложение, чтобы принять приглашение:',
-    signup_hint: (email) =>
-      `Если у вас ещё нет аккаунта — сначала зарегистрируйтесь по тому же email (${email}), и приглашение появится у вас в уведомлениях.`,
-    signature: `— ${BRAND}`,
     invite_subject: (title) => `Приглашение в путешествие «${title}»`,
     resend_subject: (title) => `Напоминание: приглашение в путешествие «${title}»`,
     notif_title: (title) => `Вас пригласили в путешествие «${title}»`,
@@ -87,15 +63,6 @@ const I18N: Record<Lang, L> = {
     role_label: (role) => (role === 'admin' ? 'администратор' : 'наблюдатель'),
   },
   es: {
-    role_admin: 'administrador (con derechos de edición)',
-    role_viewer: 'lector (solo lectura)',
-    hello: '¡Hola!',
-    body: (inviter, title, role) =>
-      `${inviter} te invita a participar en la planificación del viaje «${title}» como ${role}.`,
-    open: 'Abre la aplicación para aceptar la invitación:',
-    signup_hint: (email) =>
-      `Si aún no tienes una cuenta, regístrate con el mismo correo (${email}) y la invitación aparecerá en tus notificaciones.`,
-    signature: `— ${BRAND}`,
     invite_subject: (title) => `Invitación al viaje «${title}»`,
     resend_subject: (title) => `Recordatorio: invitación al viaje «${title}»`,
     notif_title: (title) => `Te han invitado al viaje «${title}»`,
@@ -185,15 +152,21 @@ const EMAIL_I18N: Record<Lang, EmailStrings> = {
 export function renderInviteTemplate(
   lang: string | null | undefined,
   kind: 'invite' | 'resend',
-  params: { title: string; inviter: string; role: string; appUrl: string },
+  params: { title: string; inviter: string; role: string; appUrl: string; tripId: string },
 ): { templateId: string; subject: string; variables: Record<string, string>; brand: string } {
   const langKey = getLang(lang);
   const L = I18N[langKey];
   const E = EMAIL_I18N[langKey];
   const role: Role = params.role === 'admin' ? 'admin' : 'viewer';
   const base = (params.appUrl || '').replace(/\/+$/, '');
-  const accept_url = `${base}/trips`;
-  const register_url = `${base}/`;
+  // Both links are marked (TRIP-329): an invite is sent to someone who is not a
+  // participant yet, so either one can be a stranger's first visit — which is
+  // the whole test for whether a link gets marked. The trip id rides
+  // utm_campaign, so "which trips bring people in" is one field for all four
+  // viral links, and it reaches `users.signup_utm_campaign` for recipients who
+  // decline cookies.
+  const accept_url = withViralMarks(`${base}/trips`, 'invite_email', params.tripId);
+  const register_url = withViralMarks(`${base}/`, 'invite_email', params.tripId);
   const inviterHtml = `<strong style="${NAME_STYLE}">${params.inviter}</strong>`;
 
   return {
@@ -215,36 +188,6 @@ export function renderInviteTemplate(
       footer_note: E.footer_note,
     },
   };
-}
-
-function renderInviteEmail(
-  lang: string | null | undefined,
-  params: { inviter: string; title: string; role: string; recipientEmail: string; appUrl: string },
-): { subject: string; body: string; brand: string } {
-  const L = I18N[getLang(lang)];
-  const roleText = params.role === 'admin' ? L.role_admin : L.role_viewer;
-  const body = [
-    L.hello,
-    '',
-    L.body(params.inviter, params.title, roleText),
-    '',
-    L.open,
-    params.appUrl,
-    '',
-    L.signup_hint(params.recipientEmail),
-    '',
-    L.signature,
-  ].join('\n');
-  return { subject: L.invite_subject(params.title), body, brand: BRAND };
-}
-
-export function renderResendEmail(
-  lang: string | null | undefined,
-  params: { inviter: string; title: string; role: string; recipientEmail: string; appUrl: string },
-): { subject: string; body: string; brand: string } {
-  const result = renderInviteEmail(lang, params);
-  const L = I18N[getLang(lang)];
-  return { ...result, subject: L.resend_subject(params.title) };
 }
 
 export function renderInviteNotification(
