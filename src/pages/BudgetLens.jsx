@@ -802,18 +802,14 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
       {/* ░ NO-EXPENSES HERO ░ */}
       {noExpenses && (
-        <div style={{
-          marginTop: missingCurrencies.length > 0 ? 14 : 4, marginBottom: 18, padding: 24,
-          background: 'var(--surface)', border: '1.5px dashed var(--line-strong)', borderRadius: 'var(--r-btn)',
-          display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap',
-        }}>
-          <div style={{ width: 56, height: 56, borderRadius: 'var(--r-btn)', background: 'var(--primary-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="wallet" size={24} />
-          </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div className="t-ui" style={{ marginBottom: 4, color: 'var(--ink)' }}>{t('budget.no_expenses')}</div>
-            <div className="muted t-body">{t('budget.no_expenses_desc')}</div>
-          </div>
+        // inline-style-exempt: отступ сверху зависит от того, стоит ли выше
+        // плашка «нет курса» — это состояние данных, а не вёрстка.
+        <div className="empty-note row row--g7 row--wrap" style={{ marginTop: missingCurrencies.length > 0 ? 16 : 4 }}>
+          <span className="en-ic tile tile--lg"><Icon name="wallet" /></span>
+          <span className="en-tx grow--fit">
+            <b>{t('budget.no_expenses')}</b>
+            <span>{t('budget.no_expenses_desc')}</span>
+          </span>
           {!readOnly && <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>}
         </div>
       )}

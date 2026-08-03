@@ -4853,10 +4853,15 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .chart__cap { color: var(--muted); margin-top: 14px; text-align: center; }
 
 /* — empty-state note (ghost stats hint) — */
-.empty-note { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: 18px; }
-.empty-note .en-ic { width: 42px; height: 42px; border-radius: var(--r-btn); flex: none; display: grid; place-items: center; background: var(--surface); color: var(--brand); }
-.empty-note .en-ic svg { width: 22px; height: 22px; }
-.empty-note .en-tx { flex: 1; min-width: 0; }
+/* Блок «здесь пусто, вот кнопка»: плитка + текст + действие, на телефоне
+   действие уезжает на всю ширину. TRIP-321 Ф12.1b: этот же объект был вторым
+   экземпляром нарисован ИНЛАЙНАМИ в Бюджете («нет трат») - та же структура и
+   то же поведение, отличалась только шкура (пунктирная рамка на прозрачном
+   против залитой плашки). Схлопнуто в один блок; вид - залитая плашка, потому
+   что пунктир в системе уже занят под «добавить» (.bgt-glist__add).
+   Раскладка и плитка - примитивы, здесь остаётся только шкура. */
+.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: var(--sp-8); }
+.empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
 .empty-note .en-tx span { color: var(--ink-2); }
 @media (max-width: 640px) { .empty-note { flex-wrap: wrap; } .empty-note .btn, .empty-note .b { flex: 1 1 100%; width: 100%; } }
