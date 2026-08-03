@@ -288,7 +288,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {geoState === 'ask' && (
         <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div className="tile tile--xl tile--brand">
             <Icon name="pin" size={20} />
           </div>
           <div className="grow--fit">
@@ -323,7 +323,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
                 onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line)'; }}
               >
-                <div style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <div className="tile tile--brand">
                   <Icon name="plane" size={14} />
                 </div>
                 <div className="grow--fit">
@@ -343,7 +343,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {geoState === 'denied' && (
         <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div className="tile tile--xl tile--warning">
             <Icon name="lock" size={20} />
           </div>
           <div className="grow--fit">
@@ -484,7 +484,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         {canHome && (
           <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="row">
-              <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
+              <div className="tile tile--lg tile--brand tile--solid">
                 <Icon name="flag" size={16} />
               </div>
               <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
@@ -497,7 +497,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="row">
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
+            <div className="tile tile--lg tile--warm tile--solid">
               <Icon name="globe" size={16} />
             </div>
             <div className="t-subheading">{t('planner.return_other')}</div>
@@ -571,7 +571,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
   if (savedOk) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 'var(--r-md)', background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
+        <div className="tile tile--2xl tile--success" style={{ margin: '0 auto 18px' }}>
           <Icon name="check" size={36} />
         </div>
         <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
@@ -1158,7 +1158,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 'var(--r-md)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
+            <div className="tile tile--2xl tile--warning" style={{ margin: '0 auto 18px' }}>
               <Icon name="lock" size={28} />
             </div>
             <h2 className="t-heading" style={{ margin: '0 0 8px' }}>{t('planner.limit_title')}</h2>

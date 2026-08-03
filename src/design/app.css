@@ -1808,6 +1808,25 @@ h4,
 .tile--info    { background: var(--info-soft);    color: var(--info); }
 .tile--success { background: var(--success-soft); color: var(--success); }
 .tile--quiet   { background: var(--surface-2);    color: var(--muted); }
+/* TRIP-321 Ф12.4: те же две формы, заведённые вместе со своими первыми вызовами
+   (планировщик). Ничего нового по смыслу - это ровно правило тона выше,
+   применённое к двум цветам, которых в наборе не хватало. */
+.tile--warning { background: var(--warning-soft); color: var(--warning); }
+.tile--warm    { background: var(--warm-soft);    color: var(--warm-ink); }
+
+/* ЗАЛИТАЯ плитка - вторая и последняя форма тона, а не «ещё один цвет».
+   Мягкий оттенок работает, только пока плитка стоит на нейтральной подложке.
+   Когда она стоит на ПОДСВЕЧЕННОЙ карточке (выбранный вариант возврата залит
+   --brand-soft), мягкая плитка сливается с ней в одно пятно - именно поэтому
+   такие места и рисовались руками, а не мягким тоном.
+   В приложении залитую плитку рисуют руками ШЕСТЬ мест (.invite-banner__ic,
+   узел маршрута, PanelAi, три в планировщике) - это недостающая форма набора,
+   а не частный случай экрана. Цвет по-прежнему берётся у значка, меняется
+   только распределение: раньше цвет был у значка на оттенке, теперь у
+   подложки, а значок белый. Комбинации заводятся по мере появления вызовов -
+   правило то же, что у тонов выше. */
+.tile--solid.tile--brand { background: var(--brand); color: #fff; }
+.tile--solid.tile--warm  { background: var(--warm);  color: #fff; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
