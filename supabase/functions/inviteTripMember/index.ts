@@ -154,6 +154,7 @@ Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
         inviter: callerName,
         role,
         appUrl,
+        tripId: trip_id,
       });
 
       await sendEmail({
