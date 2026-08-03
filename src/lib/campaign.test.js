@@ -9,7 +9,7 @@
 // Everything else here guards the door: the query string comes from a stranger.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveCampaign, readSignupAttribution, pickSignupAttribution, campaignQuery, CAMPAIGN_TTL_MS } from './campaign.js';
+import { resolveCampaign, readSignupAttribution, pickSignupAttribution, campaignQuery, toInitialPersonProps, CAMPAIGN_TTL_MS } from './campaign.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
 const iso = (ms) => new Date(ms).toISOString();
@@ -124,4 +124,41 @@ test('a mark passed on to the next document keeps the marks and nothing else', (
   // Same cap and trim as every other read of this query string.
   assert.equal(campaignQuery(`?utm_source=${'x'.repeat(500)}`).length, 'utm_source='.length + 200);
   assert.equal(campaignQuery('?utm_source=a%26b'), 'utm_source=a%26b');
+});
+
+// The account's channel goes to two stores at once: `users.signup_utm_*` for
+// everyone, and PostHog's own first-touch fields for whoever consented. A typo
+// in a name here is silent — the report just shows an empty column forever, so
+// the names are pinned literally rather than derived.
+test('signup columns translate into the first-touch fields PostHog reads', () => {
+  assert.deepEqual(
+    toInitialPersonProps({
+      signup_utm_source: 'trip_share',
+      signup_utm_medium: 'viral',
+      signup_utm_campaign: 'trip_7',
+      signup_gclid: 'GC1',
+    }),
+    {
+      $initial_utm_source: 'trip_share',
+      $initial_utm_medium: 'viral',
+      $initial_utm_campaign: 'trip_7',
+      $initial_gclid: 'GC1',
+    },
+  );
+
+  // A partial mark still says something — a lone medium is a channel we would
+  // otherwise file under "direct".
+  assert.deepEqual(
+    toInitialPersonProps({ signup_utm_medium: 'viral_email' }),
+    { $initial_utm_medium: 'viral_email' },
+  );
+
+  // Nothing to say → nothing sent, so an unattributed signup does not write
+  // empty strings that would then be frozen by set_once.
+  assert.equal(toInitialPersonProps(null), null);
+  assert.equal(toInitialPersonProps(undefined), null);
+  assert.equal(toInitialPersonProps({}), null);
+  assert.equal(toInitialPersonProps({ signup_utm_source: '' }), null);
+  // Columns we do NOT own must not leak into PostHog under an invented name.
+  assert.equal(toInitialPersonProps({ id: 'u1', email: 'a@b.c' }), null);
 });
