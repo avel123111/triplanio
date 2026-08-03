@@ -52,6 +52,13 @@ const FEATURES = [
 // and the `hotels_selection` addon are intentionally left intact behind this gate.
 const SHOW_HOTEL_VOTING = false;
 
+// Тон плитки Telegram. Цвет обязан приходить из ЕДИНСТВЕННОГО реестра брендов
+// (src/lib/externalBrands.js, TRIP-321 Ф2) - CSS-токенов у брендов нет намеренно,
+// заводить их значило бы завести второй источник правды. Поэтому тон не может быть
+// классом, но и повторяться не должен: объект объявлен ОДИН раз и переиспользуется.
+// inline-style-exempt: цвет бренда - данные из реестра, не оформление.
+const TG_TILE = { background: tgBrand.bg, color: tgBrand.fg };
+
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
 // with every optional/pro feature off - they never auto-enable for anyone.
 function featuresFromTrip(trip) {
@@ -197,7 +204,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
             {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
-            <div className="tile" style={{ background: tgBrand.bg, color: tgBrand.fg }}>
+            <div className="tile" style={TG_TILE}>
               <Icon name="telegram" size={17} />
             </div>
             <div className="grow">
@@ -232,7 +239,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: tgBrand.bgSoft, border: `1px solid ${tgBrand.border}`, borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
             {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
-            <div className="tile" style={{ background: tgBrand.bg, color: tgBrand.fg }}>
+            <div className="tile" style={TG_TILE}>
               <Icon name="telegram" size={17} />
             </div>
             <div className="grow">
@@ -369,7 +376,7 @@ function TelegramSection({ tripId }) {
       {accounts.map(a => (
         <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
           {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
-          <div className="tile" style={{ background: tgBrand.bg, color: tgBrand.fg }}>
+          <div className="tile" style={TG_TILE}>
             <Icon name="telegram" size={17} />
           </div>
           <div className="grow--fit">
