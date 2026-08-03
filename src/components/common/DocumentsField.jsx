@@ -140,8 +140,8 @@ export default function DocumentsField({
             onChange={(e) => uploadFiles(e.target.files)}
           />
           {uploading ? (
-            <div className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)' }}>
-              <span className="dl-spinner" />
+            <div className="t-body row row--g4">
+              <span className="spin spin--ring" />
               {t('common.loading')}
             </div>
           ) : (

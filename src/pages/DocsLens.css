@@ -191,7 +191,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
   .dl-dropzone:hover { border-color: var(--brand); background: var(--brand-soft); }
   .dl-dropzone:hover svg { color: var(--brand); }
 }
-.dl-dropzone.is-uploading { cursor: default; pointer-events: none; }
+.dl-dropzone.is-uploading { cursor: default; pointer-events: none; color: var(--brand); }
 
 /* ─── Dialog: upload list ─────────────────────────────────────── */
 .dl-uplist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
@@ -269,9 +269,12 @@ a.dl-filechip__n:hover { color: var(--brand); }
    made this screen look like it had no open animation. */
 .dl-root { animation: ovIn .42s var(--ease-out) both; }
 
-/* ─── Spinner (upload progress) ───────────────────────────────── */
-.dl-spinner {
-  width: 15px; height: 15px; flex: none;
-  border: 2px solid var(--brand); border-right-color: transparent;
-  border-radius: 50%; animation: aispin .7s linear infinite;
-}
+/* .dl-spinner УДАЛЁН (TRIP-321): это было ПЯТОЕ кольцо загрузки в репозитории -
+   15px мимо лестницы 18/24/32, и жило оно не в app.css, а здесь, поэтому прогон
+   по кольцам его не увидел (CSS лежит в тринадцати файлах, не в одном). Обе
+   точки вызова - .dl-dropzone в двух файлах - перешли на .spin.spin--ring,
+   ступень 18 = «рядом со строкой текста». Ручка тона кольцу не нужна: головка
+   .spin--ring уже по умолчанию --brand. Инлайном `color: var(--brand)` в обоих
+   файлах красилась СТРОКА рядом с кольцом - это собственный цвет занятого
+   состояния зоны, поэтому он уехал одним правилом на .is-uploading ниже
+   (кольцо `color` не читает, у него свои ручки --spin-head/--spin-track). */
