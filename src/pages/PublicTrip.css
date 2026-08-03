@@ -182,7 +182,7 @@
   .pt-scta{display:flex}
   .ptrip{padding-bottom:70px}
   .pt-itin{--num:38px;--gap:13px}
-  .pt-cstop__num{font-size:var(--fs-strong)}
+  .pt-cstop__num{font-size:var(--fs-base)}
   .pt-meta{grid-template-columns:1fr 1fr;gap:20px 18px;margin-top:24px}
 }
 @media (prefers-reduced-motion: reduce){

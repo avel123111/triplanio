@@ -124,10 +124,12 @@
   /* Radii (Lumo names + legacy aliases) */
   --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
-     controls derive from --r-btn via --r-control, so every control outer shape
-     shares one radius. Segment track == control radius; its inner buttons are
-     concentric (control radius minus the 4px track padding). */
-  --r-control:var(--r-btn); --r-seg-track:var(--r-control); --r-seg-btn:calc(var(--r-control) - 4px);
+     controls derive from --r-btn directly, so every control outer shape shares
+     one radius. The segment track uses it as-is; its inner buttons are
+     concentric (minus the 4px track padding).
+     TRIP-321 Ф10: --r-control and --r-seg-track were pure one-target aliases of
+     --r-btn — two extra names for one value. Collapsed; --r-btn is the name. */
+  --r-seg-btn:calc(var(--r-btn) - 4px);
 
   /* Shadows (Lumo scale) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
@@ -143,7 +145,11 @@
      вторыми именами тех же двух значений и удалены — один цвет = одно имя. === */
   --r-xl: 20px;
   /* Хром — шапка приложения и меню трипа. В светлой это карточечный белый, в
-     тёмной (ниже) сливается с фоном. */
+     тёмной (ниже) сливается с фоном.
+     ⚠ TRIP-321: --header-bg выглядит как алиас на --surface, но это РУЧКА ТЕМЫ —
+     в тёмной он var(--bg) (см. ~90 строк ниже). Подстановка «цели» превратит
+     тёмную шапку в светлую. Классификатор в scripts/ci/audit-design.mjs держит
+     его в списке «НЕ ТРОГАТЬ» и падает тестом, если правило ослабить. */
   --header-bg:    var(--surface);
 
   --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
@@ -192,7 +198,6 @@
   --fs-micro:   11px;    /* meta/meta-md макета → каноны .t-meta / .t-mono (моно 11) */
   --fs-meta:    12.5px;  /* body-med макета → канон .t-ui */
   --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
-  --fs-strong:  var(--fs-base);  /* база body + эмфаз-текст (НЕ канон) — алиас на base, единый источник 13px (TRIP-183 аудит: убран дубль-литерал) */
   --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, statcard, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
   --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; фикс (мельче не опускаем) */
   --fs-h2:      calc(clamp(15px, 2.1vw, 16.5px) * var(--fd-k));   /* h2 макета → канон .t-heading; TRIP-203: fluid (16.5 деск → 15 фон), заменяет ручные @media-понижения */
@@ -302,7 +307,7 @@
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font-ui);
-  font-size: var(--fs-strong);
+  font-size: var(--fs-base);
   line-height: 1.6;
   font-weight: 500;
   color: var(--ink);
@@ -1368,7 +1373,7 @@ h4,
 .input, .select, .textarea {
  width: 100%;
  padding: 11px 13px;
- border-radius: var(--r-control);
+ border-radius: var(--r-btn);
  border: 1.5px solid var(--line-strong);
  background: var(--surface-3);
 
@@ -1589,7 +1594,7 @@ h4,
   /* TRIP-176: трек — утопленный тон. Светлая=--surface-2 (#EEEEF7): --surface-3
      в светлой почти белый и сливается с фоном. Тёмная переопределена ниже. */
   background: var(--surface-2);
-  border-radius: var(--r-seg-track);
+  border-radius: var(--r-btn);
   padding: 4px;
   gap: 2px;
 }
@@ -1994,7 +1999,7 @@ h4,
 /* Block variant — fills its form cell and matches the .input height, so on the
    create-flow step-1 row the trip-start stepper lines up with the city input.
    Same .ts-startctl element, adaptive sizing (no separate control). */
-.ts-startctl--block { display: flex; width: 100%; height: 48px; gap: 0; justify-content: space-between; padding: 3px; border: 1.5px solid var(--line-strong); background: var(--surface-3); border-radius: var(--r-control); }
+.ts-startctl--block { display: flex; width: 100%; height: 48px; gap: 0; justify-content: space-between; padding: 3px; border: 1.5px solid var(--line-strong); background: var(--surface-3); border-radius: var(--r-btn); }
 .ts-startctl--block .ts-step { width: 38px; height: 100%; }
 .ts-startctl--block .ts-startctl__date { flex: 1; text-align: center; }
 /* Drag-anywhere route rows (editor grid + planner list): a press anywhere arms
@@ -4805,10 +4810,10 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .s22f-searchrow { display: flex; gap: 10px; }
 .s22f-search { position: relative; flex: 1; min-width: 0; }
 .s22f-search__ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
-.s22f-search input { width: 100%; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3), как в «У меня есть бронь» */ border-radius: var(--r-control); padding: 11px 14px 11px 40px; color: var(--ink); outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
+.s22f-search input { width: 100%; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3), как в «У меня есть бронь» */ border-radius: var(--r-btn); padding: 11px 14px 11px 40px; color: var(--ink); outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
 .s22f-search input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-search input::placeholder { color: var(--muted-2); }
-.s22f-fbtn { position: relative; flex: none; width: 44px; height: 44px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
+.s22f-fbtn { position: relative; flex: none; width: 44px; height: 44px; border-radius: var(--r-btn); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
 .s22f-fbtn:hover { border-color: var(--line-hover); }
 .s22f-fbtn:active { transform: scale(.96); }
 .s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
@@ -4819,7 +4824,7 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .s22f-grp { display: flex; flex-direction: column; gap: 8px; }
 .s22f-pmuted { color: var(--muted); }
 .s22f-pfields { display: flex; align-items: center; gap: 8px; }
-.s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-control); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
+.s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-btn); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
 .s22f-field:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-cur { color: var(--muted); flex: none; }
 .s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }
