@@ -69,7 +69,7 @@ export default function MembersSummaryCard({
 
       <div className="wdg-b">
         {isLoading ? (
-          <div className="mlist">
+          <div className="col col--g4">
             {[0, 1, 2].map((i) => (
               <div className="mrow" key={i}>
                 <span className="ov-bar" style={{ width: 34, height: 34, borderRadius: '50%', flex: 'none' }} />
@@ -81,7 +81,7 @@ export default function MembersSummaryCard({
             ))}
           </div>
         ) : (
-        <div className="mlist">
+        <div className="col col--g4">
           {orderedMembers.map((m, i) => {
             const profile = profiles[m.user_id];
             const resolved =

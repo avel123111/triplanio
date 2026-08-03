@@ -192,7 +192,7 @@ export default function EventAiBlock({
             <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
           </div>
-          <span className="ai-spin" />
+          <span className="spin spin--ring" />
         </div>
       </div>
     );
@@ -238,7 +238,7 @@ export default function EventAiBlock({
         <div className="ai-blk-hd">
           <div className="ai-blk-ic"><Sparkles size={15} /></div>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_parsing')}<span className="ai-spin" /></b>
+            <b>{t('event.ai_parsing')}<span className="spin spin--ring" /></b>
             {files[0]?.name && <span>{files[0].name}</span>}
             <div className="ai-prog"><div className="ai-prog-fill" /></div>
           </div>

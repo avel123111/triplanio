@@ -552,8 +552,7 @@ h4,
 .pt-mast__l1,
 .pt-cta p,
 .banner p,
-.row__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
-.acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
+.row__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта; сюда же сведены .acct-chan__t и .acct-tgrow__t) */
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
@@ -612,11 +611,6 @@ h4,
 .acct-content,
 .acct-nav a,
 .acct-plan__line,
-/* ⚠ .acct-tgrow__t - ТА ЖЕ деталь, что .row__t, но ярусом ниже: здесь t-ui
-   (12.5/600), а у .row__t - t-label (13/700). Свести их = видимая правка
-   (заголовок строки телеграма станет крупнее), поэтому она ждёт скриншота, а не
-   делается заодно. Пока строка остаётся в своём ярусе. */
-.acct-tgrow__t,
 .menu .mi,
 .toast__body b,
 .sheet-row,
@@ -2809,13 +2803,19 @@ h4,
 
 /* ── Members list — rounded row-cards (own `.mbrow` namespace; `.mrow` is the
    separate MembersSummaryCard "who's going" widget and must not be touched) ── */
-.mlist { display: flex; flex-direction: column; gap: 8px; }
-/* Members lens content width matches the Settings lens (.settings-lens): same
+/* Раскладка ленты уехала на .col.col--g4 в разметке: это была ровно колонка со
+   ступенью 8. Тем же именем .mlist был объявлен ВТОРОЙ раз ниже по файлу - для
+   виджета «кто едет» на обзоре, и то объявление зазор не задавало. По каскаду
+   виджет молча получал этот gap: 8px, которого его автор не писал. Это не дубль,
+   а КОЛЛИЗИЯ ИМЕНИ - двух объектов случайно назвали одинаково, и один незаметно
+   правил другого. Виджет переведён на тот же примитив с той же ступенью, так что
+   пиксели у него прежние, а имя .mlist осталось одно и значит одно.
+   Members lens content width matches the Settings lens (.settings-lens): same
    1040px cap, centered — both the member list AND the invite banner below it, so
-   they share the same edges. .mlist is scoped with .ov-anim so only the lens root
-   is capped, not the overview MembersSummaryCard widget which shares .mlist.
+   they share the same edges. Уточнение `.ov-anim` в селекторе больше не нужно:
+   оно защищало виджет от этого кэпа, пока имя было общим.
    margin-inline (not margin) keeps the banner's margin-top intact (TRIP-279). */
-.mlist.ov-anim,
+.mlist,
 .invite-banner { max-width: 1040px; margin-inline: auto; }
 .mbrow {
   display: grid; grid-template-columns: auto 1fr auto auto;
@@ -3219,7 +3219,10 @@ h4,
 .ov-warn { display: flex; align-items: center; gap: 5px; margin-top: 6px; color: var(--warning); }
 
 /* ---- members widget ---- */
-.mlist { display: flex; flex-direction: column; }
+/* Второе объявление .mlist УДАЛЕНО (TRIP-321): оно повторяло примитив колонки и
+   при этом делило имя с лентой линзы участников выше по файлу - см. разбор там.
+   Разметка виджета перешла на .col.col--g4, ступень 8 = ровно то, что виджет и
+   получал по каскаду от чужого правила. */
 .mrow { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
 .mrow + .mrow { border-top: 1px solid var(--line); }
 .mrow .fl1 { flex: 1; min-width: 0; }
@@ -3645,7 +3648,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Раскладка -> .grow--fit в JSX: это была побайтово та же пара flex:1 + min-width:0,
    объявленная в трёх строках от самого примитива. Имя класса остаётся - на нём
    висит правило `> .badge` выше. */
-.acct-chan__t { color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* .acct-chan__t УДАЛЁН (TRIP-321): побайтово тот же заголовок строки, что .row__t
+   (тот же ярус типографики, тот же зазор 8, тот же перенос) - только под своим
+   именем. Раскладка -> .row.row--g4.row--wrap в JSX, цвет -> .row__t. */
 .acct-chan__s { color: var(--muted); margin-top: 2px; }
 .acct-chan--btn { cursor: pointer; width: 100%; text-align: left; font-family: inherit; } .acct-chan--btn:hover { border-color: var(--line-hover); background: var(--surface-3); }
 .acct-chan--soon { opacity: .7; }
@@ -3657,10 +3662,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    от .acct-chan сознательно (решение Pavel): другое поведение, меняются независимо. */
 .acct-tgrow { padding: 10px; border-radius: var(--r-sm); }
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
-/* Кандидат на схлопывание в .row__t + .row .row--g4 .row--wrap: это тот же
-   заголовок строки, но зазор 7 (мимо шкалы, ближайшая ступень 8) и ярус ниже
-   на полшага. Обе правки ВИДНЫ на экране, поэтому идут отдельно и со снимком. */
-.acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+/* .acct-tgrow__t УДАЛЁН (TRIP-321): тот же заголовок строки, что .row__t, но жил
+   с зазором 7 (мимо шкалы, ближайшая ступень 8) и ярусом ниже на полшага
+   (t-ui 12.5/600 против t-label 13/700). Обе правки ВИДНЫ на экране - как и
+   переход колец загрузки на ступень 18 (см. .spin--ring), поэтому оба места
+   сняты скриншотом до и после. */
 /* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
    нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
    и тинт --primary-soft -> --brand-soft у .tile--brand (в тёмной .16 -> .14). */
@@ -4304,8 +4310,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .ai-input .textarea:focus{box-shadow:none;}
 .ai-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
 .ai-blk-hint{ color:var(--muted-2); }
-/* inline border-spinner (parsing) */
-.ai-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ai);border-right-color:transparent;border-radius:50%;animation:aispin .8s linear infinite;flex:none;}
+/* .ai-spin УДАЛЁН (TRIP-321): шестое кольцо, 14px мимо лестницы. Обе точки
+   вызова - флекс-дети (.ai-blk-hd и .ai-blk-ti b), поэтому display им не нужен,
+   а зазор до текста уже даёт gap родителя. Тон - ручкой на СУЩЕСТВУЮЩЕМ классе
+   блока, тем же приёмом, каким `.btn .spin` красит кольцо цветом текста кнопки:
+   ступень и толщина остаются общими, меняется только цвет. Дорожка взята НЕ
+   нейтральная, а --ai-soft-2 - ровно та, на которой лежит полоса прогресса
+   .ai-prog в этом же блоке, иначе два индикатора одного состояния ехали бы на
+   разных подложках. */
+.ai-blk .spin--ring{--spin-head:var(--ai);--spin-track:var(--ai-soft-2);}
 /* The implicit `from` here is the element's own computed transform, so this
    keyframe REPLACES it. Never put .spin on an element that is positioned with
    a transform (e.g. `translateY(-50%)` centring) — it would slide as it turns.
@@ -4326,9 +4339,21 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    иконку (lucide Loader2 в TripCoverPicker), и у неё появилась бы вторая рамка.
    Поэтому кольцо - модификатор того же семейства, а размер и тон - ручки, как
    --tile у плитки. Сам круг был нарисован руками 11 раз в 8 файлах в шести
-   размерах (11/16/18/20/24/32) при том, что в CSS уже лежало ЧЕТЫРЕ разных
-   спиннера (.spin, .btn .spin, .ai-spin, .app-spinner) - это и есть «нет
-   примитива». Ступени сняты с мест вызова: 18 - рядом со строкой текста,
+   размерах (11/16/18/20/24/32) при том, что в CSS уже лежало ШЕСТЬ разных
+   спиннеров (.spin, .btn .spin, .ai-spin, .app-spinner - в этом файле, плюс
+   .dl-spinner и .pt-spin в файлах экранов) - это и есть «нет примитива».
+   Шесть, а не четыре: первый прогон искал их в app.css, а CSS в репозитории
+   лежит в тринадцати файлах - деталь ищется по ВСЕМ, иначе «свёл везде» врёт.
+   В CSS в скоупе самодельных колец не осталось. Вне скоупа два (.pt-spin 26px
+   в PublicTrip и .jt-spinner 46px в JoinTrip) - это TRIP-38. Остаётся ОДНО
+   в скоупе и намеренно: 11px кольцо, нарисованное ИНЛАЙНОМ на <Toggle busy>
+   в этом же пакете (design/index.jsx). Ступенью оно не лечится - лестница
+   начинается с 18, а кольцо живёт ВНУТРИ 17px костяшки тумблера. Это тот же
+   случай, что .btn .spin: не «ступень под экран», а «внутри контрола», где
+   размер диктует контрол. Переписать его на ручки - обменять пять инлайнов на
+   четыре; лечится переводом всего <Toggle> с инлайнов на классы, а он свёрстан
+   инлайнами целиком - отдельная деталь и отдельный PR.
+   Ступени сняты с мест вызова: 18 - рядом со строкой текста,
    24 - когда грузится экран целиком. */
 .spin--ring{width:var(--spin,18px);height:var(--spin,18px);flex:none;
   border:var(--spin-w,2px) solid var(--spin-track,var(--line));
