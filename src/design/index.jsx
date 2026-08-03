@@ -196,20 +196,20 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 // с первым коммитом дизайн-системы и НИ РАЗУ не был вызван. «Раздел только в Pro»
 // в продукте показывается модалкой ProUpsellModal с офером, а не пустым экраном,
 // поэтому это не отложенная фича, а нарисованный и неподключённый четвёртый вид.
-export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty" }) => (
-  <div style={{
-    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    padding: "48px 24px", textAlign: "center", color: "var(--muted)",
-  }}>
+// boxed - компактный вариант внутри карточки/диалога (подложка + рамка).
+// iconStyle - тинт плитки из реестра брендов, как у Severity: сам примитив
+// остаётся системным, фирменный цвет несёт только плитка.
+export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
+  <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
     <div
-      className={`tile tile--2xl tile--${kind === "error" ? "danger" : "brand"}`}
-      style={{ marginBottom: 16 }}
+      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${kind === "error" ? "danger" : "brand"}`}
+      style={iconStyle}
     >
-      <Icon name={icon} size={28} />
+      <Icon name={icon} size={boxed ? 21 : 28} />
     </div>
-    <h3 style={{ color: "var(--ink)", marginBottom: 6 }}>{title}</h3>
-    <div className="t-body" style={{ maxWidth: 340 }}>{body}</div>
-    {action && <div style={{ marginTop: 18 }}>{action}</div>}
+    <h3 className="empty-state__t">{title}</h3>
+    <div className="t-body empty-state__b">{body}</div>
+    {action && <div className="empty-state__act">{action}</div>}
   </div>
 );
 
