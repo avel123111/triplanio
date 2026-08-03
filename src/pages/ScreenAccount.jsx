@@ -256,7 +256,7 @@ function ReminderChannels() {
         {/* inline-style-exempt: нейтральный фон под цветным значком - один из ДЕВЯТИ
             тонов этого экрана; сведение к .tile--success двигает фон, это глазами */}
         <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--success)' }}><Icon name="whatsapp" size={20} /></span>
-        <div className="acct-chan__main">
+        <div className="acct-chan__main grow--fit">
           <div className="acct-chan__t">WhatsApp</div>
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
@@ -266,7 +266,7 @@ function ReminderChannels() {
         {/* inline-style-exempt: тот же случай - --ai на этом экране встречается и
             тинтом (.tile--ai), и на нейтрали; расхождение решается глазами */}
         <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--ai)' }}><Icon name="bell" size={20} /></span>
-        <div className="acct-chan__main">
+        <div className="acct-chan__main grow--fit">
           <div className="acct-chan__t">{t('account.channel_push')}</div>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
@@ -287,7 +287,7 @@ function ReminderChannels() {
           <div>
             <button className="acct-chan acct-chan--btn row row--g6" aria-expanded={open} onClick={() => setOpen(v => !v)}>
               <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
-              <span className="acct-chan__main">
+              <span className="acct-chan__main grow--fit">
                 <span className="acct-chan__t">Telegram</span>
                 <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
                 <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
@@ -320,7 +320,7 @@ function ReminderChannels() {
             {/* inline-style-exempt: ТОТ ЖЕ значок Telegram выше нарисован --info-soft,
                 а здесь --surface-2. Это дрейф, но сведение меняет пиксели - к Pavel */}
             <span className="tile tile--lg" style={{ background: 'var(--surface-2)', color: 'var(--info)' }}><Icon name="telegram" size={20} /></span>
-            <div className="acct-chan__main">
+            <div className="acct-chan__main grow--fit">
               <div className="acct-chan__t">Telegram</div>
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
             </div>

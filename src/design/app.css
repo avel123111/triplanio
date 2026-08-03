@@ -3508,7 +3508,11 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .acct-divrow__t { color: var(--ink); }
 .acct-divrow__s { color: var(--muted); }
 /* .acct-ic-tile УДАЛЁН (TRIP-321 Ф12.2a): он переобъявлял геометрию .tile на
-   внелестничных 38px. Вызовы -> .tile.tile--lg (40px) + тон классом. */
+   внелестничных 38px. Вызовы -> .tile.tile--lg (40px), значок 18 -> 19px.
+   Тон: 7 вызовов сели на класс (--brand/--ai/--quiet), 2 (удаление аккаунта,
+   выход) намеренно остались инлайном - их цвет не совпадает с модификатором.
+   Дефолтный тинт был --primary-soft, у .tile--brand он --brand-soft: в светлой
+   теме это то же значение, в тёмной .16 против .14 (см. блок .tile--*). */
 
 /* profile hero */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
@@ -3569,10 +3573,14 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 /* reminder channels */
 /* .acct-chanlist УДАЛЁН (Ф12.2a): это ровно .col - дефолтный зазор колонки (--sp-5)
    и есть те самые 10px. */
-/* align-items:flex-start so the icon always hugs the title (top) regardless of
+/* Раскладка -> .row .row--g6 в JSX (зазор 13 -> ступень 12). Остаётся своё:
+   отбивка, радиус, переход и align-items ниже.
+   align-items:flex-start so the icon always hugs the title (top) regardless of
    how many description lines or whether a CTA button is present — keeps every
    channel card visually consistent (the icon no longer floats mid-card on the
-   taller Telegram card). The trailing CTA/chevron re-centres on desktop. */
+   taller Telegram card). The trailing CTA/chevron re-centres on desktop.
+   Это ПЕРЕОПРЕДЕЛЕНИЕ .row (у неё align-items:center) при равной специфичности -
+   держится только тем, что .acct-chan объявлен ниже .row по файлу. */
 .acct-chan { align-items: flex-start; padding: 14px; border-radius: var(--r-md); transition: border-color .2s, background .2s; }
 .acct-chan > .btn, .acct-chan__chev { align-self: center; }
 /* Status badge ("Coming soon" / "Connected") sits on its OWN line under the
@@ -3580,11 +3588,13 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    per title length) and NOT a trailing chip (squeezes the description into a
    narrow column). Identical placement for every channel card. */
 .acct-chan__main > .badge { display: flex; margin-top: 8px; }
-/* .acct-chan__ic УДАЛЁН (Ф12.2a): 42px мимо лестницы -> .tile.tile--lg (40px).
-   Ступень --xl (46) тут была бы ошибкой: она несёт --r-btn и молча перекрасила бы
-   угол, а этот значок сегодня на --r-sm (полоса 42-46 в лестнице - большинство,
-   а не факт). */
-.acct-chan__main { flex: 1; min-width: 0; }
+/* .acct-chan__ic УДАЛЁН (Ф12.2a): 42px мимо лестницы -> .tile.tile--lg (40px),
+   значок 20 -> 19px. Ступень --xl (46) тут была бы ошибкой: она несёт --r-btn и
+   молча перекрасила бы угол, а этот значок сегодня на --r-sm (полоса 42-46 в
+   лестнице - большинство, а не факт). */
+/* Раскладка -> .grow--fit в JSX: это была побайтово та же пара flex:1 + min-width:0,
+   объявленная в трёх строках от самого примитива. Имя класса остаётся - на нём
+   висит правило `> .badge` выше. */
 .acct-chan__t { color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acct-chan__s { color: var(--muted); margin-top: 2px; }
 .acct-chan--btn { cursor: pointer; width: 100%; text-align: left; font-family: inherit; } .acct-chan--btn:hover { border-color: var(--line-hover); background: var(--surface-3); }
@@ -3597,7 +3607,9 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
    от .acct-chan сознательно (решение Pavel): другое поведение, меняются независимо. */
 .acct-tgrow { padding: 10px; border-radius: var(--r-sm); }
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
-/* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile, а тинт - .tile--brand. */
+/* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
+   нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
+   и тинт --primary-soft -> --brand-soft у .tile--brand (в тёмной .16 -> .14). */
 .acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
