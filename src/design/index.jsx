@@ -179,17 +179,21 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 );
 
 // ----- Empty / Loading / Error states -----
-// kind -> тон плитки .tile--*; всё, что не error/locked (включая дефолтный empty),
-// красится в brand - так же, как было у инлайнового варианта.
-const EMPTY_TONE = { error: "danger", locked: "pro" };
-
+// kind -> тон плитки .tile--*; всё, что не error (включая дефолтный empty),
+// красится в brand - так же, как было у инлайнового варианта. Тонов ровно два,
+// поэтому это тернарник, а не карта: карта на один ключ ещё и читалась бы по
+// прототипу (kind="constructor" склеил бы мусорный класс).
+// Вариант kind="locked" (розовая Pro-плитка) удалён в TRIP-321 Ф12.0: он приехал
+// с первым коммитом дизайн-системы и НИ РАЗУ не был вызван. «Раздел только в Pro»
+// в продукте показывается модалкой ProUpsellModal с офером, а не пустым экраном,
+// поэтому это не отложенная фича, а нарисованный и неподключённый четвёртый вид.
 export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty" }) => (
   <div style={{
     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     padding: "48px 24px", textAlign: "center", color: "var(--muted)",
   }}>
     <div
-      className={`tile tile--2xl tile--${EMPTY_TONE[kind] || "brand"}`}
+      className={`tile tile--2xl tile--${kind === "error" ? "danger" : "brand"}`}
       style={{ marginBottom: 16 }}
     >
       <Icon name={icon} size={28} />
