@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Toaster } from "@/design/index"
-import { stripQueryFromUrl, track } from '@/lib/analytics'
+import { track } from '@/lib/analytics'
+import { stripQueryFromUrl } from '@/lib/analyticsUrl'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'

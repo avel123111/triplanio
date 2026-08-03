@@ -31,31 +31,6 @@ export function isAnalyticsOn() {
   return analyticsOn;
 }
 
-const ABSOLUTE_URL = /^https?:\/\//;
-
-/**
- * An address with its query string removed, or the value untouched when it is
- * not one. Every analytics destination gets the page address, and in this app an
- * address can BE a credential: `/public/trip/:id?t=<share_token>` is a working,
- * never-expiring key to someone else's trip, so it would sit in the analytics
- * store in clear text for anyone with access to that project (TRIP-330).
- *
- * The whole query goes rather than a list of dangerous parameter names: such a
- * list is a race the next parameter always wins. Same cut, for the same reason,
- * as `sentry.js` makes on `event.request.url` — the third destination that gets
- * the address.
- *
- * Campaign marks do NOT ride here and are unaffected: PostHog reads `utm_*` /
- * `gclid` off `document.URL` in a pass of its own and stores them as separate
- * properties, and the `camp_*` layer above reads `location.search` directly.
- *
- * @param {unknown} value
- * @returns {unknown} the same value, query-free when it was an absolute URL
- */
-export function stripQueryFromUrl(value) {
-  return typeof value === 'string' && ABSOLUTE_URL.test(value) ? value.split('?')[0] : value;
-}
-
 // Survives the OAuth round trip, which the in-memory snapshot cannot: the
 // provider replaces the whole document. Same category as `postLoginRedirect`,
 // which already rides sessionStorage next to it.
