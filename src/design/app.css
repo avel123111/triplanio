@@ -552,7 +552,7 @@ h4,
 .pt-mast__l1,
 .pt-cta p,
 .banner p,
-.acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
+.row__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
@@ -732,7 +732,7 @@ h4,
 .tl3-card--tr .rv-end span,
 .cr-item .cr-dt,
 .acct-sectitle small,
-.acct-divrow__s,
+.row__s,
 .acct-hero__av .ov,
 .acct-hero__mail,
 .acct-flabel,
@@ -1003,7 +1003,7 @@ h4,
 .gadd span,              /* TRIP-175 инсп.: Meta+Golos (подпись ghost-add сервиса) */
 .acct-hero__mail,        /* TRIP-175 инсп.: Meta+Golos (email в шапке аккаунта) */
 .acct-note span,         /* TRIP-175 инсп.: Meta+Golos (примечание аккаунта) */
-.acct-divrow__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
+.row__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
 .acct-chan__s,           /* TRIP-175 инсп.: Meta+Golos (подпись канала уведомлений) */
 .addon-card__desc,       /* TRIP-175 инсп.: Meta+Golos (описание аддона; канон meta выше) */
 .settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta+Golos (описания в настройках; из #446-Mono) */
@@ -3525,26 +3525,37 @@ h4,
 .acct-sectitle { display: flex; align-items: center; gap: 9px; margin: 0 0 13px; color: var(--ink); }
 .acct-sectitle small { color: var(--muted); }
 
-/* divided rows (notifications, help, danger) */
-/* Раскладка (flex/центрирование/зазор) - на примитивах в JSX: .row .row--g7.
-   Зазор 14 -> ступень 16. Здесь остаётся только собственное: отбивка и линейка. */
-.acct-divrow { padding: 13px 0; border-bottom: 1px solid var(--line); }
-/* Текстовая ячейка ряда. Один и тот же ряд был свёрстан ДВУМЯ способами в одной
-   карточке: где справа кнопка - инлайн `flex:1;min-width:160` (3 раза), где
-   справа значок - голый .grow (2 раза). Порог нужен, чтобы кнопка не раздавила
-   заголовок; значку он не мешает. Правило на СУЩЕСТВУЮЩЕМ классе, а не шестое
-   имя под ту же ячейку. */
-.acct-divrow > .grow { min-width: 160px; }
-.acct-divrow:last-child { border-bottom: none; }
-/* The row IS the control when it's a link or a button. Without this every such
-   call site re-declared the same reset inline (4 of them did). */
-a.acct-divrow,
-button.acct-divrow { width: 100%; background: none; border: 0; text-align: left; text-decoration: none; color: inherit; }
-/* A row alone in its card: the card's own 18px padding is the whole frame, so
-   the row must not add its 13px on top (that is the fat-card look). */
-.card > .acct-divrow:only-child { padding: 0; }
-.acct-divrow__t { color: var(--ink); }
-.acct-divrow__s { color: var(--muted); }
+/* ═══ СТРОКА СПИСКА: значок + (заголовок · описание) + действие ═══════════════
+   Самый частый объект приложения. Был объявлен ЗАНОВО восемью семействами -
+   .acct-divrow · .acct-tgrow · .hv-row · .brow · .bookrow · .doc-row · .cr-item ·
+   .crow - с семью разными зазорами (8·10·11·11·12·13·13) и шестью разными
+   отступами, причём у семи из восьми было по одному-два применения: имя заводили
+   под экран. Плюс ещё два написания без имени вообще: штатный слот action у
+   Card и ручная сборка .row+.grow+кнопка в опасной зоне настроек.
+   Ни одно из этих расхождений НЕ ВИДНО счётчику инлайновых стилей - все они
+   написаны классами и проходят гарды как чистые. Поэтому мера прогресса задачи
+   не «сколько инлайнов», а «сколько семейств описывают один объект».
+   Здесь семейство одно - модификаторы существующего .row. Раскладку (флекс,
+   центрирование, зазор) по-прежнему даёт .row/.row--gN, ниже только собственное
+   строки: отбивка, линейка, роль контрола и типографика ячеек. */
+.row--div { padding: 13px 0; border-bottom: 1px solid var(--line); }
+.row--div:last-child { border-bottom: none; }
+/* Строка БЕЗ собственной отбивки - когда рамку целиком задаёт карточка. Раньше
+   это же делало правило по ПОЗИЦИИ (`.card > …:only-child`), и оно ломалось,
+   как только под строкой появлялась плашка Severity: приходилось дописывать
+   исключение инлайном. Модификатор ключуется на роли строки, а не на том, где
+   она стоит в дереве, поэтому не разваливается от соседа. */
+.row--flush { padding: 0; border-bottom: none; }
+/* Текстовая ячейка. Ряд был свёрстан ДВУМЯ способами в одной карточке: где
+   справа кнопка - инлайн `flex:1;min-width:160`, где справа значок - голый
+   .grow. Порог не даёт кнопке раздавить заголовок; значку он не мешает. */
+.row--div > .grow, .row--flush > .grow { min-width: 160px; }
+/* Строка САМА является контролом, когда она ссылка или кнопка. Без этого каждое
+   такое место переобъявляло один и тот же сброс инлайном (так делали четыре). */
+a.row--div, button.row--div,
+a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text-align: left; text-decoration: none; color: inherit; }
+.row__t { color: var(--ink); }
+.row__s { color: var(--muted); }
 /* .acct-ic-tile УДАЛЁН (TRIP-321 Ф12.2a): он переобъявлял геометрию .tile на
    внелестничных 38px. Вызовы -> .tile.tile--lg (40px), значок 18 -> 19px.
    Тон: 7 вызовов сели на класс (--brand/--ai/--quiet), 2 (удаление аккаунта,
@@ -3668,8 +3679,8 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
   .acct-chan > .btn { flex: 1 1 100%; width: 100%; }
   .acct-tgrow { flex-wrap: wrap; row-gap: 10px; }
   .acct-tgrow > .btn { flex: 1 1 auto; min-width: 0; }
-  .acct-divrow { flex-wrap: wrap; row-gap: 12px; }
-  .acct-divrow > .btn { flex: 1 1 100%; width: 100%; }
+  .row--div, .row--flush { flex-wrap: wrap; row-gap: 12px; }
+  .row--div > .btn, .row--flush > .btn { flex: 1 1 100%; width: 100%; }
   .acct-prefctl { flex: 1 1 100%; }
   .acct-prefctl .input { width: 100%; min-width: 0; }
   .acct-prefctl .seg { display: flex; width: 100%; }

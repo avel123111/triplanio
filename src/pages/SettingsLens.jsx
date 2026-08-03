@@ -899,46 +899,58 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           so it sits OUTSIDE the read-only fieldset and stays available to every
           participant, including a viewer. Pro status + Pro-only addons and
           documents are stripped from the copy server-side. */}
-      <Card title={t('settings.copy_trip_title')} subtitle={t('settings.copy_trip_desc')}>
-        <Btn variant="soft" icon="copy" loading={copying} onClick={() => void startCopy(tripId)}>
-          {t('settings.copy_trip_btn')}
-        </Btn>
+      {/* Копия - такая же строка списка, как строки опасной зоны ниже и строки
+          аккаунта: значок + (заголовок · описание) + действие СПРАВА. Раньше
+          заголовок с описанием отдавались шапке карточки, а кнопка клалась в
+          тело - поэтому она уезжала ПОД текст и ярус заголовка был крупнее
+          соседних. Одна деталь - одна раскладка. */}
+      <Card>
+        <div className="row row--g7 row--flush">
+          <span className="tile tile--lg tile--brand"><Icon name="copy" size={18} /></span>
+          <div className="grow">
+            <div className="row__t">{t('settings.copy_trip_title')}</div>
+            <div className="row__s">{t('settings.copy_trip_desc')}</div>
+          </div>
+          <Btn variant="soft" icon="copy" loading={copying} onClick={() => void startCopy(tripId)}>
+            {t('settings.copy_trip_btn')}
+          </Btn>
+        </div>
       </Card>
 
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
-        {/* Ритм зоны - одна ступень у колонки. Было: три ряда, каждый со своим
-            рукописным `padding: 10px 0`, поверх gap 8 у колонки. */}
-        <div className="col col--g9">
-          {myRole !== 'owner' && (
-            <div className="row row--g6">
-              <div className="grow">
-                <div className="t-ui">{t('settings.leave_trip')}</div>
-                <div className="muted t-meta">{t('settings.leave_desc')}</div>
-              </div>
-              <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
+        {myRole !== 'owner' && (
+          <div className="row row--g7 row--flush">
+            <span className="tile tile--lg tile--danger"><Icon name="arrow" size={18} /></span>
+            <div className="grow">
+              <div className="row__t">{t('settings.leave_trip')}</div>
+              <div className="row__s">{t('settings.leave_desc')}</div>
             </div>
-          )}
-          {myRole === 'owner' && (
-            <>
-              <div className="row row--g6">
-                <div className="grow">
-                  <div className="t-ui">{t('settings.leave_trip')}</div>
-                  <div className="muted t-meta">{t('settings.leave_owner_blocked')}</div>
-                </div>
-                <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
+            <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
+          </div>
+        )}
+        {myRole === 'owner' && (
+          <>
+            {/* Линейку между строками несёт сама строка (.row--div), поэтому
+                отдельный <hr> больше не нужен - его сброс был ещё одним инлайном. */}
+            <div className="row row--g7 row--div">
+              <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
+              <div className="grow">
+                <div className="row__t">{t('settings.leave_trip')}</div>
+                <div className="row__s">{t('settings.leave_owner_blocked')}</div>
               </div>
-              <hr className="hr" />
-              <div className="row row--g6">
-                <div className="grow">
-                  <div className="t-ui">{t('settings.delete_trip')}</div>
-                  <div className="muted t-meta">{t('settings.delete_desc')}</div>
-                </div>
-                <Btn variant="danger-solid" onClick={deleteTrip}>{t('settings.delete_trip')}</Btn>
+              <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
+            </div>
+            <div className="row row--g7 row--div">
+              <span className="tile tile--lg tile--danger"><Icon name="trash" size={18} /></span>
+              <div className="grow">
+                <div className="row__t">{t('settings.delete_trip')}</div>
+                <div className="row__s">{t('settings.delete_desc')}</div>
               </div>
-            </>
-          )}
-        </div>
+              <Btn variant="danger-solid" onClick={deleteTrip}>{t('settings.delete_trip')}</Btn>
+            </div>
+          </>
+        )}
       </Card>
     </div>
   );
