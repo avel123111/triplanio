@@ -4335,6 +4335,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   border-top-color:var(--spin-head,var(--brand));
   border-radius:var(--r-pill);}
 .spin--lg{--spin:24px;}
+/* Головка чернилами вместо бренда: на КАРТЕ синяя головка спорит с самой картой,
+   поэтому три экрана с картой рисовали её так. Все три объявления были
+   побайтово одинаковы (24px, 2px, дорожка --line, головка --ink). */
+.spin--ink{--spin-head:var(--ink);}
 /* Поверх затемнения (аватар в момент загрузки) кольцо обязано быть белым. */
 .spin--onscrim{--spin-track:rgba(255,255,255,.4);--spin-head:#fff;}
 /* canonical in-button spinner (Lumo design system B1 · loading state) — a
