@@ -16,10 +16,13 @@ import { formatDateRange } from '@/lib/trip-dates';
 import './PublicTrip.css';
 
 // Where the marketing chrome's section anchors / brand should point when this
-// page is rendered off the landing route. `www`, not the apex: the apex only
-// 307s here, and the campaign mark is stored per host (analytics.js), so a link
-// to the apex would leave the mark in the wrong jar if that redirect ever turned
-// around.
+// page is rendered off the landing route. Our OWN origin, like the two links in
+// ShareDialog / MembersLens and for the same reason: the campaign mark is stored
+// per host (analytics.js), so a link leaving for another host strands it. Every
+// host that serves this route serves the landing at `/` too — it is one SPA — so
+// the address always resolves, and on prod it resolves to the very literal that
+// used to be hard-coded here. A constant would additionally make dev and preview
+// hop to production, which is where this page would have to be smoke-tested.
 //
 // Every link built off this constant replaces the document, which drops the
 // in-memory attribution snapshot — and a visitor here arrived on a marked share
@@ -27,7 +30,7 @@ import './PublicTrip.css';
 // address across. One constant rather than one call per link: `withVisitCampaign`
 // on the CTAs alone would leave the brand, the nav and the footer silently
 // stripping the very attribution this page is supposed to produce (TRIP-329).
-const SITE = withVisitCampaign('https://www.triplanio.com/');
+const SITE = withVisitCampaign(`${window.location.origin}/`);
 // Per-city accent cycle — all existing Lumo event/accent tokens (no new tokens).
 const ACCENTS = ['var(--brand)', 'var(--ev-activity)', 'var(--ev-car)', 'var(--ai)', 'var(--pro)', 'var(--ev-transfer)'];
 
