@@ -612,6 +612,10 @@ h4,
 .acct-content,
 .acct-nav a,
 .acct-plan__line,
+/* ⚠ .acct-tgrow__t - ТА ЖЕ деталь, что .row__t, но ярусом ниже: здесь t-ui
+   (12.5/600), а у .row__t - t-label (13/700). Свести их = видимая правка
+   (заголовок строки телеграма станет крупнее), поэтому она ждёт скриншота, а не
+   делается заодно. Пока строка остаётся в своём ярусе. */
 .acct-tgrow__t,
 .menu .mi,
 .toast__body b,
@@ -3656,10 +3660,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    от .acct-chan сознательно (решение Pavel): другое поведение, меняются независимо. */
 .acct-tgrow { padding: 10px; border-radius: var(--r-sm); }
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
+/* Кандидат на схлопывание в .row__t + .row .row--g4 .row--wrap: это тот же
+   заголовок строки, но зазор 7 (мимо шкалы, ближайшая ступень 8) и ярус ниже
+   на полшага. Обе правки ВИДНЫ на экране, поэтому идут отдельно и со снимком. */
+.acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 /* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
    нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
    и тинт --primary-soft -> --brand-soft у .tile--brand (в тёмной .16 -> .14). */
-.acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
 
@@ -4375,7 +4382,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* ─── Document row ──────────────────────────────────────────────────────────
    Frame and text of one attachment row; the leading badge is `.dl-ftag` above. */
-.doc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);text-decoration:none;color:var(--ink-2); transition:background .12s;}
+/* Раскладку даёт .row .row--g4 в разметке (зазор 8 = ступень --sp-4, ТОЧНОЕ
+   совпадение, поэтому на экране не меняется ничего). Здесь остаётся только
+   собственное строки-ссылки: подсветка при наведении и скругление. */
+.doc-row{padding:8px 10px;border-radius:var(--r-sm);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
 .doc-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .doc-row .ds{ color:var(--muted-2); }
@@ -4470,7 +4480,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .hv-cancel__ic svg{width:14px;height:14px;}
 .hv-cancel__tx{ color:var(--ink);}
 .hv-rows{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;}
-.hv-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);}
+/* Раскладку даёт .row .row--g6 в разметке (зазор 12 = ступень --sp-6, ТОЧНОЕ
+   совпадение). Отбивка своя: строка живёт внутри рамки .hv-rows, у которой нет
+   боковых полей, - в отличие от .row--div, что стоит в .card со своими полями. */
+.hv-row{padding:11px 14px;border-bottom:1px solid var(--line);}
 .hv-row:last-child{border-bottom:0;}
 .hv-row__ic{display:flex;flex:none;color:var(--muted);}
 .hv-row__ic svg{width:16px;height:16px;}
