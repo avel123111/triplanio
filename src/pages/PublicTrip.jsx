@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plane } from 'lucide-react';
 import { invokeFn } from '@/lib/invokeFn';
-import { track, setRefTripId } from '@/lib/analytics';
+import { track, setRefTripId, withVisitCampaign } from '@/lib/analytics';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
@@ -16,8 +16,21 @@ import { formatDateRange } from '@/lib/trip-dates';
 import './PublicTrip.css';
 
 // Where the marketing chrome's section anchors / brand should point when this
-// page is rendered off the landing route.
-const SITE = 'https://triplanio.com/';
+// page is rendered off the landing route. Our OWN origin, like the two links in
+// ShareDialog / MembersLens and for the same reason: the campaign mark is stored
+// per host (analytics.js), so a link leaving for another host strands it. Every
+// host that serves this route serves the landing at `/` too — it is one SPA — so
+// the address always resolves, and on prod it resolves to the very literal that
+// used to be hard-coded here. A constant would additionally make dev and preview
+// hop to production, which is where this page would have to be smoke-tested.
+//
+// Every link built off this constant replaces the document, which drops the
+// in-memory attribution snapshot — and a visitor here arrived on a marked share
+// link and is exactly the new person that mark exists for, so the marks ride the
+// address across. One constant rather than one call per link: `withVisitCampaign`
+// on the CTAs alone would leave the brand, the nav and the footer silently
+// stripping the very attribution this page is supposed to produce (TRIP-329).
+const SITE = withVisitCampaign(`${window.location.origin}/`);
 // Per-city accent cycle — all existing Lumo event/accent tokens (no new tokens).
 const ACCENTS = ['var(--brand)', 'var(--ev-activity)', 'var(--ev-car)', 'var(--ai)', 'var(--pro)', 'var(--ev-transfer)'];
 

@@ -45,14 +45,19 @@
   --ink-2:  #4A4659;
   --muted:  #7A7689;
   --muted-2:#ABA7B8;
-  --line:   #E9E8F2;
-  --line-2: #F1F0F8;
-  --line-strong: #DBD9E7;
-  --line-hover: #D2D0E0;
-  --bg:      #fbfcfe;
+  /* Граница — ОДНА на всё (TRIP-326): карточки, панели, меню трипа, шапка,
+     разделители. Подобрана под пару фон #f7f9fa ↔ карточка #ffffff и читается на
+     обеих. Отдельными остаются только контрольные границы (--line-strong /
+     --line-hover): полю ввода нужна более заметная рамка, иначе оно перестаёт
+     читаться как поле. Оттенок всех нейтралей переведён из фиолетового в
+     холодно-серый — рядом с #f7f9fa старая фиолетовая шкала читалась как брак. */
+  --line:   #E6EAEE;
+  --line-strong: #D5DAE0;
+  --line-hover: #C8CED6;
+  --bg:      #f7f9fa;
   --surface: #FFFFFF;
-  --surface-2: #EEEEF7;
-  --surface-3: #FAFAFE;
+  --surface-2: #EEF1F4;
+  --surface-3: #F5F8FA;
   --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
   --wash-2: var(--surface-3);
   --secondary: var(--surface-2);
@@ -89,7 +94,6 @@
   /* Pro / premium — оранж→розовый градиент монетизации (TRIP-187) */
   --pro:       #FF2D78;
   --pro-soft:  rgba(255,45,120,.12);
-  --pro-soft-2:rgba(255,45,120,.20);
   --pro-ink:   #E11D6A;
   --pro-fg:    #fff;
   --pro-gradient: linear-gradient(135deg,#FF7A59 0%,#FF2D78 100%);
@@ -119,30 +123,42 @@
   /* Radii (Lumo names + legacy aliases) */
   --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
-     controls derive from --r-btn via --r-control, so every control outer shape
-     shares one radius. Segment track == control radius; its inner buttons are
-     concentric (control radius minus the 4px track padding). */
-  --r-control:var(--r-btn); --r-seg-track:var(--r-control); --r-seg-btn:calc(var(--r-control) - 4px);
+     controls derive from --r-btn directly, so every control outer shape shares
+     one radius. The segment track uses it as-is; its inner buttons are
+     concentric (minus the 4px track padding).
+     TRIP-321 Ф10: --r-control and --r-seg-track were pure one-target aliases of
+     --r-btn — two extra names for one value. Collapsed; --r-btn is the name. */
+  --r-seg-btn:calc(var(--r-btn) - 4px);
+
+  /* Шкала отступов (TRIP-321 Ф11). НОРМАТИВНАЯ, не описательная: покрывает ~62%
+     нынешних значений НАМЕРЕННО. Задача - ограниченный набор, а не токен на
+     каждый пиксель, поэтому 11px (40 объявлений) и 14px (41) ступени не
+     получают: они подтягиваются к 12 и 16 при миграции своего экрана, по одному
+     и глазами. Прогон по значениям всем репозиторием запрещён - именно он в Ф3b
+     сделал чекбокс круглым. */
+  --sp-1:2px; --sp-2:4px; --sp-3:6px; --sp-4:8px; --sp-5:10px;
+  --sp-6:12px; --sp-7:16px; --sp-8:20px; --sp-9:24px;
 
   /* Shadows (Lumo scale) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
   --sh-2:0 4px 12px -4px rgba(39,36,51,.10), 0 18px 48px -16px rgba(39,36,51,.20);
   --sh-3:0 8px 20px -6px rgba(39,36,51,.14), 0 30px 70px -22px rgba(39,36,51,.30);
 
-  /* === Канонические поверхности (TRIP-189) — ЕДИНЫЙ источник для всех
-     карточек/панелей/виджетов. Ровно две роли:
-       .surface-glass — «плавающая» (тень + backdrop-blur): полоса Города/Страны
-         и карточки на /trips;
-       .surface-panel — «плоская» (без тени и блюра): панели на экране трипа
-         (Overview/Бюджет/Участники).
-     Обе роли делят фон/бордер/радиус; отличаются только тенью и блюром.
-     Значения фона и бордера переопределяются для тёмной темы ниже. === */
+  /* === Канонические поверхности (TRIP-189, переработано TRIP-326) — ЕДИНЫЙ
+     источник для всех карточек/панелей/виджетов. Роль ОДНА и плоская: заливка
+     --surface + граница --line, без прозрачности, блюра и тени. Прежнее деление
+     на «плавающую» (.surface-glass) и «плоскую» (.surface-panel) снято вместе со
+     стеклом: отличались они только тенью и блюром, а их больше нет.
+     Алиасов у цвета нет: --line-2 / --surface-card / --surface-card-border были
+     вторыми именами тех же двух значений и удалены — один цвет = одно имя. === */
   --r-xl: 20px;
-  --surface-card:        rgba(255,255,255,.72); /* light — слегка прозрачный, чтобы blur давал матовое стекло */
-  --surface-card-border: rgba(45,55,115,.22);
-  --shadow-glass:        0 18px 50px -26px rgba(0,0,0,.5);
-  --glass-blur:          16px;
-  --header-bg:           rgba(251,252,254,.78); /* матовое стекло верхней панели — light (opaque-фолбэк = --surface) */
+  /* Хром — шапка приложения и меню трипа. В светлой это карточечный белый, в
+     тёмной (ниже) сливается с фоном.
+     ⚠ TRIP-321: --header-bg выглядит как алиас на --surface, но это РУЧКА ТЕМЫ —
+     в тёмной он var(--bg) (см. ~90 строк ниже). Подстановка «цели» превратит
+     тёмную шапку в светлую. Классификатор в scripts/ci/audit-design.mjs держит
+     его в списке «НЕ ТРОГАТЬ» и падает тестом, если правило ослабить. */
+  --header-bg:    var(--surface);
 
   --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
@@ -190,7 +206,6 @@
   --fs-micro:   11px;    /* meta/meta-md макета → каноны .t-meta / .t-mono (моно 11) */
   --fs-meta:    12.5px;  /* body-med макета → канон .t-ui */
   --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
-  --fs-strong:  var(--fs-base);  /* база body + эмфаз-текст (НЕ канон) — алиас на base, единый источник 13px (TRIP-183 аудит: убран дубль-литерал) */
   --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, statcard, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
   --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; фикс (мельче не опускаем) */
   --fs-h2:      calc(clamp(15px, 2.1vw, 16.5px) * var(--fd-k));   /* h2 макета → канон .t-heading; TRIP-203: fluid (16.5 деск → 15 фон), заменяет ручные @media-понижения */
@@ -222,19 +237,20 @@
   --ink-2:  #C4C1D2;
   --muted:  #8C88A0;
   --muted-2:#5F5C72;
-  --line:   #33313F;
-  --line-2: #262533;
-  --line-strong: #403E4F;
-  --line-hover: #3E3C4D;
+  /* Одна граница на всё (TRIP-326) — подобрана так, чтобы читаться И на фоне
+     #0c0e1c, И на карточке #1f212f: одним цветом обведены карточки, панели,
+     шапка, меню трипа и разделители. */
+  --line:   #2B2D3E;
+  --line-strong: #383A4D;
+  --line-hover: #33354A;
   --bg:      #0c0e1c;
   --surface: #1f212f;
   --surface-2: #2A2937;
   --surface-3: #1B1A26;
 
-  /* Канонические поверхности — тёмная (TRIP-189): стекло поверх #0c0e1c */
-  --surface-card:        rgba(255,255,255,.07);
-  --surface-card-border: rgba(255,255,255,.17);
-  --header-bg:           rgba(12,14,28,.6); /* матовое стекло верхней панели — dark */
+  /* Канонические поверхности — тёмная (TRIP-326): непрозрачная заливка, без
+     стекла. Хром (шапка + меню трипа) сливается с фоном — граница отделяет. */
+  --header-bg:    var(--bg);
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -265,7 +281,6 @@
   /* Pro — dark (оранж→розовый, TRIP-187) */
   --pro:       #FF6B85;
   --pro-soft:  rgba(255,107,133,.18);
-  --pro-soft-2:rgba(255,107,133,.28);
   --pro-ink:   #FF9DB6;
   --pro-fg:    #fff;
   --pro-gradient: linear-gradient(135deg,#FF8A6B 0%,#FF4D8A 100%);
@@ -299,7 +314,7 @@
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font-ui);
-  font-size: var(--fs-strong);
+  font-size: var(--fs-base);
   line-height: 1.6;
   font-weight: 500;
   color: var(--ink);
@@ -307,30 +322,18 @@ body {
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;   /* TRIP-165 — цифры выровнены во всём приложении */
 }
-/* TRIP-186 — мягкий фоновый градиент «Тишина» по центру-сверху канваса (обе
-   темы). body::before покрывает экраны БЕЗ непрозрачной оболочки (логин, вью). */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  /* TRIP-188: центр эллипса над верхней кромкой (−8%) → плотная часть жмётся к
-     самому верху, не «плавает» серединой экрана; альфа мягче (обе темы). */
-  background: radial-gradient(130% 80% at 50% -8%, rgba(146,164,232,.24), transparent 62%);
-}
-:root[data-theme="dark"] body::before {
-  background: radial-gradient(130% 80% at 50% -8%, rgba(124,138,205,.20), transparent 62%);
-}
-/* ЕДИНЫЙ фон на всё приложение. Градиент — на ОДНОМ фикс-слое body::before выше.
-   Проблема была в том, что каждый полноэкранный шелл красил свой непрозрачный
-   --bg/--surface и перекрывал этот слой (у списков .app-shell, у редактора
-   .ts-screen + его колонки, у трип-экранов .trip-shell — свой фон). Делаем их
-   ПРОЗРАЧНЫМИ (!important перебивает и инлайн, и CSS) — сквозь них виден один и
-   тот же канвас с градиентом. Карточки/панели поверх остаются непрозрачными. */
-.app-shell, .ts-screen, .ts-col-left, .ts-col-right, .trip-shell, .flow-page {
-  background: transparent !important;
-}
+/* TRIP-326: фоновый градиент выпилен — сплошной --bg на всё. Хак
+   «transparent !important» на шеллах существовал только ради него и удалён
+   вместе с ним. Шеллы заново не красим — background у них не задан, они
+   наследуют от body. */
+/* ★ЛОВУШКА (замерено, TRIP-321): `font` - ШОРТКАТ, и `font: inherit` не только
+   наследует семейство/кегль, но и СБРАСЫВАЕТ в initial всё, что шорткат не
+   называет - в том числе font-variant-numeric. То есть табличные цифры с body
+   (строка выше) до контролов НЕ доезжают, и наследуются дальше как `normal`
+   всем, что лежит ВНУТРИ контрола (`.tl3-card` - это button, `.ncal-ev` тоже).
+   Отсюда: `font-variant-numeric` на контроле или внутри него - ЖИВОЕ правило,
+   а не дубль наследования; на обычном div/span - дубль. Класс .num ниже держит
+   ровно этот случай и удалению не подлежит. */
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--brand); text-decoration: none; }
@@ -347,8 +350,71 @@ h1, h2, h3, h4 {
 }
 .muted { color: var(--muted); }
 .muted-2 { color: var(--muted-2); }
+/* Табличные цифры для КОНТРОЛОВ и их содержимого - единственное место, где это
+   объявление не дубль наследования от body (см. ловушку `font: inherit` выше).
+   На обычном div/span класс не нужен: там табличные цифры уже наследуются. */
 .num { font-variant-numeric: tabular-nums; }
 .mono { font-family: var(--font-mono); }
+
+/* =================================================================
+   ПОВЕРХНОСТЬ — единственное место, где живёт заливка+граница (TRIP-326)
+   -----------------------------------------------------------------
+   Раньше эту пару объявляли заново 39 правил по всему файлу: ровно те же
+   две строки под 56 разными именами. Форма поверхности одна, различаются
+   только радиус, тень и размеры — они и остаются в собственном блоке
+   каждого элемента ниже по файлу. Радиусы НЕ сводили намеренно: 24/20/16/
+   14/11 — это разные формы, а прогон по значениям уже ломал живое
+   (TRIP-321, .checkbox 17px → круг).
+   Блок стоит выше всех компонентов, чтобы любое состояние (:hover,
+   .is-active, тёмная тема) перебивало его, а не наоборот.
+   Расширять — дописать имя сюда, а НЕ скопировать пару к себе.
+   ================================================================= */
+/* карточки, панели, виджеты (канон TRIP-189; .surface-glass/.surface-panel — алиасы одной роли) */
+.surface-glass, .surface-panel,
+.statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
+.card, .statcard, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
+.chat-reply__card, .pl-lastcard,
+/* оверлеи и всплывающее */
+.dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
+/* строки-списки и ряды */
+.nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
+.te-row.te-row--plan, .acct-chan, .acct-tgrow, .tm-cell,
+/* карточки разделов и панели экранов */
+.addon-card, .tm-manage, .tm-account, .stay-dates, .records, .eroute,
+.hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel,
+/* контролы: кнопки, пилюли, чипы */
+.cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
+.pro-up .lockmsg, .map-ctl button, .map-legend .c, .mapfs-close,
+.chat-bubble--them {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+/* Утопленное поле — фон отступает НАЗАД от несущей карточки (заметки, адрес,
+   секции просмотра события, строка «город/даты»). */
+.addr, .notes, .notes-block, .ev-sec, .cdu {
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+}
+
+/* Контрол с сильной рамкой — граница несёт кликабельность (композер чата,
+   фильтр-пилюля, «назад», крестик диалога). */
+.chat-composer__row, .fpill, .lp-back, .ev-dlg-close {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+}
+
+/* Утопленное поле с сильной рамкой — степпер и выборки форк-панели. */
+.lp-stepper, .s22f-sel, .s22f-gcard {
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+}
+
+/* Мягкая плитка внутри карточки просмотра отеля. */
+.hv-plat, .hv-notes {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
 
 /* =================================================================
    ТИПОГРАФИКА — 10 канонических текст-стилей.
@@ -488,7 +554,6 @@ h4,
 .banner p,
 .acct-divrow__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта) */
 .acct-chan__t,     /* TRIP-175 инсп.: UI→Label (название канала уведомлений) */
-.acct-inbox__t,    /* TRIP-175 инсп.: UI→Label (заголовок «Входящие») */
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
@@ -676,8 +741,6 @@ h4,
 .acct-linktext,
 .acct-lang__flag,
 .acct-chan__s,
-.acct-inbox__s,
-.acct-inbox__count,
 .acct-tghint,
 .toast__body span,
 .ss-empty,
@@ -944,7 +1007,6 @@ h4,
 .acct-chan__s,           /* TRIP-175 инсп.: Meta+Golos (подпись канала уведомлений) */
 .addon-card__desc,       /* TRIP-175 инсп.: Meta+Golos (описание аддона; канон meta выше) */
 .settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta+Golos (описания в настройках; из #446-Mono) */
-.acct-inbox__s,          /* TRIP-175 инсп.: Meta+Golos (подпись «Входящие») */
 .app-header__trip-meta,  /* TRIP-175 инсп.: Meta+Golos (мета трипа в шапке) */
 .fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
 .chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
@@ -1002,18 +1064,10 @@ h4,
   display: flex; align-items: center; gap: 14px;
   padding: 0 18px;
   position: sticky; top: 0; z-index: var(--z-header);
-  background: var(--surface);               /* непрозрачный фолбэк без backdrop-filter */
+  background: var(--header-bg);             /* TRIP-326: всегда непрозрачный; light=#ffffff, dark=--bg */
   color: var(--ink);
   height: 60px; min-height: 60px;           /* фикс-высота: на неё завязаны calc(100vh - 56px) лэйауты */
-  border-bottom: 1px solid var(--surface-card-border);
-}
-/* Матовое стекло только где backdrop-filter поддержан; иначе остаётся --surface. */
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .app-header {
-    background: var(--header-bg);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  }
+  border-bottom: 1px solid var(--line);
 }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
@@ -1056,11 +1110,19 @@ h4,
 }
 
 /* Base neutral icon button (used OUTSIDE the header too — keeps light styling). */
+/* Здесь ТОЛЬКО роль кнопки: сброс рамки/фона + нейтральный цвет (ховер ниже).
+   БАЗОВУЮ геометрию этот блок больше не объявляет - это тот же квадрат, что и
+   .tile, и написан он ОДИН раз, в ко-селекторе `.tile, .icon-btn` в блоке
+   примитивов. Два контекста продолжают перебивать её СВОИМИ литералами и стоят
+   ниже по файлу: `.app-header .icon-btn` (38px, круг) и `.dock-panel__head
+   .icon-btn` (32px). Оба (0,2,0) против (0,1,0) ко-селектора, поэтому выигрывают
+   и на ручку --tile НЕ смотрят: ставить её на предке .icon-btn бесполезно, там
+   победит литерал. Это два будущих потребителя ступеней, а не поломка.
+   Кегль иконки к ручке НЕ подключён намеренно: у кнопки он приходит из пропа
+   size в JSX (18px), а сведение к --tile-ic меняет вид в 10 местах - это
+   решение уровня экрана, со скриншотом, а не правка вслепую отсюда. */
 .icon-btn {
   position: relative;
-  width: 34px; height: 34px;
-  display: grid; place-items: center;
-  border-radius: var(--r-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
@@ -1095,7 +1157,7 @@ h4,
    (editor), which own their own column + drawer behaviour. */
 .app-side {
   border-right: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
   height: calc(100vh - 56px);
   padding: 16px 10px;
   position: sticky; top: 56px;
@@ -1219,27 +1281,19 @@ h4,
 @media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
-/* Канонические роли поверхностей (TRIP-189) — ЕДИНЫЙ источник вида карточек.
-   Ровно два скина: .surface-glass (плавающая — тень + backdrop-blur) и
-   .surface-panel (плоская). Каждый примитив подключается к своей роли здесь же
-   через групповой селектор, а свою внутреннюю раскладку (падинги/хедеры/overflow)
-   доопределяет в собственном блоке ниже по файлу. Значения — только из токенов
-   --surface-card / --surface-card-border / --r-xl / --shadow-glass / --glass-blur. */
+/* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
+   карточек. Одна плоская роль, без blur, без теней. .surface-glass и
+   .surface-panel остаются как алиасы для совместимости разметки: оба дают
+   одинаковый результат. Внутреннюю раскладку (падинги/хедеры/overflow)
+   каждый примитив доопределяет в собственном блоке ниже по файлу. */
 .surface-glass,
+.surface-panel,
 .statbar,                  /* /trips — полоса Города/Страны */
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
 .nonext,                   /* /trips — пусто «следующий трип» */
 .tr,                       /* /trips — строка трипа (list-view) */
-.tl3-card {                /* таймлайн трипа — карточки эвентов (TRIP-199) */
-  background: var(--surface-card);
-  border: 1px solid var(--surface-card-border);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-glass);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-}
-.surface-panel,
+.tl3-card,                 /* таймлайн трипа — карточки эвентов (TRIP-199) */
 .card,
 .statcard,
 .wdg,
@@ -1250,10 +1304,7 @@ h4,
 .acct-hero,                /* шапка аккаунта */
 .chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
 .pl-lastcard {             /* карточка последней брони (планнер) */
-  background: var(--surface-card);
-  border: 1px solid var(--surface-card-border);
   border-radius: var(--r-xl);
-  box-shadow: none;
 }
 
 /* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
@@ -1267,7 +1318,7 @@ h4,
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--surface-card-border); }
+.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
 .map-route__empty { padding: 32px 20px; text-align: center; }
 .map-route__list { padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
 .map-route__item {
@@ -1299,16 +1350,12 @@ h4,
 .peek-sheet .map-route__head { padding-top: 2px; border-bottom: 0; }
 .peek-sheet .map-route__list { overflow: visible; padding: 8px 8px 0; }
 
-/* City badge (TRIP-33): translucent glass label next to the active city's pin on
-   the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
-   never eats pin/route clicks. Built in src/lib/map/markers.js (createCityBadgeEl). */
+/* City badge (TRIP-33): label next to the active city's pin on the Map lens.
+   TRIP-326: glass снят — непрозрачный --surface. Метка passiv (не ест клики). */
 .cbadge {
   display: inline-flex; align-items: flex-start; gap: 8px;
   padding: 6px 10px; border-radius: var(--r-sm); max-width: 240px;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-card-border);
-  box-shadow: var(--shadow-glass);
-  backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--sh-1);
   pointer-events: none;
 }
 .cbadge .cflag { height: 14px; border-radius: 2px; flex: none; margin-top: 1px; } /* top-aligned with the name line */
@@ -1338,8 +1385,8 @@ h4,
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
 .acc { margin-bottom: 12px; overflow: hidden; }
-.acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
-.acc__head:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+.acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
+.acc__head:hover { background: var(--wash); } /* TRIP-326: opacity→opaque token */
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .acc__title { color: var(--ink); }
 .acc__sub { color: var(--muted); }
@@ -1352,7 +1399,7 @@ h4,
 .input, .select, .textarea {
  width: 100%;
  padding: 11px 13px;
- border-radius: var(--r-control);
+ border-radius: var(--r-btn);
  border: 1.5px solid var(--line-strong);
  background: var(--surface-3);
 
@@ -1488,9 +1535,8 @@ h4,
 /* .lockmsg = "ask the owner" row inside the plate */
 .pro-up .lockmsg {
  display: flex; align-items: center; gap: 8px;
- /* 12.5px */ color: var(--muted);
- background: var(--surface); padding: 9px 11px;
- border-radius: var(--r-sm); border: 1px solid var(--line);
+ /* 12.5px */ color: var(--muted); padding: 9px 11px;
+ border-radius: var(--r-sm);
  cursor: pointer; width: 100%; text-align: left;
  transition: background .15s, border-color .15s;
 }
@@ -1523,8 +1569,8 @@ h4,
  border: 1px solid;
  color: var(--ink-2);
 }
-.sev__icon { flex-shrink: 0; width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; }
-.sev__icon svg { width: 17px; height: 17px; }
+/* Геометрия плитки уехала в .tile (32px -> ступень 34px, кегль иконки тот же
+   17px); .sev__icon остаётся ТОЛЬКО как крючок для тона по уровню - ниже. */
 .sev--info { background: var(--brand-soft); border-color: var(--brand-soft-12); }
 .sev--info .sev__icon { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--brand); }
 .sev--warning { background: var(--warning-soft); border-color: var(--warning-soft); }
@@ -1558,7 +1604,7 @@ h4,
 
 
 /* Divider */
-.hr { border: none; border-top: 1px solid var(--line-2); margin: 0; }
+.hr { border: none; border-top: 1px solid var(--line); margin: 0; }
 
 .tweaks__seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); background: var(--wash); border-radius: var(--r-sm); }
 .tweaks__seg button {
@@ -1574,7 +1620,7 @@ h4,
   /* TRIP-176: трек — утопленный тон. Светлая=--surface-2 (#EEEEF7): --surface-3
      в светлой почти белый и сливается с фоном. Тёмная переопределена ниже. */
   background: var(--surface-2);
-  border-radius: var(--r-seg-track);
+  border-radius: var(--r-btn);
   padding: 4px;
   gap: 2px;
 }
@@ -1609,10 +1655,134 @@ h4,
 .seg--fill { display: flex; width: 100%; }
 .seg--fill button { flex: 1; justify-content: center; }
 
+/* ═══════════════ Примитивы раскладки (TRIP-321 Ф11) ═══════════════
+   Замер (scripts/ci/audit-design.mjs) на dev@eb5e155: одна и та же форма
+   объявляется заново в 4+ разных семействах 40 раз, это 285 правил. Верхушка -
+   ряд, колонка и «гибкая ячейка, которой можно ужаться»:
+
+     21 правило / 18 семейств :: display|flex-direction|gap        → .col
+     15 правил  / 14 семейств :: align-items|display|gap           → .row
+     58 правил  (весь src)    :: flex:1 + min-width:0              → .grow--fit
+     ~28 правил               :: nowrap+overflow+ellipsis          → .trunc
+
+   .row/.col/.grow существуют с самого начала - здесь они НЕ переписываются, к
+   ним только дописаны модификаторы. Новых семейств ровно одно: `trunc`.
+   Шкала --sp-* и границы её нормативности - у объявления токенов. ═════════ */
+
 /* Misc utility */
-.row { display: flex; gap: 10px; align-items: center; }
-.col { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; gap: var(--sp-5); align-items: center; }
+.col { display: flex; flex-direction: column; gap: var(--sp-5); }
 .grow { flex: 1; }
+
+/* Ступень шкалы вместо рукописного gap. Номер = ступень --sp-N. g5 пропущен
+   намеренно: это дефолтный gap .row/.col, отдельный модификатор был бы no-op -
+   класс, который ничего не меняет, читается как «здесь особый отступ» и врёт. */
+.row--g1, .col--g1 { gap: var(--sp-1); }
+.row--g2, .col--g2 { gap: var(--sp-2); }
+.row--g3, .col--g3 { gap: var(--sp-3); }
+.row--g4, .col--g4 { gap: var(--sp-4); }
+.row--g6, .col--g6 { gap: var(--sp-6); }
+.row--g7, .col--g7 { gap: var(--sp-7); }
+.row--g8, .col--g8 { gap: var(--sp-8); }
+.row--g9, .col--g9 { gap: var(--sp-9); }
+
+/* Перенос строки - вторая ось раскладки ряда после gap: `flex-wrap: wrap` стоит
+   на 47 флекс-контейнерах. Только у .row: колонка и так течёт вниз, у неё wrap
+   осмыслен лишь при фиксированной высоте, а такого случая в проекте нет -
+   парный .col--wrap был бы модификатором без вызова. */
+.row--wrap { flex-wrap: wrap; }
+
+/* Гибкая ячейка, которой РАЗРЕШЕНО ужаться уже своего содержимого. Без
+   min-width:0 флекс-элемент упирается в min-content и вытесняет соседей за край
+   контейнера - поэтому пара `flex:1; min-width:0` в репозитории встречается 58
+   раз. Голый .grow (40 мест в JSX) НЕ трогаем: min-width:0 меняет поведение
+   ужимания, и проверять это надо экран за экраном, а не одной правкой. */
+.grow--fit { flex: 1; min-width: 0; }
+
+/* prefix-exempt: trunc — примитив обрезки строки, TRIP-321 Ф11, апрув Pavel.
+   Только сама обрезка; «разрешено ужаться» - это .grow--fit, они складываются.
+   Экран вправе отменить обрезку у себя (bgt на ≤640 переводит имена в перенос) -
+   его медиа-правило идёт ниже по каскаду и выигрывает при равной специфичности. */
+.trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Плитка-иконка: квадрат с радиусом, внутри отцентрирована иконка. В репозитории
+   эта форма объявлена 85 раз в 60 семействах на 22 размерах - 32/34/36 это один и
+   тот же квадрат, разница ни разу не была замечена, но стоит нам 26 классов.
+   Размер, кегль иконки и радиус - три ручки (--tile / --tile-ic / --tile-r,
+   апрув Pavel, TRIP-321 Ф12.0; гард 2m проверяет только префиксы КЛАССОВ, имена
+   кастом-свойств не видит ни один гард, поэтому они названы здесь). Ступень =
+   одно переопределение ручек, а не копия геометрии. Ручки НАСЛЕДУЮТСЯ, и не только
+   плиткой в плитке: --tile читает любой потомок, который на неё завязан (сегодня
+   это .icon-btn), поэтому ступень молча переразмерит вложенную иконку-кнопку.
+   Вложенных плиток и .icon-btn внутри .tile в проекте нет - проверять при
+   переводе каждого экрана.
+   Радиус растёт вместе с размером НЕ по вкусу, а по тому, что уже написано в коде,
+   НО подпирает это правило только нижняя полоса. Замер по всем CSS в скоупе
+   (квадрат + центрирование, круги/пилюли исключены):
+     26-40px: --r-sm x49  ·  сырой 7px x1        <- монополия, это факт
+     42-46px: --r-btn x9  ·  --r-sm x6           <- БОЛЬШИНСТВО, не факт
+     48-66px: --r-md x3   ·  --r-btn x1 · --r-xl x1
+   То есть --tile-r у --xl/--2xl - это выбор большинства на тонких данных.
+   Переводя экран из полосы 42-46, СВЕРЬ его текущий радиус, иначе ступень тихо
+   перекрасит угол (.invite-banner__ic 44px сегодня на --r-sm, а не --r-btn).
+   ★ГРАНИЦА ВНИЗУ: ниже 26px репозиторий радиус не токенизирует вовсе (17-24px несут
+   рукописные 5-7px), а дефолтный --r-sm = 11px на стороне 20px даёт уже не квадрат,
+   а пилюлю - ровно ловушка Ф3b, где .checkbox 17px под 11px стал радиокнопкой.
+   Ступени мельче --sm тут НЕТ по этой же причине: она обязана нести собственный
+   --tile-r, а до появления настоящего потребителя выдумывать его - гадание.
+   position:relative СОЗНАТЕЛЬНО не здесь: он нужен только .icon-btn под метку
+   .dot, лишним он был бы у всех остальных плиток. */
+.tile, .icon-btn {
+  width: var(--tile, 34px); height: var(--tile, 34px);
+  display: grid; place-items: center;
+  border-radius: var(--tile-r, var(--r-sm));
+}
+.tile { flex: none; }
+/* <Icon size={N}> рисует svg презентационными атрибутами width/height, а CSS их
+   бьёт -> --tile-ic МОЛЧА выигрывает у пропа size. При переводе экрана ступень
+   надо выбирать под фактический size, иначе иконка съедет без единой правки JSX. */
+.tile > svg { width: var(--tile-ic, 17px); height: var(--tile-ic, 17px); }
+
+/* Ступени - НЕ ряд «+6», к которому потом подложили замер. Каждая стоит в
+   десятых долях пикселя от взвешенного центра своей полосы (замер по всем CSS
+   в скоупе; «правил» = сколько объявлений в полосу снапится):
+     --sm  28  полоса 26-30  20 правил  центр 27.9  (+0.1)
+     --md  34  полоса 32-36  26 правил  центр 33.8  (+0.2)   <- дефолт
+     --lg  40  полоса 38-42  16 правил  центр 39.8  (+0.3)
+     --xl  46  полоса 44-46  11 правил  центр 45.1  (+0.9)
+     --2xl 62  полоса 48-66   5 правил  центр 59.6  (+2.4)   <- данных мало
+   ★ПРОВЕРЯЕМЫЙ КРИТЕРИЙ на следующие PR: если экран садится на ступень, НЕ
+   переопределяя свой --tile-r, лестница работает. Если каждый экран тащит свой
+   радиус - это уже не лестница, а пять именованных констант, и тогда полосы
+   надо перенумеровать, а НЕ добавлять шестую ступень «под экран»: ступень под
+   каждый экран - это тот же зоопарк, только с общим префиксом. */
+.tile--sm  { --tile: 28px; --tile-ic: 15px; }
+.tile--lg  { --tile: 40px; --tile-ic: 19px; }
+.tile--xl  { --tile: 46px; --tile-ic: 21px; --tile-r: var(--r-btn); }
+.tile--2xl { --tile: 62px; --tile-ic: 28px; --tile-r: var(--r-md); }
+
+/* Тона сняты с EmptyState - это ровно те два, которые у пустого экрана есть
+   ЖИВЫЕ (третий, розовый Pro, за всю историю не был вызван ни разу и удалён
+   вместе с веткой kind="locked"). Тон без потребителя - это не система, а ещё
+   один мёртвый класс, поэтому новый заводится вместе со своим первым вызовом.
+   --brand-soft и --primary-soft НЕ синонимы (в тёмной теме .14 против .16),
+   поэтому плитки на --primary-soft переезжают сюда только вместе со своим
+   экраном, а не механической заменой. */
+.tile--brand  { background: var(--brand-soft);  color: var(--brand); }
+.tile--danger { background: var(--danger-soft); color: var(--danger); }
+/* TRIP-321 Ф12.2a, апрув Pavel. Заведены ВМЕСТЕ со своими первыми вызовами (аккаунт)
+   и повторяют форму двух соседей выше: фон = мягкий оттенок цвета самого значка.
+   ★ПРАВИЛО ТОНА, решение Pavel по сравнению A/B на живом экране: квадрат под значком
+   ВСЕГДА несёт оттенок этого значка. Нейтрального фона под цветным значком не
+   существует - до этого на аккаунте было ДЕВЯТЬ тонов на 15 плиток (тот же Telegram
+   рисовался и --info-soft, и --surface-2), потому что каждый писался отдельно.
+   --quiet - не исключение из правила, а тон СЕРОГО значка (у него оттенок и есть
+   нейтраль). --wash отдельным цветом не является: он объявлен как var(--surface-2).
+   Заводя новый тон, держи ту же форму - иначе зоопарк отрастает заново. */
+.tile--ai      { background: var(--ai-soft);      color: var(--ai); }
+.tile--info    { background: var(--info-soft);    color: var(--info); }
+.tile--success { background: var(--success-soft); color: var(--success); }
+.tile--quiet   { background: var(--surface-2);    color: var(--muted); }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -1680,13 +1850,14 @@ h4,
     display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-nav);
     padding: 0 14px calc(8px + env(safe-area-inset-bottom)); pointer-events: none;
   }
+  /* TRIP-326: backdrop-filter и color-mix(transparent) сняты — непрозрачная
+     поверхность с тенью достаточно отделяет нав от контента. */
   .mbnav__dock {
     pointer-events: auto; position: relative; margin: 0 auto; max-width: 460px; height: 60px;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 2px; padding: 0 6px;
-    background: color-mix(in srgb, var(--surface) 82%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(1.7); backdrop-filter: blur(20px) saturate(1.7);
-    border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--r-xl);
-    box-shadow: 0 14px 36px -12px rgba(15,23,42,.42), 0 3px 10px -4px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.55);
+    background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-xl);
+    box-shadow: 0 8px 24px -8px rgba(15,23,42,.28), 0 2px 8px -2px rgba(15,23,42,.14);
   }
   .mbnav__item {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -1719,8 +1890,7 @@ h4,
 /* Add bottom-sheet rows (inside <Sheet>, opened by the nav "+") */
 .addsheet { display: flex; flex-direction: column; gap: 8px; padding: 2px 0 6px; }
 .addsheet__row {
-  display: flex; align-items: center; gap: 13px; width: 100%; padding: 12px;
-  border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--surface); cursor: pointer; text-align: left;
+  display: flex; align-items: center; gap: 13px; width: 100%; padding: 12px; border-radius: var(--r-btn); cursor: pointer; text-align: left;
   transition: border-color .15s, background .15s, transform .12s var(--ease-spring);
 }
 .addsheet__row:hover { border-color: var(--line-hover); }
@@ -1758,7 +1928,6 @@ h4,
   position: relative; overflow: hidden;
   display: flex; flex-direction: column; align-items: center; text-align: center;
   padding: 34px 30px 30px;
-  background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r-card); box-shadow: var(--sh-1);
 }
 .eroute__rail { position: relative; z-index: 1; width: 100%; max-width: 560px; margin-bottom: 22px; }
@@ -1840,7 +2009,7 @@ h4,
    margins match the map box so the two read as equal cards. */
 .flow-editcol > .lp { flex: 1; min-width: 0; min-height: 0; margin: 14px 14px 14px 7px; }
 /* Progress header — bordered, non-scrolling top of the card. */
-.flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line-2); background: var(--surface); }
+.flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 .flow-lp-b { padding: 20px; position: relative; }
@@ -1936,7 +2105,7 @@ h4,
    template wins. Fonts/sizes are INHERITED (not overridden) so the planner row
    matches the editor row exactly — one component, one look. The resting card look
    is set here because the planner list is NOT inside .te-table. */
-.te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: default; }
+.te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: default; }
 /* Finish (final-point) uses the SAME brand accent as the start anchor — one
    blue endpoint look across the flow (no warm/orange divergence). */
 .te-row.te-row--plan.te-row--fin { background: var(--brand-soft); border-color: var(--brand); }
@@ -1960,7 +2129,7 @@ h4,
 .pl-lastcard.is-fin { border-color: var(--brand); }
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
 .pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
-.pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line-2); }
+.pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line); }
 /* Add-start affordance — the empty-origin variant of .te-end (dashed, clickable).
    One control for both flows (manual skip + AI no-origin). */
 .te-end--add { width: 100%; text-align: left; border-style: dashed; cursor: pointer; transition: border-color .15s, background .15s; }
@@ -1973,14 +2142,14 @@ h4,
 .ts-step:hover { background: var(--wash); }
 .ts-step:active:not(:disabled) { transform: scale(0.9); }
 .ts-step:disabled { opacity: .3; cursor: default; }
-.ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+.ts-startctl { display: inline-flex; align-items: center; gap: 2px; border-radius: var(--r-sm); padding: 2px; }
 .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
 .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
 .ts-startctl__date:hover { background: var(--wash); }
 /* Block variant — fills its form cell and matches the .input height, so on the
    create-flow step-1 row the trip-start stepper lines up with the city input.
    Same .ts-startctl element, adaptive sizing (no separate control). */
-.ts-startctl--block { display: flex; width: 100%; height: 48px; gap: 0; justify-content: space-between; padding: 3px; border: 1.5px solid var(--line-strong); background: var(--surface-3); border-radius: var(--r-control); }
+.ts-startctl--block { display: flex; width: 100%; height: 48px; gap: 0; justify-content: space-between; padding: 3px; border: 1.5px solid var(--line-strong); background: var(--surface-3); border-radius: var(--r-btn); }
 .ts-startctl--block .ts-step { width: 38px; height: 100%; }
 .ts-startctl--block .ts-startctl__date { flex: 1; text-align: center; }
 /* Drag-anywhere route rows (editor grid + planner list): a press anywhere arms
@@ -2144,8 +2313,6 @@ h4,
 [data-theme="dark"] .btn--ai .ai-dots span { background: rgba(12,10,30,.65); }
 .btn--ai[disabled], .btn--ai.is-disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
 .dlg {
-  background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: var(--r-md);
   box-shadow: var(--sh-3);
   width: 100%;
@@ -2158,14 +2325,14 @@ h4,
 .dlg--sm { max-width: 420px; }
 .dlg__head {
   padding: 18px 22px;
-  border-bottom: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line);
   display: flex; align-items: center; gap: 12px;
 }
 .dlg__head h2 { flex: 1; }
 .dlg__body { padding: 20px 22px; overflow: auto; flex: 1; }
 .dlg__foot {
   padding: 14px 22px;
-  border-top: 1px solid var(--line-2);
+  border-top: 1px solid var(--line);
   display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
   background: var(--wash-2);
 }
@@ -2184,14 +2351,12 @@ h4,
    held two static cards that were display:none below 768px anyway, and a card
    border around a full-screen surface is a card-in-a-card. */
 .chat-room { display: flex; flex-direction: column; height: 100%; min-height: 0; position: relative; }
-/* Same frosted bar as the global .app-header — the room header is a second tier
-   of the same chrome, not a plain content strip. */
+/* Same bar as the global .app-header — the room header is a second tier
+   of the same chrome. TRIP-326: backdrop-filter снят, непрозрачный --header-bg. */
 .chat-head {
   display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 24px;
   border-bottom: 1px solid var(--line); flex: none;
   background: var(--header-bg);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
 }
 .chat-head__id { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; flex: 1; }
 .chat-head__id h3 { margin: 0; color: var(--ink); }
@@ -2200,7 +2365,7 @@ h4,
    Popover (desktop) or the canonical Sheet (phones). */
 .chat-members-btn {
   display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px 0 6px;
-  border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface);
+  border-radius: var(--r-pill);
   color: var(--ink-2); cursor: pointer; flex: none;
   transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
@@ -2252,7 +2417,7 @@ h4,
 .chat-bubble { padding: 11px 15px; border-radius: var(--r-md); word-break: break-word; }
 /* Incoming = surface + hairline (not a grey fill): on a light room the fill read
    as a second background layer. */
-.chat-bubble--them { background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-bottom-left-radius: 6px; }
+.chat-bubble--them { color: var(--ink); border-bottom-left-radius: 6px; }   /* фон+граница — из общего блока поверхностей */
 .chat-bubble--me { background: var(--brand); border: 1px solid transparent; color: #fff; border-bottom-right-radius: 6px; }
 [data-theme="dark"] .chat-bubble--me { color: #0c1424; }
 .chat-bubble--pending { opacity: .7; }
@@ -2314,14 +2479,14 @@ h4,
 /* Dots take the pill's own ink and the design's 4px — the global .ai-dots are
    5px on the stronger --ai, which inside a soft pill read as a second accent. */
 .chat-thinking .ai-dots span { width: 4px; height: 4px; background: currentColor; }
-.chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
+.chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
 .chat-jump b { color: var(--brand); }
 
 /* ── Composer (shared) ── */
 /* Widget dock (a panel edge). The lens overrides this below into a floating
    dock — there the composer is its own rounded surface, so a full-width rule
    above it would read as a second border. */
-.chat-composer { border-top: 1px solid var(--line-2); padding: 12px; position: relative; flex: none; }
+.chat-composer { border-top: 1px solid var(--line); padding: 12px; position: relative; flex: none; }
 .chat-room .chat-composer {
   border-top: 0; padding: 0 24px 20px;
   background: linear-gradient(180deg, transparent, var(--bg) 38%);
@@ -2338,7 +2503,6 @@ h4,
    container, so the textarea itself carries no border (it is not a .textarea). */
 .chat-composer__row {
   display: flex; gap: 8px; align-items: flex-end; padding: 8px;
-  background: var(--surface); border: 1px solid var(--line-strong);
   border-radius: var(--r-xl); box-shadow: var(--sh-1);
   transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
@@ -2409,7 +2573,7 @@ h4,
 @media (max-width: 640px) { .chat-composer__hint { display: none; } }
 
 /* ── Mention popover (shared) ── */
-.chat-mention { position: absolute; bottom: calc(100% + 6px); left: 12px; width: 280px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: 6px; z-index: 6; }
+.chat-mention { position: absolute; bottom: calc(100% + 6px); left: 12px; width: 280px; border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: 6px; z-index: 6; }
 .chat-mention__lbl { color: var(--muted-2); padding: 4px 10px; }
 .chat-mention__row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; width: 100%; border: 0; background: transparent; border-radius: var(--r-sm); cursor: pointer; text-align: left; transition: background .15s var(--ease-out); }
 .chat-mention__row:hover { background: var(--ai-soft); }
@@ -2422,7 +2586,7 @@ h4,
 .chat-member__b { flex: 1; min-width: 0; }
 .chat-member__nm { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-member__rl { color: var(--muted); }
-.chat-member-sep { border-top: 1px solid var(--line-2); padding-top: 4px; margin-top: 4px; }
+.chat-member-sep { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
 
 /* ── Lens responsive (≤768px) ── */
 @media (max-width: 768px) {
@@ -2471,8 +2635,6 @@ h4,
   position: fixed; right: 24px; bottom: 24px;
   width: 396px; max-width: calc(100vw - 32px);
   height: min(580px, calc(100vh - 112px));
-  background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: var(--r-xl);
   box-shadow: var(--sh-3);
   z-index: calc(var(--z-dock) + 5);
@@ -2482,8 +2644,8 @@ h4,
 }
 @keyframes dockUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 /* ONE header row — the former tab strip held a single always-active tab. */
-.dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line-2); }
-.dock-panel__head .icon-btn { width: 32px; height: 32px; }   /* только размер: радиус общий, из базового .icon-btn */
+.dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.dock-panel__head .icon-btn { width: 32px; height: 32px; }   /* только размер; радиус общий, из ко-селектора `.tile, .icon-btn` */
 .dock-panel__head .avatar { width: 26px; height: 26px; }
 .dock-panel__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .dock-panel__id b { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2492,7 +2654,7 @@ h4,
    «Triplanio печатает / Новые сообщения» обязана стоять одинаково на обеих
    поверхностях, поэтому её отступ задаёт ОДИН источник: сам композер в комнате
    и этот padding в доке (свой margin у полосы здесь снят — иначе 10+8). */
-.dock-panel__dock { flex: none; padding: 8px 12px 12px; border-top: 1px solid var(--line-2); }
+.dock-panel__dock { flex: none; padding: 8px 12px 12px; border-top: 1px solid var(--line); }
 .dock-panel .chat-overline { margin-top: 0; }
 .dock-panel .chat-msgs { padding: 8px 12px 12px; }
 .dock-panel .chat-run__col { max-width: 86%; }
@@ -2530,26 +2692,17 @@ h4,
 
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
 /* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */
+/* TRIP-326: glass снят — непрозрачный --surface с тенью. */
 .bell-dd-pop {
   padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden;
   border-radius: var(--r-xl);
-  /* Матовое стекло, но читаемое: --surface на 90% + блюр (полностью прозрачный
-     --surface-card был бы нечитаем над лентой). Радиус/бордер/тень — канон glass. */
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  border: 1px solid var(--surface-card-border);
-  box-shadow: var(--shadow-glass);
+  box-shadow: var(--sh-2);
 }
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .bell-dd-pop {
-    -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
-    backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
-  }
-}
-.bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
+.bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
 /* Title takes the slack and truncates so the action pill always fits on one line. */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
-.bell-dd__foot { padding: 9px; border-top: 1px solid var(--line-2); display: flex; justify-content: center; }
+.bell-dd__foot { padding: 9px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
 /* Compact soft pill — single line, never wraps, reads as a clean secondary action. */
 .bell-dd__mark { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--primary-soft); border: none; color: var(--brand); cursor: pointer; padding: 6px 11px; border-radius: var(--r-pill); transition: background .14s, color .14s; }
 .bell-dd__mark:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); }
@@ -2570,7 +2723,7 @@ h4,
 .nfilters { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
 .fpill {
  display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px;
- border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--surface);
+ border-radius: var(--r-pill);
  color: var(--muted); font: inherit; cursor: pointer;
  transition: color .16s, border-color .16s, background .16s, transform .14s var(--ease-spring);
 }
@@ -2588,8 +2741,7 @@ h4,
 /* Inbox row — rounded card, hover lift, unread = soft tint + left accent */
 .nrow {
   display: grid; grid-template-columns: auto 1fr auto; gap: 14px;
-  padding: 14px 16px; align-items: center;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 14px 16px; align-items: center; border-radius: var(--r-md);
   box-shadow: var(--sh-1);
   transition: border-color .16s, box-shadow .2s, transform .16s var(--ease-out);
 }
@@ -2637,8 +2789,7 @@ h4,
 .invite-banner { max-width: 1040px; margin-inline: auto; }
 .mbrow {
   display: grid; grid-template-columns: auto 1fr auto auto;
-  align-items: center; gap: 16px; padding: 14px 16px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  align-items: center; gap: 16px; padding: 14px 16px; border-radius: var(--r-md);
   box-shadow: var(--sh-1); position: relative;
   transition: border-color .16s, opacity .2s;
 }
@@ -2793,7 +2944,7 @@ h4,
     .te-seamwrap.is-pending .te-end { opacity: .5; pointer-events: none; }
     .te-seam__pill:disabled,
     .te-seam__pill.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
-    .te-table .te-row { border-radius: var(--r-btn); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); }
+    .te-table .te-row { border-radius: var(--r-btn); box-shadow: var(--sh-1); }
     .te-table .te-row:hover { box-shadow: var(--sh-2); border-color: var(--brand); }
     .te-end { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
     .te-row__node { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
@@ -2836,19 +2987,19 @@ h4,
 .lp-country { display: inline-flex; align-items: center; gap: .4em; color: var(--ink-2); min-width: 0; max-width: 100%; }
 .lp-country .cflag { flex: none; }
 
-.lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line-2); }
+.lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line); }
 .lp-h .lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .lp-h .ti { min-width: 0; flex: 1; }
 .ti b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ti span { color: var(--muted); }
 /* Unified panel back button — solid surface chip, always clearly visible with a
    non-blending hover (used in every light panel header). */
-.lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
+.lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
 .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-sec { display: flex; flex-direction: column; gap: 8px; }
-.lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line-2); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
+.lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
 /* Two-button footer (delete + primary) filling the bar in a ~2/8 ratio. On
    phones the destructive button collapses to its icon (text via .btn-label-collapse). */
 .lp-f--ratio { justify-content: stretch; }
@@ -2863,7 +3014,7 @@ h4,
 .addmini { width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
 .addmini:hover { background: var(--accent); color: var(--accent-ink); }
 
-.bookrow { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
+.bookrow { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
 .bookrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
 .bookrow:active { transform: translateY(0) scale(.99); }
 .bi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
@@ -2889,18 +3040,18 @@ h4,
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
 .stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
-.lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }
+.lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
 .lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
 .lp-stepper__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .lp-stepper__tx b { color: var(--ink); }
 .lp-stepper__tx span { color: var(--muted); }
 
 
-.addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); }
+.addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: var(--r-sm); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
 .addr div { color: var(--ink-2); }
 /* Notes block — Lumo .notes: surface-3 card with hairline border. */
-.notes { color: var(--ink-2); padding: 11px 13px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
+.notes { color: var(--ink-2); padding: 11px 13px; border-radius: var(--r-sm); white-space: pre-wrap; word-break: break-word; }
 /* Document upload field (dropzone + file rows) — unified on the DocsLens
    reference classes .dl-dropzone / .dl-uplist / .dl-upitem (DocsLens.css),
    reused by DocumentsField so the field looks identical everywhere (TRIP-275). */
@@ -3156,9 +3307,13 @@ h4,
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-199); тут только раскладка */
 .tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
-@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-glass); } }
-.tl3-card .tile { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
-.tl3-card .tile svg { width: 20px; height: 20px; }
+@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); } }
+/* Единственный экземпляр семейства, существовавший до примитива: геометрия
+   больше не переобъявляется, остались три ручки и тон по типу события.
+   44/20px - ВНЕ ступеней (ближайшая --xl это 46/21); переезд на ступень меняет
+   вид ленты, поэтому делается в PR своего экрана (Ф12.7 TripView) со скриншотом.
+   Ручка тут и есть маркер этого долга - раньше он был не виден. */
+.tl3-card .tile { --tile: 44px; --tile-ic: 20px; --tile-r: var(--r-btn); background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
 /* body keeps a real min-width so the meta (price + partner pill) wraps to a new
    flex line instead of squeezing the title into a vertical char-stack. */
 .tl3-card .body { flex: 1 1 auto; min-width: 130px; }
@@ -3226,7 +3381,7 @@ h4,
   .ts-screen .ts-drawer.is-open { pointer-events: auto; }
   .ts-screen .ts-drawer__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s var(--ease-out); }
   .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
-  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--surface); }
+  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--header-bg); } /* TRIP-326 */
   .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
 }
 
@@ -3285,8 +3440,7 @@ h4,
 .addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .addon-card {
   --ac: var(--brand);
-  position: relative; background: var(--surface);
-  border: 1px solid var(--line); border-radius: var(--r-md);
+  position: relative; border-radius: var(--r-md);
   padding: 16px; display: flex; flex-direction: column; min-height: 150px;
   box-shadow: var(--sh-1);
   transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s;
@@ -3340,12 +3494,25 @@ h4,
 .acct-sectitle small { color: var(--muted); }
 
 /* divided rows (notifications, help, danger) */
-.acct-divrow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line-2); }
+/* Раскладка (flex/центрирование/зазор) - на примитивах в JSX: .row .row--g7.
+   Зазор 14 -> ступень 16. Здесь остаётся только собственное: отбивка и линейка. */
+.acct-divrow { padding: 13px 0; border-bottom: 1px solid var(--line); }
 .acct-divrow:last-child { border-bottom: none; }
+/* The row IS the control when it's a link or a button. Without this every such
+   call site re-declared the same reset inline (4 of them did). */
+a.acct-divrow,
+button.acct-divrow { width: 100%; background: none; border: 0; text-align: left; text-decoration: none; color: inherit; }
+/* A row alone in its card: the card's own 18px padding is the whole frame, so
+   the row must not add its 13px on top (that is the fat-card look). */
+.card > .acct-divrow:only-child { padding: 0; }
 .acct-divrow__t { color: var(--ink); }
 .acct-divrow__s { color: var(--muted); }
-.acct-ic-tile { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.acct-ic-tile svg { width: 18px; height: 18px; }
+/* .acct-ic-tile УДАЛЁН (TRIP-321 Ф12.2a): он переобъявлял геометрию .tile на
+   внелестничных 38px. Вызовы -> .tile.tile--lg (40px), значок 18 -> 19px.
+   Тон: 7 вызовов сели на класс (--brand/--ai/--quiet), 2 (удаление аккаунта,
+   выход) намеренно остались инлайном - их цвет не совпадает с модификатором.
+   Дефолтный тинт был --primary-soft, у .tile--brand он --brand-soft: в светлой
+   теме это то же значение, в тёмной .16 против .14 (см. блок .tile--*). */
 
 /* profile hero */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
@@ -3363,7 +3530,7 @@ h4,
 .acct-hero__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acct-hero__mail { color: var(--muted); margin-top: 2px; }
 .acct-hero__actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
-.acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
+.acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
 .acct-hero__edit .btn { align-self: end; }
 .acct-flabel { display: block; color: var(--ink-2); margin-bottom: 6px; }
 
@@ -3404,41 +3571,45 @@ h4,
 .acct-prefctl .input { width: auto; min-width: 210px; }
 
 /* reminder channels */
-.acct-chanlist { display: flex; flex-direction: column; gap: 10px; }
-/* align-items:flex-start so the icon always hugs the title (top) regardless of
+/* .acct-chanlist УДАЛЁН (Ф12.2a): это ровно .col - дефолтный зазор колонки (--sp-5)
+   и есть те самые 10px. */
+/* Раскладка -> .row .row--g6 в JSX (зазор 13 -> ступень 12). Остаётся своё:
+   отбивка, радиус, переход и align-items ниже.
+   align-items:flex-start so the icon always hugs the title (top) regardless of
    how many description lines or whether a CTA button is present — keeps every
    channel card visually consistent (the icon no longer floats mid-card on the
-   taller Telegram card). The trailing CTA/chevron re-centres on desktop. */
-.acct-chan { display: flex; align-items: flex-start; gap: 13px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); transition: border-color .2s, background .2s; }
+   taller Telegram card). The trailing CTA/chevron re-centres on desktop.
+   Это ПЕРЕОПРЕДЕЛЕНИЕ .row (у неё align-items:center) при равной специфичности -
+   держится только тем, что .acct-chan объявлен ниже .row по файлу. */
+.acct-chan { align-items: flex-start; padding: 14px; border-radius: var(--r-md); transition: border-color .2s, background .2s; }
 .acct-chan > .btn, .acct-chan__chev { align-self: center; }
 /* Status badge ("Coming soon" / "Connected") sits on its OWN line under the
    subtitle (like Telegram's CTA) — NOT inline in the title (wraps differently
    per title length) and NOT a trailing chip (squeezes the description into a
    narrow column). Identical placement for every channel card. */
 .acct-chan__main > .badge { display: flex; margin-top: 8px; }
-.acct-chan__ic { width: 42px; height: 42px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; } .acct-chan__ic svg { width: 20px; height: 20px; }
-.acct-chan__main { flex: 1; min-width: 0; }
+/* .acct-chan__ic УДАЛЁН (Ф12.2a): 42px мимо лестницы -> .tile.tile--lg (40px),
+   значок 20 -> 19px. Ступень --xl (46) тут была бы ошибкой: она несёт --r-btn и
+   молча перекрасила бы угол, а этот значок сегодня на --r-sm (полоса 42-46 в
+   лестнице - большинство, а не факт). */
+/* Раскладка -> .grow--fit в JSX: это была побайтово та же пара flex:1 + min-width:0,
+   объявленная в трёх строках от самого примитива. Имя класса остаётся - на нём
+   висит правило `> .badge` выше. */
 .acct-chan__t { color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acct-chan__s { color: var(--muted); margin-top: 2px; }
 .acct-chan--btn { cursor: pointer; width: 100%; text-align: left; font-family: inherit; } .acct-chan--btn:hover { border-color: var(--line-hover); background: var(--surface-3); }
-/* In-app notifications quick-link card (account → /inbox) */
-.acct-inbox { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); cursor: pointer; text-align: left; font-family: inherit; color: var(--ink); transition: border-color .2s var(--ease-out), background .2s var(--ease-out), transform .12s var(--ease-out); }
-.acct-inbox:hover { border-color: var(--line-hover); background: var(--surface-3); }
-.acct-inbox:active { transform: scale(.99); }
-.acct-inbox__ic { width: 38px; height: 38px; border-radius: var(--r-sm); flex: none; display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); }
-.acct-inbox__bd { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.acct-inbox__t { color: var(--ink); }
-.acct-inbox__s { color: var(--muted); }
-.acct-inbox__count { flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--brand); color: var(--primary-fg); display: inline-flex; align-items: center; justify-content: center; }
-.acct-inbox > svg { color: var(--muted); flex: none; }
 .acct-chan--soon { opacity: .7; }
 .acct-chan__chev { color: var(--muted); flex: none; transition: transform .2s var(--ease-out); }
 .acct-chan--btn[aria-expanded="true"] .acct-chan__chev { transform: rotate(90deg); }
 .acct-tgtrips { margin-top: 10px; }
 .acct-tgtrips__lbl { color: var(--muted-2); margin-bottom: 8px; padding-left: 2px; }
-.acct-tgrow { display: flex; align-items: center; gap: 11px; padding: 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
+/* Раскладка -> .row .row--g6 в JSX (зазор 11 -> ступень 12). Отдельная сущность
+   от .acct-chan сознательно (решение Pavel): другое поведение, меняются независимо. */
+.acct-tgrow { padding: 10px; border-radius: var(--r-sm); }
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
-.acct-tgrow__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; } .acct-tgrow__ic svg { width: 15px; height: 15px; }
+/* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
+   нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
+   и тинт --primary-soft -> --brand-soft у .tile--brand (в тёмной .16 -> .14). */
 .acct-tgrow__t { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
@@ -3524,7 +3695,7 @@ h4,
   }
 }
 
-.toast { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px 15px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-3); pointer-events: auto; }
+.toast { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px 15px; border-radius: var(--r-md); box-shadow: var(--sh-3); pointer-events: auto; }
 .toast .tic { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: var(--ink-2); }
 .toast .tic svg { width: 17px; height: 17px; color: #fff; }
 .toast__body { min-width: 0; flex: 1; }
@@ -3574,8 +3745,7 @@ h4,
   position: relative;
   display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
   gap: 10px; min-height: 84px; padding: 11px 12px;
-  border-radius: var(--r-md); border: 1px solid var(--surface-card-border);
-  background: var(--surface); color: var(--ink-2);
+  border-radius: var(--r-md); color: var(--ink-2);
   cursor: pointer; text-align: left;
   transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out);
 }
@@ -3587,7 +3757,7 @@ h4,
 .tm-cell__badge { position: absolute; top: 10px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--warm); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
 
 .tm-caption { padding: 2px 8px 8px; }
-.tm-manage { border: 1px solid var(--surface-card-border); border-radius: var(--r-xl); background: var(--surface); overflow: hidden; }
+.tm-manage { border-radius: var(--r-xl); overflow: hidden; }
 .tm-manage__row {
   display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
   background: none; border: 0; border-bottom: 1px solid var(--line);
@@ -3605,7 +3775,7 @@ h4,
 
 .tm-account {
   display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 18px; padding: 12px 14px;
-  border-radius: var(--r-xl); border: 1px solid var(--surface-card-border); background: var(--surface);
+  border-radius: var(--r-xl);
   cursor: pointer; text-align: left; transition: border-color .15s var(--ease-out);
 }
 .tm-account:hover { border-color: var(--brand); }
@@ -3730,13 +3900,14 @@ h4,
 .tc__foot { display: flex; align-items: center; gap: 7px; margin-top: 13px; flex-wrap: wrap; }
 .tc__foot .avatar-stack { margin-left: auto; }
 
-/* frost-glass chip for "Совместный" and role */
+/* Chip for "Совместный" and role — lives on top of a photo with a dark scrim.
+   TRIP-326: backdrop-filter убран; тонкий белый фон оставлен — на фото нужен,
+   иначе белый непрозрачный чип режет любое изображение. */
 .tc__glass {
- background: rgba(255,255,255,.18); color: #fff;
- border: 1px solid rgba(255,255,255,.30); border-radius: var(--r-pill);
+ background: rgba(255,255,255,.22); color: #fff;
+ border: 1px solid rgba(255,255,255,.32); border-radius: var(--r-pill);
  padding: 4px 11px;
  display: inline-flex; align-items: center; gap: 5px;
- -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .tc__glass svg { width: 12px; height: 12px; }
 
@@ -3885,28 +4056,15 @@ h4,
    ================================================================ */
 
 /* ── Page shell ── */
+/* TRIP-326: ambient gradient blooms (::before/::after) выпилены вместе с
+   градиентом канваса. isolation: isolate снят за ненадобностью. */
 .pro-page {
   position: relative;
-  isolation: isolate;
-}
-/* Ambient gradient blooms */
-.pro-page::before,
-.pro-page::after {
-  content: ''; position: fixed; border-radius: 50%;
-  pointer-events: none; z-index: 0;
-}
-.pro-page::before {
-  width: 520px; height: 520px; top: -130px; right: -90px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 9%, transparent) 0%, transparent 65%);
-}
-.pro-page::after {
-  width: 340px; height: 340px; bottom: -80px; left: -60px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--pro) 7%, transparent) 0%, transparent 68%);
 }
 
 /* ── Main content zone — natural height, centered (canonical standalone shell,
    same as Statistics/Account: layout width + padding come from the inline style
-   on <main>; this only stacks children + lifts them above the ambient blooms). ── */
+   on <main>). ── */
 .pro-main {
   position: relative; z-index: 1;
   display: flex; flex-direction: column; gap: 14px;
@@ -3993,7 +4151,7 @@ h4,
 }
 .plan-price__amount { color: var(--ink); }
 .plan-price__period { color: var(--muted); }
-.plan-divider { height: 1px; background: var(--line-2); margin: 14px 0; flex: none; }
+.plan-divider { height: 1px; background: var(--line); margin: 14px 0; flex: none; }
 
 /* Feature list */
 .plan-features {
@@ -4093,7 +4251,7 @@ h4,
 .ai-input{border:1.5px solid var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:10px;}
 .ai-input .textarea{border:0;background:transparent;padding:0;min-height:64px;resize:none;}
 .ai-input .textarea:focus{box-shadow:none;}
-.ai-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--line-2);}
+.ai-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
 .ai-blk-hint{ color:var(--muted-2); }
 /* inline border-spinner (parsing) */
 .ai-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ai);border-right-color:transparent;border-radius:50%;animation:aispin .8s linear infinite;flex:none;}
@@ -4144,13 +4302,13 @@ h4,
 
 /* ─── Document row ──────────────────────────────────────────────────────────
    Frame and text of one attachment row; the leading badge is `.dl-ftag` above. */
-.doc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);text-decoration:none;color:var(--ink-2); transition:background .12s;}
+.doc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
 .doc-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .doc-row .ds{ color:var(--muted-2); }
 
 /* ─── Notes block ───────────────────────────────────────────────────────── */
-.notes-block{ color:var(--ink-2); padding:10px 12px;background:var(--surface-3);border-radius:var(--r-sm);border:1px solid var(--line-2);}
+.notes-block{ color:var(--ink-2); padding:10px 12px;border-radius:var(--r-sm);}
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -4172,15 +4330,15 @@ h4,
 .ev-dlg-price{text-align:right;flex:none;}
 .ev-dlg-price .amt{ color:var(--ink);}
 .ev-dlg-price .cur{ color:var(--muted); }
-.ev-dlg-close{width:30px;height:30px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:background .12s,color .12s;}
+.ev-dlg-close{width:30px;height:30px;border-radius:var(--r-sm);color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:background .12s,color .12s;}
 .ev-dlg-close:hover{background:var(--surface-2);color:var(--ink);}
 .ev-dlg-close svg{width:15px;height:15px;}
 .ev-dlg-body{padding:15px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:11px;align-items:stretch;}
-.ev-dlg-ft{padding:11px 20px;border-top:1px solid var(--line-2);background:var(--wash);display:flex;gap:7px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end;}
+.ev-dlg-ft{padding:11px 20px;border-top:1px solid var(--line);background:var(--wash);display:flex;gap:7px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end;}
 /* Top action chips (booking link + "on map") — wrap on narrow widths. */
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
-.ev-sec{background:var(--surface-3);border:1px solid var(--line-2);border-radius:var(--r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
+.ev-sec{border-radius:var(--r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ev-color,var(--brand));}
 .ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
@@ -4192,12 +4350,12 @@ h4,
 .kv .v{ color:var(--ink); }
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
 /* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--surface-card-border);border-radius:var(--r-xl);background:var(--surface-card);overflow:hidden;}
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border-radius:var(--r-xl);overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
 .stay-dates__t{ color:var(--muted);margin-top:3px;}
-.stay-dates__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 12px;border-left:1px dashed var(--line-2);border-right:1px dashed var(--line-2);}
+.stay-dates__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 12px;border-left:1px dashed var(--line);border-right:1px dashed var(--line);}
 .stay-dates__mid span{ color:var(--muted);white-space:nowrap;}
 /* Editable summary cell — clickable trigger inside .stay-dates (TRIP-176 date-range) */
 .sd-cellwrap{display:flex;min-width:0;}
@@ -4216,11 +4374,11 @@ h4,
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
 .hv{display:flex;flex-direction:column;gap:16px;}
-.hv-namecard{padding:16px 17px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+.hv-namecard{padding:16px 17px;border-radius:var(--r-md);}
 .hv-name{ color:var(--ink);line-height:1.2;}
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
 .hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
-.hv-plat{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:5px 12px 5px 5px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);}
+.hv-plat{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:5px 12px 5px 5px;border-radius:var(--r-pill);}
 /* Буква-плейсхолдер платформы (когда логотипа нет) лежит НА --brand, поэтому её
    цвет - --primary-fg, а не литерал #fff: в тёмной теме --brand светло-голубой,
    и белым по нему выходит 2.2:1. */
@@ -4229,7 +4387,7 @@ h4,
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
 .hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
-.hv-card{padding:13px 15px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+.hv-card{padding:13px 15px;border-radius:var(--r-md);}
 .hv-cost{display:flex;align-items:center;gap:12px;}
 .hv-cost__main{flex:1;min-width:0;}
 .hv-price{ color:var(--ink);}
@@ -4238,17 +4396,17 @@ h4,
 .hv-cancel__ic{width:26px;height:26px;flex:none;border-radius:var(--r-pill);background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success-ink);display:flex;align-items:center;justify-content:center;}
 .hv-cancel__ic svg{width:14px;height:14px;}
 .hv-cancel__tx{ color:var(--ink);}
-.hv-rows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;}
-.hv-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line-2);}
+.hv-rows{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;}
+.hv-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);}
 .hv-row:last-child{border-bottom:0;}
 .hv-row__ic{display:flex;flex:none;color:var(--muted);}
 .hv-row__ic svg{width:16px;height:16px;}
 .hv-row__k{flex:none; color:var(--muted);}
 .hv-row__sp{flex:1;}
 .hv-row__v{ color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;}
-.hv-notes{padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface-2); color:var(--ink-2);line-height:1.5;}
+.hv-notes{padding:12px 14px;border-radius:var(--r-md); color:var(--ink-2);line-height:1.5;}
 /* booking link */
-.bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
+.bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--brand);}
 .bk-link svg{width:12px;height:12px;color:var(--muted);}
 /* warning banner */
@@ -4266,7 +4424,7 @@ h4,
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv{display:flex;flex-direction:column;gap:16px;}
-.tv-card{padding:16px 17px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+.tv-card{padding:16px 17px;border-radius:var(--r-md);}
 .tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
 .tv-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);}
 .tv-chip svg{width:12px;height:12px;flex:none;}
@@ -4471,7 +4629,7 @@ h4,
    so price ↔ Book stays one row at any container width. The thumb scales with the
    container (26cqw) — the lists set container-type: inline-size. Shared by the
    Stay22 hotel and Viator activity fork lists via PartnerResultCard. */
-.pcard { position: relative; display: grid; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+.pcard { position: relative; display: grid; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
 .pcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); }
@@ -4491,7 +4649,7 @@ h4,
 /* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
    Booking navy token. Activities: glass star pill (.pcard__score--star). */
 .pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px /* design-token-exempt: асимметричный уголок бейджа рейтинга, форма а не шкала */; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
-.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); backdrop-filter: blur(var(--glass-blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4); padding: 0 7px; }
+.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
 /* Supplier badge — bottom-left on the photo (logo, letter fallback). */
@@ -4533,10 +4691,10 @@ h4,
    selector maps to ≤640px here). */
 .blob { position: absolute; border-radius: 50%; filter: blur(12px); pointer-events: none; z-index: 0; }
 
+/* TRIP-326: .head .b1/.b2 (ambient gradient blobs) — мёртвый код, ни одно JSX
+   их не рендерит; выпилены вместе с градиентом канваса. */
 .head { position: relative; margin-bottom: 4px; }
-.head .b1 { width: 280px; height: 280px; background: var(--brand-grad); top: -130px; right: -20px; opacity: .14; }
-.head .b2 { width: 180px; height: 180px; background: var(--ai-gradient); top: -70px; right: 22%; opacity: .10; }
-.head__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
+.head__row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; position: relative; }
 .head h1 .nm { color: var(--brand); }
 .head .sub { color: var(--muted); margin-top: 8px; }
 .head .grow { flex: 1; min-width: 160px; }
@@ -4560,7 +4718,7 @@ h4,
 
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
 .statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
-.statbar .s { flex: 1; min-width: 0; padding: 16px 20px; display: flex; align-items: center; gap: 13px; border-left: 1px solid var(--line-2); }
+.statbar .s { flex: 1; min-width: 0; padding: 16px 20px; display: flex; align-items: center; gap: 13px; border-left: 1px solid var(--line); }
 .statbar .s:first-child { border-left: 0; }
 .statbar .ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
 .statbar .ic svg { width: 19px; height: 19px; }
@@ -4569,14 +4727,14 @@ h4,
 .statbar .s.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
 .statbar .v { color: var(--ink); font-variant-numeric: tabular-nums; }
 .statbar .k { color: var(--muted); margin-top: 5px; }
-.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line-2); flex: none; }
+.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
 .statbar .cta button { width: 100%; }
 @media (max-width: 640px) {
   .statbar { flex-wrap: wrap; }
-  .statbar .s { flex: 1 0 50%; border-left: 0; border-top: 1px solid var(--line-2); padding: 14px 16px; }
+  .statbar .s { flex: 1 0 50%; border-left: 0; border-top: 1px solid var(--line); padding: 14px 16px; }
   .statbar .s:nth-child(-n+2) { border-top: 0; }
-  .statbar .s:nth-child(odd) { border-right: 1px solid var(--line-2); }
-  .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; }
+  .statbar .s:nth-child(odd) { border-right: 1px solid var(--line); }
+  .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
 }
 
 .dash-hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-top: 18px; }
@@ -4585,8 +4743,8 @@ h4,
 @media (max-width: 640px) { .dash-hero .mapwrap { min-height: 280px; } }
 .rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-/* скин (glass) — тень/бордер/радиус как у .surface-glass; фон остаётся wash (под картой) (TRIP-189) */
-.mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--surface-card-border); box-shadow: var(--shadow-glass); }
+/* бордер/радиус как у канон-поверхности; фон остаётся wash (под картой). TRIP-326: тень снята вместе со стеклом */
+.mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--line); }
 .map-skel { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); gap: 8px; z-index: 1; }
 
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
@@ -4614,7 +4772,7 @@ h4,
 .nextcard__tx .rt { color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nextcard__chev { color: var(--muted-2); flex: none; }
 .nextcard__cd { display: flex; flex-wrap: nowrap; gap: 7px; margin-top: 11px; }
-.cdu { text-align: center; background: var(--surface-3); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 7px 0; flex: 1; min-width: 0; }
+.cdu { text-align: center; border-radius: var(--r-sm); padding: 7px 0; flex: 1; min-width: 0; }
 .cdu b { display: block; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cdu span { color: var(--muted); }
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
@@ -4633,9 +4791,9 @@ h4,
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* — stat-bar trailing CTA (used on the home stat-bar) — */
-.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line-2); flex: none; }
+.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
 .statbar .cta .btn, .statbar .cta .b { width: 100%; }
-@media (max-width: 640px) { .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; } }
+@media (max-width: 640px) { .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line); padding: 12px; } }
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
@@ -4695,13 +4853,13 @@ h4,
 .list-empty { padding: 28px 14px; text-align: center; color: var(--muted); column-span: all; }
 
 /* — records (4 across) — */
-.records { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; }
+.records { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; }
 @media (max-width: 1040px) { .records { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .records { grid-template-columns: 1fr; } }
-.rec { padding: 20px 22px; display: flex; flex-direction: column; gap: 11px; border-left: 1px solid var(--line-2); }
+.rec { padding: 20px 22px; display: flex; flex-direction: column; gap: 11px; border-left: 1px solid var(--line); }
 .rec:first-child { border-left: 0; }
-@media (max-width: 1040px) { .rec:nth-child(2n+1) { border-left: 0; } .rec:nth-child(n+3) { border-top: 1px solid var(--line-2); } }
-@media (max-width: 640px) { .rec { border-left: 0; } .rec + .rec { border-top: 1px solid var(--line-2); } }
+@media (max-width: 1040px) { .rec:nth-child(2n+1) { border-left: 0; } .rec:nth-child(n+3) { border-top: 1px solid var(--line); } }
+@media (max-width: 640px) { .rec { border-left: 0; } .rec + .rec { border-top: 1px solid var(--line); } }
 .rec .ic { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--pro-soft); color: var(--pro-ink); }
 .rec .ic svg { width: 18px; height: 18px; }
 .rec .ic.r-days { background: var(--success-soft); color: var(--success-ink); }
@@ -4725,10 +4883,15 @@ h4,
 .chart__cap { color: var(--muted); margin-top: 14px; text-align: center; }
 
 /* — empty-state note (ghost stats hint) — */
-.empty-note { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: 18px; }
-.empty-note .en-ic { width: 42px; height: 42px; border-radius: var(--r-btn); flex: none; display: grid; place-items: center; background: var(--surface); color: var(--brand); }
-.empty-note .en-ic svg { width: 22px; height: 22px; }
-.empty-note .en-tx { flex: 1; min-width: 0; }
+/* Блок «здесь пусто, вот кнопка»: плитка + текст + действие, на телефоне
+   действие уезжает на всю ширину. TRIP-321 Ф12.1b: этот же объект был вторым
+   экземпляром нарисован ИНЛАЙНАМИ в Бюджете («нет трат») - та же структура и
+   то же поведение, отличалась только шкура (пунктирная рамка на прозрачном
+   против залитой плашки). Схлопнуто в один блок; вид - залитая плашка, потому
+   что пунктир в системе уже занят под «добавить» (.bgt-glist__add).
+   Раскладка и плитка - примитивы, здесь остаётся только шкура. */
+.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: var(--sp-8); }
+.empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
 .empty-note .en-tx span { color: var(--ink-2); }
 @media (max-width: 640px) { .empty-note { flex-wrap: wrap; } .empty-note .btn, .empty-note .b { flex: 1 1 100%; width: 100%; } }
@@ -4738,13 +4901,14 @@ h4,
 
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
 .map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: 6px; }
-.map-ctl button { width: 34px; height: 34px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(8px); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
-@media (hover: hover) { .map-ctl button:hover { background: var(--surface); box-shadow: var(--sh-1); } }
+/* TRIP-326: color-mix(transparent) + backdrop-filter сняты — непрозрачный --surface. */
+.map-ctl button { width: 34px; height: 34px; border-radius: var(--r-sm); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
+@media (hover: hover) { .map-ctl button:hover { background: var(--surface-2); box-shadow: var(--sh-1); } }
 .map-ctl button:active { transform: scale(.92); }
 .map-ctl button.on { background: var(--brand); color: var(--primary-fg); border-color: transparent; }
 .map-ctl svg { width: 17px; height: 17px; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
-.map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 84%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
+.map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
 .map-legend .d { width: 11px; height: 11px; border-radius: 4px; }
 /* Mini city markers for the stats/home travel map (createMiniMarkerEl). Tiny dots
    over the country fill — much smaller than the trip Ring pins. trip = solid brand,
@@ -4759,7 +4923,8 @@ h4,
 /* fullscreen: expand the existing singleton-map slot to a fixed overlay (no
    reparent — the same map element just fills the viewport; consumer calls resize) */
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; }
-.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(8px); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+/* TRIP-326: glass снят. */
+.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
 .mapfs-close svg { width: 18px; height: 18px; }
 /* Fullscreen sits above the app header (--z-overlay is above --z-header). On
    mobile, push the controls below the header band (54px) + notch so the close +
@@ -4792,7 +4957,7 @@ h4,
 /* Mobile bottom-sheet: clear the fixed bottom-nav so the last rows aren't hidden
    under it, and keep the body the scroll container (flex:1 + min-height:0). */
 @media (max-width: 640px) { .vp-b { padding-bottom: calc(88px + env(safe-area-inset-bottom)); } }
-.visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line-2); }
+.visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
 .visit:last-child { border-bottom: 0; }
 .visit .when { flex: none; width: 44px; text-align: center; padding-top: 2px; }
 .visit .when .mo { color: var(--brand); }
@@ -4821,33 +4986,33 @@ h4,
 .s22f-searchrow { display: flex; gap: 10px; }
 .s22f-search { position: relative; flex: 1; min-width: 0; }
 .s22f-search__ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
-.s22f-search input { width: 100%; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3), как в «У меня есть бронь» */ border-radius: var(--r-control); padding: 11px 14px 11px 40px; color: var(--ink); outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
+.s22f-search input { width: 100%; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3), как в «У меня есть бронь» */ border-radius: var(--r-btn); padding: 11px 14px 11px 40px; color: var(--ink); outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
 .s22f-search input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-search input::placeholder { color: var(--muted-2); }
-.s22f-fbtn { position: relative; flex: none; width: 44px; height: 44px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
+.s22f-fbtn { position: relative; flex: none; width: 44px; height: 44px; border-radius: var(--r-btn); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
 .s22f-fbtn:hover { border-color: var(--line-hover); }
 .s22f-fbtn:active { transform: scale(.96); }
 .s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
 .s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
 
-.s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); background: var(--surface-card); border: 1px solid var(--surface-card-border); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
+.s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
 .s22f-grp { display: flex; flex-direction: column; gap: 8px; }
 .s22f-pmuted { color: var(--muted); }
 .s22f-pfields { display: flex; align-items: center; gap: 8px; }
-.s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-control); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
+.s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-btn); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
 .s22f-field:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-cur { color: var(--muted); flex: none; }
 .s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }
 .s22f-field input::placeholder { color: var(--muted-2); }
 .s22f-dash { color: var(--muted-2); flex: none; }
 .s22f-selwrap { position: relative; }
-.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 11px 40px 11px 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут (--surface-3, 1px, r-md) */
+.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; border-radius: var(--r-md); padding: 11px 40px 11px 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут (--surface-3, 1px, r-md) */
 .s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
 
 .s22f-guestgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
+.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-md); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
 .s22f-panelfoot .btn { flex: 1; }
@@ -4889,7 +5054,7 @@ h4,
   --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink);
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
   gap: 6px; padding: 26px 20px 22px; border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
-  background: radial-gradient(120% 92% at 50% -12%, var(--st-accent-soft), transparent 62%), var(--surface-card);
+  background: radial-gradient(120% 92% at 50% -12%, var(--st-accent-soft), transparent 62%), var(--surface);
   border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
 }
@@ -4903,12 +5068,12 @@ h4,
 .fork-state__glow { position: absolute; inset: 50% auto auto 50%; width: 150px; height: 100px; transform: translate(-50%, -46%); background: radial-gradient(closest-side, var(--st-accent-soft), transparent 72%); }
 .fork-si {
   position: relative; width: 66px; height: 66px; border-radius: var(--r-xl); display: grid; place-items: center; color: var(--st-accent-ink);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--surface-card) 86%, var(--st-accent) 14%), var(--surface-card));
-  border: 1px solid color-mix(in srgb, var(--st-accent) 34%, var(--surface-card-border));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 86%, var(--st-accent) 14%), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--st-accent) 34%, var(--line));
   box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--st-accent) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.55);
 }
 [data-theme="dark"] .fork-si { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--st-accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
-.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; color: #fff; background: var(--st-accent); border: 2.5px solid var(--surface-card); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--st-accent) 80%, transparent); }
+.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; color: #fff; background: var(--st-accent); border: 2.5px solid var(--surface); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--st-accent) 80%, transparent); }
 .fork-state b { color: var(--ink); margin-top: 4px; }
 .fork-state p { margin: 0; color: var(--muted); max-width: 30ch; }
 .fork-state__actions { display: flex; flex-direction: column; gap: 9px; align-items: stretch; width: 100%; max-width: 264px; margin-top: 14px; }
@@ -4922,7 +5087,7 @@ h4,
 .btn__brandlogo img { width: 15px; height: 15px; object-fit: contain; }
 /* Pager — prev · windowed numbers · next. */
 .fork-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-.fork-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
+.fork-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--r-sm); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
 .fork-pg:disabled { opacity: .4; cursor: default; }
 .fork-pg:not(:disabled):active { transform: scale(.94); }
 @media (hover: hover) and (pointer: fine) { .fork-pg:not(:disabled):hover { border-color: var(--line-hover); } }
@@ -4939,8 +5104,7 @@ h4,
 .consent {
   position: fixed; z-index: calc(var(--z-nav) + 1); left: 16px; bottom: 16px;
   width: calc(100% - 32px); max-width: 420px;
-  display: flex; flex-direction: column; gap: 12px; padding: 14px 16px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border-radius: var(--r-md);
   box-shadow: var(--sh-3);
 }
 .consent__text p { margin: 0; color: var(--muted); }

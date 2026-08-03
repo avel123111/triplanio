@@ -28,9 +28,9 @@
 #                   catches syntax, NOT types, so this is the only type gate for
 #                   functions.
 #
-# Node 22: the project's `npm test` uses `node --test "src/**/*.test.js"` whose
-# glob is expanded by Node's test runner only on Node 21+ (Node 20 fails with
-# "Could not find"). Pin 22 so `npm test` runs as written.
+# Node 22: the project's `npm test` uses `node --test "src/**/*.test.js"
+# "scripts/**/*.test.mjs"` whose globs are expanded by Node's test runner only on
+# Node 21+ (Node 20 fails with "Could not find"). Pin 22 so `npm test` runs as written.
 name: checks
 
 on:
@@ -86,6 +86,8 @@ jobs:
   #   2i check-invoke-seam           — raw supabase.functions.invoke() outside src/lib/invokeFn.js
   #   2j check-posthog-init          — analytics behind the consent gate (single posthog.init)
   #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
+  #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
+  #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -143,6 +145,22 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run check:design
+      - name: 2l — inline-style ratchet (repeats belong in the class)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-inline-styles.mjs
+      - name: 2m — CSS namespaces (a new class prefix needs approval)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-css-prefixes.mjs
+      # TRIP-321 Ф10: REPORTER, not a gate — it always exits 0. It prints the
+      # numbers every TRIP-321 PR must quote (families / classes / inline styles
+      # / re-declared shapes) so "was → now" is a measurement in the CI log
+      # instead of a claim in the PR body. Ф13 turns the family count into a
+      # ratchet; until the pipeline has run, a moving number is expected.
+      - name: design audit (report only — TRIP-321 progress)
+        if: ${{ !cancelled() }}
+        run: npm run audit:design
 
   deno:
     name: Deno typecheck (edge functions)

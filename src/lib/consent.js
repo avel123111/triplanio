@@ -7,7 +7,7 @@
 // CI guard 2j fails the build if a second `posthog.init` appears. TRIP-227 hangs
 // GTM / GA4 / ad pixels off `applyConsent`.
 import posthog from 'posthog-js';
-import { isAnalyticsOn, startAnalytics, stopAnalytics, syncCampaignToPerson } from '@/lib/analytics';
+import { isAnalyticsOn, startAnalytics, stopAnalytics, syncCampaignToPerson, syncFirstTouchToPerson } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -117,6 +117,12 @@ export function applyConsent(record, uid) {
     // AuthContext’s own call already ran as a no-op before consent, and only the
     // PERSON carries the campaign into server-born events (the Stripe webhook).
     syncCampaignToPerson();
+    // Same replay for first touch: the account can already exist when the banner
+    // is answered — a confirmation link opened on a phone that never saw it, or
+    // a visitor who ignores it and signs in with Google first. AuthContext held
+    // the marks when it found analytics off; this is the first moment there is a
+    // person to hang them on. After identify, never before (TRIP-329).
+    syncFirstTouchToPerson();
   }
 }
 

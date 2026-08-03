@@ -29,6 +29,7 @@ import { pickLang } from '../_shared/tgLang.ts';
 import {
   BRAND, cardStrings, dateParts, factsLine, formatNumber,
 } from '../_shared/shareCardText.ts';
+import { withViralMarks } from '../_shared/viralLink.ts';
 import {
   cityLabel, dateSpan, routeDistanceKm, tripDays,
   uniqueCityCount, uniqueCountryCount, uniqueTransitCities, type Visit,
@@ -40,16 +41,17 @@ import { defaultBgDataUri } from './render.ts';
 // Token the client swaps for its own high-res map data URI in card_svg mode.
 const MAP_PLACEHOLDER = '__SHARE_CARD_MAP__';
 
+// The canonical host: the apex 307s here, and the campaign mark is stored
+// per host, so a QR pointing at the apex would strand the mark in the wrong jar.
 const LANDING = 'https://www.triplanio.com/';
 
+// Marks aligned with the other three viral links (TRIP-329): `viral` in the
+// medium so one filter separates paid from viral, and the trip id in
+// utm_campaign so "which trips bring people in" is a single field everywhere —
+// and reaches `users.signup_utm_campaign`, which has no utm_content twin. The
+// format moves into utm_content, which the trip id used to occupy.
 function qrUrlFor(tripId: string, format: Format): string {
-  const p = new URLSearchParams({
-    utm_source: 'share_card',
-    utm_medium: format,
-    utm_campaign: 'trip_share',
-    utm_content: tripId,
-  });
-  return `${LANDING}?${p.toString()}`;
+  return withViralMarks(LANDING, 'share_card', tripId, format);
 }
 
 // sentry: manual — returns an SVG image, not the {error,code} JSON contract withHandler renders.

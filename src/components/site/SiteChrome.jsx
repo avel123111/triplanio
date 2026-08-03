@@ -98,7 +98,7 @@ const NAV = [
 /**
  * Shared marketing header.
  * @param navBase  '' on the landing (same-page anchors). On other routes pass
- *                 an absolute origin (e.g. 'https://triplanio.com/') so the
+ *                 an absolute origin (e.g. 'https://www.triplanio.com/') so the
  *                 section anchors resolve to the landing, not the current path.
  * @param brandHref where the logo links (default '#top' for the landing).
  */

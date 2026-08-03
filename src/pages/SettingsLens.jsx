@@ -235,14 +235,20 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             </div>
             <div className="grow">
               <div className="t-ui">{t('settings.tg_waiting')}</div>
-              <div className="muted t-meta">
+              {/* t-sans: prose on the meta tier is Golos, not JetBrains — the
+                  countdown itself keeps the mono numerals via .num. */}
+              <div className="muted t-meta t-sans">
                 <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
                 {t('settings.tg_link_valid')} <span className="num">{mmss}</span>
               </div>
             </div>
           </div>
 
-          <div className="t-meta" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
+          {/* t-sans on the box, not on each step: the two step texts are bare
+              divs that inherit it, while the numbered pills keep their own
+              .t-meta (mono numerals) because an element's own rule beats
+              inheritance. One class instead of two. */}
+          <div className="t-meta t-sans" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 10 }}>
               <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 'var(--r-pill)', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
@@ -923,7 +929,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 </div>
                 <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
               </div>
-              <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--line)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div className="grow">
                   <div className="t-ui">{t('settings.delete_trip')}</div>

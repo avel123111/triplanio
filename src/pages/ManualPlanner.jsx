@@ -342,7 +342,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'denied' && (
-        <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
+        <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line)' }}>
           <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="lock" size={20} />
           </div>
@@ -520,7 +520,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         </div>
       )}
 
-      <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <Icon name="info" size={14} style={{ color: 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
         <div className="t-meta muted">
           {t('planner.return_info')}
@@ -606,15 +606,15 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         </div>
 
         {/* Stats strip — 3 tiles directly under the hero (TRIP-222) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: '1px solid var(--line-2)' }}>
-          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line-2)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: '1px solid var(--line)' }}>
+          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line)' }}>
             <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink)' }}>{t('event.start')}</div>
             <div className="t-subheading">{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
             {!cities[0]?.startDate && (
               <div className="t-meta" style={{ color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
             )}
           </div>
-          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line-2)' }}>
+          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line)' }}>
             <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
           </div>
           <div style={{ padding: '12px 16px' }}>
@@ -625,7 +625,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         <div style={{ padding: 18 }}>
           <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--ink)' }}>{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line-2)' }} />
+            <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line)' }} />
             {home?.city_name && (
               <ReviewRow icon="flag" iconColor="var(--brand)" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
             )}

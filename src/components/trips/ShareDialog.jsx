@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { track } from '@/lib/analytics';
+import { withViralMarks } from '@/lib/viralLink';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Badge, Btn, Dialog, Severity, Skeleton } from '@/design/index';
@@ -64,7 +65,13 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
         if (invokeErr) { console.error('ensureShareToken error:', invokeErr); setError(t('trip.link_error')); return; }
         const token = data?.shareToken || data?.token;
         if (token) {
-          setShareUrl(`${window.location.origin}/public/trip/${trip.id}?t=${token}`);
+          // location.origin, not a constant: the campaign mark is stored per
+          // host, so the link must point at the host it was copied from.
+          setShareUrl(withViralMarks(
+            `${window.location.origin}/public/trip/${trip.id}?t=${token}`,
+            'public_link',
+            trip.id,
+          ));
         } else {
           setError(t('trip.link_error'));
         }

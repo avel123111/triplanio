@@ -955,13 +955,13 @@ export default function TripStructureEdit() {
           </div>
 
           {draggingId != null && ordered[ordered.length - 1]?.kind !== 'end' && (
-            <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 'var(--r-sm)', border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
+            <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 'var(--r-sm)', border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
           {outOfPlanTransfers.length > 0 && (
-            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 'var(--r-sm)', background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
+            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 'var(--r-sm)', background: 'var(--wash)', border: '1px solid var(--line)' }}>
               <div className="eyebrow" style={{ marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {t('tse.transfers_out_of_plan')}
               </div>
