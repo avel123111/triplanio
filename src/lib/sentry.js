@@ -24,7 +24,6 @@
  *    before any event leaves the browser.
  */
 import * as Sentry from '@sentry/react';
-import { stripQueryFromUrl } from '@/lib/analyticsUrl';
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENVIRONMENT = import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE;
@@ -62,10 +61,9 @@ function scrubPii(event) {
       delete event.request.headers.Cookie;
     }
     // Query strings can carry tokens / emails — keep the path, drop the rest.
-    // The same cut as the other two destinations, out of the same module
-    // (TRIP-330): one security rule written down three times is three chances
-    // for one copy to be missed the day the rule changes.
-    event.request.url = stripQueryFromUrl(event.request.url);
+    if (event.request.url) {
+      event.request.url = event.request.url.split('?')[0];
+    }
   }
   // Keep only a stable user id for grouping; never email / username / ip.
   if (event.user) {

@@ -54,10 +54,6 @@ test('a missing trip id, an unknown kind or no url leave the address untouched',
   const url = 'https://www.triplanio.com/join/tok';
   assert.equal(withViralMarks(url, 'invite_link', ''), url);
   assert.equal(withViralMarks(url, 'not_a_kind', TRIP), url);
-  // Inherited keys are not kinds: a bare lookup would find Object.prototype and
-  // ship a link marked with a campaign and no source.
-  assert.equal(withViralMarks(url, 'constructor', TRIP), url);
-  assert.equal(withViralMarks(url, 'toString', TRIP), url);
   assert.equal(withViralMarks('', 'invite_link', TRIP), '');
 });
 

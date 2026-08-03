@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Toaster } from "@/design/index"
 import { track } from '@/lib/analytics'
-import { stripQueryFromUrl } from '@/lib/analyticsUrl'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -31,13 +30,6 @@ import { MapProvider } from '@/lib/map/MapProvider';
 import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav';
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
-
-// Vercel's script reports `location.href`, so a public-trip visit would hand it
-// the share token (TRIP-330). Module scope, not an inline arrow: the component
-// re-registers the hook whenever this prop's identity changes.
-function scrubVercelUrl(event) {
-  return { ...event, url: stripQueryFromUrl(event.url) };
-}
 
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
@@ -195,10 +187,8 @@ function App() {
                       react-router navigations via the History API). Cookieless:
                       it writes nothing to the device, so it counts visits for
                       everyone, including people who refuse PostHog. Declared in
-                      the privacy policy under legitimate interest. Which is also
-                      why the address is scrubbed here as well as in consent.js:
-                      this destination gets every visit, consent or not. */}
-                  <Analytics beforeSend={scrubVercelUrl} />
+                      the privacy policy under legitimate interest. */}
+                  <Analytics />
                 </MapProvider>
               </ConfirmProvider>
             </QueryClientProvider>

@@ -8,7 +8,6 @@
 // GTM / GA4 / ad pixels off `applyConsent`.
 import posthog from 'posthog-js';
 import { isAnalyticsOn, startAnalytics, stopAnalytics, syncCampaignToPerson } from '@/lib/analytics';
-import { scrubUrlProperties } from '@/lib/analyticsUrl';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -109,25 +108,6 @@ export function applyConsent(record, uid) {
     capture_performance: false,
     disable_session_recording: true,
     person_profiles: 'identified_only',
-    // `before_send` covers the CAPTURE path only, and the SDK has a second way
-    // out: `/flags` POSTs `person_properties` built from the persistence snapshot
-    // (`$initial_current_url`), straight through `_send_request`. That snapshot is
-    // taken from `location.href` on the first capture and kept forever
-    // (`register_once`), so a visitor whose first page was a shared trip would
-    // hand PostHog the live token on every later load — the very leak this fixes,
-    // out of a door the hook does not watch.
-    //
-    // We evaluate no feature flag and run no survey (`grep` finds zero call
-    // sites), so the whole exchange is a round-trip we pay for and never read:
-    // dropping it removes the door rather than sanitising what walks through it,
-    // and it also covers devices that already stored a dirty snapshot. Masking at
-    // the source (`mask_personal_data_properties`) would have fixed neither.
-    // Flip this to false the day we actually want flags or a survey.
-    advanced_disable_flags: true,
-    // The last hook before a captured event leaves the browser, and the only one
-    // that sees BOTH bags — `sanitize_properties` is deprecated in this SDK and
-    // logs an error on every event.
-    before_send: scrubUrlProperties,
   });
   // `env` super-property tags every event → prod dashboards filter env=prod.
   posthog.register({ env: isProdHost ? 'prod' : 'dev' });
@@ -169,7 +149,6 @@ function cookieDomainAttrs() {
   const parts = window.location.hostname.split('.');
   return parts.length >= 2 ? ['', `; domain=.${parts.slice(-2).join('.')}`] : [''];
 }
-
 
 /**
  * The stub and the `denied` default live in index.html; this is only the update.
