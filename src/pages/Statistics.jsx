@@ -336,9 +336,9 @@ export default function Statistics() {
 
         {/* empty-state note */}
         {isEmpty && (
-          <div className="empty-note" style={{ marginTop: 18 }}>
-            <span className="en-ic"><Icon name="globe" /></span>
-            <span className="en-tx">
+          <div className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
+            <span className="en-ic tile tile--lg"><Icon name="globe" /></span>
+            <span className="en-tx grow--fit">
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>

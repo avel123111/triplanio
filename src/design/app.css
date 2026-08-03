@@ -326,6 +326,14 @@ body {
    «transparent !important» на шеллах существовал только ради него и удалён
    вместе с ним. Шеллы заново не красим — background у них не задан, они
    наследуют от body. */
+/* ★ЛОВУШКА (замерено, TRIP-321): `font` - ШОРТКАТ, и `font: inherit` не только
+   наследует семейство/кегль, но и СБРАСЫВАЕТ в initial всё, что шорткат не
+   называет - в том числе font-variant-numeric. То есть табличные цифры с body
+   (строка выше) до контролов НЕ доезжают, и наследуются дальше как `normal`
+   всем, что лежит ВНУТРИ контрола (`.tl3-card` - это button, `.ncal-ev` тоже).
+   Отсюда: `font-variant-numeric` на контроле или внутри него - ЖИВОЕ правило,
+   а не дубль наследования; на обычном div/span - дубль. Класс .num ниже держит
+   ровно этот случай и удалению не подлежит. */
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--brand); text-decoration: none; }
@@ -342,6 +350,9 @@ h1, h2, h3, h4 {
 }
 .muted { color: var(--muted); }
 .muted-2 { color: var(--muted-2); }
+/* Табличные цифры для КОНТРОЛОВ и их содержимого - единственное место, где это
+   объявление не дубль наследования от body (см. ловушку `font: inherit` выше).
+   На обычном div/span класс не нужен: там табличные цифры уже наследуются. */
 .num { font-variant-numeric: tabular-nums; }
 .mono { font-family: var(--font-mono); }
 
@@ -1674,6 +1685,12 @@ h4,
 .row--g7, .col--g7 { gap: var(--sp-7); }
 .row--g8, .col--g8 { gap: var(--sp-8); }
 .row--g9, .col--g9 { gap: var(--sp-9); }
+
+/* Перенос строки - вторая ось раскладки ряда после gap: `flex-wrap: wrap` стоит
+   на 47 флекс-контейнерах. Только у .row: колонка и так течёт вниз, у неё wrap
+   осмыслен лишь при фиксированной высоте, а такого случая в проекте нет -
+   парный .col--wrap был бы модификатором без вызова. */
+.row--wrap { flex-wrap: wrap; }
 
 /* Гибкая ячейка, которой РАЗРЕШЕНО ужаться уже своего содержимого. Без
    min-width:0 флекс-элемент упирается в min-content и вытесняет соседей за край
@@ -4836,10 +4853,15 @@ button.acct-divrow { width: 100%; background: none; border: 0; text-align: left;
 .chart__cap { color: var(--muted); margin-top: 14px; text-align: center; }
 
 /* — empty-state note (ghost stats hint) — */
-.empty-note { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: 18px; }
-.empty-note .en-ic { width: 42px; height: 42px; border-radius: var(--r-btn); flex: none; display: grid; place-items: center; background: var(--surface); color: var(--brand); }
-.empty-note .en-ic svg { width: 22px; height: 22px; }
-.empty-note .en-tx { flex: 1; min-width: 0; }
+/* Блок «здесь пусто, вот кнопка»: плитка + текст + действие, на телефоне
+   действие уезжает на всю ширину. TRIP-321 Ф12.1b: этот же объект был вторым
+   экземпляром нарисован ИНЛАЙНАМИ в Бюджете («нет трат») - та же структура и
+   то же поведение, отличалась только шкура (пунктирная рамка на прозрачном
+   против залитой плашки). Схлопнуто в один блок; вид - залитая плашка, потому
+   что пунктир в системе уже занят под «добавить» (.bgt-glist__add).
+   Раскладка и плитка - примитивы, здесь остаётся только шкура. */
+.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: var(--sp-8); }
+.empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
 .empty-note .en-tx span { color: var(--ink-2); }
 @media (max-width: 640px) { .empty-note { flex-wrap: wrap; } .empty-note .btn, .empty-note .b { flex: 1 1 100%; width: 100%; } }
