@@ -255,7 +255,7 @@ function ReminderChannels() {
       <div className="acct-chan acct-chan--soon row row--g6">
         <span className="tile tile--lg tile--success"><Icon name="whatsapp" size={20} /></span>
         <div className="acct-chan__main grow--fit">
-          <div className="acct-chan__t">WhatsApp</div>
+          <div className="row__t row row--g4 row--wrap">WhatsApp</div>
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </div>
@@ -263,7 +263,7 @@ function ReminderChannels() {
       <div className="acct-chan acct-chan--soon row row--g6">
         <span className="tile tile--lg tile--ai"><Icon name="bell" size={20} /></span>
         <div className="acct-chan__main grow--fit">
-          <div className="acct-chan__t">{t('account.channel_push')}</div>
+          <div className="row__t row row--g4 row--wrap">{t('account.channel_push')}</div>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </div>
@@ -284,7 +284,7 @@ function ReminderChannels() {
             <button className="acct-chan acct-chan--btn row row--g6" aria-expanded={open} onClick={() => setOpen(v => !v)}>
               <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
               <span className="acct-chan__main grow--fit">
-                <span className="acct-chan__t">Telegram</span>
+                <span className="row__t row row--g4 row--wrap">Telegram</span>
                 <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
                 <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
               </span>
@@ -297,7 +297,7 @@ function ReminderChannels() {
                   <div key={a.id} className="acct-tgrow row row--g6">
                     <span className="tile tile--brand"><Icon name="map" size={15} /></span>
                     <div className="grow--fit">
-                      <div className="acct-tgrow__t">
+                      <div className="row__t row row--g4 row--wrap">
                         <span className="trunc">{a.trip_title}</span>
                         <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
                       </div>
@@ -315,7 +315,7 @@ function ReminderChannels() {
           <div className="acct-chan row row--g6">
             <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
             <div className="acct-chan__main grow--fit">
-              <div className="acct-chan__t">Telegram</div>
+              <div className="row__t row row--g4 row--wrap">Telegram</div>
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
             </div>
             <Btn variant="soft" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
