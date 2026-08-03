@@ -73,12 +73,21 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
 );
 
 // ----- Severity message -----
-export const Severity = ({ level = "info", title, children, action, icon }) => (
-  <div className={`sev sev--${level}`}>
-    <span className="tile sev__icon">
-      <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
+// Значок по умолчанию свой у каждого тона. Раньше здесь стояла вилка, знавшая
+// ровно три тона, а всё остальное рисовавшая крестом ошибки - success молча
+// уехал бы в «ошибку». Карта вместо вилки: новый тон = новая строка.
+const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "check", quiet: "info" };
+
+// align="mid" - значок по центру пары «заголовок + подпись» (см. .sev--mid).
+// iconStyle - тинт плитки из реестра брендов. Это ДАННЫЕ, а не тон системы:
+// плашка остаётся системной, фирменный цвет несёт только плитка (то же решение,
+// что принято на экране аккаунта - фон плитки есть оттенок её значка).
+export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align }) => (
+  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}`}>
+    <span className="tile sev__icon" style={iconStyle}>
+      <Icon name={icon || SEV_ICON[level] || "info"} size={16} />
     </span>
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="grow--fit">
       {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
       {children}
     </div>

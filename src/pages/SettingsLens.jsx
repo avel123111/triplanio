@@ -20,7 +20,7 @@ import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
 import { displayName } from '@/lib/displayName';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, ReadOnlyBanner, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, Field, ReadOnlyBanner, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
@@ -177,7 +177,11 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
     <Dialog title={t('telegram.connect_title')} icon="telegram" size=""
       open={open} onOpenChange={onOpenChange}
       foot={<Btn variant="ghost" onClick={closeConnect}>{t('common.close')}</Btn>}>
-      <div className="muted t-body" style={{ marginBottom: 16 }}>
+      {/* Ритм окна - ступень шкалы у колонки, а не marginBottom у каждого соседа
+          (тот же ход, что у диалогов Бюджета). Отступы были 16/16/16/14/14/14 -
+          три разных мнения об одном ритме в одном окне. */}
+      <div className="col col--g7">
+      <div className="muted t-body">
         {t('settings.tg_connect_desc')}
       </div>
 
@@ -202,62 +206,58 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
       {stage === 'idle' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
-            {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
-            <div className="tile" style={TG_TILE}>
-              <Icon name="telegram" size={17} />
-            </div>
-            <div className="grow">
-              <div className="t-ui">{t('telegram.not_connected_title')}</div>
-              <div className="muted t-meta">{t('settings.tg_for_trip')}</div>
-            </div>
-            <Badge variant="quiet">{t('settings.tg_not_connected_badge')}</Badge>
-          </div>
+          {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
+          <Severity
+            level="quiet" align="mid" icon="telegram" iconStyle={TG_TILE}
+            title={t('telegram.not_connected_title')}
+            action={<Badge variant="quiet">{t('settings.tg_not_connected_badge')}</Badge>}
+          >
+            <div className="muted t-meta">{t('settings.tg_for_trip')}</div>
+          </Severity>
 
-          <div style={{ marginBottom: 16 }}>
-            <div className="eyebrow" style={{ marginBottom: 6 }}>{t('telegram.link_label')}</div>
+          <div className="col col--g4">
+            <div className="eyebrow">{t('telegram.link_label')}</div>
             <div className="row row--g3">
-              <input className="input mono" value={url} readOnly style={{ flex: 1 }} />
+              <input className="input mono grow--fit" value={url} readOnly />
               <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
             </div>
           </div>
 
-          <div className="t-body" style={{ marginBottom: 16 }}>
+          <div className="t-body">
             {t('settings.tg_press_below')}
           </div>
 
-          <Btn variant="primary" icon="telegram" block onClick={openBot}>
-            {t('telegram.open_bot')}
-          </Btn>
-          <div className="muted t-meta" style={{ marginTop: 14, textAlign: 'center' }}>
-            {t('settings.tg_after_start')}
+          <div className="col col--g4">
+            <Btn variant="primary" icon="telegram" block onClick={openBot}>
+              {t('telegram.open_bot')}
+            </Btn>
+            <div className="muted t-meta" style={{ textAlign: 'center' }}>
+              {t('settings.tg_after_start')}
+            </div>
           </div>
         </>
       )}
 
       {stage === 'connecting' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: tgBrand.bgSoft, border: `1px solid ${tgBrand.border}`, borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
-            {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
-            <div className="tile" style={TG_TILE}>
-              <Icon name="telegram" size={17} />
+          {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
+          <Severity
+            level="quiet" align="mid" icon="telegram" iconStyle={TG_TILE}
+            title={t('settings.tg_waiting')}
+          >
+            {/* t-sans: prose on the meta tier is Golos, not JetBrains — the
+                countdown itself keeps the mono numerals via .num. */}
+            <div className="muted t-meta t-sans">
+              <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
+              {t('settings.tg_link_valid')} <span className="num">{mmss}</span>
             </div>
-            <div className="grow">
-              <div className="t-ui">{t('settings.tg_waiting')}</div>
-              {/* t-sans: prose on the meta tier is Golos, not JetBrains — the
-                  countdown itself keeps the mono numerals via .num. */}
-              <div className="muted t-meta t-sans">
-                <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
-                {t('settings.tg_link_valid')} <span className="num">{mmss}</span>
-              </div>
-            </div>
-          </div>
+          </Severity>
 
           {/* t-sans on the box, not on each step: the two step texts are bare
               divs that inherit it, while the numbered pills keep their own
               .t-meta (mono numerals) because an element's own rule beats
               inheritance. One class instead of two. */}
-          <div className="t-meta t-sans" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
+          <div className="t-meta t-sans col" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
             <div className="row row--start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
@@ -268,7 +268,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="row row--g4">
             <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
             <div className="grow" />
             <Btn variant="primary" icon="check" onClick={checkNow}>{t('settings.tg_pressed_start')}</Btn>
@@ -278,22 +278,20 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
       {stage === 'connected' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--success-soft)', border: '1px solid color-mix(in oklab, var(--success) 25%, transparent)', borderRadius: 'var(--r-sm)', marginBottom: 14 }}>
-            <div className="tile tile--success">
-              <Icon name="check" size={17} />
-            </div>
-            <div className="grow">
-              <div className="t-ui">{t('settings.tg_linked')}</div>
-              <div className="muted t-meta">{t('settings.tg_just_now')}</div>
-            </div>
-            <Badge variant="success" icon="check">{t('settings.tg_active')}</Badge>
-          </div>
-          <div className="muted t-meta" style={{ marginBottom: 14 }}>
+          <Severity
+            level="success" align="mid"
+            title={t('settings.tg_linked')}
+            action={<Badge variant="success" icon="check">{t('settings.tg_active')}</Badge>}
+          >
+            <div className="muted t-meta">{t('settings.tg_just_now')}</div>
+          </Severity>
+          <div className="muted t-meta">
             {t('settings.tg_connected_desc')}
           </div>
           <Btn variant="primary" icon="check" block onClick={closeConnect}>{t('view.edit_mode_done')}</Btn>
         </>
       )}
+      </div>
     </Dialog>
   );
 }
