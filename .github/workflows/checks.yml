@@ -153,6 +153,14 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-css-prefixes.mjs
+      # TRIP-321 Ф10: REPORTER, not a gate — it always exits 0. It prints the
+      # numbers every TRIP-321 PR must quote (families / classes / inline styles
+      # / re-declared shapes) so "was → now" is a measurement in the CI log
+      # instead of a claim in the PR body. Ф13 turns the family count into a
+      # ratchet; until the pipeline has run, a moving number is expected.
+      - name: design audit (report only — TRIP-321 progress)
+        if: ${{ !cancelled() }}
+        run: npm run audit:design
 
   deno:
     name: Deno typecheck (edge functions)

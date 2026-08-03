@@ -58,7 +58,7 @@
   grid-template-columns: minmax(0,1fr) minmax(0,1.05fr);
   background: #fcfcfc;
   font-family: var(--font-body);
-  font-size: var(--fs-strong);
+  font-size: var(--fs-base);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
@@ -194,7 +194,7 @@
   padding: 0 14px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--r-control);
+  border-radius: var(--r-btn);
   font-family: var(--font-body);
   font-size: var(--fs-base);
   color: var(--ink);
