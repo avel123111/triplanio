@@ -129,7 +129,7 @@ function GroupedRow({ row, isCity, trips, t, lang, onOpenTrip, onEditManual }) {
               статус-пилл скрыт. "Запланировано"/"Вручную" пилл оставляют. */}
           {type !== 'trip' && (
             <span className="badge badge--sm" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
-              <i className="d" style={{ background: color }} />{t(`stats.type_${type}`)}
+              <i className="dot" style={{ background: color }} />{t(`stats.type_${type}`)}
             </span>
           )}
           {!isManual && trip ? (

@@ -805,7 +805,6 @@ h4,
 .bgt-detail__s,
 .bgt-detail__amt .l,
 .bgt-exrow__s,
-.bgt-tagx,
 .bgt-fxrow__hint,
 .dl-card__sub,
 .dl-card__notes,
@@ -905,7 +904,6 @@ h4,
 .world__cont .ttl,
 .rec .k,
 .visit .when .mo,
-.vpill,
 .eed-fromto,
 .bgt-stat__l,
 .ncal-wd,          /* TRIP-280 инсп.: остаётся Micro, +Golos ниже (дни недели над сеткой месяца) */
@@ -1501,17 +1499,28 @@ h4,
 }
 /* Две ступени пилюли (TRIP-321 Ф14.8, апрув Pavel). Заведены НЕ «на будущее»:
    ровно эта форма была объявлена в приложении ещё пять раз, и расходились в ней
-   ТОЛЬКО паддинг и зазор - типографика у всех уже одна и та же (.badge,
-   .tl3-today, .nextcard__tag, .vpill стоят соседними строками ОДНОГО списка
-   канона .t-micro, а .tv-chip получает его же, оборачивая текст руками).
-   Ступени сняты с замера, а не придуманы:
+   ТОЛЬКО паддинг и зазор. Ступени сняты с замера, а не придуманы:
      .badge     6/12 gap 7   базовая
      --sm       4/9  gap 5   <- .vpill и .nextcard__tag ТОЧНО, .tv-chip 5/11,
                                 .bell-dd__mark 6/11
      --xs       2/8  gap 4   <- .bgt-tagx ТОЧНО, .tl3-today 2/9
-   Отклонения на ±1-2px поимённо перечислены в PR и проверены снимком. */
+   ★Типографика: .badge, .tl3-today, .nextcard__tag, .vpill стояли соседними
+   строками ОДНОГО списка канона .t-micro, а .bgt-tagx - ЕДИНСТВЕННЫЙ, кто сидел
+   в .t-meta (Golos 11/500 без капса). Схлопывание форм привело и его в канон
+   бейджа: чипы траты теперь такие же, как остальные чипы приложения. Это
+   осознанная унификация, а не побочный эффект - решение Pavel «здоровая система
+   во всём приложении, а не на отдельных экранах». */
 .badge--sm { padding: 4px 9px; gap: 5px; }
 .badge--xs { padding: 2px 8px; gap: 4px; }
+/* Иконка и точка ВНУТРИ бейджа - тоже часть пилюли, а не дело каждого экрана.
+   До этого размер иконки объявлялся трижды (.nextcard__tag svg 12, .tv-chip svg
+   12, `size={10}` инлайном в чипе брони) плюс четвёртый раз пропом в самом
+   <Badge icon> - 11px; канон системы = 11, остальные три схлопнуты сюда.
+   ★Точка: `.dot` внутри бейджа НИ РАЗУ не была объявлена - в участниках трипа
+   пометка «приглашён» уже сейчас рендерится 0×0, то есть её просто нет на
+   экране. Одно правило закрывает и её, и статус-пилл в статистике. */
+.badge svg { width: 11px; height: 11px; flex: none; }
+.badge .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
@@ -1724,6 +1733,11 @@ h4,
    примитива, иначе шкала снова расползётся по трём именам. */
 .grid { display: grid; gap: var(--sp-5); }
 .grid--2 { grid-template-columns: 1fr 1fr; }
+/* Кнопка в ячейке сетки переносит строку. `.btn` по умолчанию nowrap, а трек
+   сетки задаёт ей ширину извне - значит длинная локаль («Solo las necesarias»)
+   не сжимается, а вылезает. Свойство принадлежит паре «кнопка в сетке», а не
+   экрану: раньше это же правило стояло приватно у баннера cookie. */
+.grid .btn { white-space: normal; }
 
 /* Ступень шкалы вместо рукописного gap. Номер = ступень --sp-N. g5 пропущен
    намеренно: это дефолтный gap .row/.col, отдельный модификатор был бы no-op -
@@ -4486,9 +4500,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* ─── Document row ──────────────────────────────────────────────────────────
    Frame and text of one attachment row; the leading badge is `.dl-ftag` above. */
-/* Раскладку даёт .row .row--g4 в разметке (зазор 8 = ступень --sp-4, ТОЧНОЕ
-   совпадение, поэтому на экране не меняется ничего). Здесь остаётся только
-   собственное строки-ссылки: подсветка при наведении и скругление. */
+/* Раскладку даёт `.row` в разметке. Ступень НЕ навешена намеренно: до этого
+   зазор был то 8, то 10 в шести списках, и «оставить как на моём экране» значит
+   выбрать одну из двух случайностей. Взят дефолт примитива (--sp-5, 10) - один
+   ответ на все шесть. Здесь остаётся только собственное строки: подсветка при
+   наведении и скругление. */
 .doc-row{padding:8px 10px;border-radius:var(--r-sm);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
 .doc-row .ds{ color:var(--muted-2); }
@@ -4498,6 +4514,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    обычным - и это ровно то, что видно на экране как «везде по-разному», пока
    рамка уже общая. Ссылка отличается ТОЛЬКО поведением при наведении. */
 .doc-row__n{ color: var(--ink); }
+/* Подсветка имени - там, где ЕСТЬ ссылка, и одинаково в обоих случаях: строка
+   целиком ссылка (нет действия справа) или ссылкой стало только имя. */
+a.doc-row:hover .doc-row__n,
 a.doc-row__n:hover{ color: var(--brand); }
 /* TRIP-321 Ф14.5, апрув Pavel. Вложенный файл рисовался ЧЕТЫРЬМЯ реализациями:
    .doc-row (просмотр события), .dl-filechip и .dl-upitem (Документы, лежали в
@@ -4634,8 +4653,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv-card{padding:16px 17px;border-radius:var(--r-md);}
 .tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
-/* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8); здесь только тона ниже. */
-.tv-chip svg{width:12px;height:12px;flex:none;}
+/* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8), размер иконки - .badge svg;
+   здесь остаются только тона. */
 .tv-chip--type{background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);}
 .tv-chip--night{background:var(--night-soft);color:var(--night-ink);}
 .tv-route{display:grid;grid-template-columns:76px 16px 1fr;column-gap:12px;}
@@ -5025,7 +5044,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .nextcard__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)); }
 .nextcard__tx { flex: 1; min-width: 0; }
 .nextcard__tag { max-width: 100%; margin-top: 9px; color: var(--success-ink); background: var(--success-soft); }
-.nextcard__tag svg { width: 12px; height: 12px; }
 .nextcard__tx b { display: block; margin-top: 7px; color: var(--ink); }
 .nextcard__tx .rt { color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nextcard__chev { color: var(--muted-2); flex: none; }
@@ -5240,8 +5258,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vbottom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 /* "Запланировано": статус-пилл и бейдж трипа на разных строках. */
 .vbottom--stack { flex-direction: column; align-items: flex-start; }
-/* .vpill: форма ушла на .badge .badge--sm (TRIP-321 Ф14.8), тон - инлайном (данные). */
-.vpill .d { width: 8px; height: 8px; border-radius: 50%; }
+/* .vpill: форма ушла на .badge .badge--sm (TRIP-321 Ф14.8), тон - инлайном
+   (данные), точка - на общее `.badge .dot`. Своего правила у пилла не осталось. */
 .triplink { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: var(--r-sm); background: var(--surface-2); cursor: pointer; border: 0; font: inherit; color: var(--ink-2); transition: .15s; }
 .triplink .d { width: 16px; height: 16px; border-radius: 5px; flex: none; }
 .triplink svg { width: 14px; height: 14px; color: var(--muted); }
@@ -5379,10 +5397,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .consent__text .consent__title { margin: 0 0 4px; color: var(--ink); }
 .consent__text a { color: var(--brand); text-decoration: underline; }
 /* Equal columns, equal buttons: refusing has to be exactly as easy as accepting.
-   Long locales wrap inside the button instead of widening one of the two. */
-/* Only the wrap: the grid track already sizes the buttons, but .btn is nowrap
-   and "Solo las necesarias" does not fit a half-width column on a 360px screen. */
-.consent__actions .btn { white-space: normal; }
+   Перенос строки в кнопке живёт на общем `.grid .btn` (примитив сетки), потому
+   что это свойство ЛЮБОЙ кнопки в колонке фиксированной ширины, а не свойство
+   баннера cookie. */
 @media (max-width: 640px) {
   /* Full width, sitting on the bottom edge like any other fixed panel. */
   .consent {

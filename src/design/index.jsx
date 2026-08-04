@@ -110,18 +110,26 @@ export const Severity = ({ level = "info", title, children, action, icon, iconSt
 //   tone   - 'ai' для распознавания брони, иначе нейтральная рамка;
 //   plain  - строка без рамки (список вложений в просмотре события);
 //   action - кнопка справа (снять вложение), общий класс .doc-row__rm.
+// ★Кликабельна ВСЯ строка, а не только имя: подсветка при наведении лежит на
+// строке (.doc-row:hover), и если ссылкой будет одно имя, то подсвеченное поле
+// шире кликабельного - на телефоне это просто «не нажимается». Ссылкой строка
+// становится только когда действия справа нет: <button> внутри <a> невалиден,
+// поэтому у строки с крестиком ссылка остаётся на имени.
 export const FileRow = ({ name, href, size, tone, plain, action, fallback }) => {
   const label = name || fallback || '';
   const cls = `doc-row row${plain ? '' : tone === 'ai' ? ' doc-row--ai' : ' doc-row--framed'}`;
+  const wholeRowIsLink = href && !action;
+  const Root = wholeRowIsLink ? 'a' : 'div';
+  const rootProps = wholeRowIsLink ? { href, target: '_blank', rel: 'noreferrer' } : {};
   return (
-    <div className={cls}>
+    <Root className={cls} {...rootProps}>
       <FileTypeBadge name={name} />
-      {href
+      {href && action
         ? <a className="doc-row__n grow--fit trunc" href={href} target="_blank" rel="noreferrer">{label}</a>
         : <span className="doc-row__n grow--fit trunc">{label}</span>}
       {size && <span className="ds">{size}</span>}
       {action}
-    </div>
+    </Root>
   );
 };
 
