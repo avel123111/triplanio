@@ -95,9 +95,11 @@
     border-color: var(--brand); background: var(--brand-soft); color: var(--brand);
     transform: translateY(-2px);
   }
-  .dl-addcard--mine:hover {
-    border-color: var(--warm); background: var(--warm-soft); color: var(--warm-ink);
-  }
+  /* Подсветка - общая (TRIP-321 Ф14.10), цвет берётся из ручек, объявленных
+     у .dl-addcard--mine в app.css. Правило остаётся ЗДЕСЬ, потому что оно живёт
+     внутри медиа-запроса: вынести его в общий список значило бы включить ховер
+     на всех ширинах. */
+  .dl-addcard--mine:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
   .dl-addcard:hover .dl-addcard__ic { background: var(--surface); }
 }
 .dl-addcard:active { transform: scale(.97); }

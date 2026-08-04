@@ -74,7 +74,6 @@
 .bgt-glist__v { color: var(--ink); }
 .bgt-glist__v.muted { color: var(--muted-2); }
 .bgt-glist__add { justify-content: center; width: 100%; padding: var(--sp-6); border-radius: var(--r-btn); border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; margin-top: var(--sp-2); transition: border-color .16s, color .16s, background .16s; }
-.bgt-glist__add:hover { border-color: var(--brand); color: var(--brand); background: var(--primary-soft); }
 
 /* detail pane */
 .bgt-detail { padding: var(--sp-8); min-height: 280px; }
@@ -136,7 +135,6 @@
 
 /* icon picker */
 .bgt-iconpick button { border: 1.5px solid var(--line); background: var(--wash-2); color: var(--muted); cursor: pointer; transition: background .14s, border-color .14s, color .14s; }
-.bgt-iconpick button.on { background: var(--primary-soft); border-color: var(--brand); color: var(--brand); }
 
 /* fx rate rows */
 .bgt-fxrow { padding: var(--sp-6) 0; border-bottom: 1px solid var(--line); }

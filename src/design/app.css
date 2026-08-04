@@ -140,6 +140,14 @@
      сделал чекбокс круглым. */
   /* TRIP-321 Ф13: `--sp-9:24px` выпилен - его единственным потребителем была
      пара `.row--g9, .col--g9`, у которой ноль вызовов; шкала кончается на 8. */
+  /* Подсветка состояния (TRIP-321 Ф14.10, апрув Pavel). Один жест «элемент
+     подсветился» - наведение, выбран, меню открыто - был написан в приложении
+     14 раз в 10 пространствах имён, и каждый раз это была одна и та же тройка
+     фон+рамка+текст. Цвет вынесен в ручки, правил стало два (мягкое и залитое).
+     Ручки, а не классы, потому что триггер - :hover / .is-active: класс в
+     разметку на состояние не поставишь. Узор взят у существующего --st-accent
+     (состояния fork-панели), а не выдуман. */
+  --hl: var(--brand); --hl-soft: var(--brand-soft); --hl-ink: var(--brand); --hl-fg: var(--primary-fg);
   --sp-1:2px; --sp-2:4px; --sp-3:6px; --sp-4:8px; --sp-5:10px;
   --sp-6:12px; --sp-7:16px; --sp-8:20px;
 
@@ -1333,7 +1341,6 @@ h4,
   font-variant-numeric: tabular-nums;
 }
 .map-route__marker svg { width: 13px; height: 13px; }
-.map-route__item.is-active .map-route__marker { background: var(--brand); color: #fff; border-color: var(--brand); }
 .map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .map-route__dates { color: var(--muted); }
 /* Phones (≤640px): the route panel is rendered inside <PeekSheet> (the non-modal
@@ -3050,8 +3057,8 @@ h4,
     .te-row:hover .te-cellbtn--ghost { opacity: 1; }
     .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
     /* add-cell hover takes the cell's own event colour (design .edl: hotel=blue, activity=pink) */
-    .te-cell--hotel .te-cellbtn--ghost:hover { color: var(--ev-hotel-ink); border-color: var(--ev-hotel); background: var(--ev-hotel-soft); }
-    .te-cell--act .te-cellbtn--ghost:hover { color: var(--ev-activity-ink); border-color: var(--ev-activity); background: var(--ev-activity-soft); }
+    .te-cell--hotel .te-cellbtn--ghost:hover,
+    .te-cell--act .te-cellbtn--ghost:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
     @media (hover: none) { .te-cellbtn--ghost { opacity: 1; } }
     .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1.5px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
@@ -3130,7 +3137,6 @@ h4,
 /* Unified panel back button — solid surface chip, always clearly visible with a
    non-blending hover (used in every light panel header). */
 .lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
-.lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
@@ -3311,7 +3317,6 @@ h4,
   transition: border-color .16s var(--ease-out), color .16s var(--ease-out),
               background .16s var(--ease-out), transform .12s var(--ease-out);
 }
-.wdg-act:hover { border-color: var(--brand); color: var(--brand); background: var(--primary-soft); }
 .wdg-act:active { transform: scale(.92); }
 .wdg-act svg { width: 14px; height: 14px; stroke-width: 2.4px; }
 
@@ -3807,7 +3812,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .menu .mi--danger:hover svg, .menu .mi--danger[data-highlighted] svg { color: var(--danger-ink); }
 .menu .sep { height: 1px; background: var(--line); margin: 6px 8px; }
 /* open-state styling for an icon-btn used as a menu trigger */
-.menu-trig[data-state="open"] { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
 
 /* ============================================================
    F1 · Toast (Lumo) — canonical toast card with type icon.
@@ -3886,7 +3890,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out);
 }
 .tm-cell:active { transform: scale(.985); }
-.tm-cell.is-active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
 .tm-cell__ico { width: 30px; height: 30px; flex: none; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--wash); color: var(--muted); }
 .tm-cell.is-active .tm-cell__ico { background: var(--surface); color: var(--brand); }
 .tm-cell__lbl { display: block; }
@@ -4054,7 +4057,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   gap: 10px; cursor: pointer; color: var(--muted); min-height: 256px; font-family: inherit;
   transition: border-color .2s, color .2s, background .2s, transform .16s var(--ease-spring);
 }
-.tc-add:hover { border-color: var(--brand); color: var(--brand); background: var(--primary-soft); }
 .tc-add:active { transform: scale(.99); }
 .tc-add__ic {
   width: 48px; height: 48px; border-radius: var(--r-md);
@@ -4724,7 +4726,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .lp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-tirow span { flex: none; }
 .lp-h--ev .lp-back { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
-.lp-h--ev .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .sec-lbl .sl { color: var(--ev-ink, var(--brand)); }
@@ -5176,7 +5177,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .map-ctl button { width: 34px; height: 34px; border-radius: var(--r-sm); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
 @media (hover: hover) { .map-ctl button:hover { background: var(--surface-2); box-shadow: var(--sh-1); } }
 .map-ctl button:active { transform: scale(.92); }
-.map-ctl button.on { background: var(--brand); color: var(--primary-fg); border-color: transparent; }
+.map-ctl button.on { border-color: transparent; }  /* заливка - общая подсветка ниже; рамка гасится (кнопка на карте) */
 .map-ctl svg { width: 17px; height: 17px; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
 .map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
@@ -5358,7 +5359,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .fork-pg:disabled { opacity: .4; cursor: default; }
 .fork-pg:not(:disabled):active { transform: scale(.94); }
 @media (hover: hover) and (pointer: fine) { .fork-pg:not(:disabled):hover { border-color: var(--line-hover); } }
-.fork-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
 .fork-gap { color: var(--muted-2); padding: 0 2px; }
 @media (prefers-reduced-motion: reduce) { .fork-pg { transition: none; } }
 
@@ -5397,3 +5397,34 @@ a.doc-row__n:hover{ color: var(--brand); }
     bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ═══ ПОДСВЕТКА СОСТОЯНИЯ ═══ (TRIP-321 Ф14.10, апрув Pavel)
+   Один жест - «элемент подсветился»: навели мышь, элемент выбран, меню открыто.
+   Был написан 14 раз в 10 пространствах имён, каждый раз одной и той же тройкой
+   фон + рамка + цвет текста. Здесь он объявлен ДВА раза - мягкий и залитый, -
+   а цвет подставляется ручками --hl / --hl-soft / --hl-ink / --hl-fg
+   (значения по умолчанию в :root, узор взят у существующего --st-accent).
+   Почему co-selector, а не класс в разметке: триггер - :hover / .is-active /
+   [data-state=open]; на состояние класс не повесишь. Ровно так же собраны
+   каноны типографики в этом файле.
+   Побочно выровнено то, ради чего объект и сводился: шесть «синих» мест стояли
+   на ДВУХ разных токенах синего (--primary-soft и --brand-soft; в тёмной теме
+   .16 против .14), три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и
+   var(--primary-fg)). Теперь синий один и белый один. */
+.tc-add:hover,
+.wdg-act:hover,
+.bgt-glist__add:hover,
+.bgt-iconpick button.on,
+.menu-trig[data-state="open"],
+.tm-cell.is-active,
+.lp-back:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
+
+.map-route__item.is-active .map-route__marker,
+.map-ctl button.on,
+.fork-pg--on { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
+
+/* Свой цвет у места = переопределённая ручка, а не своё правило подсветки. */
+.te-cell--hotel { --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
+.te-cell--act   { --hl: var(--ev-activity); --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
+.dl-addcard--mine { --hl: var(--warm); --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
+.lp-back { --hl: var(--line-hover); --hl-soft: var(--wash); --hl-ink: var(--ink); }
