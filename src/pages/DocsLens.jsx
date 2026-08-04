@@ -185,7 +185,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           {/* Visibility */}
           <div style={{ marginBottom: 16 }}>
             <div className="dl-label">{t('doc.access_label')}</div>
-            <div className="dl-vistoggle">
+            <div className="grid grid--2">
               {visOpts.map(opt => (
                 <button
                   key={opt.value}

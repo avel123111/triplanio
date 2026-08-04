@@ -509,7 +509,7 @@ function EsimBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.esim_cost_section')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
@@ -530,14 +530,14 @@ function InsuranceBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.insurance_section')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           {d.policy_number && <KV label={t('service.policy_number')} mono>{d.policy_number}</KV>}
           {d.date_start && <KV label={t('service.date_start')} mono>{fmtInsDate(d.date_start)}</KV>}
           {d.date_finish && <KV label={t('service.date_finish')} mono>{fmtInsDate(d.date_finish)}</KV>}
         </div>
       </Section>
       <Section title={t('service.insurance_cost_section')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
@@ -565,13 +565,13 @@ function ServiceBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.car_pickup')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('event.pickup_where')}><div>{d.pickup_address}</div></KV>
           <KV label={t('event.when')}>{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
       <Section title={sameLocation ? t('service.car_dropoff') : t('event.return_elsewhere')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('event.pickup_where')}>
             {sameLocation ? (
               <span className="t-meta muted">{t('event.return_same')}</span>
@@ -583,7 +583,7 @@ function ServiceBody({ entity, accent }) {
         </div>
       </Section>
       <Section title={t('event.finance_booking')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('budget.field_amount')}>{fmtPrice(price, cur)}</KV>
           <KV label={t('service.car_booking_ref')} mono>{d.booking_reference}</KV>
         </div>

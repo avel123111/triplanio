@@ -1698,7 +1698,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
       </AiField>
 
       <Accordion title={t('event.booking_details')} subtitle={t('event.booking_details_hint')} badge={bookingFilled}>
-        <div className="fld-grid">
+        <div className="fld-grid grid grid--2">
           <BookingUrlField
             value={form.booking_url}
             onChange={(e) => setField('booking_url', e.target.value)}
@@ -1712,7 +1712,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
             </AiField>
           </div>
         </div>
-        <div className="fld-grid eed-accrow">
+        <div className="fld-grid eed-accrow grid grid--2">
           <div>
             <Label>{t('event.phone')}</Label>
             <AiField active={aiFields.has('phone')}>
@@ -1862,7 +1862,7 @@ function TransferLegCard({
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
 
         {/* From / To — city (readonly endpoint, or layover picker) + address */}
-        <div className="fld-grid" style={{ marginTop: 14 }}>
+        <div className="fld-grid grid grid--2" style={{ marginTop: 14 }}>
           <div>
             <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
             <div className="eed-accrow">
@@ -1932,7 +1932,7 @@ function TransferLegCard({
         )}
 
         {/* Carrier / flight no. */}
-        <div className="fld-grid" style={{ marginTop: 14 }}>
+        <div className="fld-grid grid grid--2" style={{ marginTop: 14 }}>
           <div>
             <Label>{t('event.carrier')}</Label>
             <AiField active={aiHas('carrier')}>
@@ -1947,7 +1947,7 @@ function TransferLegCard({
           </div>
         </div>
         {/* Booking ref / price + currency */}
-        <div className="fld-grid eed-accrow">
+        <div className="fld-grid eed-accrow grid grid--2">
           <div>
             <Label>{t('event.booking_ref')}</Label>
             <AiField active={aiHas('booking_reference')}>
@@ -2280,7 +2280,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
       <ActivityWhenBlock form={form} setField={setField} setTime={setTime} tz={tz} issues={issues} color={color} />
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
-      <div className="fld-grid">
+      <div className="fld-grid grid grid--2">
         <div>
           <Label>{t('event.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2321,7 +2321,7 @@ function EsimServiceFields({ form, setField, issues, onTouch, setUploading, trip
       </div>
 
       <SectionHeader>{t('service.esim_cost_section')}</SectionHeader>
-      <div className="fld-grid">
+      <div className="fld-grid grid grid--2">
         <div>
           <Label>{t('service.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2365,7 +2365,7 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
         <Label>{t('service.policy_number')}</Label>
         <Input className="t-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
-      <div className="fld-grid">
+      <div className="fld-grid grid grid--2">
         <div data-vfield="date_start" className={inv('date_start')}>
           <Label>{t('service.date_start')}</Label>
           <Input type="date" value={form.date_start} onChange={(e) => setField('date_start', e.target.value)} />
@@ -2378,7 +2378,7 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
       </div>
 
       <SectionHeader>{t('service.insurance_cost_section')}</SectionHeader>
-      <div className="fld-grid">
+      <div className="fld-grid grid grid--2">
         <div>
           <Label>{t('service.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2501,7 +2501,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       </div>
 
       <SectionHeader color={color}>{t('event.finance_booking')}</SectionHeader>
-      <div className="fld-grid">
+      <div className="fld-grid grid grid--2">
         <div>
           <Label>{t('event.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2511,7 +2511,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
           <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
         </div>
       </div>
-      <div className="fld-grid">
+      <div className="fld-grid grid grid--2">
         <BookingUrlField
           value={form.booking_url}
           onChange={(e) => setField('booking_url', e.target.value)}

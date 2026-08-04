@@ -137,7 +137,6 @@
 .dl-label svg { width: 13px; height: 13px; }
 
 /* ─── Dialog: visibility toggle ───────────────────────────────── */
-.dl-vistoggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dl-visopt {
   font: inherit;
   display: flex; align-items: center; gap: 10px; padding: 12px;

@@ -1696,6 +1696,28 @@ h4,
 .col { display: flex; flex-direction: column; gap: var(--sp-5); }
 .grow { flex: 1; }
 
+/* prefix-exempt: grid — третий примитив раскладки, TRIP-321 Ф14.9, апрув Pavel.
+   Ряд и колонка были, сетки не было ни одной - поэтому «две равные колонки»
+   писались руками пять раз в пяти пространствах имён.
+   ★СТОИТ ЗДЕСЬ, а не ниже шкалы: дефолтный gap обязан идти ДО ступеней, иначе
+   он их перебивает при равной специфичности. Первый заход объявил .grid после
+   шкалы, и .grid--g4 молча давал 10px вместо 8 - поймано замером в браузере,
+   ни один гард такого не видит (тот же класс ошибки, что с .col--g3 в Ф14.4).
+   ★ЧТО ЭТОТ ПРИМИТИВ НЕ ЗАКРЫВАЕТ, и это решение, а не недоделка. Замер даёт
+   10 правил с набором display|gap|grid-template-columns, но по СМЫСЛУ это
+   четыре разных объекта, и сводить их в один - та же ошибка, что «одна форма =
+   один класс»:
+     две равные колонки  5 правил  <- ЭТОТ примитив
+     неделя календаря    2 (repeat(7,1fr) у планировщика и календаря) - у ячейки
+                           календаря своя семантика, общий класс её сотрёт
+     галерея карточек    2 (auto-fill minmax 240 / 300) - разный порог переноса
+                           = разный объект
+     поле цены           1 (1fr 108px) - уникальная форма одного диалога
+   Зазор берётся с ТОЙ ЖЕ шкалы, что у ряда и колонки: одна лестница на три
+   примитива, иначе шкала снова расползётся по трём именам. */
+.grid { display: grid; gap: var(--sp-5); }
+.grid--2 { grid-template-columns: 1fr 1fr; }
+
 /* Ступень шкалы вместо рукописного gap. Номер = ступень --sp-N. g5 пропущен
    намеренно: это дефолтный gap .row/.col, отдельный модификатор был бы no-op -
    класс, который ничего не меняет, читается как «здесь особый отступ» и врёт. */
@@ -1717,12 +1739,12 @@ h4,
    следующего: у половинчатой шкалы нет ошибки, есть тишина - поэтому ступень
    проверяется рендером, а не тем, что она «логично называется». */
 .col--g1 { gap: var(--sp-1); }
-.row--g2 { gap: var(--sp-2); }
-.row--g3, .col--g3 { gap: var(--sp-3); }
-.row--g4, .col--g4 { gap: var(--sp-4); }
-.row--g6, .col--g6 { gap: var(--sp-6); }
-.row--g7, .col--g7 { gap: var(--sp-7); }
-.row--g8, .col--g8 { gap: var(--sp-8); }
+.row--g2, .grid--g2 { gap: var(--sp-2); }
+.row--g3, .col--g3, .grid--g3 { gap: var(--sp-3); }
+.row--g4, .col--g4, .grid--g4 { gap: var(--sp-4); }
+.row--g6, .col--g6, .grid--g6 { gap: var(--sp-6); }
+.row--g7, .col--g7, .grid--g7 { gap: var(--sp-7); }
+.row--g8, .col--g8, .grid--g8 { gap: var(--sp-8); }
 
 /* Перенос строки - вторая ось раскладки ряда после gap: `flex-wrap: wrap` стоит
    на 47 флекс-контейнерах. Только у .row: колонка и так течёт вниз, у неё wrap
@@ -4530,7 +4552,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
 /* key/value grid */
-.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
+/* Форма - .grid .grid--2 в разметке; здесь остаётся ТОЛЬКО двухосевой зазор 9/13:
+   он вне шкалы (та одноосевая), и это видимое исключение, а не форма. TRIP-321 Ф14.9 */
+.kv-grid{gap:9px 13px;}
 .kv.full{grid-column:1/-1;}
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
@@ -4637,7 +4661,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--ev-color,var(--brand));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
-.fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
+.fld-grid{gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
@@ -5256,7 +5280,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
 
-.s22f-guestgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-md); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
@@ -5357,7 +5380,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .consent__text a { color: var(--brand); text-decoration: underline; }
 /* Equal columns, equal buttons: refusing has to be exactly as easy as accepting.
    Long locales wrap inside the button instead of widening one of the two. */
-.consent__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 /* Only the wrap: the grid track already sizes the buttons, but .btn is nowrap
    and "Solo las necesarias" does not fit a half-width column on a 360px screen. */
 .consent__actions .btn { white-space: normal; }
