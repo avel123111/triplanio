@@ -128,7 +128,7 @@ function GroupedRow({ row, isCity, trips, t, lang, onOpenTrip, onEditManual }) {
           {/* "С поездкой" (type==='trip') показывает только бейдж трипа — сам
               статус-пилл скрыт. "Запланировано"/"Вручную" пилл оставляют. */}
           {type !== 'trip' && (
-            <span className="vpill" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
+            <span className="badge badge--sm" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
               <i className="d" style={{ background: color }} />{t(`stats.type_${type}`)}
             </span>
           )}

@@ -1492,6 +1492,20 @@ h4,
      а не точечным хаком у каждого владельца. */
   width: fit-content;
 }
+/* Две ступени пилюли (TRIP-321 Ф14.8, апрув Pavel). Заведены НЕ «на будущее»:
+   ровно эта форма была объявлена в приложении ещё пять раз, и расходились в ней
+   ТОЛЬКО паддинг и зазор - типографика у всех уже одна и та же (.badge,
+   .tl3-today, .nextcard__tag, .vpill стоят соседними строками ОДНОГО списка
+   канона .t-micro, а .tv-chip получает его же, оборачивая текст руками).
+   Ступени сняты с замера, а не придуманы:
+     .badge     6/12 gap 7   базовая
+     --sm       4/9  gap 5   <- .vpill и .nextcard__tag ТОЧНО, .tv-chip 5/11,
+                                .bell-dd__mark 6/11
+     --xs       2/8  gap 4   <- .bgt-tagx ТОЧНО, .tl3-today 2/9
+   Отклонения на ±1-2px поимённо перечислены в PR и проверены снимком. */
+.badge--sm { padding: 4px 9px; gap: 5px; }
+.badge--xs { padding: 2px 8px; gap: 4px; }
+
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
 
@@ -3369,7 +3383,7 @@ h4,
 .tl3-dh .daycity { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow-wrap: anywhere; color: var(--muted); }
 .tl3-dh .daycity svg { width: 13px; height: 13px; color: var(--brand); flex: none; }
 /* Today — filled date chip + badge next to the weekday */
-.tl3-today { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); }
+.tl3-today { background: var(--primary-soft); color: var(--brand); }
 .tl3-day.today .datechip { background: var(--brand); }
 .tl3-day.today .datechip .d, .tl3-day.today .datechip .m { color: var(--primary-fg); opacity: 1; }
 
@@ -4594,7 +4608,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv-card{padding:16px 17px;border-radius:var(--r-md);}
 .tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
-.tv-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);}
+/* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8); здесь только тона ниже. */
 .tv-chip svg{width:12px;height:12px;flex:none;}
 .tv-chip--type{background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);}
 .tv-chip--night{background:var(--night-soft);color:var(--night-ink);}
@@ -4985,7 +4999,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .nextcard__cover svg { width: 24px; height: 24px; position: relative; z-index: 1; }
 .nextcard__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)); }
 .nextcard__tx { flex: 1; min-width: 0; }
-.nextcard__tag { display: flex; width: max-content; max-width: 100%; margin-top: 9px; align-items: center; gap: 6px; color: var(--success-ink); background: var(--success-soft); padding: 4px 9px; border-radius: var(--r-pill); }
+.nextcard__tag { max-width: 100%; margin-top: 9px; color: var(--success-ink); background: var(--success-soft); }
 .nextcard__tag svg { width: 12px; height: 12px; }
 .nextcard__tx b { display: block; margin-top: 7px; color: var(--ink); }
 .nextcard__tx .rt { color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -5201,7 +5215,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vbottom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 /* "Запланировано": статус-пилл и бейдж трипа на разных строках. */
 .vbottom--stack { flex-direction: column; align-items: flex-start; }
-.vpill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: var(--r-pill); }
+/* .vpill: форма ушла на .badge .badge--sm (TRIP-321 Ф14.8), тон - инлайном (данные). */
 .vpill .d { width: 8px; height: 8px; border-radius: 50%; }
 .triplink { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: var(--r-sm); background: var(--surface-2); cursor: pointer; border: 0; font: inherit; color: var(--ink-2); transition: .15s; }
 .triplink .d { width: 16px; height: 16px; border-radius: 5px; flex: none; }

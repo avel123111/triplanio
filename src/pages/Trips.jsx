@@ -116,7 +116,7 @@ function NextTripCard({ trip, onClick, t }) {
         <span className="t-mono muted-2">{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
-        <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
+        <span className="badge badge--sm nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
         <span className="nextcard__cd">
           <span className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></span>
           <span className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></span>

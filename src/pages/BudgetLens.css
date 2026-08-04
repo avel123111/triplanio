@@ -91,7 +91,7 @@
 .bgt-exrow__t { color: var(--ink); }
 .bgt-exrow__s { color: var(--muted); margin-top: var(--sp-2); }
 .bgt-exrow__s .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-2); flex: none; }
-.bgt-tagx { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); border-radius: var(--r-pill); }
+/* .bgt-tagx: форма ушла на .badge .badge--xs (TRIP-321 Ф14.8); ниже только тона. */
 .bgt-tagx--link { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
 .bgt-tagx--manual { background: var(--wash); color: var(--muted); }
 .bgt-tagx--cat { background: transparent; border: 1.2px solid var(--line-strong); color: var(--ink-2); }

@@ -610,7 +610,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           <div className="tl3-dhx">
             <div className="tl3-dhrow">
               <span className="wd">{weekdayLong(day, lang)}</span>
-              {_isToday && <span className="tl3-today">{t('view.today')}</span>}
+              {_isToday && <span className="badge badge--xs tl3-today">{t('view.today')}</span>}
             </div>
             {dayCities.length > 0 && (
               <span className="daycity"><Icon name="pin" size={13} />{dayCities.map(c => c.city_name).join(' · ')}</span>

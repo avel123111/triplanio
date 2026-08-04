@@ -327,8 +327,8 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {/* Route rail */}
       <div className="tv-card">
         <div className="tv-eyebrows">
-          <span className="tv-chip tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
-          {night && <span className="tv-chip tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
+          <span className="badge badge--sm tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
+          {night && <span className="badge badge--sm tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
         </div>
         <div className="tv-route">
           <div className="tv-when">
