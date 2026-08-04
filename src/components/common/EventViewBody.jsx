@@ -15,7 +15,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useToast } from '@/design/index';
+import { Severity, useToast } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -903,10 +903,9 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
   return (
     <>
       {warnings.length > 0 && (
-        <div className="warn-banner">
-          <span>⚠️</span>
-          <div>{warnings.map((w, k) => <div key={k}>{w}</div>)}</div>
-        </div>
+        <Severity level="warning">
+          {warnings.map((w, k) => <div key={k}>{w}</div>)}
+        </Severity>
       )}
       {vm && (
         <EventActions

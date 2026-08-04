@@ -11,8 +11,7 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Icon } from '@/design/icons';
-import { Btn, Skeleton, useToast } from '@/design/index';
+import { Btn, Severity, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, fmtDate, stayNights } from '@/components/common/EventViewBody';
 import { PanelShell, kindIcon } from '@/components/common/EventPanels';
@@ -154,13 +153,9 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       )}
     >
       {confirmDel ? (
-        <div className="del-confirm">
-          <div className="del-confirm-ic"><Icon name="trash" size={18} /></div>
-          <div>
-            <div className="t-ui">{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
-            <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
-          </div>
-        </div>
+        <Severity level="error" icon="trash" title={t('event.delete_q', { label: themeLabel.toLowerCase() })}>
+          <div className="t-meta">{t('event.delete_irreversible')}</div>
+        </Severity>
       ) : (
         <EventViewSections
           kind={kind} entity={data} visit={visit} fromVisit={fromVisit} toVisit={toVisit}

@@ -16,7 +16,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Severity, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Moon, ShieldCheck,
@@ -1190,13 +1190,9 @@ export default function EventEditDialog({
               events on the inner buttons). */}
           {confirmDel ? (
             <div className={bodyCls}>
-              <div className="del-confirm">
-                <div className="del-confirm-ic"><Trash2 style={{ width: 20, height: 20 }} /></div>
-                <div>
-                  <div className="t-ui">{t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}</div>
-                  <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
-                </div>
-              </div>
+              <Severity level="error" icon="trash" title={t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}>
+                <div className="t-meta">{t('event.delete_irreversible')}</div>
+              </Severity>
             </div>
           ) : (
           /* Body */

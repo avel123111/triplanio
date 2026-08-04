@@ -623,7 +623,6 @@ h4,
 .plan-feature,
 .ai-file b,
 .kv .v,
-.warn-banner b,
 .f-sec,
 .crow .nm,
 .cbar .val,
@@ -760,7 +759,6 @@ h4,
 .ev-dlg-info .sub,
 .ev-dlg-price .cur,
 .bk-link,
-.warn-banner span,
 .bk-link .pb,
 .lp-ti span,
 .tmk__core,
@@ -4569,14 +4567,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--brand);}
 .bk-link svg{width:12px;height:12px;color:var(--muted);}
-/* warning banner */
-.warn-banner{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;border-radius:var(--r-sm);background:var(--warning-soft);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent);}
-.warn-banner svg{width:17px;height:17px;color:var(--warning-ink);flex:none;margin-top:1px;}
-.warn-banner b{display:block; color:var(--ink);}
-.warn-banner span{display:block; color:var(--muted); }
-/* delete confirm */
-.del-confirm{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:var(--r-sm);background:var(--danger-soft);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);}
-.del-confirm-ic{width:40px;height:40px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger-ink);display:grid;place-items:center;flex:none;}
+/* .warn-banner и .del-confirm УДАЛЕНЫ (TRIP-321 Ф14.2): обе плашки были
+   переизобретённым <Severity> - тот же флекс по верхнему краю, тот же
+   тонированный фон с рамкой в цвет уровня, та же пара «заголовок + подпись»;
+   разница была в зазоре 2-3px и радиусе. Подтверждение удаления вдобавок
+   стояло КОПИЕЙ в трёх файлах (EventModal / EventSourcePanel / EventEditDialog),
+   и в двух из них значок рисовался мимо дизайн-системы (lucide Trash2 с
+   инлайновым размером). Из четырёх правил .warn-banner два были мёртвыми:
+   `b` и `svg` - в единственном вызове не было ни того, ни другого (там стоял
+   эмодзи ⚠️, теперь это канонический значок уровня). */
 /* payment status badges */
 .badge--paid{background:var(--success-soft);color:var(--success-ink);}
 .badge--partial{background:var(--warning-soft);color:var(--warning-ink);}
