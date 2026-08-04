@@ -4807,6 +4807,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .statbar .s:first-child::before { display: none; }
 .statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
 .statbar .ic svg { width: 20px; height: 20px; }
+/* Loading chip borrows the real .ic so it tracks the same size the container
+   rules give it — otherwise the row height pops when the data lands. */
+.statbar .ic.ov-bar { background: var(--surface-2); }
 .statbar .s.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .statbar .s.c-trip .ic { background: var(--ev-car-soft); color: var(--ev-car-ink); }
 .statbar .s.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
@@ -4838,12 +4841,26 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   .statbar .s.c-distance { flex: 1 0 100%; }
   .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
 }
-/* The overview bar reflows on its own (column) width, not the viewport: it stays
-   5-across only while the column is genuinely wide (≈830px min-content for five
-   icon+value+label cells) and drops to the 2-col shape above once the two-column
-   overview squeezes it — the common case on ≤1400px desktops, where the left
-   column sits around 550-680px. Threshold is the sanctioned 880 (TRIP-321). */
-@container (max-width: 880px) {
+/* The overview bar sizes on its own (column) width, not the viewport — at 880 the
+   sidebar goes off-canvas AND .ovwrap collapses to one column, so the available
+   width jumps instead of shrinking and no viewport query describes it. The column
+   is ~607px at a 1280px viewport and ~705px at 1440px, where the roomy cell
+   (2×20 padding + 42 chip + 13 gap + label) no longer fits five across.
+   Compressing the cell keeps the row intact instead of breaking it up: measured
+   against en/es/ru the compressed cell needs ~120px, so five hold down to 600px.
+   Range-bounded on purpose — below 600 the wrap block owns the cell, and nothing
+   here needs undoing. 32/17 chip, 8 gap and 10 padding are all sizes the system
+   already uses (.wdg-h .wi). */
+@container (600px <= width <= 880px) {
+  .ov-col .statbar .s { padding-inline: 10px; gap: 8px; }
+  .ov-col .statbar .ic { width: 32px; height: 32px; }
+  .ov-col .statbar .ic svg { width: 17px; height: 17px; }
+}
+/* Below 600px even the compressed cell clips a label, so the row gives way to the
+   same 2-col shape the /trips bar takes — mirrors the @media block above, keep the
+   two in step. NB 600 is NOT on the 640/880 scale: 640 would wrap the 607px column
+   of a 1280px desktop, which is exactly the case this keeps on one row. */
+@container (max-width: 600px) {
   .ov-col .statbar { flex-wrap: wrap; }
   .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
   .ov-col .statbar .s::before { inset: 13px auto 13px 0; }

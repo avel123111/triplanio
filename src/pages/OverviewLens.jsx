@@ -53,7 +53,7 @@ export default function OverviewLens({
           <div className="statbar">
             {Array.from({ length: 5 }).map((_, i) => (
               <div className="s" key={i}>
-                <span className="ov-bar" style={{ width: 42, height: 42, borderRadius: 'var(--r-btn)', flex: 'none' }} />
+                <span className="ic ov-bar" />
                 <div className="grow">{bar('55%', 22, 6)}{bar('80%', 10, 5, 7)}</div>
               </div>
             ))}
