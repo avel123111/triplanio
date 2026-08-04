@@ -206,7 +206,7 @@
   --fs-micro:   11px;    /* meta/meta-md макета → каноны .t-meta / .t-mono (моно 11) */
   --fs-meta:    12.5px;  /* body-med макета → канон .t-ui */
   --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
-  --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, statcard, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
+  --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
   --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; фикс (мельче не опускаем) */
   --fs-h2:      calc(clamp(15px, 2.1vw, 16.5px) * var(--fd-k));   /* h2 макета → канон .t-heading; TRIP-203: fluid (16.5 деск → 15 фон), заменяет ручные @media-понижения */
   --fs-h1:      calc(clamp(19px, 2.6vw, 26px) * var(--fd-k)); /* h1 макета → канон .t-title; TRIP-203: min 21→19 (единое понижение на фоне) */
@@ -457,11 +457,9 @@ h1, h2, h3, h4 {
 .flow-lp-b h1,     /* TRIP-222: инспектор канонов — заголовки шагов планирования Heading→Title (оба flow) */
 h1,
 .auth__h1,
-.statcard .v,      /* TRIP-175 инсп.: Label→Title (число статкарты) */
 .bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
 .bgt-donut__c .v,  /* TRIP-175 инсп.: Heading→Title (центр доната бюджета; .t-flush сохранён) */
-.statbar .v,       /* TRIP-175 инсп.: Display→Title (числа статбара дашборда) */
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
 .ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
@@ -471,6 +469,7 @@ h1,
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
 .pcard__price b,   /* TRIP-287: инспектор канонов — цена карточки → t-heading (h2 макета) */
 .fork-state b,   /* TRIP-287: инспектор канонов — заголовок состояния поиска → t-heading (h2 макета) */
+.statbar .v,   /* TRIP-278: инспектор канонов — числа статбара Title→Heading (h2 макета) */
 h2,
 .eroute h3,
 .acct-hero__av,
@@ -868,7 +867,6 @@ h4,
 .s22f-val,
 .s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
-.statcard .k,      /* TRIP-175 инсп.: Micro→Meta (подпись статкарты) */
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
 .t-micro,
@@ -1286,14 +1284,13 @@ h4,
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
 .surface-glass,
 .surface-panel,
-.statbar,                  /* /trips — полоса Города/Страны */
+.statbar,                  /* полоса статистики — /trips и обзор трипа */
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
 .nonext,                   /* /trips — пусто «следующий трип» */
 .tr,                       /* /trips — строка трипа (list-view) */
 .tl3-card,                 /* таймлайн трипа — карточки эвентов (TRIP-199) */
 .card,
-.statcard,
 .wdg,
 .panel,                    /* экран трипа/статистика — плоские панели/виджеты */
 .summary,                  /* /stats — полоса из 6 стат-плиток */
@@ -3180,6 +3177,10 @@ h4,
   align-items: start;
 }
 .ov-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+/* Left column = size container so the stat-bar reflows to its own width, not the
+   viewport (mockup v01 @container): 5-across when the column is wide, 2-col when
+   the 2-column overview squeezes it on mid-width desktops (TRIP-278). */
+.ovwrap .ov-col:first-child { container-type: inline-size; }
 
 /* ---- widget shell ---- */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тень только на ховере как affordance */
@@ -3246,41 +3247,12 @@ h4,
  align-items: center; justify-content: center; gap: 8px;
 }
 
-/* ---- stat row ---- */
-.statrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
-.statcard {
-  padding: 16px 12px;
-  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 9px; min-width: 0;
-}
-/* icon chip on top, centered; number + label stacked below */
-.statcard .ic {
-  width: 32px; height: 32px; border-radius: var(--r-sm); flex: none;
-  display: grid; place-items: center;
-  background: var(--primary-soft); color: var(--brand);
-}
-.statcard .ic svg { width: 17px; height: 17px; }
-.statcard .meta { display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 5px; min-width: 0; }
-.statcard .v {
- color: var(--ink); min-width: 0;
-}
-.statcard .k {
- color: var(--muted); min-width: 0;
- white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-/* icon-chip tones (city/transfer mirror /trips; distance/duration reuse existing tokens) */
-.statcard.c-city .ic     { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.statcard.c-transfer .ic { background: var(--info-soft);        color: var(--info-ink); }
-.statcard.c-distance .ic { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
-.statcard.c-duration .ic { background: var(--warning-soft);     color: var(--warning-ink); }
-
 /* ---- entrance: staggered reveal (decorative) ---- */
 @keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ov-anim { animation: ovIn .42s var(--ease-out) both; }
 .ovwrap .ov-col:first-child .ov-anim:nth-child(2) { animation-delay: 60ms; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(1) { animation-delay: 50ms; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(2) { animation-delay: 110ms; }
-.statrow .statcard { animation: ovIn .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 80ms); }
 /* Calendar lens: a slightly larger, longer entrance for a more dynamic feel. */
 @keyframes ovInCal { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .ov-anim--cal { animation: ovInCal .5s var(--ease-out) both; }
@@ -3298,20 +3270,14 @@ h4,
 @keyframes ovSkel { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .ov-anim, .statrow .statcard, .ov-bar,
+  .ov-anim, .ov-bar,
   .settings-lens > .card, .settings-lens > .settings-grid { animation: none; }
   .wdg:hover { transform: none; }
 }
 
 @media (max-width: 880px) {
   .ovwrap { grid-template-columns: 1fr; }
-  .statrow { grid-template-columns: repeat(2, 1fr); }
   .ov-maparea { height: 220px; }
-}
-@media (max-width: 640px) {
-  .statrow { gap: 10px; }
-  .statcard { padding: 12px 13px; }
-  .statcard .v { font-size: var(--fs-h4); }
 }
 
 /* ============================================================
@@ -4832,25 +4798,77 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .head__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 @media (max-width: 640px) { .head__av { width: 48px; height: 48px; } }
 
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* Surface skin comes from the canonical role group above (TRIP-326 collapsed the
+   two roles into one alias pair); below = layout only. */
 .statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
-.statbar .s { flex: 1; min-width: 0; padding: 16px 20px; display: flex; align-items: center; gap: 13px; border-left: 1px solid var(--line); }
-.statbar .s:first-child { border-left: 0; }
-.statbar .ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
-.statbar .ic svg { width: 19px; height: 19px; }
+.statbar .s { position: relative; flex: 1; min-width: 0; padding: 18px 20px; display: flex; align-items: center; gap: 13px; }
+/* inset hairline divider (mockup v01): slim, padded top & bottom, not full-height */
+.statbar .s::before { content: ""; position: absolute; inset: 16px auto 16px 0; width: 1px; background: var(--line); }
+.statbar .s:first-child::before { display: none; }
+.statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
+.statbar .ic svg { width: 20px; height: 20px; }
+/* Loading chip borrows the real .ic so it tracks the same size the container
+   rules give it — otherwise the row height pops when the data lands. */
+.statbar .ic.ov-bar { background: var(--surface-2); }
 .statbar .s.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .statbar .s.c-trip .ic { background: var(--ev-car-soft); color: var(--ev-car-ink); }
 .statbar .s.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
+.statbar .s.c-distance .ic { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
+.statbar .s.c-duration .ic { background: var(--warning-soft); color: var(--warning-ink); }
+.statbar .s > div { min-width: 0; }  /* text block shrinks instead of forcing overflow */
+/* Wide bar restores the mockup's desktop order (… transfers · km · days) — the DOM
+   carries the wrapped order so the 2-col layout below needs no re-ordering. */
+.statbar .s.c-duration { order: 1; }
 .statbar .v { color: var(--ink); font-variant-numeric: tabular-nums; }
-.statbar .k { color: var(--muted); margin-top: 5px; }
+/* caps micro-label (mockup v01). Tracking stays on the .t-meta canon (0): the
+   mono face already reads as spaced in caps, and widening it both truncated the
+   longest labels and pushed the one-row minimum from 765px to 845px. */
+.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
 .statbar .cta button { width: 100%; }
+/* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */
+.ov-col .statbar { margin-top: 0; }
+/* 2-col wrap — one shape for both bars (mockup v01): the vertical hairline stays
+   only left of the right-hand column, rows are separated horizontally, and the
+   last stat (distance on the trip bar, CTA on /trips) takes a full-width row. */
 @media (max-width: 640px) {
   .statbar { flex-wrap: wrap; }
-  .statbar .s { flex: 1 0 50%; border-left: 0; border-top: 1px solid var(--line); padding: 14px 16px; }
-  .statbar .s:nth-child(-n+2) { border-top: 0; }
-  .statbar .s:nth-child(odd) { border-right: 1px solid var(--line); }
+  .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .statbar .s::before { inset: 13px auto 13px 0; }
+  .statbar .s:nth-child(odd)::before { display: none; }   /* left column starts a row */
+  .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .statbar .s.c-duration { order: 0; }
+  .statbar .s.c-distance { flex: 1 0 100%; }
   .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line); padding: 12px; }
+}
+/* The overview bar sizes on its own (column) width, not the viewport — at 880 the
+   sidebar goes off-canvas AND .ovwrap collapses to one column, so the available
+   width jumps instead of shrinking and no viewport query describes it. The column
+   is ~607px at a 1280px viewport and ~705px at 1440px, where the roomy cell
+   (2×20 padding + 42 chip + 13 gap + label) no longer fits five across.
+   Compressing the cell keeps the row intact instead of breaking it up: measured
+   against en/es/ru the compressed cell needs ~120px, so five hold down to 600px.
+   Range-bounded on purpose — below 600 the wrap block owns the cell, and nothing
+   here needs undoing. 32/17 chip, 8 gap and 10 padding are all sizes the system
+   already uses (.wdg-h .wi). */
+@container (600px <= width <= 880px) {
+  .ov-col .statbar .s { padding-inline: 10px; gap: 8px; }
+  .ov-col .statbar .ic { width: 32px; height: 32px; }
+  .ov-col .statbar .ic svg { width: 17px; height: 17px; }
+}
+/* Below 600px even the compressed cell clips a label, so the row gives way to the
+   same 2-col shape the /trips bar takes — mirrors the @media block above, keep the
+   two in step. NB 600 is NOT on the 640/880 scale: 640 would wrap the 607px column
+   of a 1280px desktop, which is exactly the case this keeps on one row — approved
+   by Pavel on TRIP-278 (five compressed cells measure 120px each). */
+@container (max-width: 600px) {
+  .ov-col .statbar { flex-wrap: wrap; }
+  .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
+  .ov-col .statbar .s::before { inset: 13px auto 13px 0; }
+  .ov-col .statbar .s:nth-child(odd)::before { display: none; }   /* left column starts a row */
+  .ov-col .statbar .s:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .ov-col .statbar .s.c-duration { order: 0; }
+  .ov-col .statbar .s.c-distance { flex: 1 0 100%; }
 }
 
 .dash-hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-top: 18px; }
@@ -4905,11 +4923,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    adds only the sections that had no equivalent (.summary/.world/.vlist/.records/
    .chart, map controls/legend, fullscreen, visit panel).
    ═══════════════════════════════════════════════════════════════════════════ */
-
-/* — stat-bar trailing CTA (used on the home stat-bar) — */
-.statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
-.statbar .cta .btn, .statbar .cta .b { width: 100%; }
-@media (max-width: 640px) { .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line); padding: 12px; } }
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
