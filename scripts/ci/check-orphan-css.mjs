@@ -133,6 +133,16 @@ function classesInCss(paths) {
 
 const identifiers = (text) => new Set(text.match(/[A-Za-z][\w-]*/g) || []);
 
+/** Начала СОСТАВНЫХ имён: текст прямо перед дырой шаблона (`tile--${тон}`,
+ *  `sev--${level}`). Нужны потому, что имя умеет ПЕРЕЕЗЖАТЬ из литерала в
+ *  шаблон: разметка `tile tile--warning` уехала на <EmptyState kind="warning">,
+ *  который собирает тот же класс из карты тонов. Литерала не стало, класс жив -
+ *  без этой проверки гард сообщает о сироте, которой нет (поймано на себе же,
+ *  первым прогоном 2n в CI). Один символ отбрасываем: осмысленного начала имени
+ *  из него не выйдет, а ложных «живых» он бы дал сколько угодно. */
+const templateHeads = (text) =>
+  [...text.matchAll(/([A-Za-z][\w-]*)\$\{/g)].map((m) => m[1]).filter((p) => p.length > 1);
+
 /* --------------------------------- verdict -------------------------------- */
 
 try {
@@ -166,8 +176,10 @@ const candidates = [...identifiers(removedLines)].filter((c) => where.has(c) && 
 
 let orphans = [];
 if (candidates.length) {
-  const live = identifiers(files.markup.map((p) => readFileSync(p, 'utf8')).join('\n'));
-  orphans = candidates.filter((c) => !live.has(c)).sort();
+  const markup = files.markup.map((p) => readFileSync(p, 'utf8')).join('\n');
+  const live = identifiers(markup);
+  const heads = templateHeads(markup);
+  orphans = candidates.filter((c) => !live.has(c) && !heads.some((h) => c.startsWith(h))).sort();
 }
 
 if (orphans.length) {

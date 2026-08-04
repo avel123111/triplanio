@@ -149,6 +149,37 @@ test('dynamic name is never flagged: it was never a literal in markup', (t) => {
   assert.doesNotMatch(r.out, /sev--/, 'composed class names must not be reported');
 });
 
+test('имя переехало из литерала в шаблон — это НЕ сирота', (t) => {
+  // Ровно так упал первый прогон 2n в CI на собственной правке: разметка
+  // `tile tile--warning` уехала в <EmptyState kind="warning">, который собирает
+  // тот же класс из карты тонов. Литерала не стало, класс жив.
+  const f = fixture(t, {
+    base: {
+      'src/A.jsx': '<div className="tile tile--warning"><b className="gone" /></div>',
+      'src/app.css': '.tile--warning { color: orange; }\n.gone { color: red; }\n',
+    },
+    head: {
+      'src/A.jsx': 'const tone = "warning"; <div className={`tile tile--${tone}`} />',
+      'src/app.css': '.tile--warning { color: orange; }\n.gone { color: red; }\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /\.gone/, 'настоящая сирота из того же диффа должна найтись');
+  assert.doesNotMatch(r.out, /tile--warning/, 'собранное шаблоном имя сиротой не считается');
+});
+
+test('однобуквенное начало шаблона не спасает всё подряд', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/A.jsx': '<span className="vpill" />',
+      'src/app.css': '.vpill { padding: 4px; }\n',
+    },
+    head: { 'src/A.jsx': 'const k = 1; <span className={`v${k}`} />' },
+  });
+  assert.equal(run(f).code, 1, 'начало "v" длиной 1 не должно объявлять .vpill живым');
+});
+
 test('CSS comments contain braces — the scan must survive them', (t) => {
   // This is the bug that made the first throwaway version report a clean repo:
   // `{` inside a comment desynchronises a naive rule regex for the whole file,
