@@ -264,8 +264,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>{t('planner.home_title')}</h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <h1>{t('planner.home_title')}</h1>
+      <div className="t-body">
         {t('planner.home_desc')}
       </div>
 
@@ -390,8 +390,8 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>{t('planner.step_cities')}</h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
+      <h1>{t('planner.step_cities')}</h1>
+      <div className="t-body">
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
@@ -472,10 +472,10 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
   useEffect(() => { if (!canHome && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>
+      <h1>
         {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <div className="t-body">
         {t('planner.return_desc')}
       </div>
 
@@ -574,7 +574,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         <div className="tile tile--2xl tile--success" style={{ margin: '0 auto 18px' }}>
           <Icon name="check" size={36} />
         </div>
-        <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
+        <h1>{t('planner.created_title')}</h1>
         <div className="muted t-ui" style={{ maxWidth: 460, margin: '0 auto 22px' }}>
           {t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
         </div>
@@ -588,8 +588,8 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>{t('planner.step_review')}</h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
+      <h1>{t('planner.step_review')}</h1>
+      <div className="t-body">
         {t('planner.review_desc')}
       </div>
 

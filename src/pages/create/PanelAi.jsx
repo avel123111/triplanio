@@ -32,7 +32,7 @@ export default function PanelAi({ ctx }) {
           <Icon name="sparkles" size={22} />
         </div>
         <div>
-          <h1 className="t-title" style={{ marginBottom: 6 }}>{t('ai_plan.title')}</h1>
+          <h1>{t('ai_plan.title')}</h1>
           <div className="muted t-body">{t('ai_plan.page_subtitle')}</div>
         </div>
       </div>
