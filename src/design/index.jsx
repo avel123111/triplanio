@@ -64,8 +64,10 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
 export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
   <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
     {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
+    {/* border у «+N» не пишем: он дословно дублировал .avatar, а инлайн-дубль
+        переживает правку класса и молча расходится с соседями по стопке. */}
     {people.length > max && (
-      <div className={`avatar avatar--${size}`} style={{ background: "var(--wash)", color: "var(--muted)", border: "1.5px solid var(--surface)" }}>
+      <div className={`avatar avatar--${size}`} style={{ background: "var(--wash)", color: "var(--muted)" }}>
         +{people.length - max}
       </div>
     )}
@@ -331,11 +333,16 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
       <DialogContent className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
         <div className="dlg__head">
           {icon && (
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            /* Геометрия - примитив .tile (34px, значок 17px = дефолт лестницы;
+               было 36px руками, а ступень --md и есть полоса 32-36). Тон пока
+               остаётся данными на элементе, как у Severity/EmptyState выше:
+               системным классом он станет, когда у .tile--* появится тон
+               события - сегодняшний набор тонов цветов события не знает. */
+            <div className="tile" style={{ background: tone.bg, color: tone.fg }}>
               <Icon name={icon} size={17} />
             </div>
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow--fit">
             <DialogTitle asChild><h2>{title}</h2></DialogTitle>
             {subtitle && <DialogDescription asChild><div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div></DialogDescription>}
           </div>
@@ -364,23 +371,32 @@ export const PartnerLogo = ({ url, size = 18 }) => {
   const favicon = faviconUrl(url);
   const [imgFailed, setImgFailed] = React.useState(false);
 
+  // Квадрат 16-18px на лестницу .tile НЕ садится: её нижняя ступень 28px, а ниже
+  // дефолтный --tile-r (--r-sm, 11px) делает из квадрата пилюлю - ловушка Ф3b.
+  // Поэтому геометрия живёт здесь, но объявляется ОДИН раз на три ветки.
+  // Кегль монограммы к общему НЕ выносится: гард 2k пропускает «декоративный
+  // глиф» по вычисленному fontSize В ТОЙ ЖЕ СТРОКЕ, и разведённый с ним
+  // fontWeight гард роняет (проверено).
+  const box = { width: size, height: size, borderRadius: 4, flexShrink: 0 };
+  const glyph = { ...box, display: "grid", placeItems: "center" };
+
   if (favicon && !imgFailed) {
     return (
       <img
         src={favicon}
         alt=""
         onError={() => setImgFailed(true)}
-        style={{ width: size, height: size, borderRadius: 4, objectFit: "cover", flexShrink: 0, background: "var(--wash)" }}
+        style={{ ...box, objectFit: "cover", background: "var(--wash)" }}
       />
     );
   }
   if (!p) return (
-    <div style={{ width: size, height: size, borderRadius: 4, background: "var(--line)", color: "var(--muted)", display: "grid", placeItems: "center", fontSize: size * 0.55, fontWeight: 700, flexShrink: 0 }}>
+    <div style={{ ...glyph, background: "var(--line)", color: "var(--muted)", fontSize: size * 0.55, fontWeight: 700 }}>
       <Icon name="link" size={size * 0.6} />
     </div>
   );
   return (
-    <div style={{ width: size, height: size, borderRadius: 4, background: p.color, color: "white", display: "grid", placeItems: "center", fontSize: size * 0.5, fontWeight: 700, flexShrink: 0 }}>
+    <div style={{ ...glyph, background: p.color, color: "white", fontSize: size * 0.5, fontWeight: 700 }}>
       {p.short}
     </div>
   );
@@ -546,7 +562,7 @@ export function StreamEventRow({ e, onClick }) {
           {sub && <div className="sb">{sub}</div>}
         </div>
         {(price || e.platformUrl) && (
-          <span className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span className="meta row row--g4">
             {price && <span>{price}</span>}
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
           </span>
@@ -556,16 +572,4 @@ export function StreamEventRow({ e, onClick }) {
   );
 }
 
-// =====================================================================
-// TRIP IDENTITY STRIP - exported so all screens can use it
-// =====================================================================
-
-function _InfoChip({ icon, color, children }) {
-  return (
-    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line)", color: "var(--ink-2)" }}>
-      <Icon name={icon} size={13} style={{ color }} />
-      {children}
-    </span>
-  );
-}
 

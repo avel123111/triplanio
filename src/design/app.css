@@ -3389,6 +3389,12 @@ h4,
 .tl3-card .body { flex: 1 1 auto; min-width: 130px; }
 .tl3-card .body b { color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
 .tl3-card .body .sb { color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+/* Раскладку ряда (центр + зазор 8 = ступень --sp-4) даёт `.row .row--g4` в
+   разметке StreamEventRow, и сюда она НЕ переезжает: копия объекта в приватном
+   правиле экрана - это ровно то, что TRIP-321 вычищает, даже когда копия въезжает
+   из инлайна. Инлайн объявлял inline-flex, но элемент - флекс-item карточки, у
+   него inline-flex блокифицируется в flex (замерено), поэтому примитив подходит
+   пиксель в пиксель. */
 /* margin-left:0 (not auto): the flex:1 body pushes meta right on a wide row, and
    when meta wraps to its own line it aligns left under the title instead of floating. */
 .tl3-card .meta { margin-left: 0; flex: none; padding: 0; border: 0; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
