@@ -1374,8 +1374,9 @@ h4,
 
 .card { padding: 18px; }
 /* Карточка, содержимое которой доходит до края (обложка, полоса цифр). Паддинг
-   в таком случае носят внутренние блоки, а не сама карточка. */
-.card--flush { padding: 0; }
+   в таком случае носит вложенный .card, а не сама карточка; overflow нужен,
+   чтобы обложка не вылезала за скругление. */
+.card--flush { padding: 0; overflow: hidden; }
 .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .card-h h3 { flex: 1; }
 
@@ -2329,36 +2330,24 @@ h4,
 .pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line); }
 .pl-fin-sub > svg { flex: none; }
 
-/* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13) ────────────
-   Тридцать инлайновых стилей, которыми этот блок был свёрстан, переехали сюда.
-   Поверхность даёт общий .card (--flush снимает его паддинг: обложка обязана
-   доходить до края), полосу цифр - общий .statbar, ряды - .row/.col со
-   ступенями. Здесь остаётся только то, чего в системе нет и не должно быть:
-   пропорции обложки и рельс маршрута. Экран у этого блока один. */
-.pl-preview { overflow: hidden; margin-bottom: var(--sp-7); }
-.pl-preview__hero { height: 120px; position: relative; }
-.pl-preview__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.pl-preview__scrim { position: absolute; inset: 0; background: var(--overlay-grad-soft); }
-.pl-preview__ttl { position: absolute; left: 20px; bottom: 14px; color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, .3); }
-.pl-preview__body { padding: var(--sp-8); }
-.pl-preview__lbl { color: var(--ink); margin-bottom: var(--sp-5); }
-/* Рельс маршрута: вертикальная линия ПОД кружками точек. Кружок перекрывает её
-   собственной рамкой цвета поверхности - поэтому у него z-index, а не разрыв. */
-.pl-rev { position: relative; }
-.pl-rev__rail { position: absolute; left: 13px; top: 14px; bottom: 14px; width: 2px; background: var(--line); }
-.pl-revrow { padding: var(--sp-5) 0; position: relative; z-index: 1; }
-.pl-revrow__mk { border: 3px solid var(--surface); }
+/* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13/14.15) ──────
+   Первый заход развёрстывал этот блок в СЕМНАДЦАТЬ своих имён - и это была не
+   унификация, а переезд инлайнов в CSS под новым словарём. Второй заход собрал
+   его из готового: обложка - постер карточки трипа (.tc с /trips), цифры -
+   .statbar, отступ содержимого - вложенный .card, ряд - .row со ступенью, пара
+   «значение + ярлык» - .v/.k статбара, предупреждение - .wrn, оболочки
+   экранов-состояний - .flow-page самого планировщика.
+   Своего у превью осталось ОДНО имя - ряд точки маршрута. Рельс рисует сам ряд
+   (::before), а не отдельный элемент в контейнере: так не нужны ни класс на
+   контейнер, ни div-подложка, а линия обрезается у первой и последней точки
+   самими рядами. Кружок стоит ПОВЕРХ линии и перекрывает её рамкой цвета
+   поверхности - отсюда z-index, а не разрыв в линии. */
+.pl-revrow { padding: var(--sp-5) 0; position: relative; }
+.pl-revrow::before { content: ""; position: absolute; left: 13px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.pl-revrow:first-child::before { top: 14px; }
+.pl-revrow:last-child::before { bottom: 14px; }
+.pl-revrow > .tile { position: relative; z-index: 1; border: 3px solid var(--surface); }
 .pl-revrow--muted .te-cityname { color: var(--muted); }
-/* Ярлык цифры в превью читается как заголовок ячейки, а не как подпись - это
-   единственное, чем он отличается от .eyebrow по умолчанию. */
-.pl-stat .eyebrow { color: var(--ink); }
-.pl-stat__warn { color: var(--warning); }
-
-/* Экран-состояние планировщика (проверка лимита, лимит исчерпан): шапка сверху,
-   содержимое по центру остатка. */
-.pl-screen { display: flex; flex-direction: column; min-height: 100vh; }
-.pl-screen--mid { align-items: center; justify-content: center; }
-.pl-screen__mid { display: flex; align-items: center; justify-content: center; padding: var(--sp-8); }
 /* Add-start affordance — the empty-origin variant of .te-end (dashed, clickable).
    One control for both flows (manual skip + AI no-origin). */
 .te-end--add { width: 100%; text-align: left; border-style: dashed; cursor: pointer; transition: border-color .15s, background .15s; }
@@ -4088,7 +4077,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   transition: transform .22s var(--ease-spring), box-shadow .24s var(--ease-out);
   background: none; padding: 0;
 }
-@media (hover: hover) { .tc:hover { transform: translateY(-5px); box-shadow: var(--sh-3); } }
+/* Полоса-обложка: тот же постер внутри карточки, где он не карточка, а шапка
+   (превью трипа в планировщике). Ни рамки, ни тени, ни подъёма при наведении -
+   он не кликабелен. */
+.tc--band { min-height: 120px; border: 0; border-radius: 0; box-shadow: none; }
+.tc--band .tc__in { min-height: 120px; }
+@media (hover: hover) { .tc:not(.tc--band):hover { transform: translateY(-5px); box-shadow: var(--sh-3); } }
 .tc:active { transform: translateY(-2px) scale(.99); }
 
 /* cover background */

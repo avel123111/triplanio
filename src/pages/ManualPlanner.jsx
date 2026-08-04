@@ -537,7 +537,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 function ReviewRow({ num, name, sub, icon, muted }) {
   return (
     <div className={`row row--g7 pl-revrow${muted ? ' pl-revrow--muted' : ''}`}>
-      <span className="tile tile--sm tile--round tile--solid tile--brand t-meta pl-revrow__mk">
+      <span className="tile tile--sm tile--round tile--solid tile--brand t-meta">
         {icon ? <Icon name={icon} size={12} /> : num}
       </span>
       <div className="grow--fit">
@@ -548,13 +548,15 @@ function ReviewRow({ num, name, sub, icon, muted }) {
   );
 }
 
+// Пара «значение + ярлык» - это .v/.k полосы статистики, ровно как её рисует
+// общий <StatBar>. Своих имён у цифры в превью нет.
 function Stat({ label, value, hint, warn }) {
   return (
-    <div className="col col--g1 pl-stat">
-      <div className="eyebrow">{label}</div>
-      <div className="t-subheading">{value}</div>
+    <div>
+      <div className="v">{value}</div>
+      <div className="k">{label}</div>
       {hint && <div className="muted t-meta">{hint}</div>}
-      {warn && <div className="t-meta pl-stat__warn">{warn}</div>}
+      {warn && <div className="wrn t-meta">{warn}</div>}
     </div>
   );
 }
@@ -594,16 +596,22 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         {t('planner.review_desc')}
       </div>
 
-      {/* Trip card preview */}
-      <div className="card card--flush pl-preview">
-        {/* heroBg - ДАННЫЕ (загруженное фото или градиент обложки трипа) */}
-        <div className="pl-preview__hero" style={{ background: heroBg }}>
-          {hasPhoto && <img className="pl-preview__img" src={cover.cover_image_url} alt="" />}
-          <div className="pl-preview__scrim" />
-          <div className="t-title pl-preview__ttl">{displayTitle}</div>
+      {/* Превью трипа собрано из готового: обложка - постер карточки трипа с
+          /trips (.tc), полоса цифр - .statbar, отступ содержимого - вложенный
+          .card. Своего у превью не осталось ничего. */}
+      <div className="card card--flush">
+        <div className="tc tc--band">
+          {/* heroBg - ДАННЫЕ (загруженное фото или градиент обложки трипа) */}
+          <div className="tc__bg" style={{ background: heroBg }}>
+            {hasPhoto && <img className="tc__img" src={cover.cover_image_url} alt="" />}
+          </div>
+          <div className="tc__scrim" />
+          <div className="tc__in">
+            <div className="tc__spacer" />
+            <div className="t-title tc__title">{displayTitle}</div>
+          </div>
         </div>
 
-        {/* Полоса статистики - общая .statbar (её же носят /trips и обзор трипа) */}
         <div className="statbar statbar--inset">
           <div className="s">
             <Stat
@@ -620,10 +628,9 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </div>
 
-        <div className="pl-preview__body">
-          <div className="eyebrow pl-preview__lbl">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
-          <div className="col col--g1 pl-rev">
-            <div className="pl-rev__rail" />
+        <div className="card">
+          <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
+          <div className="col col--g1">
             {home?.city_name && (
               <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
             )}
@@ -1131,7 +1138,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // safe by construction.
   if (!isPro && checkingLimit && !savedOk) {
     return (
-      <div className="pl-screen pl-screen--mid">
+      // Оболочка маршрута - та же .flow-page, что у самого планировщика ниже.
+      <div className="flow-page row row--center">
         <div className="spin spin--ring spin--xl" />
       </div>
     );
@@ -1139,7 +1147,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   if (isOverLimit && !savedOk) {
     return (
-      <div className="pl-screen">
+      <div className="flow-page">
         <AppHeader
           user={user}
           isPro={isPro}
@@ -1148,7 +1156,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           onBack={() => nav('/trips')}
           backTitle={t('notif.to_collection')}
         />
-        <div className="grow pl-screen__mid">
+        <div className="grow row row--center">
           <EmptyState
             icon="lock"
             kind="warning"
