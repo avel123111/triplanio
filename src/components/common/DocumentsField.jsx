@@ -100,13 +100,13 @@ export default function DocumentsField({
       {docs.length > 0 && (
         <div className="dl-uplist">
           {docs.map((d, i) => (
-            <div key={`${d.file_url}-${i}`} className="dl-upitem">
+            <div key={`${d.file_url}-${i}`} className="doc-row doc-row--framed row">
               <FileTypeBadge name={d.file_name} />
               <a
                 href={normalizeExternalUrl(d.file_url)}
                 target="_blank"
                 rel="noreferrer"
-                className="dl-upitem__n"
+                className="grow--fit trunc"
                 style={{ color: 'var(--brand)' }}
               >
                 {d.file_name || t('event.file_word')}
@@ -114,7 +114,7 @@ export default function DocumentsField({
               <button
                 type="button"
                 onClick={() => removeAt(i)}
-                className="dl-upitem__rm"
+                className="doc-row__rm"
                 aria-label={t('doc.remove_doc_aria')}
               >
                 <Icon name="close" size={13} />

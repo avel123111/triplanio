@@ -621,7 +621,6 @@ h4,
 .tr__title,
 .tr--add b,
 .plan-feature,
-.ai-file b,
 .kv .v,
 .f-sec,
 .crow .nm,
@@ -752,9 +751,12 @@ h4,
 .pro-hero__note,
 .plan-price__period,
 .ai-blk-ti > span,
-.ai-file .ds,
 .ai-blk-hint,
-.doc-row,
+/* TRIP-321 Ф14.5: моно-ярус оставлен у РАЗМЕРА файла (это мета) и снят с самой
+   строки. Имя файла - содержимое, а не мета: под моно-ярусом оно ужималось до
+   11px моноширинным, и когда все четыре списка вложений сошлись на одной
+   реализации, это уехало бы на все четыре разом. Поймано снимком - замер
+   геометрии такого не показывает вовсе. */
 .doc-row .ds,
 .ev-dlg-info .sub,
 .ev-dlg-price .cur,
@@ -802,14 +804,12 @@ h4,
 .dl-card__foot-who,
 .dl-card__foot-date,
 .dl-vischip,
-.dl-filechip__n,
 .dl-filemore,
 .dl-linkrow b,
 .dl-addcard span,
 .dl-empty span,
 .dl-visopt__lbl span,
 .dl-dropzone span,
-.dl-upitem__n,
 .dl-dview-link b,
 .dl-dview-meta,
 .eed-fchint,
@@ -4336,14 +4336,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .ai-blk--pill{cursor:pointer;transition:transform .18s var(--ease-out),box-shadow .18s var(--ease-out),border-color .18s var(--ease-out);}
 .ai-blk--pill:hover{transform:translateY(-2px);box-shadow:0 8px 22px -8px var(--ai);border-color:color-mix(in srgb,var(--ai) 45%,transparent);}
 .ai-blk--pill:active{transform:translateY(0);box-shadow:none;}
-/* attached-file pill (idle/uploaded) — AI-tinted, distinct from generic .doc-row */
-.ai-file{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1.5px solid var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);}
-.ai-file .di{width:28px;height:28px;border-radius:var(--r-sm);background:var(--ai-soft);color:var(--ai-ink);display:grid;place-items:center;flex:none;}
-.ai-file .di svg{width:14px;height:14px;}
-.ai-file b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; color:var(--ink-2);}
-.ai-file .ds{ color:var(--muted); flex:none;}
-.ai-file-x{width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:7px;flex:none;}
-.ai-file-x:hover{color:var(--danger-ink);}
+/* Строка вложения переехала на общий `.doc-row` + `--ai` (TRIP-321 Ф14.5).
+   Прежний комментарий здесь утверждал ровно обратное - «AI-tinted, distinct
+   from generic .doc-row»; эта «осознанная разница» на замере оказалась 1px по
+   вертикали и цветом рамки, то есть тем же объектом под своим именем. */
 /* unified textarea + actions container (borderless textarea, divider'd action row) */
 .ai-input{border:1.5px solid var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:10px;}
 .ai-input .textarea{border:0;background:transparent;padding:0;min-height:64px;resize:none;}
@@ -4459,6 +4455,24 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .doc-row:hover{background:var(--surface-2);}
 .doc-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .doc-row .ds{ color:var(--muted-2); }
+/* TRIP-321 Ф14.5, апрув Pavel. Вложенный файл рисовался ЧЕТЫРЬМЯ реализациями:
+   .doc-row (просмотр события), .dl-filechip и .dl-upitem (Документы, лежали в
+   одном файле и отличались одним пикселем) и .ai-file (распознавание брони).
+   Разница между ними была 1px по вертикали и цвет рамки - решение Pavel: файл
+   выглядит одинаково везде, рамка ИИ остаётся вариантом.
+   Рамка - модификатор, а не своё семейство: строка-ССЫЛКА (просмотр события)
+   рамки не носит, поэтому она не может уехать в базовый класс. Гашение ховера
+   у обоих вариантов обязательно: `.doc-row:hover` специфичнее модификатора и
+   иначе перекрасил бы фон рамочной строки, которая ссылкой не является. */
+.doc-row--framed{background:var(--surface-3);border:1px solid var(--line);}
+.doc-row--framed:hover{background:var(--surface-3);}
+.doc-row--ai{background:var(--surface);border:1.5px solid var(--ai-soft-2);}
+.doc-row--ai:hover{background:var(--surface);}
+/* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),
+   с одинаковым поведением: прозрачная кнопка, при наведении - опасный тон. */
+.doc-row__rm{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted-2);cursor:pointer;display:grid;place-items:center;flex:none;transition:background .14s,color .14s;}
+.doc-row__rm:hover{background:var(--danger-soft);color:var(--danger-ink);}
+.doc-row__rm svg{width:13px;height:13px;}
 
 /* ─── Notes block ───────────────────────────────────────────────────────── */
 .notes-block{ color:var(--ink-2); padding:10px 12px;border-radius:var(--r-sm);}

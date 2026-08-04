@@ -66,20 +66,8 @@
 .dl-vischip--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
 
 /* ─── File chips ──────────────────────────────────────────────── */
-.dl-filechip  {
-  display: flex; align-items: center; gap: 10px;
-  padding: 7px 10px; border-radius: var(--r-sm);
-  background: var(--surface-3); border: 1px solid var(--line);
-}
 /* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
    design/app.css next to `.doc-row`, since three screens draw it. */
-.dl-filechip__n {
-  flex: 1; min-width: 0;
-  color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-decoration: none;
-}
-a.dl-filechip__n:hover { color: var(--brand); }
 .dl-filemore {
   color: var(--muted); padding: 2px 4px;
 }
@@ -194,24 +182,6 @@ a.dl-filechip__n:hover { color: var(--brand); }
 
 /* ─── Dialog: upload list ─────────────────────────────────────── */
 .dl-uplist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.dl-upitem {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: var(--r-sm);
-  background: var(--surface-3); border: 1px solid var(--line);
-}
-.dl-upitem__n {
-  flex: 1; min-width: 0;
-  color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.dl-upitem__rm {
-  width: 24px; height: 24px; border-radius: 7px; border: none;
-  background: transparent; color: var(--muted-2);
-  cursor: pointer; display: grid; place-items: center; flex: none;
-  transition: background .14s, color .14s;
-}
-.dl-upitem__rm:hover { background: var(--danger-soft); color: var(--danger-ink); }
-.dl-upitem__rm svg { width: 13px; height: 13px; }
 
 /* ─── Detail view ─────────────────────────────────────────────── */
 .dl-dview-note {

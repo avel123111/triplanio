@@ -43,9 +43,9 @@ import './DocsLens.css';
 /** Inline file chip used in both cards and the detail dialog. */
 function FileChip({ file }) {
   return (
-    <div className="dl-filechip">
+    <div className="doc-row doc-row--framed row">
       <FileTypeBadge name={file.file_name} />
-      <span className="dl-filechip__n">{file.file_name}</span>
+      <span className="grow--fit trunc">{file.file_name}</span>
     </div>
   );
 }
@@ -267,12 +267,12 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             {documents.length > 0 && (
               <div className="dl-uplist">
                 {documents.map((d, i) => (
-                  <div key={i} className="dl-upitem">
+                  <div key={i} className="doc-row doc-row--framed row">
                     <FileTypeBadge name={d.file_name} />
-                    <span className="dl-upitem__n">{d.file_name}</span>
+                    <span className="grow--fit trunc">{d.file_name}</span>
                     <button
                       type="button"
-                      className="dl-upitem__rm"
+                      className="doc-row__rm"
                       aria-label={t('doc.remove_doc_aria')}
                       onClick={() => {
                         // Staged-but-unsaved upload → the object is already
@@ -414,13 +414,13 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               </div>
               <div className="col col--g4">
                 {doc.documents.map((f, i) => (
-                  <div key={i} className="dl-filechip">
+                  <div key={i} className="doc-row doc-row--framed row">
                     <FileTypeBadge name={f.file_name} />
                     <a
                       href={normalizeExternalUrl(f.file_url)}
                       target="_blank"
                       rel="noreferrer"
-                      className="dl-filechip__n"
+                      className="grow--fit trunc"
                       style={{ color: 'var(--brand)' }}>
                       {f.file_name || f.file_url}
                     </a>

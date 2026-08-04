@@ -18,8 +18,9 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 import {
-  Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
+  Sparkles, Lock, Upload, X,
   RefreshCw, ChevronUp, Check,
 } from 'lucide-react';
 
@@ -178,7 +179,6 @@ export default function EventAiBlock({
   // ── Render ────────────────────────────────────────────────────────────────
   // Canonical AI pattern — design-system A4. Парсер НЕ несёт Pro-бейджа ни в одном
   // состоянии: locked → иконка замка; остальные → без бейджа (TRIP-187).
-  const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
   // checking — Pro/entitlement status not yet resolved. Render a non-interactive
   // placeholder (NOT the clickable 'available' pill) so a non-Pro user can't open
@@ -289,11 +289,14 @@ export default function EventAiBlock({
         {files.length > 0 && (
           <div className="gy">
             {files.map((f, i) => (
-              <div key={i} className="ai-file">
-                <div className="di">{isImage(f.name) ? <ImageIcon size={14} /> : <FileText size={14} />}</div>
+              <div key={i} className="doc-row doc-row--ai row">
+                {/* Значок формата - тот же FileTypeBadge, что и в Документах, и в
+                    просмотре события. Свой значок «картинка/файл» здесь означал
+                    ровно то же самое, но выглядел иначе и не показывал формат. */}
+                <FileTypeBadge name={f.name} />
                 <b>{f.name}</b>
                 {f.file?.size && <span className="ds">{formatSize(f.file.size)}</span>}
-                <button type="button" className="ai-file-x" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
+                <button type="button" className="doc-row__rm" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
                   <X size={13} />
                 </button>
               </div>
