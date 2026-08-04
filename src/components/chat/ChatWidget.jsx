@@ -106,8 +106,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       <div className="dock-panel__head">
         <AvatarStack people={resolveMembers(activeMembers, { profiles, selfUser: user, deletedLabel: t('common.deleted_user') })} />
         <div className="dock-panel__id">
-          <b>{t('chat.group_title')}</b>
-          <span>{tripTitle ? `${tripTitle} · ` : ''}{pluralPeople(activeMembers.length, t, lang)}</span>
+          <b className="trunc">{t('chat.group_title')}</b>
+          <span className="trunc">{tripTitle ? `${tripTitle} · ` : ""}{pluralPeople(activeMembers.length, t, lang)}</span>
         </div>
         <button
           className="icon-btn"

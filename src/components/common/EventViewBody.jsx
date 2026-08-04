@@ -351,7 +351,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
             {carrier && (
               <>
                 <span className="tv-carrier__av t-micro">{carrier[0].toUpperCase()}</span>
-                <span className="tv-carrier__nm t-body">{carrier}</span>
+                <span className="tv-carrier__nm t-body trunc">{carrier}</span>
               </>
             )}
           </div>

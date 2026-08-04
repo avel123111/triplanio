@@ -495,7 +495,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           <Icon name="file" size={20} />
         </div>
         <div className="dl-card__h">
-          <div className="dl-card__title">{doc.title}</div>
+          <div className="dl-card__title trunc">{doc.title}</div>
           <div className="dl-card__sub">
             {files.length > 0
               ? `${files.length} ${files.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}`

@@ -36,10 +36,7 @@
 .dl-card__ic--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
 
 .dl-card__h     { flex: 1; min-width: 0; }
-.dl-card__title {
-  color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
+.dl-card__title { color: var(--ink); }
 .dl-card__sub {
   color: var(--muted); margin-top: 3px;
 }

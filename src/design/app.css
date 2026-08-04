@@ -1353,7 +1353,7 @@ h4,
 }
 .cbadge .cflag { height: 14px; border-radius: 2px; flex: none; margin-top: 1px; } /* top-aligned with the name line */
 .cbadge__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.cbadge__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbadge__name { color: var(--ink); }
 .cbadge__dates { color: var(--muted); white-space: nowrap; }
 /* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
    edges. Strip the popup's default chrome (white bubble + tip) — the glass
@@ -2457,7 +2457,7 @@ h4,
 }
 .chat-head__id { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; flex: 1; }
 .chat-head__id h3 { margin: 0; color: var(--ink); }
-.chat-head__sub { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-head__sub { color: var(--muted); }
 /* Members trigger — avatar stack + label in one pill; opens the member list as a
    Popover (desktop) or the canonical Sheet (phones). */
 .chat-members-btn {
@@ -2681,7 +2681,7 @@ h4,
 .chat-member { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--r-sm); }
 .chat-member:hover { background: var(--wash); }
 .chat-member__b { flex: 1; min-width: 0; }
-.chat-member__nm { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-member__nm { color: var(--ink); }
 .chat-member__rl { color: var(--muted); }
 .chat-member-sep { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
 
@@ -2745,8 +2745,8 @@ h4,
 .dock-panel__head .icon-btn { width: 32px; height: 32px; }   /* только размер; радиус общий, из ко-селектора `.tile, .icon-btn` */
 .dock-panel__head .avatar { width: 26px; height: 26px; }
 .dock-panel__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.dock-panel__id b { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dock-panel__id span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock-panel__id b { color: var(--ink); }
+.dock-panel__id span { color: var(--muted); }
 /* 8px сверху — ровно столько же, сколько даёт `.chat-overline` в комнате. Полоса
    «Triplanio печатает / Новые сообщения» обязана стоять одинаково на обеих
    поверхностях, поэтому её отступ задаёт ОДИН источник: сам композер в комнате
@@ -3299,8 +3299,8 @@ h4,
 .mrow { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
 .mrow + .mrow { border-top: 1px solid var(--line); }
 .mrow .fl1 { flex: 1; min-width: 0; }
-.mrow .mn { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mrow .me { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .mn { color: var(--ink); }
+.mrow .me { color: var(--muted); }
 .ov-invite { margin-top: 14px; transition: transform .12s var(--ease-out); }
 .ov-invite:active { transform: scale(.985); }
 
@@ -3621,7 +3621,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-hero__av .ov { position: absolute; inset: 0; background: rgba(15,18,34,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; opacity: 0; transition: opacity .2s; }
 .acct-hero__av:hover .ov { opacity: 1; } .acct-hero__av .ov svg { width: 18px; height: 18px; }
 .acct-hero__id { flex: 1; min-width: 0; }
-.acct-hero__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acct-hero__name { color: var(--ink); }
 .acct-hero__mail { color: var(--muted); margin-top: 2px; }
 .acct-hero__actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
 .acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
@@ -4613,7 +4613,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tv-dur{color:var(--ev-transfer-ink);white-space:nowrap;}
 .tv-carrier{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 0;}
 .tv-carrier__av{width:26px;height:26px;flex:none;border-radius:var(--r-sm);background:var(--ev-transfer);color:#fff;display:flex;align-items:center;justify-content:center;}
-.tv-carrier__nm{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tv-carrier__nm{color:var(--ink-2);}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--ev-color,var(--brand));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}

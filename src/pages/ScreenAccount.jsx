@@ -689,7 +689,7 @@ export default function ScreenAccount() {
                   onChange={e => handleAvatarUpload(e.target.files?.[0])}
                 />
                 <div className="acct-hero__id">
-                  <div className="acct-hero__name">{displayName(user.email, user.full_name)}</div>
+                  <div className="acct-hero__name trunc">{displayName(user.email, user.full_name)}</div>
                   <div className="acct-hero__mail">{user.email}</div>
                   <div className="acct-hero__actions">
                     <Btn variant="secondary" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>

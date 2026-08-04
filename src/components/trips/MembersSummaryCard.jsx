@@ -119,12 +119,12 @@ export default function MembersSummaryCard({
                   kind={isPending ? 'placeholder' : undefined}
                 />
                 <div className="fl1">
-                  <div className="mn">{name}</div>
+                  <div className="mn trunc">{name}</div>
                   {(() => {
                     const sub = isPending
                       ? t('trip.member_pending')
                       : m.invite_email || profile?.email || '';
-                    return sub ? <div className="me">{sub}</div> : null;
+                    return sub ? <div className="me trunc">{sub}</div> : null;
                   })()}
                 </div>
                 <span className={`badge ${badgeClass}`}>
