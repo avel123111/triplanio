@@ -7,6 +7,7 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
 import { detectPartner } from '@/lib/externalBrands';
 import { transferKind } from '@/lib/transport';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 
 // =====================================================================
 // Primitive layer (Radix-backed) — single import surface.
@@ -96,6 +97,33 @@ export const Severity = ({ level = "info", title, children, action, icon, iconSt
     {action}
   </div>
 );
+
+// ----- FileRow ----- (TRIP-321 Ф14.7, апрув Pavel)
+// ЕДИНСТВЕННАЯ строка вложенного файла. До неё их было шесть штук в пяти файлах,
+// и общий класс их не спас: рамку они делили, а имя файла рисовали ТРЕМЯ разными
+// способами - <b> (жирный), <a style={{color: brand}}> (синий) и <span>
+// (обычный); у половины был размер файла, у половины нет; отступ то 8, то 10.
+// Разметка-под-общим-классом это не лечит, потому что расходится не рамка, а
+// содержимое - поэтому здесь компонент, а не ещё один модификатор.
+//   href   - имя становится ссылкой (файл открывается в новой вкладке);
+//   size   - готовая строка размера, мета-ярусом справа;
+//   tone   - 'ai' для распознавания брони, иначе нейтральная рамка;
+//   plain  - строка без рамки (список вложений в просмотре события);
+//   action - кнопка справа (снять вложение), общий класс .doc-row__rm.
+export const FileRow = ({ name, href, size, tone, plain, action, fallback }) => {
+  const label = name || fallback || '';
+  const cls = `doc-row row${plain ? '' : tone === 'ai' ? ' doc-row--ai' : ' doc-row--framed'}`;
+  return (
+    <div className={cls}>
+      <FileTypeBadge name={name} />
+      {href
+        ? <a className="doc-row__n grow--fit trunc" href={href} target="_blank" rel="noreferrer">{label}</a>
+        : <span className="doc-row__n grow--fit trunc">{label}</span>}
+      {size && <span className="ds">{size}</span>}
+      {action}
+    </div>
+  );
+};
 
 // ----- ReadOnlyBanner ----- (TRIP-225)
 // Единый баннер роли наблюдателя (viewer read-only), раньше копипастился в

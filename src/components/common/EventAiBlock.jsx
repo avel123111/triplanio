@@ -18,7 +18,7 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
-import FileTypeBadge from '@/components/common/FileTypeBadge';
+import { FileRow } from '@/design/index';
 import {
   Sparkles, Lock, Upload, X,
   RefreshCw, ChevronUp, Check,
@@ -287,19 +287,19 @@ export default function EventAiBlock({
         onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
       >
         {files.length > 0 && (
-          <div className="gy">
+          <div className="col col--g3">
             {files.map((f, i) => (
-              <div key={i} className="doc-row doc-row--ai row">
-                {/* Значок формата - тот же FileTypeBadge, что и в Документах, и в
-                    просмотре события. Свой значок «картинка/файл» здесь означал
-                    ровно то же самое, но выглядел иначе и не показывал формат. */}
-                <FileTypeBadge name={f.name} />
-                <b>{f.name}</b>
-                {f.file?.size && <span className="ds">{formatSize(f.file.size)}</span>}
-                <button type="button" className="doc-row__rm" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
-                  <X size={13} />
-                </button>
-              </div>
+              <FileRow
+                key={i}
+                name={f.name}
+                tone="ai"
+                size={f.file?.size ? formatSize(f.file.size) : null}
+                action={(
+                  <button type="button" className="doc-row__rm" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
+                    <X size={13} />
+                  </button>
+                )}
+              />
             ))}
           </div>
         )}

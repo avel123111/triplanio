@@ -4453,8 +4453,14 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    собственное строки-ссылки: подсветка при наведении и скругление. */
 .doc-row{padding:8px 10px;border-radius:var(--r-sm);text-decoration:none;color:var(--ink-2); transition:background .12s;}
 .doc-row:hover{background:var(--surface-2);}
-.doc-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .doc-row .ds{ color:var(--muted-2); }
+/* Имя файла - ОДИН цвет и ОДИН кегль во всех шести списках вложений (TRIP-321
+   Ф14.7). Раньше оно было то жирным (<b> в просмотре события и в распознавании),
+   то синим инлайном (`color: var(--brand)` в Документах и в поле формы), то
+   обычным - и это ровно то, что видно на экране как «везде по-разному», пока
+   рамка уже общая. Ссылка отличается ТОЛЬКО поведением при наведении. */
+.doc-row__n{ color: var(--ink); }
+a.doc-row__n:hover{ color: var(--brand); }
 /* TRIP-321 Ф14.5, апрув Pavel. Вложенный файл рисовался ЧЕТЫРЬМЯ реализациями:
    .doc-row (просмотр события), .dl-filechip и .dl-upitem (Документы, лежали в
    одном файле и отличались одним пикселем) и .ai-file (распознавание брони).
@@ -4687,7 +4693,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
 .sec-lbl .addmini svg { width: 12px; height: 12px; }
 /* vertical stack used between rows */
-.gy { display: flex; flex-direction: column; gap: 9px; }
 /* AI parsing progress bar */
 .ai-prog { height: 4px; background: var(--ai-soft-2); border-radius: var(--r-pill); overflow: hidden; margin-top: 8px; }
 .ai-prog-fill { height: 100%; background: var(--ai-gradient); border-radius: var(--r-sm); animation: aiProg 1.1s ease-in-out infinite; }

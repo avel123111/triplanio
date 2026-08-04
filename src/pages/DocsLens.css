@@ -178,7 +178,7 @@
 .dl-dropzone.is-uploading { cursor: default; pointer-events: none; color: var(--brand); }
 
 /* ─── Dialog: upload list ─────────────────────────────────────── */
-.dl-uplist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.dl-uplist { margin-bottom: 8px; }  /* раскладку даёт .col .col--g3 в разметке (TRIP-321 Ф14.7) */
 
 /* ─── Detail view ─────────────────────────────────────────────── */
 .dl-dview-note {

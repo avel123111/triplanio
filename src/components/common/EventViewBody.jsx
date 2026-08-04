@@ -15,7 +15,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Severity, useToast } from '@/design/index';
+import { FileRow, Severity, useToast } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -38,7 +38,6 @@ import {
   ShieldCheck, Phone, Mail, Hash, ExternalLink, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { transferKind } from '@/lib/transport';
 
 /**
@@ -53,19 +52,16 @@ import { transferKind } from '@/lib/transport';
 function DocRows({ docs }) {
   const { t } = useI18n();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="col col--g3">
       {docs.map((d, i) => (
-        <a
+        <FileRow
           key={`${d.file_url}-${i}`}
+          name={d.file_name}
+          fallback={t('event.file_word')}
           href={normalizeExternalUrl(d.file_url)}
-          target="_blank"
-          rel="noreferrer"
-          className="doc-row row row--g4"
-        >
-          <FileTypeBadge name={d.file_name} />
-          <b>{d.file_name || t('event.file_word')}</b>
-          {d.file_size && <span className="ds">{d.file_size}</span>}
-        </a>
+          size={d.file_size}
+          plain
+        />
       ))}
     </div>
   );

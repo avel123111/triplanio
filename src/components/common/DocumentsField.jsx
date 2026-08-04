@@ -2,10 +2,9 @@ import React, { useRef, useState } from 'react';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { Icon } from '@/design/icons';
-import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
-import { useToast } from '@/design/index';
+import { FileRow, useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
 
@@ -98,28 +97,24 @@ export default function DocumentsField({
       )}
 
       {docs.length > 0 && (
-        <div className="dl-uplist">
+        <div className="dl-uplist col col--g3">
           {docs.map((d, i) => (
-            <div key={`${d.file_url}-${i}`} className="doc-row doc-row--framed row">
-              <FileTypeBadge name={d.file_name} />
-              <a
-                href={normalizeExternalUrl(d.file_url)}
-                target="_blank"
-                rel="noreferrer"
-                className="grow--fit trunc"
-                style={{ color: 'var(--brand)' }}
-              >
-                {d.file_name || t('event.file_word')}
-              </a>
-              <button
-                type="button"
-                onClick={() => removeAt(i)}
-                className="doc-row__rm"
-                aria-label={t('doc.remove_doc_aria')}
-              >
-                <Icon name="close" size={13} />
-              </button>
-            </div>
+            <FileRow
+              key={`${d.file_url}-${i}`}
+              name={d.file_name}
+              fallback={t('event.file_word')}
+              href={normalizeExternalUrl(d.file_url)}
+              action={(
+                <button
+                  type="button"
+                  onClick={() => removeAt(i)}
+                  className="doc-row__rm"
+                  aria-label={t('doc.remove_doc_aria')}
+                >
+                  <Icon name="close" size={13} />
+                </button>
+              )}
+            />
           ))}
         </div>
       )}
