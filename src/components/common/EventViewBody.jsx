@@ -225,8 +225,8 @@ function HotelBody({ entity, docs = [] }) {
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('event.cost')}</div>
-          <div className="hv-card hv-cost">
-            <div className="hv-cost__main">
+          <div className="hv-card row row--g6">
+            <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
               {perNight && <div className="hv-pernight t-meta">{perNight} / {t('view.nights_one')}</div>}
             </div>
@@ -375,8 +375,8 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('event.cost')}</div>
-          <div className="hv-card hv-cost">
-            <div className="hv-cost__main">
+          <div className="hv-card row row--g6">
+            <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
               <div className="hv-pernight t-meta">{t('event.for_whole_transfer')}</div>
             </div>
@@ -483,8 +483,8 @@ function ActivityBody({ entity, docs = [] }) {
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('activity.price')}</div>
-          <div className="hv-card hv-cost">
-            <div className="hv-cost__main"><div className="hv-price t-heading">{priceText}</div></div>
+          <div className="hv-card row row--g6">
+            <div className="grow--fit"><div className="hv-price t-heading">{priceText}</div></div>
           </div>
         </div>
       )}

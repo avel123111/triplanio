@@ -393,7 +393,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
             <div key={m.id || i} className={`mbrow${isRemoving ? ' mbrow--busy' : ''}`}>
               <Avatar name={name} photo={profile?.avatar_url || ''} deleted={profile?.is_deleted} size="lg" />
               <div className="mbrow__id">
-                <div className="mbrow__name">
+                <div className="mbrow__name row row--g4">
                   {name}
                   {m.user_id === user?.id && <Badge variant="quiet">{t('member.you_self')}</Badge>}
                 </div>
@@ -402,7 +402,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                 )}
               </div>
 
-              <div className="mbrow__meta">
+              <div className="mbrow__meta row row--g6">
                 {m.status === 'offline'
                   ? <Badge variant="quiet" icon="user">{t('trip.member_offline')}</Badge>
                   : <RoleBadge role={m.role} />}

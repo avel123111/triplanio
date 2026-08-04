@@ -185,7 +185,7 @@ export default function Stay22HotelList({
       >
         <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
-          <div className="s22f-pfields">
+          <div className="row row--g4">
             <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
               <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
                 onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
@@ -320,9 +320,9 @@ export default function Stay22HotelList({
 
       <style>{`
         .s22 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-countrow /
-           .s22-count / .s22-sort), list chrome (.fork-*) and the card (.pcard*)
-           are all SHARED fork primitives — see app.css + forkList.jsx. */
+        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-count /
+           .s22-sort on the shared .row primitive), list chrome (.fork-*) and the
+           card (.pcard*) are all SHARED fork primitives — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

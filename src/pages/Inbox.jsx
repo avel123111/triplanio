@@ -255,7 +255,7 @@ function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
           )}
         </div>
       </div>
-      <div className="nrow__acts">
+      <div className="nrow__acts row row--g3">
         {showPending ? (
           <>
             <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>

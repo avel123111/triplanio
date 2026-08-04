@@ -193,7 +193,7 @@ export function ForkToolbar({
 // per-list; the cycle handler is the list's own sort stepper.
 export function ForkCountRow({ countLabel, sortLabel, onCycleSort }) {
   return (
-    <div className="s22-countrow">
+    <div className="row row--g6">
       {countLabel ? <span className="s22-count">{countLabel}</span> : null}
       <span className="s22-countrow__ln" />
       <button type="button" className="s22-sort" onClick={onCycleSort}>

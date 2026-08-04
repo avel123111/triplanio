@@ -725,7 +725,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       <Card
         title={t('settings.section_basic')}
         action={readOnly ? null : (
-          <div className="settings-save">
+          <div className="row">
             <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
               {t('trip.form_save')}
             </Btn>

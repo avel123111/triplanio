@@ -25,7 +25,7 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
   const t = useT();
   const nav = useNavigate();
   return (
-    <div className="app-header__util">
+    <div className="row row--g4">
       <button className="icon-btn" title={t('nav.toggle_theme')} aria-label={t('nav.toggle_theme')} onClick={onToggleTheme} type="button">
         <Icon name={isDark ? 'sun' : 'moon'} size={17} />
       </button>
