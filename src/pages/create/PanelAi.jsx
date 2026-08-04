@@ -28,11 +28,11 @@ export default function PanelAi({ ctx }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Title */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--ai-gradient)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-          <Icon name="sparkles" size={22} />
+        <div className="tile tile--xl tile--ai tile--solid">
+          <Icon name="sparkles" size={21} />
         </div>
         <div>
-          <h1 className="t-title" style={{ marginBottom: 6 }}>{t('ai_plan.title')}</h1>
+          <h1>{t('ai_plan.title')}</h1>
           <div className="muted t-body">{t('ai_plan.page_subtitle')}</div>
         </div>
       </div>

@@ -212,7 +212,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
         <Icon name="flag" size={13} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-        <div className="t-meta" style={{ flex: 1, minWidth: 0 }}>
+        <div className="t-meta grow--fit">
           <span className="t-ui">{t('planner.final_point')}</span>{' '}
           <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
@@ -264,8 +264,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>{t('planner.home_title')}</h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <h1>{t('planner.home_title')}</h1>
+      <div className="t-body">
         {t('planner.home_desc')}
       </div>
 
@@ -288,10 +288,10 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {geoState === 'ask' && (
         <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="pin" size={20} />
+          <div className="tile tile--xl tile--brand">
+            <Icon name="pin" size={21} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow--fit">
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
           </div>
@@ -307,7 +307,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'allowed' && candidates.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="col col--g4">
           {candidates.map((c) => {
             const selected = home?.external_city_id != null && home.external_city_id === c.external_city_id;
             const dist = fmtDistance(c.distanceKm);
@@ -323,10 +323,10 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
                 onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line)'; }}
               >
-                <div style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                  <Icon name="plane" size={14} />
+                <div className="tile tile--brand">
+                  <Icon name="plane" size={17} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="grow--fit">
                   <div className="t-subheading">{c.city_name}</div>
                   <div className="muted t-meta t-sans"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
                 </div>
@@ -343,10 +343,10 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
       {geoState === 'denied' && (
         <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="lock" size={20} />
+          <div className="tile tile--xl tile--warning">
+            <Icon name="lock" size={21} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow--fit">
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
             <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
           </div>
@@ -390,8 +390,8 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>{t('planner.step_cities')}</h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
+      <h1>{t('planner.step_cities')}</h1>
+      <div className="t-body">
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
@@ -472,10 +472,10 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
   useEffect(() => { if (!canHome && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>
+      <h1>
         {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <div className="t-body">
         {t('planner.return_desc')}
       </div>
 
@@ -483,9 +483,9 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <div className={'field-row' + (canHome ? ' cols-2' : '')} style={{ marginBottom: 14 }}>
         {canHome && (
           <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
-                <Icon name="flag" size={16} />
+            <div className="row">
+              <div className="tile tile--lg tile--brand tile--solid">
+                <Icon name="flag" size={19} />
               </div>
               <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
             </div>
@@ -496,9 +496,9 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         )}
 
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
-              <Icon name="globe" size={16} />
+          <div className="row">
+            <div className="tile tile--lg tile--warm tile--solid">
+              <Icon name="globe" size={19} />
             </div>
             <div className="t-subheading">{t('planner.return_other')}</div>
           </div>
@@ -539,7 +539,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
       <div className="t-meta" style={{ width: 28, height: 28, borderRadius: '50%', background: icon ? (iconColor || 'var(--brand)') : 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0, border: '3px solid var(--surface)' }}>
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="grow--fit">
         <div className="te-cityname" style={{ color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
         <div className="muted t-meta" style={{ marginTop: 1 }}>{sub}</div>
       </div>
@@ -571,10 +571,10 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
   if (savedOk) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 'var(--r-md)', background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
-          <Icon name="check" size={36} />
+        <div className="tile tile--2xl tile--success" style={{ margin: '0 auto 18px' }}>
+          <Icon name="check" size={28} />
         </div>
-        <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
+        <h1>{t('planner.created_title')}</h1>
         <div className="muted t-ui" style={{ maxWidth: 460, margin: '0 auto 22px' }}>
           {t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
         </div>
@@ -588,8 +588,8 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>{t('planner.step_review')}</h1>
-      <div className="t-body" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
+      <h1>{t('planner.step_review')}</h1>
+      <div className="t-body">
         {t('planner.review_desc')}
       </div>
 
@@ -1158,7 +1158,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 'var(--r-md)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
+            <div className="tile tile--2xl tile--warning" style={{ margin: '0 auto 18px' }}>
               <Icon name="lock" size={28} />
             </div>
             <h2 className="t-heading" style={{ margin: '0 0 8px' }}>{t('planner.limit_title')}</h2>
