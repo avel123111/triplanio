@@ -115,7 +115,9 @@
   --ev-esim:#2173C8; --ev-esim-ink:#1358A0; --ev-esim-soft:rgba(33,115,200,.11);
   --ev-insurance:#E2920E; --ev-insurance-ink:#7A4E08; --ev-insurance-soft:rgba(226,146,14,.13);
   --ev-deadline:#E14B5A; --ev-deadline-ink:#B41F30; --ev-deadline-soft:rgba(225,75,90,.12);
-  --ev-service:#E07A4E; --ev-service-ink:#A8451E; --ev-service-soft:rgba(224,122,78,.12);
+  /* TRIP-321 Ф13: `--ev-service-ink` выпилен - ноль `var()` во всём репозитории,
+     единственный такой из восьми типов события (у остальных семи -ink живой). */
+  --ev-service:#E07A4E; --ev-service-soft:rgba(224,122,78,.12);
 
   /* Category / chart palette */
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
@@ -136,8 +138,10 @@
      получают: они подтягиваются к 12 и 16 при миграции своего экрана, по одному
      и глазами. Прогон по значениям всем репозиторием запрещён - именно он в Ф3b
      сделал чекбокс круглым. */
+  /* TRIP-321 Ф13: `--sp-9:24px` выпилен - его единственным потребителем была
+     пара `.row--g9, .col--g9`, у которой ноль вызовов; шкала кончается на 8. */
   --sp-1:2px; --sp-2:4px; --sp-3:6px; --sp-4:8px; --sp-5:10px;
-  --sp-6:12px; --sp-7:16px; --sp-8:20px; --sp-9:24px;
+  --sp-6:12px; --sp-7:16px; --sp-8:20px;
 
   /* Shadows (Lumo scale) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
@@ -301,7 +305,7 @@
   --ev-esim:#6FB2FF; --ev-esim-ink:#94C6FF; --ev-esim-soft:rgba(111,178,255,.15);
   --ev-insurance:#F0B24A; --ev-insurance-ink:#F6C978; --ev-insurance-soft:rgba(240,178,74,.15);
   --ev-deadline:#F2737F; --ev-deadline-ink:#F2737F; --ev-deadline-soft:rgba(242,115,127,.16);
-  --ev-service:#F0936B; --ev-service-ink:#F0936B; --ev-service-soft:rgba(240,147,107,.16);
+  --ev-service:#F0936B; --ev-service-soft:rgba(240,147,107,.16);
 
   /* Shadows — dark */
   --sh-1:0 2px 8px -2px rgba(0,0,0,.5), 0 8px 24px -10px rgba(0,0,0,.6);
@@ -501,7 +505,6 @@ h2,
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
 .invite__tx h3,
-.ti b,
 .stepper button,
 .sheet-h h3,
 .ev-dlg-info h2,
@@ -714,7 +717,6 @@ h4,
 .te-warnbadge,
 .te-nights,
 .te-seam__pill,
-.ti span,
 .gt span,
 .stepper .n,
 .addr div,
@@ -1685,14 +1687,23 @@ h4,
 /* Ступень шкалы вместо рукописного gap. Номер = ступень --sp-N. g5 пропущен
    намеренно: это дефолтный gap .row/.col, отдельный модификатор был бы no-op -
    класс, который ничего не меняет, читается как «здесь особый отступ» и врёт. */
-.row--g1, .col--g1 { gap: var(--sp-1); }
-.row--g2, .col--g2 { gap: var(--sp-2); }
-.row--g3, .col--g3 { gap: var(--sp-3); }
+/* TRIP-321 Ф13: ступени оставлены ТОЛЬКО в тех половинах, у которых есть вызов.
+   Выпилены `.row--g1`, `.col--g2`, `.col--g3`, `.col--g8` и пара `--g9` целиком
+   (за ней следом умер токен `--sp-9`, её единственный потребитель). Проверено
+   исчерпывающим прогоном: во ВСЁМ репозитории это единственные шесть классов,
+   чьё имя не встречается текстом ни в одном файле кода, включая
+   `supabase/functions`, `public` и `index.html`.
+   ★ Цена решения, чтобы она была записана: половинчатая лестница молчалива.
+   Тот, кто напишет `.row--g1`, не получит НИЧЕГО и не узнает об этом - класса
+   больше нет. Если это выстрелит, лечение - вернуть парность, а не заводить
+   `gap` руками. */
+.col--g1 { gap: var(--sp-1); }
+.row--g2 { gap: var(--sp-2); }
+.row--g3 { gap: var(--sp-3); }
 .row--g4, .col--g4 { gap: var(--sp-4); }
 .row--g6, .col--g6 { gap: var(--sp-6); }
 .row--g7, .col--g7 { gap: var(--sp-7); }
-.row--g8, .col--g8 { gap: var(--sp-8); }
-.row--g9, .col--g9 { gap: var(--sp-9); }
+.row--g8 { gap: var(--sp-8); }
 
 /* Перенос строки - вторая ось раскладки ряда после gap: `flex-wrap: wrap` стоит
    на 47 флекс-контейнерах. Только у .row: колонка и так течёт вниз, у неё wrap
@@ -2059,7 +2070,11 @@ h4,
 .flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
-.flow-lp-b { padding: 20px; position: relative; }
+/* TRIP-321 Ф13: `padding: 20px` УДАЛЁН - он не действовал никогда. Элемент
+   несёт ОБА класса (`class="lp-b scrollbar-thin flow-lp-b"`), у обоих правил
+   специфичность 0-1-0, а `.lp-b { padding: 14px 15px }` объявлен НИЖЕ - и
+   выигрывает по порядку. Замерено вычисленным стилем: 14px 15px. */
+.flow-lp-b { position: relative; }
 /* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
 .flow-lp-b .section-sub { color: var(--ink); margin: 0 0 12px; }
@@ -2150,8 +2165,19 @@ h4,
      it scrolls with the content inside the .flow-grid scroller — never clipped,
      never mispositioned. */
   .flow-editcol > .lp { margin: 12px; }
-  /* Body grows with its content; the .flow-grid scroller (not the body) scrolls. */
-  .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
+  /* TRIP-321 Ф13: здесь стояло
+       .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
+     с намерением «на телефоне тело растёт по содержимому, скроллит .flow-grid,
+     а не тело». Намерение НЕ ИСПОЛНЯЛОСЬ НИ РАЗУ: медиа-запрос не добавляет
+     специфичности, а `.lp-b` объявлен НИЖЕ по файлу и выигрывает по порядку -
+     все четыре объявления перебиты. Замерено вычисленным стилем на 500px:
+     padding 14px 15px (не 16/14), flex 1 1 0% (не none), overflow auto (не
+     visible; visible рядом с overflow-y:auto и по спецификации вычисляется в
+     auto - то есть даже уцелевшая ось ничего бы не дала).
+     Правило удалено как мёртвое: рендер не меняется ни на пиксель.
+     ★ ОТКРЫТЫЙ ВОПРОС К ПРОДУКТУ, а не к стилю: телефонная раскладка сейчас
+     работает НЕ так, как здесь было задумано - тело само себе скроллер. Чинить
+     это - изменение поведения, отдельной задачей и со снимком. */
   /* Footer: plain static element at the end of the scroll. No fixed/sticky → it
      can never detach or fly; it just scrolls with the content. Safe-area padding
      keeps the buttons above the iOS home indicator at the end of the scroll. */
@@ -3060,9 +3086,11 @@ h4,
 
 .lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line); }
 .lp-h .lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.lp-h .ti { min-width: 0; flex: 1; }
-.ti b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ti span { color: var(--muted); }
+/* TRIP-321 Ф13: `.ti` УДАЛЁН - мёртвый предшественник `.lp-ti`. Ноль вызовов
+   className во всём src (проверено разбором самих className, а не грепом слова:
+   `ti` сидит подстрокой в `ai-blk-ti` и `lp-ti` и грепом читается как живой), а
+   заголовок панели несёт `.lp-ti` с тем же `<b>` внутри. Вместе с правилами
+   ушли ко-селекторы `.ti b` и `.ti span` из списков типографики выше. */
 /* Unified panel back button — solid surface chip, always clearly visible with a
    non-blending hover (used in every light panel header). */
 .lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
@@ -5086,7 +5114,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
 .empty-note .en-tx span { color: var(--ink-2); }
-@media (max-width: 640px) { .empty-note { flex-wrap: wrap; } .empty-note .btn, .empty-note .b { flex: 1 1 100%; width: 100%; } }
+@media (max-width: 640px) { .empty-note { flex-wrap: wrap; } .empty-note .btn { flex: 1 1 100%; width: 100%; } }
 
 /* ghost skeleton-with-zeros (empty state): desaturate the live frame */
 .stats-ghost .is-ghost { opacity: .5; filter: saturate(.45); pointer-events: none; }
