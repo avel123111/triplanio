@@ -21,6 +21,7 @@ works now), never changelogs; small facts go into the nearest existing topic;
 - Design-token guard: `npm run check:design` (typography blocks, color reports)
 - Inline-style ratchet: `npm run check:inline` (CI guard 2l; diffs touched files against `BASE_REF` — no baseline file, no `--write`)
 - CSS-namespace ratchet: `npm run check:prefixes` (CI guard 2m; a class-name prefix that exists nowhere on `BASE_REF` fails the PR — new namespaces need approval, rule #6)
+- Orphaned-CSS guard: `npm run check:orphans` (CI guard 2n; a name that was a literal in the markup on `BASE_REF`, is a literal nowhere on HEAD, and still has a rule = the markup moved onto a shared class and the old private rules were left pointing at nothing — whatever they held (a size, an inset, a line wrap) goes with them, SILENTLY. Nothing else in the toolchain links a class in markup to a selector in CSS, and the diff shows the line you added, never the rule left off-screen in another file. Composed names (`` `sev--${level}` ``) can never be reported — that is what keeps it quiet. Escape: `/* orphan-exempt: <class> — причина */`)
 - **A CI guard is code: it gets a test.** `scripts/ci/check-inline-styles.test.mjs` is the template — build a throwaway git repo, run the guard as a subprocess, assert the exit code. 2l shipped with three green bypasses because nothing tested it (TRIP-282); the other guards have no test — add one when you touch them.
 
 ## Hard rules (project conventions — do not violate)
