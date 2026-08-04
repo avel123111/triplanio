@@ -407,6 +407,45 @@ test('a class glued on conditionally inside a template IS markup usage', (t) => 
   assert.deepEqual(out.perimeterFamilies, ['cbar', 'on']);
 });
 
+test('a NESTED template inside an interpolation is parsed (ревью Codex, PR #661)', (t) => {
+  // `` className={`foo${on ? ` bar` : ''}`} `` - самодельный разбор строк ловил
+  // открывающий backtick вложенного шаблона как ЗАКРЫВАЮЩИЙ у внешнего, и класс
+  // `bar` проваливался между совпадениями.
+  const out = run(
+    fixture(t, {
+      'app.css': '.foo { color: red; } .bar { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={`foo${on ? ` bar` : ""}`}/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['bar', 'foo']);
+});
+
+test('a brace inside a STRING does not swallow the rest of the file (ревью Codex, PR #661)', (t) => {
+  // `className={value === "{" ? "foo" : ""}` - счётчик скобок считал `{` внутри
+  // строки структурной, до нуля не доходил, и в разбор уезжал ВЕСЬ ОСТАТОК
+  // ФАЙЛА: любая последующая обычная строка записывалась как класс.
+  const out = run(
+    fixture(t, {
+      'app.css': '.foo { color: red; } .unrelated { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={v === "{" ? "foo" : ""}/>;\nconst label = "unrelated";',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['foo'], '`unrelated` - обычная строка, не класс');
+});
+
+test('a comment that quotes a class name is not markup usage', (t) => {
+  // Тот же класс ошибки с другой стороны: апостроф/кавычка в комментарии не
+  // должны ни создавать употребление, ни ломать разбор соседних строк.
+  const out = run(
+    fixture(t, {
+      'app.css': '.hero { color: red; }',
+      'LandingPage.jsx': '// Mapbox\'s own note about "hero"\nconst a = <i className="hero"/>;',
+      'Trips.jsx': '// the "hero" class is documented here only\nconst b = <i className="tr-row"/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['hero'], 'упоминание в комментарии Trips.jsx - не употребление');
+});
+
 test('a class with no markup usage at all is NOT called excluded perimeter', (t) => {
   // Silence must not read as "belongs to the landing". A descendant class
   // (`.card > .x`) has no className of its own and would be misfiled wholesale.

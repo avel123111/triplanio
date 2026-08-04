@@ -53,6 +53,8 @@
  */
 import { readFileSync, readdirSync, statSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
+import { Parser as AcornParser } from 'acorn';
+import acornJsx from 'acorn-jsx';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 
@@ -178,51 +180,60 @@ const singletons = singletonsStandalone + singletonsAttached;
  *  a clean zero it had not earned. Over-broad is not the safe direction here —
  *  it is the direction that produces a confident wrong answer.
  *
- *  Inside `className={…}` only the STATIC STRING FRAGMENTS are markup; the rest
- *  is code (ревью Codex, PR #659). The first version tokenised the whole
- *  expression, so `className={flag ? "hero" : ""}` recorded the VARIABLE `flag`
- *  as a class usage — and that error runs the wrong way: a `.flag` rule looked
- *  used, and if the expression sat only in an out-of-scope file the family was
- *  filed as excluded perimeter and SUBTRACTED from the goal. An audit that
- *  quietly understates its own workload is worse than one that overstates it.
- *  `${…}` is cut out of templates for the same reason, but strings QUOTED
- *  INSIDE the expression are kept: in `` `cbar${x ? ' on' : ''}` `` the class
- *  `on` really is applied. */
+ *  ★★ JSX РАЗБИРАЕТСЯ ПАРСЕРОМ, А НЕ РЕГУЛЯРКАМИ. Это не украшение - это вывод
+ *  из ТРЁХ ПОДРЯД неверных самодельных разборов, каждый из которых закрывал
+ *  одну дыру и открывал следующую, и все три ошибались в одну сторону -
+ *  «класс не увиден» или «увидено лишнее», то есть аудит ЗАНИЖАЛ собственный
+ *  объём работ:
+ *    1. токенизация всего выражения → `className={flag ? "hero" : ""}` писала
+ *       ПЕРЕМЕННУЮ `flag` в употребления классов (ревью Codex, PR #659);
+ *    2. жадный `[^}]*` при поиске границы `{…}` проглатывал `${`, и у
+ *       `` {`cbar${…}`} `` выражение обрывалось на первой `}` - класс `cbar`
+ *       терялся вовсе;
+ *    3. плоский поиск пар кавычек принимал открывающий backtick ВЛОЖЕННОГО
+ *       шаблона за закрывающий у внешнего, а счётчик скобок считал `{` внутри
+ *       СТРОКИ структурной и утаскивал в разбор весь остаток файла, после чего
+ *       любая последующая обычная строка становилась «классом» (оба - ревью
+ *       Codex, PR #661).
+ *  Разбор JavaScript регулярками не сходится в принципе: строки, шаблоны,
+ *  вложенные шаблоны, комментарии, апострофы в английском тексте и regex-литералы
+ *  - всё это грамматика, и лечится она грамматикой. `acorn` + `acorn-jsx` уже
+ *  лежат в дереве (приезжают с eslint) и объявлены в devDependencies явно, раз
+ *  этот скрипт на них опирается.
+ *
+ *  Из значения `className` берутся строковые литералы и статические куски
+ *  шаблонов - на любой глубине. Код (идентификаторы, вызовы) не берётся; строка,
+ *  процитированная ВНУТРИ выражения, берётся - в `` `cbar${x ? ' on' : ''}` ``
+ *  класс `on` реально применяется. */
+const JsxParser = AcornParser.extend(acornJsx());
+const parseFailures = [];
+
 const classNameTokens = (f) => {
   const out = new Set();
-  const add = (s) => {
-    // Класс не может содержать пробела; `${…}` внутри шаблона - код, не текст.
-    for (const tok of s.replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) if (tok) out.add(tok);
-  };
-  /** Строки внутри выражения берутся РЕКУРСИВНО: у `` `cbar${x ? ' on' : ''}` ``
-   *  внешний шаблон - одна строка, и вырезание `${…}` целиком выбросило бы
-   *  вместе с кодом настоящий класс `on`, который в нём процитирован. */
-  const addFromExpr = (expr) => {
-    for (const lit of expr.matchAll(/(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g)) {
-      add(lit[2]);
-      for (const inner of lit[2].matchAll(/\$\{([^}]*)\}/g)) addFromExpr(inner[1]);
-    }
-  };
-  const src = readFileSync(f, 'utf8');
-  /** Тело `className={…}` берётся СЧЁТЧИКОМ СКОБОК, а не регуляркой. Регулярка
-   *  вида `\{([^}]*(?:\{[^}]*\}[^}]*)*)\}` кажется рабочей и молча врёт на
-   *  шаблонах: жадный `[^}]*` проглатывает `${`, поэтому у
-   *  `` {`cbar${x ? ' on' : ''}`} `` выражение обрывалось на первой `}` и класс
-   *  `cbar` терялся - потеря в ту же сторону, что и ошибка из ревью #659.
-   *  Счётчик считает `{` от `${` наравне с обычной, и границу находит верно. */
-  for (const m of src.matchAll(/className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{)/g)) {
-    const attr = m[1] ?? m[2];
-    if (attr !== undefined) { add(attr); continue; }
-    let depth = 1;
-    let i = m.index + m[0].length;
-    const start = i;
-    while (i < src.length && depth > 0) {
-      if (src[i] === '{') depth++;
-      else if (src[i] === '}') depth--;
-      i++;
-    }
-    addFromExpr(src.slice(start, i - 1));
+  const add = (s) => { for (const tok of s.split(/\s+/)) if (tok) out.add(tok); };
+  let ast;
+  try {
+    ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' });
+  } catch (e) {
+    // Молча пропустить нельзя: непрочитанный файл выглядит как файл без классов,
+    // а это ровно «нечего проверять» и «проверено, чисто» с одинаковым вердиктом.
+    parseFailures.push(`${f}: ${e.message}`);
+    return out;
   }
+  const strings = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(strings); return; }
+    if (n.type === 'Literal' && typeof n.value === 'string') add(n.value);
+    if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => add(q.value.cooked ?? q.value.raw));
+    for (const k of Object.keys(n)) if (k !== 'type') strings(n[k]);
+  };
+  const walk = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    if (n.type === 'JSXAttribute' && n.name?.name === 'className') { strings(n.value); return; }
+    for (const k of Object.keys(n)) if (k !== 'type') walk(n[k]);
+  };
+  walk(ast);
   return out;
 };
 const tokensByFile = new Map(jsxFiles.map((f) => [f, classNameTokens(f)]));
@@ -385,6 +396,7 @@ if (process.argv.includes('--json')) {
         singletonsAttached,
         familyKinds,
         perimeterFamilies,
+        parseFailures,
         familiesInReach,
         inlineScoped,
         inlineAll,
@@ -429,6 +441,10 @@ if (perimeterFamilies.length) {
   console.log('                                 но разметка их вне скоупа → тронуть нельзя, а в цель они попали:');
   console.log(`                                 ${perimeterFamilies.join(' · ')}`);
   console.log(`   СЕМЕЙСТВ В РАБОТЕ:   ${num(familiesInReach, 5)}  ← вот по чему честно мерить прогресс`);
+  if (parseFailures.length) {
+    console.log(`\n   ⚠ НЕ РАЗОБРАНО ФАЙЛОВ: ${parseFailures.length} - их классы НЕ учтены, число выше занижено:`);
+    for (const p of parseFailures) console.log(`     ${p}`);
+  }
 }
 console.log();
 
