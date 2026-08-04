@@ -50,7 +50,7 @@ export default function OverviewLens({
             <div className="ov-bar" style={{ height: 280, borderRadius: 0 }} />
           </div>
           {/* stat bar */}
-          <div className="statbar surface-panel">
+          <div className="statbar">
             {Array.from({ length: 5 }).map((_, i) => (
               <div className="s" key={i}>
                 <span className="ov-bar" style={{ width: 42, height: 42, borderRadius: 'var(--r-btn)', flex: 'none' }} />

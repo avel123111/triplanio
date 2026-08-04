@@ -2,110 +2,118 @@
    BudgetLens — Lumo redesign (2026-06-07)
    Page-scoped layout for the trip Budget screen. Colour / type /
    radius / shadow all come from the existing Lumo tokens in
-   design/app.css — nothing new is defined here. Everything is
-   namespaced under `.bgt` so it can never collide with global
-   component classes (.card/.btn/.badge/.input/.sev are reused
-   as-is from the design system).
+   design/app.css — nothing new is defined here.
+
+   TRIP-321 Ф12.1: раскладка и плитки больше НЕ объявляются здесь.
+   Ряды и колонки — примитивы `.row`/`.col` + ступень gap (`--gN`),
+   квадраты с иконкой — `.tile` + ступень размера, табличные цифры —
+   `.t-num`. Здесь остаётся только то, что у Бюджета правда своё:
+   геометрия доната, две сетки экрана, слипшаяся пара «сумма+валюта»,
+   тон-варианты и адаптив. Все отступы — ступени шкалы `--sp-*`.
    ============================================================ */
 
 .bgt { overflow-x: hidden; }
 
 /* ════════ SUMMARY BAND ════════ */
-.bgt-sumband { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; margin-bottom: 14px; }
+.bgt-sumband { display: grid; grid-template-columns: 1.15fr 1fr; gap: var(--sp-7); margin-bottom: var(--sp-7); }
 
 /* donut card */
-.bgt-donutcard { padding: 22px; }
-.bgt-donutcard__h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.bgt-donutcard { padding: var(--sp-8); }
+/* space-between сегодня no-op (ребёнок один), но это ЗАГОЛОВОК КАРТОЧКИ - место
+   под действие справа. Примитив .row даёт ряд, распределение по ширине остаётся
+   объявленным здесь, иначе первое же добавленное действие прилипнет к заголовку. */
+.bgt-donutcard__h { justify-content: space-between; margin-bottom: var(--sp-7); }
 .bgt-donutcard__h b { color: var(--ink); }
-.bgt-donutwrap { display: flex; align-items: center; gap: 22px; }
+/* Донат — единственная по-настоящему своя геометрия экрана: квадрат под SVG,
+   повёрнутый на -90° (чтобы дуга начиналась сверху), и абсолютный центр поверх. */
 .bgt-donut { position: relative; width: 168px; height: 168px; flex: none; margin: 0 auto; }
 .bgt-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .bgt-donseg { transition: stroke-width .2s var(--ease-out), opacity .2s; }
 .bgt-donut__c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.bgt-donut__c .v { color: var(--ink); font-variant-numeric: tabular-nums; }
-.bgt-donut__c .l { color: var(--muted); margin-top: 4px; }
+.bgt-donut__c .v { color: var(--ink); }
+.bgt-donut__c .l { color: var(--muted); margin-top: var(--sp-2); }
 
-.bgt-dleg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.bgt-dleg__row { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: var(--r-sm); cursor: default; transition: background .15s; }
+.bgt-dleg__row { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); cursor: default; transition: background .15s; }
 .bgt-dleg__row:hover { background: var(--wash); }
 .bgt-dleg__d { width: 10px; height: 10px; border-radius: 4px; flex: none; }
-.bgt-dleg__n { flex: 1; min-width: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bgt-dleg__v { color: var(--ink); font-variant-numeric: tabular-nums; }
-.bgt-dleg__p { color: var(--muted-2); width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.bgt-dleg__n { color: var(--ink); }
+.bgt-dleg__v { color: var(--ink); }
+.bgt-dleg__p { color: var(--muted-2); width: 40px; text-align: right; }
 
 /* stat stack */
-.bgt-statstack { display: flex; flex-direction: column; gap: 12px; }
-.bgt-stat { padding: 16px 18px; display: flex; align-items: center; gap: 14px; }
-.bgt-stat__ic { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; }
-.bgt-stat__m { flex: 1; min-width: 0; }
+.bgt-stat { padding: var(--sp-7); }
 .bgt-stat__l { color: var(--muted); }
-.bgt-stat__v { color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
-.bgt-stat__s { color: var(--muted); margin-top: 2px; }
+.bgt-stat__v { color: var(--ink); margin-top: var(--sp-1); }
+.bgt-stat__s { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-stat__s b { color: var(--ink-2); }
 .bgt-stat--total .bgt-stat__ic { background: var(--primary-soft); color: var(--brand); }
 .bgt-stat--ppl .bgt-stat__ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .bgt-stat--fx .bgt-stat__ic { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 .bgt-stat--fx { cursor: pointer; transition: border-color .18s, box-shadow .2s; width: 100%; text-align: left; }
 .bgt-stat--fx:hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
-.bgt-fxlist { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 5px; }
-.bgt-fxlist span { color: var(--ink); font-variant-numeric: tabular-nums; }
+.bgt-fxlist { gap: var(--sp-2) var(--sp-6); margin-top: var(--sp-2); }
+.bgt-fxlist span { color: var(--ink); }
 .bgt-fxlist .miss { color: var(--danger); }
 
 /* ════════ CONTROLS ROW ════════ */
-.bgt-ctl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 14px; }
-.bgt-ctl__spacer { flex: 1; min-width: 8px; }
-
-/* category ⇄ city segmented control reuses the shared Lumo .seg component */
+/* category ⇄ city segmented control reuses the shared Lumo .seg component;
+   распорка справа — общий .grow, своего класса под неё больше нет */
+.bgt-ctl { margin: var(--sp-7) 0; }
 
 /* ════════ TWO-PANE DRILLDOWN ════════ */
-.bgt-drill { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+.bgt-drill { display: grid; grid-template-columns: 320px 1fr; gap: var(--sp-7); align-items: start; }
 
-.bgt-glist { padding: 10px; }
-.bgt-glist__row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 11px 12px; border-radius: var(--r-btn); border: 1px solid transparent; background: transparent; cursor: pointer; font: inherit; transition: background .15s, border-color .15s; }
+.bgt-glist { padding: var(--sp-5); }
+.bgt-glist__row { width: 100%; text-align: left; padding: var(--sp-6); border-radius: var(--r-btn); border: 1px solid transparent; background: transparent; cursor: pointer; font: inherit; transition: background .15s, border-color .15s; }
 .bgt-glist__row:hover { background: var(--wash); }
 .bgt-glist__row.on { background: var(--primary-soft); border-color: var(--primary-soft-2); }
-.bgt-glist__ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.bgt-glist__m { flex: 1; min-width: 0; }
-.bgt-glist__n { display: flex; align-items: center; gap: 7px; color: var(--ink); min-width: 0; }
-.bgt-glist__n .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bgt-glist__c { color: var(--muted); margin-top: 1px; }
+.bgt-glist__n { color: var(--ink); min-width: 0; }
+.bgt-glist__c { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-glist__c .miss { color: var(--danger); }
 .bgt-glist__r { text-align: right; flex: none; }
-.bgt-glist__v { color: var(--ink); font-variant-numeric: tabular-nums; }
+.bgt-glist__v { color: var(--ink); }
 .bgt-glist__v.muted { color: var(--muted-2); }
-.bgt-glist__add { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 12px; border-radius: var(--r-btn); border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; margin-top: 4px; transition: border-color .16s, color .16s, background .16s; }
+.bgt-glist__add { justify-content: center; width: 100%; padding: var(--sp-6); border-radius: var(--r-btn); border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; margin-top: var(--sp-2); transition: border-color .16s, color .16s, background .16s; }
 .bgt-glist__add:hover { border-color: var(--brand); color: var(--brand); background: var(--primary-soft); }
 
 /* detail pane */
-.bgt-detail { padding: 20px 22px; min-height: 280px; }
-.bgt-detail__h { display: flex; align-items: center; gap: 13px; padding-bottom: 16px; border-bottom: 1px solid var(--line-2); }
-.bgt-detail__ic { width: 46px; height: 46px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; }
-.bgt-detail__ti { flex: 1; min-width: 0; }
-.bgt-detail__n { color: var(--ink); display: flex; align-items: center; gap: 8px; }
-.bgt-detail__s { color: var(--muted); margin-top: 1px; }
+.bgt-detail { padding: var(--sp-8); min-height: 280px; }
+.bgt-detail__h { padding-bottom: var(--sp-7); border-bottom: 1px solid var(--line); }
+.bgt-detail__n { color: var(--ink); }
+.bgt-detail__s { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-detail__amt { text-align: right; flex: none; }
-.bgt-detail__amt .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+.bgt-detail__amt .v { color: var(--ink); }
 .bgt-detail__amt .l { color: var(--muted); }
 
 /* expense rows */
-.bgt-exlist { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; }
-.bgt-exrow { display: flex; align-items: center; gap: 13px; padding: 11px 13px; border-radius: var(--r-btn); background: var(--surface); border: 1px solid var(--line); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
-.bgt-exrow__d { width: 40px; height: 40px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.bgt-exrow__m { flex: 1; min-width: 0; }
-.bgt-exrow__t { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bgt-exrow__s { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; color: var(--muted); margin-top: 3px; }
+.bgt-exlist { padding-top: var(--sp-7); }
+.bgt-exrow { padding: var(--sp-6); border-radius: var(--r-btn); background: var(--surface); border: 1px solid var(--line); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+.bgt-exrow__t { color: var(--ink); }
+.bgt-exrow__s { color: var(--muted); margin-top: var(--sp-2); }
 .bgt-exrow__s .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-2); flex: none; }
-.bgt-tagx { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: var(--r-pill); }
+.bgt-tagx { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); border-radius: var(--r-pill); }
 .bgt-tagx--link { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
 .bgt-tagx--manual { background: var(--wash); color: var(--muted); }
 .bgt-tagx--cat { background: transparent; border: 1.2px solid var(--line-strong); color: var(--ink-2); }
-.bgt-exrow__amt { text-align: right; flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bgt-exrow__amt { text-align: right; flex: none; color: var(--ink); }
 .bgt-exrow__amt.miss { color: var(--danger); }
 .bgt-exrow__chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
-.bgt-exrow__acts { display: flex; gap: 4px; flex: none; }
-.bgt-iconbtn { width: 30px; height: 30px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--muted-2); cursor: pointer; display: grid; place-items: center; transition: background .14s, color .14s; }
-.bgt-iconbtn:hover { background: var(--wash); color: var(--ink); }
-.bgt-iconbtn--danger:hover { background: var(--danger-soft); color: var(--danger); }
+.bgt-exrow__acts { flex: none; }
+/* Кнопки строки — общий .icon-btn на ступени --sm; своей копии больше нет.
+   Экран приглушает ТОН ПОКОЯ (--muted-2 вместо базового --muted) — и ровно
+   поэтому обязан переобъявить ховер: `.bgt-exrow__acts .icon-btn` весит (0,2,0),
+   столько же, сколько `.icon-btn:hover` в app.css (псевдокласс считается за
+   класс), а экранный файл лежит НИЖЕ по бандлу и выигрывает при равном весе.
+   Без строки ниже иконка на ховере осталась бы приглушённой — то есть уточнение
+   покоя молча съело бы состояние из дизайн-системы.
+   cursor не объявляем: `button { cursor: pointer }` стоит глобально. */
+.bgt-exrow__acts .icon-btn { color: var(--muted-2); transition: background .14s, color .14s; }
+.bgt-exrow__acts .icon-btn:hover { color: var(--ink); }
+/* Опасное действие - деталь ЭТОГО экрана, а не модификатор дизайн-системы:
+   имя вида .icon-btn--danger читалось бы как общий модификатор, но работает
+   только внутри .bgt-exrow__acts - следующий экран навесил бы его и получил
+   тишину. Поэтому имя в префиксе экрана. */
+.bgt-exrow__acts .bgt-exrow__del:hover { background: var(--danger-soft); color: var(--danger); }
 
 @media (hover: hover) {
   .bgt-exrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
@@ -114,41 +122,39 @@
 }
 
 /* ════════ MODAL INTERNALS ════════ */
-/* amount + currency joined group (amount input + CurrencyCombobox trigger) */
+/* amount + currency joined group (amount input + CurrencyCombobox trigger).
+   Своя вёрстка: два контрола склеены в один элемент, поэтому внутренние углы
+   гасятся, а не берутся из шкалы радиусов. */
 .bgt-amtgrp { display: flex; align-items: stretch; }
-.bgt-amtgrp__amt { border-top-right-radius: 0; border-bottom-right-radius: 0; flex: 1; min-width: 0; }
+.bgt-amtgrp__amt { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .bgt-amtgrp__cur { width: 122px; flex: none; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; }
 
 /* colour swatches */
-.bgt-swatches { display: flex; flex-wrap: wrap; gap: 9px; }
-.bgt-swatch { width: 30px; height: 30px; border-radius: var(--r-sm); cursor: pointer; border: 2.5px solid transparent; padding: 0; transition: transform .14s var(--ease-spring); }
+.bgt-swatch { cursor: pointer; border: 2.5px solid transparent; padding: 0; transition: transform .14s var(--ease-spring); }
 .bgt-swatch:hover { transform: scale(1.1); }
 .bgt-swatch.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
 
 /* icon picker */
-.bgt-iconpick { display: flex; flex-wrap: wrap; gap: 8px; }
-.bgt-iconpick button { width: 38px; height: 38px; border-radius: var(--r-sm); border: 1.5px solid var(--line); background: var(--wash-2); color: var(--muted); cursor: pointer; display: grid; place-items: center; transition: background .14s, border-color .14s, color .14s; }
+.bgt-iconpick button { border: 1.5px solid var(--line); background: var(--wash-2); color: var(--muted); cursor: pointer; transition: background .14s, border-color .14s, color .14s; }
 .bgt-iconpick button.on { background: var(--primary-soft); border-color: var(--brand); color: var(--brand); }
 
 /* fx rate rows */
-.bgt-fxrow { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line-2); }
+.bgt-fxrow { padding: var(--sp-6) 0; border-bottom: 1px solid var(--line); }
 .bgt-fxrow:last-child { border-bottom: 0; }
-.bgt-fxrow__cur { width: 46px; height: 46px; border-radius: var(--r-sm); background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); display: grid; place-items: center; flex: none; }
+.bgt-fxrow__cur { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 .bgt-fxrow__cur.miss { background: var(--danger-soft); color: var(--danger); }
-.bgt-fxrow__m { flex: 1; min-width: 0; }
-.bgt-fxrow__eq { color: var(--ink-2); margin-bottom: 5px; }
+.bgt-fxrow__eq { color: var(--ink-2); margin-bottom: var(--sp-2); }
 .bgt-fxrow__eq b { color: var(--ink); }
 .bgt-fxrow__hint { color: var(--muted); }
 .bgt-fxrow__hint.man { color: var(--info-ink); }
 .bgt-fxrow__hint.miss { color: var(--danger); }
-.bgt-fxrow > .input { width: 108px; flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+.bgt-fxrow > .input { width: 108px; flex: none; text-align: right; }
 
 /* ════════ RESPONSIVE ════════ */
 /* Header: screen title + primary actions relocated from the removed per-screen
    bar. Tokens only (font/colour/space) — nothing new in the design system. */
-.bgt-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.bgt-head { margin-bottom: var(--sp-7); }
 .bgt-head__title { color: var(--ink); margin: 0; }
-.bgt-head__sp { flex: 1; }
 
 @media (max-width: 880px) {
   .bgt-sumband { grid-template-columns: 1fr; }
@@ -156,15 +162,16 @@
   /* Bug 2: donutwrap collapses to column at the same breakpoint as the sumband —
      when the card is full-width there is no room to fit the donut + a wide currency
      legend side-by-side, so stack them vertically to give the legend full card width */
-  .bgt-donutwrap { flex-direction: column; align-items: stretch; gap: 16px; }
+  .bgt-donutwrap { flex-direction: column; align-items: stretch; gap: var(--sp-7); }
 }
 @media (max-width: 640px) {
   /* Phones: hide the header buttons. Adding an expense now lives in the global
      mobile bottom-nav "+" add sheet; "rates" opens via the FX stat card. */
   .bgt-head .btn { display: none; }
-  .bgt-head { margin-bottom: 12px; }
+  .bgt-head { margin-bottom: var(--sp-6); }
   /* Bug 1: allow category/expense names to wrap instead of truncating,
-     preventing the text from pushing the layout beyond the screen edge */
+     preventing the text from pushing the layout beyond the screen edge.
+     Экранное правило намеренно бьёт примитив .trunc — оно ниже по каскаду. */
   .bgt-glist__n { flex-wrap: wrap; align-items: flex-start; }
   .bgt-glist__n .t { white-space: normal; word-break: break-word; }
   .bgt-exrow__t { white-space: normal; word-break: break-word; }

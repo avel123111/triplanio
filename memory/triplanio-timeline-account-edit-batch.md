@@ -15,7 +15,7 @@ metadata:
 
 **Правый рейл (B) — `CityRail`:** фильтр городов теперь исключает waypoint (`v.kind !== 'start' && !== 'end' && !== 'waypoint'`) — только transit-города как «станции».
 
-**Account inbox-карточка (C) — `ScreenAccount.jsx`:** новая `.acct-inbox` карточка первым блоком в `.acct-content` → редирект `/inbox`, бейдж непрочитанных. Счётчик из `useQuery(['notifications', user?.email])` (тот же ключ, что у `NotificationsBell` → общий кэш, без лишнего фетча; RLS-скоуп). Ключи `account.inbox_title/sub/unread` (en/es/ru). CSS `.acct-inbox*` в app.css.
+**Account inbox-строка (C) — `ScreenAccount.jsx`:** первая строка секции «Уведомления» → редирект `/inbox`, пилюля непрочитанных. Вёрстка — общая грамматика экрана (`.card` + `.acct-divrow` + `.acct-ic-tile` + `.badge--count`), как у строк «Политика»/«Условия»/«Настройки cookie»; своего пространства имён у неё нет (`.acct-inbox*` выпилен в TRIP-282 — переобъявлял ряд, плитку, заголовок, подпись и счётчик, которые уже есть). Счётчик — `useUnreadNotificationCount()` из `src/lib/useNotifications.js` (head-запрос `count=exact`, RLS-скоуп), не выводится из обрезанного списка. Ключи `account.inbox_title/sub` (en/es/ru).
 
 **TripStructureEdit start/finish (D) — `GridEndpoint`:** анкеры стали ниже (`.te-end` padding 15px→9px, ниже transit `.te-row`). Даты: проп `date` — старт = `seq[0].start_date` (старт трипа), финиш = `seq[last].end_date`, **+1 день если трансфер в финиш `day_change`** (овернайт; `arrivalFor(endNode.id)`, mirror server recompute_trip). Раньше показывало «Salida · -» (анкеры без дат).
 

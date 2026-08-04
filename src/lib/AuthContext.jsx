@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
-import { forgetStashedAttribution, getSignupAttribution, track, syncCampaignToPerson } from '@/lib/analytics';
+import { forgetStashedAttribution, getSignupAttribution, track, syncCampaignToPerson, syncFirstTouchToPerson } from '@/lib/analytics';
 import { pickSignupAttribution } from '@/lib/campaign';
 
 const AuthContext = createContext();
@@ -207,6 +207,17 @@ export const AuthProvider = ({ children }) => {
       // only person properties reach it. Self-guarded — a repeat login writes
       // nothing (TRIP-316 A2).
       syncCampaignToPerson();
+      // First touch, alongside the last-touch mark above. PostHog derives its own
+      // `$initial_*` from the address of the first event it sees a person on, and
+      // that address is always post-OAuth or post-confirmation — the marks are
+      // gone from it by then, so we hand it the value (TRIP-329).
+      //
+      // Fed the PROFILE, on every load, not the freshly-read marks at creation:
+      // consent can arrive after the account exists (confirmation link opened on
+      // a phone, or Google sign-in before answering the banner), and a reload in
+      // between would lose an in-memory value for good. The column cannot be
+      // lost, and set-once makes repeating it free.
+      syncFirstTouchToPerson(profile);
       // Registration (TRIP-316 A1). The `users` row is the ONE birth point of a
       // user: it is created here, exactly once, and identically for Google,
       // Apple, One Tap and email — the login buttons are not, and the fourth one

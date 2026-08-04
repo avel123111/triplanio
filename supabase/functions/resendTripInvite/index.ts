@@ -61,6 +61,7 @@ Deno.serve(withHandler('resendTripInvite', async (req, corsHeaders) => {
       inviter: callerName,
       role: member.role,
       appUrl,
+      tripId: member.trip_id,
     });
 
     await sendEmail({

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { invokeFn } from '@/lib/invokeFn';
+import { useNotificationList, useUnreadNotificationCount, useNotificationActions, BELL_ROWS } from '@/lib/useNotifications';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
@@ -49,74 +49,16 @@ export function notifMeta(type = '') {
 export default function NotificationsBell({ triggerClassName }) {
   const t = useT();
   const { fmtRelative } = useI18nFormat();
-  const qc = useQueryClient();
   const { user } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['notifications', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.email,
-    // No background polling (TRIP-208 Ф2-2a). Each screen renders its own
-    // AppHeader, so navigating remounts this bell → React Query refetches the
-    // (staleTime-gated) notifications automatically. The old refetchInterval:60s
-    // only ever did work for a user parked on ONE screen without navigating, at
-    // the cost of a `SELECT * limit 30` on every open tab every 60s, 24/7. Drop
-    // the timer and instead refetch on window focus (overriding the global
-    // refetchOnWindowFocus:false) so a returning tab is fresh; mutations already
-    // invalidate ['notifications']. Zero background egress, zero realtime.
-    refetchOnWindowFocus: true,
-  });
-
-  const unread = notifications.filter(n => !n.read).length;
-
-  const markAllRead = useMutation({
-    mutationFn: async () => {
-      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
-      if (!unreadIds.length) return;
-      const { error } = await supabase.from('notifications').update({ read: true }).in('id', unreadIds);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
-  });
-
-  const respondInvite = useMutation({
-    mutationFn: async ({ memberId, action }) => {
-      // Edge function sets user_id on the member, notifies the inviter, and
-      // marks the invite read - a raw update would skip all of that.
-      const { data, error } = await invokeFn('respondTripInvite', {
-        body: { member_id: memberId, action },
-      });
-      // Re-throw the ORIGINAL error (invokeFn stamped it __seamHandled) so the
-      // global MutationCache.onError seam doesn't capture it twice — the edge/
-      // invoke seam already reported it. new Error(...) would drop the stamp.
-      if (error || data?.error) throw error || new Error(data?.error || 'Failed');
-    },
-    onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-      qc.invalidateQueries({ queryKey: ['trips'] });
-      qc.invalidateQueries({ queryKey: ['trip-members'] });
-      qc.invalidateQueries({ queryKey: ['trip-member', vars?.memberId] });
-    },
-  });
-
-  const markOneRead = useMutation({
-    mutationFn: async (notifId) => {
-      const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notifId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
-  });
+  // Shared seam (src/lib/useNotifications.js): closed bell costs one number,
+  // and the popover renders the head of the same list the Inbox page shows.
+  const { data: rows = [], isLoading } = useNotificationList({ enabled: open });
+  const unread = useUnreadNotificationCount();
+  const { markAllRead, markOneRead, respondInvite } = useNotificationActions();
+  const notifications = rows.slice(0, BELL_ROWS);
 
   if (!user) return null;
 

@@ -11,6 +11,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
+import { withViralMarks } from '@/lib/viralLink';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { displayName } from '@/lib/displayName';
@@ -83,7 +84,9 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error || data?.error || !data?.token) { setLinkErr(t('trip.link_error')); return; }
-        setLinkUrl(`${window.location.origin}/join/${data.token}`);
+        // location.origin, not a constant: the campaign mark is stored per host,
+        // so the link must point at the host it was copied from.
+        setLinkUrl(withViralMarks(`${window.location.origin}/join/${data.token}`, 'invite_link', tripId));
       })
       .catch(() => { if (!cancelled) setLinkErr(t('trip.link_error')); })
       .finally(() => { if (!cancelled) setLinkLoading(false); });
@@ -360,7 +363,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
   return (
     <>
-      <div className="mlist ov-anim">
+      <div className="mlist col col--g4 ov-anim">
         {allMembers.length === 0 && (
           <EmptyState icon="users" title={t('member.empty')} />
         )}

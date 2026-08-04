@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/lib/ThemeContext';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { invokeFn } from '@/lib/invokeFn';
+import { useNotificationList, useUnreadNotificationCount, useNotificationActions } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
@@ -36,66 +36,20 @@ export default function Inbox() {
   const { user } = useAuth();
   const t = useT();
   const { fmtRelative } = useI18nFormat();
-  const qc = useQueryClient();
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
 
   const [filter, setFilter] = useState('all');
 
+  // Shared seam (src/lib/useNotifications.js) — the same single list the bell
+  // renders the head of.
   const {
     data: notifications = [], isLoading,
     error: notifError, isPending: notifPending, fetchStatus: notifFetchStatus, refetch: refetchNotifs,
-  } = useQuery({
-    queryKey: ['notifications', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(100);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.email,
-  });
+  } = useNotificationList();
+  const { markAllRead, markOneRead, respondInvite } = useNotificationActions();
 
-  const markAllRead = useMutation({
-    mutationFn: async () => {
-      const ids = notifications.filter(n => !n.read).map(n => n.id);
-      if (!ids.length) return;
-      const { error } = await supabase.from('notifications').update({ read: true }).in('id', ids);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
-  });
-
-  // Per-notification mark-as-read, mirroring the bell popover (NotificationsBell).
-  const markOneRead = useMutation({
-    mutationFn: async (notifId) => {
-      const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notifId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
-  });
-
-  const respondInvite = useMutation({
-    mutationFn: async ({ memberId, action }) => {
-      // Use the edge function: it sets user_id on the member (so the accepter
-      // becomes a recognized participant under RLS), notifies the inviter, and
-      // marks the invite notification read - none of which a raw update does.
-      const { data, error } = await invokeFn('respondTripInvite', {
-        body: { member_id: memberId, action },
-      });
-      // Re-throw the ORIGINAL error (invokeFn stamped it __seamHandled) so the
-      // global MutationCache.onError seam doesn't capture it twice — the edge/
-      // invoke seam already reported it. new Error(...) would drop the stamp.
-      if (error || data?.error) throw error || new Error(data?.error || 'Failed');
-    },
-    onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-      qc.invalidateQueries({ queryKey: ['trips'] });
-      qc.invalidateQueries({ queryKey: ['trip-member', vars?.memberId] });
-    },
-  });
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = useUnreadNotificationCount();
   const inviteCount = notifications.filter(n => n.type === 'trip_invite').length;
 
   const filtered = notifications.filter(n => {
@@ -185,7 +139,7 @@ export default function Inbox() {
         ) : (
           <div className="nlist">
             {groups.map((g) => (
-              <div key={g.label} className="ngrp">
+              <div key={g.label} className="col col--g4">
                 <div className="ngrp__label">{t(GROUP_LABEL_KEY[g.label])}</div>
                 {g.items.map((n) => (
                   <InboxRow
@@ -231,7 +185,7 @@ function InboxEmpty({ onCollection }) {
                 key={r.icon}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '11px 6px',
-                  borderBottom: i < rows.length - 1 ? '1px solid var(--line-2)' : 'none',
+                  borderBottom: i < rows.length - 1 ? '1px solid var(--line)' : 'none',
                 }}
               >
                 <span style={{

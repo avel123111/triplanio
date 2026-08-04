@@ -60,7 +60,7 @@ function DocRows({ docs }) {
           href={normalizeExternalUrl(d.file_url)}
           target="_blank"
           rel="noreferrer"
-          className="doc-row"
+          className="doc-row row row--g4"
         >
           <FileTypeBadge name={d.file_name} />
           <b>{d.file_name || t('event.file_word')}</b>
@@ -253,7 +253,7 @@ function HotelBody({ entity, docs = [] }) {
           <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
           <div className="hv-rows">
             {entity.booking_reference && (
-              <div className="hv-row">
+              <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
                 <span className="hv-row__k t-meta">{t('event.booking_ref')}</span>
                 <span className="hv-row__sp" />
@@ -261,7 +261,7 @@ function HotelBody({ entity, docs = [] }) {
               </div>
             )}
             {entity.phone && (
-              <div className="hv-row">
+              <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Phone /></span>
                 <span className="hv-row__k t-meta">{t('event.phone')}</span>
                 <span className="hv-row__sp" />
@@ -269,7 +269,7 @@ function HotelBody({ entity, docs = [] }) {
               </div>
             )}
             {entity.email && (
-              <div className="hv-row">
+              <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Mail /></span>
                 <span className="hv-row__k t-meta">E-mail</span>
                 <span className="hv-row__sp" />
@@ -391,7 +391,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
           <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
           <div className="hv-rows">
             {entity.booking_reference && (
-              <div className="hv-row">
+              <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
                 <span className="hv-row__k t-meta">{t('event.booking_ref')}</span>
                 <span className="hv-row__sp" />
@@ -399,7 +399,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
               </div>
             )}
             {carrier && (
-              <div className="hv-row">
+              <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Ic /></span>
                 <span className="hv-row__k t-meta">{t('transfer.carrier')}</span>
                 <span className="hv-row__sp" />
@@ -407,7 +407,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
               </div>
             )}
             {entity.flight_number && (
-              <div className="hv-row">
+              <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Ticket /></span>
                 <span className="hv-row__k t-meta">{t('event.flight_number')}</span>
                 <span className="hv-row__sp" />
@@ -472,7 +472,7 @@ function ActivityBody({ entity, docs = [] }) {
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('event.meeting_point')}</div>
           <div className="hv-rows">
-            <div className="hv-row">
+            <div className="hv-row row row--g6">
               <span className="hv-row__ic"><MapIcon /></span>
               <span className="hv-row__v t-strong" style={{ textAlign: 'left', maxWidth: 'none', whiteSpace: 'normal' }}>{entity.location_address}</span>
             </div>

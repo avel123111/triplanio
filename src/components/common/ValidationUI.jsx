@@ -190,7 +190,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
         <Chevron size={16} style={{ color: 'var(--muted)', flexShrink: 0 }} />
       </button>
       {expanded && (
-        <div style={{ borderTop: '1px solid var(--line-2)' }}>
+        <div style={{ borderTop: '1px solid var(--line)' }}>
           {list.map((it, i) => {
             const d = describeIssue(it, ctx, t);
             const stripe = it.level === 'error' ? 'var(--danger)' : d.color;
@@ -199,7 +199,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                 key={`${it.code}-${it.entityId || it.fromId || i}`}
                 type="button"
                 onClick={() => onOpen?.(it)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line-2)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer' }}
               >
                 <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: d.soft, color: d.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <d.Icon size={16} />

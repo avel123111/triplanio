@@ -155,7 +155,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   return (
     <>
       <div className="t-mono tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
-      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={`surface-glass${ghost ? ' is-ghost' : ''}`} />
+      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
           {showMap
@@ -218,7 +218,7 @@ const TripCard = ({ trip, onClick }) => {
         <div className="tc__dates tab">{trip.days}</div>
         <div className="tc__scope">
           <Icon name="pin" />
-          <span>{trip.scope}</span>
+          <span className="trunc">{trip.scope}</span>
         </div>
 
         {/* shared footer: совместный chip + role + avatars */}
@@ -264,7 +264,7 @@ const TripRow = ({ trip, onClick }) => {
         <div className="tr__title">{trip.title}</div>
         <div className="tr__sub">
           <Icon name="pin" />
-          <span>{trip.scope}</span>
+          <span className="trunc">{trip.scope}</span>
         </div>
       </div>
 

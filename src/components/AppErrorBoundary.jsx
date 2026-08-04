@@ -49,7 +49,7 @@ export default class AppErrorBoundary extends React.Component {
             display: 'grid', placeItems: 'center', fontSize: 'var(--fs-h2)',
           }}>⚠️</div>
           <h2 style={{ margin: 0, fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{c.title}</h2>
-          <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-strong)', textAlign: 'center', maxWidth: 400 }}>
+          <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-base)', textAlign: 'center', maxWidth: 400 }}>
             {this.state.error?.message || c.generic}
           </p>
           <button
@@ -57,7 +57,7 @@ export default class AppErrorBoundary extends React.Component {
             style={{
               padding: '10px 20px', borderRadius: 'var(--r-sm)', border: 'none',
               background: '#2167e2', color: 'white', fontWeight: 600,
-              fontSize: 'var(--fs-strong)', cursor: 'pointer',
+              fontSize: 'var(--fs-base)', cursor: 'pointer',
             }}
           >
             {c.home}

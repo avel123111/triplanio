@@ -259,7 +259,7 @@
 /* Card header */
 .ncal-wdc-h {
   padding: 13px 13px 10px; flex: none;
-  border-bottom: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line);
 }
 .ncal-wdc-num {
   color: var(--ink);
@@ -370,7 +370,7 @@
   .ncal-hd { flex-direction: column; gap: 10px; align-items: stretch; margin-bottom: 14px; }
   .ncal-hd-l { width: 100%; }
   .ncal-month-lbl { font-size: var(--fs-h2); }
-  .ncal-year-lbl  { font-size: var(--fs-strong); margin-left: 8px; }
+  .ncal-year-lbl  { font-size: var(--fs-base); margin-left: 8px; }
   /* Controls: nav + toggle in one row */
   .ncal-hd-r {
     flex-direction: row; align-items: center;
@@ -429,7 +429,7 @@
     width: 5px; height: 5px; border-radius: 50%;
     background: var(--brand); margin: 2px auto 0;
   }
-  .ncal-dn     { font-size: var(--fs-strong); }
+  .ncal-dn     { font-size: var(--fs-base); }
   .ncal-nav-txt { padding: 4px 8px; }
   .ncal-hd-r   { flex-wrap: wrap; }
 }

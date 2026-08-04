@@ -73,12 +73,21 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
 );
 
 // ----- Severity message -----
-export const Severity = ({ level = "info", title, children, action, icon }) => (
-  <div className={`sev sev--${level}`}>
-    <span className="sev__icon">
-      <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
+// Значок по умолчанию свой у каждого тона. Раньше здесь стояла вилка, знавшая
+// ровно три тона, а всё остальное рисовавшая крестом ошибки - success молча
+// уехал бы в «ошибку». Карта вместо вилки: новый тон = новая строка.
+const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "check", quiet: "info" };
+
+// align="mid" - значок по центру пары «заголовок + подпись» (см. .sev--mid).
+// iconStyle - тинт плитки из реестра брендов. Это ДАННЫЕ, а не тон системы:
+// плашка остаётся системной, фирменный цвет несёт только плитка (то же решение,
+// что принято на экране аккаунта - фон плитки есть оттенок её значка).
+export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align }) => (
+  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}`}>
+    <span className="tile sev__icon" style={iconStyle}>
+      <Icon name={icon || SEV_ICON[level] || "info"} size={16} />
     </span>
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="grow--fit">
       {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
       {children}
     </div>
@@ -179,22 +188,28 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 );
 
 // ----- Empty / Loading / Error states -----
-export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty" }) => (
-  <div style={{
-    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    padding: "48px 24px", textAlign: "center", color: "var(--muted)",
-  }}>
-    <div style={{
-      width: 64, height: 64, borderRadius: 'var(--r-md)',
-      background: kind === "error" ? "var(--danger-soft)" : kind === "locked" ? "var(--pro-soft-2)" : "var(--brand-soft)",
-      color: kind === "error" ? "var(--danger)" : kind === "locked" ? "var(--pro-ink)" : "var(--brand)",
-      display: "grid", placeItems: "center", marginBottom: 16,
-    }}>
-      <Icon name={icon} size={28} />
+// kind -> тон плитки .tile--*; всё, что не error (включая дефолтный empty),
+// красится в brand - так же, как было у инлайнового варианта. Тонов ровно два,
+// поэтому это тернарник, а не карта: карта на один ключ ещё и читалась бы по
+// прототипу (kind="constructor" склеил бы мусорный класс).
+// Вариант kind="locked" (розовая Pro-плитка) удалён в TRIP-321 Ф12.0: он приехал
+// с первым коммитом дизайн-системы и НИ РАЗУ не был вызван. «Раздел только в Pro»
+// в продукте показывается модалкой ProUpsellModal с офером, а не пустым экраном,
+// поэтому это не отложенная фича, а нарисованный и неподключённый четвёртый вид.
+// boxed - компактный вариант внутри карточки/диалога (подложка + рамка).
+// iconStyle - тинт плитки из реестра брендов, как у Severity: сам примитив
+// остаётся системным, фирменный цвет несёт только плитка.
+export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
+  <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
+    <div
+      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${kind === "error" ? "danger" : "brand"}`}
+      style={iconStyle}
+    >
+      <Icon name={icon} size={boxed ? 21 : 28} />
     </div>
-    <h3 style={{ color: "var(--ink)", marginBottom: 6 }}>{title}</h3>
-    <div className="t-body" style={{ maxWidth: 340 }}>{body}</div>
-    {action && <div style={{ marginTop: 18 }}>{action}</div>}
+    <h3 className="empty-state__t">{title}</h3>
+    <div className="t-body empty-state__b">{body}</div>
+    {action && <div className="empty-state__act">{action}</div>}
   </div>
 );
 
@@ -202,7 +217,7 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
 export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
   <div style={{
     width: w, height: h, borderRadius: r,
-    background: "linear-gradient(90deg, var(--line-2) 0%, var(--wash) 50%, var(--line-2) 100%)",
+    background: "linear-gradient(90deg, var(--line) 0%, var(--wash) 50%, var(--line) 100%)",
     backgroundSize: "200% 100%",
     animation: "shimmer 1.5s linear infinite",
     ...style,
@@ -547,7 +562,7 @@ export function StreamEventRow({ e, onClick }) {
 
 function _InfoChip({ icon, color, children }) {
   return (
-    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line-2)", color: "var(--ink-2)" }}>
+    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line)", color: "var(--ink-2)" }}>
       <Icon name={icon} size={13} style={{ color }} />
       {children}
     </span>

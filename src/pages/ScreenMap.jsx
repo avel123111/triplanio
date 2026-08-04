@@ -170,7 +170,7 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
               {row.glyph ? <Icon name={row.glyph} size={13} /> : <span className="num t-meta">{row.number}</span>}
             </span>
             <span className="map-route__body">
-              <span className="map-route__name t-ui">{c.city_name}</span>
+              <span className="map-route__name t-ui trunc">{c.city_name}</span>
               {dates && <span className="map-route__dates num t-meta">{dates}</span>}
             </span>
           </button>

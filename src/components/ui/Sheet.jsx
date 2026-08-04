@@ -43,7 +43,7 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
               <Drawer.Close className="close" aria-label={t('common.close')}><X size={16} /></Drawer.Close>
             </div>
           ) : (
-            <Drawer.Title style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+            <Drawer.Title className="sr-only">
               {titleText || t('common.menu')}
             </Drawer.Title>
           )}

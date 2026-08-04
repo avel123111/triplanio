@@ -199,7 +199,7 @@ export function CreateTripProvider({ children }) {
           aria-busy="true"
         >
           <div className="dlg dlg--sm" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 28, textAlign: 'center' }}>
-            <div className="app-spinner" />
+            <div className="spin spin--ring spin--xl spin--ink" />
             <div className="t-ui">{t('trip.copying')}</div>
           </div>
         </div>

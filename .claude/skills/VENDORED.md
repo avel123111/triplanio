@@ -131,6 +131,21 @@ already-forced reuse-first gate (rule #6) + the mandatory `code-simplifier` pass
 (rule #14). On conflict, rules #6/#9 and the approval gate win. To refresh: re-copy
 the four `skills/ponytail*/SKILL.md` from the pinned commit.
 
+## NOT vendored: `graphify`
+
+`.claude/skills/graphify/SKILL.md` + `.claude/commands/graph.md` are **ours**,
+written from scratch — do not try to "re-vendor" or refresh them from upstream.
+They are a thin wrapper around an external CLI (`graphify`,
+github.com/Graphify-Labs/graphify, Apache-2.0/MIT) that is **not** in this repo
+and is installed per session with `uv tool install graphifyy`.
+
+Upstream ships its own installer (`graphify install` / `graphify claude install`)
+which we deliberately do **not** run: it writes into `~/.claude` (ephemeral
+container — gone next session, the TRIP-23 lesson), appends its own section to
+our `CLAUDE.md`, and installs a PreToolUse hook that in strict mode blocks
+reading source files until the graph is queried. Our wrapper carries something
+upstream cannot: the measured trust boundaries of the graph on THIS codebase.
+
 ## Caveat: does Cyrus load `.claude/skills/`?
 
 Cyrus docs explicitly list `CLAUDE.md`, `.claude/agents/`, `.claude/commands/`,

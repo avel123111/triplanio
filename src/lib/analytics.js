@@ -11,7 +11,8 @@
 // Everything here is safe to call before consent: PostHog is not initialised, an
 // uninitialised client is a no-op, and nothing is queued (TRIP-311).
 import posthog from 'posthog-js';
-import { CAMPAIGN_KEYS, pickSignupAttribution, readSignupAttribution, resolveCampaign } from '@/lib/campaign';
+import { CAMPAIGN_KEYS, campaignQuery, pickSignupAttribution, readSignupAttribution, resolveCampaign, toInitialPersonProps } from '@/lib/campaign';
+import { appendQuery } from '@/lib/viralLink';
 
 // What the visit arrived with, held in memory until consent: writing marks to the
 // device before someone agrees is what this ticket forbids, and by the time they
@@ -20,6 +21,15 @@ import { CAMPAIGN_KEYS, pickSignupAttribution, readSignupAttribution, resolveCam
 const visitSearch = typeof window === 'undefined' ? '' : window.location.search;
 let visitRefTripId = '';
 let pendingGroup = null;
+// First-touch marks waiting for consent. Not a nicety: an account can be created
+// BEFORE the banner is answered (confirmation link on a second device, or a
+// visitor who signs in with Google without answering), and PostHog is a no-op
+// until then. Replayed by applyConsent, after identify — set before it, person
+// properties would land on the anonymous id.
+let pendingFirstTouch = null;
+// Marks the send as done for this device, so a later login does not repost what
+// set_once will discard. Mirrors `camp_synced_ts` next door.
+const FIRST_TOUCH_SYNCED = 'first_touch_synced';
 
 // Single source of truth for "analytics is live in this document". Set AFTER
 // init, so a failed init cannot leave it lying.
@@ -122,6 +132,29 @@ export function rememberAttributionForRedirect() {
 }
 
 /**
+ * Put this visit's campaign marks on an outgoing address. For links that REPLACE
+ * the document: the snapshot above lives in memory only, so a full load starts a
+ * new document with an empty one, and `getSignupAttribution()` then finds nothing
+ * — a stranger who arrived on a marked invite or share link and pressed the very
+ * button the link exists for would register unattributed.
+ *
+ * The address carries the marks rather than the device storing them: nothing is
+ * written before consent, so the question TRIP-311 answers does not even arise,
+ * and unlike the OAuth stash next to it this survives a host change. The
+ * whitelist inside `campaignQuery` is what keeps our own `?t=<share_token>` from
+ * riding along.
+ *
+ * Pass a bare address — a fragment, if any, is appended by the caller after this
+ * (`navBase` + `#anchor` in SiteChrome), which lands it in the right order.
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function withVisitCampaign(url) {
+  return appendQuery(url, campaignQuery(visitSearch));
+}
+
+/**
  * The signup-attribution columns for the account being created, or null. Written
  * for EVERY visitor, refusers included — this is why "which campaign brought
  * this signup" has an answer that does not depend on consent.
@@ -213,4 +246,49 @@ export function syncCampaignToPerson() {
     posthog?.unsetPersonProperties?.(CAMPAIGN_KEYS);
     posthog?.unregister?.('camp_synced_ts');
   }
+}
+
+/**
+ * Record where this account came from as PostHog's own FIRST-touch properties.
+ *
+ * Fed the `users` row on every profile load, so the source is the COLUMN rather
+ * than the moment of signup. PostHog cannot work this out on its own: it derives
+ * `$initial_*` from the address of the first event it sees a person on, and by
+ * then the visitor has been through Google's OAuth screen or a confirmation
+ * email and the marks are long gone from the URL (verified on prod:
+ * `$initial_utm_* = NULL` for all 24 persons).
+ *
+ * Sent as set-once, which is what makes it FIRST touch: unlike the `camp_*`
+ * super-properties above, no later click can overwrite it, so a purchase born on
+ * the server can be credited to the channel that actually acquired the person
+ * rather than to the last link they happened to open. Set-once is also why
+ * feeding it repeatedly is safe — the second call cannot change the answer.
+ *
+ * Analytics may not be running yet: consent can be given AFTER the account
+ * exists (the confirmation link opened on a phone that never saw the banner, or
+ * a visitor who ignores the banner and signs in with Google first). The value is
+ * held and replayed by `applyConsent`, the same shape as `pendingGroup` above —
+ * without it the marks would be dropped in silence for exactly the people the
+ * link was marked for.
+ *
+ * Silent for anyone who declines — PostHog does not exist for them and
+ * `users.signup_utm_*` stays their only record.
+ *
+ * @param {Record<string, string> | null} [marks]  the `users` row, or the
+ *   signup columns alone; omit to flush what an earlier call held
+ */
+export function syncFirstTouchToPerson(marks) {
+  const props = toInitialPersonProps(marks) || pendingFirstTouch;
+  if (!props) return;
+
+  if (!analyticsOn) { pendingFirstTouch = props; return; }
+  // One send per device: without the marker every login posts a `$set` that
+  // set_once will discard anyway. Same self-guard as syncCampaignToPerson.
+  if (posthog?.get_property?.(FIRST_TOUCH_SYNCED)) { pendingFirstTouch = null; return; }
+
+  // Second argument = set_once. Not the first: that would overwrite, and this
+  // property answers "which channel acquired this person", which cannot change.
+  posthog?.setPersonProperties?.(undefined, props);
+  posthog?.register?.({ [FIRST_TOUCH_SYNCED]: true });
+  pendingFirstTouch = null;
 }

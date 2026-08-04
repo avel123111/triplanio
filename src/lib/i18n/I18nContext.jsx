@@ -201,7 +201,7 @@ export function I18nProvider({ children }) {
   if (!ready.has(lang)) {
     return (
       <div className="app-loading">
-        <div className="app-spinner"></div>
+        <div className="spin spin--ring spin--xl spin--ink" />
       </div>
     );
   }

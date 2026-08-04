@@ -162,7 +162,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent aria-describedby={undefined}>
         {/* sr-only a11y title — visible h2 is inside dlg__head */}
-        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('doc.dialog_new')}</DialogTitle>
+        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -302,8 +302,8 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 onChange={e => uploadFiles(e.target.files)}
               />
               {uploading ? (
-                <div className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)' }}>
-                  <span className="dl-spinner" />
+                <div className="t-body row row--g4">
+                  <span className="spin spin--ring" />
                   {t('common.loading')}
                 </div>
               ) : (
@@ -374,7 +374,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
-        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{doc.title}</DialogTitle>
+        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">

@@ -5,8 +5,8 @@ import { tripStats } from '@/lib/trip-stats';
 import { StatBar } from '@/components/stats/widgets';
 
 // Five at-a-glance trip stats rendered as the shared .statbar polosa — the same
-// primitive as the /trips home bar (TRIP-278), panel-skinned per the trip-screen
-// surface canon (TRIP-189). Metrics: cities, countries, transfers, route distance
+// primitive as the /trips home bar (TRIP-278); the surface skin comes from the
+// canonical role group. Metrics: cities, countries, transfers, route distance
 // (great-circle approximation) and duration. `orderedVisits` (trip order, for the
 // distance sum) is optional — falls back to `visits` inside tripStats.
 export default function TripStatRow({ visits = [], transfers = [], trip, orderedVisits }) {
@@ -26,5 +26,5 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
     { key: 'distance', tone: 'distance', value: dist.value, label: dist.unit, icon: <Icon name="route" /> },
   ];
 
-  return <StatBar items={items} className="surface-panel" />;
+  return <StatBar items={items} />;
 }
