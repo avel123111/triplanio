@@ -85,10 +85,14 @@ const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "c
 // iconStyle - тинт плитки из реестра брендов. Это ДАННЫЕ, а не тон системы:
 // плашка остаётся системной, фирменный цвет несёт только плитка (то же решение,
 // что принято на экране аккаунта - фон плитки есть оттенок её значка).
-export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align }) => (
-  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}`}>
+// dashed  - плашка не сообщает состояние, а ЗОВЁТ нажать (разрешить геолокацию).
+//           Тот же язык, что у кнопок добавления: пунктир = «здесь пока пусто».
+// loading - на месте значка канон-спиннер, как у <Btn loading> (TRIP-130).
+//           Плашка «идёт сохранение» рисовалась руками там же, где и остальные.
+export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align, dashed, loading }) => (
+  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}${dashed ? " sev--dashed" : ""}`}>
     <span className="tile sev__icon" style={iconStyle}>
-      <Icon name={icon || SEV_ICON[level] || "info"} size={16} />
+      {loading ? <span className="spin spin--ring" /> : <Icon name={icon || SEV_ICON[level] || "info"} size={16} />}
     </span>
     <div className="grow--fit">
       {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
@@ -237,10 +241,15 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 // boxed - компактный вариант внутри карточки/диалога (подложка + рамка).
 // iconStyle - тинт плитки из реестра брендов, как у Severity: сам примитив
 // остаётся системным, фирменный цвет несёт только плитка.
+// Тон плитки - КАРТА, а не вилка: раньше «всё, что не error» молча становилось
+// брендовым, и экран «трип создан» рисовал свою зелёную плитку руками мимо
+// примитива. Новый тон = новая строка, как у SEV_ICON выше.
+const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warning: "warning" };
+
 export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
   <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
     <div
-      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${kind === "error" ? "danger" : "brand"}`}
+      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${EMPTY_TONE[kind] || "brand"}`}
       style={iconStyle}
     >
       <Icon name={icon} size={boxed ? 21 : 28} />

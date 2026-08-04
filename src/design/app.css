@@ -362,6 +362,11 @@ h1, h2, h3, h4 {
 }
 .muted { color: var(--muted); }
 .muted-2 { color: var(--muted-2); }
+/* Выделенное слово - элементом, а не цветом руками. Жирное внутри абзаца
+   поднимается до цвета текста, выделенное в заголовке красится брендом (город,
+   к которому относится вопрос шага). Оба писались инлайновым `color:`. */
+.t-body b, .t-body strong { color: var(--ink); }
+h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* Табличные цифры для КОНТРОЛОВ и их содержимого - единственное место, где это
    объявление не дубль наследования от body (см. ловушку `font: inherit` выше).
    На обычном div/span класс не нужен: там табличные цифры уже наследуются. */
@@ -1368,6 +1373,9 @@ h4,
 .cbadge-popup .mapboxgl-popup-tip { display: none; }
 
 .card { padding: 18px; }
+/* Карточка, содержимое которой доходит до края (обложка, полоса цифр). Паддинг
+   в таком случае носят внутренние блоки, а не сама карточка. */
+.card--flush { padding: 0; }
 .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .card-h h3 { flex: 1; }
 
@@ -1482,6 +1490,10 @@ h4,
 
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
+/* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
+   неравные, и низ у них разной высоты - выравнивание по НИЗУ, иначе контрол
+   всплывает к верхнему краю более высокого поля. */
+.field-row--aside { grid-template-columns: 7fr 3fr; align-items: end; }
 
 /* Badge / chip */
 .badge {
@@ -1615,6 +1627,13 @@ h4,
    строки (заголовок + подпись), и значок обязан стоять по центру пары: так уже
    выглядят ряды каналов в аккаунте. */
 .sev--mid { align-items: center; }
+/* «Предложение», а не состояние: плашка ещё ничего не сообщает, она зовёт нажать
+   (разрешить геолокацию). Пунктир - тот же язык, что у кнопок добавления (.gadd,
+   .te-end--add): «здесь пока пусто, можно заполнить».
+   ★СТОИТ ПОСЛЕ ВСЕХ ТОНОВ: тон задаёт и фон, и цвет рамки; при равной
+   специфичности выигрывает объявленный ниже. Поставь выше - и пунктир молча
+   не появится (грабля Ф14.9 со ступенями сетки). */
+.sev--dashed { background: var(--surface); border-style: dashed; border-color: var(--line-strong); }
 /* Detach a severity plate from the row above it when nested in a danger card
    (e.g. account deletion: cancel-subscription / confirm-delete warnings). */
 .card--danger > .sev { margin-top: 14px; }
@@ -1855,6 +1874,11 @@ h4,
 .tile--lg  { --tile: 40px; --tile-ic: 19px; }
 .tile--xl  { --tile: 46px; --tile-ic: 21px; --tile-r: var(--r-btn); }
 .tile--2xl { --tile: 62px; --tile-ic: 28px; --tile-r: var(--r-md); }
+/* Круглая плитка - ось СКРУГЛЕНИЯ, а не новая ступень: пользуется тем же
+   --tile-r, что и --xl/--2xl. Заведена не впрок: маркер «выбрано» у карточки
+   выбора и номер точки маршрута в превью трипа - оба круги, оба до этого
+   рисовались инлайном со своей шириной, высотой и border-radius: 50%. */
+.tile--round { --tile-r: 50%; }
 
 /* Тона сняты с EmptyState - это ровно те два, которые у пустого экрана есть
    ЖИВЫЕ (третий, розовый Pro, за всю историю не был вызван ни разу и удалён
@@ -2040,6 +2064,20 @@ h4,
 .choice-card__arr { margin-left: auto; flex: none; color: var(--muted-2); transition: color .2s, transform .2s; }
 .choice-card:hover .choice-card__arr { color: var(--brand); transform: translateX(3px); }
 .choice-card--ai:hover .choice-card__arr { color: var(--ai); }
+/* Карточка ВЫБОРА бывает двух родов, и до сих пор в системе жил только один.
+   Навигационная («создать вручную / через ИИ») ведёт дальше и носит стрелку.
+   Выбираемая остаётся на экране и имеет состояние «выбрана» - и вот она была
+   написана заново ЧЕТЫРЕЖДЫ: город рядом, возврат домой и возврат в другой
+   город в планировщике (все три - инлайнами прямо в разметке) и видимость
+   документа. Форма у всех одна и та же: рамка + поверхность, выбор красит рамку
+   в бренд и заливает мягким тоном. Здесь это одно объявление; тон плитки внутри
+   доводит .tile--solid, который уже есть.
+     --on     выбрана
+     --stack  содержимое колонкой (плитка с заголовком, под ними описание)
+     --sm     плотный шаг для списка, а не для пары крупных карточек */
+.choice-card--on { border-color: var(--brand); background: var(--brand-soft); }
+.choice-card--stack { flex-direction: column; align-items: stretch; gap: 10px; }
+.choice-card--sm { padding: 12px 14px; gap: 10px; }
 
 /* Empty Trips · "Маршрут" (no trips yet) — itinerary-rail hero + choice pair.
    New element (approved 2026-06-20). Bound to existing Lumo tokens, mobile-first.
@@ -2140,6 +2178,11 @@ h4,
 /* Section sub-heading — the missing mid-tier between the title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
 .flow-lp-b .section-sub { color: var(--ink); margin: 0 0 12px; }
+/* Заголовок раздела с контролом справа. Отдельным рядом это не собрать: своё
+   поле снизу заголовок несёт сам, и в общем ряду контрол уезжает вверх на его
+   половину. Поэтому контрол живёт ВНУТРИ заголовка - шапка секции остаётся
+   одним объектом с одним отступом. */
+.section-sub--row { display: flex; align-items: center; gap: 10px; }
 /* ШАПКА ШАГА: заголовок и абзац под ним. Один и тот же объект открывает КАЖДЫЙ
    шаг обоих флоу (ручного и ИИ) - и все шесть раз был написан в разметке заново,
    с разбегом в числах: отбивка заголовка 10 у четырёх и 8 у пятого и 6 у панели
@@ -2284,6 +2327,38 @@ h4,
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
 .pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
 .pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line); }
+.pl-fin-sub > svg { flex: none; }
+
+/* ─── Планировщик: превью трипа на шаге «Обзор» (TRIP-321 Ф14.13) ────────────
+   Тридцать инлайновых стилей, которыми этот блок был свёрстан, переехали сюда.
+   Поверхность даёт общий .card (--flush снимает его паддинг: обложка обязана
+   доходить до края), полосу цифр - общий .statbar, ряды - .row/.col со
+   ступенями. Здесь остаётся только то, чего в системе нет и не должно быть:
+   пропорции обложки и рельс маршрута. Экран у этого блока один. */
+.pl-preview { overflow: hidden; margin-bottom: var(--sp-7); }
+.pl-preview__hero { height: 120px; position: relative; }
+.pl-preview__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pl-preview__scrim { position: absolute; inset: 0; background: var(--overlay-grad-soft); }
+.pl-preview__ttl { position: absolute; left: 20px; bottom: 14px; color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, .3); }
+.pl-preview__body { padding: var(--sp-8); }
+.pl-preview__lbl { color: var(--ink); margin-bottom: var(--sp-5); }
+/* Рельс маршрута: вертикальная линия ПОД кружками точек. Кружок перекрывает её
+   собственной рамкой цвета поверхности - поэтому у него z-index, а не разрыв. */
+.pl-rev { position: relative; }
+.pl-rev__rail { position: absolute; left: 13px; top: 14px; bottom: 14px; width: 2px; background: var(--line); }
+.pl-revrow { padding: var(--sp-5) 0; position: relative; z-index: 1; }
+.pl-revrow__mk { border: 3px solid var(--surface); }
+.pl-revrow--muted .te-cityname { color: var(--muted); }
+/* Ярлык цифры в превью читается как заголовок ячейки, а не как подпись - это
+   единственное, чем он отличается от .eyebrow по умолчанию. */
+.pl-stat .eyebrow { color: var(--ink); }
+.pl-stat__warn { color: var(--warning); }
+
+/* Экран-состояние планировщика (проверка лимита, лимит исчерпан): шапка сверху,
+   содержимое по центру остатка. */
+.pl-screen { display: flex; flex-direction: column; min-height: 100vh; }
+.pl-screen--mid { align-items: center; justify-content: center; }
+.pl-screen__mid { display: flex; align-items: center; justify-content: center; padding: var(--sp-8); }
 /* Add-start affordance — the empty-origin variant of .te-end (dashed, clickable).
    One control for both flows (manual skip + AI no-origin). */
 .te-end--add { width: 100%; text-align: left; border-style: dashed; cursor: pointer; transition: border-color .15s, background .15s; }
@@ -2316,13 +2391,13 @@ h4,
    inline transform during the drag itself. */
 .te-row.is-pressing { transform: scale(0.985); transition: transform .12s var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .te-row.is-pressing { transform: none; } }
-/* Geo-suggest prompt cards (create-flow step 1: ask / loading / denied) — icon +
-   copy + action in a row. On narrow phones the action wraps to its own full-width
-   row instead of squeezing the copy into a tall sliver (the "стремно" mobile bug).
-   Border/background stay inline per state; this owns only the responsive layout. */
-.geo-prompt { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: var(--r-sm); flex-wrap: wrap; }
+/* Плашки геоподсказки (шаг 1 создания: спросить / ищем / запрещено) переехали на
+   общий <Severity> - TRIP-321 Ф14.13. Семейство .geo-prompt удалено целиком:
+   у него была ровно та же форма (плитка + текст + действие), а рамка и фон
+   каждого из трёх состояний дописывались инлайном на месте вызова.
+   Перенос на узком телефоне держит .sev сам. */
 @media (max-width: 560px) {
-  .geo-prompt > .btn { flex: 1 1 100%; justify-content: center; }
+  .sev > .btn { flex: 1 1 100%; justify-content: center; }
 }
 .ts-cal { width: 248px; }
 .ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -3183,6 +3258,10 @@ h4,
 /* inside a ghost-add the icon is a DASHED placeholder (design-system .gadd .gi) */
 .gadd .gi { width: 34px; height: 34px; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
 .gadd:hover .gi { border-color: var(--a, var(--brand)); color: var(--a, var(--brand)); }
+/* Без плитки слева содержимое встаёт по центру: так выглядит «добавить ещё
+   город» в планировщике - там нечему стоять слева, кнопка замыкает список. */
+.gadd--center { justify-content: center; gap: 8px; color: var(--muted); }
+.gadd--center:hover { color: var(--a, var(--brand)); }
 .gt { flex: 1; min-width: 0; }
 .gt b { color: var(--muted); display: block; }
 .gt span { color: var(--muted-2); }
@@ -4948,6 +5027,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* inset hairline divider (mockup v01): slim, padded top & bottom, not full-height */
 .statbar .s::before { content: ""; position: absolute; inset: 16px auto 16px 0; width: 1px; background: var(--line); }
 .statbar .s:first-child::before { display: none; }
+/* Полоса внутри карточки: своего верхнего поля у неё нет (карточка уже задала
+   ритм), зато нужна нижняя черта - под ней идёт следующий блок той же карточки.
+   Ячейки тут без плитки-иконки, поэтому шаг плотнее. */
+.statbar--inset { margin-top: 0; border-bottom: 1px solid var(--line); }
+.statbar--inset .s { padding: 12px 16px; }
 .statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
 .statbar .ic svg { width: 20px; height: 20px; }
 /* Loading chip borrows the real .ic so it tracks the same size the container
@@ -5173,7 +5257,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state > .tile { margin-bottom: 16px; }
 .empty-state__t { color: var(--ink); margin-bottom: 6px; }
 .empty-state__b { max-width: 340px; }
-.empty-state__act { margin-top: 18px; }
+/* Действий может быть два (открыть трип / вернуться к списку) - раньше такая
+   пара собиралась своим inline-flex рядом мимо примитива. */
+.empty-state__act { margin-top: 18px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .empty-state--boxed { padding: 20px 18px; background: var(--wash);
   border: 1px solid var(--line); border-radius: var(--r-sm); }
 .empty-state--boxed > .tile { margin-bottom: 12px; }

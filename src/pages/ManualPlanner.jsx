@@ -211,7 +211,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       {row}
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
-        <Icon name="flag" size={13} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+        <Icon name="flag" size={13} className="muted" />
         <div className="t-meta grow--fit">
           <span className="t-ui">{t('planner.final_point')}</span>{' '}
           <span className="muted">{t('planner.final_point_hint')}</span>
@@ -270,40 +270,39 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       </div>
 
       <h2 className="section-sub">{t('ai_plan.start')}</h2>
-      <div className="field-row cols-2" style={{ alignItems: 'end', gridTemplateColumns: '7fr 3fr' }}>
-        <div className="field" style={{ marginBottom: 0 }}>
+      <div className="field-row field-row--aside">
+        <div className="field">
           <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
           <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
         </div>
-        <div className="field" style={{ marginBottom: 0 }}>
+        <div className="field">
           <label className="field__label">{t('planner.departure_date')}</label>
           <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} block />
         </div>
       </div>
 
-      {/* "Рядом" section */}
-      <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <span className="eyebrow grow">{t('planner.nearby')}</span>
-      </div>
+      {/* "Рядом" — такой же заголовок раздела, что и «Старт» выше: одна роль на
+          экране = один класс. Раньше он был собран руками из капс-эйбрау и двух
+          полей отступа. */}
+      <h2 className="section-sub">{t('planner.nearby')}</h2>
 
       {geoState === 'ask' && (
-        <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
-          <div className="tile tile--xl tile--brand">
-            <Icon name="pin" size={21} />
-          </div>
-          <div className="grow--fit">
-            <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
-            <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
-          </div>
-          <Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>
-        </div>
+        <Severity
+          level="info"
+          dashed
+          icon="pin"
+          align="mid"
+          title={t('planner.suggest_nearby')}
+          action={<Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>}
+        >
+          <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
+        </Severity>
       )}
 
       {geoState === 'loading' && (
-        <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
-          <div className="spin spin--ring" />
+        <Severity level="info" dashed loading align="mid">
           <span className="t-body muted">{t('planner.detecting')}</span>
-        </div>
+        </Severity>
       )}
 
       {geoState === 'allowed' && candidates.length > 0 && (
@@ -314,14 +313,10 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
             const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
             return (
-              <button key={c.external_city_id} onClick={() => setHome(c)} style={{
-                display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 14px',
-                background: selected ? 'var(--brand-soft)' : 'var(--surface)',
-                border: '1.5px solid ' + (selected ? 'var(--brand)' : 'var(--line)'),
-                borderRadius: 'var(--r-sm)', cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
-              }}
-                onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
-                onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line)'; }}
+              <button
+                key={c.external_city_id}
+                onClick={() => setHome(c)}
+                className={`choice-card choice-card--sm${selected ? ' choice-card--on' : ''}`}
               >
                 <div className="tile tile--brand">
                   <Icon name="plane" size={17} />
@@ -331,9 +326,9 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                   <div className="muted t-meta t-sans"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
                 </div>
                 {selected && (
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <span className="tile tile--sm tile--solid tile--brand tile--round">
                     <Icon name="check" size={11} />
-                  </div>
+                  </span>
                 )}
               </button>
             );
@@ -342,16 +337,15 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'denied' && (
-        <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line)' }}>
-          <div className="tile tile--xl tile--warning">
-            <Icon name="lock" size={21} />
-          </div>
-          <div className="grow--fit">
-            <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
-            <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
-          </div>
-          <Btn variant="ghost" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
-        </div>
+        <Severity
+          level="quiet"
+          icon="lock"
+          align="mid"
+          title={t('planner.geo_off')}
+          action={<Btn variant="ghost" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
+        >
+          <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
+        </Severity>
       )}
 
     </div>
@@ -392,31 +386,32 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
     <div>
       <h1>{t('planner.step_cities')}</h1>
       <div className="t-body">
-        {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
+        {t('planner.cities_desc_1')} <b>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
       {/* "Города" header — section sub-heading + the shared start control on the
           right in one row (mirrors the editor's .ts-routehead: title + control). */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <h2 className="section-sub" style={{ margin: 0, flex: 1 }}>{t('planner.cities_heading')}</h2>
+      <h2 className="section-sub section-sub--row">
+        <span className="grow">{t('planner.cities_heading')}</span>
         <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} label={t('ai_plan.start')} />
-      </div>
+      </h2>
 
       {/* Start anchor — OPTIONAL. Empty → an inline "+ Указать старт" affordance
-          (one control for both flows: manual skip + AI no-origin). */}
-      <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
+          (one control for both flows: manual skip + AI no-origin).
+          Якорь и список - одна колонка: отступ между ними даёт шаг примитива, а
+          не поле, приписанное руками обеим веткам «пусто / есть города». */}
+      <div className="col">
+        <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
 
-      {cities.length === 0 ? (
-        <div style={{ marginTop: 12 }}>
+        {cities.length === 0 ? (
           <EmptyState
             icon="pin"
             title={t('planner.where_to')}
             body={t('planner.add_first_city')}
             action={<Btn variant="primary" icon="plus" onClick={() => addCity()}>{t('planner.add_city')}</Btn>}
           />
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+        ) : (
+        <div className="col">
           {displayNodes.map((c) => {
             // dIdx = the row's index in the committed order (stable while the
             // preview reorders), used for numbering / isLast; the hook owns the
@@ -441,19 +436,15 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
               </div>
             );
           })}
-          <button onClick={() => addCity()} className="t-body" style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '12px 16px', background: 'transparent',
-            border: '1.5px dashed var(--line)', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-            color: 'var(--muted)',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
-          >
+          {/* Пунктирная кнопка добавления - общая .gadd (её же носят «добавить
+              сервис» и «добавить город» в панели города). Ховер-подсветку она
+              держит правилом, поэтому обработчики мыши больше не нужны. */}
+          <button onClick={() => addCity()} className="gadd gadd--center t-body">
             <Icon name="plus" size={14} /> {t('planner.add_more_city')}
           </button>
         </div>
-      )}
+        )}
+      </div>
 
       {/* Finish is expressed by the last city's "финиш" switch (below) — no
           separate end/finish plate on this step, unified with the manual flow. */}
@@ -473,16 +464,22 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
   return (
     <div>
       <h1>
-        {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
+        {t('planner.return_title_pre')} <em>{lastCityName}</em>?
       </h1>
       <div className="t-body">
         {t('planner.return_desc')}
       </div>
 
       <h2 className="section-sub">{t('planner.step_return')}</h2>
-      <div className={'field-row' + (canHome ? ' cols-2' : '')} style={{ marginBottom: 14 }}>
+      {/* Пара карточек, поле города и подсказка - одна колонка со ступенью 16
+          вместо трёх рукописных полей 14/18 у соседних блоков. */}
+      <div className="col col--g7">
+      <div className={'field-row' + (canHome ? ' cols-2' : '')}>
         {canHome && (
-          <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            onClick={() => setReturnMode('home')}
+            className={`choice-card choice-card--stack choice-card--sm${returnMode === 'home' ? ' choice-card--on' : ''}`}
+          >
             <div className="row">
               <div className="tile tile--lg tile--brand tile--solid">
                 <Icon name="flag" size={19} />
@@ -495,7 +492,10 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
           </button>
         )}
 
-        <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button
+          onClick={() => setReturnMode('other')}
+          className={`choice-card choice-card--stack choice-card--sm${returnMode === 'other' ? ' choice-card--on' : ''}`}
+        >
           <div className="row">
             <div className="tile tile--lg tile--warm tile--solid">
               <Icon name="globe" size={19} />
@@ -520,11 +520,9 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         </div>
       )}
 
-      <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        <Icon name="info" size={14} style={{ color: 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
-        <div className="t-meta muted">
-          {t('planner.return_info')}
-        </div>
+      <Severity level="quiet">
+        <div className="t-meta muted">{t('planner.return_info')}</div>
+      </Severity>
       </div>
 
     </div>
@@ -533,26 +531,30 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
 // ─── Step 5: Review ───────────────────────────────────────────────────────────
 
-function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
+// Приглушение - модификатором РЯДА, а не классом .muted на тексте: у
+// .te-cityname свой цвет тем же весом селектора, и кто победит, решал бы
+// порядок правил в файле.
+function ReviewRow({ num, name, sub, icon, muted }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', position: 'relative', zIndex: 1 }}>
-      <div className="t-meta" style={{ width: 28, height: 28, borderRadius: '50%', background: icon ? (iconColor || 'var(--brand)') : 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0, border: '3px solid var(--surface)' }}>
+    <div className={`row row--g7 pl-revrow${muted ? ' pl-revrow--muted' : ''}`}>
+      <span className="tile tile--sm tile--round tile--solid tile--brand t-meta pl-revrow__mk">
         {icon ? <Icon name={icon} size={12} /> : num}
-      </div>
+      </span>
       <div className="grow--fit">
-        <div className="te-cityname" style={{ color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
-        <div className="muted t-meta" style={{ marginTop: 1 }}>{sub}</div>
+        <div className="te-cityname">{name || '-'}</div>
+        <div className="muted t-meta">{sub}</div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, hint }) {
+function Stat({ label, value, hint, warn }) {
   return (
-    <div>
-      <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink)' }}>{label}</div>
+    <div className="col col--g1 pl-stat">
+      <div className="eyebrow">{label}</div>
       <div className="t-subheading">{value}</div>
-      {hint && <div className="muted t-meta" style={{ marginTop: 1 }}>{hint}</div>}
+      {hint && <div className="muted t-meta">{hint}</div>}
+      {warn && <div className="t-meta pl-stat__warn">{warn}</div>}
     </div>
   );
 }
@@ -570,19 +572,18 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
 
   if (savedOk) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div className="tile tile--2xl tile--success" style={{ margin: '0 auto 18px' }}>
-          <Icon name="check" size={28} />
-        </div>
-        <h1>{t('planner.created_title')}</h1>
-        <div className="muted t-ui" style={{ maxWidth: 460, margin: '0 auto 22px' }}>
-          {t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
-        </div>
-        <div style={{ display: 'inline-flex', gap: 8 }}>
-          <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>{t('planner.open_trip')}</Btn>
-          <Btn variant="ghost" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
-        </div>
-      </div>
+      <EmptyState
+        icon="check"
+        kind="success"
+        title={t('planner.created_title')}
+        body={t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
+        action={(
+          <>
+            <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>{t('planner.open_trip')}</Btn>
+            <Btn variant="ghost" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
+          </>
+        )}
+      />
     );
   }
 
@@ -594,40 +595,37 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
       </div>
 
       {/* Trip card preview */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 16 }}>
-        <div style={{ height: 120, background: heroBg, position: 'relative' }}>
-          {hasPhoto && (
-            <img src={cover.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-          )}
-          <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
-          <div className="t-title" style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
-            {displayTitle}
-          </div>
+      <div className="card card--flush pl-preview">
+        {/* heroBg - ДАННЫЕ (загруженное фото или градиент обложки трипа) */}
+        <div className="pl-preview__hero" style={{ background: heroBg }}>
+          {hasPhoto && <img className="pl-preview__img" src={cover.cover_image_url} alt="" />}
+          <div className="pl-preview__scrim" />
+          <div className="t-title pl-preview__ttl">{displayTitle}</div>
         </div>
 
-        {/* Stats strip — 3 tiles directly under the hero (TRIP-222) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: '1px solid var(--line)' }}>
-          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line)' }}>
-            <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink)' }}>{t('event.start')}</div>
-            <div className="t-subheading">{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
-            {!cities[0]?.startDate && (
-              <div className="t-meta" style={{ color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
-            )}
+        {/* Полоса статистики - общая .statbar (её же носят /trips и обзор трипа) */}
+        <div className="statbar statbar--inset">
+          <div className="s">
+            <Stat
+              label={t('event.start')}
+              value={cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}
+              warn={!cities[0]?.startDate ? t('planner.date_required_hint') : null}
+            />
           </div>
-          <div style={{ padding: '12px 16px', borderRight: '1px solid var(--line)' }}>
+          <div className="s">
             <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
           </div>
-          <div style={{ padding: '12px 16px' }}>
+          <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
         </div>
 
-        <div style={{ padding: 18 }}>
-          <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--ink)' }}>{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line)' }} />
+        <div className="pl-preview__body">
+          <div className="eyebrow pl-preview__lbl">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
+          <div className="col col--g1 pl-rev">
+            <div className="pl-rev__rail" />
             {home?.city_name && (
-              <ReviewRow icon="flag" iconColor="var(--brand)" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
+              <ReviewRow icon="flag" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
             )}
             {cities.map((c, i) => {
               // Last city with the finish switch on → the endpoint marker (single
@@ -638,7 +636,6 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
                   key={c.id}
                   num={isFin ? undefined : i + 1}
                   icon={isFin ? 'flag' : undefined}
-                  iconColor={isFin ? 'var(--brand)' : undefined}
                   name={c.city_name}
                   sub={isFin
                     ? `${c.country || '-'} · ${t('planner.sub_finish')}`
@@ -648,7 +645,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
               );
             })}
             {returnCity?.city_name && (
-              <ReviewRow icon="flag" iconColor="var(--brand)" name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
+              <ReviewRow icon="flag" name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
             )}
           </div>
         </div>
@@ -675,17 +672,12 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         />
       </div>
 
-      {error && (
-        <div style={{ marginTop: 12 }}>
-          <Severity level="error">{error}</Severity>
-        </div>
-      )}
+      {error && <Severity level="error">{error}</Severity>}
 
       {saving && (
-        <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="spin spin--ring" />
-          <div className="t-body" style={{ flex: 1, color: 'var(--ink-2)' }}>{t('planner.saving_msg')}</div>
-        </div>
+        <Severity level="info" loading align="mid">
+          <div className="t-body">{t('planner.saving_msg')}</div>
+        </Severity>
       )}
 
     </div>
@@ -1139,7 +1131,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // safe by construction.
   if (!isPro && checkingLimit && !savedOk) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="pl-screen pl-screen--mid">
         <div className="spin spin--ring spin--xl" />
       </div>
     );
@@ -1147,7 +1139,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   if (isOverLimit && !savedOk) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div className="pl-screen">
         <AppHeader
           user={user}
           isPro={isPro}
@@ -1156,20 +1148,19 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           onBack={() => nav('/trips')}
           backTitle={t('notif.to_collection')}
         />
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div className="tile tile--2xl tile--warning" style={{ margin: '0 auto 18px' }}>
-              <Icon name="lock" size={28} />
-            </div>
-            <h2 className="t-heading" style={{ margin: '0 0 8px' }}>{t('planner.limit_title')}</h2>
-            <p className="t-ui" style={{ color: 'var(--muted)', marginBottom: 24 }}>
-              {t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Btn variant="ghost" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
-              <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit')}>{t('sub.go_pro')}</Btn>
-            </div>
-          </div>
+        <div className="grow pl-screen__mid">
+          <EmptyState
+            icon="lock"
+            kind="warning"
+            title={t('planner.limit_title')}
+            body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
+            action={(
+              <>
+                <Btn variant="ghost" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
+                <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit')}>{t('sub.go_pro')}</Btn>
+              </>
+            )}
+          />
         </div>
       </div>
     );
