@@ -4859,7 +4859,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Below 600px even the compressed cell clips a label, so the row gives way to the
    same 2-col shape the /trips bar takes — mirrors the @media block above, keep the
    two in step. NB 600 is NOT on the 640/880 scale: 640 would wrap the 607px column
-   of a 1280px desktop, which is exactly the case this keeps on one row. */
+   of a 1280px desktop, which is exactly the case this keeps on one row — approved
+   by Pavel on TRIP-278 (five compressed cells measure 120px each). */
 @container (max-width: 600px) {
   .ov-col .statbar { flex-wrap: wrap; }
   .ov-col .statbar .s { flex: 1 0 50%; padding: 14px 16px; }
