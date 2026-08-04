@@ -51,7 +51,7 @@
  *      fixture, which is the only way to exercise the alias classifier on the
  *      three trap shapes without depending on the live stylesheet.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
@@ -323,7 +323,15 @@ const pad = (s, n) => String(s).padEnd(n);
 const num = (s, n) => String(s).padStart(n);
 
 if (process.argv.includes('--json')) {
-  console.log(
+  /** `writeSync`, НЕ `console.log`. В ТРУБУ (`… --json | jq`) stdout у Node
+   *  асинхронный, и стоящий ниже `process.exit(0)` рвал вывод на полуслове: в
+   *  ФАЙЛ уезжали все 569 строк, в трубу - 344. То есть машинный интерфейс
+   *  молча отдавал битый JSON, `jq` падал «Unfinished JSON term at EOF», а в
+   *  CI-скрипте это читалось бы как «аудит упал», хотя аудит отработал.
+   *  Прожило незамеченным потому, что запись в файл на POSIX синхронная - при
+   *  проверке через `> файл` всё было цело, и баг видно только через трубу. */
+  writeSync(
+    1,
     JSON.stringify(
       {
         families: families.size,
@@ -353,7 +361,7 @@ if (process.argv.includes('--json')) {
       },
       null,
       2,
-    ),
+    ) + '\n',
   );
   process.exit(0);
 }

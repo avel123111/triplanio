@@ -233,6 +233,25 @@ test('custom properties do not count as shape properties', (t) => {
   assert.equal(out.dupShapes, 0);
 });
 
+test('--json survives a PIPE, not just a redirect to a file', () => {
+  // The machine-readable output is the half a CI step would consume, and it was
+  // truncated by `process.exit(0)`: on a pipe Node's stdout is async, so exit
+  // cut the JSON mid-token. 569 lines reached a FILE, 344 reached a pipe — and
+  // a redirect (POSIX file writes are synchronous) showed nothing wrong, which
+  // is why it survived. `jq` reported "Unfinished JSON term at EOF", i.e. a
+  // healthy audit reads as a crashed one.
+  // Piping through `cat` is the whole point: `spawnSync` alone would not
+  // reproduce it on the small fixtures the other tests use.
+  const r = spawnSync('/bin/sh', ['-c', `${JSON.stringify(process.execPath)} ${JSON.stringify(SCRIPT)} --json | cat`], {
+    env: { ...process.env, AUDIT_ROOT: 'src' },
+    encoding: 'utf8',
+    cwd: fileURLToPath(new URL('../..', import.meta.url)),
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotThrow(() => JSON.parse(r.stdout), 'the JSON must be whole after a pipe');
+  assert.ok(JSON.parse(r.stdout).families > 0);
+});
+
 // ── Phantom families: a dot inside a string is not a class ──────────────────
 // TRIP-321 audit: the family count is about to become a ratchet, and it was
 // counting two namespaces that do not exist anywhere in the product —
