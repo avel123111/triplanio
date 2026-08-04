@@ -289,7 +289,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       {geoState === 'ask' && (
         <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
           <div className="tile tile--xl tile--brand">
-            <Icon name="pin" size={20} />
+            <Icon name="pin" size={21} />
           </div>
           <div className="grow--fit">
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
@@ -324,7 +324,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'var(--line)'; }}
               >
                 <div className="tile tile--brand">
-                  <Icon name="plane" size={14} />
+                  <Icon name="plane" size={17} />
                 </div>
                 <div className="grow--fit">
                   <div className="t-subheading">{c.city_name}</div>
@@ -344,7 +344,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       {geoState === 'denied' && (
         <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line)' }}>
           <div className="tile tile--xl tile--warning">
-            <Icon name="lock" size={20} />
+            <Icon name="lock" size={21} />
           </div>
           <div className="grow--fit">
             <div className="t-label" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
@@ -485,7 +485,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
           <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="row">
               <div className="tile tile--lg tile--brand tile--solid">
-                <Icon name="flag" size={16} />
+                <Icon name="flag" size={19} />
               </div>
               <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
             </div>
@@ -498,7 +498,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="row">
             <div className="tile tile--lg tile--warm tile--solid">
-              <Icon name="globe" size={16} />
+              <Icon name="globe" size={19} />
             </div>
             <div className="t-subheading">{t('planner.return_other')}</div>
           </div>
@@ -572,7 +572,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
         <div className="tile tile--2xl tile--success" style={{ margin: '0 auto 18px' }}>
-          <Icon name="check" size={36} />
+          <Icon name="check" size={28} />
         </div>
         <h1>{t('planner.created_title')}</h1>
         <div className="muted t-ui" style={{ maxWidth: 460, margin: '0 auto 22px' }}>

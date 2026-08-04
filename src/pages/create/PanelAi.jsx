@@ -29,7 +29,7 @@ export default function PanelAi({ ctx }) {
       {/* Title */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div className="tile tile--xl tile--ai tile--solid">
-          <Icon name="sparkles" size={22} />
+          <Icon name="sparkles" size={21} />
         </div>
         <div>
           <h1>{t('ai_plan.title')}</h1>
