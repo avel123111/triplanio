@@ -130,7 +130,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
       >
         <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
-          <div className="s22f-pfields">
+          <div className="row row--g4">
             <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
               <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
                 onChange={(e) => setP('min', e.target.value)} />
@@ -247,7 +247,8 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
         /* List chrome (.fork-*) + card (.pcard*) + toolbar (.s22f-*) + count row
-           (.s22-countrow) are all shared — see app.css + forkList.jsx. */
+           (.s22-count / .s22-sort on the shared .row primitive) are all shared —
+           see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

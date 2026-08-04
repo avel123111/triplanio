@@ -1067,7 +1067,6 @@ h4,
 }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.app-header__util  { display: flex; align-items: center; gap: 8px; }
 
 /* Round glass buttons (back / mobile burger) */
 .app-header__gbtn {
@@ -2842,7 +2841,6 @@ h4,
 .nrow__msg { color: var(--muted); margin-top: 2px; }
 .nrow__meta { color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 10px; }
 .nrow__link { color: var(--brand); display: inline-flex; align-items: center; gap: 3px; }
-.nrow__acts { display: flex; gap: 6px; align-items: center; }
 /* Mobile: actions drop to a full-width second row so the title isn't squeezed */
 @media (max-width: 640px) {
   .nrow { grid-template-columns: auto 1fr; align-items: start; column-gap: 12px; }
@@ -2891,9 +2889,7 @@ h4,
 @media (hover: hover) { .mbrow:hover { border-color: var(--line-hover); } }
 .mbrow--busy { opacity: .5; }
 .mbrow__id { min-width: 0; }
-.mbrow__name { display: flex; align-items: center; gap: 8px; }
 .mbrow__email { color: var(--muted); }
-.mbrow__meta { display: flex; align-items: center; gap: 12px; }
 .mbrow__acts { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
 /* Mobile: avatar spans both rows, name on top, role+status below, actions at the right */
 @media (max-width: 640px) {
@@ -3503,9 +3499,6 @@ h4,
    написана инлайном дважды на одном экране и с РАЗНЫМИ числами (gap 14 и 12);
    всего этот шаблон в репозитории 36 раз (26 правил в CSS + 10 инлайнов). */
 .settings-plate { padding: 12px 14px; background: var(--wash); border-radius: var(--r-sm); }
-
-/* Header Save cluster (lives in the identity Card's `action` slot). */
-.settings-save { display: flex; align-items: center; gap: 10px; }
 
 @media (max-width: 900px) {
   .settings-identity { grid-template-columns: 1fr; gap: 16px; }
@@ -4543,8 +4536,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .hv-sec{display:flex;flex-direction:column;}
 .hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
 .hv-card{padding:13px 15px;border-radius:var(--r-md);}
-.hv-cost{display:flex;align-items:center;gap:12px;}
-.hv-cost__main{flex:1;min-width:0;}
 .hv-price{ color:var(--ink);}
 .hv-pernight{ color:var(--muted);margin-top:2px;}
 .hv-cancel{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:var(--r-md);border:1px solid color-mix(in srgb,var(--success) 35%,transparent);background:var(--success-soft);}
@@ -5223,7 +5214,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 .s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
 .s22f-pmuted { color: var(--muted); }
-.s22f-pfields { display: flex; align-items: center; gap: 8px; }
 .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-btn); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
 .s22f-field:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-cur { color: var(--muted); flex: none; }
@@ -5256,7 +5246,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Count + sort row — SHARED by BOTH fork lists (hotels + activities), so it lives
    here, not in a component <style> (TRIP-224: the activity panel doesn't mount the
    hotel component, so a component-local rule left the activity sort unstyled). */
-.s22-countrow { display: flex; align-items: center; gap: 12px; }
 .s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
 .s22-count { color: var(--muted); white-space: nowrap; }
 .s22-sort { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; white-space: nowrap; transition: color .15s; }
