@@ -176,12 +176,52 @@ const singletons = singletonsStandalone + singletonsAttached;
  *  exactly nothing: `nav`, `dur` and `tx` occur as ordinary quoted words in
  *  in-scope files, so every family stayed "in reach" and the section reported
  *  a clean zero it had not earned. Over-broad is not the safe direction here —
- *  it is the direction that produces a confident wrong answer. */
+ *  it is the direction that produces a confident wrong answer.
+ *
+ *  Inside `className={…}` only the STATIC STRING FRAGMENTS are markup; the rest
+ *  is code (ревью Codex, PR #659). The first version tokenised the whole
+ *  expression, so `className={flag ? "hero" : ""}` recorded the VARIABLE `flag`
+ *  as a class usage — and that error runs the wrong way: a `.flag` rule looked
+ *  used, and if the expression sat only in an out-of-scope file the family was
+ *  filed as excluded perimeter and SUBTRACTED from the goal. An audit that
+ *  quietly understates its own workload is worse than one that overstates it.
+ *  `${…}` is cut out of templates for the same reason, but strings QUOTED
+ *  INSIDE the expression are kept: in `` `cbar${x ? ' on' : ''}` `` the class
+ *  `on` really is applied. */
 const classNameTokens = (f) => {
   const out = new Set();
+  const add = (s) => {
+    // Класс не может содержать пробела; `${…}` внутри шаблона - код, не текст.
+    for (const tok of s.replace(/\$\{[^}]*\}/g, ' ').split(/\s+/)) if (tok) out.add(tok);
+  };
+  /** Строки внутри выражения берутся РЕКУРСИВНО: у `` `cbar${x ? ' on' : ''}` ``
+   *  внешний шаблон - одна строка, и вырезание `${…}` целиком выбросило бы
+   *  вместе с кодом настоящий класс `on`, который в нём процитирован. */
+  const addFromExpr = (expr) => {
+    for (const lit of expr.matchAll(/(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g)) {
+      add(lit[2]);
+      for (const inner of lit[2].matchAll(/\$\{([^}]*)\}/g)) addFromExpr(inner[1]);
+    }
+  };
   const src = readFileSync(f, 'utf8');
-  for (const m of src.matchAll(/className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*(?:\{[^}]*\}[^}]*)*)\})/g)) {
-    for (const tok of (m[1] ?? m[2] ?? m[3] ?? '').split(/[^A-Za-z0-9_-]+/)) if (tok) out.add(tok);
+  /** Тело `className={…}` берётся СЧЁТЧИКОМ СКОБОК, а не регуляркой. Регулярка
+   *  вида `\{([^}]*(?:\{[^}]*\}[^}]*)*)\}` кажется рабочей и молча врёт на
+   *  шаблонах: жадный `[^}]*` проглатывает `${`, поэтому у
+   *  `` {`cbar${x ? ' on' : ''}`} `` выражение обрывалось на первой `}` и класс
+   *  `cbar` терялся - потеря в ту же сторону, что и ошибка из ревью #659.
+   *  Счётчик считает `{` от `${` наравне с обычной, и границу находит верно. */
+  for (const m of src.matchAll(/className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{)/g)) {
+    const attr = m[1] ?? m[2];
+    if (attr !== undefined) { add(attr); continue; }
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const start = i;
+    while (i < src.length && depth > 0) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') depth--;
+      i++;
+    }
+    addFromExpr(src.slice(start, i - 1));
   }
   return out;
 };

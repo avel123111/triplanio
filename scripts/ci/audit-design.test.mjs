@@ -378,6 +378,35 @@ test('a class named in an ordinary string is not "usage" — only className coun
   assert.deepEqual(out.perimeterFamilies, ['nav'], 'a quoted word is not a class usage');
 });
 
+test('an IDENTIFIER inside a className expression is not a class (ревью Codex, PR #659)', (t) => {
+  // `className={flag ? "hero" : ""}` was tokenised WHOLESALE, so the variable
+  // name `flag` was recorded as markup usage. A `.flag` rule then looked "used",
+  // and if that expression sat only in an out-of-scope file the family was filed
+  // as excluded perimeter and SUBTRACTED from the goal — the audit understating
+  // its own workload, which is the one direction a target must never drift.
+  // Only static string/template fragments are markup; everything else is code.
+  const out = run(
+    fixture(t, {
+      'app.css': '.flag { color: red; } .hero { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={flag ? "hero" : ""}/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['hero'], '`flag` is a variable, only `hero` is a class');
+});
+
+test('a class glued on conditionally inside a template IS markup usage', (t) => {
+  // The mirror of the test above: cutting expressions must not throw away the
+  // real class names quoted INSIDE them. `` `cbar${on ? ' on' : ''}` `` applies
+  // both `cbar` and `on`.
+  const out = run(
+    fixture(t, {
+      'app.css': '.cbar { color: red; } .on { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={`cbar${x ? " on" : ""}`}/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['cbar', 'on']);
+});
+
 test('a class with no markup usage at all is NOT called excluded perimeter', (t) => {
   // Silence must not read as "belongs to the landing". A descendant class
   // (`.card > .x`) has no className of its own and would be misfiled wholesale.
