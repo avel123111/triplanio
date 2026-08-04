@@ -1610,7 +1610,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
-      <div className="eed-stack">
+      <div className="col col--g6">
         <div data-vfield="name" className={inv('name')}>
           <Label>{t('event.name_req')}</Label>
           <AiField active={aiFields.has('name')}>

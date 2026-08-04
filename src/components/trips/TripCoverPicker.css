@@ -1,7 +1,6 @@
 /* TripCoverPicker — ported off Tailwind onto Lumo tokens (TRIP-53 / ретайр Tailwind, Этап 1).
    1:1 visual port of the former utility classes. */
 
-.tcp { display: flex; flex-direction: column; gap: 12px; }                /* was space-y-3 */
 
 /* preview frame — was: relative w-full h-[120px] rounded-lg overflow-hidden border bg-muted */
 .tcp__preview {

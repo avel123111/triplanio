@@ -1573,8 +1573,9 @@ h4,
 /* success и quiet - НЕ новые понятия: обоими словами уже названы тона у .badge--*
    и .tile--*, и из трёх примитивов их не знал только .sev. Это то же слово на
    третьем примитиве, чтобы «зелёная плашка статуса» собиралась одинаково везде,
-   а не рисовалась руками (сейчас она нарисована дважды: .hv-cancel и ряд
-   Telegram в настройках трипа). */
+   а не рисовалась руками. Обе рукописные копии, названные здесь при заведении
+   тона, закрыты: ряд Telegram в настройках трипа - в своей фазе, .hv-cancel
+   (бесплатная отмена у отеля, 4 правила) - в TRIP-321 Ф14.4. */
 .sev--success { background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 25%, transparent); }
 .sev--success .sev__icon { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success-ink); }
 .sev--quiet { background: var(--wash); border-color: var(--line); }
@@ -1693,14 +1694,21 @@ h4,
    ★ Цена решения, чтобы она была записана: половинчатая лестница молчалива.
    Тот, кто напишет `.row--g1`, не получит НИЧЕГО и не узнает об этом - класса
    больше нет. Если это выстрелит, лечение - вернуть парность, а не заводить
-   `gap` руками. */
+   `gap` руками.
+   ★★ВЫСТРЕЛИЛО в Ф14.4 ровно как здесь написано: перевод десяти колонок на
+   примитив тихо посадил `.col--g3` (6px) и `.col--g8` (20px) на дефолт 10px -
+   разметка выглядела правильной, классов не существовало, ни один гард такого
+   не видит. Поймано ЗАМЕРОМ в браузере, а не чтением диффа. Лечение применено
+   прописанное: парность возвращена вместе с первыми вызовами. Вывод для
+   следующего: у половинчатой шкалы нет ошибки, есть тишина - поэтому ступень
+   проверяется рендером, а не тем, что она «логично называется». */
 .col--g1 { gap: var(--sp-1); }
 .row--g2 { gap: var(--sp-2); }
-.row--g3 { gap: var(--sp-3); }
+.row--g3, .col--g3 { gap: var(--sp-3); }
 .row--g4, .col--g4 { gap: var(--sp-4); }
 .row--g6, .col--g6 { gap: var(--sp-6); }
 .row--g7, .col--g7 { gap: var(--sp-7); }
-.row--g8 { gap: var(--sp-8); }
+.row--g8, .col--g8 { gap: var(--sp-8); }
 
 /* Перенос строки - вторая ось раскладки ряда после gap: `flex-wrap: wrap` стоит
    на 47 флекс-контейнерах. Только у .row: колонка и так течёт вниз, у неё wrap
@@ -2823,7 +2831,6 @@ h4,
 .fpill.on .fpill__c { background: rgba(255,255,255,.28); color: #fff; }
 
 /* Inbox list — stacked date groups of rounded row-cards */
-.nlist { display: flex; flex-direction: column; gap: 20px; }
 .ngrp__label { padding: 0 4px; color: var(--muted-2); }
 
 /* Inbox row — rounded card, hover lift, unread = soft tint + left accent */
@@ -3074,7 +3081,6 @@ h4,
    3 строки в .lp-ti (тип·маршрут / название / страна) + слева .lp-ic с номером
    города или иконкой пересадки. Старый .lp-hero/.lph-* (был только в CityPanel)
    заменён на канон, общий с остальными драйверами. */
-.lp-ti--stack { display: flex; flex-direction: column; gap: 2px; }
 .lp-country { display: inline-flex; align-items: center; gap: .4em; color: var(--ink-2); min-width: 0; max-width: 100%; }
 .lp-country .cflag { flex: none; }
 
@@ -4025,7 +4031,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tc-add small { text-align: center; max-width: 200px; }
 
 /* ── Строка-список (list view) ─────────────────────────────── */
-.tr-list { display: flex; flex-direction: column; gap: 10px; }
 /* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
 .tr {
   display: flex; align-items: center; gap: 14px;
@@ -4492,7 +4497,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
 /* key/value grid */
 .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
-.kv{display:flex;flex-direction:column;gap:2px;}
 .kv.full{grid-column:1/-1;}
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
@@ -4521,7 +4525,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
-.hv{display:flex;flex-direction:column;gap:16px;}
 .hv-namecard{padding:16px 17px;border-radius:var(--r-md);}
 .hv-name{ color:var(--ink);line-height:1.2;}
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
@@ -4538,10 +4541,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .hv-card{padding:13px 15px;border-radius:var(--r-md);}
 .hv-price{ color:var(--ink);}
 .hv-pernight{ color:var(--muted);margin-top:2px;}
-.hv-cancel{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:var(--r-md);border:1px solid color-mix(in srgb,var(--success) 35%,transparent);background:var(--success-soft);}
-.hv-cancel__ic{width:26px;height:26px;flex:none;border-radius:var(--r-pill);background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success-ink);display:flex;align-items:center;justify-content:center;}
-.hv-cancel__ic svg{width:14px;height:14px;}
-.hv-cancel__tx{ color:var(--ink);}
 .hv-rows{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;}
 /* Раскладку даёт .row .row--g6 в разметке (зазор 12 = ступень --sp-6, ТОЧНОЕ
    совпадение). Отбивка своя: строка живёт внутри рамки .hv-rows, у которой нет
@@ -4573,7 +4572,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .badge--on-arrival{background:var(--primary-soft);color:var(--brand);}
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
-.tv{display:flex;flex-direction:column;gap:16px;}
 .tv-card{padding:16px 17px;border-radius:var(--r-md);}
 .tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
 .tv-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);}

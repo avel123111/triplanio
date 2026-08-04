@@ -137,7 +137,7 @@ export default function Inbox() {
         ) : filtered.length === 0 ? (
           <EmptyState icon="bell" title={t('notif.filter_empty')} />
         ) : (
-          <div className="nlist">
+          <div className="col col--g8">
             {groups.map((g) => (
               <div key={g.label} className="col col--g4">
                 <div className="ngrp__label">{t(GROUP_LABEL_KEY[g.label])}</div>

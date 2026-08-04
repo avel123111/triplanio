@@ -412,7 +412,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
                 <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
                 {t('doc.files_label')}
               </div>
-              <div className="dl-dview-files">
+              <div className="col col--g4">
                 {doc.documents.map((f, i) => (
                   <div key={i} className="dl-filechip">
                     <FileTypeBadge name={f.file_name} />
@@ -515,7 +515,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
       {/* File chips (max 2) */}
       {shown.length > 0 && (
-        <div className="dl-filechips">
+        <div className="col col--g3">
           {shown.map((f, i) => <FileChip key={i} file={f} />)}
           {more > 0 && (
             <span className="dl-filemore">+{more} {t('doc.files_count_few')}</span>

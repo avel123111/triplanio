@@ -35,7 +35,7 @@ const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLab
 import {
   Map as MapIcon, MapPin, Calendar,
   BedDouble, Car as CarIcon, Ticket,
-  ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
+  ShieldCheck, Phone, Mail, Hash, ExternalLink, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 import FileTypeBadge from '@/components/common/FileTypeBadge';
@@ -138,7 +138,7 @@ export function Section({ title, accent, count, children }) {
 export function KV({ label, children, mono }) {
   if (children == null || children === '') return null;
   return (
-    <div className="kv">
+    <div className="kv col col--g1">
       <div className="k">{label}</div>
       <div className={mono ? 'v mono' : 'v'}>{children}</div>
     </div>
@@ -181,7 +181,7 @@ function HotelBody({ entity, docs = [] }) {
   const perNight = (priceText && nights > 0) ? fmtPrice(Number(entity.price) / nights, entity.currency, { compact: true }) : null;
   const notes = entity.notes;
   return (
-    <div className="hv">
+    <div className="col col--g7">
       {/* Name card */}
       <div className="hv-namecard">
         <div className="hv-name t-title">{entity.name}</div>
@@ -237,14 +237,14 @@ function HotelBody({ entity, docs = [] }) {
 
       {/* Free cancellation */}
       {entity.free_cancellation && (
-        <div className="hv-cancel">
-          <span className="hv-cancel__ic"><Check /></span>
-          <span className="hv-cancel__tx t-strong">
-            {entity.free_cancellation_until
-              ? `${t('event.free_cancel_until')} ${fmtDate(entity.free_cancellation_until)}`
-              : t('event.free_cancel_have')}
-          </span>
-        </div>
+        <Severity
+          level="success"
+          align="mid"
+          icon="check"
+          title={entity.free_cancellation_until
+            ? `${t('event.free_cancel_until')} ${fmtDate(entity.free_cancellation_until)}`
+            : t('event.free_cancel_have')}
+        />
       )}
 
       {/* Booking details */}
@@ -327,7 +327,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const hasDetails = entity.booking_reference || carrier || entity.flight_number;
   const notes = entity.notes;
   return (
-    <div className="tv">
+    <div className="col col--g7">
       {/* Route rail */}
       <div className="tv-card">
         <div className="tv-eyebrows">
@@ -445,7 +445,7 @@ function ActivityBody({ entity, docs = [] }) {
   const priceText = fmtPrice(entity.price, entity.currency);
   const notes = entity.notes;
   return (
-    <div className="hv">
+    <div className="col col--g7">
       {(entity.start_datetime || entity.end_datetime) && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('event.when')}</div>

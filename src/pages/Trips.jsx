@@ -792,7 +792,7 @@ export default function Trips() {
                 )}
               </div>
             ) : (
-              <div className="tr-list">
+              <div className="col">
                 {shownNorm.map(tr => (
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
