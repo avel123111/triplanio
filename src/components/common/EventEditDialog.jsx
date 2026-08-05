@@ -2368,11 +2368,13 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
       <div className="fld-grid grid grid--2">
         <div data-vfield="date_start" className={inv('date_start')}>
           <Label>{t('service.date_start')}</Label>
-          <Input type="date" value={form.date_start} onChange={(e) => setField('date_start', e.target.value)} />
+          {/* Не нативный `type="date"`: Chrome рисует его по локали ОС, а не по
+              языку приложения. Тот же календарь, что у остальных дат события. */}
+          <DateTimeInput withTime={false} value={form.date_start} onChange={(d) => setField('date_start', d)} />
         </div>
         <div data-vfield="date_finish" className={inv('date_finish')}>
           <Label>{t('service.date_finish')}</Label>
-          <Input type="date" value={form.date_finish} onChange={(e) => setField('date_finish', e.target.value)} />
+          <DateTimeInput withTime={false} value={form.date_finish} onChange={(d) => setField('date_finish', d)} />
           <FieldError issues={issues} field="date_finish" />
         </div>
       </div>

@@ -69,10 +69,13 @@ export default function DateTimeInput({
     onTimeMissingChange?.(missing);
   };
 
+  // Пусто-состояние обязано совпадать с тем, что поле правда спрашивает: у
+  // `withTime={false}` предлагать «дату и время» неверно. Ключ существующий -
+  // тот же, которым подписано пусто-состояние ячейки даты.
   const label = date
     ? DateTime.fromISO(date, { zone: 'utc' }).setLocale(lang).toFormat('d MMM yyyy')
       + (withTime && time ? `, ${time}` : '')
-    : t('event.pick_datetime');
+    : t(withTime ? 'event.pick_datetime' : 'event.pick_date_short');
 
   // Cell variant: split date ("28 июн, вс") and time ("10:00") lines.
   const cellDate = date

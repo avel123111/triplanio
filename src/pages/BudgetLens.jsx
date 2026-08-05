@@ -35,6 +35,7 @@ import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, EmptyState, Input, InputGroup, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
 
@@ -239,7 +240,10 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
         <Field label={t('budget.field_date')}>
-          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+          {/* Не нативный `type="date"`: Chrome рисует его по локали ОС, а не по
+              языку приложения - у испанского интерфейса поле показывало
+              `дд.мм.гггг`. `DateTimeInput` форматирует по языку приложения. */}
+          <DateTimeInput withTime={false} value={date} onChange={setDate} />
         </Field>
       </div>
       <div className="field-row cols-2">

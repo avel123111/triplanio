@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, Btn, Field, useToast } from '@/design/index';
 import CountryFlag from '@/components/common/CountryFlag';
+import DateTimeInput from '@/components/common/DateTimeInput';
 import CitySearch from '@/components/cities/CitySearch';
 
 // Add / edit / delete a manual visit (user_custom_visits) — the write side of the
@@ -149,8 +150,10 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label={t('stats.field_from')}><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label={t('stats.field_to')}><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          {/* Не нативный `type="date"`: Chrome рисует его по локали ОС, а не по
+              языку приложения. `DateTimeInput` - наш календарь и наш формат. */}
+          <Field label={t('stats.field_from')}><DateTimeInput withTime={false} value={from} onChange={setFrom} /></Field>
+          <Field label={t('stats.field_to')}><DateTimeInput withTime={false} value={to} onChange={setTo} /></Field>
         </div>
 
         {err && <div className="t-meta" style={{ color: 'var(--danger)' }}>{err}</div>}
