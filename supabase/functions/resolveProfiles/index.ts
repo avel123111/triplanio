@@ -17,7 +17,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
-import { fetchProfiles, tripProfileScope } from '../_shared/profiles.ts';
+import { fetchTripProfiles } from '../_shared/profiles.ts';
 
 const TRIPLANIO_BOT_EMAIL = 'info@triplanio.com';
 
@@ -47,7 +47,7 @@ Deno.serve(withHandler('resolveProfiles', async (req, corsHeaders) => {
     // Load trip owner + every member row + the bot id in parallel
     const [tripResult, membersResult, botResult] = await Promise.all([
       supabaseAdmin.from('trips').select('created_by').eq('id', tripId).single(),
-      supabaseAdmin.from('trip_members').select('user_id').eq('trip_id', tripId),
+      supabaseAdmin.from('trip_members').select('user_id, status').eq('trip_id', tripId),
       supabaseAdmin.from('users').select('id').eq('email', TRIPLANIO_BOT_EMAIL).maybeSingle(),
     ]);
 
@@ -55,13 +55,13 @@ Deno.serve(withHandler('resolveProfiles', async (req, corsHeaders) => {
       return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
     }
 
-    // Keep only ids inside the trip's scope (+ AI bot exception)
-    const allowed = new Set(tripProfileScope(
-      membersResult.data,
-      tripResult.data.created_by,
-      [botResult.data?.id],
-    ));
-    const profiles = await fetchProfiles(supabaseAdmin, wanted.filter((id) => allowed.has(id)));
+    // Scope + live-vs-identity-only, both applied by the shared helper.
+    const profiles = await fetchTripProfiles(supabaseAdmin, {
+      members: membersResult.data,
+      ownerId: tripResult.data.created_by,
+      extraIds: [botResult.data?.id],
+      only: wanted,
+    });
 
     return Response.json({ profiles }, { headers: corsHeaders });
 

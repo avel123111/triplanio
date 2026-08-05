@@ -14,7 +14,7 @@
  */
 
 import { assertEquals } from 'jsr:@std/assert@^1.0.8';
-import { toProfile, tripProfileScope, type UserRow } from './profiles.ts';
+import { liveIdentityIds, toProfile, tripProfileScope, type UserRow } from './profiles.ts';
 
 const OWNER = 'owner-uuid';
 
@@ -79,4 +79,44 @@ Deno.test('живой аккаунт отдаёт e-mail', () => {
   const p = toProfile(row({ email: 'p@example.com', full_name: 'Pavel' }));
   assertEquals(p.email, 'p@example.com');
   assertEquals(p.is_deleted, false);
+});
+
+// ── охват ≠ разрешение видеть живой аккаунт ──────────────────────────────────
+// Быть в охвате нужно, чтобы строка ОПОЗНАВАЛАСЬ. Показывать по ней живой
+// аккаунт - отдельный вопрос: приглашение содержит адрес и имя на момент
+// приглашения, но не аватар и не текущий e-mail приглашённого.
+
+Deno.test('живой аккаунт показываем только владельцу, принявшим и extraIds', () => {
+  const members = [
+    { user_id: 'u-active', status: 'active' },
+    { user_id: 'u-pending', status: 'pending' },
+    { user_id: 'u-declined', status: 'declined' },
+  ];
+  const live = liveIdentityIds(members, OWNER, ['bot-uuid']);
+  assertEquals([...live].sort(), ['bot-uuid', 'owner-uuid', 'u-active']);
+});
+
+Deno.test('непринявший участник: только состояние личности, без полей аккаунта', () => {
+  const p = toProfile(row({ id: 'u-pending', full_name: 'Илья', avatar_url: 'a.png', email: 'ilya@example.com' }), false);
+  assertEquals(p.full_name, '');
+  assertEquals(p.avatar_url, '');
+  assertEquals(p.email, '');
+  assertEquals(p.is_deleted, false);
+});
+
+Deno.test('удалённый непринявший участник всё равно опознаётся как удалённый', () => {
+  // Ровно строка из прода: приглашение принято не было, аккаунт удалён.
+  // Клиенту нужен ТОЛЬКО этот флаг, чтобы подписать её «Удалённый аккаунт».
+  const p = toProfile(row({ deleted_at: '2026-07-22T00:00:00Z', email: 'deleted+x@deleted.invalid' }), false);
+  assertEquals(p.is_deleted, true);
+  assertEquals(p.email, '');
+  assertEquals(p.full_name, '');
+});
+
+Deno.test('охват шире, чем право на живой аккаунт', () => {
+  const members = [{ user_id: 'u-pending', status: 'pending' }];
+  const scope = tripProfileScope(members, OWNER);
+  const live = liveIdentityIds(members, OWNER);
+  assertEquals(scope.includes('u-pending'), true);   // опознать - можно
+  assertEquals(live.has('u-pending'), false);        // показать аккаунт - нельзя
 });

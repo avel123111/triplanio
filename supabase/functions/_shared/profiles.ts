@@ -28,13 +28,23 @@ export interface Profile {
   is_deleted: boolean;
 }
 
-export function toProfile(u: UserRow): Profile {
+/**
+ * `live = false` returns the IDENTITY STATE only — no name, avatar or address.
+ *
+ * That is everything a client needs to render a row it must not see the live
+ * account of: an anonymized account still gets its "deleted account" label,
+ * while a not-yet-accepted (or declined) invitee is rendered from the invite
+ * snapshot already on the trip_members row, exactly as before. Sending the full
+ * shape for those rows would hand every trip participant the invitee's avatar
+ * and current account e-mail, neither of which the invite itself contains.
+ */
+export function toProfile(u: UserRow, live = true): Profile {
   return {
     id: u.id,
-    full_name: u.full_name || '',
-    avatar_url: u.avatar_url || '',
+    full_name: live ? (u.full_name || '') : '',
+    avatar_url: live ? (u.avatar_url || '') : '',
     // Never expose a deleted user's email (it's a scrubbed placeholder anyway).
-    email: u.deleted_at ? '' : (u.email || ''),
+    email: live && !u.deleted_at ? (u.email || '') : '',
     is_deleted: !!u.deleted_at,
   };
 }
@@ -51,8 +61,9 @@ export function toProfile(u: UserRow): Profile {
  * deleted their account rendered as a bare "-" instead of "Удалённый аккаунт"
  * (TRIP-334). Scope therefore follows MEMBERSHIP, not acceptance.
  *
- * No new disclosure: the same payload already ships those rows whole, and
- * inviteTripMember copies the invitee's name into the row at invite time.
+ * Being IN scope is not permission to see the live account — that is a separate
+ * question, answered by liveIdentityIds() below. Widening the scope alone would
+ * have leaked every invitee's avatar and current e-mail to the whole trip.
  *
  * `extraIds` covers ids legitimately outside the membership set — the AI bot
  * authors chat messages without ever joining a trip.
@@ -71,12 +82,46 @@ export function tripProfileScope(
   return [...scope];
 }
 
-/** Batch-loads the profile rows for already-scoped ids. One query, no N+1. */
-export async function fetchProfiles(
+/**
+ * Whose LIVE account fields (name, avatar, e-mail) the trip may reveal: the
+ * owner, members who actually accepted, and the extras. A pending or declined
+ * invitee is deliberately absent — they are in scope (so their row resolves)
+ * but the trip only ever knew the invite snapshot about them.
+ */
+export function liveIdentityIds(
+  members: ({ user_id?: string | null; status?: string | null } & Record<string, unknown>)[] | null | undefined,
+  ownerId?: string | null,
+  extraIds: (string | null | undefined)[] = [],
+): Set<string> {
+  const live = new Set<string>();
+  if (ownerId) live.add(ownerId);
+  for (const m of members ?? []) if (m?.user_id && m.status === 'active') live.add(m.user_id);
+  for (const id of extraIds) if (id) live.add(id);
+  return live;
+}
+
+/**
+ * The single entry point both emitters use: loads the trip's profiles in ONE
+ * query and applies both rules (scope, then live-vs-identity-only) in one
+ * place, so neither caller can hold one of them and not the other.
+ *
+ * `only` restricts the result to caller-requested ids (resolveProfiles);
+ * omit it to get the whole scope (getTripDetails).
+ */
+export async function fetchTripProfiles(
   db: { from: (table: string) => any },
-  ids: string[],
+  { members, ownerId, extraIds = [], only }: {
+    members: ({ user_id?: string | null; status?: string | null } & Record<string, unknown>)[] | null | undefined;
+    ownerId?: string | null;
+    extraIds?: (string | null | undefined)[];
+    only?: string[];
+  },
 ): Promise<Profile[]> {
+  const scope = tripProfileScope(members, ownerId, extraIds);
+  const ids = only ? only.filter((id) => scope.includes(id)) : scope;
   if (ids.length === 0) return [];
+
   const { data } = await db.from('users').select(PROFILE_COLUMNS).in('id', ids);
-  return ((data ?? []) as UserRow[]).map(toProfile);
+  const live = liveIdentityIds(members, ownerId, extraIds);
+  return ((data ?? []) as UserRow[]).map((u) => toProfile(u, live.has(u.id)));
 }

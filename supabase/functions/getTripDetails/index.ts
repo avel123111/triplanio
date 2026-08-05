@@ -24,7 +24,7 @@
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { withHandler } from '../_shared/http.ts';
-import { fetchProfiles, tripProfileScope } from '../_shared/profiles.ts';
+import { fetchTripProfiles } from '../_shared/profiles.ts';
 
 Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // Identify caller — REQUIRED. getRequestUser returns null when there is no
@@ -177,8 +177,10 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
       // in-datacentre query instead of a client round trip.
       // Scope rule is shared with resolveProfiles (tripProfileScope): a profile
       // for EVERY member row we ship, whatever its status — see TRIP-334.
-      const profileIds = tripProfileScope(response.members as any[], trip.created_by as string | null);
-                       response.profiles           = await fetchProfiles(supabaseAdmin, profileIds);
+                       response.profiles           = await fetchTripProfiles(supabaseAdmin, {
+                         members: response.members as any[],
+                         ownerId: trip.created_by as string | null,
+                       });
     }
     if (wantDocuments) response.documents          = pick('documents');
     if (wantBudget) {
