@@ -1568,7 +1568,7 @@ h4,
    отдельное правило на `:focus` не нужно, у `.input:focus` та же специфичность
    (0,2,0) и решает порядок. */
 .input-group .input-affix { flex: 1; }
-.input-group .input {
+.input-group .input, .input-group .textarea {
   border: 0; background: transparent; padding: 0; box-shadow: none; border-radius: 0;
 }
 /* Ответ на `!important` у легаси `.tv-invalid .input:focus` (:3189): без него
@@ -4597,9 +4597,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    from generic .doc-row»; эта «осознанная разница» на замере оказалась 1px по
    вертикали и цветом рамки, то есть тем же объектом под своим именем. */
 /* unified textarea + actions container (borderless textarea, divider'd action row) */
-.ai-input{border:1.5px solid var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:10px;}
-.ai-input .textarea{border:0;background:transparent;padding:0;min-height:64px;resize:none;}
-.ai-input .textarea:focus{box-shadow:none;}
+/* Вертикальный вариант `<InputGroup>`: поле сверху, ряд действий снизу
+   (TRIP-333). Сброс скина у поля и `:focus-within` приходят от группы - здесь
+   только то, чем этот блок от неё отличается: AI-тон рамки, свой радиус и
+   отступ. Кольцо фокуса блок раньше не показывал вообще - теперь показывает
+   канонное, как любое поле. */
+.ai-input{flex-direction:column;align-items:stretch;gap:0;border-color:var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:10px;}
+.ai-input .textarea{min-height:64px;resize:none;}
 .ai-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
 .ai-blk-hint{ color:var(--muted-2); }
 /* .ai-spin УДАЛЁН (TRIP-321): шестое кольцо, 14px мимо лестницы. Обе точки

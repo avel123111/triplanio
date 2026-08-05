@@ -18,7 +18,7 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
-import { FileRow } from '@/design/index';
+import { FileRow, InputGroup, Textarea } from '@/design/index';
 import {
   Sparkles, Lock, Upload, X,
   RefreshCw, ChevronUp, Check,
@@ -304,10 +304,10 @@ export default function EventAiBlock({
           </div>
         )}
 
-        {/* unified textarea + actions container — borderless field, divider'd row */}
-        <div className="ai-input">
-          <textarea
-            className="textarea"
+        {/* Поле + ряд действий в общей рамке — вертикальный вариант `<InputGroup>`
+            (TRIP-333). Рамку и фокус держит контейнер, поле идёт без своей. */}
+        <InputGroup className="ai-input">
+          <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
@@ -322,7 +322,7 @@ export default function EventAiBlock({
               <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
             </button>
           </div>
-        </div>
+        </InputGroup>
 
         {error && (
           <div className="err" style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
