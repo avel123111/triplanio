@@ -61,9 +61,13 @@ test('ДО TRIP-274: все четыре команды на читающем п
     policy('trips_delete', `_can_access_trip_file(name)`),
   ];
   const errors = checkBucketPredicates(before, TRIPS);
-  assert.equal(errors.length, 3, `ожидались insert/update/delete, получено: ${JSON.stringify(errors)}`);
+  // По ДВЕ жалобы на каждую write-команду: write-предиката нет И стоит read.
+  assert.equal(errors.length, 6, `ожидались insert/update/delete ×2, получено: ${JSON.stringify(errors)}`);
   for (const cmd of ['insert', 'update', 'delete']) {
-    assert.ok(errors.some((e) => e.includes(`'trips_${cmd}'`)), `нет ошибки про trips_${cmd}`);
+    const mine = errors.filter((e) => e.includes(`'trips_${cmd}'`));
+    assert.equal(mine.length, 2, `trips_${cmd}: ${JSON.stringify(mine)}`);
+    assert.ok(mine.some((e) => /не ссылается на write-предикат/.test(e)));
+    assert.ok(mine.some((e) => /write-гейт обойдён/.test(e)));
   }
   // SELECT в этом состоянии корректен — гард не должен ругаться на чтение.
   assert.ok(!errors.some((e) => e.includes('trips_select')), 'ложное срабатывание на trips_select');
@@ -72,8 +76,8 @@ test('ДО TRIP-274: все четыре команды на читающем п
 test('откат одной команды на читающий предикат ловится', () => {
   const drifted = healthy.map((p) => (p.name === 'trips_delete' ? policy('trips_delete', '_can_access_trip_file(name)') : p));
   const errors = checkBucketPredicates(drifted, TRIPS);
-  assert.equal(errors.length, 1);
-  assert.match(errors[0], /trips_delete/);
+  assert.equal(errors.length, 2, JSON.stringify(errors));
+  assert.ok(errors.every((e) => e.includes('trips_delete')));
 });
 
 // ── Обратная регрессия: чтение ужали до редакторов ──────────────────────────
@@ -84,6 +88,38 @@ test('SELECT на write-предикате → чтение ужалось до 
   assert.equal(errors.length, 2);
   assert.ok(errors.every((e) => e.includes('trips_select')));
   assert.ok(errors.some((e) => /ужалось до редакторов/.test(e)));
+});
+
+// ── Обход дизъюнкцией: write-предикат на месте, но рядом ORнут read ─────────
+// Нашёл ревьюер Codex на PR #678. Первая версия требовала лишь НАЛИЧИЯ
+// write-предиката, поэтому `read(name) OR write(name)` проходила зелёной —
+// а пускает такая политика участника, то есть дыра остаётся открытой при
+// довольном страже.
+test('read-предикат, ORнутый в write-политику, ловится', () => {
+  const bypassed = healthy.map((p) => (p.name === 'trips_insert'
+    ? policy('trips_insert', `(_can_access_trip_file(name) OR _can_write_trip_file(name))`)
+    : p));
+  const errors = checkBucketPredicates(bypassed, TRIPS);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /trips_insert/);
+  assert.match(errors[0], /write-гейт обойдён/);
+});
+
+test('обход дизъюнкцией ловится на каждой из трёх write-команд', () => {
+  for (const cmd of ['insert', 'update', 'delete']) {
+    const bypassed = healthy.map((p) => (p.name === `trips_${cmd}`
+      ? policy(`trips_${cmd}`, `_can_access_trip_file(name) OR _can_write_trip_file(name)`)
+      : p));
+    const errors = checkBucketPredicates(bypassed, TRIPS);
+    assert.equal(errors.length, 1, `${cmd}: ${JSON.stringify(errors)}`);
+    assert.match(errors[0], new RegExp(`trips_${cmd}`));
+  }
+});
+
+// Дизъюнкт `_drafts/<uid>/` в write-политике ЗАКОННЫЙ и обязан молчать: он
+// пер-юзерный, черновик обложки заливают до существования трипа.
+test('ветка _drafts в write-политике не считается обходом', () => {
+  assert.deepEqual(checkBucketPredicates(healthy, TRIPS), []);
 });
 
 // ── Границы ─────────────────────────────────────────────────────────────────
@@ -115,10 +151,11 @@ test('команда, не объявленная в policies манифеста
   assert.deepEqual(checkBucketPredicates(drifted, manifest), []);
 });
 
-// Сверка идёт подстрокой (ПРЕДЕЛ, объявленный в манифесте). Пинним, что даже на
-// именах, где один предикат — префикс другого, дрейф всё равно ловится: read-половина
-// на таком имени промолчит, но «чтение ужалось» и «запись ослаблена» сработают.
-test('предикат-префикс: дрейф ловится обеими половинами правила', () => {
+// Сверка идёт по ВЫЗОВУ функции, а не по подстроке. Пара, где одно имя —
+// префикс другого, это и проверяет: подстрочное совпадение выдало бы
+// `_can_read_x` внутри `_can_read_x_write(...)` и, с запретом read-предиката в
+// write-политике, дало бы ЛОЖНОЕ падение на здоровом бакете.
+test('предикат-префикс: однокоренное имя не считается вызовом', () => {
   const manifest = { b: { public: false, policies: ['select', 'insert'], readPredicate: '_can_read_x', writePredicate: '_can_read_x_write' } };
   const ok = [
     policy('b_select', '_can_read_x(name)'),
@@ -127,11 +164,20 @@ test('предикат-префикс: дрейф ловится обеими п
   assert.deepEqual(checkBucketPredicates(ok, manifest), []);
 
   const bad = [
-    policy('b_select', '_can_read_x_write(name)'), // чтение ужато
-    policy('b_insert', '_can_read_x(name)'),       // запись ослаблена
+    policy('b_select', '_can_read_x_write(name)'), // чтение ужато до редакторов
+    policy('b_insert', '_can_read_x(name)'),       // запись открыта участнику
   ];
   const errors = checkBucketPredicates(bad, manifest);
-  assert.equal(errors.length, 2);
+  // По две точные жалобы на каждую политику: «не тот предикат» + «не тот сосед».
+  assert.equal(errors.length, 4, JSON.stringify(errors));
+  assert.equal(errors.filter((e) => e.includes("'b_select'")).length, 2);
+  assert.equal(errors.filter((e) => e.includes("'b_insert'")).length, 2);
   assert.ok(errors.some((e) => /ужалось до редакторов/.test(e)));
-  assert.ok(errors.some((e) => e.includes("'b_insert'")));
+  assert.ok(errors.some((e) => /write-гейт обойдён/.test(e)));
+});
+
+// Схема-квалифицированный вызов — то, как pg_policies обычно и печатает qual.
+test('вызов с квалификацией схемой засчитывается', () => {
+  const qualified = healthy.map((p) => policy(p.name, p.pred.replace(/_can_(access|write)_trip_file/g, 'public._can_$1_trip_file')));
+  assert.deepEqual(checkBucketPredicates(qualified, TRIPS), []);
 });
