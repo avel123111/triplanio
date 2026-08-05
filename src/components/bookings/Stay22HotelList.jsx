@@ -188,7 +188,7 @@ export default function Stay22HotelList({
         ].filter(Boolean)}
       >
         <div className="col col--g4">
-          <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
+          <div className="field__label">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
           <div className="row row--g4">
             <InputGroup className="s22f-field">{cur ? <span className="input-unit input-unit--lead">{cur}</span> : null}
               <Input num type="text" inputMode="numeric" placeholder={t('fork.f_from')} aria-label={t('fork.f_from')} value={pending.min}
@@ -203,7 +203,7 @@ export default function Stay22HotelList({
         </div>
 
         <div className="col col--g4">
-          <div className="eyebrow">{t('fork.f_platform')}</div>
+          <div className="field__label">{t('fork.f_platform')}</div>
           <div className="s22f-selwrap">
             <select className="s22f-sel" value={pending.provider} onChange={(e) => setG('provider', e.target.value)}>
               <option value="all">{t('fork.f_all_platforms')}</option>
@@ -214,7 +214,7 @@ export default function Stay22HotelList({
         </div>
 
         <div className="col col--g4">
-          <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
+          <div className="field__label">{t('fork.f_guests_rooms')}</div>
           <div className="grid grid--2 grid--g4">
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>

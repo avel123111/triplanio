@@ -571,7 +571,10 @@ h3,
 .t-label,
 h4,
 .te-step,
-.sheet .ss-search .input,
+/* `.sheet .ss-search .input` снят отсюда: это ПОЛЕ ПОИСКА, человек в него
+   набирает, а канон-подзаголовок делал набранное Golos 700/13. Селектор весил
+   (0,3,0) и перебивал канон самого поля - после переезда ввода на `.t-body`
+   это осталось бы единственное поле в приложении с жирным текстом. */
 .plan-card__name,
 .nonext b,
 .bgt-donutcard__h b,
@@ -614,13 +617,21 @@ h4,
 .ts-in,
 .brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
 .nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
+/* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
+   `.t-ui` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
+   как надпись НА кнопке: Golos 600/12.5. Стало 400/13. Высоту это не трогает -
+   её держит `min-height: var(--ctl-h)` при нулевом вертикальном паддинге. */
+.input, .select, .textarea,
+.sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
+.stay-dates__lbl,  /* они же в просмотре события */
 .ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-183: .t-body ← body макета (Golos 400/13/1.55); был --fs-strong 15/lh1.6 */
 .t-ui,
+.eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
+.hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
 .trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
 .btn,
 .field__label,
 .app-side__item,
-.input, .select, .textarea,
 .addsheet__tx b,
 .eroute p,
 .invite__tx p,
@@ -634,7 +645,6 @@ h4,
 .mrow .mn,
 .tl3-card .meta,
 .tl3-card--tr .rv-mode,
-.settings-identity .field__label,
 .acct-content,
 .acct-nav a,
 .acct-plan__line,
@@ -892,6 +902,12 @@ h4,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
+/* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
+   `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
+   `.field__label` вне диалога оставался на `.t-ui` - одна и та же подпись
+   выглядела по-разному в зависимости от ОБОЛОЧКИ. Резать надо было именно
+   поимённо: сам канон трогать нельзя, его носят ещё 44 объекта (бейджи,
+   эйбрау шапок, дни недели календаря, футер лендинга). */
 .t-micro,
 .badge,
 .eyebrow,
@@ -912,8 +928,6 @@ h4,
 .ev-dlg-eyebrow,
 .ev-sec-lbl,
 .kv .k,
-.ev-dlg .field__label,
-.lp .field__label,
 .sec-lbl .sl,
 .nextcard__tag,
 .cdu span,
@@ -1396,7 +1410,8 @@ h4,
 
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 7px; }
-/* Lumo DS: form labels are 13px / 800 / ink-2 — readable, not thin. */
+/* Подпись поля - ink-2, чтобы не спорить с самим значением. Размер/вес тут НЕ
+   объявлены: их держит канон .t-ui (Golos 600/12.5), см. co-selector выше. */
 .field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-ui (co-selector, TRIP-165) */
 /* Звёздочка обязательного поля - одна на всё приложение (TRIP-333). Знак и цвет
    объявлены здесь; КОМУ ставить `data-required`, отвечает валидатор

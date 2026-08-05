@@ -213,7 +213,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           </Severity>
 
           <div className="col col--g4">
-            <div className="eyebrow">{t('telegram.link_label')}</div>
+            <div className="field__label">{t('telegram.link_label')}</div>
             <div className="row row--g3">
               <input className="input mono grow--fit" value={url} readOnly />
               <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
