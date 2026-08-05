@@ -407,7 +407,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
 .te-row.te-row--plan, .acct-chan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
-.addon-card, .tm-manage, .tm-account, .stay-dates, .records, .eroute,
+.addon-card, .tm-manage, .tm-account, .records, .eroute,
 .hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel,
 /* контролы: кнопки, пилюли, чипы */
 .cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
@@ -1453,8 +1453,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    приложения, ниже панелей). Рамка есть в обеих: она, а не заливка, говорит
    «сюда можно писать». Раньше поле заливалось `--surface-3`, из-за чего в
    светлой теме белое поле в форме траты вставало рядом с серым селектом.
-   Тёмная половина - в `[data-theme="dark"]` сразу под этим правилом. */
-.input, .select, .textarea {
+   Тёмная половина - в `[data-theme="dark"]` сразу под этим правилом.
+
+   ★★Скин носит РОЛЬ, а не тег: одиночный контрол, группа контролов
+   (`.input-group`) и блок дат (`.stay-dates`) - это одно и то же поле, поэтому
+   рамка, фон, тень и переход объявлены им ОДНОЙ строкой. `.input-group`
+   держал свою побайтово одинаковую копию, а `.stay-dates` сидел в роли
+   ПОВЕРХНОСТИ - оттуда бледная `--line` в светлой и чужой фон в тёмной.
+   Раскладка у каждого своя и остаётся при своём правиле. */
+.input, .select, .textarea, .input-group, .stay-dates {
  width: 100%;
  border-radius: var(--r-btn);
  border: 1px solid var(--line-strong);
@@ -1480,12 +1487,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .s22f-sel,
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
+[data-theme="dark"] .stay-dates,
 [data-theme="dark"] .ts-startctl--block { background: var(--bg); }
 /* Тень - светлотемная компенсация слабой рамки, в тёмной она только грязнит. */
 [data-theme="dark"] .input,
 [data-theme="dark"] .select,
 [data-theme="dark"] .textarea,
-[data-theme="dark"] .input-group { box-shadow: none; }
+[data-theme="dark"] .input-group,
+[data-theme="dark"] .stay-dates { box-shadow: none; }
 /* Два исключения: AI-блок и композер чата - `InputGroup`, но не поля в форме, а
    приподнятые поверхности. Их собственные правила (0,1,0) проигрывают строкам
    выше (0,2,0), поэтому тёмную половину надо назвать явно. У композера общий
@@ -1598,22 +1607,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    без своей рамки - см. `InputGroup` в src/design/Input.jsx.
 
    Стоит ПОСЛЕ базового `.input`: правила ниже гасят его рамку, фон и кольцо
-   у детей при равной специфичности (0,2,0), и делает это порядок. */
+   у детей при равной специфичности (0,2,0), и делает это порядок.
+
+   Здесь ТОЛЬКО раскладка. Рамку, фон, тень, радиус и переход группа берёт из
+   общего скина контрола выше по файлу - своей копии у неё больше нет. */
 .input-group {
   display: flex; align-items: center; gap: 6px;
-  width: 100%; min-width: 0;
-  /* Та же коробка, что у одиночного поля: тот же токен высоты, те же боковые
-     отступы и тот же фон. Своя копия вертикального паддинга здесь и была
-     причиной, по которой цена «от/до» форк-панели не совпадала по росту с
-     соседним полем: два места объявляли высоту, и правка одного не доезжала
-     до другого. */
+  min-width: 0;
+  /* Та же коробка, что у одиночного поля: тот же токен высоты и те же боковые
+     отступы. Своя копия вертикального паддинга здесь и была причиной, по
+     которой цена «от/до» форк-панели не совпадала по росту с соседним полем:
+     два места объявляли высоту, и правка одного не доезжала до другого. */
   min-height: var(--ctl-h);
   padding: 0 13px;
-  border-radius: var(--r-btn);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(39, 36, 51, .05);   /* та же тень, что у одиночного поля */
-  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 /* Подсвечивается ВСЯ группа: кольцо вокруг одного ребёнка обвело бы половину
    того, что пользователь видит как одно поле. */
@@ -2971,16 +2977,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `.textarea` — the `.input-group` child reset does not touch it, and neither
    does the ≤640 anti-zoom guard; both layers get their 16px from the dedicated
    `.chat-ov, .chat-ta` media rule below, which is what keeps the caret aligned).
-   Только ДЕЛЬТА к `.input-group`: фон, рамку, фокус-кольцо и переход держит
-   группа. Своё здесь - выравнивание по низу (поле авто-растёт вверх, кнопки
-   остаются у нижнего края), свои отступы под кнопки внутри, крупный радиус и
+   Только ДЕЛЬТА к `.input-group`: фон, рамку, радиус, фокус-кольцо и переход
+   держит группа. Своё здесь - выравнивание по низу (поле авто-растёт вверх,
+   кнопки остаются у нижнего края), свои отступы под кнопки внутри и
    «плавающая» тень: это док над лентой, а не поле в форме.
-   ⚠ В ТЁМНОЙ теме обе последние ручки перебиваются группой:
+   ★Радиус СВОИМ больше не является. Он был крупным (ступень поверхности),
+   и это читалось как акцент, пока контрол скруглялся почти так же; на
+   нынешней шкале та же ступень стала другим языком - док переставал быть
+   полем. Приподнятость несёт тень, а не форма угла.
+   ⚠ В ТЁМНОЙ теме обе оставшиеся ручки перебиваются группой:
    `[data-theme="dark"] .input-group` (0,2,0) ставит `background: var(--bg)` и
    `box-shadow: none`, а этот блок - всего (0,1,0). */
 .chat-composer__row {
   gap: 8px; align-items: flex-end; padding: 8px;
-  border-radius: var(--r-xl); box-shadow: var(--sh-1);
+  box-shadow: var(--sh-1);
 }
 .chat-composer__field { flex: 1; min-width: 0; position: relative; min-height: 40px; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
@@ -4845,13 +4855,18 @@ a.doc-row__n:hover{ color: var(--brand); }
    Разница между ними была 1px по вертикали и цвет рамки - решение Pavel: файл
    выглядит одинаково везде, рамка ИИ остаётся вариантом.
    Рамка - модификатор, а не своё семейство: строка-ССЫЛКА (просмотр события)
-   рамки не носит, поэтому она не может уехать в базовый класс. Гашение ховера
-   у обоих вариантов обязательно: `.doc-row:hover` специфичнее модификатора и
-   иначе перекрасил бы фон рамочной строки, которая ссылкой не является. */
+   рамки не носит, поэтому она не может уехать в базовый класс.
+   ★Подсветка при наведении есть у ВСЕХ трёх вариантов. Раньше оба рамочных
+   гасили её копией собственного покоя: правило выглядело как «своё значение»,
+   а означало «ховера нет» - в событии строки подсвечивались, в Документах
+   молчали. У рамочной ступень общая (`--surface-2`), поэтому своего правила
+   ей не нужно вовсе; у ИИ-строки ступень своего семейства - тот же `--ai-soft`,
+   которым подсвечиваются строка упоминания в чате и «собачка» композера.
+   ⚠ Правило ИИ обязано стоять НИЖЕ базового ховера: специфичность у них
+   одинаковая (0,2,0), решает порядок. */
 .doc-row--framed{background:var(--surface-3);border:1px solid var(--line);}
-.doc-row--framed:hover{background:var(--surface-3);}
 .doc-row--ai{background:var(--surface);border:1px solid var(--ai-soft-2);}
-.doc-row--ai:hover{background:var(--surface);}
+.doc-row--ai:hover{background:var(--ai-soft);}
 /* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),
    с одинаковым поведением: прозрачная кнопка, при наведении - опасный тон. */
 .doc-row__rm{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted-2);cursor:pointer;display:grid;place-items:center;flex:none;transition:background .14s,color .14s;}
@@ -4901,11 +4916,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
-/* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
-/* Ступень КОНТРОЛА, а не поверхности: блок дат - это пара полей в общей рамке,
-   как `.input-group`, и скругляться он обязан вместе с полями, а не вместе с
-   карточками. */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border-radius:var(--r-btn);overflow:hidden;}
+/* Роль КОНТРОЛА, а не поверхности: блок дат - это пара полей в общей рамке,
+   как `.input-group`. Рамку, фон, тень и радиус он берёт из общего скина
+   контрола (co-selector с `.input`); здесь остаётся только его раскладка. */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
