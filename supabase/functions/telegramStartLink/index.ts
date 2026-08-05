@@ -12,6 +12,11 @@
  * Authorized at the `editor` step: redeeming the token binds a Telegram chat to
  * the TRIP (identity = trip_id + telegram_chat_id), so it adds a channel every
  * participant then receives on — trip config, not a personal setting (TRIP-274).
+ *
+ * This check gates MINTING, so a viewer gets a straight 403 instead of a token
+ * that dies silently in Telegram. It is NOT the security boundary: the binding
+ * is written in telegramWebhook, which re-checks the step at redemption — the
+ * token lives 10 minutes and rights can change in between.
  */
 
 import { withHandler } from '../_shared/http.ts';
