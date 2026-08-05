@@ -21,6 +21,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { emitTripReached2 } from '../_shared/analytics.ts';
+import { resolveRedeemRole } from './redeemRole.ts';
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -98,9 +99,10 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     }
 
     if (existing) {
-      // Activate a pending/declined/offline row. Keep an admin role if the
-      // existing invite was already admin; otherwise take the link's role.
-      const keepRole = existing.role === 'admin' ? 'admin' : link.role;
+      // Activate a pending/declined/offline row. The "a link never downgrades an
+      // existing invite" rule lives in ./redeemRole.ts as a pure function, so a
+      // test can pin it (TRIP-274 Ф1.4).
+      const keepRole = resolveRedeemRole(existing.role, link.role);
       await supabaseAdmin.from('trip_members').update({
         status: 'active',
         role: keepRole,
