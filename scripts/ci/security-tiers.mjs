@@ -111,10 +111,14 @@ export const TABLES = {
 //        ПРЕДЕЛ (осознанный): это проверка НАЛИЧИЯ ссылки (regex), а не факта, что
 //        функция гейтит правильный трип/право — тонкий случай остаётся на ревью.
 export const FUNCTIONS = {
-  // _can_access_trip_file — предикат storage-RLS приватного бакета `trips`; стал
-  // SECURITY DEFINER в гигиене TRIP-120 (чтобы его private-проверка не слепла под RLS
-  // вызывающего), исполним anon+authenticated из storage-политик TO public.
-  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file'],
+  // _can_access_trip_file / _can_write_trip_file — предикаты storage-RLS приватного
+  // бакета `trips` (чтение и запись, TRIP-274); оба SECURITY DEFINER со времён
+  // гигиены TRIP-120 (чтобы их private-проверка не слепла под RLS вызывающего) и
+  // оба исполнимы anon+authenticated, потому что storage-политики стоят TO public:
+  // для anon они вернут false, но обязаны вернуть, а не упасть «permission denied»
+  // посреди вычисления политики. Их слагаемые (`_trip_file_trip_id`,
+  // `_trip_file_not_others_private`) — internal, гранта клиенту нет (IF3).
+  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
@@ -142,9 +146,24 @@ export const FUNCTIONS = {
 //     мимо RLS; SELECT рулит только `.list()` → анонимный листинг всего бакета);
 //   • не существует публичного бакета ВНЕ манифеста (слепая зона, из-за которой
 //     share-cards/share-maps проскользнули незамеченными).
+// TRIP-274: проверки НАЛИЧИЯ политики мало — она была зелёной ровно тогда, когда
+// все четыре команды бакета `trips` стояли на ЧИТАЮЩЕМ предикате и viewer клал
+// байты в папку трипа. Политика существовала, просто пускала не тех. Поэтому у
+// бакета можно объявить ожидаемые предикаты, и LIVE сверяет ТЕКСТ политики —
+// тем же приёмом, что инвариант I2 держит роль-осведомлённость таблиц яруса A:
+//   readPredicate  — обязан встречаться в SELECT-политике;
+//   writePredicate — обязан встречаться в INSERT/UPDATE/DELETE-политиках и НЕ
+//                    должен встречаться в SELECT (иначе чтение молча ужалось до
+//                    редакторов и участник перестал видеть файлы трипа).
 export const BUCKETS = {
   avatars: { public: true,  policies: ['insert', 'update', 'delete'], note: 'публичный; детерм. ключ <uid>/avatar, БЕЗ SELECT (TRIP-48)' },
-  trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы + _can_access_trip_file (DEFINER); черновая обложка — только своя папка _drafts/<uid>/ (TRIP-281)' },
+  trips:   {
+    public: false,
+    policies: ['select', 'insert', 'update', 'delete'],
+    readPredicate: '_can_access_trip_file',
+    writePredicate: '_can_write_trip_file',
+    note: 'приватный; TRIP-118 private-файлы; TRIP-274 чтение=участие, запись=_can_edit_trip (оба DEFINER, общая половина «не чужой private»); черновая обложка — только своя папка _drafts/<uid>/ (TRIP-281)',
+  },
 };
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:

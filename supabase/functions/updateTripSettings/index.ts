@@ -1,11 +1,12 @@
 /**
  * updateTripSettings
  *
- * Writes to the owner-only `trips` table on behalf of OWNER or active ADMIN
- * members. The `trips` RLS policy allows UPDATE only to created_by=auth.uid(),
- * so admins can't change trip title/currency/cover/addons via a direct client
- * update — that silently no-ops. This function (service role) does the write
- * after checking membership + role, and gates enabling Pro addons.
+ * Writes to the `trips` table on behalf of OWNER or active ADMIN members — the
+ * `editor` tier of the access model (TRIP-274). Since TRIP-190 Ф3c `trips` has
+ * no write policy at all and `update` is revoked from `authenticated`, so NO
+ * client can change title/currency/cover/addons directly, the creator included:
+ * this function (service role) is the only write path. It checks the tier
+ * itself and gates enabling Pro addons.
  *
  * POST body: { tripId, fields?, addons?, main_currency?, display? }
  *   fields       — whitelisted top-level columns (title, description, cover_image_url, cover_gradient, notes)

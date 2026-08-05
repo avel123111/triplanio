@@ -32,6 +32,7 @@
  * Модель совпадает с ассертом verify_jwt: PR-гейт статики + пост-деплой live-ассерт.
  */
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { TABLES, TIERS, FUNCTIONS, BUCKETS } from './security-tiers.mjs';
 
 const VALID_TIERS = new Set(Object.keys(TIERS)); // A B C D
@@ -63,9 +64,59 @@ function checkStatic() {
   for (const [b, r] of Object.entries(BUCKETS)) {
     if (typeof r.public !== 'boolean') { err(`манифест BUCKETS.${b}.public должен быть boolean`); fail = 1; }
     if (!Array.isArray(r.policies)) { err(`манифест BUCKETS.${b}.policies должен быть массивом`); fail = 1; }
+    // TRIP-274: объявленный предикат обязан быть непустой строкой — пустая
+    // прошла бы `includes()` на ЛЮБОЙ политике и выключила проверку молча.
+    for (const k of ['readPredicate', 'writePredicate']) {
+      if (r[k] === undefined) continue;
+      if (typeof r[k] !== 'string' || !r[k].trim()) { err(`манифест BUCKETS.${b}.${k} должен быть непустой строкой`); fail = 1; }
+    }
+    // Приватный бакет с write-предикатом обязан объявить и read: иначе
+    // «чтение ужалось до редакторов» проверять не с чем.
+    if (r.writePredicate && !r.readPredicate && (r.policies || []).includes('select')) {
+      err(`манифест BUCKETS.${b}: есть writePredicate и политика select, но нет readPredicate`); fail = 1;
+    }
   }
   if (!fail) console.log(`check-security-tiers [static]: манифест согласован — ${Object.keys(TABLES).length} таблиц + ${callable.size} client-вызываемых функций + ${Object.keys(BUCKETS).length} бакета, ярусы ${[...VALID_TIERS].join('/')} — OK`);
   return fail;
+}
+
+// ── Предикаты storage-политик (TRIP-274) ─────────────────────────────────────
+// Чистая функция ради теста: вся развилка «какая политика каким предикатом
+// обязана быть» проверяется на фикстурах, без живой БД. Наличие политики уже
+// проверяется отдельно — здесь только ТЕКСТ.
+//
+// `policies` — [{ name, pred }] из pg_policies (pred = qual + with_check).
+// Возвращает массив сообщений об ошибках (пустой = всё сошлось).
+const WRITE_CMDS = ['insert', 'update', 'delete'];
+
+export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
+  const pred = new Map((policies || []).map((p) => [p.name, p.pred || '']));
+  const errors = [];
+
+  for (const [bucket, r] of Object.entries(buckets)) {
+    const { readPredicate, writePredicate } = r;
+    if (!readPredicate && !writePredicate) continue; // бакет без объявленных предикатов — только проверка наличия
+
+    const selectPred = pred.get(`${bucket}_select`);
+    if (readPredicate && selectPred !== undefined && !selectPred.includes(readPredicate)) {
+      errors.push(`storage-дрейф: политика '${bucket}_select' не ссылается на read-предикат '${readPredicate}' — чтение бакета '${bucket}' держит кто-то другой`);
+    }
+    // Ужесточение SELECT до write-предиката — регрессия чтения: участник
+    // перестаёт видеть файлы трипа. Молчаливая, потому что политика на месте.
+    if (writePredicate && selectPred !== undefined && selectPred.includes(writePredicate)) {
+      errors.push(`storage-дрейф: политика '${bucket}_select' ссылается на write-предикат '${writePredicate}' — чтение ужалось до редакторов`);
+    }
+    if (!writePredicate) continue;
+    for (const cmd of WRITE_CMDS) {
+      if (!(r.policies || []).includes(cmd)) continue;
+      const p = pred.get(`${bucket}_${cmd}`);
+      if (p === undefined) continue; // отсутствие политики ловит проверка наличия
+      if (!p.includes(writePredicate)) {
+        errors.push(`storage-дрейф: политика '${bucket}_${cmd}' не ссылается на write-предикат '${writePredicate}' — запись в бакет '${bucket}' гейтится не той ступенью`);
+      }
+    }
+  }
+  return errors;
 }
 
 // ── LIVE: живая БД совпадает с манифестом ─────────────────────────────────────
@@ -88,7 +139,12 @@ const LIVE_SQL = `select json_build_object(
      'authz', (pg_get_functiondef(p.oid) ~* '(_can_edit_trip|is_trip_participant|is_trip_creator|is_trip_owner|is_trip_pro|is_user_pro|auth\\.(uid|email|jwt|role)\\(\\))')
    )) from pg_proc p join pg_namespace n on n.oid=p.pronamespace and n.nspname='public' where p.prosecdef), '[]'::json),
   'buckets', coalesce((select json_agg(json_build_object('id', id, 'public', public)) from storage.buckets), '[]'::json),
-  'storage_policies', coalesce((select json_agg(policyname) from pg_policies where schemaname='storage' and tablename='objects'), '[]'::json)
+  'storage_policies', coalesce((select json_agg(json_build_object(
+     'name', policyname,
+     -- Текст политики целиком: USING + WITH CHECK. Нужен, чтобы сверять ПРЕДИКАТ
+     -- бакета, а не факт существования политики (TRIP-274).
+     'pred', coalesce(qual,'') || ' ' || coalesce(with_check,'')
+   )) from pg_policies where schemaname='storage' and tablename='objects'), '[]'::json)
 )`;
 
 function checkLive(dbUrl) {
@@ -144,9 +200,12 @@ function checkLive(dbUrl) {
     }
   }
 
-  // ── STORAGE: флаг public бакета + наличие политик storage.objects ──
+  // ── STORAGE: флаг public бакета + наличие политик + их ПРЕДИКАТ ──
   const bucketPublic = Object.fromEntries((live.buckets || []).map((b) => [b.id, b.public]));
-  const spol = new Set(live.storage_policies || []);
+  const storagePolicies = live.storage_policies || [];
+  const spol = new Set(storagePolicies.map((p) => p.name));
+  // TRIP-274 — политика может существовать и при этом пускать не ту ступень.
+  for (const m of checkBucketPredicates(storagePolicies, BUCKETS)) { err(m); fail = 1; }
   for (const [name, r] of Object.entries(BUCKETS)) {
     if (!(name in bucketPublic)) { err(`storage-дрейф: бакет '${name}' из манифеста не найден в storage.buckets`); fail = 1; continue; }
     // Самый опасный дрейф: приватный бакет вдруг стал публичным (или наоборот).
@@ -169,8 +228,12 @@ function checkLive(dbUrl) {
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
-const dbUrl = process.env.SECURITY_TIERS_DB_URL;
-let fail = checkStatic();
-if (dbUrl) fail |= checkLive(dbUrl);
-else console.log('check-security-tiers: SECURITY_TIERS_DB_URL не задан — только static-проверка манифеста (live-ассерт идёт пост-деплой).');
-process.exit(fail ? 1 : 0);
+// Запуск только когда файл вызван напрямую: `checkBucketPredicates` импортирует
+// тест, а на импорте страж не должен ни ходить в БД, ни звать process.exit.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const dbUrl = process.env.SECURITY_TIERS_DB_URL;
+  let fail = checkStatic();
+  if (dbUrl) fail |= checkLive(dbUrl);
+  else console.log('check-security-tiers: SECURITY_TIERS_DB_URL не задан — только static-проверка манифеста (live-ассерт идёт пост-деплой).');
+  process.exit(fail ? 1 : 0);
+}
