@@ -30,8 +30,9 @@ export function AiBadge() {
 /**
  * Wraps a form field. When `active` (AI just filled it), the inner input gets a
  * violet tint via the `.ai-filled` CSS (see index.css) and a small "AI" badge is
- * pinned to the top-right of the field - matching the designer's `field--ai`
- * look (var(--ai) badge, var(--ai-soft) input fill).
+ * pinned to the top-right of the field: var(--ai) badge over a var(--ai-soft)
+ * input fill. This is the app's only AI-filled look - the design system carries
+ * no second one.
  */
 export default function AiField({ active, children, className = '' }) {
   if (!active) return <div className={className}>{children}</div>;
