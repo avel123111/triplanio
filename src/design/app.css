@@ -397,11 +397,13 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    .is-active, тёмная тема) перебивало его, а не наоборот.
    Расширять — дописать имя сюда, а НЕ скопировать пару к себе.
    ================================================================= */
-/* карточки, панели, виджеты (канон TRIP-189; имя роли для разметки — .surface-glass) */
-.surface-glass,
+/* карточки, панели, виджеты (канон TRIP-189/326). Отдельного ИМЕНИ у роли
+   больше нет: `.surface-glass` был последним следом стекла - блюра и тени,
+   которых нет с TRIP-326, - и висел ровно на одном элементе. Каждый носитель
+   входит сюда своим именем. */
 .statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
 .card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
-.chat-reply__card, .pl-lastcard,
+.chat-reply__card, .pl-lastcard, .map-route, .lp,
 /* оверлеи и всплывающее */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
@@ -1317,10 +1319,9 @@ h4,
 
 /* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
    карточек. Одна плоская роль, без blur, без теней. Имя роли для разметки одно
-   — .surface-glass; второе имя (.surface-panel) не стояло ни на одном элементе
-   и удалено. Внутреннюю раскладку (падинги/хедеры/overflow)
+   Своего ИМЕНИ у роли нет - оба прежних (.surface-glass, .surface-panel)
+   удалены как след стекла. Внутреннюю раскладку (падинги/хедеры/overflow)
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
-.surface-glass,
 .statbar,                  /* полоса статистики — /trips и обзор трипа */
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
@@ -1333,7 +1334,8 @@ h4,
 .summary,                  /* /stats — полоса из 6 стат-плиток */
 .invite,                   /* баннер-приглашение */
 .acct-hero,                /* шапка аккаунта */
-.pl-lastcard {             /* карточка последней брони (планнер) */
+.pl-lastcard,              /* карточка последней брони (планнер) */
+.lp {                      /* панель-оболочка (та же ступень, что у модалки) */
   border-radius: var(--r-xl);
 }
 /* ★`.chat-reply__card` в этом списке НЕ стоит намеренно: он объявляет свой
@@ -1362,8 +1364,8 @@ h4,
   border-radius: var(--r-md);
 }
 
-/* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
-   class on the element); this block is layout only. Floats top-left over the
+/* Map lens route panel (TRIP-33): скин - роль поверхности, `.map-route` стоит
+   в её co-селекторе СВОИМ именем; этот блок - только раскладка. Floats top-left over the
    full-bleed map; collapses to a bottom sheet on phones (below). */
 .map-route {
   position: absolute; z-index: 2;
@@ -2833,8 +2835,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .btn--ai .ai-dots span { background: rgba(255,255,255,.85); }
 [data-theme="dark"] .btn--ai .ai-dots span { background: rgba(12,10,30,.65); }
 .btn--ai[disabled], .btn--ai.is-disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+/* Ступень ОБОЛОЧКИ - одна на модалку и панель. Было три разных числа у трёх
+   контейнеров одного ранга: диалог 16, панель 24, карточка 20, из-за чего одна
+   и та же форма события скруглялась по-разному при создании и редактировании,
+   а вложенный контейнер (16) оказывался РАВЕН диалогу, в котором лежит.
+   Теперь лестница целая: оболочка 20 > вложенный контейнер 16 > контрол 10. */
 .dlg {
-  border-radius: var(--r-md);
+  border-radius: var(--r-xl);
   box-shadow: var(--sh-3);
   width: 100%;
   max-width: 560px;
@@ -3815,7 +3822,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 .tl3-ev { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-199); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-199); тут только раскладка */
 .tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
 @media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); } }
 /* Единственный экземпляр семейства, существовавший до примитива: геометрия
@@ -4472,7 +4479,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tc-add small { text-align: center; max-width: 200px; }
 
 /* ── Строка-список (list view) ─────────────────────────────── */
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .tr {
   display: flex; align-items: center; gap: 14px;
   padding: 11px 14px;
@@ -5124,7 +5131,13 @@ a.doc-row__n:hover{ color: var(--brand); }
    Reuses existing .lp-h / .lp-b / .lp-f / .lp-back / .lp-hero / .stepper /
    .bookrow / .gadd / .ai-blk*. Adds the design shell + tinted header + bits.
    ═══════════════════════════════════════════════════════════════════════════ */
-.lp { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }  /* TRIP-176: драйвер сливается с фоном приложения (var(--bg)), а не «приподнят» через --surface */
+/* Панель - ПОВЕРХНОСТЬ, как всё остальное. TRIP-176 давала ей фон приложения
+   (`--bg`), чтобы «сливалась», и это разъехалось: одна и та же форма события
+   имела ТРИ заливки - панель редактирования возвращала себе `--surface`
+   ИНЛАЙНОМ, панель создания оставалась на `--bg`, модалка была `--surface` из
+   роли. Фон и рамку панель берёт из роли своим именем, радиус - из ступени
+   оболочки; здесь остаётся только тень и раскладка. */
+.lp { box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }
 .lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .lp-ic svg { width: 17px; height: 17px; }
 .lp-ti { min-width: 0; flex: 1; }
@@ -5435,7 +5448,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--line); }
 .map-skel { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); gap: 8px; z-index: 1; }
 
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .wmini { padding: 18px 20px; position: relative; overflow: hidden; }
 .wmini .top { display: flex; align-items: center; gap: 13px; position: relative; z-index: 1; }
 .wring { position: relative; flex: none; }
@@ -5446,7 +5459,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ring__c .l { color: var(--muted); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
 
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 @media (hover: hover) { .nextcard:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
 .nextcard:active { transform: translateY(0) scale(.995); }
@@ -5462,7 +5475,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .cdu { text-align: center; border-radius: var(--r-sm); padding: 7px 0; flex: 1; min-width: 0; }
 .cdu b { display: block; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cdu span { color: var(--muted); }
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }

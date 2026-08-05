@@ -1382,10 +1382,15 @@ export default function EventEditDialog({
   // AddBookingPanel wrapper provides the .lp shell + shared header + tabs.
   if (embedded) return inner;
 
+  // Панельная ветка больше НЕ возвращает себе фон инлайном: она берёт его из
+  // роли поверхности, как модалка и как панель создания. Прежний
+  // `background: var(--surface)` был поправкой к `.lp`, который заливался
+  // фоном приложения, - из-за него одна и та же форма выглядела по-разному
+  // при создании и при редактировании события.
   return (
     <>
       {variant === 'panel' ? (
-        <div className="te-edit-panel-body lp lp--wide" style={{ ...evVars, minHeight: 0, height: '100%', background: 'var(--surface)' }}>
+        <div className="te-edit-panel-body lp lp--wide" style={{ ...evVars, minHeight: 0, height: '100%' }}>
           {inner}
         </div>
       ) : (
