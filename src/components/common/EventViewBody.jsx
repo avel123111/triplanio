@@ -91,6 +91,43 @@ export function eventTheme(kind, entity) {
   };
 }
 
+/* ── Шапка события — ОДИН источник на все три поверхности ────────────────────
+   Создание, редактирование и просмотр собирали её каждый по-своему, и на экране
+   это читалось как три разных объекта:
+
+     отель      создание  «Отель»      / Барселона · даты
+                правка    «Отель»      / «Проживание в Барселона»
+                просмотр  «Проживание» / название отеля
+     переезд    просмотр  «Перелёт»    / перевозчик
+                правка    «Трансфер»   / «Переезд Барселона → Мадрид»
+
+   Тип брался из ТРЁХ разных ключей на один вид, заголовок - из трёх разных
+   источников. Здесь он один: тип - по виду, заголовок - МЕСТО (город или
+   маршрут), вторая строка - КОГДА. Название брони и перевозчик живут в теле,
+   а не в шапке: в шапке они меняли смысл строки от поверхности к поверхности. */
+const HEADER_EYEBROW = {
+  hotel: 'budget.cat_accommodation',
+  transfer: 'event.type_transfer',
+  activity: 'event.type_activity',
+};
+
+export function eventHeader({ kind, visit, fromVisit, toVisit, entity, t, lang }) {
+  if (kind === 'transfer') {
+    const from = cityLabel(fromVisit, lang) || fromVisit?.city_name || '';
+    const to = cityLabel(toVisit, lang) || toVisit?.city_name || '';
+    const when = fmtDate(entity?.start_datetime) || fmtDate(fromVisit?.end_date) || '';
+    return { eyebrow: t(HEADER_EYEBROW.transfer), title: [from, to].filter(Boolean).join(' → '), sub: when };
+  }
+  const city = cityLabel(visit, lang) || visit?.city_name || '';
+  const range = [fmtDate(visit?.start_date), fmtDate(visit?.end_date)].filter(Boolean).join(' — ');
+  const n = visit?.nights > 0 ? t('fork.stay22_nights', { count: visit.nights }) : '';
+  return {
+    eyebrow: t(HEADER_EYEBROW[kind] || HEADER_EYEBROW.hotel),
+    title: city,
+    sub: [range, n].filter(Boolean).join(' · '),
+  };
+}
+
 export function fmtDT(iso) {
   const d = parseNaive(iso);
   return d ? d.toFormat('d MMM, HH:mm') : '';

@@ -403,8 +403,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    входит сюда своим именем. */
 .statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
 .card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
-.chat-reply__card, .pl-lastcard, .map-route, .lp,
-/* оверлеи и всплывающее */
+.chat-reply__card, .pl-lastcard, .map-route,
+/* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
+   ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
@@ -5147,6 +5148,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    ИНЛАЙНОМ, панель создания оставалась на `--bg`, модалка была `--surface` из
    роли. Фон и рамку панель берёт из роли своим именем, радиус - из ступени
    оболочки; здесь остаётся только тень и раскладка. */
+/* ОБОЛОЧКА формы - одна заливка на панель и на модалку, и это заливка
+   СОЗДАНИЯ (`--bg`, фон приложения): редактирование обязано выглядеть как
+   создание, а не наоборот. Раньше панель была `--bg`, модалка `--surface`, а
+   панель редактора возвращала себе `--surface` инлайном - три заливки у одной
+   формы. Объявлено ЗДЕСЬ, у обеих, поэтому разъехаться больше нечему. */
+.lp, .dlg { background: var(--bg); }
 .lp { box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }
 .lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .lp-ic svg { width: 17px; height: 17px; }

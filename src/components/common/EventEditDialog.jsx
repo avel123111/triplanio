@@ -211,6 +211,7 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
   );
 }
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
+import { eventHeader } from '@/components/common/EventViewBody';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
 import TimezoneHint from '@/components/common/TimezoneHint';
@@ -230,17 +231,14 @@ const TYPE_META = {
   hotel: {
     color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', ink: 'var(--ev-hotel-ink)',
     Icon: BedDouble, labelKey: 'event.type_hotel',
-    titleNewKey: 'event.title_new_hotel', titleEditKey: 'event.title_edit_hotel',
   },
   transfer: {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
     Icon: Plane, labelKey: 'event.type_transfer',
-    titleNewKey: 'event.title_new_transfer', titleEditKey: 'event.title_edit_transfer',
   },
   activity: {
     color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)',
     Icon: Ticket, labelKey: 'event.type_activity',
-    titleNewKey: 'event.title_new_activity', titleEditKey: 'event.title_edit_activity',
   },
   service: {
     color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', ink: 'var(--ev-car-ink)',
@@ -1195,7 +1193,17 @@ export default function EventEditDialog({
   // способом ухода, как и задумано.
   const isPanel = variant === 'panel' || embedded;
   const bodyCls = 'lp-b scrollbar-thin';
-  const title = ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey));
+  // Шапка - ОБЩИЙ шов `eventHeader`, тот же, что у создания и у просмотра.
+  // Прежние `event.title_edit_*` («Проживание в Барселона», «Переезд A → B»)
+  // были ТРЕТЬИМ способом назвать то же самое и умерли вместе со сборкой.
+  // ⚠Сервисы (eSIM / страховка / аренда авто) сюда НЕ входят: у них нет ни
+  // города, ни окна проживания, и заголовок у них - название услуги. Общий шов
+  // покрывает три вида, которые везде показывают МЕСТО и КОГДА.
+  const isSvcKind = currentKind === 'service';
+  const hdr = isSvcKind
+    ? { eyebrow: t(meta.labelKey), title: t(isEdit ? meta.titleEditKey : meta.titleNewKey), sub: '' }
+    : eventHeader({ kind: currentKind, visit, fromVisit, toVisit, entity, t, lang });
+  const title = ctxTitle || hdr.title;
 
   const inner = (
     <>
@@ -1209,8 +1217,11 @@ export default function EventEditDialog({
             <div className="lp-h lp-h--ev">
               <span className="lp-ic"><meta.Icon /></span>
               <div className="lp-ti">
-                <div className="eyebrow">{t(meta.labelKey)}</div>
-                <div className="lp-tirow"><b className="t-title">{title}</b></div>
+                <div className="eyebrow">{hdr.eyebrow}</div>
+                <div className="lp-tirow">
+                  <b className="t-title">{title}</b>
+                  {hdr.sub && <span className="t-meta">{hdr.sub}</span>}
+                </div>
               </div>
               <button
                 className="lp-back"
