@@ -3565,9 +3565,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .addr div { color: var(--ink-2); }
 /* Notes block — Lumo .notes: surface-3 card with hairline border. */
 .notes { color: var(--ink-2); padding: 11px 13px; border-radius: var(--r-sm); white-space: pre-wrap; word-break: break-word; }
-/* Document upload field (dropzone + file rows) — unified on the DocsLens
-   reference classes .dl-dropzone / .dl-uplist / .dl-upitem (DocsLens.css),
-   reused by DocumentsField so the field looks identical everywhere (TRIP-275). */
 /* Planning left list: hide the scrollbar entirely (still scrolls). */
 .ts-leftscroll { scrollbar-width: none; -ms-overflow-style: none; }
 .ts-leftscroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
@@ -4851,8 +4848,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* ─── Document format badge ─────────────────────────────────────────────────
    Leads every document row on every screen that shows one (documents lens,
-   document field, event read view) — one look for one attachment, wherever it
-   appears. Rendered only by `FileTypeBadge`; a screen must not restyle it, or
+   document field, event read view, booking parse) — one look for one attachment,
+   wherever it appears. It reaches all four through `FileRow`, which is the only
+   thing that draws a file row at all.
+   Rendered only by `FileTypeBadge`; a screen must not restyle it, or
    the same file starts looking different depending on where you opened it.
    The `dl-` prefix does not scope it to the documents lens. */
 .dl-ftag {
@@ -4889,26 +4888,29 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* TRIP-321 Ф14.5, апрув Pavel. Вложенный файл рисовался ЧЕТЫРЬМЯ реализациями:
    .doc-row (просмотр события), .dl-filechip и .dl-upitem (Документы, лежали в
    одном файле и отличались одним пикселем) и .ai-file (распознавание брони).
-   Разница между ними была 1px по вертикали и цвет рамки - решение Pavel: файл
-   выглядит одинаково везде, рамка ИИ остаётся вариантом.
-   ⚠ Рамку и фон базовой строке даёт РОЛЬ (co-selector «строки-списки и ряды» в
-   начале файла, TRIP-326), поэтому модификаторы объявляют только ДЕЛЬТУ к ней:
-   рамочный - свой фон, ИИ - свой цвет рамки. Их прежние копии `--line` и
-   `--surface` были побайтовым повтором роли. Прежний комментарий здесь
-   утверждал, что строка-ссылка рамки не носит, - это неверно с TRIP-326, она
-   её носит, и `plain` отличается от `--framed` РОВНО фоном.
-   ★Подсветка при наведении есть у ВСЕХ трёх вариантов. Раньше оба рамочных
-   гасили её копией собственного покоя: правило выглядело как «своё значение»,
-   а означало «ховера нет» - в событии строки подсвечивались, в Документах
-   молчали. У рамочной ступень общая (`--surface-2`), поэтому своего правила
-   ей не нужно вовсе; у ИИ-строки ступень своего семейства - тот же `--ai-soft`,
-   которым подсвечиваются строка упоминания в чате и «собачка» композера.
-   `--ai-soft` полупрозрачен, то есть подмешивается к фону РОДИТЕЛЯ: у себя дома
-   (`.ai-blk`, родитель `--surface`) это ровно ожидаемый тон; если строку
-   положат на более тёмную подложку, оттенок уедет вместе с ней.
+   Решение Pavel: файл выглядит одинаково везде, рамка ИИ остаётся вариантом.
+
+   ★★TRIP-333: «одинаково» доведено до конца. Скин у строки ОДИН - фон и рамка
+   роли (co-selector «строки-списки и ряды» в начале файла, TRIP-326), и
+   вариант остался ровно один - ИИ, и тот отличается ТОЛЬКО цветом рамки.
+   Заливка `--surface-3`, которую носили Документы трипа и поле формы, снята:
+   тот же список файлов в просмотре события был белым, поэтому одно и то же
+   наведение давало РАЗНЫЙ скачок - с белого на серый в одном месте и почти
+   незаметную ступень в другом. Разницы за этим не стояло никакой: оба списка
+   лежат на одной и той же светлой подложке.
+   ⚠ Тонировать ВСЕ вместо этого было нельзя, и ломается это ровно в ОДНОЙ
+   точке вызова из шести: у типа «услуга» список висит внутри `.ev-sec`, а тот
+   сам `--surface-3` - тонированная строка на нём пропала бы. Остальные тела
+   просмотра кладут список в `.hv-sec`, у которого фона нет вовсе.
+   ★Ховер этот заход НЕ менял: он был сведён к общему `--surface-2` раньше, а
+   выглядел разным именно из-за расхождения ПОКОЯ - с белого скачок вдвое
+   больше, чем с тонированного. У ИИ-строки ступень своего семейства -
+   тот же `--ai-soft`, которым подсвечиваются строка упоминания в чате и
+   «собачка» композера. `--ai-soft` полупрозрачен, то есть подмешивается к фону
+   РОДИТЕЛЯ: у себя дома (`.ai-blk`, родитель `--surface`) это ожидаемый тон;
+   на более тёмной подложке оттенок уедет вместе с ней.
    ⚠ Правило ИИ обязано стоять НИЖЕ базового ховера: специфичность у них
    одинаковая (0,2,0), решает порядок. */
-.doc-row--framed{background:var(--surface-3);}
 .doc-row--ai{border:1px solid var(--ai-soft-2);}
 .doc-row--ai:hover{background:var(--ai-soft);}
 /* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),

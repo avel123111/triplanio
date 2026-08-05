@@ -60,7 +60,6 @@ function DocRows({ docs }) {
           fallback={t('event.file_word')}
           href={normalizeExternalUrl(d.file_url)}
           size={d.file_size}
-          plain
         />
       ))}
     </div>
