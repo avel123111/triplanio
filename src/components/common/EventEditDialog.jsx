@@ -1895,7 +1895,7 @@ function TransferLegCard({
 
       <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line)' : 'none' }}>
         {isMulti && <div style={{ height: 10 }} />}
-        <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
+        <div className="field__label" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
 
         {/* From / To — city (readonly endpoint, or layover picker) + address */}
