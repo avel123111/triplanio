@@ -1414,7 +1414,11 @@ h4,
  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 .input::placeholder, .textarea::placeholder { color: var(--muted-2); }
-.input:hover:not(:focus), .select:hover:not(:focus), .textarea:hover:not(:focus) { border-color: var(--line-hover); }
+/* Ховер отвечает «сюда можно писать», поэтому нерабочее поле его не показывает
+   (TRIP-333): у `[readonly]` и `:disabled` подсветка рамки обещала бы ввод. */
+.input:hover:not(:focus):not([readonly]):not(:disabled),
+.select:hover:not(:focus):not(:disabled),
+.textarea:hover:not(:focus):not([readonly]):not(:disabled) { border-color: var(--line-hover); }
 .input:focus, .select:focus, .textarea:focus {
   outline: none; border-color: var(--brand); background: var(--surface);
   box-shadow: 0 0 0 4px var(--primary-ring);
@@ -1447,6 +1451,45 @@ h4,
 .field--warning textarea {
   border-color: var(--warning);
 }
+
+/* ── Нерабочее поле (TRIP-333) ────────────────────────────────────────────
+   До этого у поля не было НИ ОДНОГО правила на `:disabled`/`[readonly]`:
+   `<fieldset disabled>` в настройках трипа гасил контролы по спеке, но на
+   экране форма наблюдателя выглядела полностью редактируемой, а четыре поля
+   «скопируй ссылку» - обычными полями ввода.
+
+   Стоит ПОСЛЕ `.field--ai/--error/--warning`: специфичность та же (0,2,0),
+   значит при совпадении выигрывает объявленный ниже - нерабочее поле обязано
+   перебивать тон, а не наоборот.
+
+   ★Гасим ЦВЕТОМ, а не `opacity`, хотя у `.btn[disabled]` (:1287) именно
+   прозрачность. Причина механическая: `opacity` перемножается по предкам, а
+   форма редактора события уже гасит весь `<fieldset>` своей `opacity:.5` на
+   время распознавания брони - .5 x .55 дало бы 0.275, поле стало бы
+   нечитаемым. Цвет с прозрачностью предка не складывается и одинаково верен
+   в обоих случаях: секция «выключена» - гаснет целиком, поле «не место для
+   ввода» - меняет affordance. */
+.input:disabled, .select:disabled, .textarea:disabled {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--muted-2);
+  cursor: not-allowed;
+}
+.input:disabled::placeholder, .textarea:disabled::placeholder { color: var(--muted-2); }
+
+/* `[readonly]` - НЕ `disabled`: фокус, выделение и копирование сохраняются,
+   иначе ломается единственный сценарий этих полей (ссылка-приглашение,
+   публичная ссылка, TG-URL, e-mail аккаунта - три из них по клику делают
+   `select()`). Поэтому `:not(:focus)`: кольцо фокуса остаётся канонным и
+   служит подтверждением, что текст выделен. Образец - инлайн, который стоял
+   на двух полях города в редакторе события; он переехал сюда. */
+.input[readonly]:not(:focus), .textarea[readonly]:not(:focus) {
+  background: var(--wash);
+  border-color: var(--line);
+  color: var(--ink-2);
+  cursor: default;
+}
+
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
 .err, .wrn { display: flex; align-items: center; gap: 5px; }

@@ -1867,7 +1867,7 @@ function TransferLegCard({
             <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
             <div className="eed-accrow">
               <Label>{t('event.city')}</Label>
-              <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
+              <input className="input" value={fromName} readOnly tabIndex={-1} title={t('event.city_from_route_title')} />
             </div>
             <div className="eed-accrow">
               <Label>{t('event.addr_station')}</Label>
@@ -1893,7 +1893,7 @@ function TransferLegCard({
                   <FieldError issues={issues} field={vf('toCity')} />
                 </>
               ) : (
-                <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
+                <input className="input" value={toName} readOnly tabIndex={-1} title={t('event.city_arrival_title')} />
               )}
             </div>
             <div className="eed-accrow">
