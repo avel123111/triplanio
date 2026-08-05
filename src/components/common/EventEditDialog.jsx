@@ -2318,7 +2318,7 @@ function EsimServiceFields({ form, setField, issues, onTouch, setUploading, trip
     <>
       <SectionHeader>{t('service.kind.esim')}</SectionHeader>
       <div data-vfield="name">
-        <Label>{t('service.name')}</Label>
+        <Label field="name">{t('service.name')}</Label>
         <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
@@ -2358,7 +2358,7 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
     <>
       <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
       <div data-vfield="name">
-        <Label>{t('service.name')}</Label>
+        <Label field="name">{t('service.name')}</Label>
         <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>

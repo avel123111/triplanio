@@ -1625,15 +1625,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ширины, а обычная колонка флекса. `box-shadow: none` гасит и кольцо фокуса:
    отдельное правило на `:focus` не нужно, у `.input:focus` та же специфичность
    (0,2,0) и решает порядок. */
-.input-group .input-affix { flex: 1; }
+/* Обёртка поля внутри группы тянется на всю её высоту и сама становится флексом:
+   иначе она сжимается по содержимому, и поле вместе с ней (см. `align-self` у
+   `.input` ниже). Абсолютным декорациям это не мешает - они позиционируются от
+   неё же. */
+.input-group .input-affix { flex: 1; align-self: stretch; display: flex; }
 .input-group .input, .input-group .textarea {
   border: 0; background: transparent; padding: 0; box-shadow: none; border-radius: 0;
 }
-/* Высоту держит ГРУППА. Без сброса поле тянуло бы себя до `--ctl-h`, а группа -
-   до его высоты плюс собственная коробка. Сброс только у `.input`: токена
-   высоты у `.textarea` нет, а её собственный `min-height` - это минимальное
-   поле для текста, и обнулять его группе нечем. */
-.input-group .input { min-height: 0; }
+/* Высоту держит ГРУППА, поэтому свой `min-height` поле внутри обнуляет - иначе
+   группа выросла бы до его высоты плюс собственная коробка.
+   ★Но обнулить мало: без `align-self` поле схлопывается до высоты ТЕКСТА, и
+   кликабельным остаётся только он. Замер: группа 40px, поле 17.5px, мёртвые
+   полосы по 11.25px сверху и снизу - клик по ним попадал в `<div>` и не делал
+   ничего, то есть больше половины видимого поля не работало (а на телефоне это
+   ещё и срывало цель нажатия 44px). `stretch` возвращает полю всю высоту
+   группы. Сброс только у `.input`: у `.textarea` токена высоты нет, её
+   `min-height` - это минимальное поле для текста. */
+.input-group .input { min-height: 0; align-self: stretch; }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
