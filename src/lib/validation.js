@@ -365,6 +365,49 @@ export function validateEntity(kind, draft = {}, ctx = {}) {
   }
 }
 
+// Обязательно ли поле - ОТВЕЧАЕТ САМ ВАЛИДАТОР (TRIP-333).
+//
+// Определение, а не второй список: поле обязательное, если ПУСТОЕ значение даёт
+// блокирующую ошибку именно на нём. Поэтому со списком правил ответ разойтись
+// не может, и звёздочка на экране не бывает там, где сохранение на самом деле
+// пройдёт (и наоборот). До этого «кто обязателен» решал тот, кто писал лейбл, -
+// отсюда и поля со звёздочкой без правила, и правила без звёздочки.
+//
+// Проверять надо именно ПУСТЫМ значением, а не суффиксом кода: пустой e-mail
+// приглашения даёт `INV_EMAIL_INVALID`, то есть обязательность без `_REQUIRED`
+// в имени. И считать надо от ТЕКУЩЕГО черновика - обязательность бывает
+// условной (`pickupAddress` только при создании, поля приглашения зависят от
+// режима, состав полей переезда - от числа сегментов).
+//
+// ★ГРАНИЦА: ответ верен ровно настолько, насколько `blankField` умеет обнулить
+// поле (см. ниже). Токен, до значения которого она не достаёт, вырождает пробу
+// в вопрос «есть ли на поле ошибка ПРЯМО СЕЙЧАС» - а это другой вопрос. Все
+// токены, которые сегодня сюда приходят, обнуляются; расширять вызов на новую
+// сущность - только вместе с проверкой её токенов.
+export function isFieldRequired(kind, draft = {}, ctx = {}, field) {
+  if (!field) return false;
+  const probe = blankField(draft, field);
+  return validateEntity(kind, probe, ctx)
+    .some((i) => i.field === field && i.level === 'error');
+}
+
+// Пустое значение под пробу. Обнуляет ПЛОСКИЙ ключ черновика и сегменты переезда
+// (`seg0.start` -> `segments[0].start`) - их имена собирает validateTransferLayover
+// строкой выше, поэтому разбор живёт здесь же, рядом с их источником.
+//
+// Достаёт НЕ ДО ВСЕХ токенов, и промах здесь молчит (см. границу выше). Мимо:
+// `rate.<код>` у `fx` (значение лежит в `d.rates`, а не плоским ключом),
+// `city.<i>` у `trip` (в массиве `d.cities`) и токены `start`/`end` у `city`
+// (черновик хранит их как `start_date`/`end_date`). Ни один из трёх сегодня
+// в `isFieldRequired` не приходит; понадобится - разбирать здесь, а не на экране.
+function blankField(draft, field) {
+  const seg = /^seg(\d+)\.(.+)$/.exec(field);
+  if (!seg) return { ...draft, [field]: '' };
+  const segments = (Array.isArray(draft.segments) ? draft.segments : [])
+    .map((s, i) => (i === Number(seg[1]) ? { ...s, [seg[2]]: '' } : s));
+  return { ...draft, segments };
+}
+
 // Facade for EDIT MODE / timeline (L3): whole trip. Reuses validateEntity per
 // entity + adds cross-entity structure rules. Consumed by TripStructureEdit via
 // a thin adapter (resolves message + maps entity refs + primaryIssues).

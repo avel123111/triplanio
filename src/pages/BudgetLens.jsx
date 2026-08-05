@@ -220,7 +220,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       {/* Вертикальный ритм тела диалога - одна колонка со ступенью шкалы вместо
           marginTop на каждом соседе (было 14/14/14/12/10 вручную). */}
       <div className="col col--g7">
-      <Field label={t('trip.description')}>
+      <Field label={t('trip.description')} required={v.isRequired('title')}>
         {/* Обёртка остаётся ради `[data-vfield]` - по ней прокручивает к первой
             ошибке `focusField`. Красит теперь само поле. */}
         <div data-vfield="title">
@@ -229,7 +229,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         <FieldError issues={v.displayIssues} field="title" />
       </Field>
       <div className="field-row cols-2">
-        <Field label={t('budget.field_amount')}>
+        <Field label={t('budget.field_amount')} required={v.isRequired('amount')}>
           {/* Состояние - на ГРУППЕ, а не на поле внутри: рамку держит
               контейнер, у детей её нет. Заодно подсвечивается вся группа, а не
               половина того, что читается как одно поле. */}
@@ -245,7 +245,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         </Field>
       </div>
       <div className="field-row cols-2">
-        <Field label={t('budget.field_category')}>
+        <Field label={t('budget.field_category')} required={v.isRequired('categoryId')}>
           <div data-vfield="categoryId">
             <select className="select" {...st('categoryId')} value={categoryId} onChange={e => { setCategoryId(e.target.value); v.markTouched('categoryId'); }}>
               {categories.map(c => <option key={c.id} value={c.id}>{c.displayName || c.name}</option>)}
@@ -482,7 +482,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
       <div className="col col--g7">
-      <Field label={t('trip.title_label')}>
+      <Field label={t('trip.title_label')} required={v.isRequired('name')}>
         <div data-vfield="name">
           <Input {...st('name')} value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus={!isMobile} />
         </div>

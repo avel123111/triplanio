@@ -1,7 +1,7 @@
 // Unit tests for the unified validation engine (Ф1). Run: npm test  (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateEntity, validateTrip, primaryIssues, transferAiCityAdvisories } from './validation.js';
+import { validateEntity, validateTrip, primaryIssues, transferAiCityAdvisories, isFieldRequired } from './validation.js';
 
 const codes = (issues) => issues.map((i) => i.code).sort();
 const has = (issues, code) => issues.some((i) => i.code === code);
@@ -226,6 +226,75 @@ test('invite: email mode vs offline mode', () => {
   assert.deepEqual(validateEntity('invite', { mode: 'email', email: 'a@b.com' }), []);
   assert.ok(has(validateEntity('invite', { mode: 'offline', name: '' }), 'INV_NAME_REQUIRED'));
   assert.deepEqual(validateEntity('invite', { mode: 'offline', name: 'Joe' }), []);
+});
+
+// ---------- isFieldRequired (звёздочка на экране) ----------
+// Экран рисует звёздочку по ЭТОМУ ответу, поэтому тест держит ровно то, на что
+// жалуются глазами: обязательное поле без звёздочки и звёздочка на
+// необязательном. Оба направления проверяются на каждой сущности.
+const req = (kind, draft, ctx, field) => isFieldRequired(kind, draft, ctx, field);
+
+test('required: не зависит от того, заполнено ли поле сейчас', () => {
+  // Ровно та ошибка, ради которой это делалось: пока поле заполнено, ошибки в
+  // списке нет - но обязательным оно быть не перестало.
+  const filled = { id: 'h1', name: 'Memmo', checkIn: '2026-07-07T15:00:00', checkOut: '2026-07-10T10:00:00' };
+  assert.equal(req('hotel', filled, { visit: VISIT }, 'name'), true);
+  assert.equal(req('hotel', {}, { visit: VISIT }, 'name'), true);
+});
+
+test('required: обязательные и необязательные поля по сущностям', () => {
+  assert.deepEqual(
+    ['name', 'checkIn', 'checkOut', 'notes'].map((f) => req('hotel', {}, { visit: VISIT }, f)),
+    [true, true, true, false],
+  );
+  assert.deepEqual(
+    ['title', 'start', 'end', 'address'].map((f) => req('activity', {}, { visit: VISIT }, f)),
+    [true, true, true, false],
+  );
+  assert.deepEqual(
+    ['title', 'amount', 'categoryId', 'note'].map((f) => req('expense', {}, {}, f)),
+    [true, true, true, false],
+  );
+  assert.deepEqual(['name', 'colour'].map((f) => req('category', {}, {}, f)), [true, false]);
+  assert.deepEqual(['title', 'notes'].map((f) => req('document', {}, {}, f)), [true, false]);
+});
+
+test('required: условная обязательность считается от черновика', () => {
+  // Адрес получения обязателен только при СОЗДАНИИ - на редактировании звёздочки
+  // быть не должно.
+  const car = { service_kind: 'car_rental' };
+  assert.equal(req('service', car, {}, 'pickupAddress'), true);
+  assert.equal(req('service', { ...car, isEdit: true }, {}, 'pickupAddress'), false);
+  // У eSIM/страховки из всех полей обязательно только название.
+  assert.equal(req('service', { service_kind: 'esim' }, {}, 'name'), true);
+  assert.equal(req('service', { service_kind: 'esim' }, {}, 'pickup'), false);
+});
+
+test('required: приглашение - обязательность зависит от режима', () => {
+  assert.equal(req('invite', { mode: 'offline' }, {}, 'name'), true);
+  assert.equal(req('invite', { mode: 'email' }, {}, 'name'), false);
+  // Пустой e-mail даёт INV_EMAIL_INVALID - обязательность БЕЗ суффикса _REQUIRED,
+  // поэтому считать её по имени кода было бы неверно.
+  assert.equal(req('invite', { mode: 'email' }, {}, 'email'), true);
+  assert.equal(req('invite', { mode: 'link' }, {}, 'email'), false);
+});
+
+test('required: курс валюты необязателен (пусто = авто-курс)', () => {
+  assert.equal(req('fx', { rates: { USD: '1.1' } }, {}, 'rate.USD'), false);
+});
+
+test('required: сегменты переезда адресуются по своему токену', () => {
+  const draft = {
+    hasLayovers: true,
+    segments: [
+      { start: '2026-07-07T10:00:00', end: '2026-07-07T12:00:00', toCity: { city_name: 'Porto' } },
+      { start: '2026-07-07T14:00:00', end: '2026-07-07T16:00:00' },
+    ],
+  };
+  const ctx = { fromVisit: VISIT, toVisit: { ...VISIT, id: 'c2', city_name: 'Porto' } };
+  assert.equal(req('transfer', draft, ctx, 'seg0.start'), true);
+  assert.equal(req('transfer', draft, ctx, 'seg1.end'), true);
+  assert.equal(req('transfer', draft, ctx, 'seg0.note'), false);
 });
 
 test('primaryIssues: transfer structure beats entity', () => {

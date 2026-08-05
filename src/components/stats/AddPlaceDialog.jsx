@@ -138,7 +138,11 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
             <CitySearch onSelect={(c) => { setCity(c); setPicking(false); setErr(''); }} />
           </Field>
         ) : (
-          <Field label={t('stats.field_city')}>
+          /* Та же звёздочка, что и в ветке выбора: поле одно и то же, и город
+             обязателен независимо от того, выбран он уже или ещё нет. Раньше
+             `required` стоял только на одной ветке, и звёздочка на одном и том же
+             поле то появлялась, то исчезала (TRIP-333). */
+          <Field label={t('stats.field_city')} required>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-btn)', background: 'var(--surface)' }}>
               <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
               <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>

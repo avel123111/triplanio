@@ -174,7 +174,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       {tab === 'offline' && <div style={{ marginTop: 4 }} />}
 
       {tab === 'email' && <>
-        <Field label="E-mail">
+        <Field label="E-mail" required={v.isRequired('email')}>
           <div data-vfield="email">
             <Input {...st('email')} type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus={!isMobile} />
           </div>
@@ -207,7 +207,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       </>}
 
       {tab === 'offline' && <>
-        <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')}>
+        <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')} required={v.isRequired('name')}>
           <div data-vfield="name">
             <Input {...st('name')} value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus={!isMobile} />
           </div>

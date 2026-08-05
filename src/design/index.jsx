@@ -173,7 +173,10 @@ export const Field = ({ label, hint, sub, ai, children, required = false }) => (
   <div className={`field ${ai ? "field--ai" : ""}`}>
     {label && (
       <label className="field__label">
-        {label}{required && <span style={{ color: "var(--danger)" }}>*</span>}
+        {/* Звёздочка живёт на спане с текстом, а не на `<label>`: так она встаёт
+            сразу за подписью, а не за подсказкой, и не попадает под `gap`
+            флекс-лейбла (см. `[data-required]` в app.css). */}
+        <span data-required={required || undefined}>{label}</span>
         {hint && <span className="muted t-meta" style={{ marginLeft: 4 }}>· {hint}</span>}
       </label>
     )}

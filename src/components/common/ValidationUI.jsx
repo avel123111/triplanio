@@ -5,7 +5,7 @@
 // data-vfield="<token>" attribute on each field wrapper so the panel can focus it.
 import React, { useMemo, useState, useCallback } from 'react';
 import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
-import { validateEntity, issuesToShow } from '@/lib/validation';
+import { validateEntity, issuesToShow, isFieldRequired } from '@/lib/validation';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Hybrid display state: inline shows for TOUCHED fields; the summary panel and
@@ -24,6 +24,9 @@ export function useHybridValidation(kind, draft, ctx) {
   const displayIssues = issuesToShow(issues, { submitted, touched });
   const panelIssues = issuesToShow(issues, { submitted });
   const reset = useCallback(() => { setTouched(new Set()); setSubmitted(false); }, []);
+  // Обязательность спрашиваем у валидатора, а не размечаем на экране: звёздочка
+  // не может оказаться там, где сохранение на самом деле пройдёт (TRIP-333).
+  const isRequired = useCallback((field) => isFieldRequired(kind, draft, ctx, field), [kind, draft, ctx]);
   // Run onOk only when valid; otherwise reveal everything + scroll to first error.
   const attemptSubmit = useCallback((onOk) => {
     if (canSubmit) { onOk(); return; }
@@ -33,7 +36,7 @@ export function useHybridValidation(kind, draft, ctx) {
       document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }, [canSubmit, issues]);
-  return { issues, displayIssues, panelIssues, canSubmit, submitted, markTouched, attemptSubmit, reset };
+  return { issues, displayIssues, panelIssues, canSubmit, submitted, markTouched, attemptSubmit, reset, isRequired };
 }
 
 // First issue targeting `field` - a token, or a LIST of tokens that share one

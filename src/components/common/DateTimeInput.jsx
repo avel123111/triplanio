@@ -43,6 +43,9 @@ export default function DateTimeInput({
   // the plain input button. Same calendar, same value contract.
   variant,
   cellLabel,
+  // Обязательность подписи-бровки в ячейке: звёздочку рисует тот же CSS, что и у
+  // подписи обычного поля (`[data-required]`), поэтому знак и цвет общие.
+  cellRequired,
   // Состояние валидации приходит атрибутами (`{...fieldState(...)}`) и садится
   // на ТРИГГЕР: он и есть видимое поле (TRIP-333).
   ...rest
@@ -120,7 +123,7 @@ export default function DateTimeInput({
     >
       {isCell ? (
         <>
-          {cellLabel != null && <span className="sd-cell__lbl eyebrow">{cellLabel}</span>}
+          {cellLabel != null && <span className="sd-cell__lbl eyebrow" data-required={cellRequired || undefined}>{cellLabel}</span>}
           <span className="sd-cell__d t-strong">{cellDate}</span>
           {withTime && <span className="sd-cell__t t-mono">{time || '—:—'}</span>}
         </>
