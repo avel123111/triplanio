@@ -82,9 +82,7 @@ export function fieldHasWarning(issues, field) {
 // `aria-invalid` вместо своего data-атрибута - это стандартный признак, его
 // объявляет скринридер; в приложении не было ни одного. Ошибка старше
 // предупреждения: оба сразу поле не показывает никогда.
-//
-// Приходит на смену `fieldStateClass` ниже; пока живут оба - точки переезжают
-// по одной, и ни одна промежуточная ревизия не теряет ошибку.
+
 export function fieldState(issues, field) {
   const issue = pickFieldIssue(issues || [], field);
   const invalid = issue?.level === 'error';
@@ -92,14 +90,6 @@ export function fieldState(issues, field) {
     'aria-invalid': invalid ? 'true' : undefined,
     'data-warning': !invalid && issue ? '' : undefined,
   };
-}
-
-// Wrapper class for a field's validation state: `.tv-invalid` (red) or
-// `.field--warning` (amber), never both. Single source for every form wrapper.
-export function fieldStateClass(issues, field) {
-  const issue = pickFieldIssue(issues || [], field);
-  if (!issue) return '';
-  return issue.level === 'error' ? 'tv-invalid' : 'field--warning';
 }
 
 function focusField(field) {

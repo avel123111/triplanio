@@ -1432,18 +1432,18 @@ h4,
  background: var(--ai); color: white;
  padding: 1px 5px; border-radius: 4px;
 }
-/* `.field--error` тут не пропущен: он был мёртв - его ставил только проп
-   `error` у `<Field>`, а тот за всё время не получил ни одного вызова из 46.
-   Живой красный скин - `.tv-invalid` (см. `fieldStateClass`), он уезжает на
-   `[aria-invalid]` следующим шагом. */
+/* Красного близнеца тут нет намеренно: ошибка живёт на САМОМ поле
+   (`[aria-invalid]`, ниже по файлу). `.field--warning` остаётся обёрточным -
+   его ставят два блока дат редактора события на свой контейнер, у которого
+   рамку рисует он сам, а не поле внутри. */
 .field--warning .input, .field--warning .select, .field--warning .textarea {
   border-color: var(--warning);
   box-shadow: 0 0 0 3px var(--warning-soft);
 }
 /* Same amber state on the event editor's own controls (date-range block draws
    its own border, service forms use raw input/select/textarea), so
-   `.field--warning` is the ONE warning skin. Border-only, mirroring
-   `.tv-invalid`; a field never gets both (see fieldStateClass). */
+   `.field--warning` is the ONE warning skin. Border-only; a field never gets
+   both at once (see `fieldState`). */
 .field--warning .stay-dates,
 .field--warning input,
 .field--warning select,
@@ -1501,20 +1501,17 @@ h4,
 }
 
 /* ── Ошибка и предупреждение НА САМОМ ПОЛЕ (TRIP-333) ─────────────────────
-   Живой скин ошибки - `.tv-invalid` на ОБЁРТКЕ (`fieldStateClass`), и он
-   красит потомка. Из-за этого поле, у которого класс оказался на нём самом,
-   молча не краснело - так было у суммы траты и курса валюты. Состояние
-   переезжает на само поле: селектор перестаёт зависеть от того, есть ли
-   обёртка и где именно висит класс.
+   Раньше красным был `.tv-invalid` на ОБЁРТКЕ, и он красил ПОТОМКА. Поле, у
+   которого класс оказывался на нём самом, из-за этого молча не краснело - так
+   было у суммы траты и курса валюты. Теперь состояние на самом поле, и
+   селектор не зависит ни от наличия обёртки, ни от того, где висит класс.
 
    `aria-invalid` вместо своего data-атрибута: это стандартный признак, его
    объявляет скринридер. В приложении не было ни одного - предупреждение об
    ошибке существовало только для зрячих.
 
-   ПЕРЕХОД: правила стоят РЯДОМ с `.tv-invalid`, а не вместо него. Точки
-   переезжают по одной, поле красное в любом из двух случаев, и ни одна
-   промежуточная ревизия не теряет ошибку. `.tv-invalid` удаляется последним,
-   когда переедут все. */
+   Ставится атрибутами из `fieldState` под spread, одинаково на сырой контрол
+   и на наши компоненты; своего пропа они не заводят. */
 .input[aria-invalid="true"], .select[aria-invalid="true"], .textarea[aria-invalid="true"] {
   border-color: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft);
@@ -1581,12 +1578,11 @@ h4,
 /* Подсвечивается ВСЯ группа: кольцо вокруг одного ребёнка обвело бы половину
    того, что пользователь видит как одно поле. */
 .input-group:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
-/* Состояние валидации приходит теми же классами, что и на всех остальных полях
-   (`fieldStateClass`), но красит СЕБЯ, а не потомка: у детей группы рамки нет,
-   и `.tv-invalid .input` не дал бы ничего. Оба уйдут в PR6 вместе с
-   `.tv-invalid`, на их место встанет `[aria-invalid]`. */
-.input-group.tv-invalid, .input-group[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
-.input-group.field--warning, .input-group[data-warning] { border-color: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
+/* Состояние приходит теми же атрибутами, что и полю (`fieldState`), но красит
+   СЕБЯ, а не потомка: у детей группы рамки нет, правило на потомка не дало бы
+   ничего. */
+.input-group[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.input-group[data-warning] { border-color: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
 /* Дети без собственного скина. `.input-affix` внутри группы - не позиционер
    ширины, а обычная колонка флекса. `box-shadow: none` гасит и кольцо фокуса:
    отдельное правило на `:focus` не нужно, у `.input:focus` та же специфичность
@@ -1595,12 +1591,6 @@ h4,
 .input-group .input, .input-group .textarea {
   border: 0; background: transparent; padding: 0; box-shadow: none; border-radius: 0;
 }
-/* Ответ на `!important` у легаси `.tv-invalid .input:focus` (:3189): без него
-   невалидная группа в фокусе рисует ДВА красных кольца - своё на контейнере и
-   ещё одно вокруг голого ребёнка. Специфичность (0,4,0) против (0,3,0) - брать
-   порядком нельзя, легаси-блок лежит НИЖЕ по файлу и выиграл бы при равном
-   весе. Уходит вместе с `.tv-invalid` в PR6. */
-.input-group.tv-invalid .input:focus { box-shadow: none !important; }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
@@ -3207,19 +3197,6 @@ h4,
  background: var(--wash);
  border: 1px solid var(--line);
  color: var(--ink);
-}
-
-/* Validation: red border on a field wrapper flagged with .tv-invalid (data-vfield) */
-.tv-invalid input,
-.tv-invalid textarea,
-.tv-invalid select,
-.tv-invalid .input {
-  border-color: var(--danger, #e74c3c) !important;
-}
-.tv-invalid input:focus,
-.tv-invalid textarea:focus,
-.tv-invalid .input:focus {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger, #e74c3c) 28%, transparent) !important;
 }
 
 /* ====================================================================
@@ -4927,7 +4904,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
 /* TRIP-186: инпуты в диалогах события/броней — «аккуратный» вид дизайн-системы
    (тоньше рамка, крупнее радиус). Цвет рамки НЕ трогаем, чтобы не перебить
-   состояния той же специфичности (.field--ai / .field--warning / .tv-invalid)
+   состояния той же специфичности (.field--ai / .field--warning / [aria-invalid])
    и hover/focus. */
 .ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
 .lp .input, .lp .select, .lp .textarea,
