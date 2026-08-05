@@ -37,6 +37,10 @@
 
 import { supabaseAdmin } from './supabaseAdmin.ts';
 import { isNotFound } from './classifyDbError.ts';
+// Само ПРАВИЛО живёт в import-free ./tripStep.ts. Здесь только I/O: этот модуль
+// тянет supabaseAdmin, который читает env на загрузке, поэтому из теста его не
+// подгрузить — `deno test` идёт без --allow-env.
+import { clearsStep, stepFromFacts, type TripStep } from './tripStep.ts';
 
 /** Thrown when an access check can't be completed because a downstream query
  *  failed (transient/infra), as opposed to a definitive allow/deny answer. */
@@ -93,12 +97,7 @@ async function fetchActiveMemberRole(tripId: string, userId: string): Promise<st
  * Throws TripAccessError if a downstream query fails (→ caller returns 5xx).
  */
 export async function isCallerEditor(tripId: string, userId: string): Promise<boolean> {
-  const creator = await fetchTripCreator(tripId);
-  if (creator === null) return false;
-  if (creator === userId) return true;
-
-  const role = await fetchActiveMemberRole(tripId, userId);
-  return role === 'admin' || role === 'owner';
+  return clearsStep(await resolveStep(tripId, userId), 'editor');
 }
 
 /**
@@ -111,10 +110,16 @@ export async function isCallerEditor(tripId: string, userId: string): Promise<bo
  * Throws TripAccessError if a downstream query fails (→ caller returns 5xx).
  */
 export async function isCallerParticipant(tripId: string, userId: string): Promise<boolean> {
-  const creator = await fetchTripCreator(tripId);
-  if (creator === null) return false;
-  if (creator === userId) return true;
+  return clearsStep(await resolveStep(tripId, userId), 'participant');
+}
 
-  const role = await fetchActiveMemberRole(tripId, userId);
-  return role !== null;
+/** I/O-половина: достаёт факты и отдаёт их правилу. Решение — в `stepFromFacts`. */
+async function resolveStep(tripId: string, userId: string): Promise<TripStep> {
+  const creator = await fetchTripCreator(tripId);
+  // Трипа нет — дальше спрашивать нечего, и лишний запрос не нужен.
+  if (creator === null) return null;
+  // Создатель проходит без строки членства, поэтому роль тут не читаем вовсе.
+  if (creator === userId) return stepFromFacts(creator, userId, null);
+
+  return stepFromFacts(creator, userId, await fetchActiveMemberRole(tripId, userId));
 }
