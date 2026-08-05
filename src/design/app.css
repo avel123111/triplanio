@@ -411,7 +411,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .te-row.te-row--plan, .acct-chan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
 .addon-card, .tm-manage, .tm-account, .records, .eroute,
-.hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel,
+.hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel, .ev-sec,
 /* держали эту пару своей копией, а не именем в роли */
 .eed-fcbox, .eed-nightrow, .docfield, .choice-card,
 .plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
@@ -424,8 +424,12 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 }
 
 /* Утопленное поле — фон отступает НАЗАД от несущей карточки (заметки, адрес,
-   секции просмотра события, строка «город/даты»). */
-.addr, .notes, .notes-block, .ev-sec, .cdu {
+   строка «город/даты»).
+   ★`.ev-sec` отсюда ушёл (TRIP-333). Он не поле, а РАЗДЕЛ - тот же объект, что
+   `Accordion` в форме и `.hv-*` в просмотре, а те живут на роли поверхности.
+   Из-за этого один и тот же «раздел» был серым в просмотре события и белым в
+   его редактировании: разными были не поля, а сама коробка вокруг них. */
+.addr, .notes, .notes-block, .cdu {
   background: var(--surface-3);
   border: 1px solid var(--line);
 }
