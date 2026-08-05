@@ -51,8 +51,10 @@
  *      fixture, which is the only way to exercise the alias classifier on the
  *      three trap shapes without depending on the live stylesheet.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
+import { Parser as AcornParser } from 'acorn';
+import acornJsx from 'acorn-jsx';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 
@@ -82,25 +84,172 @@ const inScope = (f) => !OUT_OF_SCOPE.test(f);
  *  new namespace is bought in, and the unit guard 2m polices. */
 const familyOf = (cls) => cls.replace(/(__|--).*/, '').split('-')[0];
 
+/** A class token can never live inside a quoted string or a `url()`. Without
+ *  this, a dot in a PATH is read as a class: `@import './design/fonts.css'`
+ *  minted the family `css`, and the @font-face `url('…woff2')` minted `woff2`.
+ *  Two namespaces that exist nowhere in the product, sitting in the number that
+ *  Ф13 turns into a ratchet — a ratchet you could "improve" by deleting a font,
+ *  and whose target you could never reach because two of its units are fiction. */
+const stripLiterals = (s) =>
+  s.replace(/url\([^)]*\)/g, 'url()').replace(/(['"])(?:\\.|(?!\1)[^\n])*\1/g, '""');
+
+const readCss = (f) => stripLiterals(stripComments(readFileSync(f, 'utf8')));
+
+/** One rule = `selector { declarations }`. Read as `m[1]` / `m[2]` by both the
+ *  leading-class walk (1b) and the shape walk (3) — the same rule-splitting must
+ *  not be spelled out twice, or one copy silently drifts from the other. */
+const rulesOf = (f) => readCss(f).matchAll(/([^{}]+)\{([^{}]*)\}/g);
+
 function classesOf(fileList) {
   const set = new Set();
   for (const f of fileList) {
-    for (const m of stripComments(readFileSync(f, 'utf8')).matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g)) {
-      set.add(m[1]);
-    }
+    for (const m of readCss(f).matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g)) set.add(m[1]);
   }
   return set;
 }
 
-const classes = classesOf(cssFiles.filter(inScope));
+const scopedCss = cssFiles.filter(inScope);
+const classes = classesOf(scopedCss);
+/** family → the classes it holds. One grouping feeds all three readings: the
+ *  headline count, the heavy/tail split, and the namespace/attached/standalone
+ *  split in 1b — which needs the members, not just how many there are. */
 const families = new Map();
 for (const c of classes) {
   const f = familyOf(c);
-  families.set(f, (families.get(f) ?? 0) + 1);
+  if (!families.has(f)) families.set(f, []);
+  families.get(f).push(c);
 }
-const sorted = [...families].sort((a, b) => b[1] - a[1]);
+const sorted = [...families].map(([f, list]) => [f, list.length]).sort((a, b) => b[1] - a[1]);
 const heavy = sorted.filter(([, n]) => n >= 10);
 const tail = sorted.filter(([, n]) => n < 10);
+
+// ── 1b. What the 295 is actually made of ────────────────────────────────────
+/** THE HEADLINE NUMBER IS THREE DIFFERENT THINGS, and only the first is the
+ *  work TRIP-321 is about. Kept as one figure it lies in a specific, expensive
+ *  way: renaming `.statbar .k` → `.statbar__k` moves 81 "families" across the
+ *  repo without deleting one duplicated shape, and the metric applauds it
+ *  exactly as loudly as a real collapse. That is the Ф3b failure mode with a
+ *  scoreboard attached — so the split is reported, not the sum alone.
+ *
+ *    NAMESPACE  — the prefix owns something besides itself (`aa` owns `aa-x`,
+ *                 `tile` owns `tile--lg`). This is the pile worth 120 → ~30.
+ *    ATTACHED   — a lone name that NEVER leads a selector: `.statbar .k`,
+ *                 `.blk.locked`. Nobody bought this namespace; it is a private
+ *                 child or a state written without a prefix. Renaming it is
+ *                 hygiene with zero visual risk and zero design effect.
+ *    STANDALONE — a lone name that leads somewhere: `input`, `select`,
+ *                 `checkbox`, `panel`. This is the design system's own
+ *                 vocabulary. It must NOT go to zero, and "collapse select
+ *                 into input" is not a goal anyone wants. */
+const leadingClasses = new Set();
+for (const f of scopedCss) {
+  for (const m of rulesOf(f)) {
+    // Only the LEFTMOST class of each comma-separated selector leads. In
+    // `.statbar .k` that is `statbar`; in `.blk.locked` it is `blk`.
+    for (const sel of m[1].split(',')) {
+      const lead = sel.match(/\.([a-zA-Z][a-zA-Z0-9_-]*)/)?.[1];
+      if (lead) leadingClasses.add(lead);
+    }
+  }
+}
+
+const familyKinds = {};
+for (const [fam, list] of families) {
+  if (list.length > 1) familyKinds[fam] = 'namespace';
+  else familyKinds[fam] = leadingClasses.has(list[0]) ? 'standalone' : 'attached';
+}
+const kindCount = (k) => Object.values(familyKinds).filter((v) => v === k).length;
+const namespaces = kindCount('namespace');
+const singletonsStandalone = kindCount('standalone');
+const singletonsAttached = kindCount('attached');
+const singletons = singletonsStandalone + singletonsAttached;
+
+// ── 1c. Families that belong to the EXCLUDED perimeter ──────────────────────
+/** The scope drops login.css and PublicTrip.css, but the LANDING's rules live
+ *  inside app.css. Those families are counted in the target and can never be
+ *  worked on, so the goal is understated by however many there are.
+ *
+ *  A family is filed here only when its markup usage is KNOWN and lands wholly
+ *  outside the scope. Silence never counts: a descendant class (`.card > .x`)
+ *  carries no className of its own and would be misfiled wholesale.
+ *
+ *  Usage is read from `className` ONLY. The first cut scanned every quoted
+ *  string on the theory that over-broad is the safe direction, and it found
+ *  exactly nothing: `nav`, `dur` and `tx` occur as ordinary quoted words in
+ *  in-scope files, so every family stayed "in reach" and the section reported
+ *  a clean zero it had not earned. Over-broad is not the safe direction here —
+ *  it is the direction that produces a confident wrong answer.
+ *
+ *  ★★ JSX РАЗБИРАЕТСЯ ПАРСЕРОМ, А НЕ РЕГУЛЯРКАМИ. Это не украшение - это вывод
+ *  из ТРЁХ ПОДРЯД неверных самодельных разборов, каждый из которых закрывал
+ *  одну дыру и открывал следующую, и все три ошибались в одну сторону -
+ *  «класс не увиден» или «увидено лишнее», то есть аудит ЗАНИЖАЛ собственный
+ *  объём работ:
+ *    1. токенизация всего выражения → `className={flag ? "hero" : ""}` писала
+ *       ПЕРЕМЕННУЮ `flag` в употребления классов (ревью Codex, PR #659);
+ *    2. жадный `[^}]*` при поиске границы `{…}` проглатывал `${`, и у
+ *       `` {`cbar${…}`} `` выражение обрывалось на первой `}` - класс `cbar`
+ *       терялся вовсе;
+ *    3. плоский поиск пар кавычек принимал открывающий backtick ВЛОЖЕННОГО
+ *       шаблона за закрывающий у внешнего, а счётчик скобок считал `{` внутри
+ *       СТРОКИ структурной и утаскивал в разбор весь остаток файла, после чего
+ *       любая последующая обычная строка становилась «классом» (оба - ревью
+ *       Codex, PR #661).
+ *  Разбор JavaScript регулярками не сходится в принципе: строки, шаблоны,
+ *  вложенные шаблоны, комментарии, апострофы в английском тексте и regex-литералы
+ *  - всё это грамматика, и лечится она грамматикой. `acorn` + `acorn-jsx` уже
+ *  лежат в дереве (приезжают с eslint) и объявлены в devDependencies явно, раз
+ *  этот скрипт на них опирается.
+ *
+ *  Из значения `className` берутся строковые литералы и статические куски
+ *  шаблонов - на любой глубине. Код (идентификаторы, вызовы) не берётся; строка,
+ *  процитированная ВНУТРИ выражения, берётся - в `` `cbar${x ? ' on' : ''}` ``
+ *  класс `on` реально применяется. */
+const JsxParser = AcornParser.extend(acornJsx());
+const parseFailures = [];
+
+const classNameTokens = (f) => {
+  const out = new Set();
+  const add = (s) => { for (const tok of s.split(/\s+/)) if (tok) out.add(tok); };
+  let ast;
+  try {
+    ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' });
+  } catch (e) {
+    // Молча пропустить нельзя: непрочитанный файл выглядит как файл без классов,
+    // а это ровно «нечего проверять» и «проверено, чисто» с одинаковым вердиктом.
+    parseFailures.push(`${f}: ${e.message}`);
+    return out;
+  }
+  const strings = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(strings); return; }
+    if (n.type === 'Literal' && typeof n.value === 'string') add(n.value);
+    if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => add(q.value.cooked ?? q.value.raw));
+    for (const k of Object.keys(n)) if (k !== 'type') strings(n[k]);
+  };
+  const walk = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    if (n.type === 'JSXAttribute' && n.name?.name === 'className') { strings(n.value); return; }
+    for (const k of Object.keys(n)) if (k !== 'type') walk(n[k]);
+  };
+  walk(ast);
+  return out;
+};
+const tokensByFile = new Map(jsxFiles.map((f) => [f, classNameTokens(f)]));
+const perimeterFamilies = [...families]
+  .filter(([, list]) => {
+    const users = jsxFiles.filter((f) => list.some((c) => tokensByFile.get(f).has(c)));
+    return users.length > 0 && users.every((f) => !inScope(f));
+  })
+  .map(([fam]) => fam)
+  .sort();
+const familiesInReach = families.size - perimeterFamilies.length;
+/** The only number the "→ ~30" target can honestly be set against: prefixes
+ *  that own descendants AND whose markup this task is allowed to touch. */
+const namespacesInReach = Object.entries(familyKinds).filter(
+  ([fam, kind]) => kind === 'namespace' && !perimeterFamilies.includes(fam),
+).length;
 
 // ── 2. Inline styles ────────────────────────────────────────────────────────
 const inlineCount = (f) => readFileSync(f, 'utf8').match(/style=\{\{/g)?.length ?? 0;
@@ -117,9 +266,8 @@ const inlineScoped = inlineByFile.reduce((n, [, c]) => n + c, 0);
 /** A "shape" is the SET of properties a rule declares. Same set under a
  *  different class prefix = the same object re-declared in a new namespace. */
 const shapes = new Map();
-for (const f of cssFiles.filter(inScope)) {
-  const css = stripComments(readFileSync(f, 'utf8'));
-  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+for (const f of scopedCss) {
+  for (const m of rulesOf(f)) {
     const sel = m[1].trim();
     if (!sel.startsWith('.')) continue;
     const props = [
@@ -226,13 +374,30 @@ const pad = (s, n) => String(s).padEnd(n);
 const num = (s, n) => String(s).padStart(n);
 
 if (process.argv.includes('--json')) {
-  console.log(
+  /** `writeSync`, НЕ `console.log`. В ТРУБУ (`… --json | jq`) stdout у Node
+   *  асинхронный, и стоящий ниже `process.exit(0)` рвал вывод на полуслове: в
+   *  ФАЙЛ уезжали все 569 строк, в трубу - 344. То есть машинный интерфейс
+   *  молча отдавал битый JSON, `jq` падал «Unfinished JSON term at EOF», а в
+   *  CI-скрипте это читалось бы как «аудит упал», хотя аудит отработал.
+   *  Прожило незамеченным потому, что запись в файл на POSIX синхронная - при
+   *  проверке через `> файл` всё было цело, и баг видно только через трубу. */
+  writeSync(
+    1,
     JSON.stringify(
       {
         families: families.size,
         classes: classes.size,
         heavyFamilies: heavy.length,
         tailFamilies: tail.length,
+        namespaces,
+        namespacesInReach,
+        singletons,
+        singletonsStandalone,
+        singletonsAttached,
+        familyKinds,
+        perimeterFamilies,
+        parseFailures,
+        familiesInReach,
         inlineScoped,
         inlineAll,
         dupShapes: dupShapes.length,
@@ -248,7 +413,7 @@ if (process.argv.includes('--json')) {
       },
       null,
       2,
-    ),
+    ) + '\n',
   );
   process.exit(0);
 }
@@ -257,11 +422,31 @@ console.log('\n═══ TRIP-321 · дизайн-слой ═══');
 console.log(`  скоуп: ${ROOT}/**  без ${OUT_OF_SCOPE.source}\n`);
 
 console.log('1. СЕМЕЙСТВА И КЛАССЫ');
-console.log(`   семейств:            ${num(families.size, 5)}`);
+console.log(`   семейств (всего):    ${num(families.size, 5)}`);
 console.log(`   классов:             ${num(classes.size, 5)}`);
 console.log(`   тяжёлых (10+ кл.):   ${num(heavy.length, 5)}  ← держат ${heavy.reduce((n, [, c]) => n + c, 0)} классов, это работа`);
 console.log(`   хвост (<10 кл.):     ${num(tail.length, 5)}  ← держат ${tail.reduce((n, [, c]) => n + c, 0)} классов, это шум`);
 console.log(`   топ: ${sorted.slice(0, 12).map(([f, n]) => `${f}(${n})`).join(' · ')}\n`);
+
+console.log('1b. ИЗ ЧЕГО СОСТОИТ ЭТО ЧИСЛО (три разные работы, не одна)');
+console.log(`   ПРОСТРАНСТВА ИМЁН:   ${num(namespaces, 5)}  ← префикс владеет потомками. ЭТО унификация, цель ~30`);
+console.log(`     из них в работе:   ${num(namespacesInReach, 5)}  ← ★ ЕДИНСТВЕННОЕ число, к которому цель «→30» приложима`);
+console.log(`   приклеенные:         ${num(singletonsAttached, 5)}  ← имя без префикса: .statbar .k, .blk.locked`);
+console.log('                                 переименование в .statbar__k, ноль визуального риска,');
+console.log('                                 ноль эффекта на дизайн. Цель 0, но это ГИГИЕНА, не унификация.');
+console.log(`   словарь ДС:          ${num(singletonsStandalone, 5)}  ← input · select · checkbox · panel…`);
+console.log('                                 к нулю НЕ сводится и не должен: это имена самой системы.');
+if (perimeterFamilies.length) {
+  console.log(`\n   исключённый периметр:${num(perimeterFamilies.length, 5)}  ← правила лендинга/авторизации живут в app.css,`);
+  console.log('                                 но разметка их вне скоупа → тронуть нельзя, а в цель они попали:');
+  console.log(`                                 ${perimeterFamilies.join(' · ')}`);
+  console.log(`   СЕМЕЙСТВ В РАБОТЕ:   ${num(familiesInReach, 5)}  ← вот по чему честно мерить прогресс`);
+  if (parseFailures.length) {
+    console.log(`\n   ⚠ НЕ РАЗОБРАНО ФАЙЛОВ: ${parseFailures.length} - их классы НЕ учтены, число выше занижено:`);
+    for (const p of parseFailures) console.log(`     ${p}`);
+  }
+}
+console.log();
 
 console.log('2. ИНЛАЙНОВЫЕ СТИЛИ');
 console.log(`   в скоупе:            ${num(inlineScoped, 5)}`);

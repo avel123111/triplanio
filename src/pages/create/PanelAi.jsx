@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '../../design/icons';
-import { Btn } from '../../design/index';
+import { Btn, Textarea } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import { CityAnchorRow } from './anchors';
 
@@ -28,11 +28,11 @@ export default function PanelAi({ ctx }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Title */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 'var(--r-sm)', background: 'var(--ai-gradient)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-          <Icon name="sparkles" size={22} />
+        <div className="tile tile--xl tile--ai tile--solid">
+          <Icon name="sparkles" size={21} />
         </div>
         <div>
-          <h1 className="t-title" style={{ marginBottom: 6 }}>{t('ai_plan.title')}</h1>
+          <h1>{t('ai_plan.title')}</h1>
           <div className="muted t-body">{t('ai_plan.page_subtitle')}</div>
         </div>
       </div>
@@ -42,13 +42,12 @@ export default function PanelAi({ ctx }) {
           purple textarea stacked on it read as one muddy block). */}
       <div className="field" style={{ marginBottom: 0 }}>
         <label className="field__label">{t('ai_plan.assistant_hint')}</label>
-        <textarea
-          className="textarea"
+        <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           disabled={aiState === 'generating'}
           placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-          style={{ minHeight: 120 }}
+          rows={5}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           {aiState === 'generating' ? (

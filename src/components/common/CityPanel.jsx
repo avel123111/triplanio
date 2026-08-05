@@ -98,7 +98,7 @@ export default function CityPanel({
         <span className="lp-ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
           {isWaypoint ? <Icon name="arrowSwap" size={17} /> : <b className="t-strong">{cityNo}</b>}
         </span>
-        <div className="lp-ti lp-ti--stack">
+        <div className="lp-ti col col--g1">
           <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
           <b>{node.city_name}</b>
           {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}
@@ -123,7 +123,7 @@ export default function CityPanel({
 
       {/* arrival / departure — both cities AND waypoints (a transit stop still
           arrives and leaves; only the hotel is omitted for waypoints). */}
-      <div className="lp-sec">
+      <div className="col col--g4">
         <SectionLabel color="var(--ev-transfer-ink)">{t('tse.section_road')}</SectionLabel>
         {arrival
           ? <FlightLine transfer={arrival} dir="in" warn={arrivalWarn} onClick={() => onOpenTransfer(arrival)} t={t} />
@@ -135,7 +135,7 @@ export default function CityPanel({
 
       {/* hotels — cities only (a 0-night waypoint has no overnight stay). */}
       {!isWaypoint && (
-      <div className="lp-sec">
+      <div className="col col--g4">
         <SectionLabel color="var(--ev-hotel-ink)" action={hotels.length > 0 ? <button className="addmini" onClick={onAddHotel} aria-label={t('hotel.add')}><Icon name="plus" size={14} /></button> : null}>
           {t('budget.cat_accommodation')}{hotels.length > 0 ? ` · ${hotels.length}` : ''}
         </SectionLabel>
@@ -152,7 +152,7 @@ export default function CityPanel({
       )}
 
       {/* activities */}
-      <div className="lp-sec">
+      <div className="col col--g4">
         <SectionLabel color="var(--ev-activity-ink)" action={acts.length > 0 ? <button className="addmini" onClick={onAddActivity} aria-label={t('activity.add')}><Icon name="plus" size={14} /></button> : null}>
           {t('budget.source_activity')}{acts.length > 0 ? ` · ${acts.length}` : ''}
         </SectionLabel>

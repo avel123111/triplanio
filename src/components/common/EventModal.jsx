@@ -14,7 +14,7 @@
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   Edit2, Trash2, X,
 } from 'lucide-react';
@@ -114,13 +114,9 @@ export default function EventModal(props) {
         {/* Body */}
         <div className="ev-dlg-body">
           {confirmDel ? (
-            <div className="del-confirm">
-              <div className="del-confirm-ic"><Trash2 style={{ width: 20, height: 20 }} /></div>
-              <div>
-                <div className="t-ui">{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
-                <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
-              </div>
-            </div>
+            <Severity level="error" icon="trash" title={t('event.delete_q', { label: themeLabel.toLowerCase() })}>
+              <div className="t-meta">{t('event.delete_irreversible')}</div>
+            </Severity>
           ) : (
             <EventViewSections
               kind={kind} entity={entity} visit={visit} fromVisit={fromVisit} toVisit={toVisit}

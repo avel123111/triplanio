@@ -127,8 +127,8 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
                 </div>
               </>
             ) : (
-              <div style={{ height: 40, display: 'grid', placeItems: 'center start' }}>
-                <div className="spin" style={{ width: 18, height: 18, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
+              <div className="row" style={{ height: 40 }}>
+                <div className="spin spin--ring" />
               </div>
             )}
           </div>
@@ -255,7 +255,7 @@ function ReminderChannels() {
       <div className="acct-chan acct-chan--soon row row--g6">
         <span className="tile tile--lg tile--success"><Icon name="whatsapp" size={20} /></span>
         <div className="acct-chan__main grow--fit">
-          <div className="acct-chan__t">WhatsApp</div>
+          <div className="row__t row row--g4 row--wrap">WhatsApp</div>{/* i18n-ignore: имя бренда, не переводится */}
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </div>
@@ -263,7 +263,7 @@ function ReminderChannels() {
       <div className="acct-chan acct-chan--soon row row--g6">
         <span className="tile tile--lg tile--ai"><Icon name="bell" size={20} /></span>
         <div className="acct-chan__main grow--fit">
-          <div className="acct-chan__t">{t('account.channel_push')}</div>
+          <div className="row__t row row--g4 row--wrap">{t('account.channel_push')}</div>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </div>
@@ -284,7 +284,7 @@ function ReminderChannels() {
             <button className="acct-chan acct-chan--btn row row--g6" aria-expanded={open} onClick={() => setOpen(v => !v)}>
               <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
               <span className="acct-chan__main grow--fit">
-                <span className="acct-chan__t">Telegram</span>
+                <span className="row__t row row--g4 row--wrap">Telegram</span>{/* i18n-ignore: имя бренда, не переводится */}
                 <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
                 <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
               </span>
@@ -297,7 +297,7 @@ function ReminderChannels() {
                   <div key={a.id} className="acct-tgrow row row--g6">
                     <span className="tile tile--brand"><Icon name="map" size={15} /></span>
                     <div className="grow--fit">
-                      <div className="acct-tgrow__t">
+                      <div className="row__t row row--g4 row--wrap">
                         <span className="trunc">{a.trip_title}</span>
                         <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
                       </div>
@@ -315,7 +315,7 @@ function ReminderChannels() {
           <div className="acct-chan row row--g6">
             <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
             <div className="acct-chan__main grow--fit">
-              <div className="acct-chan__t">Telegram</div>
+              <div className="row__t row row--g4 row--wrap">Telegram</div>{/* i18n-ignore: имя бренда, не переводится */}
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
             </div>
             <Btn variant="soft" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
@@ -586,8 +586,8 @@ export default function ScreenAccount() {
   // ── Guard ──────────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
-        <div className="spin" style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
+      <div className="row row--center" style={{ paddingTop: 60 }}>
+        <div className="spin spin--ring spin--lg" />
       </div>
     );
   }
@@ -648,7 +648,7 @@ export default function ScreenAccount() {
 
       {/* ── TWO-PANE WORKSPACE ── */}
       <div className="acct-shell">
-        <h1 className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('account.title')}</h1>
+        <h1 className="sr-only">{t('account.title')}</h1>
 
         {/* LEFT NAV (sticky, scroll-spy) */}
         <nav className="acct-nav" aria-label={t('account.title')}>
@@ -678,7 +678,7 @@ export default function ScreenAccount() {
                 >
                   {!avatarUrl && avatarInitials}
                   {uploadingAvatar
-                    ? <span className="ov" style={{ opacity: 1 }}><div className="spin" style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%' }} /></span>
+                    ? <span className="ov" style={{ opacity: 1 }}><div className="spin spin--ring spin--onscrim" /></span>
                     : <span className="ov"><Icon name="cam" size={18} /></span>}
                 </div>
                 <input
@@ -689,7 +689,7 @@ export default function ScreenAccount() {
                   onChange={e => handleAvatarUpload(e.target.files?.[0])}
                 />
                 <div className="acct-hero__id">
-                  <div className="acct-hero__name">{displayName(user.email, user.full_name)}</div>
+                  <div className="acct-hero__name trunc">{displayName(user.email, user.full_name)}</div>
                   <div className="acct-hero__mail">{user.email}</div>
                   <div className="acct-hero__actions">
                     <Btn variant="secondary" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
@@ -739,11 +739,11 @@ export default function ScreenAccount() {
             <div className="card">
 
               {/* Language */}
-              <div className="acct-divrow row row--g7">
+              <div className="row--div row row--g7">
                 <span className="tile tile--lg tile--brand"><Icon name="globe" size={16} /></span>
                 <div className="grow--fit">
-                  <div className="acct-divrow__t">{t('account.pref_language')}</div>
-                  <div className="acct-divrow__s">{t('account.pref_language_sub')}</div>
+                  <div className="row__t">{t('account.pref_language')}</div>
+                  <div className="row__s">{t('account.pref_language_sub')}</div>
                 </div>
                 <div className="acct-prefctl">
                   <SearchSelect
@@ -774,11 +774,11 @@ export default function ScreenAccount() {
               </div>
 
               {/* Theme */}
-              <div className="acct-divrow row row--g7">
+              <div className="row--div row row--g7">
                 <span className="tile tile--lg tile--ai"><Icon name="sun" size={16} /></span>
                 <div className="grow--fit">
-                  <div className="acct-divrow__t">{t('settings.theme')}</div>
-                  <div className="acct-divrow__s">{t('account.pref_theme_sub')}</div>
+                  <div className="row__t">{t('settings.theme')}</div>
+                  <div className="row__s">{t('account.pref_theme_sub')}</div>
                 </div>
                 <div className="acct-prefctl">
                   <div className="seg" role="group" aria-label={t('settings.theme')}>
@@ -790,11 +790,11 @@ export default function ScreenAccount() {
               </div>
 
               {/* Unit system */}
-              <div className="acct-divrow row row--g7">
+              <div className="row--div row row--g7">
                 <span className="tile tile--lg tile--brand"><Icon name="route" size={16} /></span>
                 <div className="grow--fit">
-                  <div className="acct-divrow__t">{t('account.units')}</div>
-                  <div className="acct-divrow__s">{t('account.units_sub')}</div>
+                  <div className="row__t">{t('account.units')}</div>
+                  <div className="row__s">{t('account.units_sub')}</div>
                 </div>
                 <div className="acct-prefctl">
                   <div className="seg" role="group" aria-label={t('account.units')}>
@@ -813,13 +813,13 @@ export default function ScreenAccount() {
             {/* In-app notifications — quick link to the inbox with unread count.
                 Same row grammar as every other navigational row on this screen
                 (Privacy / Terms / cookie settings below): a .card holding
-                .acct-divrow, not a bespoke card-shaped button. */}
+                .row--div, not a bespoke card-shaped button. */}
             <div className="card" style={{ marginBottom: 16 }}>
-              <button type="button" className="acct-divrow row row--g7" onClick={() => nav('/inbox')}>
+              <button type="button" className="row--div row row--g7" onClick={() => nav('/inbox')}>
                 <span className="tile tile--lg tile--brand"><Icon name="bell" size={18} /></span>
                 <div className="grow">
-                  <div className="acct-divrow__t">{t('account.inbox_title')}</div>
-                  <div className="acct-divrow__s">{t('account.inbox_sub')}</div>
+                  <div className="row__t">{t('account.inbox_title')}</div>
+                  <div className="row__s">{t('account.inbox_sub')}</div>
                 </div>
                 {/* The button's accessible name comes from its subtree, so the
                     count is spoken as part of the row. (The old markup carried an
@@ -839,29 +839,29 @@ export default function ScreenAccount() {
           <section id="acct-help">
             <h2 className="acct-sectitle">{t('account.nav_help')}</h2>
             <div className="card">
-              <div className="acct-divrow row row--g7">
+              <div className="row--div row row--g7">
                 <span className="tile tile--lg tile--brand"><Icon name="chat" size={18} /></span>
-                <div style={{ flex: 1, minWidth: 160 }}>
-                  <div className="acct-divrow__t">{t('account.contact_us')}</div>
-                  <div className="acct-divrow__s">
+                <div className="grow">
+                  <div className="row__t">{t('account.contact_us')}</div>
+                  <div className="row__s">
                     <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a> · {t('account.support_reply')}
                   </div>
                 </div>
                 <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </div>
-              <a className="acct-divrow row row--g7" href="/privacy" target="_blank" rel="noreferrer noopener">
+              <a className="row--div row row--g7" href="/privacy" target="_blank" rel="noreferrer noopener">
                 <span className="tile tile--lg tile--quiet"><Icon name="shield" size={18} /></span>
                 <div className="grow">
-                  <div className="acct-divrow__t">{t('account.privacy_title')}</div>
-                  <div className="acct-divrow__s">{t('account.privacy_desc')}</div>
+                  <div className="row__t">{t('account.privacy_title')}</div>
+                  <div className="row__s">{t('account.privacy_desc')}</div>
                 </div>
                 <Icon name="external" size={13} className="muted-2" />
               </a>
-              <a className="acct-divrow row row--g7" href="/terms" target="_blank" rel="noreferrer noopener">
+              <a className="row--div row row--g7" href="/terms" target="_blank" rel="noreferrer noopener">
                 <span className="tile tile--lg tile--quiet"><Icon name="file" size={18} /></span>
                 <div className="grow">
-                  <div className="acct-divrow__t">{t('account.terms_title')}</div>
-                  <div className="acct-divrow__s">{t('account.terms_desc')}</div>
+                  <div className="row__t">{t('account.terms_title')}</div>
+                  <div className="row__s">{t('account.terms_desc')}</div>
                 </div>
                 <Icon name="external" size={13} className="muted-2" />
               </a>
@@ -869,13 +869,13 @@ export default function ScreenAccount() {
                   "settings" that silently wipe your choice are not settings. */}
               <button
                 type="button"
-                className="acct-divrow row row--g7"
+                className="row--div row row--g7"
                 onClick={openConsentBanner}
               >
                 <span className="tile tile--lg tile--quiet"><Icon name="settings" size={18} /></span>
                 <div className="grow">
-                  <div className="acct-divrow__t">{t('consent.settings')}</div>
-                  <div className="acct-divrow__s">{t('consent.state')}</div>
+                  <div className="row__t">{t('consent.settings')}</div>
+                  <div className="row__s">{t('consent.state')}</div>
                 </div>
               </button>
             </div>
@@ -886,18 +886,15 @@ export default function ScreenAccount() {
             <h2 className="acct-sectitle">{t('account.nav_session')}</h2>
 
             <div className="card card--danger" style={{ marginBottom: 16 }}>
-              {/* Not `:only-child` once a Severity panel opens below, so the flush
-                  padding is declared here rather than by the card rule — otherwise
-                  the row would jump 13px the moment the confirm panel appears. */}
-              {/* inline-style-exempt: сброс отбивки ряда. Это заплатка-спутник правила
-                  `.card > .acct-divrow:only-child` - оно ключуется на ПОЗИЦИИ в дереве и
-                  разваливается, как только рядом появляется панель Severity. Лечится
-                  модификатором на самом ряду (новое имя -> апрув), поэтому не здесь. */}
-              <div className="acct-divrow row row--g7" style={{ border: 'none', padding: 0 }}>
+              {/* Рамку целиком задаёт карточка, поэтому строка своей отбивки не
+                  добавляет. Раньше это делало правило по ПОЗИЦИИ в дереве, и оно
+                  разваливалось, как только под строкой раскрывалась плашка
+                  подтверждения - отбивку приходилось гасить инлайном. */}
+              <div className="row row--g7 row--flush">
                 <span className="tile tile--lg tile--danger"><Icon name="trash" size={18} /></span>
-                <div style={{ flex: 1, minWidth: 160 }}>
-                  <div className="acct-divrow__t">{t('settings.delete_account')}</div>
-                  <div className="acct-divrow__s">{t('account.delete_desc')}</div>
+                <div className="grow">
+                  <div className="row__t">{t('settings.delete_account')}</div>
+                  <div className="row__s">{t('account.delete_desc')}</div>
                 </div>
                 <Btn variant="danger" disabled={deletingAccount} onClick={handleDeleteAccount}>{t('settings.delete_account')}</Btn>
               </div>
@@ -928,11 +925,11 @@ export default function ScreenAccount() {
             </div>
 
             <div className="card">
-              <div className="acct-divrow row row--g7">
+              <div className="row--div row row--g7">
                 <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
-                <div style={{ flex: 1, minWidth: 160 }}>
-                  <div className="acct-divrow__t">{t('account.logout_title')}</div>
-                  <div className="acct-divrow__s">{t('account.logout_desc')}</div>
+                <div className="grow">
+                  <div className="row__t">{t('account.logout_title')}</div>
+                  <div className="row__s">{t('account.logout_desc')}</div>
                 </div>
                 <Btn variant="secondary" icon="arrow" onClick={logout}>{t('auth.logout')}</Btn>
               </div>

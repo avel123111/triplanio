@@ -43,6 +43,9 @@ export default function AddressAutocomplete({
   language,
   placeholder,
   disabled,
+  // Состояние валидации атрибутами (`{...fieldState(...)}`) - едет в поле
+  // движка через его же `inputProps` (TRIP-333).
+  ...rest
 }) {
   const { lang: appLang } = useI18n();
 
@@ -57,6 +60,7 @@ export default function AddressAutocomplete({
 
   return (
     <Autocomplete
+      inputProps={rest}
       inputValue={value}
       onInputChange={(v) => onChange?.(v)}
       search={search}

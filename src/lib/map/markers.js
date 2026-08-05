@@ -187,7 +187,7 @@ export function createCityBadgeEl({ countryCode, name, dates } = {}) {
   const flag = cc
     ? `<img class="cflag" src="/flags/${cc}.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.visibility='hidden'" />`
     : '';
-  const nm = name ? `<span class="cbadge__name t-ui">${escapeHtml(name)}</span>` : '';
+  const nm = name ? `<span class="cbadge__name t-ui trunc">${escapeHtml(name)}</span>` : '';
   const dt = dates ? `<span class="cbadge__dates t-meta">${escapeHtml(dates)}</span>` : '';
   // Name over dates in a column; the flag sits beside it, top-aligned with the name.
   el.innerHTML = `${flag}<span class="cbadge__col">${nm}${dt}</span>`;

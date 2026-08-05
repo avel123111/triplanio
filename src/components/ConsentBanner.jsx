@@ -56,7 +56,7 @@ export default function ConsentBanner() {
           <a href="/privacy" target="_blank" rel="noreferrer">{t('consent.privacy')}</a>
         </p>
       </div>
-      <div className="consent__actions">
+      <div className="grid grid--2 grid--g4">
         <Btn variant="secondary" onClick={() => answer(false)}>{t('consent.necessary_only')}</Btn>
         <Btn variant="primary" onClick={() => answer(true)}>{t('consent.accept_all')}</Btn>
       </div>

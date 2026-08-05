@@ -24,15 +24,14 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
-import FileTypeBadge from '@/components/common/FileTypeBadge';
+import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import './DocsLens.css';
 
@@ -42,12 +41,7 @@ import './DocsLens.css';
 
 /** Inline file chip used in both cards and the detail dialog. */
 function FileChip({ file }) {
-  return (
-    <div className="dl-filechip">
-      <FileTypeBadge name={file.file_name} />
-      <span className="dl-filechip__n">{file.file_name}</span>
-    </div>
-  );
+  return <FileRow name={file.file_name} />;
 }
 
 function formatDate(iso) {
@@ -83,7 +77,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   const qc           = useQueryClient();
   const { user }     = useAuth();
   const v    = useHybridValidation('document', { title });
-  const inv  = (f) => fieldStateClass(v.displayIssues, f);
+  const st   = (f) => fieldState(v.displayIssues, f);
 
   async function uploadFiles(files) {
     if (!files?.length) return;
@@ -162,7 +156,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent aria-describedby={undefined}>
         {/* sr-only a11y title — visible h2 is inside dlg__head */}
-        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('doc.dialog_new')}</DialogTitle>
+        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -191,7 +185,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           {/* Visibility */}
           <div style={{ marginBottom: 16 }}>
             <div className="dl-label">{t('doc.access_label')}</div>
-            <div className="dl-vistoggle">
+            <div className="grid grid--2">
               {visOpts.map(opt => (
                 <button
                   key={opt.value}
@@ -211,10 +205,10 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           </div>
 
           {/* Title */}
-          <Field label={t('trip.form_title_required')}>
-            <div data-vfield="title" className={inv('title')}>
-              <input
-                className="input"
+          <Field label={t('trip.title_label')} required={v.isRequired('title')}>
+            <div data-vfield="title">
+              <Input
+                {...st('title')}
                 autoFocus={!isMobile}
                 value={title}
                 onChange={e => { setTitle(e.target.value); v.markTouched('title'); }}
@@ -227,8 +221,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           {/* Notes */}
           <div style={{ marginTop: 14 }}>
             <Field label={t('doc.notes_opt_label')}>
-              <textarea
-                className="textarea"
+              <Textarea
                 rows={3}
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
@@ -265,24 +258,26 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
             {/* Uploaded files list */}
             {documents.length > 0 && (
-              <div className="dl-uplist">
+              <div className="dl-uplist col col--g3">
                 {documents.map((d, i) => (
-                  <div key={i} className="dl-upitem">
-                    <FileTypeBadge name={d.file_name} />
-                    <span className="dl-upitem__n">{d.file_name}</span>
-                    <button
-                      type="button"
-                      className="dl-upitem__rm"
-                      aria-label={t('doc.remove_doc_aria')}
-                      onClick={() => {
-                        // Staged-but-unsaved upload → the object is already
-                        // orphaned, remove it immediately (TRIP-117).
-                        removeTripFiles(collectDocPaths([documents[i]]));
-                        setDocuments(prev => prev.filter((_, j) => j !== i));
-                      }}>
-                      <Icon name="close" size={13} />
-                    </button>
-                  </div>
+                  <FileRow
+                    key={i}
+                    name={d.file_name}
+                    action={(
+                      <button
+                        type="button"
+                        className="doc-row__rm"
+                        aria-label={t('doc.remove_doc_aria')}
+                        onClick={() => {
+                          // Staged-but-unsaved upload → the object is already
+                          // orphaned, remove it immediately (TRIP-117).
+                          removeTripFiles(collectDocPaths([documents[i]]));
+                          setDocuments(prev => prev.filter((_, j) => j !== i));
+                        }}>
+                        <Icon name="close" size={13} />
+                      </button>
+                    )}
+                  />
                 ))}
               </div>
             )}
@@ -302,8 +297,8 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 onChange={e => uploadFiles(e.target.files)}
               />
               {uploading ? (
-                <div className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)' }}>
-                  <span className="dl-spinner" />
+                <div className="t-body row row--g4">
+                  <span className="spin spin--ring" />
                   {t('common.loading')}
                 </div>
               ) : (
@@ -374,7 +369,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
-        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{doc.title}</DialogTitle>
+        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -412,19 +407,9 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
                 <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
                 {t('doc.files_label')}
               </div>
-              <div className="dl-dview-files">
+              <div className="col col--g3">
                 {doc.documents.map((f, i) => (
-                  <div key={i} className="dl-filechip">
-                    <FileTypeBadge name={f.file_name} />
-                    <a
-                      href={normalizeExternalUrl(f.file_url)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="dl-filechip__n"
-                      style={{ color: 'var(--brand)' }}>
-                      {f.file_name || f.file_url}
-                    </a>
-                  </div>
+                  <FileRow key={i} name={f.file_name} fallback={f.file_url} href={normalizeExternalUrl(f.file_url)} />
                 ))}
               </div>
             </div>
@@ -495,7 +480,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           <Icon name="file" size={20} />
         </div>
         <div className="dl-card__h">
-          <div className="dl-card__title">{doc.title}</div>
+          <div className="dl-card__title trunc">{doc.title}</div>
           <div className="dl-card__sub">
             {files.length > 0
               ? `${files.length} ${files.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}`
@@ -515,7 +500,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
       {/* File chips (max 2) */}
       {shown.length > 0 && (
-        <div className="dl-filechips">
+        <div className="col col--g3">
           {shown.map((f, i) => <FileChip key={i} file={f} />)}
           {more > 0 && (
             <span className="dl-filemore">+{more} {t('doc.files_count_few')}</span>
@@ -685,15 +670,15 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
       )}
       {/* ── Toolbar: search + filter ── */}
       <div className="dl-toolbar">
-        <label className="dl-search">
-          <span className="dl-search__icon"><Icon name="search" size={16} /></span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder={t('doc.search_ph')}
-          />
-        </label>
+        <Input
+          className="dl-search"
+          icon="search"
+          type="search"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder={t('doc.search_ph')}
+          aria-label={t('doc.search_ph')}
+        />
         <div className="seg" role="group" aria-label={t('doc.filter_label')}>
           {filterOpts.map(opt => (
             <button

@@ -7,6 +7,7 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
 import { detectPartner } from '@/lib/externalBrands';
 import { transferKind } from '@/lib/transport';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 
 // =====================================================================
 // Primitive layer (Radix-backed) — single import surface.
@@ -29,6 +30,10 @@ export { Toaster } from '@/components/ui/toaster';
 export { default as SearchSelect } from '@/components/ui/SearchSelect';
 export { default as CurrencyCombobox } from '@/components/ui/CurrencyCombobox';
 export { default as AiField, AiBadge } from '@/components/ui/AiField';
+// Поле живёт своим модулем, чтобы `components/ui/*` мог импортировать его
+// напрямую и не замыкать зависимость на этот барраль (TRIP-333).
+export { Input, Textarea, InputGroup } from './Input';
+import { FieldRequired } from './Input';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
@@ -64,8 +69,10 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
 export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
   <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
     {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
+    {/* border у «+N» не пишем: он дословно дублировал .avatar, а инлайн-дубль
+        переживает правку класса и молча расходится с соседями по стопке. */}
     {people.length > max && (
-      <div className={`avatar avatar--${size}`} style={{ background: "var(--wash)", color: "var(--muted)", border: "1.5px solid var(--surface)" }}>
+      <div className={`avatar avatar--${size}`} style={{ background: "var(--wash)", color: "var(--muted)" }}>
         +{people.length - max}
       </div>
     )}
@@ -73,18 +80,66 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
 );
 
 // ----- Severity message -----
-export const Severity = ({ level = "info", title, children, action, icon }) => (
-  <div className={`sev sev--${level}`}>
-    <span className="tile sev__icon">
-      <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
+// Значок по умолчанию свой у каждого тона. Раньше здесь стояла вилка, знавшая
+// ровно три тона, а всё остальное рисовавшая крестом ошибки - success молча
+// уехал бы в «ошибку». Карта вместо вилки: новый тон = новая строка.
+const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "check", quiet: "info" };
+
+// align="mid" - значок по центру пары «заголовок + подпись» (см. .sev--mid).
+// iconStyle - тинт плитки из реестра брендов. Это ДАННЫЕ, а не тон системы:
+// плашка остаётся системной, фирменный цвет несёт только плитка (то же решение,
+// что принято на экране аккаунта - фон плитки есть оттенок её значка).
+// dashed  - плашка не сообщает состояние, а ЗОВЁТ нажать (разрешить геолокацию).
+//           Тот же язык, что у кнопок добавления: пунктир = «здесь пока пусто».
+// loading - на месте значка канон-спиннер, как у <Btn loading> (TRIP-130).
+//           Плашка «идёт сохранение» рисовалась руками там же, где и остальные.
+export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align, dashed, loading }) => (
+  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}${dashed ? " sev--dashed" : ""}`}>
+    <span className="tile sev__icon" style={iconStyle}>
+      {loading ? <span className="spin spin--ring" /> : <Icon name={icon || SEV_ICON[level] || "info"} size={16} />}
     </span>
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="grow--fit">
       {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
       {children}
     </div>
     {action}
   </div>
 );
+
+// ----- FileRow ----- (TRIP-321 Ф14.7, апрув Pavel)
+// ЕДИНСТВЕННАЯ строка вложенного файла. До неё их было шесть штук в пяти файлах,
+// и общий класс их не спас: рамку они делили, а имя файла рисовали ТРЕМЯ разными
+// способами - <b> (жирный), <a style={{color: brand}}> (синий) и <span>
+// (обычный); у половины был размер файла, у половины нет; отступ то 8, то 10.
+// Разметка-под-общим-классом это не лечит, потому что расходится не рамка, а
+// содержимое - поэтому здесь компонент, а не ещё один модификатор.
+//   href   - имя становится ссылкой (файл открывается в новой вкладке);
+//   size   - готовая строка размера, мета-ярусом справа;
+//   tone   - 'ai' для распознавания брони, иначе нейтральная рамка;
+//   plain  - строка без рамки (список вложений в просмотре события);
+//   action - кнопка справа (снять вложение), общий класс .doc-row__rm.
+// ★Кликабельна ВСЯ строка, а не только имя: подсветка при наведении лежит на
+// строке (.doc-row:hover), и если ссылкой будет одно имя, то подсвеченное поле
+// шире кликабельного - на телефоне это просто «не нажимается». Ссылкой строка
+// становится только когда действия справа нет: <button> внутри <a> невалиден,
+// поэтому у строки с крестиком ссылка остаётся на имени.
+export const FileRow = ({ name, href, size, tone, plain, action, fallback }) => {
+  const label = name || fallback || '';
+  const cls = `doc-row row${plain ? '' : tone === 'ai' ? ' doc-row--ai' : ' doc-row--framed'}`;
+  const wholeRowIsLink = href && !action;
+  const Root = wholeRowIsLink ? 'a' : 'div';
+  const rootProps = wholeRowIsLink ? { href, target: '_blank', rel: 'noreferrer' } : {};
+  return (
+    <Root className={cls} {...rootProps}>
+      <FileTypeBadge name={name} />
+      {href && action
+        ? <a className="doc-row__n grow--fit trunc" href={href} target="_blank" rel="noreferrer">{label}</a>
+        : <span className="doc-row__n grow--fit trunc">{label}</span>}
+      {size && <span className="ds">{size}</span>}
+      {action}
+    </Root>
+  );
+};
 
 // ----- ReadOnlyBanner ----- (TRIP-225)
 // Единый баннер роли наблюдателя (viewer read-only), раньше копипастился в
@@ -104,32 +159,29 @@ export const ReadOnlyBanner = ({ children, title }) => {
 };
 
 // ----- Form Field -----
-// Canonical inline error / warning lines (Lumo `.err` / `.wrn`, with icon).
-const ErrLine = ({ children }) => (
-  <span className="err">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
-    <span>{children}</span>
-  </span>
-);
-const WrnLine = ({ children }) => (
-  <span className="wrn">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
-    <span>{children}</span>
-  </span>
-);
-
-export const Field = ({ label, hint, sub, ai, error, warning, children, required }) => (
-  <div className={`field ${ai ? "field--ai" : ""} ${error ? "field--error" : warning ? "field--warning" : ""}`}>
+// Подпись + обёртка поля. Состояние валидации сюда НЕ приходит: единственный
+// живой источник - `fieldState` из ValidationUI, он вешает атрибуты на САМО
+// поле, а текст ошибки печатает `<FieldError>` (TRIP-333).
+// Пропы `error`/`warning` тут были ровно вторым способом сказать то же самое и
+// за всё время не получили НИ ОДНОГО вызова из 46 - удалены вместе со своими
+// строками-иконками и мёртвым скином `.field--error`.
+// `required` рисует звёздочку И доезжает до самого поля контекстом (TRIP-333):
+// раньше это была ТОЛЬКО звёздочка, то есть признак для зрячих - нативный
+// `required` стоял лишь на сырых полях экрана входа, а `aria-required` не стоял
+// нигде. Провайдер объявлен рядом с полем (`./Input`), которое его и читает.
+export const Field = ({ label, hint, sub, ai, children, required = false }) => (
+  <div className={`field ${ai ? "field--ai" : ""}`}>
     {label && (
       <label className="field__label">
-        {label}{required && <span style={{ color: "var(--danger)" }}>*</span>}
+        {/* Звёздочка живёт на спане с текстом, а не на `<label>`: так она встаёт
+            сразу за подписью, а не за подсказкой, и не попадает под `gap`
+            флекс-лейбла (см. `[data-required]` в app.css). */}
+        <span data-required={required || undefined}>{label}</span>
         {hint && <span className="muted t-meta" style={{ marginLeft: 4 }}>· {hint}</span>}
       </label>
     )}
-    {children}
+    <FieldRequired value={required}>{children}</FieldRequired>
     {sub && <span className="field__sub t-meta">{sub}</span>}
-    {error && <ErrLine>{error}</ErrLine>}
-    {!error && warning && <WrnLine>{warning}</WrnLine>}
   </div>
 );
 
@@ -187,20 +239,25 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 // с первым коммитом дизайн-системы и НИ РАЗУ не был вызван. «Раздел только в Pro»
 // в продукте показывается модалкой ProUpsellModal с офером, а не пустым экраном,
 // поэтому это не отложенная фича, а нарисованный и неподключённый четвёртый вид.
-export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty" }) => (
-  <div style={{
-    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    padding: "48px 24px", textAlign: "center", color: "var(--muted)",
-  }}>
+// boxed - компактный вариант внутри карточки/диалога (подложка + рамка).
+// iconStyle - тинт плитки из реестра брендов, как у Severity: сам примитив
+// остаётся системным, фирменный цвет несёт только плитка.
+// Тон плитки - КАРТА, а не вилка: раньше «всё, что не error» молча становилось
+// брендовым, и экран «трип создан» рисовал свою зелёную плитку руками мимо
+// примитива. Новый тон = новая строка, как у SEV_ICON выше.
+const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warning: "warning" };
+
+export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
+  <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
     <div
-      className={`tile tile--2xl tile--${kind === "error" ? "danger" : "brand"}`}
-      style={{ marginBottom: 16 }}
+      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${EMPTY_TONE[kind] || "brand"}`}
+      style={iconStyle}
     >
-      <Icon name={icon} size={28} />
+      <Icon name={icon} size={boxed ? 21 : 28} />
     </div>
-    <h3 style={{ color: "var(--ink)", marginBottom: 6 }}>{title}</h3>
-    <div className="t-body" style={{ maxWidth: 340 }}>{body}</div>
-    {action && <div style={{ marginTop: 18 }}>{action}</div>}
+    <h3 className="empty-state__t">{title}</h3>
+    <div className="t-body empty-state__b">{body}</div>
+    {action && <div className="empty-state__act">{action}</div>}
   </div>
 );
 
@@ -322,11 +379,16 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
       <DialogContent className={size ? `dlg--${size}` : ''} {...(subtitle ? {} : { 'aria-describedby': undefined })}>
         <div className="dlg__head">
           {icon && (
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            /* Геометрия - примитив .tile (34px, значок 17px = дефолт лестницы;
+               было 36px руками, а ступень --md и есть полоса 32-36). Тон пока
+               остаётся данными на элементе, как у Severity/EmptyState выше:
+               системным классом он станет, когда у .tile--* появится тон
+               события - сегодняшний набор тонов цветов события не знает. */
+            <div className="tile" style={{ background: tone.bg, color: tone.fg }}>
               <Icon name={icon} size={17} />
             </div>
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="grow--fit">
             <DialogTitle asChild><h2>{title}</h2></DialogTitle>
             {subtitle && <DialogDescription asChild><div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div></DialogDescription>}
           </div>
@@ -355,23 +417,32 @@ export const PartnerLogo = ({ url, size = 18 }) => {
   const favicon = faviconUrl(url);
   const [imgFailed, setImgFailed] = React.useState(false);
 
+  // Квадрат 16-18px на лестницу .tile НЕ садится: её нижняя ступень 28px, а ниже
+  // дефолтный --tile-r (--r-sm, 11px) делает из квадрата пилюлю - ловушка Ф3b.
+  // Поэтому геометрия живёт здесь, но объявляется ОДИН раз на три ветки.
+  // Кегль монограммы к общему НЕ выносится: гард 2k пропускает «декоративный
+  // глиф» по вычисленному fontSize В ТОЙ ЖЕ СТРОКЕ, и разведённый с ним
+  // fontWeight гард роняет (проверено).
+  const box = { width: size, height: size, borderRadius: 4, flexShrink: 0 };
+  const glyph = { ...box, display: "grid", placeItems: "center" };
+
   if (favicon && !imgFailed) {
     return (
       <img
         src={favicon}
         alt=""
         onError={() => setImgFailed(true)}
-        style={{ width: size, height: size, borderRadius: 4, objectFit: "cover", flexShrink: 0, background: "var(--wash)" }}
+        style={{ ...box, objectFit: "cover", background: "var(--wash)" }}
       />
     );
   }
   if (!p) return (
-    <div style={{ width: size, height: size, borderRadius: 4, background: "var(--line)", color: "var(--muted)", display: "grid", placeItems: "center", fontSize: size * 0.55, fontWeight: 700, flexShrink: 0 }}>
+    <div style={{ ...glyph, background: "var(--line)", color: "var(--muted)", fontSize: size * 0.55, fontWeight: 700 }}>
       <Icon name="link" size={size * 0.6} />
     </div>
   );
   return (
-    <div style={{ width: size, height: size, borderRadius: 4, background: p.color, color: "white", display: "grid", placeItems: "center", fontSize: size * 0.5, fontWeight: 700, flexShrink: 0 }}>
+    <div style={{ ...glyph, background: p.color, color: "white", fontSize: size * 0.5, fontWeight: 700 }}>
       {p.short}
     </div>
   );
@@ -537,7 +608,7 @@ export function StreamEventRow({ e, onClick }) {
           {sub && <div className="sb">{sub}</div>}
         </div>
         {(price || e.platformUrl) && (
-          <span className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span className="meta row row--g4">
             {price && <span>{price}</span>}
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
           </span>
@@ -547,16 +618,4 @@ export function StreamEventRow({ e, onClick }) {
   );
 }
 
-// =====================================================================
-// TRIP IDENTITY STRIP - exported so all screens can use it
-// =====================================================================
-
-function _InfoChip({ icon, color, children }) {
-  return (
-    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 'var(--r-pill)', background: "var(--wash)", border: "1px solid var(--line)", color: "var(--ink-2)" }}>
-      <Icon name={icon} size={13} style={{ color }} />
-      {children}
-    </span>
-  );
-}
 

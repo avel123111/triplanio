@@ -1,5 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from '@/design/icons';
+import { InputGroup } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { highlightMentions } from '@/lib/mention';
@@ -115,7 +116,12 @@ const ChatComposer = forwardRef(function ChatComposer(
           </div>
         )}
 
-        <div className="chat-composer__row">
+        {/* Композер - это и есть `InputGroup`: рамка, фон и фокус-кольцо вокруг
+            поля и двух кнопок, читающихся как одно поле. Свой скин он объявлял
+            заново (TRIP-333 §5); за классом осталась только его дельта -
+            выравнивание по низу (поле растёт вверх), свои отступы, радиус и
+            «плавающая» тень дока. Оверлей подсветки @-меншенов не тронут. */}
+        <InputGroup className="chat-composer__row">
           {/* Calling the assistant used to be discoverable only by typing "@". */}
           <button
             type="button"
@@ -196,7 +202,7 @@ const ChatComposer = forwardRef(function ChatComposer(
           >
             <Icon name="send" size={17} />
           </button>
-        </div>
+        </InputGroup>
 
         {withHint && (
           /* Keys render as <kbd> pills; "Enter"/"Shift" are key names, not copy. */

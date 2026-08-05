@@ -104,7 +104,7 @@ export default function TripCoverPicker({
       : undefined;
 
   return (
-    <div className="tcp">
+    <div className="col col--g6">
       {showPreview && (
         <div className="tcp__preview" style={previewStyle}>
           {coverImageUrl ? (

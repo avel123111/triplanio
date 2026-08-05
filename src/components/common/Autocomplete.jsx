@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '@/design/icons';
+import { Input } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import GeoAttribution from '@/components/common/GeoAttribution';
 
@@ -51,7 +51,6 @@ export default function Autocomplete({
   iconActive = false,
   minChars = 2,
   debounceMs = 300,
-  leftPad = 36,
   attribution = true,
   inputProps = {},
 }) {
@@ -197,45 +196,30 @@ export default function Autocomplete({
 
   return (
     <div style={{ position: 'relative', minWidth: 0 }}>
-      <div style={{ position: 'relative' }} ref={wrapRef}>
-        <Icon
-          name={icon}
-          size={15}
-          style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: iconActive ? 'var(--brand)' : 'var(--muted-2)', pointerEvents: 'none' }}
-        />
-        <input
-          className="input"
-          value={inputValue || ''}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder={placeholder}
-          disabled={disabled}
-          autoFocus={autoFocus}
-          autoComplete="off"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={open && results.length > 0}
-          aria-controls={`${uid}-list`}
-          aria-activedescendant={highlighted >= 0 ? `${uid}-opt-${highlighted}` : undefined}
-          // Spinner slot is reserved permanently: toggling paddingRight with
-          // `loading` resized the field's text box mid-typing (TRIP-277).
-          style={{ paddingLeft: leftPad, paddingRight: 36 }}
-          {...inputProps}
-        />
-        {loading && (
-          // The wrapper owns the centring transform, the icon owns the spin.
-          // `aispin` animates `transform`, so putting both on one element makes
-          // the keyframe clobber translateY(-50%) — the icon then slides half
-          // its height every turn instead of rotating in place (TRIP-277).
-          <span
-            aria-hidden="true"
-            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}
-          >
-            <Icon name="refresh" size={15} className="spin muted-2" />
-          </span>
-        )}
-      </div>
+      {/* `boxRef` - на обёртку поля: по ней меряется позиция выпадающего списка
+          и по ней же определяется «клик вне» (см. onDocDown выше). Слот
+          спиннера держит сам <Input>: `loading` передаётся всегда, поэтому
+          отступ справа зарезервирован и поле не дёргается при наборе. */}
+      <Input
+        boxRef={wrapRef}
+        icon={icon}
+        iconActive={iconActive}
+        loading={loading}
+        value={inputValue || ''}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onFocus={() => results.length > 0 && setOpen(true)}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        autoComplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open && results.length > 0}
+        aria-controls={`${uid}-list`}
+        aria-activedescendant={highlighted >= 0 ? `${uid}-opt-${highlighted}` : undefined}
+        {...inputProps}
+      />
       {open && results.length > 0 && box && createPortal(
         <div
           ref={listRef}

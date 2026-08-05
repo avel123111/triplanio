@@ -7,14 +7,16 @@
 // Pure mapping/param helpers live in ./stay22-normalize.js so they can be
 // unit-tested without React/supabase.
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { usePartnerLogger } from '@/lib/partnerTracking';
+import { useForkList } from '@/lib/useForkList';
+import { mergeById } from '@/lib/forkPool';
 import {
   normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
-  mergePool, POOL_PAGES, applyClientFilters,
+  POOL_PAGES, POOL_MAX, applyClientFilters, BASE_HOTEL_FILTERS,
 } from '@/lib/stay22-normalize';
 import { cityNameEn } from '@/lib/geo';
 import { countryNameEn } from '@/lib/countryNamesEn';
@@ -125,7 +127,7 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
     // tail — emit page 1's (stale) pool alone so list + map stay on one city.
     const pages = [page1.data?.hotels];
     if (!placeholder && Array.isArray(tail.data)) pages.push(...tail.data.map((r) => r?.hotels));
-    const { hotels, truncated } = mergePool(pages);
+    const { items: hotels, truncated } = mergeById(pages, { getKey: (h) => h.id, cap: POOL_MAX });
     const meta = { ...(page1.data?.meta || {}), total: hotels.length, truncated };
     return { hotels, meta };
   }, [page1.data, tail.data, placeholder]);
@@ -149,20 +151,16 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
 // on the timeline/calendar (TRIP-195). The editor additionally derives map pins
 // from the returned `query`; consumers without a map just pass `bundle` down.
 export function useStay22Bundle({ visit, currency = 'EUR', lang, enabled = true, tripId }) {
-  const [page, setPage] = useState(1);
-  // SERVER filters (reload the pool): guests/rooms + platform (provider).
-  const [applied, setApplied] = useState(null);
-  // CLIENT filters (over the pool, no reload): text search, price range (trip
-  // currency), sort. Applied to the set that feeds BOTH the list and the map pins.
-  const [clientFilters, setClientFilters] = useState({ text: '', min: '', max: '', sortBy: 'recommended' });
-  const [hoveredId, setHoveredId] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
-  // Reset the lifted state whenever the target city changes / the panel closes.
-  const visitId = visit?.id || null;
-  useEffect(() => {
-    setPage(1); setApplied(null); setHoveredId(null); setSelectedId(null);
-    setClientFilters({ text: '', min: '', max: '', sortBy: 'recommended' });
-  }, [visitId, enabled]);
+  // One state contract, shared with the activity fork (TRIP-293):
+  //  · CLIENT filters (`filters`): text search, price range (trip currency), sort —
+  //    applied to the set that feeds BOTH the list and the map pins.
+  //  · SERVER filters (`applied`): guests/rooms + platform — reload the pool.
+  // Reset / page-rewind / city-change semantics live in the hook, not here.
+  const {
+    filters: clientFilters, applied, page, hoveredId, selectedId,
+    setPage, setHoveredId, setSelectedId,
+    applyFilters: applyClient, applyServer, resetAll,
+  } = useForkList({ visitId: visit?.id || null, enabled, baseFilters: BASE_HOTEL_FILTERS });
 
   const query = useStay22Pool({ visit, currency, lang, filters: applied, enabled });
 
@@ -188,10 +186,6 @@ export function useStay22Bundle({ visit, currency = 'EUR', lang, enabled = true,
     window.open(h.link, '_blank', 'noopener,noreferrer');
   };
 
-  // Applying a CLIENT filter never reloads the pool, but it changes the visible
-  // set → drop stale selection/hover + reset paging (mirror the server path).
-  const applyClient = (patch) => { setClientFilters((s) => ({ ...s, ...patch })); setPage(1); setSelectedId(null); setHoveredId(null); };
-
   const bundle = enabled ? {
     data, isLoading: query.isLoading,
     // Dim the list only on a city/filter switch (placeholder) or first load — NOT
@@ -200,12 +194,8 @@ export function useStay22Bundle({ visit, currency = 'EUR', lang, enabled = true,
     isError: query.isError, refetch: query.refetch,
     page, onPageChange: setPage,
     // SERVER filters (guests + platform): reload the pool → drop selection + reset page.
-    applied,
-    onApply: (snap) => { setApplied(snap); setPage(1); setSelectedId(null); setHoveredId(null); },
-    onResetAll: () => {
-      setApplied(null); setClientFilters({ text: '', min: '', max: '', sortBy: 'recommended' });
-      setPage(1); setSelectedId(null); setHoveredId(null);
-    },
+    applied, onApply: applyServer,
+    onResetAll: resetAll,
     // CLIENT filters (text / price / sort): instant over the pool.
     clientFilters,
     onSearch: (text) => applyClient({ text }),

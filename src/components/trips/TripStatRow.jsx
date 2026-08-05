@@ -2,35 +2,29 @@ import React from 'react';
 import { Icon } from '@/design/icons';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { tripStats } from '@/lib/trip-stats';
+import { StatBar } from '@/components/stats/widgets';
 
-// Five at-a-glance trip stats (Lumo .statrow / .statcard): cities, countries,
-// transfers, route distance (great-circle approximation), and duration.
-// `orderedVisits` (trip order, for the distance sum) is optional — falls back to
-// `visits` inside tripStats.
+// Five at-a-glance trip stats rendered as the shared .statbar polosa — the same
+// primitive as the /trips home bar (TRIP-278); the surface skin comes from the
+// canonical role group. Metrics: cities, countries, transfers, route distance
+// (great-circle approximation) and duration. `orderedVisits` (trip order, for the
+// distance sum) is optional — falls back to `visits` inside tripStats.
 export default function TripStatRow({ visits = [], transfers = [], trip, orderedVisits }) {
   const { t, fmtDistance } = useI18nFormat();
   const s = tripStats({ visits, transfers, trip, orderedVisits });
   const dist = fmtDistance(s.distanceKm);
 
-  const cards = [
-    { key: 'cities', icon: 'buildings', tone: 'city', value: s.cities, label: t('overview.stat_cities') },
-    { key: 'countries', icon: 'globe', tone: null, value: s.countries, label: t('overview.stat_countries') },
-    { key: 'transfers', icon: 'arrowSwap', tone: 'transfer', value: s.transfers, label: t('overview.stat_transfers') },
-    { key: 'distance', icon: 'route', tone: 'distance', value: dist.value, label: dist.unit },
-    { key: 'duration', icon: 'calendar', tone: 'duration', value: s.days, label: t('overview.unit_days') },
+  // DOM order = the wrapped (2-column) reading order, so the narrow layout needs
+  // no re-ordering and the divider rules stay identical to the /trips bar. On a
+  // wide bar CSS pulls `duration` behind `distance` to restore the mockup's
+  // desktop order: cities · countries · transfers · km · days.
+  const items = [
+    { key: 'cities', tone: 'city', value: s.cities, label: t('overview.stat_cities'), icon: <Icon name="buildings" /> },
+    { key: 'countries', value: s.countries, label: t('overview.stat_countries'), icon: <Icon name="globe" /> },
+    { key: 'transfers', tone: 'transfer', value: s.transfers, label: t('overview.stat_transfers'), icon: <Icon name="arrowSwap" /> },
+    { key: 'duration', tone: 'duration', value: s.days, label: t('overview.unit_days'), icon: <Icon name="calendar" /> },
+    { key: 'distance', tone: 'distance', value: dist.value, label: dist.unit, icon: <Icon name="route" /> },
   ];
 
-  return (
-    <div className="statrow">
-      {cards.map((c, i) => (
-        <div className={`statcard${c.tone ? ` c-${c.tone}` : ''}`} key={c.key} style={{ '--i': i }}>
-          <span className="ic"><Icon name={c.icon} size={17} /></span>
-          <div className="meta">
-            <div className="v num">{c.value}</div>
-            <div className="k">{c.label}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return <StatBar items={items} />;
 }

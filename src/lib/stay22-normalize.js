@@ -1,6 +1,9 @@
 // Pure Stay22 response→view mapping + request param building.
 // Kept free of React/supabase imports so it is unit-testable under `node --test`.
 
+// Relative imports (not the `@/` alias) so `node --test` can load this file directly.
+import { BASE_FORK_FILTERS, applyForkFilters, byNumberAsc, byNumberDesc, numberOrNull } from './forkFilter.js';
+
 // Ensure checkout is strictly after checkin; Stay22 needs a valid range to
 // return prices. start/end are date-only ('YYYY-MM-DD') city-visit dates.
 export function ensureNextDay(checkin, checkout) {
@@ -114,29 +117,30 @@ export function filterParams(filters) {
   return out;
 }
 
-// Client-side filter + sort over the pooled hotels (React-free so it unit-tests).
-// Runs on the whole-city pool that feeds BOTH the list and the map pins, so the
-// two stay in sync. Text spans name+address; price is the total-stay price in the
-// TRIP currency (pool field `price`) — hotels without a price are hidden while a
-// price bound is set. Sort: 'recommended' (pool order) / 'price' ↑ / 'rating' ↓
-// (guest score). Returns a new array; the input order is never mutated.
-export function applyClientFilters(hotels, { text = '', min = '', max = '', sortBy = 'recommended' } = {}) {
-  const q = (text || '').trim().toLowerCase();
-  const lo = min !== '' && min != null ? Number(min) : null;
-  const hi = max !== '' && max != null ? Number(max) : null;
-  const priceActive = lo != null || hi != null;
-  let out = (hotels || []).filter((h) => {
-    if (q && !`${h.name || ''} ${h.address || ''}`.toLowerCase().includes(q)) return false;
-    if (priceActive) {
-      if (h.price == null) return false; // no comparable price → hide while filtering by price
-      if (lo != null && h.price < lo) return false;
-      if (hi != null && h.price > hi) return false;
-    }
-    return true;
-  });
-  if (sortBy === 'price') out = [...out].sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity)); // cheapest first, nulls last
-  else if (sortBy === 'rating') out = [...out].sort((a, b) => (b.ratingValue ?? -1) - (a.ratingValue ?? -1)); // best guest score first, nulls last
-  return out;
+// Every client knob of the hotel list, in ONE object — both the initial state and
+// the reset target (useForkList). Hotels have no boolean flags of their own, so
+// this is the plain fork base; guests/platform are SERVER filters and live in the
+// `applied` snapshot instead.
+export const BASE_HOTEL_FILTERS = { ...BASE_FORK_FILTERS };
+
+// Where each knob reads from a pooled hotel. Text spans name+address; price is the
+// total-stay price in the TRIP currency (pool field `price`) — hotels without a
+// price are hidden while a price bound is set. Sort: 'recommended' (pool order —
+// no comparator) / 'price' ↑ / 'rating' ↓ (guest score).
+export const STAY22_FILTER_SPEC = {
+  text: (h) => `${h?.name || ''} ${h?.address || ''}`,
+  price: (h) => numberOrNull(h?.price),
+  sorts: {
+    price: byNumberAsc((h) => h?.price),
+    rating: byNumberDesc((h) => h?.ratingValue),
+  },
+};
+
+// Client-side filter + sort over the pooled hotels. Runs on the whole-city pool
+// that feeds BOTH the list and the map pins, so the two stay in sync. Returns a
+// new array; the input order is never mutated.
+export function applyClientFilters(hotels, filters) {
+  return applyForkFilters(hotels, filters, STAY22_FILTER_SPEC);
 }
 
 // Build the edge-function payload from a city-visit node + trip context.
@@ -168,28 +172,9 @@ export function buildStay22Params({ visit, currency, lang, page, pageSize, filte
 export const POOL_PAGES = 3;
 export const POOL_MAX = 300;
 
-// Merge already-normalized hotel pages into one pool: dedup by id (the FIRST page
-// to carry an id wins — earlier Stay22 pages rank higher, so the kept entry is the
-// more relevant one) and cap at POOL_MAX. Input is an array of hotel arrays; an
-// entry may be undefined while its page is still loading (progressive). Returns
-// { hotels, truncated } where truncated=true means the cap dropped real stays.
-export function mergePool(pages) {
-  const seen = new Set();
-  const hotels = [];
-  let truncated = false;
-  for (const page of pages || []) {
-    if (!Array.isArray(page)) continue;
-    for (const h of page) {
-      if (!h || h.id == null) continue;
-      const key = String(h.id);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (hotels.length >= POOL_MAX) { truncated = true; continue; }
-      hotels.push(h);
-    }
-  }
-  return { hotels, truncated };
-}
+// Merging pooled pages is the SHARED fork-pool merge (mergeById in forkPool.js);
+// this list binds it to the Stay22 `id` and POOL_MAX at the call site in stay22.js,
+// exactly as the activity pool binds it to the Viator product code.
 
 // Stable cache key for the whole-city pool. Page-independent (the pool spans every
 // page) — only visit + dates + currency/lang + filters change it, so flipping the

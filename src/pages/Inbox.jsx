@@ -137,9 +137,9 @@ export default function Inbox() {
         ) : filtered.length === 0 ? (
           <EmptyState icon="bell" title={t('notif.filter_empty')} />
         ) : (
-          <div className="nlist">
+          <div className="col col--g8">
             {groups.map((g) => (
-              <div key={g.label} className="ngrp">
+              <div key={g.label} className="col col--g4">
                 <div className="ngrp__label">{t(GROUP_LABEL_KEY[g.label])}</div>
                 {g.items.map((n) => (
                   <InboxRow
@@ -255,7 +255,7 @@ function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
           )}
         </div>
       </div>
-      <div className="nrow__acts">
+      <div className="nrow__acts row row--g3">
         {showPending ? (
           <>
             <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>

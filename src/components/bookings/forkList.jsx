@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
-import { Skeleton } from '@/design/index';
+import { Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -121,8 +121,10 @@ export function ForkPager({ page, totalPages, pages, onGoto, prevLabel, nextLabe
   );
 }
 
-// Active-filter chip with a remove (×) button. One per applied filter.
-export function ForkPill({ label, onRemove, removeLabel }) {
+// Active-filter chip with a remove (×) button. One per applied filter. Rendered
+// only from ForkToolbar below — not exported, so a caller can't grow a second
+// chips row outside the toolbar's one-control-at-a-time rule.
+function ForkPill({ label, onRemove, removeLabel }) {
   return (
     <span className="s22f-pill">{label}
       <button type="button" onClick={onRemove} aria-label={removeLabel}><X size={12} /></button>
@@ -146,13 +148,12 @@ export function ForkToolbar({
   return (
     <div className="s22f">
       <div className="s22f-searchrow">
-        <div className="s22f-search">
-          <Search size={16} className="s22f-search__ic" />
-          <input
-            type="text" value={searchValue} onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder={searchPlaceholder} aria-label={searchPlaceholder}
-          />
-        </div>
+        <Input
+          className="s22f-search"
+          icon="search"
+          type="text" value={searchValue} onChange={(e) => onSearchChange?.(e.target.value)}
+          placeholder={searchPlaceholder} aria-label={searchPlaceholder}
+        />
         <button
           type="button"
           className={`s22f-fbtn ${filtersOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}
@@ -179,7 +180,13 @@ export function ForkToolbar({
         </>
       )}
 
-      {pills.length > 0 && (
+      {/* Chips summarise what is applied — for a CLOSED popover. While it is open
+          the popover shows those same values as editable fields, so rendering both
+          gives one filter two independent controls that drift: removing a chip
+          cleared the committed filter while the popover draft kept the old value
+          and the search button put it straight back (TRIP-293). One control at a
+          time makes that unrepresentable. */}
+      {!filtersOpen && pills.length > 0 && (
         <div className="s22f-pills">
           {pills.map((p) => <ForkPill key={p.key} label={p.label} onRemove={p.onRemove} removeLabel={t('fork.f_reset')} />)}
           <button type="button" className="s22f-resetall" onClick={onReset}>{t('fork.f_reset_all')}</button>
@@ -193,7 +200,7 @@ export function ForkToolbar({
 // per-list; the cycle handler is the list's own sort stepper.
 export function ForkCountRow({ countLabel, sortLabel, onCycleSort }) {
   return (
-    <div className="s22-countrow">
+    <div className="row row--g6">
       {countLabel ? <span className="s22-count">{countLabel}</span> : null}
       <span className="s22-countrow__ln" />
       <button type="button" className="s22-sort" onClick={onCycleSort}>

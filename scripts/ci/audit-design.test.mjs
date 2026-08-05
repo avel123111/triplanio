@@ -232,3 +232,223 @@ test('custom properties do not count as shape properties', (t) => {
   );
   assert.equal(out.dupShapes, 0);
 });
+
+test('--json survives a PIPE, not just a redirect to a file', () => {
+  // The machine-readable output is the half a CI step would consume, and it was
+  // truncated by `process.exit(0)`: on a pipe Node's stdout is async, so exit
+  // cut the JSON mid-token. 569 lines reached a FILE, 344 reached a pipe — and
+  // a redirect (POSIX file writes are synchronous) showed nothing wrong, which
+  // is why it survived. `jq` reported "Unfinished JSON term at EOF", i.e. a
+  // healthy audit reads as a crashed one.
+  // Piping through `cat` is the whole point: `spawnSync` alone would not
+  // reproduce it on the small fixtures the other tests use.
+  const r = spawnSync('/bin/sh', ['-c', `${JSON.stringify(process.execPath)} ${JSON.stringify(SCRIPT)} --json | cat`], {
+    env: { ...process.env, AUDIT_ROOT: 'src' },
+    encoding: 'utf8',
+    cwd: fileURLToPath(new URL('../..', import.meta.url)),
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotThrow(() => JSON.parse(r.stdout), 'the JSON must be whole after a pipe');
+  assert.ok(JSON.parse(r.stdout).families > 0);
+});
+
+// ── Phantom families: a dot inside a string is not a class ──────────────────
+// TRIP-321 audit: the family count is about to become a ratchet, and it was
+// counting two namespaces that do not exist anywhere in the product —
+// `@import './design/fonts.css'` minted `css`, and the @font-face
+// `url('...woff2')` minted `woff2`. A ratchet that counts phantoms can be
+// "improved" by deleting a font, and can never reach its target.
+
+test('a file path in @import does not mint a family', (t) => {
+  const out = run(
+    fixture(t, { 'a.css': "@import './design/fonts.css';\n.aa-x { color: red; }" }),
+  );
+  assert.deepEqual([...Object.keys(out.familyKinds)].sort(), ['aa']);
+  assert.equal(out.families, 1, '`css` from the import path is not a namespace');
+});
+
+test('a font url() does not mint a family', (t) => {
+  const out = run(
+    fixture(t, {
+      'a.css': "@font-face { src: url('/fonts/exo.woff2') format('woff2'); }\n.aa-x { color: red; }",
+    }),
+  );
+  assert.equal(out.families, 1, '`woff2` from the url is not a namespace');
+});
+
+test('a dotted value inside a double-quoted string does not mint a family', (t) => {
+  const out = run(fixture(t, { 'a.css': '.aa-x { content: ".zz-fake"; }' }));
+  assert.equal(out.families, 1);
+});
+
+// ── The split: a prefix that owns nothing is not a namespace ────────────────
+// TRIP-321: "295 families" is three different things in one number, and only
+// the first of them is the work this task is about. Collapsing `.statbar .k`
+// into `.statbar__k` moves 81 "families" without deleting a single duplicated
+// shape — so the two must never be reported as one figure.
+
+test('a prefix with descendants is a namespace; a lone name is not', (t) => {
+  const out = run(
+    fixture(t, { 'a.css': '.aa { color: red; } .aa-x { color: red; } .solo { color: red; }' }),
+  );
+  assert.equal(out.namespaces, 1, '`aa` owns `aa-x`');
+  assert.equal(out.singletons, 1, '`solo` owns nothing');
+  assert.equal(out.families, 2, 'the headline number stays the sum, for comparability');
+});
+
+test('a BEM modifier makes a prefix a namespace (it owns its own variants)', (t) => {
+  const out = run(fixture(t, { 'a.css': '.tile { color: red; } .tile--lg { color: red; }' }));
+  assert.equal(out.namespaces, 1);
+  assert.equal(out.singletons, 0);
+});
+
+test('a lone name that is only ever a DESCENDANT is attached, not standalone', (t) => {
+  // `.statbar .k` mints the family `k`. Nobody bought that namespace — it is a
+  // private child of `statbar` written without a prefix. It must not be
+  // reported next to `input`/`select`, which are real design-system names.
+  const out = run(
+    fixture(t, {
+      'a.css': '.statbar { color: red; } .statbar-row { color: red; } .statbar .k { color: red; } .input { color: red; }',
+    }),
+  );
+  assert.equal(out.familyKinds.k, 'attached', '`k` is a private child of `statbar`');
+  assert.equal(out.familyKinds.input, 'standalone', '`input` stands on its own');
+  assert.equal(out.familyKinds.statbar, 'namespace');
+});
+
+test('a state class glued to another class is attached, not standalone', (t) => {
+  const out = run(fixture(t, { 'a.css': '.blk { color: red; } .blk.locked { color: red; }' }));
+  assert.equal(out.singletonsAttached, 1, '`locked` never leads a selector');
+});
+
+test('a class that leads in ONE place is standalone even if it is a descendant elsewhere', (t) => {
+  const out = run(
+    fixture(t, { 'a.css': '.panel .chip { color: red; } .chip { color: red; }' }),
+  );
+  assert.equal(out.familyKinds.chip, 'standalone');
+  assert.equal(out.singletonsAttached, 0);
+});
+
+test('the leading class is found inside @media too', (t) => {
+  const out = run(
+    fixture(t, { 'a.css': '@media (max-width: 640px) { .chip { color: red; } }' }),
+  );
+  assert.equal(out.singletonsStandalone, 1, 'a nested rule must not read as "never leads"');
+});
+
+// ── The excluded perimeter leaks into the denominator ───────────────────────
+// TRIP-321: the scope drops login.css and PublicTrip.css, but the LANDING's
+// rules live in app.css. Those families are counted in the target and can
+// never be worked on — the goal is understated by however many there are.
+
+test('a class used only by out-of-scope markup is flagged as excluded perimeter', (t) => {
+  const out = run(
+    fixture(t, {
+      'app.css': '.ccy { color: red; } .aa-x { color: red; }',
+      'LandingPage.jsx': 'const a = <i className="ccy"/>;',
+      'Trips.jsx': 'const b = <i className="aa-x"/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['ccy']);
+  assert.equal(out.familiesInReach, 1, 'only `aa` can actually be worked on');
+});
+
+test('a class used by BOTH perimeters is in reach, not excluded', (t) => {
+  const out = run(
+    fixture(t, {
+      'app.css': '.shared { color: red; }',
+      'LandingPage.jsx': 'const a = <i className="shared"/>;',
+      'Trips.jsx': 'const b = <i className="shared"/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, []);
+});
+
+test('a class named in an ordinary string is not "usage" — only className counts', (t) => {
+  // The first cut scanned every quoted string and found nothing at all: `nav`,
+  // `dur` and `tx` occur as plain quoted words in in-scope files, so every
+  // family stayed "in reach" and the section reported a zero it had not earned.
+  const out = run(
+    fixture(t, {
+      'app.css': '.nav { color: red; }',
+      'LandingPage.jsx': 'const a = <i className="nav"/>;',
+      'Trips.jsx': 'const b = track("nav"); const c = <i className="tr-row"/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['nav'], 'a quoted word is not a class usage');
+});
+
+test('an IDENTIFIER inside a className expression is not a class (ревью Codex, PR #659)', (t) => {
+  // `className={flag ? "hero" : ""}` was tokenised WHOLESALE, so the variable
+  // name `flag` was recorded as markup usage. A `.flag` rule then looked "used",
+  // and if that expression sat only in an out-of-scope file the family was filed
+  // as excluded perimeter and SUBTRACTED from the goal — the audit understating
+  // its own workload, which is the one direction a target must never drift.
+  // Only static string/template fragments are markup; everything else is code.
+  const out = run(
+    fixture(t, {
+      'app.css': '.flag { color: red; } .hero { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={flag ? "hero" : ""}/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['hero'], '`flag` is a variable, only `hero` is a class');
+});
+
+test('a class glued on conditionally inside a template IS markup usage', (t) => {
+  // The mirror of the test above: cutting expressions must not throw away the
+  // real class names quoted INSIDE them. `` `cbar${on ? ' on' : ''}` `` applies
+  // both `cbar` and `on`.
+  const out = run(
+    fixture(t, {
+      'app.css': '.cbar { color: red; } .on { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={`cbar${x ? " on" : ""}`}/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['cbar', 'on']);
+});
+
+test('a NESTED template inside an interpolation is parsed (ревью Codex, PR #661)', (t) => {
+  // `` className={`foo${on ? ` bar` : ''}`} `` - самодельный разбор строк ловил
+  // открывающий backtick вложенного шаблона как ЗАКРЫВАЮЩИЙ у внешнего, и класс
+  // `bar` проваливался между совпадениями.
+  const out = run(
+    fixture(t, {
+      'app.css': '.foo { color: red; } .bar { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={`foo${on ? ` bar` : ""}`}/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['bar', 'foo']);
+});
+
+test('a brace inside a STRING does not swallow the rest of the file (ревью Codex, PR #661)', (t) => {
+  // `className={value === "{" ? "foo" : ""}` - счётчик скобок считал `{` внутри
+  // строки структурной, до нуля не доходил, и в разбор уезжал ВЕСЬ ОСТАТОК
+  // ФАЙЛА: любая последующая обычная строка записывалась как класс.
+  const out = run(
+    fixture(t, {
+      'app.css': '.foo { color: red; } .unrelated { color: red; }',
+      'LandingPage.jsx': 'const a = <i className={v === "{" ? "foo" : ""}/>;\nconst label = "unrelated";',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['foo'], '`unrelated` - обычная строка, не класс');
+});
+
+test('a comment that quotes a class name is not markup usage', (t) => {
+  // Тот же класс ошибки с другой стороны: апостроф/кавычка в комментарии не
+  // должны ни создавать употребление, ни ломать разбор соседних строк.
+  const out = run(
+    fixture(t, {
+      'app.css': '.hero { color: red; }',
+      'LandingPage.jsx': '// Mapbox\'s own note about "hero"\nconst a = <i className="hero"/>;',
+      'Trips.jsx': '// the "hero" class is documented here only\nconst b = <i className="tr-row"/>;',
+    }),
+  );
+  assert.deepEqual(out.perimeterFamilies, ['hero'], 'упоминание в комментарии Trips.jsx - не употребление');
+});
+
+test('a class with no markup usage at all is NOT called excluded perimeter', (t) => {
+  // Silence must not read as "belongs to the landing". A descendant class
+  // (`.card > .x`) has no className of its own and would be misfiled wholesale.
+  const out = run(fixture(t, { 'app.css': '.orphan { color: red; }' }));
+  assert.deepEqual(out.perimeterFamilies, []);
+});

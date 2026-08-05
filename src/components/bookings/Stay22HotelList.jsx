@@ -3,11 +3,13 @@ import {
   ChevronDown,
   Search, RotateCcw, Minus, Plus, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
 } from 'lucide-react';
+import { Input, InputGroup } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
+import { priceRangeLabel } from '@/lib/forkFilter';
 
 // Live Stay22 stays for the hotel fork panel (Lumo redesign v3 + filters, TRIP-224).
 // Rendered under the partner block, hotel + panel only.
@@ -133,15 +135,17 @@ export default function Stay22HotelList({
   const sortLabel = t(`fork.f_sort_${cf.sortBy}`);
   const cur = currency || '';
   const providerLabel = (key) => STAY22_PROVIDERS.find((p) => p.key === key)?.label || key;
-  const priceText = cf.min && cf.max
-    ? `${cur} ${cf.min} – ${cf.max}`
-    : cf.min ? `${cur} ${t('fork.f_from')} ${cf.min}` : `${cur} ${t('fork.f_to')} ${cf.max}`;
+  const priceText = priceRangeLabel({ t, currency: cur, min: cf.min, max: cf.max });
 
   // Pill removals: guests/platform re-commit the SERVER filters; price clears the
-  // CLIENT range.
-  const removeGuests = () => onApply({ ...(appliedProvider ? { provider: appliedProvider } : {}) });
-  const removePlatform = () => onApply({ adults: applied?.adults, children: applied?.children, rooms: applied?.rooms });
-  const removePrice = () => onApplyPrice?.('', '');
+  // CLIENT range. Each also clears the popover DRAFT — the chips row stays visible
+  // while the popover is open, so a stale draft would re-apply the filter on the
+  // next "Поиск" and the removal would look ineffective. Same helper shape as
+  // ViatorActivityList (found in review).
+  const dropChip = (draftPatch, commit) => { setPending((d) => ({ ...d, ...draftPatch })); commit(); };
+  const removeGuests = () => dropChip(BASE_GUESTS, () => onApply({ ...(appliedProvider ? { provider: appliedProvider } : {}) }));
+  const removePlatform = () => dropChip({ provider: 'all' }, () => onApply({ adults: applied?.adults, children: applied?.children, rooms: applied?.rooms }));
+  const removePrice = () => dropChip({ min: '', max: '' }, () => onApplyPrice?.('', ''));
 
   // Card click = select (no navigation); opening the supplier site (Book button
   // or a second click on the already-selected card) is logged here. The shared
@@ -183,22 +187,22 @@ export default function Stay22HotelList({
           },
         ].filter(Boolean)}
       >
-        <div className="s22f-grp">
+        <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
-          <div className="s22f-pfields">
-            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+          <div className="row row--g4">
+            <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_from')} aria-label={t('fork.f_from')} value={pending.min}
                 onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
-            </label>
+            </InputGroup>
             <span className="s22f-dash">–</span>
-            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+            <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_to')} aria-label={t('fork.f_to')} value={pending.max}
                 onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
-            </label>
+            </InputGroup>
           </div>
         </div>
 
-        <div className="s22f-grp">
+        <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_platform')}</div>
           <div className="s22f-selwrap">
             <select className="s22f-sel" value={pending.provider} onChange={(e) => setG('provider', e.target.value)}>
@@ -209,9 +213,9 @@ export default function Stay22HotelList({
           </div>
         </div>
 
-        <div className="s22f-grp">
+        <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
-          <div className="s22f-guestgrid">
+          <div className="grid grid--2 grid--g4">
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
               <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
@@ -320,9 +324,9 @@ export default function Stay22HotelList({
 
       <style>{`
         .s22 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-countrow /
-           .s22-count / .s22-sort), list chrome (.fork-*) and the card (.pcard*)
-           are all SHARED fork primitives — see app.css + forkList.jsx. */
+        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-count /
+           .s22-sort on the shared .row primitive), list chrome (.fork-*) and the
+           card (.pcard*) are all SHARED fork primitives — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

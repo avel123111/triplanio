@@ -18,8 +18,9 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
+import { FileRow, InputGroup, Textarea } from '@/design/index';
 import {
-  Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
+  Sparkles, Lock, Upload, X,
   RefreshCw, ChevronUp, Check,
 } from 'lucide-react';
 
@@ -178,7 +179,6 @@ export default function EventAiBlock({
   // ── Render ────────────────────────────────────────────────────────────────
   // Canonical AI pattern — design-system A4. Парсер НЕ несёт Pro-бейджа ни в одном
   // состоянии: locked → иконка замка; остальные → без бейджа (TRIP-187).
-  const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
   // checking — Pro/entitlement status not yet resolved. Render a non-interactive
   // placeholder (NOT the clickable 'available' pill) so a non-Pro user can't open
@@ -192,7 +192,7 @@ export default function EventAiBlock({
             <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
           </div>
-          <span className="ai-spin" />
+          <span className="spin spin--ring" />
         </div>
       </div>
     );
@@ -238,7 +238,7 @@ export default function EventAiBlock({
         <div className="ai-blk-hd">
           <div className="ai-blk-ic"><Sparkles size={15} /></div>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_parsing')}<span className="ai-spin" /></b>
+            <b>{t('event.ai_parsing')}<span className="spin spin--ring" /></b>
             {files[0]?.name && <span>{files[0].name}</span>}
             <div className="ai-prog"><div className="ai-prog-fill" /></div>
           </div>
@@ -287,24 +287,26 @@ export default function EventAiBlock({
         onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
       >
         {files.length > 0 && (
-          <div className="gy">
+          <div className="col col--g3">
             {files.map((f, i) => (
-              <div key={i} className="ai-file">
-                <div className="di">{isImage(f.name) ? <ImageIcon size={14} /> : <FileText size={14} />}</div>
-                <b>{f.name}</b>
-                {f.file?.size && <span className="ds">{formatSize(f.file.size)}</span>}
-                <button type="button" className="ai-file-x" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
-                  <X size={13} />
-                </button>
-              </div>
+              <FileRow
+                key={i}
+                name={f.name}
+                tone="ai"
+                size={f.file?.size ? formatSize(f.file.size) : null}
+                action={(
+                  <button type="button" className="doc-row__rm" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
+                    <X size={13} />
+                  </button>
+                )}
+              />
             ))}
           </div>
         )}
 
-        {/* unified textarea + actions container — borderless field, divider'd row */}
-        <div className="ai-input">
-          <textarea
-            className="textarea"
+        {/* Поле + ряд действий в общей рамке: вертикальный вариант группы (TRIP-333). */}
+        <InputGroup className="ai-input">
+          <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
@@ -319,7 +321,7 @@ export default function EventAiBlock({
               <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
             </button>
           </div>
-        </div>
+        </InputGroup>
 
         {error && (
           <div className="err" style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>

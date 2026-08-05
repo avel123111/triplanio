@@ -53,6 +53,21 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      # TRIP-321 Ф10: REPORTER, not a gate — it always exits 0. Prints the numbers
+      # every TRIP-321 PR must quote (families / classes / inline styles /
+      # re-declared shapes) so "was → now" is a measurement in the CI log instead
+      # of a claim in the PR body.
+      # ЖИВЁТ ЗДЕСЬ, А НЕ В `guards`, ПО ДВУМ ПРИЧИНАМ (TRIP-321 Ф13):
+      #   1. У джобы `guards` НЕТ `npm ci`, и это её СВОЙСТВО: все 13 гардов
+      #      обходятся стандартной библиотекой и потому стартуют мгновенно. Аудит
+      #      разбирает JSX парсером (`acorn` + `acorn-jsx` — см. шапку
+      #      scripts/ci/audit-design.mjs: три самодельных разбора подряд оказались
+      #      неверны), то есть требует зависимостей. Ставить их в джобу гардов
+      #      ради РЕПОРТЁРА = ломать её инвариант ради того, что гардом не является.
+      #   2. Репортёру и не место среди гардов: он ничего не блокирует.
+      - name: design audit (report only — TRIP-321 progress)
+        if: ${{ !cancelled() }}
+        run: npm run audit:design
 
   typecheck:
     name: Typecheck (tsc)
@@ -88,6 +103,7 @@ jobs:
   #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
   #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
   #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
+  #   2n check-orphan-css            — a rule left pointing at a class the markup stopped emitting
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -153,14 +169,13 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-css-prefixes.mjs
-      # TRIP-321 Ф10: REPORTER, not a gate — it always exits 0. It prints the
-      # numbers every TRIP-321 PR must quote (families / classes / inline styles
-      # / re-declared shapes) so "was → now" is a measurement in the CI log
-      # instead of a claim in the PR body. Ф13 turns the family count into a
-      # ratchet; until the pipeline has run, a moving number is expected.
-      - name: design audit (report only — TRIP-321 progress)
+      - name: 2n — orphaned CSS (rule left behind after the class moved)
         if: ${{ !cancelled() }}
-        run: npm run audit:design
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-orphan-css.mjs
+      # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
+      # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
+      # намеренно обходится стандартной библиотекой - и остаётся такой.
 
   deno:
     name: Deno typecheck (edge functions)

@@ -10,7 +10,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, EmptyState, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, EmptyState, Input, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -116,7 +116,7 @@ function NextTripCard({ trip, onClick, t }) {
         <span className="t-mono muted-2">{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
-        <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
+        <span className="badge badge--sm nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
         <span className="nextcard__cd">
           <span className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></span>
           <span className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></span>
@@ -218,7 +218,7 @@ const TripCard = ({ trip, onClick }) => {
         <div className="tc__dates tab">{trip.days}</div>
         <div className="tc__scope">
           <Icon name="pin" />
-          <span>{trip.scope}</span>
+          <span className="trunc">{trip.scope}</span>
         </div>
 
         {/* shared footer: совместный chip + role + avatars */}
@@ -264,7 +264,7 @@ const TripRow = ({ trip, onClick }) => {
         <div className="tr__title">{trip.title}</div>
         <div className="tr__sub">
           <Icon name="pin" />
-          <span>{trip.scope}</span>
+          <span className="trunc">{trip.scope}</span>
         </div>
       </div>
 
@@ -724,10 +724,14 @@ export default function Trips() {
                   {t('trips.tab_past')} · <span className="num">{pastTrips.length}</span>
                 </button>
               </div>
-              <div className="trips-toolbar__search">
-                <Icon name="search" size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)' }} />
-                <input className="input" placeholder={t('trips.search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
-              </div>
+              <Input
+                className="trips-toolbar__search"
+                icon="search"
+                placeholder={t('trips.search_placeholder')}
+                aria-label={t('trips.search_placeholder')}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
               <div className="trips-toolbar__spacer" />
               <div className="seg seg--view" role="group" title={t('trips.view')}>
                 <button aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>
@@ -792,7 +796,7 @@ export default function Trips() {
                 )}
               </div>
             ) : (
-              <div className="tr-list">
+              <div className="col">
                 {shownNorm.map(tr => (
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}

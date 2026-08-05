@@ -14,14 +14,14 @@ import { track } from '@/lib/analytics';
 import { withViralMarks } from '@/lib/viralLink';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
-import { displayName } from '@/lib/displayName';
+import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Input, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
@@ -70,7 +70,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
-  const inv = (f) => fieldStateClass(v.displayIssues, f);
+  const st = (f) => fieldState(v.displayIssues, f);
 
   // Generate (or reuse) a real invite link when the "link" tab is active.
   // The role is bound to the token server-side, so switching role re-fetches.
@@ -174,14 +174,14 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       {tab === 'offline' && <div style={{ marginTop: 4 }} />}
 
       {tab === 'email' && <>
-        <Field label="E-mail">
-          <div data-vfield="email" className={inv('email')}>
-            <input className="input" type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus={!isMobile} />
+        <Field label="E-mail" required={v.isRequired('email')}>
+          <div data-vfield="email">
+            <Input {...st('email')} type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus={!isMobile} />
           </div>
           <FieldError issues={v.displayIssues} field="email" />
         </Field>
         <Field label={t('member.message_label')} hint={t('member.message_hint')}>
-          <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
+          <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
         </Field>
         <div className="muted t-meta" style={{ marginTop: 6 }}>
           {t('member.invite_email_note')}
@@ -207,9 +207,9 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       </>}
 
       {tab === 'offline' && <>
-        <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')}>
-          <div data-vfield="name" className={inv('name')}>
-            <input className="input" value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus={!isMobile} />
+        <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')} required={v.isRequired('name')}>
+          <div data-vfield="name">
+            <Input {...st('name')} value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus={!isMobile} />
           </div>
           <FieldError issues={v.displayIssues} field="name" />
         </Field>
@@ -226,7 +226,9 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
 // ─── ChangeRoleDialog ─────────────────────────────────────────────────────────
 
-function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }) {
+// `name` is the identity ALREADY resolved for the row this dialog was opened
+// from; the dialog must not re-derive it (TRIP-334).
+function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const [role, setRole] = useState(member.role || 'viewer');
@@ -252,7 +254,7 @@ function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }
         <Btn variant="primary" loading={saving} onClick={save}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
       <div className="t-body" style={{ marginBottom: 14, color: 'var(--muted)' }}>
-        {displayName(email || member.invite_email, member.user_full_name)}
+        {name}
       </div>
       <Field label={t('member.role_label')}>
         <select className="select" value={role} onChange={e => setRole(e.target.value)}>
@@ -363,7 +365,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
   return (
     <>
-      <div className="mlist ov-anim">
+      <div className="mlist col col--g4 ov-anim">
         {allMembers.length === 0 && (
           <EmptyState icon="users" title={t('member.empty')} />
         )}
@@ -375,34 +377,35 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
           // when you're an owner/admin.
           const canActOnRow = !isOwner && (isSelf || canManage);
           const isRemoving = removing === m.id;
-          const profile = profiles[m.user_id];
-          // Display name = real name when known. When nothing is recorded,
-          // displayName() returns a Title-cased email local-part so the row
-          // never shows the same email twice. The email line below is only
-          // rendered when we actually have a separate name to put on top.
-          const realName = profile?.full_name || m.user_full_name
-            || (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '')
-            || '';
-          const name = displayName(m.invite_email || profile?.email, realName);
-          const hasRealName = !!realName;
-          // Email line: invite_email for invited members, else the resolved
-          // account email (covers the owner, who has no trip_members row).
-          const emailLine = m.invite_email || profile?.email || '';
+          // Identity (name / email line / avatar / anonymized label) comes from
+          // the SHARED resolver chat and documents already use (TRIP-334). The
+          // payload now carries a profile for every row it ships, so a row that
+          // still resolves to nothing means the users row is gone for good —
+          // hence the deleted label as the fallback rather than a "?".
+          const who = resolveAuthor({
+            userId: m.user_id,
+            nameSnapshot: m.user_full_name,
+            member: m,
+            profiles,
+            selfUser: user,
+            deletedLabel: t('common.deleted_user'),
+            fallback: t('common.deleted_user'),
+          });
 
           return (
             <div key={m.id || i} className={`mbrow${isRemoving ? ' mbrow--busy' : ''}`}>
-              <Avatar name={name} photo={profile?.avatar_url || ''} deleted={profile?.is_deleted} size="lg" />
+              <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="lg" />
               <div className="mbrow__id">
-                <div className="mbrow__name">
-                  {name}
+                <div className="mbrow__name row row--g4">
+                  {who.name}
                   {m.user_id === user?.id && <Badge variant="quiet">{t('member.you_self')}</Badge>}
                 </div>
-                {hasRealName && emailLine && (
-                  <div className="mbrow__email">{emailLine}</div>
+                {who.email && (
+                  <div className="mbrow__email">{who.email}</div>
                 )}
               </div>
 
-              <div className="mbrow__meta">
+              <div className="mbrow__meta row row--g6">
                 {m.status === 'offline'
                   ? <Badge variant="quiet" icon="user">{t('trip.member_offline')}</Badge>
                   : <RoleBadge role={m.role} />}
@@ -437,7 +440,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                       : [
                           m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
                           m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
-                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m, email: m.invite_email || profile?.email }) },
+                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m, name: who.name }) },
                           { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id) },
                         ]
                     }
@@ -465,7 +468,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} tripId={tripId} onSaved={refresh} />
       {promoteState && <InviteDialog open={!!promoteState} onOpenChange={(o) => { if (!o) setPromoteState(null); }} tripId={tripId} promoteMember={promoteState.member} onSaved={refresh} />}
-      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} email={roleState.email} tripId={tripId} onSaved={refresh} />}
+      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} name={roleState.name} tripId={tripId} onSaved={refresh} />}
     </>
   );
 }
