@@ -39,7 +39,7 @@
 /* position: anchor for the AI badge — .stay-dates below is overflow:hidden and
    would clip it, so the badge pins to this outer block instead (TRIP-277). */
 .eed-dateblock { margin-bottom: 12px; position: relative; }
-.eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-micro (JSX, TRIP-183) */
+.eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-ui (co-selector в app.css, TRIP-333) */
 /* Finance block (design "Стоимость за всё"): price+currency row + payment pills */
 .eed-finance { margin-bottom: 12px; }
 .eed-pricerow { display: grid; grid-template-columns: 1fr 108px; gap: 8px; }

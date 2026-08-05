@@ -1687,7 +1687,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
 
       {/* Price + currency + payment pills (design: "Стоимость за всё") */}
       <div className="eed-finance">
-        <div className="hv-lbl eyebrow">{t('event.price_total')}</div>
+        <div className="hv-lbl">{t('event.price_total')}</div>
         <div className="eed-pricerow">
           <AiField active={aiFields.has('price')}>
             <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
@@ -2085,7 +2085,7 @@ function DateRangeBlock({
           for the rounded border). So the shared `.ai-filled` class stays on each
           cell and the shared <AiBadge> pins to this block, which does not clip. */}
       {(startAi || endAi) && <AiBadge />}
-      <div className="eed-dateblock__lbl t-micro">{label}</div>
+      <div className="eed-dateblock__lbl">{label}</div>
       <div className="stay-dates">
         <div className={`sd-cellwrap${startAi ? ' ai-filled' : ''}`} data-vfield={startVField}>
           <DateTimeInput variant="cell" cellLabel={startLabel} cellRequired={startRequired} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
