@@ -123,7 +123,7 @@
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
   /* Radii (Lumo names + legacy aliases) */
-  --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
+  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -1256,7 +1256,7 @@ h4,
   transition: transform .16s var(--ease-spring), background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
 }
 .btn:hover { transform: translateY(-2px); }
-.btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .btn--primary { --bg: var(--brand); --fg: #fff; --bd: transparent; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--brand) 70%, transparent); }
 .btn--primary:hover { --bg: var(--primary-hover); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent); }
 .btn--primary:active { --bg: var(--primary-press); }
@@ -1442,8 +1442,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .acc__chev { flex: none; display: inline-flex; color: var(--muted); transform: rotate(90deg); transition: transform .18s var(--ease-out); }
 .acc.is-open .acc__chev { transform: rotate(-90deg); }
 .acc__body { padding: 14px; border-top: 1px solid var(--line); }
-/* Lumo DS inputs: 14.5px/500 on a defined 1.5px line-strong border + 4px focus
-   ring.
+/* Lumo DS inputs: типографику держит канон `.t-body` (co-selector выше по
+   файлу), форму - рамка `--line-strong` и кольцо фокуса `--primary-ring`.
+   Числа здесь намеренно НЕ повторяются: эта шапка уже дважды расходилась с
+   правилами под ней (кегль уехал в PR-3, толщина рамки и кольцо - в PR-4), а
+   единственный носитель значения - само правило.
 
    ★Фон поля - ОДИН на всё приложение и объявлен ровно здесь (TRIP-333):
    светлая тема - `--surface` (белый, как поверхности), тёмная - `--bg` (фон
@@ -1454,7 +1457,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .input, .select, .textarea {
  width: 100%;
  border-radius: var(--r-btn);
- border: 1.5px solid var(--line-strong);
+ border: 1px solid var(--line-strong);
  background: var(--surface);
  /* Тень только в светлой: без заливки рамка - единственный признак поля, а её
     контраст к белому 1.41:1 при норме WCAG 3:1. Не `--sh-1` - та карточная
@@ -1500,7 +1503,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    бы с почти-чёрного на серый панели. Цвет несёт рамка. */
 .input:focus, .select:focus, .textarea:focus {
   outline: none; border-color: var(--brand);
-  box-shadow: 0 0 0 4px var(--primary-ring);
+  box-shadow: 0 0 0 3px var(--primary-ring);
 }
 /* Состояние ПАРЫ полей - на блоке дат: цвет несёт рамка `.stay-dates`, у самих
    кнопок-ячеек её нет. Форма та же (`fieldState` под spread), просто атрибуты
@@ -1607,14 +1610,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   min-height: var(--ctl-h);
   padding: 0 13px;
   border-radius: var(--r-btn);
-  border: 1.5px solid var(--line-strong);
+  border: 1px solid var(--line-strong);
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(39, 36, 51, .05);   /* та же тень, что у одиночного поля */
   transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 /* Подсвечивается ВСЯ группа: кольцо вокруг одного ребёнка обвело бы половину
    того, что пользователь видит как одно поле. */
-.input-group:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.input-group:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
 /* Состояние приходит теми же атрибутами, что и полю (`fieldState`), но красит
    СЕБЯ, а не потомка: у детей группы рамки нет, правило на потомка не дало бы
    ничего. */
@@ -1688,10 +1691,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .checkbox input {
   appearance: none;
   width: 17px; height: 17px;
-  border: 1.5px solid var(--line-strong);
-  /* Браузер зажимает радиус до половины стороны, поэтому на стороне 17px даже
-     наименьшая ступень шкалы (--r-sm, 11px) даёт идеальный круг - чекбокс
-     становится неотличим от радиокнопки. */
+  border: 1px solid var(--line-strong);
+  /* Браузер зажимает радиус до половины стороны - на стороне 17px это 8.5px,
+     то есть наименьшая ступень шкалы (--r-sm) упирается в круг вплотную и
+     чекбокс становится неотличим от радиокнопки. Цифру ступени тут не
+     повторяем: она уже уезжала (11 -> 8), а вывод от неё не зависит. */
   border-radius: 5px;   /* design-token-exempt: ниже шкалы радиус - это форма, а не ступень */
   background: var(--surface);
   display: inline-grid; place-items: center;
@@ -1708,7 +1712,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   border-bottom: 1.8px solid var(--primary-fg);
   transform: rotate(-45deg) translate(1px, -1px);
 }
-.checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
+.checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 /* Dimmed via a sibling selector rather than `:has()`: the build target includes
    Firefox 78, which predates `:has()`, and a disabled tint does not justify
    being the first thing in this codebase to depend on it. */
@@ -1820,7 +1824,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--primary-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
-.badge--outline { background: transparent; color: var(--muted); border: 1.5px solid var(--line-strong); }
+.badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 
 /* Severity (Lumo .sev — soft plate with a tinted icon chip) */
 .sev {
@@ -1877,7 +1881,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .avatar--lg { width: 36px; height: 36px; }
 .avatar--sm { width: 22px; height: 22px; }
 .avatar--ai { background: var(--ai-gradient) !important; }
-.avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1.5px dashed var(--line); }
+.avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1px dashed var(--line); }
 .avatar--deleted { background: var(--wash) !important; color: var(--muted) !important; }
 
 .avatar-stack { display: inline-flex; }
@@ -2067,8 +2071,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Переводя экран из полосы 42-46, СВЕРЬ его текущий радиус, иначе ступень тихо
    перекрасит угол (.invite-banner__ic 44px сегодня на --r-sm, а не --r-btn).
    ★ГРАНИЦА ВНИЗУ: ниже 26px репозиторий радиус не токенизирует вовсе (17-24px несут
-   рукописные 5-7px), а дефолтный --r-sm = 11px на стороне 20px даёт уже не квадрат,
-   а пилюлю - ровно ловушка Ф3b, где .checkbox 17px под 11px стал радиокнопкой.
+   рукописные 5-7px), а дефолтный --r-sm на стороне ~20px подходит к половине
+   стороны вплотную и даёт уже не квадрат, а пилюлю - ровно ловушка Ф3b, где
+   .checkbox 17px стал радиокнопкой. Порог записан ОТНОШЕНИЕМ к стороне, а не
+   числом: сама ступень уже уезжала (11 -> 8), и зашитая цифра тут же соврала бы.
    Ступени мельче --sm тут НЕТ по этой же причине: она обязана нести собственный
    --tile-r, а до появления настоящего потребителя выдумывать его - гадание.
    position:relative СОЗНАТЕЛЬНО не здесь: он нужен только .icon-btn под метку
@@ -2285,7 +2291,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
-  border: 1.5px solid var(--line); border-radius: var(--r-card);
+  border: 1px solid var(--line); border-radius: var(--r-card);
   background: var(--surface); cursor: pointer; text-align: left;
   transition: border-color .2s, box-shadow .22s, transform .16s var(--ease-spring);
 }
@@ -2604,7 +2610,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    шаге 1 создания трипа. Тот же элемент .ts-startctl, без отдельного контрола.
    ★Высота - общий токен: прежние 48px были хардкодом, а комментарий над ним
    утверждал, что они «matches the .input height», хотя поле было 41.5 (TRIP-333). */
-.ts-startctl--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1.5px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
+.ts-startctl--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
 /* `height: 100%` тут больше не работает и работать не может: у контрола теперь
    `min-height`, то есть высота НЕОПРЕДЕЛЁННАЯ, и процент от неё разрешается в
    `auto` - кнопка схлопывалась до высоты своей иконки (замер: 40 -> 18px, при
@@ -3024,7 +3030,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    16px on mobile so their glyph advances stay identical. */
 @media (max-width: 640px) { .chat-ov, .chat-ta { font-size: var(--fs-h4); } }
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
-   the border + 4px ring from .textarea:focus still render around the field. */
+   the border + focus ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }
 /* ONE send button for both shells. The lens used to draw a wide .btn--primary
    with a label while the widget drew this square on --ai-gradient: the same
@@ -3369,17 +3375,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-cellbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
     /* Empty add-cells recede so unfilled rows don't read as a column of dashed
        boxes; they surface on row hover or keyboard focus. */
-    .te-cellbtn--ghost { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
+    .te-cellbtn--ghost { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
     .te-row:hover .te-cellbtn--ghost { opacity: 1; }
     .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
     /* add-cell hover takes the cell's own event colour (design .edl: hotel=blue, activity=pink) */
     .te-cell--hotel .te-cellbtn--ghost:hover,
     .te-cell--act .te-cellbtn--ghost:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
     @media (hover: none) { .te-cellbtn--ghost { opacity: 1; } }
-    .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1.5px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
+    .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
     .te-hotelicon.is-warn { background: var(--warning-soft); }
-    .te-actchip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1.5px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
+    .te-actchip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
     .te-actchip:hover { border-color: var(--ev-activity); }
     .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: scale(0.94); }
     .te-actchip.is-warn { background: var(--warning-soft); color: var(--warning-ink); }
@@ -3414,11 +3420,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
-    .te-seam__pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1.5px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
+    .te-seam__pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
     .te-seam__pill:hover { box-shadow: var(--sh-3); transform: translateY(-1px) scale(1.02); }
     .te-seam__pill:active { transform: scale(0.96); }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
-    .te-seam__pill--add { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); gap: 7px; box-shadow: var(--sh-1); }
+    .te-seam__pill--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); gap: 7px; box-shadow: var(--sh-1); }
     .te-seam__pill--add:hover { color: var(--ev-transfer-ink); border-color: var(--ev-transfer); background: var(--ev-transfer-soft); transform: translateY(-1px); }
 
     .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
@@ -3479,11 +3485,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bt span { color: var(--muted); }
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
-.gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); background: transparent; border: 1.5px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
+.gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); background: transparent; border: 1px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
 .gadd:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); transform: translateY(-1px); }
 .gi { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--secondary); display: grid; place-items: center; color: var(--muted); flex: none; transition: .16s; }
 /* inside a ghost-add the icon is a DASHED placeholder (design-system .gadd .gi) */
-.gadd .gi { width: 34px; height: 34px; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
+.gadd .gi { width: 34px; height: 34px; border: 1px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
 .gadd:hover .gi { border-color: var(--a, var(--brand)); color: var(--a, var(--brand)); }
 /* Без плитки слева содержимое встаёт по центру: так выглядит «добавить ещё
    город» в планировщике - там нечему стоять слева, кнопка замыкает список. */
@@ -4375,7 +4381,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* "Add trip" phantom card */
 .tc-add {
-  border: 1.5px dashed var(--line-strong); background: transparent;
+  border: 1px dashed var(--line-strong); background: transparent;
   border-radius: var(--r-card); padding: 24px;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   gap: 10px; cursor: pointer; color: var(--muted); min-height: 256px; font-family: inherit;
@@ -4442,7 +4448,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* List-view "add trip" placeholder — mirrors the grid .tc-add language but as a
    row, reusing .tr / .tr__main. Placed after .tr so it wins on equal specificity. */
 .tr--add {
-  border: 1.5px dashed var(--line-strong);
+  border: 1px dashed var(--line-strong);
   background: transparent;
   box-shadow: none;
   color: var(--muted);
@@ -4568,15 +4574,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* ── Plan card ── */
 .plan-card {
   position: relative; display: flex; flex-direction: column;
-  background: var(--surface); border: 1.5px solid var(--line);
+  background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r-card);
   transition: box-shadow .22s var(--ease-out), border-color .2s;
 }
 /* Featured (Yearly) = the PRO plan → bound to the --pro accent (not --brand):
    a --pro-gradient BORDER over a surface fill (gradient-border trick), matching
-   the design's 1.5px pro-gradient wrapper. */
+   the design's pro-gradient wrapper. */
 .plan-card--featured {
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   background:
     linear-gradient(var(--surface), var(--surface)) padding-box,
     var(--pro-gradient) border-box;
@@ -4636,7 +4642,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    real .plan-card then swaps in statically on top, so the reveal plays once. */
 .plan-card-skel {
   border-radius: var(--r-card); background: var(--surface);
-  border: 1.5px solid var(--line); padding: 24px;
+  border: 1px solid var(--line); padding: 24px;
   animation: cardReveal .45s var(--ease-out) var(--card-delay, .05s) both;
 }
 
@@ -4648,7 +4654,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .pro-trip-bar {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 18px 22px; border-radius: var(--r-card);
-  border: 1.5px solid var(--line); background: var(--surface);
+  border: 1px solid var(--line); background: var(--surface);
 }
 .pro-trip-bar__actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
@@ -4844,7 +4850,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    иначе перекрасил бы фон рамочной строки, которая ссылкой не является. */
 .doc-row--framed{background:var(--surface-3);border:1px solid var(--line);}
 .doc-row--framed:hover{background:var(--surface-3);}
-.doc-row--ai{background:var(--surface);border:1.5px solid var(--ai-soft-2);}
+.doc-row--ai{background:var(--surface);border:1px solid var(--ai-soft-2);}
 .doc-row--ai:hover{background:var(--surface);}
 /* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),
    с одинаковым поведением: прозрачная кнопка, при наведении - опасный тон. */
@@ -4896,7 +4902,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .kv .v{ color:var(--ink); }
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
 /* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border-radius:var(--r-xl);overflow:hidden;}
+/* Ступень КОНТРОЛА, а не поверхности: блок дат - это пара полей в общей рамке,
+   как `.input-group`, и скругляться он обязан вместе с полями, а не вместе с
+   карточками. */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border-radius:var(--r-btn);overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
@@ -5008,10 +5017,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ev-dlg .field__label,
 .lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
 /* Отдельного «аккуратного» варианта поля для диалогов и панелей БОЛЬШЕ НЕТ
-   (TRIP-333). Здесь TRIP-186 переопределял рамку на 1px и радиус на `--r-md`,
-   то есть одно и то же поле выглядело по-разному в зависимости от того, в какой
-   оболочке оно открыто, - а это ровно то, что задача убирает. Канон один:
-   рамка 1.5px, радиус `--r-btn`. */
+   (TRIP-333). Здесь TRIP-186 переопределял рамку и радиус, то есть одно и то же
+   поле выглядело по-разному в зависимости от того, в какой оболочке оно открыто,
+   - а это ровно то, что задача убирает. Канон один и объявлен в `.input`;
+   значения не дублируются сюда, чтобы эта запись не разошлась с ним. */
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
@@ -5125,7 +5134,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22mk { position: relative; display: inline-grid; place-items: center; cursor: pointer; }
 .s22mk__core {
  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px;
- background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--r-pill);
+ background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-pill);
  box-shadow: 0 3px 10px -3px rgba(20,24,40,.28), 0 1px 2px rgba(20,24,40,.16);
  color: var(--ink);
  font-variant-numeric: tabular-nums; white-space: nowrap;
@@ -5592,10 +5601,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-searchrow { display: flex; gap: 10px; }
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .s22f-search { flex: 1; }
-.s22f-fbtn { position: relative; flex: none; width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-btn); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
+.s22f-fbtn { position: relative; flex: none; width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-btn); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
 .s22f-fbtn:hover { border-color: var(--line-hover); }
 .s22f-fbtn:active { transform: scale(.96); }
-.s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
 .s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
 .s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
 
@@ -5605,11 +5614,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-field { flex: 1; }
 .s22f-dash { color: var(--muted-2); flex: none; }
 .s22f-selwrap { position: relative; }
-.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; min-height: var(--ctl-h); border-radius: var(--r-md); padding: 0 40px 0 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут; TRIP-333: фон и высота - общие с .input */
-.s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; min-height: var(--ctl-h); border-radius: var(--r-btn); padding: 0 40px 0 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут; TRIP-333: фон, высота И СТУПЕНЬ СКРУГЛЕНИЯ - общие с .input. Пока --r-btn был 14, а --r-md 16, чужой токен был невиден; на 10 против 16 селект стал заметно круглее полей цены прямо над ним. */
+.s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
 .s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
 
-.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-md); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
+.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-btn); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
 .s22f-panelfoot .btn { flex: 1; }

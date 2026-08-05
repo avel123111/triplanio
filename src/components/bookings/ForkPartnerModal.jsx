@@ -232,7 +232,7 @@ export default function ForkPartnerModal({
       /* TRIP-186: блок оголён — контейнерная рамка/фон/паддинг убраны, плитки
          партнёров и manual-CTA лежат прямо на поверхности панели. */
       .fork-addzone { display: flex; flex-direction: column; gap: 11px; }
-      .fork-manual { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface); border: 1.5px solid var(--fk); box-shadow: 0 0 0 3px var(--fk-soft); font-family: var(--font-ui); transition: transform .16s var(--ease-spring), box-shadow .18s; }
+      .fork-manual { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--fk); box-shadow: 0 0 0 3px var(--fk-soft); font-family: var(--font-ui); transition: transform .16s var(--ease-spring), box-shadow .18s; }
       .fork-manual:hover { transform: translateY(-1px); box-shadow: 0 0 0 3px var(--fk-soft), var(--sh-1); }
       .fork-manual:active { transform: scale(.99); }
       .fork-manual__ic { width: 38px; height: 38px; border-radius: var(--r-sm); background: var(--fk); color: #fff; display: grid; place-items: center; flex: none; box-shadow: 0 5px 13px -6px var(--fk); }
