@@ -678,7 +678,7 @@ h4,
 .btn-ghost,
 .brand-col__sub,
 .faq__a-inner,
-.s22f-cur,
+.input-unit,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
 .bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
@@ -996,7 +996,7 @@ h4,
 .fork-partner__mid span,
 .fork-or span, .s22f-resetall,
 .fork-pg, .s22f-val, .s22-count, .pcard__score,
-.s22f-cur, .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
+.s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
 .s22mk,
@@ -1569,16 +1569,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .input-affix__end { inset-inline-end: 12px; }
 .input-affix--ic .input { padding-inline-start: 36px; }
 .input-affix--end .input { padding-inline-end: 36px; }
-/* Иконка подсвечивается, когда поле в фокусе ИЛИ когда значение уже выбрано
-   (`--on` - город в автокомплите). Оба состояния означают «поле работает». */
-.input-affix__ic--on,
-.input-affix .input:focus ~ .input-affix__ic { color: var(--brand); }
-/* Нерабочее поле гасит подсветку обратно: без этого иконка выбранного города
-   осталась бы яркой на погашенном поле. Только `__ic` - `__end` (спиннер) в
-   бренд не поднимается ничем, и правило на него было бы объявлением уже
-   стоящего значения. */
-.input-affix .input:disabled ~ .input-affix__ic,
-.input-affix .input[readonly]:not(:disabled) ~ .input-affix__ic { color: var(--muted-2); }
+/* Иконка НЕ участвует в состоянии: раньше она поднималась в `--brand` при
+   фокусе и при заполненном значении, и в фокусе поле давало три синих сигнала
+   разом - рамку, кольцо и иконку. Состояние несёт рамка, иконка нейтральна
+   всегда. Вместе с подсветкой ушло и правило, гасившее её обратно на
+   нерабочем поле: оно объявляло `--muted-2`, который тут и так базовый. */
 
 /* ── Группа контролов как одно поле (TRIP-333) ────────────────────────────
    Сумма + валюта, цена «от/до». Скин и состояния держит КОНТЕЙНЕР, дети идут
@@ -1637,6 +1632,31 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Сброс только у `.input`: у `.textarea` токена высоты нет, её `min-height` -
    это минимальное поле для текста. */
 .input-group .input { min-height: 0; align-self: stretch; }
+/* Зона единицы измерения внутри группы - валюта суммы, код валюты у цены
+   «от/до». Отдельная ЯЧЕЙКА за вертикальным разделителем, а не текст рядом со
+   значением: без разделителя «RUB» и плейсхолдер «от» читались одной фразой.
+   ★Единица ≠ префикс. Префикс (`₽`, `€`) поясняет ФОРМАТ значения и живёт внутри
+   текстовой зоны перед ним, без разделителя и без своей ячейки; единица
+   ИЗМЕРЯЕТ значение и потому стоит отдельно.
+   Разделитель на стороне, обращённой к полю: `--lead` для единицы ПЕРЕД
+   значением. Это модификатор, а не правило по позиции в дереве
+   (`:first-child`): позиционное потребовало бы рукописного исключения от
+   первого же соседа. Собрано из двух приватных копий - `.bgt-amtgrp__cur`
+   (несла разделитель) и `.s22f-cur` (несла цвет, но не разделитель).
+   ★Селектор с `.input-group` в начале - не украшение. Единица бывает кнопкой
+   (`CurrencyCombobox` рендерит триггер как `.input`), а сброс скина у детей
+   группы весит (0,2,0): голый `.input-unit` (0,1,0) проиграл бы ему, и
+   разделитель молча не нарисовался бы. Стоит НИЖЕ сброса - решает порядок. */
+.input-group .input-unit {
+  align-self: stretch; display: flex; align-items: center; flex: none;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--line);
+  color: var(--muted); font-weight: 400;
+}
+.input-group .input-unit--lead {
+  padding-inline: 0 12px;
+  border-inline-start: none; border-inline-end: 1px solid var(--line);
+}
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
@@ -5568,7 +5588,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-pmuted { color: var(--muted); }
 /* Только раскладка: скин и состояния держит `<InputGroup>` (TRIP-333). */
 .s22f-field { flex: 1; }
-.s22f-cur { color: var(--muted); flex: none; }
 .s22f-dash { color: var(--muted-2); flex: none; }
 .s22f-selwrap { position: relative; }
 .s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; min-height: var(--ctl-h); border-radius: var(--r-md); padding: 0 40px 0 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут; TRIP-333: фон и высота - общие с .input */

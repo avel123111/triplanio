@@ -235,7 +235,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
               половина того, что читается как одно поле. */}
           <InputGroup {...st('amount')} data-vfield="amount">
             <Input num type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
-            <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur num" />
+            <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur input-unit num" />
           </InputGroup>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>

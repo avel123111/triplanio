@@ -23,8 +23,8 @@ const requiredAttrs = (on) => (on
   : null);
 
 /**
- * Поле ввода с декорациями - иконка слева, спиннер справа (TRIP-333). Заменило
- * пять отдельных сборок «поля с иконкой» с отступами 11/12/13/14/15px.
+ * Поле ввода с декорациями - иконка слева, на её месте кольцо загрузки.
+ * Заменило пять отдельных сборок «поля с иконкой» с отступами 11/12/13/14/15px.
  *
  * Живёт отдельным модулем, а не в барреле `design/index.jsx`: тот реэкспортит
  * `components/ui/*`, и импорт поля оттуда замкнул бы зависимость в кольцо.
@@ -37,32 +37,34 @@ const requiredAttrs = (on) => (on
  * декорации позиционируются от обёртки, и её отступ уводит иконку - `.ss-search`
  * со своим `padding: 6px` ставил её на 6px вместо 12.
  */
-export const Input = ({ icon, iconActive, loading, num, className = '', boxRef, ...rest }) => {
+export const Input = ({ icon, loading, num, className = '', boxRef, ...rest }) => {
   const required = React.useContext(RequiredCtx);
-  // Слот справа резервируется, как только вызов ВООБЩЕ умеет показывать
-  // спиннер (даже при `loading={false}`): включать отступ вместе со спиннером
-  // значит менять ширину текстового поля прямо во время набора (TRIP-277).
-  const hasEnd = loading !== undefined;
+  // Кольцо загрузки ЗАМЕЩАЕТ стартовую иконку: у поля один индикатор и одно
+  // место под него, а правая сторона остаётся свободной под действие. Ширина
+  // текстовой зоны при этом не меняется вовсе, поэтому резерв справа, который
+  // держали против дёрганья при наборе (TRIP-277), тут не нужен.
+  // ★У поля БЕЗ иконки замещать нечего - там кольцо остаётся справа, и резерв
+  // ему по-прежнему нужен: иначе отступ включится вместе со спиннером и поле
+  // дёрнется. Резервируется, как только вызов ВООБЩЕ умеет грузиться, даже при
+  // `loading={false}`.
+  const ringReplacesIcon = Boolean(loading && icon);
+  const hasEnd = !icon && loading !== undefined;
   const boxClass = ['input-affix', icon && 'input-affix--ic', hasEnd && 'input-affix--end', className]
     .filter(Boolean).join(' ');
+  // Канон-кольцо базовой ступени (18px): она и означает «рядом со строкой
+  // текста». Своих ручек размера не даём - у примитива их три ступени, и
+  // четвёртая под один вызов вернула бы зоопарк под общим префиксом.
+  const ring = <span className="spin spin--ring" />;
   return (
     <div className={boxClass} ref={boxRef}>
       <input className={num ? 'input num' : 'input'} {...requiredAttrs(rest.required ?? required)} {...rest} />
       {icon && (
-        <span
-          className={`input-affix__ic${iconActive ? ' input-affix__ic--on' : ''}`}
-          aria-hidden="true"
-        >
-          <Icon name={icon} size={16} />
+        <span className="input-affix__ic" aria-hidden="true">
+          {ringReplacesIcon ? ring : <Icon name={icon} size={16} />}
         </span>
       )}
-      {loading && (
-        // Обёртка держит центрирующий transform, иконка - вращение: `aispin`
-        // анимирует `transform`, и на одном элементе кадр затирает
-        // translateY(-50%) - иконка съезжала на пол-высоты за оборот (TRIP-277).
-        <span className="input-affix__end" aria-hidden="true">
-          <Icon name="refresh" size={15} className="spin" />
-        </span>
+      {hasEnd && loading && (
+        <span className="input-affix__end" aria-hidden="true">{ring}</span>
       )}
     </div>
   );

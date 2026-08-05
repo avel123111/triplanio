@@ -106,7 +106,6 @@ function CityPicker({ value, onPick, placeholder, ...rest }) {
       renderRow={cityOptionRow}
       placeholder={placeholder || t('event.layover_city_ph')}
       icon="pin"
-      iconActive={!!value}
     />
   );
 }
