@@ -13,11 +13,11 @@
  * запуском функции, либо чтением её исходника; ни того ни другого лань
  * `deno test` сегодня не делает.
  *
- * Запуск: deno test supabase/functions/_shared/tripAccess_test.ts
+ * Запуск: deno test supabase/functions/_shared/tripStep_test.ts
  */
 
 import { assertEquals } from 'jsr:@std/assert@^1.0.8';
-import { clearsStep, EDITOR_ROLES, stepFromFacts, type TripStep } from './tripAccess.ts';
+import { clearsStep, EDITOR_ROLES, stepFromFacts, type TripStep } from './tripStep.ts';
 
 const OWNER = 'owner-uuid';
 const OTHER = 'other-uuid';

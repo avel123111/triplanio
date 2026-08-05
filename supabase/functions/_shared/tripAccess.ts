@@ -37,6 +37,10 @@
 
 import { supabaseAdmin } from './supabaseAdmin.ts';
 import { isNotFound } from './classifyDbError.ts';
+// Само ПРАВИЛО живёт в import-free ./tripStep.ts. Здесь только I/O: этот модуль
+// тянет supabaseAdmin, который читает env на загрузке, поэтому из теста его не
+// подгрузить — `deno test` идёт без --allow-env.
+import { clearsStep, stepFromFacts, type TripStep } from './tripStep.ts';
 
 /** Thrown when an access check can't be completed because a downstream query
  *  failed (transient/infra), as opposed to a definitive allow/deny answer. */
@@ -47,46 +51,6 @@ export class TripAccessError extends Error {
     this.name = 'TripAccessError';
     this.downstream = downstream;
   }
-}
-
-/**
- * The ladder step a caller stands on, or null for "not on the trip at all".
- * Strictly nested: owner ⊃ editor ⊃ participant.
- */
-export type TripStep = 'owner' | 'editor' | 'participant' | null;
-
-/** Roles that clear `editor`. WHITELIST on purpose: an unknown or NULL role
- *  must fail closed, which is what SQL `_can_edit_trip` does since TRIP-120. */
-export const EDITOR_ROLES = ['owner', 'admin'];
-
-const LADDER: Record<Exclude<TripStep, null>, number> = { participant: 1, editor: 2, owner: 3 };
-
-/**
- * THE RULE, as a pure function of already-fetched facts — this is the half that
- * tests pin (tripAccess_test.ts). Keeping it separate from the queries is the
- * same split `_shared/profiles.ts` uses for the profile-scope rule (TRIP-334):
- * a rule that only exists inside an async DB call cannot be tested, and this one
- * is the single definition of "who may change a trip".
- *
- * `activeRole` = role of the caller's ACTIVE trip_members row, or null when
- * there is none. `creatorId` = trips.created_by, or null when there is no trip.
- */
-export function stepFromFacts(
-  creatorId: string | null,
-  userId: string | null,
-  activeRole: string | null,
-): TripStep {
-  if (!creatorId || !userId) return null;
-  // Ownership is trips.created_by and ONLY that. A stray trip_members row with
-  // role 'owner' is not ownership — it maps to `editor` below (TRIP-143).
-  if (creatorId === userId) return 'owner';
-  if (activeRole === null) return null;
-  return EDITOR_ROLES.includes(activeRole) ? 'editor' : 'participant';
-}
-
-/** Does `step` clear the bar `required`? Null clears nothing. */
-export function clearsStep(step: TripStep, required: Exclude<TripStep, null>): boolean {
-  return step !== null && LADDER[step] >= LADDER[required];
 }
 
 /** Trip creator id, or null when the trip genuinely does not exist.
