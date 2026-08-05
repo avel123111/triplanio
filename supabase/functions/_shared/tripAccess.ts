@@ -71,9 +71,16 @@ async function fetchTripCreator(tripId: string): Promise<string | null> {
   return (data?.created_by as string | null) ?? null;
 }
 
-/** Active-membership role for the caller, or null when not an active member.
+/** The caller's ACTIVE trip_members row, or null when there is none.
+ *  Returns the row (not the bare role) because `role` is nullable: an active row
+ *  with a NULL role is still a participant, and collapsing both into `null`
+ *  would make this stricter than SQL `is_trip_participant`, which reads only
+ *  `status`. See the note on `stepFromFacts`.
  *  Throws TripAccessError on a query error. */
-async function fetchActiveMemberRole(tripId: string, userId: string): Promise<string | null> {
+async function fetchActiveMembership(
+  tripId: string,
+  userId: string,
+): Promise<{ role: string | null } | null> {
   const { data, error } = await supabaseAdmin
     .from('trip_members')
     .select('role')
@@ -83,7 +90,8 @@ async function fetchActiveMemberRole(tripId: string, userId: string): Promise<st
     .limit(1);
 
   if (error) throw new TripAccessError(error);
-  return (data?.[0]?.role as string | null) ?? null;
+  const row = data?.[0];
+  return row ? { role: (row.role as string | null) ?? null } : null;
 }
 
 /**
@@ -138,5 +146,5 @@ export async function callerStep(
   // Создатель проходит без строки членства — роль не читаем вовсе.
   if (creatorId === userId) return stepFromFacts(creatorId, userId, null);
 
-  return stepFromFacts(creatorId, userId, await fetchActiveMemberRole(tripId, userId));
+  return stepFromFacts(creatorId, userId, await fetchActiveMembership(tripId, userId));
 }

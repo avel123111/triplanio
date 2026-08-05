@@ -249,3 +249,25 @@ test('пустой вход не роняет', () => {
   assert.deepEqual(checkDoors([], {}), []);
   assert.deepEqual(checkDoors(undefined, {}), []);
 });
+
+// Нашёл ревьюер Codex на PR #684: проверки «объявленная ступень среди
+// найденных» мало. Достаточно ослабить сам условный оператор до participant,
+// оставив вызов editor где-нибудь рядом, и страж отчитается зелёным о ровно том
+// дрейфе, ради которого заведён.
+test('★ дверь, зовущая ДВЕ разные ступени, отвергается как неоднозначная', () => {
+  const doors = { telegramStartLink: 'editor' };
+  const sources = [src('telegramStartLink', `
+    const canSee = await isCallerParticipant(tripId, user.id);
+    if (!canSee) return 403;                       // ← реально решает участие
+    if (rare) await isCallerEditor(tripId, user.id);  // ← а editor остался «рядом»
+  `)];
+  const errors = checkDoors(sources, doors);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /РАЗНЫЕ ступени/);
+});
+
+test('неоднозначность ловится и когда объявленная ступень среди найденных', () => {
+  const doors = { x: 'editor' };
+  const sources = [src('x', "isCallerEditor(a); clearsStep(s, 'participant');")];
+  assert.equal(checkDoors(sources, doors).length, 1);
+});
