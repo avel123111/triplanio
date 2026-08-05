@@ -18,6 +18,13 @@ import { useT, useI18n } from '@/lib/i18n/I18nContext';
  *  - onTimeMissingChange(isMissing)  true when a date is picked but the time is
  *    still empty, so the parent can disable Save and flag the field — exactly
  *    the partial-date case the native input used validity.badInput for.
+ *
+ * Здесь же причина, по которой нативного `<input type="date">` не осталось ни
+ * одного во всём `src`: Chrome рисует его по локали ОПЕРАЦИОННОЙ СИСТЕМЫ, а не
+ * по языку приложения, и повлиять на это нельзя ни `lang`, ни CSS, ни JS -
+ * испанский интерфейс на русской ОС показывал поле как `дд.мм.гггг`. Этот
+ * компонент форматирует дату сам, по языку приложения. С `withTime={false}`
+ * контракт значения совпадает с нативным полем: `yyyy-MM-dd` либо `''`.
  */
 const parse = (v) => {
   if (typeof v !== 'string' || !v) return { date: '', time: '' };
@@ -69,13 +76,16 @@ export default function DateTimeInput({
     onTimeMissingChange?.(missing);
   };
 
-  // Пусто-состояние обязано совпадать с тем, что поле правда спрашивает: у
+  // Заголовок обязан совпадать с тем, что поле правда спрашивает: у
   // `withTime={false}` предлагать «дату и время» неверно. Ключ существующий -
-  // тот же, которым подписано пусто-состояние ячейки даты.
+  // тот же, которым подписано пусто-состояние ячейки даты. Одна переменная на
+  // ДВА места (кнопка + заголовок шторки на телефоне): порознь они уже
+  // разъезжались, и половинчатая правка оставила бы это на мобиле.
+  const askLabel = t(withTime ? 'event.pick_datetime' : 'event.pick_date_short');
   const label = date
     ? DateTime.fromISO(date, { zone: 'utc' }).setLocale(lang).toFormat('d MMM yyyy')
       + (withTime && time ? `, ${time}` : '')
-    : t(withTime ? 'event.pick_datetime' : 'event.pick_date_short');
+    : askLabel;
 
   // Cell variant: split date ("28 июн, вс") and time ("10:00") lines.
   const cellDate = date
@@ -117,7 +127,7 @@ export default function DateTimeInput({
     return (
       <>
         {trigger}
-        <Sheet open={open} onOpenChange={setOpen} title={t('event.pick_datetime')}>
+        <Sheet open={open} onOpenChange={setOpen} title={askLabel}>
           {calendar}
         </Sheet>
       </>

@@ -240,9 +240,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
         <Field label={t('budget.field_date')}>
-          {/* Не нативный `type="date"`: Chrome рисует его по локали ОС, а не по
-              языку приложения - у испанского интерфейса поле показывало
-              `дд.мм.гггг`. `DateTimeInput` форматирует по языку приложения. */}
+          {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
           <DateTimeInput withTime={false} value={date} onChange={setDate} />
         </Field>
       </div>

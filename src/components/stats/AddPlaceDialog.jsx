@@ -150,8 +150,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {/* Не нативный `type="date"`: Chrome рисует его по локали ОС, а не по
-              языку приложения. `DateTimeInput` - наш календарь и наш формат. */}
+          {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
           <Field label={t('stats.field_from')}><DateTimeInput withTime={false} value={from} onChange={setFrom} /></Field>
           <Field label={t('stats.field_to')}><DateTimeInput withTime={false} value={to} onChange={setTo} /></Field>
         </div>
