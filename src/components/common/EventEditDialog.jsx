@@ -1,16 +1,19 @@
 /**
- * EventEditDialog - unified create/edit modal (Lumo `.ev-dlg`) for ALL kinds:
- * hotel / transfer / activity, and every service subtype
- * (car_rental / esim / insurance). It is the single edit engine — the legacy
- * per-kind dialogs (Hotel/Transfer/Activity/CarRental/Esim/Insurance) are gone.
+ * EventEditDialog - unified create/edit form for ALL kinds: hotel / transfer /
+ * activity, and every service subtype (car_rental / esim / insurance). It is
+ * the single edit engine — the legacy per-kind dialogs
+ * (Hotel/Transfer/Activity/CarRental/Esim/Insurance) are gone.
  *
- * One shared chrome (tinted header + body + footer), themed per kind/subtype via
- * `meta` (TYPE_META / SERVICE_META → --ev-color/--ev-soft/--ev-ink). Each kind
- * renders its own field group; service dispatches on form.service_kind.
+ * One shared chrome — the `.lp-*` canon (tinted header + body + footer), themed
+ * per kind/subtype via `meta` (TYPE_META / SERVICE_META →
+ * --ev-color/--ev-soft/--ev-ink). TRIP-333 §4: the chrome is literally the same
+ * in both shells; before that the dialog branch drew its own `.ev-dlg-*` family.
+ * Each kind renders its own field group; service dispatches on form.service_kind.
  *
- * Shells: `variant="dialog"` = Radix Dialog overlay (app-wide modal, auto
- * bottom-sheet ≤640px). `variant="panel"` = same content inline for the
- * trip-editor left panel (hotel/transfer create/edit live here).
+ * Shells differ only by CONTAINER: `variant="dialog"` = Radix Dialog overlay
+ * (app-wide modal, auto bottom-sheet ≤640px, container carries `.ev-dlg`).
+ * `variant="panel"` = same content inline for the trip-editor left panel
+ * (hotel/transfer create/edit live here).
  *
  * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
@@ -1184,37 +1187,37 @@ export default function EventEditDialog({
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
-  // Editor panel uses the Lumo `.lp` shell; the app-wide modal uses `.ev-dlg`.
-  // Body content (AI block + fields + IssuesPanel) is identical for both.
+  // Оболочка события ОДНА (TRIP-333 §4). Раньше этот же компонент рисовал две:
+  // в панели - `.lp-*`, в диалоге - собственное семейство `.ev-dlg-*`, и ветка
+  // стояла у каждой из четырёх частей (шапка, плитка типа, тело, футер). Тело
+  // при этом было общим всегда - расходился только хром вокруг него.
+  // Различаются оболочки теперь только КОНТЕЙНЕРОМ (модалка против панели) и
+  // способом ухода, как и задумано.
   const isPanel = variant === 'panel' || embedded;
-  const bodyCls = isPanel ? 'lp-b scrollbar-thin' : 'ev-dlg-body';
+  const bodyCls = 'lp-b scrollbar-thin';
   const title = ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey));
 
   const inner = (
     <>
-          {/* Header — hidden when embedded (AddBookingPanel owns the shared header). */}
-          {embedded ? null : isPanel ? (
-            // TRIP-186: шапка edit унифицирована с остальными состояниями (канон
-            // PanelShell / view): eyebrow сверху, .t-title, крестик справа — без
-            // левой стрелки-назад.
+          {/* Header — hidden when embedded (AddBookingPanel owns the shared header).
+              TRIP-186: шапка edit унифицирована с остальными состояниями (канон
+              PanelShell / view): eyebrow сверху, .t-title, крестик справа — без
+              левой стрелки-назад. TRIP-333 §4: диалог рисует ЕЁ ЖЕ, своей у него
+              больше нет; отличается только подпись крестика (уход из панели -
+              «назад», из модалки - «отмена»). */}
+          {embedded ? null : (
             <div className="lp-h lp-h--ev">
-              <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><meta.Icon /></span>
+              <span className="lp-ic"><meta.Icon /></span>
               <div className="lp-ti">
-                <div className="eyebrow" style={{ color: meta.color }}>{t(meta.labelKey)}</div>
+                <div className="eyebrow">{t(meta.labelKey)}</div>
                 <div className="lp-tirow"><b className="t-title">{title}</b></div>
               </div>
-              <button className="ev-dlg-close" onClick={() => onOpenChange?.(false)} title={t('common.back')} aria-label={t('common.back')}>
-                <X style={{ width: 15, height: 15 }} />
-              </button>
-            </div>
-          ) : (
-            <div className="ev-dlg-hd">
-              <div className="ev-dlg-ic"><meta.Icon /></div>
-              <div className="ev-dlg-info">
-                <div className="ev-dlg-eyebrow">{t(meta.labelKey)}</div>
-                <h2>{title}</h2>
-              </div>
-              <button className="ev-dlg-close" onClick={() => onOpenChange(false)} aria-label={t('common.cancel')}>
+              <button
+                className="ev-dlg-close"
+                onClick={() => onOpenChange?.(false)}
+                title={isPanel ? t('common.back') : undefined}
+                aria-label={isPanel ? t('common.back') : t('common.cancel')}
+              >
                 <X style={{ width: 15, height: 15 }} />
               </button>
             </div>
@@ -1338,9 +1341,11 @@ export default function EventEditDialog({
 
           {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
               + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
-              в панельном режиме. */}
+              в панельном режиме. TRIP-333 §4: класс один на оба режима, своим у
+              диалога остался только прилипший низ, и тот не нужен модалке -
+              она и так не прокручивает футер. */}
           <div
-            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + (confirmDel ? '' : ' lp-f--ratio')}
+            className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
@@ -1628,7 +1633,8 @@ function buildServicePayload(form, tripId, t) {
 
 function SectionHeader({ children }) {
   // Lumo form section header: coloured uppercase label + trailing rule.
-  // Colour comes from the --ev-color set on the .ev-dlg root.
+  // Colour comes from the --ev-color set on the shell root — `.ev-dlg` in the
+  // dialog branch, `.lp` in the panel branch (both get it from `evVars`).
   return <div className="f-sec">{children}</div>;
 }
 

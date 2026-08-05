@@ -1,22 +1,26 @@
 /**
- * EventModal - unified, new-design (Lumo .ev-dlg) read view for a timeline
- * event (hotel / transfer / activity / car rental / esim / insurance).
+ * EventModal - unified read view for a timeline event (hotel / transfer /
+ * activity / car rental / esim / insurance).
  *
  * The per-kind sections, derived display values and document upload live in the
  * SHARED `EventViewBody` module so the in-place left-panel shell renders the
- * same content. EventModal owns the dialog chrome (header + body + footer).
+ * same content. TRIP-333 §4: the chrome around it is shared too - header, body
+ * and footer are the `.lp-*` canon, the same one `PanelShell` renders; this
+ * module owns only the CONTAINER (a Radix dialog instead of an inline panel).
+ * `.ev-dlg` on the container is no longer a chrome family - it is what scopes
+ * the form-label colour to the event shell (see `.ev-dlg .field__label`).
  *
  * Accepts TWO call shapes:
  *   New:    <EventModal open onOpenChange entity kind visit fromVisit toVisit onEdit readOnly />
  *   Legacy: <EventModal event={{ kind, entity, visit, fromVisit, toVisit }} canEdit onClose onEdit onDelete />
  *
- * Visual reference: Lumo design system event dialog (EVENTS_SERVICES_REDESIGN).
+ * Visual reference: Lumo design system event shell (EVENTS_SERVICES_REDESIGN).
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
-  Edit2, Trash2, X,
+  Trash2, X,
 } from 'lucide-react';
 import {
   useEventViewModel, useEntityDocs, EventViewSections,
@@ -93,26 +97,27 @@ export default function EventModal(props) {
           padding: 0,
         }}
       >
-        {/* Header */}
-        <div className="ev-dlg-hd">
-          <div className="ev-dlg-ic"><theme.Icon /></div>
-          <div className="ev-dlg-info">
-            <div className="ev-dlg-eyebrow">{eyebrow}</div>
-            <DialogTitle asChild><h2>{title || themeLabel}</h2></DialogTitle>
-          </div>
-          {priceText && (
-            <div className="ev-dlg-price">
-              <div className="amt">{priceText}</div>
-              {entity.currency && <div className="cur">{entity.currency}</div>}
+        {/* Header — ОБЩАЯ шапка события (TRIP-333 §4). Тот же набор, что у
+            панели просмотра и панели добавления: плитка типа, эйбрау, заголовок
+            и вторичная строка моноширинным. Своей у диалога больше нет.
+            Содержимое второй строки у оболочек РАЗНОЕ и таким остаётся: панель
+            просмотра ставит туда даты проживания, диалог - цену. */}
+        <div className="lp-h lp-h--ev">
+          <span className="lp-ic"><theme.Icon /></span>
+          <div className="lp-ti">
+            <div className="eyebrow">{eyebrow}</div>
+            <div className="lp-tirow">
+              <DialogTitle asChild><b className="t-title">{title || themeLabel}</b></DialogTitle>
+              {priceText && <span className="t-mono">{priceText}{entity.currency ? ` ${entity.currency}` : ''}</span>}
             </div>
-          )}
+          </div>
           <button className="ev-dlg-close" onClick={() => setOpen(false)} aria-label={t('common.close')}>
             <X />
           </button>
         </div>
 
         {/* Body */}
-        <div className="ev-dlg-body">
+        <div className="lp-b scrollbar-thin">
           {confirmDel ? (
             <Severity level="error" icon="trash" title={t('event.delete_q', { label: themeLabel.toLowerCase() })}>
               <div className="t-meta">{t('event.delete_irreversible')}</div>
@@ -129,7 +134,10 @@ export default function EventModal(props) {
         {/* Footer — only when there are edit/delete actions (map + booking moved
             to the top action row, so read-only events no longer need a footer). */}
         {canEdit && (onDelete || onEdit) && (
-        <div className="ev-dlg-ft">
+        /* Та же пара «удалить + редактировать», что в панели просмотра, значит
+           и раскладка та же (`lp-f--ratio`). Своё мобильное правило, растягивавшее
+           кнопки поровну, вместе с этим отпало. */
+        <div className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}>
           {confirmDel ? (
             <>
               <Btn variant="ghost" onClick={() => setConfirmDel(false)} disabled={deleting}>
@@ -149,14 +157,18 @@ export default function EventModal(props) {
             </>
           ) : (
             <>
+              {/* Форма кнопок - та же, что у трёх соседних футеров события:
+                  иконка пропом, подпись под `.btn-label-collapse`. Без этого
+                  `lp-f--ratio` работал вполсилы: на узком экране он гасит
+                  подпись первой кнопки, а гасить было нечего. */}
               {canEdit && onDelete && (
-                <Btn variant="danger" onClick={() => setConfirmDel(true)}>
-                  <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.delete')}
+                <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('trip.delete')}>
+                  <span className="btn-label-collapse">{t('trip.delete')}</span>
                 </Btn>
               )}
               {canEdit && onEdit && (
-                <Btn variant="primary" onClick={onEdit} style={{ '--bg': theme.color }}>
-                  <Edit2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.edit_trip')}
+                <Btn variant="primary" icon="edit" onClick={onEdit} style={{ '--bg': theme.color }}>
+                  {t('trip.edit_trip')}
                 </Btn>
               )}
             </>
