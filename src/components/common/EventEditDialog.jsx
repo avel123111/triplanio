@@ -20,7 +20,7 @@ import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiF
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Moon, ShieldCheck,
-  BedDouble, Ticket, Clock,
+  BedDouble, Ticket,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 import { EDITABLE_TRANSPORT_TYPES, transferKind } from '@/lib/transport';
@@ -2105,60 +2105,6 @@ function DateRangeBlock({
   );
 }
 
-const splitLocal = (v) => { const [d, tm = ''] = String(v || '').split('T'); return { date: d || '', time: tm.slice(0, 5) }; };
-
-// Activity "Дата и время" (design): ONE shared date + a time card (start · duration
-// · end). The model still stores full startLocal/endLocal — both share the date.
-function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
-  const { t } = useI18nFormat();
-  const s = splitLocal(form.startLocal);
-  const e = splitLocal(form.endLocal);
-  const date = s.date || e.date || '';
-  const durMin = layoverMins(form.startLocal, form.endLocal);
-  const emit = (d, st, et) => {
-    setField('startLocal', d && st ? `${d}T${st}` : '');
-    setField('endLocal', d && et ? `${d}T${et}` : '');
-    setTime('start', !!d && !st);
-    setTime('end', !!d && !et);
-  };
-  // Тот же шов, что у DateRangeBlock: оба блока - пара «начало+конец», и
-  // состояние они обязаны показывать одинаково, даже если предупреждений на эти
-  // поля у активности сегодня нет (их выдаёт только переезд).
-  // Оба времени - блокирующие (ACT_START_REQUIRED / ACT_END_REQUIRED), но этот
-  // блок рисует свои бровки сам, мимо DateRangeBlock, и звёздочек на них не было.
-  const startRequired = useFieldRequired('start');
-  const endRequired = useFieldRequired('end');
-  return (
-    <div className="eed-dateblock" {...fieldState(issues, ['start', 'end'])}>
-      <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
-      <div data-vfield="start">
-        <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
-      </div>
-      <div className="stay-dates" style={{ marginTop: 8 }}>
-        <div className="sd-cellwrap">
-          <div className="sd-cell sd-cell--time">
-            <span className="sd-cell__lbl eyebrow" data-required={startRequired || undefined}>{t('activity.start')}</span>
-            <input type="time" className="sd-timeinput t-strong" value={s.time} onChange={(ev) => emit(date, ev.target.value, e.time)} />
-          </div>
-        </div>
-        <div className="stay-dates__mid">
-          <Clock size={14} style={{ color: color || 'var(--muted-2)' }} />
-          {durMin != null && <span className="t-meta">{fmtDur(durMin, t)}</span>}
-        </div>
-        <div className="sd-cellwrap" data-vfield="end">
-          <div className="sd-cell sd-cell--time">
-            <span className="sd-cell__lbl eyebrow" data-required={endRequired || undefined}>{t('event.end')}</span>
-            <input type="time" className="sd-timeinput t-strong" value={e.time} onChange={(ev) => emit(date, s.time, ev.target.value)} />
-          </div>
-        </div>
-      </div>
-      {tz && <div className="eed-drange-tz"><TimezoneHint tz={tz} /></div>}
-      <FieldError issues={issues} field="start" />
-      <FieldError issues={issues} field="end" />
-    </div>
-  );
-}
-
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
@@ -2289,6 +2235,10 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   const color = TYPE_META.activity.color;
   const st = (f) => fieldState(issues, f);
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
+  // Start → end duration for the date-block hint — the same helper the transfer
+  // uses, so "end earlier than start" stays a blank hint here too instead of
+  // reading "0 мин".
+  const durMin = layoverMins(form.startLocal, form.endLocal);
   return (
     <>
       <div data-vfield="title">
@@ -2316,7 +2266,19 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         />
       </div>
 
-      <ActivityWhenBlock form={form} setField={setField} setTime={setTime} tz={tz} issues={issues} color={color} />
+      {/* Тот же блок дат, что у отеля и переезда (§5 ТЗ). Раньше у активности
+          стояла СВОЯ сборка: одна общая дата + два голых `<input type="time">`,
+          из-за чего у неё был свой скин `.sd-timeinput` и нативные виджеты
+          времени, которые Chrome рисует по локали ОС. Модель не меняется -
+          `startLocal`/`endLocal` как были, просто теперь у каждого конца свой
+          полноценный выбор даты и времени, а не общая дата на двоих. */}
+      <DateRangeBlock
+        label={t('event.date_time')} accent={color} issues={issues}
+        midText={durMin != null ? fmtDur(durMin, t) : null}
+        startLabel={t('activity.start')} startValue={form.startLocal} onStart={(v) => setField('startLocal', v)} onStartMissing={(v) => setTime('start', v)} startVField="start" startTz={tz} startAi={aiFields.has('startLocal')}
+        endLabel={t('event.end')} endValue={form.endLocal} onEnd={(v) => setField('endLocal', v)} onEndMissing={(v) => setTime('end', v)} endVField="end" endTz={tz} endAi={aiFields.has('endLocal')}
+      />
+
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="fld-grid grid grid--2">

@@ -435,9 +435,10 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
   border: 1px solid var(--line);
 }
 
-/* Контрол с сильной рамкой — граница несёт кликабельность (композер чата,
-   фильтр-пилюля, «назад», крестик диалога). */
-.chat-composer__row, .fpill, .lp-back, .ev-dlg-close {
+/* Контрол с сильной рамкой — граница несёт кликабельность (фильтр-пилюля,
+   «назад», крестик диалога). Композер чата отсюда ушёл: он `InputGroup`, фон и
+   рамку держит группа (TRIP-333). */
+.fpill, .lp-back, .ev-dlg-close {
   background: var(--surface);
   border: 1px solid var(--line-strong);
 }
@@ -1139,11 +1140,12 @@ h4,
 
 /* Base neutral icon button (used OUTSIDE the header too — keeps light styling). */
 /* Здесь ТОЛЬКО роль кнопки: сброс рамки/фона + нейтральный цвет (ховер ниже).
-   БАЗОВУЮ геометрию этот блок больше не объявляет - это тот же квадрат, что и
-   .tile, и написан он ОДИН раз, в ко-селекторе `.tile, .icon-btn` в блоке
-   примитивов. Два контекста продолжают перебивать её СВОИМИ литералами и стоят
-   ниже по файлу: `.app-header .icon-btn` (38px, круг) и `.dock-panel__head
-   .icon-btn` (32px). Оба (0,2,0) против (0,1,0) ко-селектора, поэтому выигрывают
+   БАЗОВУЮ геометрию этот блок не объявляет - форму (центрирование + радиус) даёт
+   ко-селектор `.tile, .icon-btn` в блоке примитивов, а СТОРОНУ кнопке там же
+   переопределяет своя строка `.icon-btn` (`--ctl-h` вместо плиточных 34px,
+   TRIP-333 §3.3). Два контекста перебивают сторону СВОИМИ литералами:
+   `.app-header .icon-btn` (38px, круг) и `.dock-panel__head .icon-btn` (32px).
+   Оба (0,2,0) против (0,1,0), поэтому выигрывают
    и на ручку --tile НЕ смотрят: ставить её на предке .icon-btn бесполезно, там
    победит литерал. Это два будущих потребителя ступеней, а не поломка.
    Кегль иконки к ручке НЕ подключён намеренно: у кнопки он приходит из пропа
@@ -1469,6 +1471,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
  border-radius: var(--r-btn);
  border: 1.5px solid var(--line-strong);
  background: var(--surface);
+ /* Тень ТОЛЬКО в светлой теме: убрав заливку, мы сделали рамку единственным
+    признаком поля, а её контраст к белому - 1.41:1 при норме WCAG 3:1. Тень
+    компенсирует это визуально. Уровень выбран замером, а не на глаз: `--sh-1`
+    это тень уровня КАРТОЧКИ (24px размытия) - на поле она читается как
+    «приподнято над формой», чего поле не делает. Здесь 1px-уровень.
+    В тёмной теме тени нет и не нужно: там поле отделено цветом (--bg на
+    карточке --surface). */
+ box-shadow: 0 1px 2px rgba(39, 36, 51, .05);
 
  color: var(--ink);
  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
@@ -1495,11 +1505,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
 [data-theme="dark"] .ts-startctl--block { background: var(--bg); }
+/* Тень - светлотемная компенсация слабой рамки, в тёмной она только грязнит. */
+[data-theme="dark"] .input,
+[data-theme="dark"] .select,
+[data-theme="dark"] .textarea,
+[data-theme="dark"] .input-group { box-shadow: none; }
 /* Исключение: блок распознавания брони - не поле, а приподнятая AI-поверхность
    внутри карточки, и заливку держит он сам. Своё правило у него (0,1,0)
    проигрывает строке выше (0,2,0), поэтому тёмную половину приходится назвать
    явно - иначе блок молча уехал бы на фон приложения. */
 [data-theme="dark"] .ai-input { background: var(--surface); }
+/* И то же самое для композера чата - он `InputGroup`, но не поле в форме, а
+   ПЛАВАЮЩИЙ док над лентой. В тёмной общий фон полей (`--bg`) совпал бы с его
+   собственной подложкой (`.chat-room .chat-composer` красит градиент в `--bg`),
+   и док растворился бы, а строка «тени нет в тёмной» погасила бы его подъём.
+   Оба - побочный эффект встречи двух правил, а не решение. */
+[data-theme="dark"] .chat-composer__row { background: var(--surface); box-shadow: var(--sh-1); }
+/* Плоская AI-поверхность тень ПОЛЯ не берёт: она приподнята своим фоном, а не
+   тенью (её роль объявлена строкой выше). */
+.ai-input { box-shadow: none; }
 .input::placeholder, .textarea::placeholder { color: var(--muted-2); }
 /* Ховер отвечает «сюда можно писать», поэтому у нерабочего поля подсветки рамки
    нет (TRIP-333). У `.select` нет `[readonly]`: по спеке атрибут применим только
@@ -1675,6 +1699,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   border-radius: var(--r-btn);
   border: 1.5px solid var(--line-strong);
   background: var(--surface);
+  box-shadow: 0 1px 2px rgba(39, 36, 51, .05);   /* та же тень, что у одиночного поля */
   transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 /* Подсвечивается ВСЯ группа: кольцо вокруг одного ребёнка обвело бы половину
@@ -2105,6 +2130,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   border-radius: var(--tile-r, var(--r-sm));
 }
 .tile { flex: none; }
+/* Кнопка-иконка - КОНТРОЛ, а не декоративная плитка, поэтому её сторона равна
+   общей высоте контрола (TRIP-333 §3.3): в ряду «поле + кнопка-иконка» иначе
+   остаётся ступенька (было 34 против 40/44). Ручку `--tile` она по-прежнему
+   читает - ступени плиток продолжают её переразмеривать, меняется только ДЕФОЛТ.
+   Два контекстных литерала (`.app-header` 38px круг ВЫШЕ по файлу,
+   `.dock-panel__head` 32px ниже) сильнее по специфичности (0,2,0) и остаются
+   независимо от порядка: там кнопка стоит не рядом с полем, а в своей
+   компактной панели. Реально вырастают с 34 до `--ctl-h` только крестики
+   диалогов (`.dlg__head`) - ряд с `h2 { flex: 1 }`, места достаточно. */
+.icon-btn { width: var(--tile, var(--ctl-h)); height: var(--tile, var(--ctl-h)); }
 /* <Icon size={N}> рисует svg презентационными атрибутами width/height, а CSS их
    бьёт -> --tile-ic МОЛЧА выигрывает у пропа size. При переводе экрана ступень
    надо выбирать под фактический size, иначе иконка съедет без единой правки JSX. */
@@ -2977,13 +3012,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-composer__in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 8px; }
 .dock-panel .chat-composer__in { max-width: none; padding: 0; }
 /* The ROW is the input surface: field + both buttons live inside one rounded
-   container, so the textarea itself carries no border (it is not a .textarea). */
+   container, so the textarea itself carries no border (it is `.chat-ta`, not a
+   `.textarea` — the `.input-group` child reset does not touch it, and neither
+   does the ≤640 anti-zoom guard; both layers get their 16px from the dedicated
+   `.chat-ov, .chat-ta` media rule below, which is what keeps the caret aligned).
+   Только ДЕЛЬТА к `.input-group`: фон, рамку, фокус-кольцо и переход держит
+   группа. Своё здесь - выравнивание по низу (поле авто-растёт вверх, кнопки
+   остаются у нижнего края), свои отступы под кнопки внутри, крупный радиус и
+   «плавающая» тень: это док над лентой, а не поле в форме.
+   ⚠ В ТЁМНОЙ теме обе последние ручки перебиваются группой:
+   `[data-theme="dark"] .input-group` (0,2,0) ставит `background: var(--bg)` и
+   `box-shadow: none`, а этот блок - всего (0,1,0). */
 .chat-composer__row {
-  display: flex; gap: 8px; align-items: flex-end; padding: 8px;
+  gap: 8px; align-items: flex-end; padding: 8px;
   border-radius: var(--r-xl); box-shadow: var(--sh-1);
-  transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
-.chat-composer__row:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .chat-composer__field { flex: 1; min-width: 0; position: relative; min-height: 40px; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
    @triplanio renders bold-coloured while the caret stays in lockstep. */
@@ -4919,9 +4962,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .sd-cell__d{color:var(--ink);}
 .sd-cell__t{color:var(--muted);}
 .sd-cell.is-empty .sd-cell__d{color:var(--muted-2);}
-.sd-cell--time{cursor:default;}
-.sd-cell--time:hover{background:transparent;}
-.sd-timeinput{border:0;background:transparent;padding:0;margin:0;width:100%;color:var(--ink);outline:0;font-variant-numeric:tabular-nums;}
+/* `.sd-timeinput` и `.sd-cell--time` удалены вместе со своей сборкой (TRIP-333
+   §5): у активности была СВОЯ пара голых `<input type="time">` в ячейке-«не
+   кнопке», теперь она на общем `DateRangeBlock`, как отель и переезд. */
 .eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
@@ -5015,16 +5058,11 @@ a.doc-row__n:hover{ color: var(--brand); }
    the event-edit panel carries fields — city/event/fork panels have none). */
 .ev-dlg .field__label,
 .lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
-/* TRIP-186: инпуты в диалогах события/броней — «аккуратный» вид дизайн-системы
-   (тоньше рамка, крупнее радиус). Цвет рамки НЕ трогаем, чтобы не перебить
-   состояния той же специфичности (.field--ai / [aria-invalid] / [data-warning])
-   и hover/focus. */
-.ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
-.lp .input, .lp .select, .lp .textarea,
-.lp .s22f-field {   /* TRIP-176: цена «от/до» форк-списка в драйвере — тот же «аккуратный» канон, что и в «У меня есть бронь»; поиск того же списка с TRIP-333 попадает под `.lp .input` строкой выше */
-  border-width: 1px;
-  border-radius: var(--r-md);
-}
+/* Отдельного «аккуратного» варианта поля для диалогов и панелей БОЛЬШЕ НЕТ
+   (TRIP-333). Здесь TRIP-186 переопределял рамку на 1px и радиус на `--r-md`,
+   то есть одно и то же поле выглядело по-разному в зависимости от того, в какой
+   оболочке оно открыто, - а это ровно то, что задача убирает. Канон один:
+   рамка 1.5px, радиус `--r-btn`. */
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
