@@ -702,7 +702,6 @@ h4,
 .app-header__trip-meta,
 .app-header__pro,
 .app-side__item-badge,
-.field--ai .field__label::after,
 .err, .wrn,
 .pro-up p,
 .pro-up .lockmsg,
@@ -1488,15 +1487,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   outline: none; border-color: var(--brand);
   box-shadow: 0 0 0 4px var(--primary-ring);
 }
-.field--ai .input, .field--ai .select, .field--ai .textarea {
-  background: var(--ai-soft);
-  border-color: var(--ai-soft-2);
-}
-.field--ai .field__label::after {
- content: "AI";
- background: var(--ai); color: white;
- padding: 1px 5px; border-radius: 4px;
-}
 /* Состояние ПАРЫ полей - на блоке дат: цвет несёт рамка `.stay-dates`, у самих
    кнопок-ячеек её нет. Форма та же (`fieldState` под spread), просто атрибуты
    садятся на контейнер, как у `.input-group`. На контейнере `aria-invalid` -
@@ -1508,9 +1498,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .eed-dateblock[data-warning] .stay-dates { border-color: var(--warning); }
 
 /* ── Нерабочее поле (TRIP-333) ────────────────────────────────────────────
-   Порядок несущий: стоит ПОСЛЕ `.field--ai` (одинаковые 0,2,0), а ошибка и
-   предупреждение объявлены НИЖЕ и выигрывают уже у `:disabled` - рамка
-   состояния видна и на погашенной форме.
+   Порядок несущий: ошибка и предупреждение объявлены НИЖЕ и выигрывают уже у
+   `:disabled` - рамка состояния видна и на погашенной форме.
    ★Гасим ЦВЕТОМ, а не `opacity`: она перемножается по предкам, а редактор
    события уже гасит весь `<fieldset>` своей `.5` - вышло бы 0.275.
    ★Плашка у `:disabled` и `[readonly]` одна (`--wash`), различают их чернила и

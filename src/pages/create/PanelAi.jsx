@@ -7,8 +7,8 @@ import { CityAnchorRow } from './anchors';
 // =====================================================================
 // AI ENTRY PANEL — design-system A6 (AI Planner / PanelAi). Vertical rhythm via
 // one flex-gap column: title → prompt field → assistant status → draft. The
-// prompt uses the design-system AI field (.field--ai .textarea) instead of the
-// old inline border:none/padding:0 hack that cramped the text against the edge.
+// prompt uses the design-system <Textarea> instead of the old inline
+// border:none/padding:0 hack that cramped the text against the edge.
 // 3 states: prompt → generating → draft. The Next button lives in the shared
 // flow footer (ManualPlanner), not here.
 //   ctx: { aiState, prompt, setPrompt, aiComment, home, setHome, returnCity,
