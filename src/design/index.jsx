@@ -158,22 +158,14 @@ export const ReadOnlyBanner = ({ children, title }) => {
 };
 
 // ----- Form Field -----
-// Canonical inline error / warning lines (Lumo `.err` / `.wrn`, with icon).
-const ErrLine = ({ children }) => (
-  <span className="err">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
-    <span>{children}</span>
-  </span>
-);
-const WrnLine = ({ children }) => (
-  <span className="wrn">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
-    <span>{children}</span>
-  </span>
-);
-
-export const Field = ({ label, hint, sub, ai, error, warning, children, required }) => (
-  <div className={`field ${ai ? "field--ai" : ""} ${error ? "field--error" : warning ? "field--warning" : ""}`}>
+// Подпись + обёртка поля. Состояние валидации сюда НЕ приходит: единственный
+// живой источник - `fieldStateClass` из ValidationUI, он вешает класс на
+// обёртку `[data-vfield]`, а текст ошибки печатает `<FieldError>` (TRIP-333).
+// Пропы `error`/`warning` тут были ровно вторым способом сказать то же самое и
+// за всё время не получили НИ ОДНОГО вызова из 46 - удалены вместе со своими
+// строками-иконками и мёртвым скином `.field--error`.
+export const Field = ({ label, hint, sub, ai, children, required }) => (
+  <div className={`field ${ai ? "field--ai" : ""}`}>
     {label && (
       <label className="field__label">
         {label}{required && <span style={{ color: "var(--danger)" }}>*</span>}
@@ -182,8 +174,6 @@ export const Field = ({ label, hint, sub, ai, error, warning, children, required
     )}
     {children}
     {sub && <span className="field__sub t-meta">{sub}</span>}
-    {error && <ErrLine>{error}</ErrLine>}
-    {!error && warning && <WrnLine>{warning}</WrnLine>}
   </div>
 );
 

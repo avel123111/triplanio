@@ -1432,10 +1432,10 @@ h4,
  background: var(--ai); color: white;
  padding: 1px 5px; border-radius: 4px;
 }
-.field--error .input, .field--error .select, .field--error .textarea {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-soft);
-}
+/* `.field--error` тут не пропущен: он был мёртв - его ставил только проп
+   `error` у `<Field>`, а тот за всё время не получил ни одного вызова из 46.
+   Живой красный скин - `.tv-invalid` (см. `fieldStateClass`), он уезжает на
+   `[aria-invalid]` следующим шагом. */
 .field--warning .input, .field--warning .select, .field--warning .textarea {
   border-color: var(--warning);
   box-shadow: 0 0 0 3px var(--warning-soft);
@@ -4903,7 +4903,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
 /* TRIP-186: инпуты в диалогах события/броней — «аккуратный» вид дизайн-системы
    (тоньше рамка, крупнее радиус). Цвет рамки НЕ трогаем, чтобы не перебить
-   состояния той же специфичности (.field--ai / .field--error / .field--warning)
+   состояния той же специфичности (.field--ai / .field--warning / .tv-invalid)
    и hover/focus. */
 .ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
 .lp .input, .lp .select, .lp .textarea,
