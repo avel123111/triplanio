@@ -304,8 +304,7 @@ export default function EventAiBlock({
           </div>
         )}
 
-        {/* Поле + ряд действий в общей рамке — вертикальный вариант `<InputGroup>`
-            (TRIP-333). Рамку и фокус держит контейнер, поле идёт без своей. */}
+        {/* Поле + ряд действий в общей рамке: вертикальный вариант группы (TRIP-333). */}
         <InputGroup className="ai-input">
           <Textarea
             value={text}
