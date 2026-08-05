@@ -64,7 +64,8 @@
 
 /* ─── File chips ──────────────────────────────────────────────── */
 /* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
-   design/app.css next to `.doc-row`, since three screens draw it. */
+   design/app.css next to `.doc-row`, since all four callers of `FileRow` draw
+   it (documents lens, document field, event read view, booking parse). */
 .dl-filemore {
   color: var(--muted); padding: 2px 4px;
 }
