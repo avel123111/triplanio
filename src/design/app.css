@@ -1333,11 +1333,30 @@ h4,
 .panel,                    /* экран трипа/статистика — плоские панели/виджеты */
 .summary,                  /* /stats — полоса из 6 стат-плиток */
 .invite,                   /* баннер-приглашение */
-.acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
 .chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
 .pl-lastcard {             /* карточка последней брони (планнер) */
   border-radius: var(--r-xl);
+}
+
+/* ── Вложенный контейнер внутри оболочки (TRIP-333) ────────────────────────
+   Ступень МЕЖДУ оболочкой и контролом: раздел, который лежит внутри диалога
+   или панели и сам держит поля. Значение объявлено ЗДЕСЬ и только здесь -
+   раньше его писали в четырёх местах и получали три разных числа В ОДНОМ
+   ОКНЕ: «Бесплатная отмена» и «N ночей» скруглялись по ступени карточки,
+   секции просмотра - на ступень ниже, а сегмент переезда рисовался инлайном
+   на ступени контрола.
+   ★Аккордеон («Детали брони», «Документы и заметки») сюда переехал из группы
+   КАРТОЧЕК: он живёт только внутри редактора события, то есть карточкой
+   никогда не был, и носил ступень БОЛЬШЕ той оболочки, в которой лежит.
+   ⚠ Ступень выбрана замером вложенности, а не по шкале: диалог события - 16,
+   контрол - 10, промежуточной ступени между ними в шкале НЕТ. Пока оболочек
+   две и они разной величины (диалог 16, панель 24), «строго меньше внешней»
+   недостижимо; 16 - наибольшее, что не превышает НИ ОДНУ из двух. Это станет
+   однозначным, когда оболочка останется одна. */
+.acc, .eed-fcbox, .eed-nightrow,
+.ev-sec, .hv-namecard, .hv-card, .hv-rows {
+  border-radius: var(--r-md);
 }
 
 /* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
@@ -1432,7 +1451,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
-.acc { margin-bottom: 12px; overflow: hidden; }
+/* Свой `margin-bottom: 12px` снят: ОБА родителя аккордеона уже раскладывают
+   детей зазором (`.ev-dlg-body` 11px, `.lp-b` 13px), поэтому отступ был
+   ДОБАВОЧНЫМ - между двумя разделами выходило 23 и 25px вместо ступени. Без
+   него класс годится и для сегмента переезда, чей список идёт `gap: 0` (между
+   сегментами стоит плашка пересадки, и лишний отступ оторвал бы её от своего
+   сегмента). */
+.acc { overflow: hidden; }
 .acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
 .acc__head:hover { background: var(--wash); } /* TRIP-326: opacity→opaque token */
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -4918,7 +4943,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Top action chips (booking link + "on map") — wrap on narrow widths. */
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
-.ev-sec{border-radius:var(--r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
+.ev-sec{padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ev-color,var(--brand));}
 .ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
@@ -4955,7 +4980,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
-.hv-namecard{padding:16px 17px;border-radius:var(--r-md);}
+.hv-namecard{padding:16px 17px;}
 .hv-name{ color:var(--ink);line-height:1.2;}
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
 .hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
@@ -4968,10 +4993,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
 .hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
-.hv-card{padding:13px 15px;border-radius:var(--r-md);}
+.hv-card{padding:13px 15px;}
 .hv-price{ color:var(--ink);}
 .hv-pernight{ color:var(--muted);margin-top:2px;}
-.hv-rows{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;}
+.hv-rows{display:flex;flex-direction:column;overflow:hidden;}
 /* Раскладку даёт .row .row--g6 в разметке (зазор 12 = ступень --sp-6, ТОЧНОЕ
    совпадение). Отбивка своя: строка живёт внутри рамки .hv-rows, у которой нет
    боковых полей, - в отличие от .row--div, что стоит в .card со своими полями. */

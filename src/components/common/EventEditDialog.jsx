@@ -1866,7 +1866,11 @@ function TransferLegCard({
   return (
     // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
     // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    <div style={isMulti ? { border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
+    // TRIP-333 §5: сегмент — это сворачиваемый раздел с шапкой и телом, то есть
+    // тот же объект, что «Детали брони» и «Документы и заметки» в этом же окне.
+    // Он рисовался инлайном и сидел на СВОЕЙ ступени скругления; теперь идёт
+    // через `.acc`, и рамку, заливку, скругление и обрезку углов держит класс.
+    <div className={isMulti ? 'acc' : undefined}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
