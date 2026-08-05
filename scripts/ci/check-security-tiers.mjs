@@ -93,6 +93,14 @@ const WRITE_CMDS = ['insert', 'update', 'delete'];
 // проверка ниже — здесь только ТЕКСТ.
 // `policies` — [{ name, pred }] из pg_policies (pred = qual + with_check).
 // Возвращает массив сообщений об ошибках (пустой = всё сошлось).
+// Ищем ВЫЗОВ функции, а не подстроку: `_can_read_x` не должен находиться внутри
+// `_can_read_x_write(...)`. Имя обязано стоять на границе идентификатора и иметь
+// открывающую скобку — так политика `public.f(name)` матчится, а однокоренной
+// сосед нет. Без этого проверка «read-предикат в write-политике» даёт ЛОЖНОЕ
+// срабатывание на любой паре, где одно имя — префикс другого.
+const callsPredicate = (policyText, fnName) =>
+  new RegExp(`(^|[^A-Za-z0-9_])${fnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\(`).test(policyText);
+
 export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
   const predOf = new Map(policies.map((p) => [p.name, p.pred || '']));
   const errors = [];
@@ -104,12 +112,12 @@ export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
     // undefined = политики нет вовсе; это ловит проверка наличия, не эта.
     const selectPred = predOf.get(`${bucket}_select`);
     if (selectPred !== undefined) {
-      if (readPredicate && !selectPred.includes(readPredicate)) {
+      if (readPredicate && !callsPredicate(selectPred, readPredicate)) {
         errors.push(`storage-дрейф: политика '${bucket}_select' не ссылается на read-предикат '${readPredicate}' — чтение бакета '${bucket}' держит кто-то другой`);
       }
       // Ужесточение SELECT до write-предиката — регрессия чтения: участник
       // перестаёт видеть файлы трипа. Молчаливая, потому что политика на месте.
-      if (writePredicate && selectPred.includes(writePredicate)) {
+      if (writePredicate && callsPredicate(selectPred, writePredicate)) {
         errors.push(`storage-дрейф: политика '${bucket}_select' ссылается на write-предикат '${writePredicate}' — чтение ужалось до редакторов`);
       }
     }
@@ -118,8 +126,17 @@ export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
     for (const cmd of WRITE_CMDS) {
       if (!(r.policies || []).includes(cmd)) continue;
       const cmdPred = predOf.get(`${bucket}_${cmd}`);
-      if (cmdPred !== undefined && !cmdPred.includes(writePredicate)) {
+      if (cmdPred === undefined) continue;
+      if (!callsPredicate(cmdPred, writePredicate)) {
         errors.push(`storage-дрейф: политика '${bucket}_${cmd}' не ссылается на write-предикат '${writePredicate}' — запись в бакет '${bucket}' гейтится не той ступенью`);
+      }
+      // Присутствия write-предиката МАЛО: политики склеиваются через OR, поэтому
+      // `read(name) OR write(name)` содержит write и всё равно пускает участника.
+      // Гейт обходится дизъюнкцией, а страж при этом печатает OK — ровно тот
+      // класс молчаливого «политика есть, но пускает не тех», ради которого эта
+      // проверка и заводилась. Поэтому read-предикат в write-политике запрещён.
+      if (readPredicate && callsPredicate(cmdPred, readPredicate)) {
+        errors.push(`storage-дрейф: политика '${bucket}_${cmd}' ссылается на read-предикат '${readPredicate}' — запись открыта участнику по OR-ветке, write-гейт обойдён`);
       }
     }
   }

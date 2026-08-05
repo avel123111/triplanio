@@ -20,6 +20,7 @@
  */
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { PRO_ADDON_SET } from '../_shared/proAddons.ts';
 
 const ALLOWED_COLS = ['title', 'description', 'cover_image_url', 'cover_gradient', 'notes'];
@@ -31,19 +32,17 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
     const { tripId, fields, addons, main_currency, display } = await req.json();
     if (!tripId) return Response.json({ error: 'tripId required' }, { status: 400, headers: corsHeaders });
 
+    // `details` is the only column this function reads: permission comes from
+    // isCallerEditor and trip-level Pro from the is_trip_pro RPC below (which
+    // also covers "the owner is Pro" — the `is_pro_trip` column does not).
     const { data: trip } = await supabaseAdmin
-      .from('trips').select('created_by, is_pro_trip, details').eq('id', tripId).single();
+      .from('trips').select('details').eq('id', tripId).single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    // Permission: owner (created_by) or an active admin/owner member.
-    let allowed = trip.created_by === user.id;
-    if (!allowed) {
-      const { data: m } = await supabaseAdmin
-        .from('trip_members').select('role')
-        .eq('trip_id', tripId).eq('user_id', user.id).eq('status', 'active').maybeSingle();
-      allowed = !!m && (m.role === 'admin' || m.role === 'owner');
+    // Permission: the `editor` step (_shared/tripAccess.ts).
+    if (!(await isCallerEditor(tripId, user.id))) {
+      return Response.json({ ok: false, code: 'FORBIDDEN' }, { headers: corsHeaders });
     }
-    if (!allowed) return Response.json({ ok: false, code: 'FORBIDDEN' }, { headers: corsHeaders });
 
     // Trip-level Pro from the single SQL source (is_trip_pro = is_pro_trip OR owner
     // is_user_pro, migration 0055). Used only to gate enabling PRO addons below.

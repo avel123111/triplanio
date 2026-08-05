@@ -3,46 +3,16 @@
  *
  * POST body: { trip_id, role: 'viewer'|'admin' }
  *
- * Auth: caller must be the trip owner or an active admin.
+ * Auth: the `editor` step — trip creator, or an active admin/owner member.
  * Mints (or reuses) a shareable invite link bound to the trip + role with a
  * 7-day expiry. The role is stored server-side with the token, never in the
  * URL, so it cannot be tampered with by the recipient.
  *
  * Returns: { token, role, expiresAt, reused }
- *
- * Self-contained (shared helpers inlined) so it deploys cleanly on its own.
  */
 import { withHandler } from '../_shared/http.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
-
-async function getRequestUser(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return null;
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-  if (error || !user) return null;
-  return user;
-}
-
-async function isCallerAdmin(tripId: string, userId: string): Promise<boolean> {
-  const { data: trip, error: tripErr } = await supabaseAdmin.from('trips').select('created_by').eq('id', tripId).single();
-  // Transient query failure must fail LOUD (→ 5xx via terminal catch), never read
-  // as "not admin" (false 403). PGRST116 = genuine no-such-trip → false. TRIP-208.
-  if (tripErr && (tripErr as { code?: string }).code !== 'PGRST116') throw tripErr;
-  if (!trip) return false;
-  if (trip.created_by === userId) return true;
-  const { data: members, error: memErr } = await supabaseAdmin
-    .from('trip_members').select('role')
-    .eq('trip_id', tripId).eq('user_id', userId).eq('status', 'active').limit(1);
-  if (memErr) throw memErr;
-  const role = members?.[0]?.role;
-  return role === 'admin' || role === 'owner';
-}
+import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 
 const LINK_TTL_DAYS = 7;
 
@@ -55,7 +25,7 @@ Deno.serve(withHandler('createTripInviteLink', async (req, corsHeaders) => {
     const role = body.role === 'admin' ? 'admin' : 'viewer';
     if (!tripId) return Response.json({ error: 'trip_id is required' }, { status: 400, headers: corsHeaders });
 
-    if (!(await isCallerAdmin(tripId, user.id))) {
+    if (!(await isCallerEditor(tripId, user.id))) {
       return Response.json({ error: 'Only trip admins can create invite links' }, { status: 403, headers: corsHeaders });
     }
 

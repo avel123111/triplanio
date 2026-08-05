@@ -9,7 +9,7 @@
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { isCallerAdmin } from '../_shared/tripAccess.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { renderRoleChangedNotification } from '../_shared/emailTemplate.ts';
 
 Deno.serve(withHandler('updateTripMemberRole', async (req, corsHeaders) => {
@@ -32,8 +32,8 @@ Deno.serve(withHandler('updateTripMemberRole', async (req, corsHeaders) => {
       return Response.json({ error: 'Cannot change owner role' }, { status: 400, headers: corsHeaders });
     }
 
-    const callerIsAdmin = await isCallerAdmin(member.trip_id, user.id);
-    if (!callerIsAdmin) {
+    const callerIsEditor = await isCallerEditor(member.trip_id, user.id);
+    if (!callerIsEditor) {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 
