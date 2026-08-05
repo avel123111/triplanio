@@ -17,7 +17,7 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
-import { displayName } from '@/lib/displayName';
+import { resolveAuthor } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
@@ -314,7 +314,9 @@ function TelegramSection({ tripId }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const displayName = (a) =>
+  // Formats a Telegram ACCOUNT, not a person — named apart from the shared
+  // people-name helpers so it cannot silently shadow one of them.
+  const tgName = (a) =>
     a.telegram_first_name || (a.telegram_username ? `@${a.telegram_username}` : t('telegram.unknown_user'));
   const handle = (a) => (a.telegram_username ? `@${a.telegram_username}` : '');
 
@@ -376,7 +378,7 @@ function TelegramSection({ tripId }) {
             <Icon name="telegram" size={17} />
           </div>
           <div className="grow--fit">
-            <div className="t-ui">{displayName(a)}</div>
+            <div className="t-ui">{tgName(a)}</div>
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </div>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
@@ -391,7 +393,7 @@ function TelegramSection({ tripId }) {
         <TelegramUnlinkDialog
           open={true}
           onOpenChange={(o) => { if (!o) setUnlinkState(null); }}
-          handle={handle(unlinkState.account) || displayName(unlinkState.account)}
+          handle={handle(unlinkState.account) || tgName(unlinkState.account)}
           onConfirm={() => doRemove(unlinkState.account)}
         />
       )}
@@ -401,18 +403,26 @@ function TelegramSection({ tripId }) {
 
 // ─── ApproverRow ──────────────────────────────────────────────────────────────
 
-function ApproverRow({ member, profile, locked }) {
+function ApproverRow({ member, profiles, members, locked }) {
   const { t } = useI18n();
   const [on, setOn] = useState(false);
-  const isDeleted = !!profile?.is_deleted;
-  const name = isDeleted ? t('common.deleted_user') : displayName(member.invite_email || profile?.email, profile?.full_name || member.user_full_name);
+  // Shared identity resolver (TRIP-334): name, avatar and the "anonymized
+  // account" label all come from the one ladder.
+  const who = resolveAuthor({
+    userId: member.user_id,
+    nameSnapshot: member.user_full_name,
+    profiles,
+    members,
+    deletedLabel: t('common.deleted_user'),
+    fallback: t('common.deleted_user'),
+  });
   const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
     <div className="row">
-      <Avatar name={name} photo={profile?.avatar_url || ''} deleted={isDeleted} size="sm" />
+      <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
       <div className="grow">
-        <div className="t-ui">{name}</div>
+        <div className="t-ui">{who.name}</div>
         <div className="muted t-meta">{roleLabel}</div>
       </div>
       {locked
@@ -880,8 +890,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {SHOW_HOTEL_VOTING && (
             <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
               <div className="col col--g4">
-                {approvers.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked />)}
-                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked={false} />)}
+                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} members={members} locked />)}
+                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} members={members} locked={false} />)}
                 {members.length === 0 && (
                   <div className="muted t-body">{t('settings.members_loading')}</div>
                 )}

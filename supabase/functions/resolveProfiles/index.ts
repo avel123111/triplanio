@@ -4,7 +4,9 @@
  * POST body: { tripId, userIds: string[] }
  *
  * Returns { id, full_name, avatar_url } for each user id — but only for ids
- * that are active participants of the trip (prevents leaking arbitrary profiles).
+ * inside the trip's profile scope (prevents leaking arbitrary profiles). That
+ * scope is shared with getTripDetails via tripProfileScope, so the two can't
+ * drift apart again (TRIP-334).
  *
  * Optimization: one WHERE id = ANY(...) query instead of N individual queries.
  *
@@ -15,7 +17,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
-import { PROFILE_COLUMNS, toProfile, type UserRow } from '../_shared/profiles.ts';
+import { fetchProfiles, tripProfileScope } from '../_shared/profiles.ts';
 
 const TRIPLANIO_BOT_EMAIL = 'info@triplanio.com';
 
@@ -42,10 +44,10 @@ Deno.serve(withHandler('resolveProfiles', async (req, corsHeaders) => {
       return Response.json({ error: 'Forbidden: not a trip participant' }, { status: 403, headers: corsHeaders });
     }
 
-    // Load trip owner + all active members + the bot id in parallel
+    // Load trip owner + every member row + the bot id in parallel
     const [tripResult, membersResult, botResult] = await Promise.all([
       supabaseAdmin.from('trips').select('created_by').eq('id', tripId).single(),
-      supabaseAdmin.from('trip_members').select('user_id').eq('trip_id', tripId).eq('status', 'active'),
+      supabaseAdmin.from('trip_members').select('user_id').eq('trip_id', tripId),
       supabaseAdmin.from('users').select('id').eq('email', TRIPLANIO_BOT_EMAIL).maybeSingle(),
     ]);
 
@@ -53,26 +55,13 @@ Deno.serve(withHandler('resolveProfiles', async (req, corsHeaders) => {
       return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
     }
 
-    const allowed = new Set<string>();
-    if (tripResult.data.created_by) allowed.add(tripResult.data.created_by);
-    (membersResult.data ?? [])
-      .filter((m: { user_id: string | null }) => m.user_id)
-      .forEach((m: { user_id: string }) => allowed.add(m.user_id));
-    if (botResult.data?.id) allowed.add(botResult.data.id);
-
-    // Keep only ids that are participants (+ AI bot exception)
-    const allowedIds = wanted.filter((id) => allowed.has(id));
-    if (allowedIds.length === 0) {
-      return Response.json({ profiles: [] }, { headers: corsHeaders });
-    }
-
-    // Single batch query — no N+1
-    const { data: userRows } = await supabaseAdmin
-      .from('users')
-      .select(PROFILE_COLUMNS)
-      .in('id', allowedIds);
-
-    const profiles = ((userRows ?? []) as UserRow[]).map(toProfile);
+    // Keep only ids inside the trip's scope (+ AI bot exception)
+    const allowed = new Set(tripProfileScope(
+      membersResult.data,
+      tripResult.data.created_by,
+      [botResult.data?.id],
+    ));
+    const profiles = await fetchProfiles(supabaseAdmin, wanted.filter((id) => allowed.has(id)));
 
     return Response.json({ profiles }, { headers: corsHeaders });
 

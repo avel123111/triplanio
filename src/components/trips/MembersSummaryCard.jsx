@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { displayName } from '@/lib/displayName';
+import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
 
 // "Who's going" widget on the trip Overview (Lumo .wdg + .mrow). Owns the
@@ -39,7 +39,9 @@ export default function MembersSummaryCard({
     );
     const rank = (m) => {
       if (m.role === 'owner') return 0;
-      if (m.status === 'pending' || m.status === 'invited') return 4;
+      // 'invited' is not a status: trip_members_status_check allows exactly
+      // pending / active / declined / offline.
+      if (m.status === 'pending') return 4;
       if (m.status === 'offline') return 3;
       if (m.role === 'admin') return 1;
       return 2; // viewer / editor
@@ -83,15 +85,23 @@ export default function MembersSummaryCard({
         ) : (
         <div className="col col--g4">
           {orderedMembers.map((m, i) => {
-            const profile = profiles[m.user_id];
-            const resolved =
-              profile?.full_name ||
-              m.user_full_name ||
-              (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '') ||
-              '';
-            const name = displayName(m.invite_email || profile?.email, resolved);
+            // Same SHARED resolver as the members screen and chat: its own copy
+            // of the ladder reproduced the bare "-" for an invited member who
+            // had deleted their account (TRIP-334).
+            const who = resolveAuthor({
+              userId: m.user_id,
+              nameSnapshot: m.user_full_name,
+              profiles,
+              members: orderedMembers,
+              selfUser: user,
+              deletedLabel: t('common.deleted_user'),
+              fallback: t('common.deleted_user'),
+            });
             const isOffline = m.status === 'offline';
-            const isPending = m.status === 'pending' || m.status === 'invited';
+            const isPending = m.status === 'pending';
+            // Line under the name: the invite state when there is one, else the
+            // address the resolver decided is worth showing.
+            const sub = isPending ? t('trip.member_pending') : who.email;
 
             const badgeClass = isPending || isOffline
               ? 'badge--quiet'
@@ -113,19 +123,14 @@ export default function MembersSummaryCard({
             return (
               <div className="mrow" key={m.id || i} style={{ opacity: isPending || isOffline ? 0.7 : 1 }}>
                 <Avatar
-                  name={name}
-                  photo={profile?.avatar_url || ''}
-                  deleted={profile?.is_deleted}
+                  name={who.name}
+                  photo={who.photo || ''}
+                  deleted={who.deleted}
                   kind={isPending ? 'placeholder' : undefined}
                 />
                 <div className="fl1">
-                  <div className="mn trunc">{name}</div>
-                  {(() => {
-                    const sub = isPending
-                      ? t('trip.member_pending')
-                      : m.invite_email || profile?.email || '';
-                    return sub ? <div className="me trunc">{sub}</div> : null;
-                  })()}
+                  <div className="mn trunc">{who.name}</div>
+                  {sub && <div className="me trunc">{sub}</div>}
                 </div>
                 <span className={`badge ${badgeClass}`}>
                   {isPending && <span className="dot" style={{ background: 'var(--warning)' }} />}
