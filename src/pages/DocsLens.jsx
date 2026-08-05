@@ -31,7 +31,7 @@ import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import './DocsLens.css';
 
@@ -77,7 +77,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   const qc           = useQueryClient();
   const { user }     = useAuth();
   const v    = useHybridValidation('document', { title });
-  const inv  = (f) => fieldStateClass(v.displayIssues, f);
+  const st   = (f) => fieldState(v.displayIssues, f);
 
   async function uploadFiles(files) {
     if (!files?.length) return;
@@ -206,9 +206,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
           {/* Title */}
           <Field label={t('trip.form_title_required')}>
-            <div data-vfield="title" className={inv('title')}>
-              <input
-                className="input"
+            <div data-vfield="title">
+              <Input
+                {...st('title')}
                 autoFocus={!isMobile}
                 value={title}
                 onChange={e => { setTitle(e.target.value); v.markTouched('title'); }}
