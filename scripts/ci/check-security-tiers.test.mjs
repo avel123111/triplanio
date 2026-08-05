@@ -17,6 +17,12 @@
  * returns nothing; the `undefined`-guard cases below pin the behaviour that
  * would then result (silence, deferring to the existence check) so it is a
  * deliberate choice rather than an accident.
+ *
+ * Everything here rides on the guard staying importable without side effects.
+ * That premise cannot be checked from this file — an import that calls
+ * process.exit(0) kills the runner before the first test registers, and the
+ * runner then prints "pass 1, fail 0" for the file. It is pinned from
+ * check-security-tiers.cli.test.mjs, which never imports the guard.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -109,21 +115,23 @@ test('команда, не объявленная в policies манифеста
   assert.deepEqual(checkBucketPredicates(drifted, manifest), []);
 });
 
-// Подстрока write-предиката не должна засчитываться за read-предикат и наоборот.
-test('имена предикатов не путаются на общем префиксе', () => {
+// Сверка идёт подстрокой (ПРЕДЕЛ, объявленный в манифесте). Пинним, что даже на
+// именах, где один предикат — префикс другого, дрейф всё равно ловится: read-половина
+// на таком имени промолчит, но «чтение ужалось» и «запись ослаблена» сработают.
+test('предикат-префикс: дрейф ловится обеими половинами правила', () => {
   const manifest = { b: { public: false, policies: ['select', 'insert'], readPredicate: '_can_read_x', writePredicate: '_can_read_x_write' } };
   const ok = [
     policy('b_select', '_can_read_x(name)'),
     policy('b_insert', '_can_read_x_write(name)'),
   ];
-  // b_insert содержит и '_can_read_x' как подстроку — это допустимо, проверяется
-  // только наличие write-предиката в write-политике.
   assert.deepEqual(checkBucketPredicates(ok, manifest), []);
 
   const bad = [
     policy('b_select', '_can_read_x_write(name)'), // чтение ужато
-    policy('b_insert', '_can_read_x(name)'),        // запись ослаблена
+    policy('b_insert', '_can_read_x(name)'),       // запись ослаблена
   ];
   const errors = checkBucketPredicates(bad, manifest);
   assert.equal(errors.length, 2);
+  assert.ok(errors.some((e) => /ужалось до редакторов/.test(e)));
+  assert.ok(errors.some((e) => e.includes("'b_insert'")));
 });

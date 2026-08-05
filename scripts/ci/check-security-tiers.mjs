@@ -27,6 +27,11 @@
  *     * client-вызываемая secdef не в манифесте (грабля PUBLIC EXECUTE) → FAIL (IF3);
  *     * client-вызываемая secdef без ссылки на авторизацию в теле → FAIL (IF4, кроме
  *       authzExempt) — ловит мутатор, забывший проверить права.
+ *     STORAGE (бакеты):
+ *     * флаг public бакета разошёлся с манифестом / публичный бакет с SELECT-политикой
+ *       (анонимный листинг, TRIP-48) → FAIL;
+ *     * заявленная политика отсутствует ИЛИ стоит не на том предикате, что объявлен
+ *       в BUCKETS.readPredicate/writePredicate → FAIL (TRIP-274).
  *   Ловит дрейф, внесённый миграцией, сразу после накатывания.
  *
  * Модель совпадает с ассертом verify_jwt: PR-гейт статики + пост-деплой live-ассерт.
@@ -81,37 +86,39 @@ function checkStatic() {
 }
 
 // ── Предикаты storage-политик (TRIP-274) ─────────────────────────────────────
-// Чистая функция ради теста: вся развилка «какая политика каким предикатом
-// обязана быть» проверяется на фикстурах, без живой БД. Наличие политики уже
-// проверяется отдельно — здесь только ТЕКСТ.
-//
-// `policies` — [{ name, pred }] из pg_policies (pred = qual + with_check).
-// Возвращает массив сообщений об ошибках (пустой = всё сошлось).
 const WRITE_CMDS = ['insert', 'update', 'delete'];
 
+// Чистая функция ради теста: вся развилка «какая политика каким предикатом
+// обязана быть» проверяется на фикстурах, без живой БД. Наличие политики ловит
+// проверка ниже — здесь только ТЕКСТ.
+// `policies` — [{ name, pred }] из pg_policies (pred = qual + with_check).
+// Возвращает массив сообщений об ошибках (пустой = всё сошлось).
 export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
-  const pred = new Map((policies || []).map((p) => [p.name, p.pred || '']));
+  const predOf = new Map(policies.map((p) => [p.name, p.pred || '']));
   const errors = [];
 
   for (const [bucket, r] of Object.entries(buckets)) {
     const { readPredicate, writePredicate } = r;
     if (!readPredicate && !writePredicate) continue; // бакет без объявленных предикатов — только проверка наличия
 
-    const selectPred = pred.get(`${bucket}_select`);
-    if (readPredicate && selectPred !== undefined && !selectPred.includes(readPredicate)) {
-      errors.push(`storage-дрейф: политика '${bucket}_select' не ссылается на read-предикат '${readPredicate}' — чтение бакета '${bucket}' держит кто-то другой`);
+    // undefined = политики нет вовсе; это ловит проверка наличия, не эта.
+    const selectPred = predOf.get(`${bucket}_select`);
+    if (selectPred !== undefined) {
+      if (readPredicate && !selectPred.includes(readPredicate)) {
+        errors.push(`storage-дрейф: политика '${bucket}_select' не ссылается на read-предикат '${readPredicate}' — чтение бакета '${bucket}' держит кто-то другой`);
+      }
+      // Ужесточение SELECT до write-предиката — регрессия чтения: участник
+      // перестаёт видеть файлы трипа. Молчаливая, потому что политика на месте.
+      if (writePredicate && selectPred.includes(writePredicate)) {
+        errors.push(`storage-дрейф: политика '${bucket}_select' ссылается на write-предикат '${writePredicate}' — чтение ужалось до редакторов`);
+      }
     }
-    // Ужесточение SELECT до write-предиката — регрессия чтения: участник
-    // перестаёт видеть файлы трипа. Молчаливая, потому что политика на месте.
-    if (writePredicate && selectPred !== undefined && selectPred.includes(writePredicate)) {
-      errors.push(`storage-дрейф: политика '${bucket}_select' ссылается на write-предикат '${writePredicate}' — чтение ужалось до редакторов`);
-    }
+
     if (!writePredicate) continue;
     for (const cmd of WRITE_CMDS) {
       if (!(r.policies || []).includes(cmd)) continue;
-      const p = pred.get(`${bucket}_${cmd}`);
-      if (p === undefined) continue; // отсутствие политики ловит проверка наличия
-      if (!p.includes(writePredicate)) {
+      const cmdPred = predOf.get(`${bucket}_${cmd}`);
+      if (cmdPred !== undefined && !cmdPred.includes(writePredicate)) {
         errors.push(`storage-дрейф: политика '${bucket}_${cmd}' не ссылается на write-предикат '${writePredicate}' — запись в бакет '${bucket}' гейтится не той ступенью`);
       }
     }

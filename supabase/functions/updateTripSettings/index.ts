@@ -2,11 +2,11 @@
  * updateTripSettings
  *
  * Writes to the `trips` table on behalf of OWNER or active ADMIN members — the
- * `editor` tier of the access model (TRIP-274). Since TRIP-190 Ф3c `trips` has
- * no write policy at all and `update` is revoked from `authenticated`, so NO
- * client can change title/currency/cover/addons directly, the creator included:
- * this function (service role) is the only write path. It checks the tier
- * itself and gates enabling Pro addons.
+ * same set `_can_edit_trip` lets through on the content tables. Since TRIP-190
+ * Ф3c `trips` has no write policy at all and `update` is revoked from
+ * `authenticated`, NO client can change title/currency/cover/addons directly,
+ * the creator included: this function (service role) is the only write path, so
+ * the membership+role check below IS the gate. It also gates enabling Pro addons.
  *
  * POST body: { tripId, fields?, addons?, main_currency?, display? }
  *   fields       — whitelisted top-level columns (title, description, cover_image_url, cover_gradient, notes)
