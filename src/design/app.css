@@ -931,7 +931,6 @@ h4,
 .acct-plan__k,
 .acct-tgtrips__lbl,
 .plan-popular-badge,
-.ev-sec-lbl,
 .kv .k,
 .sec-lbl .sl,
 .nextcard__tag,
@@ -4981,7 +4980,14 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
 .ev-sec{padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
-.ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ev-color,var(--brand));}
+/* Заголовок раздела - ОДИН на просмотр и на форму (TRIP-333). Раньше это были
+   два разных объекта: тут мелкая метка канона `.t-micro` цветом типа события, а
+   в форме (`.acc__title`) - `.t-ui` цветом `--ink`. Один и тот же «Детали
+   брони» читался как подпись в одном месте и как заголовок в другом.
+   Канон и цвет теперь общие (`.t-ui` ставится в разметке, цвет `--ink`), а
+   тип события несёт ПЛАНКА-АКЦЕНТ ниже - это вариация чтения, как шеврон и
+   бейдж - вариация формы. */
+.ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ink);}
 .ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
 /* key/value grid */

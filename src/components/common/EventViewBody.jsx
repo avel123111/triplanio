@@ -122,7 +122,9 @@ export function stayNights(checkInIso, checkOutIso) {
 export function Section({ title, accent, count, children }) {
   return (
     <div className="ev-sec" style={accent ? { '--ev-color': accent } : undefined}>
-      <div className="ev-sec-lbl">
+      {/* Канон тот же, что у заголовка раздела в форме (`.acc__title`) — раздел
+          один объект, и подпись на нём одна. Тип события несёт планка-акцент. */}
+      <div className="ev-sec-lbl t-ui">
         {title}{count != null && count > 0 ? ` · ${count}` : ''}
       </div>
       {children}
