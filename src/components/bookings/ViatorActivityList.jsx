@@ -84,7 +84,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
   // Removing a chip must clear the popover DRAFT too, not just the committed
   // filters: the chips row stays visible while the popover is open, so a stale
   // draft would re-apply the filter on the next "Поиск" and the removal would
-  // look ineffective. Same helper shape as Stay22HotelList (Codex, PR #666).
+  // look ineffective. Same helper shape as Stay22HotelList (found in review).
   const dropChip = (patch) => { applyFilters(patch); setPending((d) => ({ ...d, ...patch })); };
   const removePrice = () => dropChip({ min: '', max: '' });
   const removeFree = () => dropChip({ freeCancel: false });

@@ -141,7 +141,7 @@ export default function Stay22HotelList({
   // CLIENT range. Each also clears the popover DRAFT — the chips row stays visible
   // while the popover is open, so a stale draft would re-apply the filter on the
   // next "Поиск" and the removal would look ineffective. Same helper shape as
-  // ViatorActivityList (Codex, PR #666).
+  // ViatorActivityList (found in review).
   const dropChip = (draftPatch, commit) => { setPending((d) => ({ ...d, ...draftPatch })); commit(); };
   const removeGuests = () => dropChip(BASE_GUESTS, () => onApply({ ...(appliedProvider ? { provider: appliedProvider } : {}) }));
   const removePlatform = () => dropChip({ provider: 'all' }, () => onApply({ adults: applied?.adults, children: applied?.children, rooms: applied?.rooms }));
