@@ -241,8 +241,6 @@
 
 /* Day card */
 .ncal-wdc {
-  background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: var(--r-card);
   overflow: hidden;
   box-shadow: var(--sh-1);

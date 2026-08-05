@@ -7,8 +7,9 @@
  * same content. TRIP-333 §4: the chrome around it is shared too - header, body
  * and footer are the `.lp-*` canon, the same one `PanelShell` renders; this
  * module owns only the CONTAINER (a Radix dialog instead of an inline panel).
- * `.ev-dlg` on the container is no longer a chrome family - it is what scopes
- * the form-label colour to the event shell (see `.ev-dlg .field__label`).
+ * `.ev-dlg` тут больше нет: единственное, что этот класс делает, - скоупит цвет
+ * подписи поля (`.ev-dlg .field__label`), а в ПРОСМОТРЕ полей нет ни одного.
+ * Он остался только на редакторе, где действительно несёт эту роль.
  *
  * Accepts TWO call shapes:
  *   New:    <EventModal open onOpenChange entity kind visit fromVisit toVisit onEdit readOnly />
@@ -111,7 +112,7 @@ export default function EventModal(props) {
               {priceText && <span className="t-mono">{priceText}{entity.currency ? ` ${entity.currency}` : ''}</span>}
             </div>
           </div>
-          <button className="ev-dlg-close" onClick={() => setOpen(false)} aria-label={t('common.close')}>
+          <button className="lp-back" onClick={() => setOpen(false)} aria-label={t('common.close')}>
             <X />
           </button>
         </div>

@@ -103,7 +103,7 @@ export default function CityPanel({
           <b>{node.city_name}</b>
           {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}
         </div>
-        <button className="ev-dlg-close" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
+        <button className="lp-back" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
       </div>
 
       <div className="lp-b scrollbar-thin">

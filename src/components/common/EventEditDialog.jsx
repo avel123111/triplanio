@@ -1213,7 +1213,7 @@ export default function EventEditDialog({
                 <div className="lp-tirow"><b className="t-title">{title}</b></div>
               </div>
               <button
-                className="ev-dlg-close"
+                className="lp-back"
                 onClick={() => onOpenChange?.(false)}
                 title={isPanel ? t('common.back') : undefined}
                 aria-label={isPanel ? t('common.back') : t('common.cancel')}

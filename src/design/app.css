@@ -398,7 +398,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    Расширять — дописать имя сюда, а НЕ скопировать пару к себе.
    ================================================================= */
 /* карточки, панели, виджеты (канон TRIP-189; .surface-glass/.surface-panel — алиасы одной роли) */
-.surface-glass, .surface-panel,
+.surface-glass,
 .statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
 .card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
 .chat-reply__card, .pl-lastcard,
@@ -410,6 +410,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* карточки разделов и панели экранов */
 .addon-card, .tm-manage, .tm-account, .records, .eroute,
 .hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel,
+/* держали эту пару своей копией, а не именем в роли */
+.eed-fcbox, .eed-nightrow, .docfield, .choice-card,
+.plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
 .cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
 .pro-up .lockmsg, .map-ctl button, .map-legend .c, .mapfs-close,
@@ -428,7 +431,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* Контрол с сильной рамкой — граница несёт кликабельность (фильтр-пилюля,
    «назад», крестик диалога). Композер чата отсюда ушёл: он `InputGroup`, фон и
    рамку держит группа (TRIP-333). */
-.fpill, .lp-back, .ev-dlg-close {
+.fpill, .lp-back {
   background: var(--surface);
   border: 1px solid var(--line-strong);
 }
@@ -1258,8 +1261,10 @@ h4,
 .btn--primary:active { --bg: var(--primary-press); }
 .btn--secondary { --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong); }
 .btn--secondary:hover { --bd: var(--brand); --fg: var(--brand); box-shadow: var(--sh-1); }
-.btn--soft { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
-.btn--soft:hover { --bg: var(--primary-soft-2); }
+/* `.btn.is-on` было ВТОРЫМ именем для этого же состояния - набор объявлений
+   совпадал побайтово. Сведено в один селектор, второе имя удалено. */
+.btn--soft, .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
+.btn--soft:hover, .btn.is-on:hover { --bg: var(--primary-soft-2); }
 .btn--ghost { --bg: transparent; --fg: var(--ink-2); --bd: transparent; }
 .btn--ghost:hover { --bg: var(--surface-2); --fg: var(--ink); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
@@ -1295,7 +1300,6 @@ h4,
    --icon (42x42) выпилена как мёртвая: ноль потребителей, реальные иконочные
    кнопки живут на отдельном .icon-btn (34x34). */
 .btn--block { width: 100%; }
-.btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
 
 /* Strong card lift (collection cards): -2px + card shadow. Declarative replacement
    for JS onMouseEnter style mutation; the base border lives here (not inline) so
@@ -1317,7 +1321,6 @@ h4,
    одинаковый результат. Внутреннюю раскладку (падинги/хедеры/overflow)
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
 .surface-glass,
-.surface-panel,
 .statbar,                  /* полоса статистики — /trips и обзор трипа */
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
@@ -1913,8 +1916,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .avatar--lg { width: 36px; height: 36px; }
 .avatar--sm { width: 22px; height: 22px; }
 .avatar--ai { background: var(--ai-gradient) !important; }
-.avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1px dashed var(--line); }
-.avatar--deleted { background: var(--wash) !important; color: var(--muted) !important; }
+/* Аватар БЕЗ картинки - один скин на оба случая (инициалы и удалённый
+   аккаунт), объявлен один раз. Два имени тут не дубль, а настоящая вариация:
+   различает их ровно пунктирная рамка, и она объявлена отдельной строкой -
+   ровно то, чем вариация и должна быть. Раньше общая половина была написана
+   дважды побайтово, и правка одной копии молча расходилась с другой. */
+.avatar--placeholder, .avatar--deleted { background: var(--wash) !important; color: var(--muted) !important; }
+.avatar--placeholder { border: 1px dashed var(--line); }
 
 .avatar-stack { display: inline-flex; }
 .avatar-stack .avatar { margin-left: -8px; }
@@ -2233,6 +2241,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Phones: burger → bottom-nav "…", profile → bottom-nav. Theme + bell are
    already hidden ≤880 (.app-header .icon-btn), so the phone header is just
    back + brand/title. Content scrollers get clearance for the floating nav. */
+
+/* Оболочка отдельного экрана приложения (Путешествия · Аккаунт · Входящие ·
+   Статистика · Pro). Класс существовал ТОЛЬКО в разметке и в медиа-запросе
+   ниже, а свою раскладку все ПЯТЬ экранов писали одинаковым инлайном в пять
+   строк. Повторённый у существующего класса инлайн - ошибка класса, поэтому
+   объявление стоит здесь, а у вызывателей не осталось ничего.
+   Телефонная половина (фикс-высота, свой скролл внутри) - в медиа ниже, она
+   эти значения перебивает намеренно. */
+.app-shell {
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg, var(--wash));
+}
+
 @media (max-width: 640px) {
   .app-header__menu { display: none; }
   .app-header__account { display: none; }
@@ -2323,8 +2345,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
-  border: 1px solid var(--line); border-radius: var(--r-card);
-  background: var(--surface); cursor: pointer; text-align: left;
+  border-radius: var(--r-card);
+  cursor: pointer; text-align: left;
   transition: border-color .2s, box-shadow .22s, transform .16s var(--ease-spring);
 }
 .choice-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--brand); }
@@ -3504,7 +3526,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ушли ко-селекторы `.ti b` и `.ti span` из списков типографики выше. */
 /* Unified panel back button — solid surface chip, always clearly visible with a
    non-blending hover (used in every light panel header). */
-.lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
+/* Кнопка «уйти отсюда» в шапке панели/диалога. Была ДВУМЯ классами: этот и
+   `.ev-dlg-close` - в одной и той же шапке `.lp-h`, разной формы (34px пилюля
+   против 30px со скруглением контрола) и разного цвета покоя. Объект один:
+   пять точек вызова из семи носили второй, поэтому его форма и победила, а имя
+   осталось за этим - оно не врёт про объект и живёт в семействе шапки.
+   Вариация - ТОЛЬКО иконка (× или стрелка), её ставит вызыватель.
+   Подсветку несёт ручка `--hl` ниже по файлу, а не своё правило ховера. */
+.lp-back { width: 30px; height: 30px; border-radius: var(--r-sm); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
+.lp-back svg { width: 15px; height: 15px; }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
@@ -4617,7 +4647,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* ── Plan card ── */
 .plan-card {
   position: relative; display: flex; flex-direction: column;
-  background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r-card);
   transition: box-shadow .22s var(--ease-out), border-color .2s;
 }
@@ -4684,8 +4713,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Plan card skeleton — THIS is the only thing that animates in (staggered). The
    real .plan-card then swaps in statically on top, so the reveal plays once. */
 .plan-card-skel {
-  border-radius: var(--r-card); background: var(--surface);
-  border: 1px solid var(--line); padding: 24px;
+  border-radius: var(--r-card); padding: 24px;
   animation: cardReveal .45s var(--ease-out) var(--card-delay, .05s) both;
 }
 
@@ -4697,7 +4725,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .pro-trip-bar {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 18px 22px; border-radius: var(--r-card);
-  border: 1px solid var(--line); background: var(--surface);
 }
 .pro-trip-bar__actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
@@ -4928,20 +4955,17 @@ a.doc-row__n:hover{ color: var(--brand); }
    тело, футер) удалено в TRIP-333 §4: у события одна оболочка, и она общая с
    панелями - `.lp-h` / `.lp-b` / `.lp-f` (объявлены ниже, в блоке EDITOR SIDE
    PANELS). Здесь остаётся то, что живёт ВНУТРИ оболочки и одинаково в обеих:
-   крестик, ряд действий, секции, пары ключ-значение, поля формы.
+   ряд действий, секции, пары ключ-значение, поля формы.
    Тон берётся из --ev-color/--ev-soft/--ev-ink, которые вызыватель ставит на
    корень оболочки (`.ev-dlg` у модалки, `.lp` у панели).
-   ⚠`.ev-dlg-close` носят и панели (город, событие, добавление брони) - имя
-   осталось от диалога, объект общий.
+   ★Кнопка ухода тоже уехала: `.ev-dlg-close` был вторым именем для `.lp-back`
+   и удалён, объект один (см. `.lp-back` в блоке панелей).
    ⚠Своего правила у `.ev-dlg` нет и не нужно: три объявления, что тут стояли
    (`display:flex; flex-direction:column; overflow:hidden`), слово в слово
    повторяли `.dlg`, а `.dlg` носит КАЖДЫЙ DialogContent. Класс остаётся
    ЗАЦЕПКОЙ для `.ev-dlg .field__label` - он метит «это оболочка события»,
    а не рисует её.
    ═══════════════════════════════════════════════════════════════════════════ */
-.ev-dlg-close{width:30px;height:30px;border-radius:var(--r-sm);color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:background .12s,color .12s;}
-.ev-dlg-close:hover{background:var(--surface-2);color:var(--ink);}
-.ev-dlg-close svg{width:15px;height:15px;}
 /* Top action chips (booking link + "on map") — wrap on narrow widths. */
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
@@ -5127,7 +5151,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .lp-tirow { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
 .lp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-tirow span { flex: none; }
-.lp-h--ev .lp-back { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .sec-lbl .sl { color: var(--ev-ink, var(--brand)); }

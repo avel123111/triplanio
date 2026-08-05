@@ -69,7 +69,7 @@ export default function AddBookingPanel({
             {subtitle && <span className="t-meta">{subtitle}</span>}
           </div>
         </div>
-        <button className="ev-dlg-close" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
+        <button className="lp-back" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
           <X size={15} />
         </button>
       </div>

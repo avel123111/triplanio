@@ -70,16 +70,21 @@
   color: var(--muted); padding: 2px 4px;
 }
 
-/* ─── Link row (in card: visual only; in detail: real link) ───── */
+/* ─── Link row (в карточке: только вид; в диалоге ссылка своя, .dl-dview-link) ───
+   Была залита токенами события «ОТЕЛЬ» (--ev-hotel-soft / --ev-hotel-ink), хотя
+   ссылка произвольная и к отелю отношения не имеет: смысл токена к объекту не
+   относится. Тон нейтральный. Цвета обеих иконок стояли инлайнами тем же чужим
+   токеном - переехали сюда. */
 .dl-linkrow {
   display: flex; align-items: center; gap: 9px;
   padding: 9px 11px; border-radius: var(--r-sm);
-  background: var(--ev-hotel-soft); text-decoration: none;
+  background: var(--wash); text-decoration: none;
 }
 .dl-linkrow b {
-  color: var(--ev-hotel-ink); flex: 1;
+  color: var(--ink-2); flex: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.dl-linkrow svg { color: var(--muted); flex-shrink: 0; }
 
 /* ─── Add-card ghost placeholder in grid ─────────────────────── */
 .dl-addcard {

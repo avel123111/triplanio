@@ -86,7 +86,7 @@
 
 /* expense rows */
 .bgt-exlist { padding-top: var(--sp-7); }
-.bgt-exrow { padding: var(--sp-6); border-radius: var(--r-btn); background: var(--surface); border: 1px solid var(--line); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+.bgt-exrow { padding: var(--sp-6); border-radius: var(--r-btn); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 .bgt-exrow__t { color: var(--ink); }
 .bgt-exrow__s { color: var(--muted); margin-top: var(--sp-2); }
 .bgt-exrow__s .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-2); flex: none; }

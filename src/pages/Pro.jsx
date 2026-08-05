@@ -190,7 +190,7 @@ export default function Pro() {
   return (
     <div
       className="pro-page app-shell"
-      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}
+     
     >
 
       {/* ── App header ── */}
