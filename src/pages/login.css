@@ -467,7 +467,7 @@
 .appframe {
   background: #fff;
   color: var(--ink);
-  border-radius: var(--r-md);
+  border-radius: var(--r-btn);
   border: 1px solid rgba(255,255,255,.4);
   box-shadow: 0 2px 8px rgba(0,0,0,.18), 0 30px 80px -24px rgba(0,0,0,.55);
   overflow: hidden;

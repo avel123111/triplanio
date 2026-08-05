@@ -78,7 +78,7 @@
 .pt-reader{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,40%);column-gap:44px;align-items:start;border-top:1px solid var(--line);padding-top:34px;padding-bottom:20px}
 .pt-left{min-width:0}
 .pt-mapcol{position:sticky;top:84px;height:calc(100vh - 110px);min-height:460px}
-.pt-mapbox{position:relative;height:100%;border-radius:var(--r-card);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-1);background:var(--surface-3)}
+.pt-mapbox{position:relative;height:100%;border-radius:var(--r-btn);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-1);background:var(--surface-3)}
 /* Bottom-left caption: which city the camera is on + its nights. */
 .pt-mapcap{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 14px 9px 11px;border-radius:var(--r-pill);background:var(--surface);border:1px solid var(--line);box-shadow:var(--sh-1)} /* TRIP-326: glass→opaque */
 .pt-mapcap__pill{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--brand);color:#fff}

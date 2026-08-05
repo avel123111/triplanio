@@ -2,7 +2,7 @@
    CalendarLens — Lumo redesign (ncal-* namespace)
    All colours via existing app.css tokens — no new values introduced.
 
-   Радиусы: тоже токены (--r-card / --r-md / --r-sm / --r-pill). Сырыми
+   Радиусы: тоже токены (--r-xl / --r-btn / --r-sm / --r-pill). Сырыми
    осознанно оставлены только микро-скругления, лежащие НИЖЕ шкалы
    (её минимум - --r-sm): чип события, точка, полоска agenda-события
    и свотч легенды. Свой токен под них не заводим.
@@ -126,7 +126,7 @@
 
 /* ── Day cell ──────────────────────────────────────────────────── */
 .ncal-dc {
-  border-radius: var(--r-md);
+  border-radius: var(--r-btn);
   overflow: hidden;
   padding: 0 0 8px;
   min-height: 100px;
@@ -241,7 +241,7 @@
 
 /* Day card */
 .ncal-wdc {
-  border-radius: var(--r-card);
+  border-radius: var(--r-btn);
   overflow: hidden;
   box-shadow: var(--sh-1);
   display: flex; flex-direction: column;
@@ -402,7 +402,7 @@
     grid-template-columns: repeat(7, minmax(130px, 1fr));
     gap: 6px; min-width: unset;
   }
-  .ncal-wdc         { border-radius: var(--r-md); }
+  .ncal-wdc         { border-radius: var(--r-btn); }
   .ncal-wdc-cbar    { height: 4px; }
   .ncal-wdc-h       { padding: 10px 10px 8px; }
   .ncal-wdc-num     { font-size: var(--fs-h3); }
