@@ -24,7 +24,7 @@ import {
   Trash2, X,
 } from 'lucide-react';
 import {
-  useEventViewModel, useEntityDocs, EventViewSections,
+  useEventViewModel, useEntityDocs, EventViewSections, eventHeader,
 } from '@/components/common/EventViewBody';
 
 // ── Eyebrow (category line) per kind — текст без инлайн-иконки ────────────────
@@ -49,7 +49,7 @@ function getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel) 
 }
 
 export default function EventModal(props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   // Adapt the two call shapes into a single internal shape.
   const legacy = !!props.event;
@@ -84,7 +84,9 @@ export default function EventModal(props) {
 
   if (!entity || !kind || !vm) return null;
   const { theme, themeLabel, title, priceText } = vm;
-  const eyebrow = getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel);
+  // Шапка - ОБЩИЙ шов, тот же, что у создания и у редактирования.
+  const hdr = eventHeader({ kind, visit, fromVisit, toVisit, entity, t, lang });
+  const eyebrow = kind === 'service' ? getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel) : hdr.eyebrow;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -108,8 +110,10 @@ export default function EventModal(props) {
           <div className="lp-ti">
             <div className="eyebrow">{eyebrow}</div>
             <div className="lp-tirow">
-              <DialogTitle asChild><b className="t-title">{title || themeLabel}</b></DialogTitle>
-              {priceText && <span className="t-mono">{priceText}{entity.currency ? ` ${entity.currency}` : ''}</span>}
+              <DialogTitle asChild><b className="t-title">{(kind === 'service' ? title : hdr.title) || themeLabel}</b></DialogTitle>
+              {kind === 'service'
+                ? (priceText && <span className="t-mono">{priceText}{entity.currency ? ` ${entity.currency}` : ''}</span>)
+                : (hdr.sub && <span className="t-meta">{hdr.sub}</span>)}
             </div>
           </div>
           <button className="lp-back" onClick={() => setOpen(false)} aria-label={t('common.close')}>
