@@ -99,7 +99,7 @@ export default function EventModal(props) {
             Содержимое второй строки у оболочек РАЗНОЕ и таким остаётся: панель
             просмотра ставит туда даты проживания, диалог - цену. */}
         <div className="lp-h lp-h--ev">
-          <span className="lp-ic" style={{ background: theme.color, color: '#fff' }}><theme.Icon /></span>
+          <span className="lp-ic"><theme.Icon /></span>
           <div className="lp-ti">
             <div className="eyebrow">{eyebrow}</div>
             <div className="lp-tirow">

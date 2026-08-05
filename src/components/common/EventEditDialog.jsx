@@ -1204,7 +1204,7 @@ export default function EventEditDialog({
               «назад», из модалки - «отмена»). */}
           {embedded ? null : (
             <div className="lp-h lp-h--ev">
-              <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><meta.Icon /></span>
+              <span className="lp-ic"><meta.Icon /></span>
               <div className="lp-ti">
                 <div className="eyebrow" style={{ color: meta.color }}>{t(meta.labelKey)}</div>
                 <div className="lp-tirow"><b className="t-title">{title}</b></div>

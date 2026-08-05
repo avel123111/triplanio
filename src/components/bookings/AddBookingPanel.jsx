@@ -58,10 +58,10 @@ export default function AddBookingPanel({
   const close = () => onClose?.();
 
   return (
-    <div className="lp lp--wide abp" style={{ '--ev-soft': meta.soft, '--ev-ink': meta.color }}>
+    <div className="lp lp--wide abp" style={{ '--ev-color': meta.color, '--ev-soft': meta.soft, '--ev-ink': meta.color }}>
       {/* Shared contextual header (× closes the panel). */}
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><HeaderIcon size={18} /></span>
+        <span className="lp-ic"><HeaderIcon size={18} /></span>
         <div className="lp-ti">
           <div className="eyebrow" style={{ color: meta.color }}>{t(meta.eyebrowKey)}</div>
           <div className="lp-tirow">
