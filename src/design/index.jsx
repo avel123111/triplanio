@@ -7,6 +7,7 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
 import { detectPartner } from '@/lib/externalBrands';
 import { transferKind } from '@/lib/transport';
+import FileTypeBadge from '@/components/common/FileTypeBadge';
 
 // =====================================================================
 // Primitive layer (Radix-backed) — single import surface.
@@ -84,10 +85,14 @@ const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "c
 // iconStyle - тинт плитки из реестра брендов. Это ДАННЫЕ, а не тон системы:
 // плашка остаётся системной, фирменный цвет несёт только плитка (то же решение,
 // что принято на экране аккаунта - фон плитки есть оттенок её значка).
-export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align }) => (
-  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}`}>
+// dashed  - плашка не сообщает состояние, а ЗОВЁТ нажать (разрешить геолокацию).
+//           Тот же язык, что у кнопок добавления: пунктир = «здесь пока пусто».
+// loading - на месте значка канон-спиннер, как у <Btn loading> (TRIP-130).
+//           Плашка «идёт сохранение» рисовалась руками там же, где и остальные.
+export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align, dashed, loading }) => (
+  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}${dashed ? " sev--dashed" : ""}`}>
     <span className="tile sev__icon" style={iconStyle}>
-      <Icon name={icon || SEV_ICON[level] || "info"} size={16} />
+      {loading ? <span className="spin spin--ring" /> : <Icon name={icon || SEV_ICON[level] || "info"} size={16} />}
     </span>
     <div className="grow--fit">
       {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
@@ -96,6 +101,41 @@ export const Severity = ({ level = "info", title, children, action, icon, iconSt
     {action}
   </div>
 );
+
+// ----- FileRow ----- (TRIP-321 Ф14.7, апрув Pavel)
+// ЕДИНСТВЕННАЯ строка вложенного файла. До неё их было шесть штук в пяти файлах,
+// и общий класс их не спас: рамку они делили, а имя файла рисовали ТРЕМЯ разными
+// способами - <b> (жирный), <a style={{color: brand}}> (синий) и <span>
+// (обычный); у половины был размер файла, у половины нет; отступ то 8, то 10.
+// Разметка-под-общим-классом это не лечит, потому что расходится не рамка, а
+// содержимое - поэтому здесь компонент, а не ещё один модификатор.
+//   href   - имя становится ссылкой (файл открывается в новой вкладке);
+//   size   - готовая строка размера, мета-ярусом справа;
+//   tone   - 'ai' для распознавания брони, иначе нейтральная рамка;
+//   plain  - строка без рамки (список вложений в просмотре события);
+//   action - кнопка справа (снять вложение), общий класс .doc-row__rm.
+// ★Кликабельна ВСЯ строка, а не только имя: подсветка при наведении лежит на
+// строке (.doc-row:hover), и если ссылкой будет одно имя, то подсвеченное поле
+// шире кликабельного - на телефоне это просто «не нажимается». Ссылкой строка
+// становится только когда действия справа нет: <button> внутри <a> невалиден,
+// поэтому у строки с крестиком ссылка остаётся на имени.
+export const FileRow = ({ name, href, size, tone, plain, action, fallback }) => {
+  const label = name || fallback || '';
+  const cls = `doc-row row${plain ? '' : tone === 'ai' ? ' doc-row--ai' : ' doc-row--framed'}`;
+  const wholeRowIsLink = href && !action;
+  const Root = wholeRowIsLink ? 'a' : 'div';
+  const rootProps = wholeRowIsLink ? { href, target: '_blank', rel: 'noreferrer' } : {};
+  return (
+    <Root className={cls} {...rootProps}>
+      <FileTypeBadge name={name} />
+      {href && action
+        ? <a className="doc-row__n grow--fit trunc" href={href} target="_blank" rel="noreferrer">{label}</a>
+        : <span className="doc-row__n grow--fit trunc">{label}</span>}
+      {size && <span className="ds">{size}</span>}
+      {action}
+    </Root>
+  );
+};
 
 // ----- ReadOnlyBanner ----- (TRIP-225)
 // Единый баннер роли наблюдателя (viewer read-only), раньше копипастился в
@@ -201,10 +241,15 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 // boxed - компактный вариант внутри карточки/диалога (подложка + рамка).
 // iconStyle - тинт плитки из реестра брендов, как у Severity: сам примитив
 // остаётся системным, фирменный цвет несёт только плитка.
+// Тон плитки - КАРТА, а не вилка: раньше «всё, что не error» молча становилось
+// брендовым, и экран «трип создан» рисовал свою зелёную плитку руками мимо
+// примитива. Новый тон = новая строка, как у SEV_ICON выше.
+const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warning: "warning" };
+
 export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
   <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
     <div
-      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${kind === "error" ? "danger" : "brand"}`}
+      className={`tile ${boxed ? "tile--xl" : "tile--2xl"} tile--${EMPTY_TONE[kind] || "brand"}`}
       style={iconStyle}
     >
       <Icon name={icon} size={boxed ? 21 : 28} />

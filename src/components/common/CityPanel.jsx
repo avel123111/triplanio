@@ -98,7 +98,7 @@ export default function CityPanel({
         <span className="lp-ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
           {isWaypoint ? <Icon name="arrowSwap" size={17} /> : <b className="t-strong">{cityNo}</b>}
         </span>
-        <div className="lp-ti lp-ti--stack">
+        <div className="lp-ti col col--g1">
           <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
           <b>{node.city_name}</b>
           {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}

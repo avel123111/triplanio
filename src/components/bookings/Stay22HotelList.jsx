@@ -211,7 +211,7 @@ export default function Stay22HotelList({
 
         <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
-          <div className="s22f-guestgrid">
+          <div className="grid grid--2 grid--g4">
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
               <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />

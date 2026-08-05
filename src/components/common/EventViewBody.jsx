@@ -15,7 +15,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Severity, useToast } from '@/design/index';
+import { FileRow, Severity, useToast } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -35,10 +35,9 @@ const withCityName = (v, lang) => (v ? { ...v, city_name: v.city_name || cityLab
 import {
   Map as MapIcon, MapPin, Calendar,
   BedDouble, Car as CarIcon, Ticket,
-  ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
+  ShieldCheck, Phone, Mail, Hash, ExternalLink, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import FileTypeBadge from '@/components/common/FileTypeBadge';
 import { transferKind } from '@/lib/transport';
 
 /**
@@ -53,19 +52,16 @@ import { transferKind } from '@/lib/transport';
 function DocRows({ docs }) {
   const { t } = useI18n();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="col col--g3">
       {docs.map((d, i) => (
-        <a
+        <FileRow
           key={`${d.file_url}-${i}`}
+          name={d.file_name}
+          fallback={t('event.file_word')}
           href={normalizeExternalUrl(d.file_url)}
-          target="_blank"
-          rel="noreferrer"
-          className="doc-row row row--g4"
-        >
-          <FileTypeBadge name={d.file_name} />
-          <b>{d.file_name || t('event.file_word')}</b>
-          {d.file_size && <span className="ds">{d.file_size}</span>}
-        </a>
+          size={d.file_size}
+          plain
+        />
       ))}
     </div>
   );
@@ -138,7 +134,7 @@ export function Section({ title, accent, count, children }) {
 export function KV({ label, children, mono }) {
   if (children == null || children === '') return null;
   return (
-    <div className="kv">
+    <div className="kv col col--g1">
       <div className="k">{label}</div>
       <div className={mono ? 'v mono' : 'v'}>{children}</div>
     </div>
@@ -181,7 +177,7 @@ function HotelBody({ entity, docs = [] }) {
   const perNight = (priceText && nights > 0) ? fmtPrice(Number(entity.price) / nights, entity.currency, { compact: true }) : null;
   const notes = entity.notes;
   return (
-    <div className="hv">
+    <div className="col col--g7">
       {/* Name card */}
       <div className="hv-namecard">
         <div className="hv-name t-title">{entity.name}</div>
@@ -237,14 +233,14 @@ function HotelBody({ entity, docs = [] }) {
 
       {/* Free cancellation */}
       {entity.free_cancellation && (
-        <div className="hv-cancel">
-          <span className="hv-cancel__ic"><Check /></span>
-          <span className="hv-cancel__tx t-strong">
-            {entity.free_cancellation_until
-              ? `${t('event.free_cancel_until')} ${fmtDate(entity.free_cancellation_until)}`
-              : t('event.free_cancel_have')}
-          </span>
-        </div>
+        <Severity
+          level="success"
+          align="mid"
+          icon="check"
+          title={entity.free_cancellation_until
+            ? `${t('event.free_cancel_until')} ${fmtDate(entity.free_cancellation_until)}`
+            : t('event.free_cancel_have')}
+        />
       )}
 
       {/* Booking details */}
@@ -327,12 +323,12 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const hasDetails = entity.booking_reference || carrier || entity.flight_number;
   const notes = entity.notes;
   return (
-    <div className="tv">
+    <div className="col col--g7">
       {/* Route rail */}
       <div className="tv-card">
         <div className="tv-eyebrows">
-          <span className="tv-chip tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
-          {night && <span className="tv-chip tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
+          <span className="badge badge--sm tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
+          {night && <span className="badge badge--sm tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
         </div>
         <div className="tv-route">
           <div className="tv-when">
@@ -351,7 +347,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
             {carrier && (
               <>
                 <span className="tv-carrier__av t-micro">{carrier[0].toUpperCase()}</span>
-                <span className="tv-carrier__nm t-body">{carrier}</span>
+                <span className="tv-carrier__nm t-body trunc">{carrier}</span>
               </>
             )}
           </div>
@@ -445,7 +441,7 @@ function ActivityBody({ entity, docs = [] }) {
   const priceText = fmtPrice(entity.price, entity.currency);
   const notes = entity.notes;
   return (
-    <div className="hv">
+    <div className="col col--g7">
       {(entity.start_datetime || entity.end_datetime) && (
         <div className="hv-sec">
           <div className="hv-lbl eyebrow">{t('event.when')}</div>
@@ -513,7 +509,7 @@ function EsimBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.esim_cost_section')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
@@ -534,14 +530,14 @@ function InsuranceBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.insurance_section')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           {d.policy_number && <KV label={t('service.policy_number')} mono>{d.policy_number}</KV>}
           {d.date_start && <KV label={t('service.date_start')} mono>{fmtInsDate(d.date_start)}</KV>}
           {d.date_finish && <KV label={t('service.date_finish')} mono>{fmtInsDate(d.date_finish)}</KV>}
         </div>
       </Section>
       <Section title={t('service.insurance_cost_section')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
@@ -569,13 +565,13 @@ function ServiceBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.car_pickup')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('event.pickup_where')}><div>{d.pickup_address}</div></KV>
           <KV label={t('event.when')}>{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
       <Section title={sameLocation ? t('service.car_dropoff') : t('event.return_elsewhere')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('event.pickup_where')}>
             {sameLocation ? (
               <span className="t-meta muted">{t('event.return_same')}</span>
@@ -587,7 +583,7 @@ function ServiceBody({ entity, accent }) {
         </div>
       </Section>
       <Section title={t('event.finance_booking')} accent={accent}>
-        <div className="kv-grid">
+        <div className="kv-grid grid grid--2">
           <KV label={t('budget.field_amount')}>{fmtPrice(price, cur)}</KV>
           <KV label={t('service.car_booking_ref')} mono>{d.booking_reference}</KV>
         </div>

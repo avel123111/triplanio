@@ -529,12 +529,12 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
       <div className="grow--fit">
         <div className="bgt-exrow__t trunc">{expense.title || '-'}</div>
         <div className="bgt-exrow__s row row--g4 row--wrap">
-          {mode === 'city' && catName && <span className="bgt-tagx bgt-tagx--cat">{catName}</span>}
+          {mode === 'city' && catName && <span className="badge badge--xs bgt-tagx--cat">{catName}</span>}
           {mode !== 'city' && cityName && <span>{cityName}</span>}
           {dateStr && <><span className="sep" />{dateStr}</>}
           {isManual
-            ? <span className="bgt-tagx bgt-tagx--manual">{t('budget.manual_badge')}</span>
-            : <span className="bgt-tagx bgt-tagx--link"><Icon name="link" size={10} />{t('budget.booking_badge')}</span>}
+            ? <span className="badge badge--xs bgt-tagx--manual">{t('budget.manual_badge')}</span>
+            : <span className="badge badge--xs bgt-tagx--link"><Icon name="link" />{t('budget.booking_badge')}</span>}
         </div>
       </div>
       <div className={`bgt-exrow__amt ${ok ? '' : 'miss'}`}>

@@ -103,6 +103,7 @@ jobs:
   #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
   #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
   #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
+  #   2n check-orphan-css            — a rule left pointing at a class the markup stopped emitting
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -168,6 +169,10 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-css-prefixes.mjs
+      - name: 2n — orphaned CSS (rule left behind after the class moved)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-orphan-css.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.

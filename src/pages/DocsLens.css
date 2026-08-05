@@ -36,10 +36,7 @@
 .dl-card__ic--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
 
 .dl-card__h     { flex: 1; min-width: 0; }
-.dl-card__title {
-  color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
+.dl-card__title { color: var(--ink); }
 .dl-card__sub {
   color: var(--muted); margin-top: 3px;
 }
@@ -66,21 +63,8 @@
 .dl-vischip--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
 
 /* ─── File chips ──────────────────────────────────────────────── */
-.dl-filechips { display: flex; flex-direction: column; gap: 6px; }
-.dl-filechip  {
-  display: flex; align-items: center; gap: 10px;
-  padding: 7px 10px; border-radius: var(--r-sm);
-  background: var(--surface-3); border: 1px solid var(--line);
-}
 /* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
    design/app.css next to `.doc-row`, since three screens draw it. */
-.dl-filechip__n {
-  flex: 1; min-width: 0;
-  color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-decoration: none;
-}
-a.dl-filechip__n:hover { color: var(--brand); }
 .dl-filemore {
   color: var(--muted); padding: 2px 4px;
 }
@@ -111,9 +95,11 @@ a.dl-filechip__n:hover { color: var(--brand); }
     border-color: var(--brand); background: var(--brand-soft); color: var(--brand);
     transform: translateY(-2px);
   }
-  .dl-addcard--mine:hover {
-    border-color: var(--warm); background: var(--warm-soft); color: var(--warm-ink);
-  }
+  /* Подсветка - общая (TRIP-321 Ф14.10), цвет берётся из ручек, объявленных
+     у .dl-addcard--mine в app.css. Правило остаётся ЗДЕСЬ, потому что оно живёт
+     внутри медиа-запроса: вынести его в общий список значило бы включить ховер
+     на всех ширинах. */
+  .dl-addcard--mine:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
   .dl-addcard:hover .dl-addcard__ic { background: var(--surface); }
 }
 .dl-addcard:active { transform: scale(.97); }
@@ -153,7 +139,6 @@ a.dl-filechip__n:hover { color: var(--brand); }
 .dl-label svg { width: 13px; height: 13px; }
 
 /* ─── Dialog: visibility toggle ───────────────────────────────── */
-.dl-vistoggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dl-visopt {
   font: inherit;
   display: flex; align-items: center; gap: 10px; padding: 12px;
@@ -194,25 +179,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 .dl-dropzone.is-uploading { cursor: default; pointer-events: none; color: var(--brand); }
 
 /* ─── Dialog: upload list ─────────────────────────────────────── */
-.dl-uplist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.dl-upitem {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: var(--r-sm);
-  background: var(--surface-3); border: 1px solid var(--line);
-}
-.dl-upitem__n {
-  flex: 1; min-width: 0;
-  color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.dl-upitem__rm {
-  width: 24px; height: 24px; border-radius: 7px; border: none;
-  background: transparent; color: var(--muted-2);
-  cursor: pointer; display: grid; place-items: center; flex: none;
-  transition: background .14s, color .14s;
-}
-.dl-upitem__rm:hover { background: var(--danger-soft); color: var(--danger-ink); }
-.dl-upitem__rm svg { width: 13px; height: 13px; }
+.dl-uplist { margin-bottom: 8px; }  /* раскладку даёт .col .col--g3 в разметке (TRIP-321 Ф14.7) */
 
 /* ─── Detail view ─────────────────────────────────────────────── */
 .dl-dview-note {
@@ -230,7 +197,6 @@ a.dl-filechip__n:hover { color: var(--brand); }
   flex: 1; color: var(--ev-hotel-ink);
   word-break: break-all;
 }
-.dl-dview-files { display: flex; flex-direction: column; gap: 8px; }
 .dl-dview-meta {
   display: flex; align-items: center; gap: 8px;
   margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);

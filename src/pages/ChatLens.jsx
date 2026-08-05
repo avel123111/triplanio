@@ -39,7 +39,7 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
         ? <TriplanioAvatar />
         : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} />}
       <div className="chat-member__b">
-        <div className="chat-member__nm">{name}</div>
+        <div className="chat-member__nm trunc">{name}</div>
         <div className="chat-member__rl">{role}</div>
       </div>
     </div>
@@ -272,7 +272,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         <div className="chat-head__id">
           <h3>{t('chat.group_title')}</h3>
           {activeMembers.length > 0 && (
-            <div className="chat-head__sub">{pluralPeople(activeMembers.length, t, lang)}</div>
+            <div className="chat-head__sub trunc">{pluralPeople(activeMembers.length, t, lang)}</div>
           )}
         </div>
         {isPhone ? renderMembersBtn(() => setMembersOpen(true)) : (
