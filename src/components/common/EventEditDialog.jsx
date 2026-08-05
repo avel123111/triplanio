@@ -66,12 +66,13 @@ function SwitchRow({ on, onChange, title, hint, children }) {
 // (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
 // Thin facade over the shared <Autocomplete> engine (identical field/dropdown/
 // scroll/hover as every other city & address picker).
-function CityPicker({ value, onPick, placeholder }) {
+function CityPicker({ value, onPick, placeholder, ...rest }) {
   const { t } = useI18nFormat();
   const [q, setQ] = useState(value?.city_name || '');
   useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
   return (
     <Autocomplete
+      inputProps={rest}
       inputValue={q}
       onInputChange={(val) => { setQ(val); if (value) onPick(null); }}
       search={(query, lang) => searchCities(query, lang)}
@@ -109,7 +110,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { validateEntity, transferAiCityAdvisories, issuesToShow } from '@/lib/validation';
-import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldStateClass } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldState } from '@/components/common/ValidationUI';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
@@ -1603,7 +1604,7 @@ function SectionHeader({ children }) {
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.hotel.color;
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   // Filled-field counts drive the accordion badges (how many booking details /
   // documents are set without expanding the group).
   const bookingFilled = [form.booking_url, form.booking_reference, form.phone, form.email].filter(Boolean).length;
@@ -1611,10 +1612,10 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
   return (
     <>
       <div className="col col--g6">
-        <div data-vfield="name" className={inv('name')}>
+        <div data-vfield="name">
           <Label>{t('event.name_req')}</Label>
           <AiField active={aiFields.has('name')}>
-            <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_hotel_example')} />
+            <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_hotel_example')} />
           </AiField>
           <FieldError issues={issues} field="name" />
         </div>
@@ -1819,7 +1820,7 @@ function TransferLegCard({
   fromName, toName, toCityEditable, layoverCityPh,
   startTz, endTz, issues, color, t,
 }) {
-  const invF = (name) => fieldStateClass(issues, vf(name));
+  const stF = (name) => fieldState(issues, vf(name));
   const tk = TRANSPORT_OF(leg.transport_type);
   const TIcon = tk.Icon;
   // Within-leg duration (departure → arrival) for the date-block hint —
@@ -1883,12 +1884,12 @@ function TransferLegCard({
           </div>
           <div>
             <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
-            <div className={`eed-accrow ${toCityEditable ? invF('toCity') : ''}`} data-vfield={toCityEditable ? vf('toCity') : undefined}>
+            <div className="eed-accrow" data-vfield={toCityEditable ? vf('toCity') : undefined}>
               <Label>{t('event.city')}</Label>
               {toCityEditable ? (
                 <>
                   <AiField active={aiHas('toCity')}>
-                    <CityPicker value={leg.toCity} onPick={(c) => patch({ toCity: c })} placeholder={layoverCityPh} />
+                    <CityPicker {...stF('toCity')} value={leg.toCity} onPick={(c) => patch({ toCity: c })} placeholder={layoverCityPh} />
                   </AiField>
                   <FieldError issues={issues} field={vf('toCity')} />
                 </>
@@ -2251,13 +2252,13 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
-      <div data-vfield="title" className={inv('title')}>
+      <div data-vfield="title">
         <Label>{t('event.name_req')}</Label>
-        <Input value={form.title} onChange={(e) => setField('title', e.target.value)} onBlur={() => onTouch?.('title')} placeholder={t('event.ph_activity_example')} />
+        <Input {...st('title')} value={form.title} onChange={(e) => setField('title', e.target.value)} onBlur={() => onTouch?.('title')} placeholder={t('event.ph_activity_example')} />
         <FieldError issues={issues} field="title" />
       </div>
       <div>
@@ -2310,13 +2311,13 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
 
 function EsimServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.esim')}</SectionHeader>
-      <div data-vfield="name" className={inv('name')}>
+      <div data-vfield="name">
         <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
+        <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2350,13 +2351,13 @@ function EsimServiceFields({ form, setField, issues, onTouch, setUploading, trip
 
 function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
-      <div data-vfield="name" className={inv('name')}>
+      <div data-vfield="name">
         <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
+        <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2366,14 +2367,14 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
         <Input className="t-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
       <div className="fld-grid grid grid--2">
-        <div data-vfield="date_start" className={inv('date_start')}>
+        <div data-vfield="date_start">
           <Label>{t('service.date_start')}</Label>
           {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
-          <DateTimeInput withTime={false} value={form.date_start} onChange={(d) => setField('date_start', d)} />
+          <DateTimeInput {...st('date_start')} withTime={false} value={form.date_start} onChange={(d) => setField('date_start', d)} />
         </div>
-        <div data-vfield="date_finish" className={inv('date_finish')}>
+        <div data-vfield="date_finish">
           <Label>{t('service.date_finish')}</Label>
-          <DateTimeInput withTime={false} value={form.date_finish} onChange={(d) => setField('date_finish', d)} />
+          <DateTimeInput {...st('date_finish')} withTime={false} value={form.date_finish} onChange={(d) => setField('date_finish', d)} />
           <FieldError issues={issues} field="date_finish" />
         </div>
       </div>
@@ -2416,21 +2417,22 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, onT
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.service.color;
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   return (
     <>
       <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
-      <div data-vfield="name" className={inv('name')}>
+      <div data-vfield="name">
         <Label>{t('event.company_name_req')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_car_example')} />
+        <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_car_example')} />
         <FieldError issues={issues} field="name" />
       </div>
 
       <SectionHeader color={color}>{t('event.pickup')}</SectionHeader>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        <div data-vfield="pickupAddress" className={inv('pickupAddress')}>
+        <div data-vfield="pickupAddress">
           <Label>{isEdit ? t('event.pickup_addr') : t('event.pickup_addr_req')}</Label>
           <AddressAutocomplete
+            {...st('pickupAddress')}
             value={form.pickup_address}
             onChange={(v) => setField('pickup_address', v)}
             onPlaceSelected={async (p) => {
@@ -2448,9 +2450,10 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
           />
           <FieldError issues={issues} field="pickupAddress" />
         </div>
-        <div data-vfield="pickup" className={inv('pickup')}>
+        <div data-vfield="pickup">
           <Label>{t('event.date_time')}</Label>
           <DateTimeInput
+            {...st('pickup')}
             value={form.pickup_at_local}
             onChange={(v) => setField('pickup_at_local', v)}
             onTimeMissingChange={(v) => setTime('pickup', v)}
@@ -2489,9 +2492,10 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
             />
           </div>
         )}
-        <div data-vfield="dropoff" className={inv('dropoff')}>
+        <div data-vfield="dropoff">
           <Label>{t('event.date_time_return')}</Label>
           <DateTimeInput
+            {...st('dropoff')}
             value={form.dropoff_at_local}
             onChange={(v) => setField('dropoff_at_local', v)}
             onTimeMissingChange={(v) => setTime('dropoff', v)}

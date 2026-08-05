@@ -43,6 +43,9 @@ export default function DateTimeInput({
   // the plain input button. Same calendar, same value contract.
   variant,
   cellLabel,
+  // Состояние валидации приходит атрибутами (`{...fieldState(...)}`) и садится
+  // на ТРИГГЕР: он и есть видимое поле (TRIP-333).
+  ...rest
 }) {
   const t = useT();
   const { lang } = useI18n();
@@ -118,6 +121,7 @@ export default function DateTimeInput({
       type="button"
       className={`input eed-dtbtn${date ? '' : ' is-empty'} ${className || ''}`}
       onClick={isSheet ? () => setOpen(true) : undefined}
+      {...rest}
     >
       {label}
     </button>
