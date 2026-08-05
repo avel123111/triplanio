@@ -82,13 +82,12 @@ export function fieldHasWarning(issues, field) {
 // `aria-invalid` вместо своего data-атрибута - это стандартный признак, его
 // объявляет скринридер; в приложении не было ни одного. Ошибка старше
 // предупреждения: оба сразу поле не показывает никогда.
-
 export function fieldState(issues, field) {
   const issue = pickFieldIssue(issues || [], field);
   const invalid = issue?.level === 'error';
   return {
     'aria-invalid': invalid ? 'true' : undefined,
-    'data-warning': !invalid && issue ? '' : undefined,
+    'data-warning': issue && !invalid ? '' : undefined,
   };
 }
 

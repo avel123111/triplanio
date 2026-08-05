@@ -230,11 +230,9 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       </Field>
       <div className="field-row cols-2">
         <Field label={t('budget.field_amount')}>
-          {/* Класс состояния стоит на ГРУППЕ, а не на самом поле: правило
-              `.tv-invalid .input` требует потомка, поэтому на элементе с этим
-              же классом оно не срабатывало и красной рамки при ошибке не было
-              вовсе (замерено). Заодно подсвечивается вся группа, а не половина
-              того, что читается как одно поле. */}
+          {/* Состояние - на ГРУППЕ, а не на поле внутри: рамку держит
+              контейнер, у детей её нет. Заодно подсвечивается вся группа, а не
+              половина того, что читается как одно поле. */}
           <InputGroup {...st('amount')} data-vfield="amount">
             <Input num type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
             <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur num" />
@@ -400,8 +398,6 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
               : live != null
                 ? t('budget.fx_auto', { cur: mainCurrency })
                 : t('budget.fx_not_found', { cur: mainCurrency });
-            // Класс состояния - на РЯД, а не на поле: `.tv-invalid .input`
-            // требует потомка, на самом элементе не срабатывало (замерено).
             return (
               <div key={code} className="bgt-fxrow row row--g6" data-vfield={`rate.${code}`}>
                 <div className={`bgt-fxrow__cur tile tile--xl ${known ? '' : 'miss'}`}>{currencySymbol(code) || code}</div>
