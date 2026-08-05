@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Search, RotateCcw, Ticket, AlertTriangle, Star, SlidersHorizontal, CloudOff, X } from 'lucide-react';
-import { Checkbox } from '@/design/index';
+import { Checkbox, Input, InputGroup } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
@@ -111,15 +111,15 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
         <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
           <div className="row row--g4">
-            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+            <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
                 onChange={(e) => setP('min', e.target.value)} />
-            </label>
+            </InputGroup>
             <span className="s22f-dash">–</span>
-            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+            <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
                 onChange={(e) => setP('max', e.target.value)} />
-            </label>
+            </InputGroup>
           </div>
         </div>
         <div className="col col--g4">

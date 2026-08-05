@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Search, RotateCcw, Minus, Plus, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
 } from 'lucide-react';
+import { Input, InputGroup } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
@@ -189,15 +190,15 @@ export default function Stay22HotelList({
         <div className="col col--g4">
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
           <div className="row row--g4">
-            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+            <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
                 onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
-            </label>
+            </InputGroup>
             <span className="s22f-dash">–</span>
-            <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+            <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
                 onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
-            </label>
+            </InputGroup>
           </div>
         </div>
 

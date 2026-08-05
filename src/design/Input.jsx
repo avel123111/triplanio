@@ -27,7 +27,7 @@ import { Icon } from './icons';
  * `.ss-search` со своим `padding: 6px` ставил её на 6px вместо 12. Такой класс
  * остаётся ОТДЕЛЬНЫМ элементом снаружи.
  */
-export const Input = ({ icon, iconActive, loading, className = '', boxRef, ...rest }) => {
+export const Input = ({ icon, iconActive, loading, num, className = '', boxRef, ...rest }) => {
   // Слот справа резервируется, как только вызов ВООБЩЕ умеет показывать
   // спиннер (даже при `loading={false}`): включать отступ вместе со спиннером
   // значит менять ширину текстового поля прямо во время набора (TRIP-277).
@@ -36,7 +36,7 @@ export const Input = ({ icon, iconActive, loading, className = '', boxRef, ...re
     .filter(Boolean).join(' ');
   return (
     <div className={boxClass} ref={boxRef}>
-      <input className="input" {...rest} />
+      <input className={num ? 'input num' : 'input'} {...rest} />
       {icon && (
         <span
           className={`input-affix__ic${iconActive ? ' input-affix__ic--on' : ''}`}
@@ -60,6 +60,30 @@ export const Input = ({ icon, iconActive, loading, className = '', boxRef, ...re
 // Пара к <Input> для многострочного поля: тот же канон `.textarea`, декораций
 // у него нет, поэтому и обёртки-позиционера нет - внешний класс идёт на само
 // поле.
-export const Textarea = ({ className = '', ...rest }) => (
-  <textarea className={className ? `textarea ${className}` : 'textarea'} {...rest} />
+export const Textarea = ({ num, className = '', ...rest }) => (
+  <textarea className={['textarea', num && 'num', className].filter(Boolean).join(' ')} {...rest} />
+);
+
+/**
+ * Несколько контролов, читающихся как ОДНО поле: сумма + валюта, цена «от/до».
+ *
+ * Рамку, радиус, фон и все состояния держит КОНТЕЙНЕР, дети внутри идут без
+ * собственной рамки. Поэтому у поля нет и не нужен вариант «без рамки»: это
+ * не свойство поля, а следствие того, что рамку взяла на себя группа.
+ *
+ * Фокус - `:focus-within` на контейнере, а не на детях: подсветиться должна
+ * вся группа, иначе кольцо обводит половину видимого поля.
+ *
+ * Дети - обычные `<Input>` и любые add-on'ы (значок валюты, тире). Группа
+ * ничего о них не знает, поэтому состав меняется без правки компонента.
+ *
+ * Состояние валидации приходит через `className` тем же `fieldStateClass`,
+ * что и у остальных полей - своего пропа нет намеренно: он был бы вторым
+ * способом сказать одно и то же, а вторая ручка на одно свойство всегда
+ * разъезжается с первой.
+ */
+export const InputGroup = ({ className = '', children, ...rest }) => (
+  <div className={className ? `input-group ${className}` : 'input-group'} {...rest}>
+    {children}
+  </div>
 );

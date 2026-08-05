@@ -34,7 +34,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Dialog, Field, EmptyState, Input, InputGroup, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
 
@@ -227,10 +227,15 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       </Field>
       <div className="field-row cols-2">
         <Field label={t('budget.field_amount')}>
-          <div className="bgt-amtgrp" data-vfield="amount" >
-            <input className={`input num bgt-amtgrp__amt grow--fit ${inv('amount')}`} type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
+          {/* Класс состояния стоит на ГРУППЕ, а не на самом поле: правило
+              `.tv-invalid .input` требует потомка, поэтому на элементе с этим
+              же классом оно не срабатывало и красной рамки при ошибке не было
+              вовсе (замерено). Заодно подсвечивается вся группа, а не половина
+              того, что читается как одно поле. */}
+          <InputGroup className={inv('amount')} data-vfield="amount">
+            <Input num type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
             <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur num" />
-          </div>
+          </InputGroup>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
         <Field label={t('budget.field_date')}>
@@ -391,14 +396,16 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
               : live != null
                 ? t('budget.fx_auto', { cur: mainCurrency })
                 : t('budget.fx_not_found', { cur: mainCurrency });
+            // Класс состояния - на РЯД, а не на поле: `.tv-invalid .input`
+            // требует потомка, на самом элементе не срабатывало (замерено).
             return (
-              <div key={code} className="bgt-fxrow row row--g6" data-vfield={`rate.${code}`}>
+              <div key={code} className={`bgt-fxrow row row--g6 ${inv(`rate.${code}`)}`} data-vfield={`rate.${code}`}>
                 <div className={`bgt-fxrow__cur tile tile--xl ${known ? '' : 'miss'}`}>{currencySymbol(code) || code}</div>
                 <div className="grow--fit">
                   <div className="bgt-fxrow__eq">1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</div>
                   <div className={`bgt-fxrow__hint ${hintCls}`}>{hint}</div>
                 </div>
-                <input className={`input num ${inv(`rate.${code}`)}`} type="number" step="0.0001" value={values[code] ?? ''}
+                <input className="input num" type="number" step="0.0001" value={values[code] ?? ''}
                   onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" aria-label={`${code} → ${mainCurrency}`} />
               </div>
             );
