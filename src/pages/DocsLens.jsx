@@ -24,7 +24,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Input, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
@@ -221,8 +221,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           {/* Notes */}
           <div style={{ marginTop: 14 }}>
             <Field label={t('doc.notes_opt_label')}>
-              <textarea
-                className="textarea"
+              <Textarea
                 rows={3}
                 value={notes}
                 onChange={e => setNotes(e.target.value)}

@@ -1502,13 +1502,12 @@ h4,
 }
 
 /* ── Поле с декорациями (TRIP-333) ────────────────────────────────────────
-   Обёртка-позиционер для старт-иконки и лоудера. Заменяет пять отдельных
-   сборок «поле с иконкой» (`.dl-search`, `.s22f-search`, `.ss-search`,
-   `.trips-toolbar__search`, инлайны в `Autocomplete`), у которых отступ
-   иконки был 11/12/13/14/15px, а сама рамка объявлялась заново.
+   Обёртка-позиционер для старт-иконки и лоудера; разметку ставит только
+   `<Input>` (src/design/Input.jsx) - там же список сборок, которые эти классы
+   заменили, и ограничения на внешний класс обёртки.
 
    Реакция декораций на состояние поля - СИБЛИНГ-селектором: декорации стоят
-   в DOM после поля. Не `:has()` - в цели сборки Firefox 104, где его нет;
+   в DOM после поля. Не `:has()` - в цели сборки Firefox 78, где его нет;
    тот же приём и та же причина, что у `.checkbox`.
 
    Отступы под декорации - логическими свойствами, чтобы не переписывать их
@@ -1528,10 +1527,11 @@ h4,
    (`--on` - город в автокомплите). Оба состояния означают «поле работает». */
 .input-affix__ic--on,
 .input-affix .input:focus ~ .input-affix__ic { color: var(--brand); }
-/* Нерабочее поле не подсвечивает иконку: сиблинг-селектор повторяет матрицу
-   состояний выше, иначе иконка осталась бы яркой на погашенном поле. */
+/* Нерабочее поле гасит подсветку обратно: без этого иконка выбранного города
+   осталась бы яркой на погашенном поле. Только `__ic` - `__end` (спиннер) в
+   бренд не поднимается ничем, и правило на него было бы объявлением уже
+   стоящего значения. */
 .input-affix .input:disabled ~ .input-affix__ic,
-.input-affix .input:disabled ~ .input-affix__end,
 .input-affix .input[readonly]:not(:disabled) ~ .input-affix__ic { color: var(--muted-2); }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
@@ -1571,7 +1571,7 @@ h4,
 }
 .checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
 /* Dimmed via a sibling selector rather than `:has()`: the build target includes
-   Firefox 104, which predates `:has()`, and a disabled tint does not justify
+   Firefox 78, which predates `:has()`, and a disabled tint does not justify
    being the first thing in this codebase to depend on it. */
 .checkbox input:disabled,
 .checkbox input:disabled ~ span { opacity: .5; cursor: not-allowed; }
@@ -4859,7 +4859,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    и hover/focus. */
 .ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
 .lp .input, .lp .select, .lp .textarea,
-.lp .s22f-field {   /* TRIP-176: форк-инпуты (поиск + цена от/до) в драйвере — тот же «аккуратный» канон, что и в «У меня есть бронь». Поиск покрыт `.lp .input` строкой выше с TRIP-333. */
+.lp .s22f-field {   /* TRIP-176: цена «от/до» форк-списка в драйвере — тот же «аккуратный» канон, что и в «У меня есть бронь»; поиск того же списка с TRIP-333 попадает под `.lp .input` строкой выше */
   border-width: 1px;
   border-radius: var(--r-md);
 }
@@ -4867,8 +4867,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
    EVERY editable field on phones — covers .input/.select/.textarea AND any
-   off-canon field (.auth-input on login, .s22f-field price filters, .dl-search,
-   future fields) without per-class upkeep. Non-text controls (checkbox/radio/
+   off-canon field (.auth-input on login, .s22f-field price filters, future
+   fields) without per-class upkeep. Non-text controls (checkbox/radio/
    file/range/color) are excluded — they never trigger focus-zoom. We deliberately
    do NOT clamp the viewport meta (maximum-scale/user-scalable) so pinch-zoom and
    accessibility stay intact.
@@ -5572,7 +5572,7 @@ a.doc-row__n:hover{ color: var(--brand); }
   }
   /* Lifted only while something owns the bottom edge - the nav dock, or the chat
      composer on the lens that hides the nav. MobileBottomNav sets the class; a
-     class rather than :has(), which the Firefox 104 build target predates.
+     class rather than :has(), which the Firefox 78 build target predates.
      Approximate for chat: the composer grows with the text. */
   .has-bottom-dock .consent {
     bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));

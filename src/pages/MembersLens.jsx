@@ -16,7 +16,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -181,7 +181,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
           <FieldError issues={v.displayIssues} field="email" />
         </Field>
         <Field label={t('member.message_label')} hint={t('member.message_hint')}>
-          <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
+          <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
         </Field>
         <div className="muted t-meta" style={{ marginTop: 6 }}>
           {t('member.invite_email_note')}

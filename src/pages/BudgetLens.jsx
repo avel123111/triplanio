@@ -34,7 +34,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, ReadOnlyBanner, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
 
@@ -255,7 +255,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         </Field>
       </div>
       <Field label={t('doc.notes_label')}>
-        <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
+        <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
       </Field>
       <IssuesPanel issues={v.panelIssues} />
       {err && <Severity level="error">{err}</Severity>}
