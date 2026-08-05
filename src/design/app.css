@@ -557,7 +557,7 @@ h3,
 .t-label,
 h4,
 .te-step,
-.sheet .ss-search input,
+.sheet .ss-search .input,
 .plan-card__name,
 .nonext b,
 .bgt-donutcard__h b,
@@ -584,7 +584,6 @@ h4,
 .pro-hero__sub,
 .notes-block,
 .dl-dview-note,
-.dl-search input,
 .tcp__upload,
 .check,
 .checkbox,
@@ -1501,6 +1500,39 @@ h4,
   color: var(--ink-2);
   cursor: default;
 }
+
+/* ── Поле с декорациями (TRIP-333) ────────────────────────────────────────
+   Обёртка-позиционер для старт-иконки и лоудера. Заменяет пять отдельных
+   сборок «поле с иконкой» (`.dl-search`, `.s22f-search`, `.ss-search`,
+   `.trips-toolbar__search`, инлайны в `Autocomplete`), у которых отступ
+   иконки был 11/12/13/14/15px, а сама рамка объявлялась заново.
+
+   Реакция декораций на состояние поля - СИБЛИНГ-селектором: декорации стоят
+   в DOM после поля. Не `:has()` - в цели сборки Firefox 104, где его нет;
+   тот же приём и та же причина, что у `.checkbox`.
+
+   Отступы под декорации - логическими свойствами, чтобы не переписывать их
+   под RTL. Ставятся ТОЛЬКО модификаторами: поле без иконки не должно
+   получать пустые 36px слева. */
+.input-affix { position: relative; display: block; width: 100%; min-width: 0; }
+.input-affix__ic, .input-affix__end {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  display: flex; pointer-events: none; color: var(--muted-2);
+  transition: color .18s ease;
+}
+.input-affix__ic { inset-inline-start: 12px; }
+.input-affix__end { inset-inline-end: 12px; }
+.input-affix--ic .input { padding-inline-start: 36px; }
+.input-affix--end .input { padding-inline-end: 36px; }
+/* Иконка подсвечивается, когда поле в фокусе ИЛИ когда значение уже выбрано
+   (`--on` - город в автокомплите). Оба состояния означают «поле работает». */
+.input-affix__ic--on,
+.input-affix .input:focus ~ .input-affix__ic { color: var(--brand); }
+/* Нерабочее поле не подсвечивает иконку: сиблинг-селектор повторяет матрицу
+   состояний выше, иначе иконка осталась бы яркой на погашенном поле. */
+.input-affix .input:disabled ~ .input-affix__ic,
+.input-affix .input:disabled ~ .input-affix__end,
+.input-affix .input[readonly]:not(:disabled) ~ .input-affix__ic { color: var(--muted-2); }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
@@ -4097,9 +4129,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    C4 · SearchSelect — searchable picker (currency, language, …).
    Desktop: anchored Radix popover. Mobile: bottom-sheet (.sheet).
    ============================================================ */
-.ss-search { position: relative; padding: 6px 6px 8px; }
-.ss-search > svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted-2); pointer-events: none; }
-.ss-search input { padding-left: 32px; }
+/* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
+.ss-search { padding: 6px 6px 8px; }
 .ss-list { max-height: 264px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
 .ss-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; background: transparent; border-radius: var(--r-sm); font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; }
 .ss-opt:hover, .ss-opt[data-active] { background: var(--accent); color: var(--accent-ink); }
@@ -4285,7 +4316,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    Desktop: [Active/Past seg] [search (flex)] [spacer] [grid/list seg].
    ≤640px:  row1 = [Active/Past seg (grows)] [grid/list seg]; row2 = search full. */
 .trips-toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
-.trips-toolbar__search { position: relative; flex: 1; min-width: 180px; max-width: 340px; }
+/* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
+.trips-toolbar__search { flex: 1; min-width: 180px; max-width: 340px; }
 .trips-toolbar__spacer { flex: 1; }
 @media (max-width: 640px) {
   .trips-toolbar { gap: 10px; }
@@ -4827,7 +4859,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    и hover/focus. */
 .ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
 .lp .input, .lp .select, .lp .textarea,
-.lp .s22f-search input, .lp .s22f-field {   /* TRIP-176: форк-инпуты (поиск + цена от/до) в драйвере — тот же «аккуратный» канон, что и в «У меня есть бронь» */
+.lp .s22f-field {   /* TRIP-176: форк-инпуты (поиск + цена от/до) в драйвере — тот же «аккуратный» канон, что и в «У меня есть бронь». Поиск покрыт `.lp .input` строкой выше с TRIP-333. */
   border-width: 1px;
   border-radius: var(--r-md);
 }
@@ -5409,11 +5441,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    co-selectors earlier in this file. */
 .s22f { display: flex; flex-direction: column; gap: 11px; }
 .s22f-searchrow { display: flex; gap: 10px; }
-.s22f-search { position: relative; flex: 1; min-width: 0; }
-.s22f-search__ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
-.s22f-search input { width: 100%; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3), как в «У меня есть бронь» */ border-radius: var(--r-btn); padding: 11px 14px 11px 40px; color: var(--ink); outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
-.s22f-search input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
-.s22f-search input::placeholder { color: var(--muted-2); }
+/* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
+.s22f-search { flex: 1; }
 .s22f-fbtn { position: relative; flex: none; width: 44px; height: 44px; border-radius: var(--r-btn); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
 .s22f-fbtn:hover { border-color: var(--line-hover); }
 .s22f-fbtn:active { transform: scale(.96); }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
-import { Skeleton } from '@/design/index';
+import { Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -148,13 +148,12 @@ export function ForkToolbar({
   return (
     <div className="s22f">
       <div className="s22f-searchrow">
-        <div className="s22f-search">
-          <Search size={16} className="s22f-search__ic" />
-          <input
-            type="text" value={searchValue} onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder={searchPlaceholder} aria-label={searchPlaceholder}
-          />
-        </div>
+        <Input
+          className="s22f-search"
+          icon="search"
+          type="text" value={searchValue} onChange={(e) => onSearchChange?.(e.target.value)}
+          placeholder={searchPlaceholder} aria-label={searchPlaceholder}
+        />
         <button
           type="button"
           className={`s22f-fbtn ${filtersOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}

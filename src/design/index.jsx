@@ -30,6 +30,9 @@ export { Toaster } from '@/components/ui/toaster';
 export { default as SearchSelect } from '@/components/ui/SearchSelect';
 export { default as CurrencyCombobox } from '@/components/ui/CurrencyCombobox';
 export { default as AiField, AiBadge } from '@/components/ui/AiField';
+// Поле живёт своим модулем, чтобы `components/ui/*` мог импортировать его
+// напрямую и не замыкать зависимость на этот барраль (TRIP-333).
+export { Input, Textarea } from './Input';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules

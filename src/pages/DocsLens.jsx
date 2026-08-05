@@ -24,7 +24,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Field, Input, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
@@ -671,15 +671,15 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
       )}
       {/* ── Toolbar: search + filter ── */}
       <div className="dl-toolbar">
-        <label className="dl-search">
-          <span className="dl-search__icon"><Icon name="search" size={16} /></span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder={t('doc.search_ph')}
-          />
-        </label>
+        <Input
+          className="dl-search"
+          icon="search"
+          type="search"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder={t('doc.search_ph')}
+          aria-label={t('doc.search_ph')}
+        />
         <div className="seg" role="group" aria-label={t('doc.filter_label')}>
           {filterOpts.map(opt => (
             <button
