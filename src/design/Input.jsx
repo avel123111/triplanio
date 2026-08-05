@@ -60,8 +60,8 @@ export const Input = ({ icon, iconActive, loading, num, className = '', boxRef, 
 // Пара к <Input> для многострочного поля: тот же канон `.textarea`, декораций
 // у него нет, поэтому и обёртки-позиционера нет - внешний класс идёт на само
 // поле.
-export const Textarea = ({ num, className = '', ...rest }) => (
-  <textarea className={['textarea', num && 'num', className].filter(Boolean).join(' ')} {...rest} />
+export const Textarea = ({ className = '', ...rest }) => (
+  <textarea className={className ? `textarea ${className}` : 'textarea'} {...rest} />
 );
 
 /**

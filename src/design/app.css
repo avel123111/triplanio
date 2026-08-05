@@ -598,7 +598,6 @@ h4,
 .trust__item,
 .langdd__item,
 .ts-in,
-.s22f-field input,
 .brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
 .nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
 .ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-183: .t-body ← body макета (Golos 400/13/1.55); был --fs-strong 15/lh1.6 */
@@ -1565,12 +1564,19 @@ h4,
 .input-group.tv-invalid { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .input-group.field--warning { border-color: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
 /* Дети без собственного скина. `.input-affix` внутри группы - не позиционер
-   ширины, а обычная колонка флекса. */
-.input-group .input-affix { flex: 1; width: auto; }
-.input-group .input, .input-group .textarea {
+   ширины, а обычная колонка флекса. `box-shadow: none` гасит и кольцо фокуса:
+   отдельное правило на `:focus` не нужно, у `.input:focus` та же специфичность
+   (0,2,0) и решает порядок. */
+.input-group .input-affix { flex: 1; }
+.input-group .input {
   border: 0; background: transparent; padding: 0; box-shadow: none; border-radius: 0;
 }
-.input-group .input:focus, .input-group .textarea:focus { box-shadow: none; background: transparent; }
+/* Ответ на `!important` у легаси `.tv-invalid .input:focus` (:3189): без него
+   невалидная группа в фокусе рисует ДВА красных кольца - своё на контейнере и
+   ещё одно вокруг голого ребёнка. Специфичность (0,4,0) против (0,3,0) - брать
+   порядком нельзя, легаси-блок лежит НИЖЕ по файлу и выиграл бы при равном
+   весе. Уходит вместе с `.tv-invalid` в PR6. */
+.input-group.tv-invalid .input:focus { box-shadow: none !important; }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */

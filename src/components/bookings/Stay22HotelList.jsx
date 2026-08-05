@@ -191,12 +191,12 @@ export default function Stay22HotelList({
           <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
           <div className="row row--g4">
             <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_from')} aria-label={t('fork.f_from')} value={pending.min}
                 onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
             </InputGroup>
             <span className="s22f-dash">–</span>
             <InputGroup className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
-              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+              <Input num type="text" inputMode="numeric" placeholder={t('fork.f_to')} aria-label={t('fork.f_to')} value={pending.max}
                 onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
             </InputGroup>
           </div>
