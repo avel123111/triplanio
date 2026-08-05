@@ -121,8 +121,10 @@ export function ForkPager({ page, totalPages, pages, onGoto, prevLabel, nextLabe
   );
 }
 
-// Active-filter chip with a remove (×) button. One per applied filter.
-export function ForkPill({ label, onRemove, removeLabel }) {
+// Active-filter chip with a remove (×) button. One per applied filter. Rendered
+// only from ForkToolbar below — not exported, so a caller can't grow a second
+// chips row outside the toolbar's one-control-at-a-time rule.
+function ForkPill({ label, onRemove, removeLabel }) {
   return (
     <span className="s22f-pill">{label}
       <button type="button" onClick={onRemove} aria-label={removeLabel}><X size={12} /></button>
@@ -179,7 +181,13 @@ export function ForkToolbar({
         </>
       )}
 
-      {pills.length > 0 && (
+      {/* Chips summarise what is applied — for a CLOSED popover. While it is open
+          the popover shows those same values as editable fields, so rendering both
+          gives one filter two independent controls that drift: removing a chip
+          cleared the committed filter while the popover draft kept the old value
+          and the search button put it straight back (TRIP-293). One control at a
+          time makes that unrepresentable. */}
+      {!filtersOpen && pills.length > 0 && (
         <div className="s22f-pills">
           {pills.map((p) => <ForkPill key={p.key} label={p.label} onRemove={p.onRemove} removeLabel={t('fork.f_reset')} />)}
           <button type="button" className="s22f-resetall" onClick={onReset}>{t('fork.f_reset_all')}</button>

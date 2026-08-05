@@ -1,7 +1,7 @@
 // Unit tests for Stay22 mapping + param building. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStay22, buildStay22Params, ensureNextDay, mergePool, POOL_MAX, filterParams, applyClientFilters } from './stay22-normalize.js';
+import { normalizeStay22, buildStay22Params, ensureNextDay, filterParams, applyClientFilters, BASE_HOTEL_FILTERS, STAY22_FILTER_SPEC } from './stay22-normalize.js';
 
 const SAMPLE = {
   meta: { pageSize: 10, count: 3, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
@@ -101,27 +101,8 @@ test('ensureNextDay: forces checkout strictly after checkin', () => {
   assert.equal(ensureNextDay('2026-10-05', '2026-10-10'), '2026-10-10');
 });
 
-test('mergePool: dedups by id across pages, first occurrence wins, preserves order', () => {
-  const p1 = [{ id: 'a', price: 1 }, { id: 'b', price: 2 }];
-  const p2 = [{ id: 'b', price: 999 }, { id: 'c', price: 3 }]; // 'b' repeats
-  const { hotels, truncated } = mergePool([p1, p2]);
-  assert.deepEqual(hotels.map((h) => h.id), ['a', 'b', 'c']);
-  assert.equal(hotels[1].price, 2); // first 'b' kept, not the later duplicate
-  assert.equal(truncated, false);
-});
-
-test('mergePool: skips loading (undefined) pages and id-less / null entries', () => {
-  const p1 = [{ id: 'a' }, null, { name: 'no id' }];
-  const { hotels } = mergePool([p1, undefined]);
-  assert.deepEqual(hotels.map((h) => h.id), ['a']);
-});
-
-test('mergePool: caps at POOL_MAX and flags truncated', () => {
-  const big = Array.from({ length: POOL_MAX + 25 }, (_, i) => ({ id: `h${i}` }));
-  const { hotels, truncated } = mergePool([big]);
-  assert.equal(hotels.length, POOL_MAX);
-  assert.equal(truncated, true);
-});
+// Pool merging (dedup / progressive pages / cap+truncated) is the shared
+// mergeById — covered once in forkPool.test.js instead of once per list.
 
 test('filterParams: passes guests + provider, never price (client-side now)', () => {
   assert.deepEqual(filterParams({ adults: 3, children: 1, rooms: 2, provider: 'booking' }), { adults: 3, children: 1, rooms: 2, provider: 'booking' });
@@ -151,4 +132,16 @@ test('applyClientFilters: sort price ↑ (nulls last) / rating ↓; recommended 
   assert.deepEqual(applyClientFilters(HOTELS, { sortBy: 'rating' }).map((h) => h.id), ['c', 'a', 'b']);
   assert.deepEqual(applyClientFilters(HOTELS, { sortBy: 'recommended' }).map((h) => h.id), ['a', 'b', 'c']);
   assert.deepEqual(HOTELS.map((h) => h.id), ['a', 'b', 'c']); // input not mutated
+});
+
+// TRIP-293 (mirror of the activity-side guard in viator-filters.test.js): the
+// "Сбросить" button restores BASE_HOTEL_FILTERS wholesale. A knob the list filters
+// on but the base has no slot for would survive the reset and leave the button
+// looking dead — which is the bug this pair of tests locks down on both lists.
+test('BASE_HOTEL_FILTERS carries a cleared slot for every knob the spec reads', () => {
+  const knobs = ['text', 'min', 'max', 'sortBy', ...Object.keys(STAY22_FILTER_SPEC.flags || {})];
+  for (const k of knobs) assert.ok(k in BASE_HOTEL_FILTERS, `missing "${k}" in BASE_HOTEL_FILTERS`);
+  const active = { text: 'madrid', min: 100, max: 400, sortBy: 'price' };
+  assert.ok(applyClientFilters(HOTELS, active).length < HOTELS.length, 'fixture must be filterable');
+  assert.deepEqual(applyClientFilters(HOTELS, { ...active, ...BASE_HOTEL_FILTERS }).map((h) => h.id), ['a', 'b', 'c']);
 });

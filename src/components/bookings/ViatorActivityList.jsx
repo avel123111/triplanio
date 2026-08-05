@@ -4,19 +4,26 @@ import { Checkbox } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
+import { useForkList } from '@/lib/useForkList';
+import { BASE_ACTIVITY_FILTERS, applyActivityFilters } from '@/lib/viator-filters';
+import { priceRangeLabel } from '@/lib/forkFilter';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 
 // Live Viator activities for the activity fork panel — mirrors Stay22HotelList,
-// down to the SHARED filter toolbar (.s22f-* in app.css) and the SHARED list
-// chrome (skeleton / empty / error / pager via forkList.jsx). Fetches a bounded
-// pool on open (useViatorActivities), then filters (title+desc / price от/до /
-// free cancellation), sorts and paginates on the CLIENT — same one-pool model as
-// the hotel fork. `url` (productUrl) is the attributed affiliate link — opened
-// as-is, never modified.
+// down to the SHARED filter toolbar (.s22f-* in app.css), the SHARED list chrome
+// (skeleton / empty / error / pager via forkList.jsx) and the SHARED list STATE
+// (useForkList + a pure filter spec, TRIP-293). Fetches a bounded pool on open
+// (useViatorActivities), then filters (title+desc / price от/до / free
+// cancellation), sorts and paginates on the CLIENT — same one-pool model as the
+// hotel fork. `url` (productUrl) is the attributed affiliate link — opened as-is,
+// never modified.
 
 const PAGE_SIZE = 10;
-const BASE_PRICE = { min: '', max: '' };
+// Which knobs the filter popover owns — declared once so the initial draft, the
+// re-seed on open and the commit can't drift apart. The draft is committed into
+// the shared filters object on "Поиск".
+const draftOf = (f) => ({ min: f.min, max: f.max, freeCancel: f.freeCancel });
 // Client sort over the pool: default (Viator relevance order) / price ↑ / reviews ↓.
 const SORT_ORDER = ['recommended', 'price', 'reviews'];
 
@@ -31,82 +38,55 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
     visit, currency, lang, enabled: true,
   });
 
-  // Client-side filter (name + price) + pagination over the bounded pool.
-  const [query, setQuery] = useState('');
+  // Shared list state (TRIP-293): text search, price range, free-cancellation and
+  // sort all live in ONE filters object, so "Сбросить" replaces the whole object
+  // and cannot forget the text query. Selection + hover are list-local here (no
+  // map for activities) but follow the SAME interaction model as hotels via
+  // PartnerResultCard: click selects, a second click opens the link (TRIP-140).
+  const {
+    filters, page, hoveredId, selectedId,
+    setPage, setHoveredId, setSelectedId,
+    applyFilters, resetAll,
+  } = useForkList({ visitId: visit?.id || null, baseFilters: BASE_ACTIVITY_FILTERS });
+
+  // Local-only: the filter popover draft (price + free cancellation) + its open
+  // flag, re-seeded from the committed filters each time the popover opens.
+  const [pending, setPending] = useState(() => draftOf(BASE_ACTIVITY_FILTERS));
   const [filterOpen, setFilterOpen] = useState(false);
-  const [pending, setPending] = useState(BASE_PRICE); // popover draft
-  const [pendingFree, setPendingFree] = useState(false); // free-cancel draft in the popover
-  const [applied, setApplied] = useState(BASE_PRICE);  // committed price range
-  const [freeCancel, setFreeCancel] = useState(false); // committed free-cancellation filter
-  const [sortBy, setSortBy] = useState('recommended');
-  const cycleSort = () => setSortBy((s) => nextSort(SORT_ORDER, s));
-  const [page, setPage] = useState(1);
-  // Selection + hover are list-local here (no map for activities) but follow the
-  // SAME interaction model as hotels via PartnerResultCard: click selects, a
-  // second click on the selected card opens the link (TRIP-140 unification).
-  const [selectedId, setSelectedId] = useState(null);
-  const [hoveredId, setHoveredId] = useState(null);
+  useEffect(() => {
+    if (filterOpen) setPending(draftOf(filters));
+  }, [filterOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pool = data?.activities || [];
-  const appliedSig = `${applied.min}|${applied.max}`;
+  // Filtered + sorted in one pass by the shared engine (pure, unit-tested in
+  // viator-filters.test.js); 'recommended' keeps Viator's relevance order.
+  const matched = useMemo(() => applyActivityFilters(pool, filters), [pool, filters]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const min = applied.min !== '' ? Number(applied.min) : null;
-    const max = applied.max !== '' ? Number(applied.max) : null;
-    return pool.filter((a) => {
-      // Text search spans title + description (short summary from Viator).
-      if (q && !`${a.title || ''} ${a.desc || ''}`.toLowerCase().includes(q)) return false;
-      if (freeCancel && !a.freeCancellation) return false;
-      if (min != null || max != null) {
-        if (a.fromPrice == null) return false;
-        if (min != null && a.fromPrice < min) return false;
-        if (max != null && a.fromPrice > max) return false;
-      }
-      return true;
-    });
-  }, [pool, query, applied, freeCancel]);
-
-  // Sort a shallow copy so the pool order (relevance) stays intact for 'recommended'.
-  const sorted = useMemo(() => {
-    if (sortBy === 'recommended') return filtered;
-    const arr = [...filtered];
-    if (sortBy === 'price') {
-      arr.sort((a, b) => (a.fromPrice ?? Infinity) - (b.fromPrice ?? Infinity)); // cheapest first, nulls last
-    } else if (sortBy === 'reviews') {
-      arr.sort((a, b) => (b.reviewCount ?? -1) - (a.reviewCount ?? -1)); // most-reviewed first, nulls last
-    }
-    return arr;
-  }, [filtered, sortBy]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const shown = useMemo(() => sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [sorted, page]);
+  const totalPages = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
+  const shown = useMemo(() => matched.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [matched, page]);
   const pages = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
-  // Snap back to page 1 whenever the user changes the result set (search / filter /
-  // sort). NOT on pool growth: background Viator pages append to the pool, and
-  // resetting on pool.length would yank the reader back to page 1 mid-browse.
-  useEffect(() => { setPage(1); }, [query, appliedSig, freeCancel, sortBy]);
 
   const showSkeletons = isLoading && pool.length === 0;
-  const appliedPrice = applied.min !== '' || applied.max !== '';
-  const activeCount = (appliedPrice ? 1 : 0) + (freeCancel ? 1 : 0);
-  const sortLabel = t(`fork.f_sort_${sortBy}`);
+  const appliedPrice = filters.min !== '' || filters.max !== '';
+  const activeCount = (appliedPrice ? 1 : 0) + (filters.freeCancel ? 1 : 0);
+  const sortLabel = t(`fork.f_sort_${filters.sortBy}`);
   const cur = currency || '';
-  let priceText = `${cur} ${t('fork.f_to')} ${applied.max}`;
-  if (applied.min && applied.max) priceText = `${cur} ${applied.min}–${applied.max}`;
-  else if (applied.min) priceText = `${cur} ${t('fork.f_from')} ${applied.min}`;
+  const priceText = priceRangeLabel({ t, currency: cur, min: filters.min, max: filters.max });
 
-  const setP = (k, v) => setPending((s) => ({ ...s, [k]: v.replace(/[^\d]/g, '') }));
-  const applyFilters = () => { setApplied({ ...pending }); setFreeCancel(pendingFree); setFilterOpen(false); };
-  const resetFilters = () => {
-    setPending(BASE_PRICE); setApplied(BASE_PRICE);
-    setPendingFree(false); setFreeCancel(false);
-    setFilterOpen(false);
-  };
-  const removePrice = () => { setPending(BASE_PRICE); setApplied(BASE_PRICE); };
-  const removeFree = () => { setPendingFree(false); setFreeCancel(false); };
-  // Re-seed the popover draft from committed state each time it opens.
-  useEffect(() => { if (filterOpen) { setPending({ ...applied }); setPendingFree(freeCancel); } }, [filterOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setDraft = (k, v) => setPending((s) => ({ ...s, [k]: v }));
+  const setP = (k, v) => setDraft(k, v.replace(/[^\d]/g, '')); // price fields: digits only
+  const cycleSort = () => applyFilters({ sortBy: nextSort(SORT_ORDER, filters.sortBy) });
+  const applyDraft = () => { applyFilters(pending); setFilterOpen(false); };
+  // "Сбросить" everywhere (popover footer, pills row, no-match state) means the
+  // SAME thing as in the hotel fork: every filter, the text query and the sort.
+  const resetFilters = () => { resetAll(); setFilterOpen(false); };
+  // Removing a chip must clear the popover DRAFT too, not just the committed
+  // filters: the chips row stays visible while the popover is open, so a stale
+  // draft would re-apply the filter on the next "Поиск" and the removal would
+  // look ineffective. Same helper shape as Stay22HotelList (found in review).
+  const dropChip = (patch) => { applyFilters(patch); setPending((d) => ({ ...d, ...patch })); };
+  const removePrice = () => dropChip({ min: '', max: '' });
+  const removeFree = () => dropChip({ freeCancel: false });
 
   const onBook = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator', campaign: 'fork_api_search', fallback: false });
 
@@ -115,17 +95,17 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
       {/* ===== Search + filters — shared ForkToolbar; only the price + free-cancel
            fields (children) are activity-specific ===== */}
       <ForkToolbar
-        searchValue={query}
-        onSearchChange={setQuery}
+        searchValue={filters.text}
+        onSearchChange={(text) => applyFilters({ text })}
         searchPlaceholder={t('fork.f_search_ph_activity')}
         filtersOpen={filterOpen}
         onToggleFilters={() => setFilterOpen((o) => !o)}
         activeCount={activeCount}
         onReset={resetFilters}
-        onApply={applyFilters}
+        onApply={applyDraft}
         pills={[
           appliedPrice && { key: 'price', label: priceText, onRemove: removePrice },
-          freeCancel && { key: 'free', label: t('fork.activities_free_cancel'), onRemove: removeFree },
+          filters.freeCancel && { key: 'free', label: t('fork.activities_free_cancel'), onRemove: removeFree },
         ].filter(Boolean)}
       >
         <div className="col col--g4">
@@ -144,19 +124,19 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
         </div>
         <div className="col col--g4">
           {/* A checkbox, not a Toggle: a draft filter that only takes effect on
-              "Apply" (applyFilters), so it must not look like a flipped setting. */}
+              "Apply" (applyDraft), so it must not look like a flipped setting. */}
           <Checkbox
             className="t-ui"
-            checked={pendingFree}
-            onChange={setPendingFree}
+            checked={pending.freeCancel}
+            onChange={(v) => setDraft('freeCancel', v)}
             label={t('fork.activities_free_cancel')}
           />
         </div>
       </ForkToolbar>
 
-      {!showSkeletons && !isError && sorted.length > 0 && (
+      {!showSkeletons && !isError && matched.length > 0 && (
         <ForkCountRow
-          countLabel={t('fork.activities_count', { n: filtered.length })}
+          countLabel={t('fork.activities_count', { n: matched.length })}
           sortLabel={sortLabel}
           onCycleSort={cycleSort}
         />
@@ -188,7 +168,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
         />
       )}
 
-      {!isError && !showSkeletons && pool.length > 0 && filtered.length === 0 && (
+      {!isError && !showSkeletons && pool.length > 0 && matched.length === 0 && (
         <ForkState
           variant="nomatch"
           icon={<SlidersHorizontal size={28} />}
@@ -200,7 +180,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
         />
       )}
 
-      {!isError && filtered.length > 0 && (
+      {!isError && matched.length > 0 && (
         <>
           <div className="fork-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {shown.map((a) => (
