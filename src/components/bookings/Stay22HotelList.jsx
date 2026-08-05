@@ -8,6 +8,7 @@ import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 import { STAY22_PROVIDERS } from '@/lib/stay22-normalize';
+import { priceRangeLabel } from '@/lib/forkFilter';
 
 // Live Stay22 stays for the hotel fork panel (Lumo redesign v3 + filters, TRIP-224).
 // Rendered under the partner block, hotel + panel only.
@@ -133,9 +134,7 @@ export default function Stay22HotelList({
   const sortLabel = t(`fork.f_sort_${cf.sortBy}`);
   const cur = currency || '';
   const providerLabel = (key) => STAY22_PROVIDERS.find((p) => p.key === key)?.label || key;
-  const priceText = cf.min && cf.max
-    ? `${cur} ${cf.min} – ${cf.max}`
-    : cf.min ? `${cur} ${t('fork.f_from')} ${cf.min}` : `${cur} ${t('fork.f_to')} ${cf.max}`;
+  const priceText = priceRangeLabel({ t, currency: cur, min: cf.min, max: cf.max });
 
   // Pill removals: guests/platform re-commit the SERVER filters; price clears the
   // CLIENT range. Each also clears the popover DRAFT — the chips row stays visible

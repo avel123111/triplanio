@@ -1,7 +1,7 @@
 // Unit tests for the shared fork-list filter engine. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASE_FORK_FILTERS, applyForkFilters, byNumberAsc, byNumberDesc } from './forkFilter.js';
+import { BASE_FORK_FILTERS, applyForkFilters, byNumberAsc, byNumberDesc, priceRangeLabel } from './forkFilter.js';
 
 // A minimal two-field list: text from `name`, price from `cost`, one boolean flag.
 const SPEC = {
@@ -76,6 +76,24 @@ test('input array is never mutated', () => {
   const snapshot = POOL.map((x) => x.name);
   applyForkFilters(POOL, { sortBy: 'price' }, SPEC);
   assert.deepEqual(POOL.map((x) => x.name), snapshot);
+});
+
+// One label for both fork panels: the hotel and activity lists rendered the same
+// chip two ways ("€ 100 – 400" vs "€ 100–400") before this was shared.
+const T = (k) => ({ 'fork.f_from': 'от', 'fork.f_to': 'до' }[k] || k);
+
+test('price chip: both bounds render as the spaced range (canon)', () => {
+  assert.equal(priceRangeLabel({ t: T, currency: 'EUR', min: '100', max: '400' }), 'EUR 100 – 400');
+});
+
+test('price chip: a single bound renders as от / до', () => {
+  assert.equal(priceRangeLabel({ t: T, currency: 'EUR', min: '100', max: '' }), 'EUR от 100');
+  assert.equal(priceRangeLabel({ t: T, currency: 'EUR', min: '', max: '400' }), 'EUR до 400');
+});
+
+test('price chip: a missing currency drops out instead of leaving a leading space', () => {
+  assert.equal(priceRangeLabel({ t: T, currency: '', min: '100', max: '400' }), '100 – 400');
+  assert.equal(priceRangeLabel({ t: T, currency: null, min: '', max: '400' }), 'до 400');
 });
 
 test('empty / garbage input is safe', () => {

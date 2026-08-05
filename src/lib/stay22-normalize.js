@@ -1,7 +1,7 @@
 // Pure Stay22 response→view mapping + request param building.
 // Kept free of React/supabase imports so it is unit-testable under `node --test`.
 
-// Relative import (not the `@/` alias) so `node --test` can load this file directly.
+// Relative imports (not the `@/` alias) so `node --test` can load this file directly.
 import { BASE_FORK_FILTERS, applyForkFilters, byNumberAsc, byNumberDesc, numberOrNull } from './forkFilter.js';
 
 // Ensure checkout is strictly after checkin; Stay22 needs a valid range to
@@ -172,28 +172,9 @@ export function buildStay22Params({ visit, currency, lang, page, pageSize, filte
 export const POOL_PAGES = 3;
 export const POOL_MAX = 300;
 
-// Merge already-normalized hotel pages into one pool: dedup by id (the FIRST page
-// to carry an id wins — earlier Stay22 pages rank higher, so the kept entry is the
-// more relevant one) and cap at POOL_MAX. Input is an array of hotel arrays; an
-// entry may be undefined while its page is still loading (progressive). Returns
-// { hotels, truncated } where truncated=true means the cap dropped real stays.
-export function mergePool(pages) {
-  const seen = new Set();
-  const hotels = [];
-  let truncated = false;
-  for (const page of pages || []) {
-    if (!Array.isArray(page)) continue;
-    for (const h of page) {
-      if (!h || h.id == null) continue;
-      const key = String(h.id);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (hotels.length >= POOL_MAX) { truncated = true; continue; }
-      hotels.push(h);
-    }
-  }
-  return { hotels, truncated };
-}
+// Merging pooled pages is the SHARED fork-pool merge (mergeById in forkPool.js);
+// this list binds it to the Stay22 `id` and POOL_MAX at the call site in stay22.js,
+// exactly as the activity pool binds it to the Viator product code.
 
 // Stable cache key for the whole-city pool. Page-independent (the pool spans every
 // page) — only visit + dates + currency/lang + filters change it, so flipping the

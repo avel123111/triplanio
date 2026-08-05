@@ -13,9 +13,10 @@ import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useForkList } from '@/lib/useForkList';
+import { mergeById } from '@/lib/forkPool';
 import {
   normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
-  mergePool, POOL_PAGES, applyClientFilters, BASE_HOTEL_FILTERS,
+  POOL_PAGES, POOL_MAX, applyClientFilters, BASE_HOTEL_FILTERS,
 } from '@/lib/stay22-normalize';
 import { cityNameEn } from '@/lib/geo';
 import { countryNameEn } from '@/lib/countryNamesEn';
@@ -126,7 +127,7 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
     // tail — emit page 1's (stale) pool alone so list + map stay on one city.
     const pages = [page1.data?.hotels];
     if (!placeholder && Array.isArray(tail.data)) pages.push(...tail.data.map((r) => r?.hotels));
-    const { hotels, truncated } = mergePool(pages);
+    const { items: hotels, truncated } = mergeById(pages, { getKey: (h) => h.id, cap: POOL_MAX });
     const meta = { ...(page1.data?.meta || {}), total: hotels.length, truncated };
     return { hotels, meta };
   }, [page1.data, tail.data, placeholder]);

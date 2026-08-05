@@ -6,6 +6,7 @@ import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
 import { useForkList } from '@/lib/useForkList';
 import { BASE_ACTIVITY_FILTERS, applyActivityFilters } from '@/lib/viator-filters';
+import { priceRangeLabel } from '@/lib/forkFilter';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 import { pageWindow, nextSort, buildStatePartner, ForkListSkeleton, ForkState, ForkPager, ForkToolbar, ForkCountRow } from '@/components/bookings/forkList';
 
@@ -70,9 +71,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
   const activeCount = (appliedPrice ? 1 : 0) + (filters.freeCancel ? 1 : 0);
   const sortLabel = t(`fork.f_sort_${filters.sortBy}`);
   const cur = currency || '';
-  let priceText = `${cur} ${t('fork.f_to')} ${filters.max}`;
-  if (filters.min && filters.max) priceText = `${cur} ${filters.min}–${filters.max}`;
-  else if (filters.min) priceText = `${cur} ${t('fork.f_from')} ${filters.min}`;
+  const priceText = priceRangeLabel({ t, currency: cur, min: filters.min, max: filters.max });
 
   const setDraft = (k, v) => setPending((s) => ({ ...s, [k]: v }));
   const setP = (k, v) => setDraft(k, v.replace(/[^\d]/g, '')); // price fields: digits only

@@ -64,6 +64,23 @@ function bound(v) {
   return v === '' || v == null ? null : Number(v);
 }
 
+/**
+ * Label for the active price-range chip. Lives next to the engine that APPLIES
+ * the range so the chip cannot describe something other than what is filtered —
+ * it used to be hand-written once per list, and the two copies had already
+ * drifted (`€ 100 – 400` in one panel, `€ 100–400` in the other).
+ *
+ * Canon is the spaced form. An absent currency drops out instead of leaving a
+ * leading space.
+ */
+export function priceRangeLabel({ t, currency, min, max }) {
+  let range;
+  if (min && max) range = `${min} – ${max}`;
+  else if (min) range = `${t('fork.f_from')} ${min}`;
+  else range = `${t('fork.f_to')} ${max}`;
+  return [currency, range].filter(Boolean).join(' ');
+}
+
 // The `spec.price` contract: a comparable number, or null for "no price" (which
 // hides the item while a bound is set). Suppliers may send anything.
 export const numberOrNull = (v) => (typeof v === 'number' ? v : null);
