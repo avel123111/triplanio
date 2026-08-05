@@ -49,6 +49,46 @@ export class TripAccessError extends Error {
   }
 }
 
+/**
+ * The ladder step a caller stands on, or null for "not on the trip at all".
+ * Strictly nested: owner ⊃ editor ⊃ participant.
+ */
+export type TripStep = 'owner' | 'editor' | 'participant' | null;
+
+/** Roles that clear `editor`. WHITELIST on purpose: an unknown or NULL role
+ *  must fail closed, which is what SQL `_can_edit_trip` does since TRIP-120. */
+export const EDITOR_ROLES = ['owner', 'admin'];
+
+const LADDER: Record<Exclude<TripStep, null>, number> = { participant: 1, editor: 2, owner: 3 };
+
+/**
+ * THE RULE, as a pure function of already-fetched facts — this is the half that
+ * tests pin (tripAccess_test.ts). Keeping it separate from the queries is the
+ * same split `_shared/profiles.ts` uses for the profile-scope rule (TRIP-334):
+ * a rule that only exists inside an async DB call cannot be tested, and this one
+ * is the single definition of "who may change a trip".
+ *
+ * `activeRole` = role of the caller's ACTIVE trip_members row, or null when
+ * there is none. `creatorId` = trips.created_by, or null when there is no trip.
+ */
+export function stepFromFacts(
+  creatorId: string | null,
+  userId: string | null,
+  activeRole: string | null,
+): TripStep {
+  if (!creatorId || !userId) return null;
+  // Ownership is trips.created_by and ONLY that. A stray trip_members row with
+  // role 'owner' is not ownership — it maps to `editor` below (TRIP-143).
+  if (creatorId === userId) return 'owner';
+  if (activeRole === null) return null;
+  return EDITOR_ROLES.includes(activeRole) ? 'editor' : 'participant';
+}
+
+/** Does `step` clear the bar `required`? Null clears nothing. */
+export function clearsStep(step: TripStep, required: Exclude<TripStep, null>): boolean {
+  return step !== null && LADDER[step] >= LADDER[required];
+}
+
 /** Trip creator id, or null when the trip genuinely does not exist.
  *  Throws TripAccessError on a transient/infra query error. */
 async function fetchTripCreator(tripId: string): Promise<string | null> {
@@ -93,12 +133,7 @@ async function fetchActiveMemberRole(tripId: string, userId: string): Promise<st
  * Throws TripAccessError if a downstream query fails (→ caller returns 5xx).
  */
 export async function isCallerEditor(tripId: string, userId: string): Promise<boolean> {
-  const creator = await fetchTripCreator(tripId);
-  if (creator === null) return false;
-  if (creator === userId) return true;
-
-  const role = await fetchActiveMemberRole(tripId, userId);
-  return role === 'admin' || role === 'owner';
+  return clearsStep(await resolveStep(tripId, userId), 'editor');
 }
 
 /**
@@ -111,10 +146,16 @@ export async function isCallerEditor(tripId: string, userId: string): Promise<bo
  * Throws TripAccessError if a downstream query fails (→ caller returns 5xx).
  */
 export async function isCallerParticipant(tripId: string, userId: string): Promise<boolean> {
-  const creator = await fetchTripCreator(tripId);
-  if (creator === null) return false;
-  if (creator === userId) return true;
+  return clearsStep(await resolveStep(tripId, userId), 'participant');
+}
 
-  const role = await fetchActiveMemberRole(tripId, userId);
-  return role !== null;
+/** I/O-половина: достаёт факты и отдаёт их правилу. Решение — в `stepFromFacts`. */
+async function resolveStep(tripId: string, userId: string): Promise<TripStep> {
+  const creator = await fetchTripCreator(tripId);
+  // Трипа нет — дальше спрашивать нечего, и лишний запрос не нужен.
+  if (creator === null) return null;
+  // Создатель проходит без строки членства, поэтому роль тут не читаем вовсе.
+  if (creator === userId) return stepFromFacts(creator, userId, null);
+
+  return stepFromFacts(creator, userId, await fetchActiveMemberRole(tripId, userId));
 }
