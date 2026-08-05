@@ -17,10 +17,14 @@
 //   4) the viewer themselves
 //   5) generic fallback
 //
-// Returns { name, photo, deleted } — the exact shape <Avatar> + name labels
-// consume across screens. `photo` is null whenever we only have a name, so the
-// Avatar component renders initials over a deterministic gradient.
-import { displayName } from '@/lib/displayName';
+// Returns { name, email, photo, deleted } — the exact shape <Avatar> + name
+// labels consume across screens. `photo` is null whenever we only have a name,
+// so the Avatar component renders initials over a deterministic gradient.
+// `email` is the address to print UNDER the name, already blanked when there
+// is nothing extra to say (see identity() below).
+// Relative, not '@/lib/…': this module is unit-tested and `node --test` does
+// not resolve the Vite alias (same convention as geo.js → ./geo-cities.js).
+import { displayName } from './displayName.js';
 
 /**
  * Same resolution for a list of PARTICIPANT rows (member list, avatar stacks).
@@ -35,8 +39,8 @@ export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {
     ...resolveAuthor({
       userId: m.user_id,
       nameSnapshot: m.user_full_name,
+      member: m,
       profiles,
-      members,
       selfUser,
       deletedLabel,
     }),
@@ -46,6 +50,7 @@ export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {
 export function resolveAuthor({
   userId,
   nameSnapshot,
+  member,
   profiles,
   members,
   selfUser,
@@ -53,27 +58,48 @@ export function resolveAuthor({
   fallback = '?',
 }) {
   // 1) Live profile — reflects the current name/photo, and the anonymized state.
+  //    An anonymized account has no name and no address to show: the scrubbed
+  //    columns must NOT fall through to a stale snapshot further down.
   const p = userId ? profiles?.[userId] : null;
-  if (p?.is_deleted) return { name: deletedLabel || fallback, photo: null, deleted: true };
+  if (p?.is_deleted) return { name: deletedLabel || fallback, email: '', photo: null, deleted: true };
+
+  // Membership row. Callers that ARE a member list hand theirs over directly
+  // (`member`): an invite to an address with no account is written with
+  // user_id: null, so there is no id to look it up BY, and searching `members`
+  // would skip it and drop the row to `fallback`. Content callers (chat, docs)
+  // only have an author id, so they still search.
+  const m = member || (userId ? members?.find((mm) => mm.user_id === userId) : null);
+
+  // The resolved identity. `email` is the address printed UNDER the name, and
+  // it is only ever shown next to a REAL name: with nothing but an address,
+  // displayName() has already turned it into the name, and printing it twice is
+  // what every member screen used to guard by hand. The invite address wins —
+  // it is what was actually invited.
+  const identity = (name, hasRealName, photo) => ({
+    name: name || fallback,
+    email: hasRealName ? String(m?.invite_email || p?.email || '').trim() : '',
+    photo: photo || null,
+    deleted: false,
+  });
+
   if (p && (p.full_name || p.avatar_url || p.email)) {
-    return { name: displayName(p.email, p.full_name) || fallback, photo: p.avatar_url || null, deleted: false };
+    return identity(displayName(p.email, p.full_name), !!p.full_name, p.avatar_url);
   }
 
   // 2) Name snapshot on the content row — survives the author leaving the trip.
   const snap = nameSnapshot && String(nameSnapshot).trim();
-  if (snap) return { name: snap, photo: null, deleted: false };
+  if (snap) return identity(snap, true, null);
 
   // 3) Live membership snapshot — invited/offline authors without a users row.
-  const m = userId ? members?.find((mm) => mm.user_id === userId) : null;
   if (m && (m.user_full_name || m.invite_email)) {
-    return { name: displayName(m.invite_email, m.user_full_name), photo: null, deleted: false };
+    return identity(displayName(m.invite_email, m.user_full_name), !!m.user_full_name, null);
   }
 
   // 4) The viewer's own content — safe to attribute to self, never to others.
   if (userId && selfUser?.id && userId === selfUser.id) {
-    return { name: displayName(selfUser.email, selfUser.full_name) || fallback, photo: selfUser.avatar_url || null, deleted: false };
+    return identity(displayName(selfUser.email, selfUser.full_name), !!selfUser.full_name, selfUser.avatar_url);
   }
 
   // 5) Nothing resolvable.
-  return { name: fallback, photo: null, deleted: false };
+  return { name: fallback, email: '', photo: null, deleted: false };
 }

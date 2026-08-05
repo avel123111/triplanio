@@ -24,7 +24,7 @@
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { withHandler } from '../_shared/http.ts';
-import { PROFILE_COLUMNS, toProfile, type UserRow } from '../_shared/profiles.ts';
+import { fetchTripProfiles } from '../_shared/profiles.ts';
 
 Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // Identify caller — REQUIRED. getRequestUser returns null when there is no
@@ -175,16 +175,12 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
       // row and therefore no cached trip_members.user_full_name to fall back on,
       // was always last. The ids are already in hand here, so it costs one
       // in-datacentre query instead of a client round trip.
-      // Scope is exactly resolveProfiles': active members + the trip creator.
-      const members = (response.members as any[]) ?? [];
-      const profileIds = [...new Set([
-        ...members.filter((m) => m?.status === 'active' && m?.user_id).map((m) => m.user_id as string),
-        ...(trip.created_by ? [trip.created_by as string] : []),
-      ])];
-      const userRows = profileIds.length
-        ? (await supabaseAdmin.from('users').select(PROFILE_COLUMNS).in('id', profileIds)).data
-        : [];
-                       response.profiles           = ((userRows ?? []) as UserRow[]).map(toProfile);
+      // Scope rule is shared with resolveProfiles (tripProfileScope): a profile
+      // for EVERY member row we ship, whatever its status — see TRIP-334.
+                       response.profiles           = await fetchTripProfiles(supabaseAdmin, {
+                         members: response.members as any[],
+                         ownerId: trip.created_by as string | null,
+                       });
     }
     if (wantDocuments) response.documents          = pick('documents');
     if (wantBudget) {
