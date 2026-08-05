@@ -1621,15 +1621,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ничего. */
 .input-group[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .input-group[data-warning] { border-color: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
-/* Дети без собственного скина. `.input-affix` внутри группы - не позиционер
-   ширины, а обычная колонка флекса. `box-shadow: none` гасит и кольцо фокуса:
+/* `.input-affix` внутри группы - не позиционер ширины, а обычная колонка
+   флекса, и она тянется на всю высоту группы: без `align-self` она сжимается по
+   содержимому, а поле вместе с ней (см. `.input` ниже). Своим `display: flex`
+   она передаёт эту высоту полю внутри. Абсолютные декорации от этого не
+   съезжают - они позиционируются от неё же, а `line-height: 0` в базовом
+   правиле остаётся нужным ВНЕ группы, где обёртка блочная и заводит строчный
+   бокс. */
+.input-group .input-affix { flex: 1; align-self: stretch; display: flex; }
+/* Дети без собственного скина. `box-shadow: none` гасит и кольцо фокуса:
    отдельное правило на `:focus` не нужно, у `.input:focus` та же специфичность
    (0,2,0) и решает порядок. */
-/* Обёртка поля внутри группы тянется на всю её высоту и сама становится флексом:
-   иначе она сжимается по содержимому, и поле вместе с ней (см. `align-self` у
-   `.input` ниже). Абсолютным декорациям это не мешает - они позиционируются от
-   неё же. */
-.input-group .input-affix { flex: 1; align-self: stretch; display: flex; }
 .input-group .input, .input-group .textarea {
   border: 0; background: transparent; padding: 0; box-shadow: none; border-radius: 0;
 }
@@ -1639,9 +1641,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    кликабельным остаётся только он. Замер: группа 40px, поле 17.5px, мёртвые
    полосы по 11.25px сверху и снизу - клик по ним попадал в `<div>` и не делал
    ничего, то есть больше половины видимого поля не работало (а на телефоне это
-   ещё и срывало цель нажатия 44px). `stretch` возвращает полю всю высоту
-   группы. Сброс только у `.input`: у `.textarea` токена высоты нет, её
-   `min-height` - это минимальное поле для текста. */
+   ещё и срывало цель нажатия 44px). `stretch` возвращает полю всю высоту.
+   ★Удалить как «дубль» стретча у обёртки НЕЛЬЗЯ: `.input` бывает и ПРЯМЫМ
+   ребёнком группы (кнопка-триггер `CurrencyCombobox` в сумме траты), а у
+   `.input-group` стоит `align-items: center` - там схлопывалась именно она.
+   Сброс только у `.input`: у `.textarea` токена высоты нет, её `min-height` -
+   это минимальное поле для текста. */
 .input-group .input { min-height: 0; align-self: stretch; }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work

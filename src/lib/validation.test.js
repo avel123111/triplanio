@@ -280,11 +280,15 @@ test('required: приглашение - обязательность завис
 });
 
 test('required: считается по гейту ФОРМЫ, а не по сырому вердикту', () => {
-  // Редактор события понижает всё, кроме семейства *_ORDER, до совета, поэтому
-  // сохраняется и без названия. Звёздочка обязана следовать за этим гейтом -
-  // иначе поле помечено обязательным, а форма его не требует.
+  // Редактор события понижает до совета всё, чего нет в его `BLOCKING_CODES`,
+  // поэтому сохраняется и без названия. Звёздочка обязана следовать за этим
+  // гейтом - иначе поле помечено обязательным, а форма его не требует.
+  // Набор скопирован из EventEditDialog дословно: `endsWith('_ORDER')` дал бы
+  // ДРУГОЙ список (без `SEG_BACKSTEP`, зато с `INS_DATE_ORDER`/`CITY_ORDER`) -
+  // тест проверял бы гейт, которого в приложении нет.
   const car = { service_kind: 'car_rental' };
-  const blocksInEventEditor = (i) => i.code.endsWith('_ORDER');
+  const EED_BLOCKING = new Set(['HOTEL_ORDER', 'ACT_ORDER', 'TR_ORDER', 'SVC_ORDER', 'SEG_ORDER', 'SEG_BACKSTEP']);
+  const blocksInEventEditor = (i) => EED_BLOCKING.has(i.code);
   assert.equal(req('service', car, {}, 'name'), true);                                   // сырой вердикт
   assert.equal(isFieldRequired('service', car, {}, 'name', blocksInEventEditor), false);  // гейт формы
   // Формы на useHybridValidation блокируют по любой ошибке - там звёздочка есть.
