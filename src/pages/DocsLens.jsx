@@ -511,9 +511,9 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
       {/* Link row (visual, non-navigating — detail dialog has the real link) */}
       {doc.link_url && (
         <div className="dl-linkrow">
-          <Icon name="external" size={14} style={{ color: 'var(--ev-hotel-ink)', flexShrink: 0 }} />
+          <Icon name="external" size={14} />
           <b>{doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}</b>
-          <Icon name="chev" size={13} style={{ color: 'var(--ev-hotel-ink)', opacity: .55 }} />
+          <Icon name="chev" size={13} style={{ opacity: .55 }} />
         </div>
       )}
 

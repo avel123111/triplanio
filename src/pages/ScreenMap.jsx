@@ -200,9 +200,11 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
     );
   }
 
-  // Desktop: a floating glass panel top-left over the map.
+  // Desktop: панель поверх карты, слева сверху. Скин даёт роль поверхности,
+  // в co-селектор которой `.map-route` входит своим именем; «стекла» (блюра и
+  // тени) нет с TRIP-326, вместе с ним ушло и имя `.surface-glass`.
   return (
-    <aside className="map-route surface-glass">
+    <aside className="map-route">
       {empty ? emptyState : (<>{head}{list}</>)}
     </aside>
   );
