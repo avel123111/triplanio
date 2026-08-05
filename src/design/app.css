@@ -388,10 +388,11 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    -----------------------------------------------------------------
    Раньше эту пару объявляли заново 39 правил по всему файлу: ровно те же
    две строки под 56 разными именами. Форма поверхности одна, различаются
-   только радиус, тень и размеры — они и остаются в собственном блоке
-   каждого элемента ниже по файлу. Радиусы НЕ сводили намеренно: 24/20/16/
-   14/11 — это разные формы, а прогон по значениям уже ломал живое
-   (TRIP-321, .checkbox 17px → круг).
+   только радиус, тень и размеры. Радиусы НЕ сводили одним прогоном ПО
+   ЗНАЧЕНИЯМ: совпавшая цифра — ещё не совпавшая роль, и такой прогон уже
+   ломал живое (TRIP-321, .checkbox 17px → круг). Сводили по РОЛИ: у карточки
+   и у вложенного контейнера ступень объявлена общим со-селектором ниже по
+   файлу, у остальных остаётся в собственном блоке элемента.
    Блок стоит выше всех компонентов, чтобы любое состояние (:hover,
    .is-active, тёмная тема) перебивало его, а не наоборот.
    Расширять — дописать имя сюда, а НЕ скопировать пару к себе.
@@ -399,7 +400,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* карточки, панели, виджеты (канон TRIP-189; .surface-glass/.surface-panel — алиасы одной роли) */
 .surface-glass, .surface-panel,
 .statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
-.card, .statcard, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
+.card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
 .chat-reply__card, .pl-lastcard,
 /* оверлеи и всплывающее */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
@@ -407,7 +408,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
 .te-row.te-row--plan, .acct-chan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
-.addon-card, .tm-manage, .tm-account, .stay-dates, .records, .eroute,
+.addon-card, .tm-manage, .tm-account, .records, .eroute,
 .hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel,
 /* контролы: кнопки, пилюли, чипы */
 .cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
@@ -1333,11 +1334,34 @@ h4,
 .panel,                    /* экран трипа/статистика — плоские панели/виджеты */
 .summary,                  /* /stats — полоса из 6 стат-плиток */
 .invite,                   /* баннер-приглашение */
-.acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
-.chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
 .pl-lastcard {             /* карточка последней брони (планнер) */
   border-radius: var(--r-xl);
+}
+/* ★`.chat-reply__card` в этом списке НЕ стоит намеренно: он объявляет свой
+   радиус ниже по файлу, при равной специфичности выигрывает объявленное
+   позже, и членство здесь ничего не давало - оно читалось как ступень
+   карточки, а рисовалась ступень вложенного контейнера. Скин (фон, рамка) он
+   по-прежнему берёт из роли поверхности. */
+
+/* ── Вложенный контейнер внутри оболочки (TRIP-333) ────────────────────────
+   Ступень МЕЖДУ оболочкой и контролом: раздел, который лежит внутри диалога
+   или панели и сам держит поля. Значение объявлено ЗДЕСЬ и только здесь -
+   раньше его писал каждый носитель у себя и получались три разных числа В
+   ОДНОМ ОКНЕ: «Бесплатная отмена» и «N ночей» скруглялись по ступени
+   карточки, секции просмотра - на ступень ниже, а сегмент переезда рисовался
+   инлайном на ступени контрола.
+   ★Аккордеон («Детали брони», «Документы и заметки») сюда переехал из группы
+   КАРТОЧЕК: он живёт только внутри редактора события, то есть карточкой
+   никогда не был, и носил ступень БОЛЬШЕ той оболочки, в которой лежит.
+   ⚠ Ступень выбрана замером вложенности, а не по шкале: диалог события - 16,
+   контрол - 10, промежуточной ступени между ними в шкале НЕТ. Пока оболочек
+   две и они разной величины (диалог 16, панель 24), «строго меньше внешней»
+   недостижимо; 16 - наибольшее, что не превышает НИ ОДНУ из двух. Это станет
+   однозначным, когда оболочка останется одна. */
+.acc, .eed-fcbox, .eed-nightrow,
+.ev-sec, .hv-namecard, .hv-card, .hv-rows, .hv-notes, .tv-card {
+  border-radius: var(--r-md);
 }
 
 /* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
@@ -1432,7 +1456,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
-.acc { margin-bottom: 12px; overflow: hidden; }
+/* Свой `margin-bottom: 12px` снят: ОБА родителя аккордеона уже раскладывают
+   детей зазором (`.ev-dlg-body` 11px, `.lp-b` 13px), поэтому отступ был
+   ДОБАВОЧНЫМ - между двумя разделами выходило 23 и 25px вместо ступени. Без
+   него класс годится и для сегмента переезда, чей список идёт `gap: 0` (между
+   сегментами стоит плашка пересадки, и лишний отступ оторвал бы её от своего
+   сегмента). */
+.acc { overflow: hidden; }
 .acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
 .acc__head:hover { background: var(--wash); } /* TRIP-326: opacity→opaque token */
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -1453,8 +1483,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    приложения, ниже панелей). Рамка есть в обеих: она, а не заливка, говорит
    «сюда можно писать». Раньше поле заливалось `--surface-3`, из-за чего в
    светлой теме белое поле в форме траты вставало рядом с серым селектом.
-   Тёмная половина - в `[data-theme="dark"]` сразу под этим правилом. */
-.input, .select, .textarea {
+   Тёмная половина - в `[data-theme="dark"]` сразу под этим правилом.
+
+   ★★Скин носит РОЛЬ, а не тег: одиночный контрол, группа контролов
+   (`.input-group`) и блок дат (`.stay-dates`) - это одно и то же поле, поэтому
+   рамка, фон, тень, радиус и переход объявлены им ОДНОЙ строкой. `.input-group`
+   держал свою побайтово одинаковую копию, а `.stay-dates` сидел в роли
+   ПОВЕРХНОСТИ - оттуда бледная `--line` в светлой и чужой фон в тёмной.
+   Раскладка у каждого своя и остаётся при своём правиле. */
+.input, .select, .textarea, .input-group, .stay-dates {
  width: 100%;
  border-radius: var(--r-btn);
  border: 1px solid var(--line-strong);
@@ -1480,12 +1517,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .s22f-sel,
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
+[data-theme="dark"] .stay-dates,
 [data-theme="dark"] .ts-startctl--block { background: var(--bg); }
 /* Тень - светлотемная компенсация слабой рамки, в тёмной она только грязнит. */
 [data-theme="dark"] .input,
 [data-theme="dark"] .select,
 [data-theme="dark"] .textarea,
-[data-theme="dark"] .input-group { box-shadow: none; }
+[data-theme="dark"] .input-group,
+[data-theme="dark"] .stay-dates { box-shadow: none; }
 /* Два исключения: AI-блок и композер чата - `InputGroup`, но не поля в форме, а
    приподнятые поверхности. Их собственные правила (0,1,0) проигрывают строкам
    выше (0,2,0), поэтому тёмную половину надо назвать явно. У композера общий
@@ -1598,22 +1637,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    без своей рамки - см. `InputGroup` в src/design/Input.jsx.
 
    Стоит ПОСЛЕ базового `.input`: правила ниже гасят его рамку, фон и кольцо
-   у детей при равной специфичности (0,2,0), и делает это порядок. */
+   у детей при равной специфичности (0,2,0), и делает это порядок.
+
+   Здесь ТОЛЬКО раскладка. Рамку, фон, тень, радиус и переход группа берёт из
+   общего скина контрола выше по файлу - своей копии у неё больше нет. */
 .input-group {
   display: flex; align-items: center; gap: 6px;
-  width: 100%; min-width: 0;
-  /* Та же коробка, что у одиночного поля: тот же токен высоты, те же боковые
-     отступы и тот же фон. Своя копия вертикального паддинга здесь и была
-     причиной, по которой цена «от/до» форк-панели не совпадала по росту с
-     соседним полем: два места объявляли высоту, и правка одного не доезжала
-     до другого. */
+  min-width: 0;
+  /* Та же коробка, что у одиночного поля: тот же токен высоты и те же боковые
+     отступы. Своя копия вертикального паддинга здесь и была причиной, по
+     которой цена «от/до» форк-панели не совпадала по росту с соседним полем:
+     два места объявляли высоту, и правка одного не доезжала до другого. */
   min-height: var(--ctl-h);
   padding: 0 13px;
-  border-radius: var(--r-btn);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(39, 36, 51, .05);   /* та же тень, что у одиночного поля */
-  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 /* Подсвечивается ВСЯ группа: кольцо вокруг одного ребёнка обвело бы половину
    того, что пользователь видит как одно поле. */
@@ -2971,16 +3007,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `.textarea` — the `.input-group` child reset does not touch it, and neither
    does the ≤640 anti-zoom guard; both layers get their 16px from the dedicated
    `.chat-ov, .chat-ta` media rule below, which is what keeps the caret aligned).
-   Только ДЕЛЬТА к `.input-group`: фон, рамку, фокус-кольцо и переход держит
-   группа. Своё здесь - выравнивание по низу (поле авто-растёт вверх, кнопки
-   остаются у нижнего края), свои отступы под кнопки внутри, крупный радиус и
+   Только ДЕЛЬТА к `.input-group`: фон, рамку, радиус, фокус-кольцо и переход
+   держит группа. Своё здесь - выравнивание по низу (поле авто-растёт вверх,
+   кнопки остаются у нижнего края), свои отступы под кнопки внутри и
    «плавающая» тень: это док над лентой, а не поле в форме.
-   ⚠ В ТЁМНОЙ теме обе последние ручки перебиваются группой:
+   ★Радиус СВОИМ больше не является. Он был крупным (ступень поверхности),
+   и это читалось как акцент, пока контрол скруглялся почти так же; на
+   нынешней шкале та же ступень стала другим языком - док переставал быть
+   полем. Приподнятость несёт тень, а не форма угла.
+   ⚠ В ТЁМНОЙ теме фон и тень дока перебиваются группой:
    `[data-theme="dark"] .input-group` (0,2,0) ставит `background: var(--bg)` и
-   `box-shadow: none`, а этот блок - всего (0,1,0). */
+   `box-shadow: none`, а этот блок - всего (0,1,0). Поэтому обе названы заново
+   явным исключением `[data-theme="dark"] .chat-composer__row` выше по файлу
+   (фон здесь не объявлен вовсе - в светлой он приходит от группы). */
 .chat-composer__row {
   gap: 8px; align-items: flex-end; padding: 8px;
-  border-radius: var(--r-xl); box-shadow: var(--sh-1);
+  box-shadow: var(--sh-1);
 }
 .chat-composer__field { flex: 1; min-width: 0; position: relative; min-height: 40px; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
@@ -3136,9 +3178,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .dock-panel .chat-reply { margin-top: 20px; }
 .dock-panel .chat-reply__card { padding: 12px 14px 12px 17px; }
 /* The composer already carries its own surface, so inside the widget dock it
-   drops the outer bar chrome and runs a denser variant of the same markup. */
+   drops the outer bar chrome and runs a denser variant of the same markup.
+   ★Плотность - это отступы и размер кнопок, НЕ скругление. Своего радиуса у
+   дока и не было: он стоял ступенью НИЖЕ комнаты, пока комната стояла на
+   поверхностной. После переезда комнаты на ступень контрола док остался бы
+   скруглён СИЛЬНЕЕ полноразмерного - один объект с двумя разными углами.
+   Ступень теперь общая, у дока остаются свои отступы и отсутствие тени. */
 .dock-panel .chat-composer { border-top: 0; padding: 0; }
-.dock-panel .chat-composer__row { border-radius: var(--r-md); padding: 6px; box-shadow: none; }
+.dock-panel .chat-composer__row { padding: 6px; box-shadow: none; }
 .dock-panel .chat-at, .dock-panel .chat-send { width: 34px; height: 34px; border-radius: var(--r-sm); }
 .dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
@@ -4844,14 +4891,26 @@ a.doc-row__n:hover{ color: var(--brand); }
    одном файле и отличались одним пикселем) и .ai-file (распознавание брони).
    Разница между ними была 1px по вертикали и цвет рамки - решение Pavel: файл
    выглядит одинаково везде, рамка ИИ остаётся вариантом.
-   Рамка - модификатор, а не своё семейство: строка-ССЫЛКА (просмотр события)
-   рамки не носит, поэтому она не может уехать в базовый класс. Гашение ховера
-   у обоих вариантов обязательно: `.doc-row:hover` специфичнее модификатора и
-   иначе перекрасил бы фон рамочной строки, которая ссылкой не является. */
-.doc-row--framed{background:var(--surface-3);border:1px solid var(--line);}
-.doc-row--framed:hover{background:var(--surface-3);}
-.doc-row--ai{background:var(--surface);border:1px solid var(--ai-soft-2);}
-.doc-row--ai:hover{background:var(--surface);}
+   ⚠ Рамку и фон базовой строке даёт РОЛЬ (co-selector «строки-списки и ряды» в
+   начале файла, TRIP-326), поэтому модификаторы объявляют только ДЕЛЬТУ к ней:
+   рамочный - свой фон, ИИ - свой цвет рамки. Их прежние копии `--line` и
+   `--surface` были побайтовым повтором роли. Прежний комментарий здесь
+   утверждал, что строка-ссылка рамки не носит, - это неверно с TRIP-326, она
+   её носит, и `plain` отличается от `--framed` РОВНО фоном.
+   ★Подсветка при наведении есть у ВСЕХ трёх вариантов. Раньше оба рамочных
+   гасили её копией собственного покоя: правило выглядело как «своё значение»,
+   а означало «ховера нет» - в событии строки подсвечивались, в Документах
+   молчали. У рамочной ступень общая (`--surface-2`), поэтому своего правила
+   ей не нужно вовсе; у ИИ-строки ступень своего семейства - тот же `--ai-soft`,
+   которым подсвечиваются строка упоминания в чате и «собачка» композера.
+   `--ai-soft` полупрозрачен, то есть подмешивается к фону РОДИТЕЛЯ: у себя дома
+   (`.ai-blk`, родитель `--surface`) это ровно ожидаемый тон; если строку
+   положат на более тёмную подложку, оттенок уедет вместе с ней.
+   ⚠ Правило ИИ обязано стоять НИЖЕ базового ховера: специфичность у них
+   одинаковая (0,2,0), решает порядок. */
+.doc-row--framed{background:var(--surface-3);}
+.doc-row--ai{border:1px solid var(--ai-soft-2);}
+.doc-row--ai:hover{background:var(--ai-soft);}
 /* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),
    с одинаковым поведением: прозрачная кнопка, при наведении - опасный тон. */
 .doc-row__rm{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted-2);cursor:pointer;display:grid;place-items:center;flex:none;transition:background .14s,color .14s;}
@@ -4889,7 +4948,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Top action chips (booking link + "on map") — wrap on narrow widths. */
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
-.ev-sec{border-radius:var(--r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
+.ev-sec{padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ev-color,var(--brand));}
 .ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
@@ -4901,11 +4960,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
-/* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
-/* Ступень КОНТРОЛА, а не поверхности: блок дат - это пара полей в общей рамке,
-   как `.input-group`, и скругляться он обязан вместе с полями, а не вместе с
-   карточками. */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border-radius:var(--r-btn);overflow:hidden;}
+/* Роль КОНТРОЛА, а не поверхности: блок дат - это пара полей в общей рамке,
+   как `.input-group`. Рамку, фон, тень и радиус он берёт из общего скина
+   контрола (co-selector с `.input`); здесь остаётся только его раскладка. */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
@@ -4927,7 +4985,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
-.hv-namecard{padding:16px 17px;border-radius:var(--r-md);}
+.hv-namecard{padding:16px 17px;}
 .hv-name{ color:var(--ink);line-height:1.2;}
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
 .hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
@@ -4940,10 +4998,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
 .hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
-.hv-card{padding:13px 15px;border-radius:var(--r-md);}
+.hv-card{padding:13px 15px;}
 .hv-price{ color:var(--ink);}
 .hv-pernight{ color:var(--muted);margin-top:2px;}
-.hv-rows{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;}
+.hv-rows{display:flex;flex-direction:column;overflow:hidden;}
 /* Раскладку даёт .row .row--g6 в разметке (зазор 12 = ступень --sp-6, ТОЧНОЕ
    совпадение). Отбивка своя: строка живёт внутри рамки .hv-rows, у которой нет
    боковых полей, - в отличие от .row--div, что стоит в .card со своими полями. */
@@ -4954,7 +5012,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-row__k{flex:none; color:var(--muted);}
 .hv-row__sp{flex:1;}
 .hv-row__v{ color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;}
-.hv-notes{padding:12px 14px;border-radius:var(--r-md); color:var(--ink-2);line-height:1.5;}
+.hv-notes{padding:12px 14px; color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--brand);}
@@ -4974,7 +5032,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .badge--on-arrival{background:var(--primary-soft);color:var(--brand);}
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
-.tv-card{padding:16px 17px;border-radius:var(--r-md);}
+.tv-card{padding:16px 17px;}
 .tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
 /* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8), размер иконки - .badge svg;
    здесь остаются только тона. */
