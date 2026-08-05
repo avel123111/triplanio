@@ -390,7 +390,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 14px', background: 'var(--warning-soft)',
-      border: '1.5px dashed var(--warning)', borderRadius: 'var(--r-sm)',
+      border: '1px dashed var(--warning)', borderRadius: 'var(--r-sm)',
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
@@ -664,7 +664,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px',
-                  background: 'transparent', border: '1.5px dashed var(--line)',
+                  background: 'transparent', border: '1px dashed var(--line)',
                   borderRadius: 'var(--r-sm)', color: 'var(--muted)',
                 }}>
                   <Icon name="info" size={14} />
