@@ -106,6 +106,34 @@ test('no real name: the address becomes the NAME and is not repeated below', () 
   assert.equal(who.email, '');
 });
 
+// ── invites to people WITHOUT an account — the row has no user_id at all ─────
+
+test('invite to an unregistered address: name from the address, not a fallback', () => {
+  // inviteTripMember writes user_id: null when the address has no users row,
+  // so there is no id to look the membership snapshot up BY — the row itself
+  // has to be handed over. Otherwise the ladder falls through to `fallback`,
+  // which on the member screens is the "deleted account" label: an ordinary
+  // pending invite would read as a deleted person.
+  const m = { id: 'm1', user_id: null, status: 'pending', user_full_name: '', invite_email: 'newcomer@example.com' };
+  const who = resolveAuthor({
+    userId: m.user_id,
+    nameSnapshot: m.user_full_name,
+    member: m,
+    profiles: {},
+    members: [m],
+    ...opts,
+  });
+  assert.equal(who.name, 'Newcomer');
+  assert.equal(who.deleted, false);
+  assert.equal(who.email, ''); // the address IS the name — never printed twice
+});
+
+test('declined invite to an unregistered address resolves the same way', () => {
+  const m = { id: 'm2', user_id: null, status: 'declined', user_full_name: '', invite_email: 'newcomer@example.com' };
+  const who = resolveAuthor({ userId: null, nameSnapshot: '', member: m, profiles: {}, members: [m], ...opts });
+  assert.equal(who.name, 'Newcomer');
+});
+
 test('offline placeholder resolves from its name snapshot alone', () => {
   // addOfflineTripMember writes user_id: null + a name, no address at all.
   const who = resolveAuthor({

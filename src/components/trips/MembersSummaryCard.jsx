@@ -91,8 +91,8 @@ export default function MembersSummaryCard({
             const who = resolveAuthor({
               userId: m.user_id,
               nameSnapshot: m.user_full_name,
+              member: m,
               profiles,
-              members: orderedMembers,
               selfUser: user,
               deletedLabel: t('common.deleted_user'),
               fallback: t('common.deleted_user'),

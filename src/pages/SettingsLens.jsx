@@ -403,7 +403,7 @@ function TelegramSection({ tripId }) {
 
 // ─── ApproverRow ──────────────────────────────────────────────────────────────
 
-function ApproverRow({ member, profiles, members, locked }) {
+function ApproverRow({ member, profiles, locked }) {
   const { t } = useI18n();
   const [on, setOn] = useState(false);
   // Shared identity resolver (TRIP-334): name, avatar and the "anonymized
@@ -411,8 +411,8 @@ function ApproverRow({ member, profiles, members, locked }) {
   const who = resolveAuthor({
     userId: member.user_id,
     nameSnapshot: member.user_full_name,
+    member,
     profiles,
-    members,
     deletedLabel: t('common.deleted_user'),
     fallback: t('common.deleted_user'),
   });
@@ -890,8 +890,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {SHOW_HOTEL_VOTING && (
             <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
               <div className="col col--g4">
-                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} members={members} locked />)}
-                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} members={members} locked={false} />)}
+                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked />)}
+                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked={false} />)}
                 {members.length === 0 && (
                   <div className="muted t-body">{t('settings.members_loading')}</div>
                 )}

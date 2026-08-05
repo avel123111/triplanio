@@ -39,8 +39,8 @@ export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {
     ...resolveAuthor({
       userId: m.user_id,
       nameSnapshot: m.user_full_name,
+      member: m,
       profiles,
-      members,
       selfUser,
       deletedLabel,
     }),
@@ -50,6 +50,7 @@ export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {
 export function resolveAuthor({
   userId,
   nameSnapshot,
+  member,
   profiles,
   members,
   selfUser,
@@ -62,7 +63,12 @@ export function resolveAuthor({
   const p = userId ? profiles?.[userId] : null;
   if (p?.is_deleted) return { name: deletedLabel || fallback, email: '', photo: null, deleted: true };
 
-  const m = userId ? members?.find((mm) => mm.user_id === userId) : null;
+  // Membership row. Callers that ARE a member list hand theirs over directly
+  // (`member`): an invite to an address with no account is written with
+  // user_id: null, so there is no id to look it up BY, and searching `members`
+  // would skip it and drop the row to `fallback`. Content callers (chat, docs)
+  // only have an author id, so they still search.
+  const m = member || (userId ? members?.find((mm) => mm.user_id === userId) : null);
 
   // The resolved identity. `email` is the address printed UNDER the name, and
   // it is only ever shown next to a REAL name: with nothing but an address,
