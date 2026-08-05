@@ -209,25 +209,10 @@
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   margin-bottom: 20px;
 }
+/* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .dl-search {
-  position: relative; flex: 1; min-width: 200px; max-width: 380px;
+  flex: 1; min-width: 200px; max-width: 380px;
 }
-.dl-search__icon {
-  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
-  pointer-events: none; color: var(--muted-2);
-}
-.dl-search__icon svg { width: 16px; height: 16px; }
-.dl-search input {
-  color: var(--ink); background: var(--surface-3);  /* TRIP-176: канон-инпут (--surface-3) */
-  border: 1.5px solid var(--line-strong); border-radius: var(--r-btn);
-  padding: 10px 16px 10px 40px; width: 100%;
-  transition: border-color .2s, box-shadow .2s;
-}
-.dl-search input:focus {
-  outline: none; border-color: var(--brand);
-  box-shadow: 0 0 0 4px var(--primary-ring);
-}
-.dl-search input::placeholder { color: var(--muted-2); }
 
 /* ─── Entrance animation ──────────────────────────────────────── */
 /* Canonical lens entrance (matches .ov-anim / ovIn used by the other lenses):

@@ -16,12 +16,12 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Input, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
@@ -70,7 +70,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
-  const inv = (f) => fieldStateClass(v.displayIssues, f);
+  const st = (f) => fieldState(v.displayIssues, f);
 
   // Generate (or reuse) a real invite link when the "link" tab is active.
   // The role is bound to the token server-side, so switching role re-fetches.
@@ -174,14 +174,14 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       {tab === 'offline' && <div style={{ marginTop: 4 }} />}
 
       {tab === 'email' && <>
-        <Field label="E-mail">
-          <div data-vfield="email" className={inv('email')}>
-            <input className="input" type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus={!isMobile} />
+        <Field label="E-mail" required={v.isRequired('email')}>
+          <div data-vfield="email">
+            <Input {...st('email')} type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus={!isMobile} />
           </div>
           <FieldError issues={v.displayIssues} field="email" />
         </Field>
         <Field label={t('member.message_label')} hint={t('member.message_hint')}>
-          <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
+          <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
         </Field>
         <div className="muted t-meta" style={{ marginTop: 6 }}>
           {t('member.invite_email_note')}
@@ -207,9 +207,9 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       </>}
 
       {tab === 'offline' && <>
-        <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')}>
-          <div data-vfield="name" className={inv('name')}>
-            <input className="input" value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus={!isMobile} />
+        <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')} required={v.isRequired('name')}>
+          <div data-vfield="name">
+            <Input {...st('name')} value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus={!isMobile} />
           </div>
           <FieldError issues={v.displayIssues} field="name" />
         </Field>

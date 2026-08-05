@@ -14,13 +14,13 @@
  *
  * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Severity, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Moon, ShieldCheck,
-  BedDouble, Ticket, Clock,
+  BedDouble, Ticket,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 import { EDITABLE_TRANSPORT_TYPES, transferKind } from '@/lib/transport';
@@ -30,8 +30,30 @@ import { DateTime } from 'luxon';
 // Thin shims that render the app's design-system markup (.input/.field__label/
 // .textarea) while accepting the same props the field groups already pass, so
 // the form JSX is ported to the design system without touching its logic.
-function Label({ children, className = '' }) {
-  return <label className={`field__label ${className}`} style={{ display: 'block', marginBottom: 5 }}>{children}</label>;
+// Обязательность полей ЭТОЙ формы - ответ валидатора, розданный по дереву
+// контекстом (TRIP-333). Контекстом, а не пропом: подписи живут в четырёх
+// вложенных под-формах, и проп пришлось бы протаскивать через каждую, то есть
+// в четырёх местах помнить про него - ровно так звёздочки и разъезжаются.
+const RequiredFieldsCtx = React.createContext(null);
+const useFieldRequired = (field) => {
+  const ask = React.useContext(RequiredFieldsCtx);
+  return !!(field && ask && ask(field));
+};
+
+// `field` - токен валидации (тот же, что у `data-vfield` и `fieldState`).
+// Звёздочку рисует CSS по `[data-required]`, поэтому она не может разъехаться с
+// остальным приложением ни знаком, ни цветом: до этого она была вшита прямо в
+// строку перевода и потому была ЧЁРНОЙ.
+function Label({ children, className = '', field }) {
+  const required = useFieldRequired(field);
+  // Разметка ровно как у `<Field>`: звёздочка на спане с текстом, а не на самом
+  // `<label>` (тот флексит со своим `gap`, и отбивка знака разъехалась бы).
+  // `display` инлайном тоже не задаём - канон `.field__label` уже флекс.
+  return (
+    <label className={`field__label ${className}`} style={{ marginBottom: 5 }}>
+      <span data-required={required || undefined}>{children}</span>
+    </label>
+  );
 }
 function Input({ className = '', ...p }) {
   return <input className={`input ${className}`} {...p} />;
@@ -66,12 +88,13 @@ function SwitchRow({ on, onChange, title, hint, children }) {
 // (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
 // Thin facade over the shared <Autocomplete> engine (identical field/dropdown/
 // scroll/hover as every other city & address picker).
-function CityPicker({ value, onPick, placeholder }) {
+function CityPicker({ value, onPick, placeholder, ...rest }) {
   const { t } = useI18nFormat();
   const [q, setQ] = useState(value?.city_name || '');
   useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
   return (
     <Autocomplete
+      inputProps={rest}
       inputValue={q}
       onInputChange={(val) => { setQ(val); if (value) onPick(null); }}
       search={(query, lang) => searchCities(query, lang)}
@@ -108,8 +131,8 @@ import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
-import { validateEntity, transferAiCityAdvisories, issuesToShow } from '@/lib/validation';
-import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldStateClass } from '@/components/common/ValidationUI';
+import { validateEntity, transferAiCityAdvisories, issuesToShow, isFieldRequired } from '@/lib/validation';
+import { FieldError, IssuesPanel, fieldState } from '@/components/common/ValidationUI';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
@@ -735,6 +758,19 @@ export default function EventEditDialog({
     return {};
   }, [currentKind, form, tz, startTz, endTz, entity, isEdit]);
 
+  // Обязательность считается по ТОМУ ЖЕ гейту, который держит кнопку сохранения
+  // (`BLOCKING_CODES`, объявлен в шапке модуля), а не по сырому вердикту
+  // валидатора. Иначе звёздочка врёт: у аренды авто название - ошибка
+  // валидатора, но эта форма понижает её до совета и сохраняется без названия.
+  // ★Предикат не проверяет `level`, а `hasBlockingError` ниже требует и код из
+  // списка, И `level === 'error'`. Сегодня это одно и то же: все шесть кодов
+  // списка выдаются ТОЛЬКО как `error`. Появится среди них warning - гейты
+  // разъедутся молча, и звёздочка снова начнёт врать.
+  const askRequired = useCallback(
+    (field) => isFieldRequired(currentKind, vdraft, vctx, field, (i) => BLOCKING_CODES.has(i.code)),
+    [currentKind, vdraft, vctx],
+  );
+
   // Verdict policy: only the logical-ORDER family truly BLOCKS the save (dates in
   // the wrong order make no sense to persist). Everything else — required
   // name/title, out-of-bounds vs city dates, transfer day mismatch — stays
@@ -1223,6 +1259,7 @@ export default function EventEditDialog({
               />
             )}
 
+            <RequiredFieldsCtx.Provider value={askRequired}>
             <fieldset
               disabled={aiState === 'parsing'}
               style={{
@@ -1296,6 +1333,7 @@ export default function EventEditDialog({
               {/* Summary panel: revealed on edit-open, save attempt or AI parse. Click row -> field. */}
               <IssuesPanel issues={[...panelIssues, ...aiAdvisories]} style={{ marginTop: 12 }} />
             </fieldset>
+            </RequiredFieldsCtx.Provider>
           </div>
           )}
 
@@ -1603,7 +1641,7 @@ function SectionHeader({ children }) {
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.hotel.color;
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   // Filled-field counts drive the accordion badges (how many booking details /
   // documents are set without expanding the group).
   const bookingFilled = [form.booking_url, form.booking_reference, form.phone, form.email].filter(Boolean).length;
@@ -1611,10 +1649,10 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
   return (
     <>
       <div className="col col--g6">
-        <div data-vfield="name" className={inv('name')}>
-          <Label>{t('event.name_req')}</Label>
+        <div data-vfield="name">
+          <Label field="name">{t('event.name')}</Label>
           <AiField active={aiFields.has('name')}>
-            <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_hotel_example')} />
+            <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_hotel_example')} />
           </AiField>
           <FieldError issues={issues} field="name" />
         </div>
@@ -1641,8 +1679,8 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
         return (
           <DateRangeBlock
             label={t('event.stay_dates')} accent={color} issues={issues}
-            startLabel={t('event.checkin_req')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz} startAi={aiFields.has('checkInLocal')}
-            endLabel={t('event.checkout_req')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz} endAi={aiFields.has('checkOutLocal')}
+            startLabel={t('event.checkin')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz} startAi={aiFields.has('checkInLocal')}
+            endLabel={t('event.checkout')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz} endAi={aiFields.has('checkOutLocal')}
             midText={n > 0 ? t('fork.stay22_nights', { count: n }) : null}
           />
         );
@@ -1819,7 +1857,7 @@ function TransferLegCard({
   fromName, toName, toCityEditable, layoverCityPh,
   startTz, endTz, issues, color, t,
 }) {
-  const invF = (name) => fieldStateClass(issues, vf(name));
+  const stF = (name) => fieldState(issues, vf(name));
   const tk = TRANSPORT_OF(leg.transport_type);
   const TIcon = tk.Icon;
   // Within-leg duration (departure → arrival) for the date-block hint —
@@ -1867,7 +1905,7 @@ function TransferLegCard({
             <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
             <div className="eed-accrow">
               <Label>{t('event.city')}</Label>
-              <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
+              <input className="input" value={fromName} readOnly tabIndex={-1} title={t('event.city_from_route_title')} />
             </div>
             <div className="eed-accrow">
               <Label>{t('event.addr_station')}</Label>
@@ -1883,17 +1921,17 @@ function TransferLegCard({
           </div>
           <div>
             <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
-            <div className={`eed-accrow ${toCityEditable ? invF('toCity') : ''}`} data-vfield={toCityEditable ? vf('toCity') : undefined}>
+            <div className="eed-accrow" data-vfield={toCityEditable ? vf('toCity') : undefined}>
               <Label>{t('event.city')}</Label>
               {toCityEditable ? (
                 <>
                   <AiField active={aiHas('toCity')}>
-                    <CityPicker value={leg.toCity} onPick={(c) => patch({ toCity: c })} placeholder={layoverCityPh} />
+                    <CityPicker {...stF('toCity')} value={leg.toCity} onPick={(c) => patch({ toCity: c })} placeholder={layoverCityPh} />
                   </AiField>
                   <FieldError issues={issues} field={vf('toCity')} />
                 </>
               ) : (
-                <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
+                <input className="input" value={toName} readOnly tabIndex={-1} title={t('event.city_arrival_title')} />
               )}
             </div>
             <div className="eed-accrow">
@@ -1914,8 +1952,8 @@ function TransferLegCard({
         <DateRangeBlock
           style={{ marginTop: 14 }}
           label={t('event.dep_arr')} accent={color} issues={issues}
-          startLabel={t('event.departure_req')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz} startAi={aiHas('startLocal')}
-          endLabel={t('event.arrival_req')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz} endAi={aiHas('endLocal')}
+          startLabel={t('event.departure')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz} startAi={aiHas('startLocal')}
+          endLabel={t('event.arrival')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz} endAi={aiHas('endLocal')}
           midText={durMin != null ? fmtDur(durMin, t) : null}
         />
         {/* Overnight — DERIVED from the dates, not a user toggle. day_change is a pure
@@ -2032,14 +2070,16 @@ function DateRangeBlock({
   startLabel, startValue, onStart, onStartMissing, startVField, startTz, startAi,
   endLabel, endValue, onEnd, onEndMissing, endVField, endTz, endAi,
 }) {
-  const eitherEnd = (test) => (startVField && test(issues, startVField))
-    || (endVField && test(issues, endVField));
-  const invalid = eitherEnd(fieldHasError);
+  // Обязательность у каждого конца СВОЯ и адресуется своим токеном (у переезда с
+  // пересадками это `seg0.start` и т.п.), поэтому спрашиваем по отдельности.
+  const startRequired = useFieldRequired(startVField);
+  const endRequired = useFieldRequired(endVField);
+  // Состояние ПАРЫ «начало+конец» - теми же атрибутами, что и у одиночного поля,
+  // только на блоке: цвет несёт рамка `.stay-dates` внутри, у самих ячеек её нет.
   // Day-tolerance warnings (TR_DEP_DAY / TR_ARR_DAY) land on these two fields;
   // a hard error on either end outranks them, so only one tint shows at a time.
-  const warn = !invalid && eitherEnd(fieldHasWarning);
   return (
-    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`} style={style}>
+    <div className="eed-dateblock" {...fieldState(issues, [startVField, endVField])} style={style}>
       {/* The badge marks the pair, the tint marks the end: <AiField> can't be
           used here because it would tint BOTH cells when only one came from the
           parse, and its badge would be clipped by `.stay-dates` (overflow:hidden
@@ -2047,16 +2087,16 @@ function DateRangeBlock({
           cell and the shared <AiBadge> pins to this block, which does not clip. */}
       {(startAi || endAi) && <AiBadge />}
       <div className="eed-dateblock__lbl t-micro">{label}</div>
-      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
+      <div className="stay-dates">
         <div className={`sd-cellwrap${startAi ? ' ai-filled' : ''}`} data-vfield={startVField}>
-          <DateTimeInput variant="cell" cellLabel={startLabel} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
+          <DateTimeInput variant="cell" cellLabel={startLabel} cellRequired={startRequired} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
         </div>
         <div className="stay-dates__mid">
           <ArrowRight size={14} style={{ color: accent || 'var(--muted-2)' }} />
           {midText && <span className="t-meta">{midText}</span>}
         </div>
         <div className={`sd-cellwrap${endAi ? ' ai-filled' : ''}`} data-vfield={endVField}>
-          <DateTimeInput variant="cell" cellLabel={endLabel} value={endValue} onChange={onEnd} onTimeMissingChange={onEndMissing} />
+          <DateTimeInput variant="cell" cellLabel={endLabel} cellRequired={endRequired} value={endValue} onChange={onEnd} onTimeMissingChange={onEndMissing} />
         </div>
       </div>
       {(startTz || endTz) && (
@@ -2067,58 +2107,6 @@ function DateRangeBlock({
       )}
       {startVField && <FieldError issues={issues} field={startVField} />}
       {endVField && <FieldError issues={issues} field={endVField} />}
-    </div>
-  );
-}
-
-const splitLocal = (v) => { const [d, tm = ''] = String(v || '').split('T'); return { date: d || '', time: tm.slice(0, 5) }; };
-
-// Activity "Дата и время" (design): ONE shared date + a time card (start · duration
-// · end). The model still stores full startLocal/endLocal — both share the date.
-function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
-  const { t } = useI18nFormat();
-  const s = splitLocal(form.startLocal);
-  const e = splitLocal(form.endLocal);
-  const date = s.date || e.date || '';
-  const durMin = layoverMins(form.startLocal, form.endLocal);
-  const invalid = fieldHasError(issues, 'start') || fieldHasError(issues, 'end');
-  // Same amber state as DateRangeBlock: both blocks are the start/end pair, so
-  // they must flag validation identically even though no activity warning
-  // targets these fields today.
-  const warn = !invalid && (fieldHasWarning(issues, 'start') || fieldHasWarning(issues, 'end'));
-  const emit = (d, st, et) => {
-    setField('startLocal', d && st ? `${d}T${st}` : '');
-    setField('endLocal', d && et ? `${d}T${et}` : '');
-    setTime('start', !!d && !st);
-    setTime('end', !!d && !et);
-  };
-  return (
-    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`}>
-      <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
-      <div data-vfield="start">
-        <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
-      </div>
-      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`} style={{ marginTop: 8 }}>
-        <div className="sd-cellwrap">
-          <div className="sd-cell sd-cell--time">
-            <span className="sd-cell__lbl eyebrow">{t('activity.start')}</span>
-            <input type="time" className="sd-timeinput t-strong" value={s.time} onChange={(ev) => emit(date, ev.target.value, e.time)} />
-          </div>
-        </div>
-        <div className="stay-dates__mid">
-          <Clock size={14} style={{ color: color || 'var(--muted-2)' }} />
-          {durMin != null && <span className="t-meta">{fmtDur(durMin, t)}</span>}
-        </div>
-        <div className="sd-cellwrap" data-vfield="end">
-          <div className="sd-cell sd-cell--time">
-            <span className="sd-cell__lbl eyebrow">{t('event.end')}</span>
-            <input type="time" className="sd-timeinput t-strong" value={e.time} onChange={(ev) => emit(date, s.time, ev.target.value)} />
-          </div>
-        </div>
-      </div>
-      {tz && <div className="eed-drange-tz"><TimezoneHint tz={tz} /></div>}
-      <FieldError issues={issues} field="start" />
-      <FieldError issues={issues} field="end" />
     </div>
   );
 }
@@ -2251,13 +2239,20 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
+  // Start → end duration for the date-block hint — the same helper the transfer
+  // uses, so "end earlier than start" stays a blank hint here too instead of
+  // reading "0 мин".
+  const durMin = layoverMins(form.startLocal, form.endLocal);
   return (
     <>
-      <div data-vfield="title" className={inv('title')}>
-        <Label>{t('event.name_req')}</Label>
-        <Input value={form.title} onChange={(e) => setField('title', e.target.value)} onBlur={() => onTouch?.('title')} placeholder={t('event.ph_activity_example')} />
+      <div data-vfield="title">
+        {/* Токен активности - `title` (у отеля и услуги то же поле зовётся
+            `name`). Спрашивать надо ровно тем именем, которым валидатор метит
+            ошибку, иначе на обязательном поле приходит «не обязательно». */}
+        <Label field="title">{t('event.name')}</Label>
+        <Input {...st('title')} value={form.title} onChange={(e) => setField('title', e.target.value)} onBlur={() => onTouch?.('title')} placeholder={t('event.ph_activity_example')} />
         <FieldError issues={issues} field="title" />
       </div>
       <div>
@@ -2277,7 +2272,19 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         />
       </div>
 
-      <ActivityWhenBlock form={form} setField={setField} setTime={setTime} tz={tz} issues={issues} color={color} />
+      {/* Тот же блок дат, что у отеля и переезда (§5 ТЗ). Раньше у активности
+          стояла СВОЯ сборка: одна общая дата + два голых `<input type="time">`,
+          из-за чего у неё был свой скин `.sd-timeinput` и нативные виджеты
+          времени, которые Chrome рисует по локали ОС. Модель не меняется -
+          `startLocal`/`endLocal` как были, просто теперь у каждого конца свой
+          полноценный выбор даты и времени, а не общая дата на двоих. */}
+      <DateRangeBlock
+        label={t('event.date_time')} accent={color} issues={issues}
+        midText={durMin != null ? fmtDur(durMin, t) : null}
+        startLabel={t('activity.start')} startValue={form.startLocal} onStart={(v) => setField('startLocal', v)} onStartMissing={(v) => setTime('start', v)} startVField="start" startTz={tz} startAi={aiFields.has('startLocal')}
+        endLabel={t('event.end')} endValue={form.endLocal} onEnd={(v) => setField('endLocal', v)} onEndMissing={(v) => setTime('end', v)} endVField="end" endTz={tz} endAi={aiFields.has('endLocal')}
+      />
+
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="fld-grid grid grid--2">
@@ -2310,13 +2317,13 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
 
 function EsimServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.esim')}</SectionHeader>
-      <div data-vfield="name" className={inv('name')}>
-        <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
+      <div data-vfield="name">
+        <Label field="name">{t('service.name')}</Label>
+        <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2350,13 +2357,13 @@ function EsimServiceFields({ form, setField, issues, onTouch, setUploading, trip
 
 function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   return (
     <>
       <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
-      <div data-vfield="name" className={inv('name')}>
-        <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
+      <div data-vfield="name">
+        <Label field="name">{t('service.name')}</Label>
+        <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2366,13 +2373,14 @@ function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading,
         <Input className="t-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
       <div className="fld-grid grid grid--2">
-        <div data-vfield="date_start" className={inv('date_start')}>
+        <div data-vfield="date_start">
           <Label>{t('service.date_start')}</Label>
-          <Input type="date" value={form.date_start} onChange={(e) => setField('date_start', e.target.value)} />
+          {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
+          <DateTimeInput {...st('date_start')} withTime={false} value={form.date_start} onChange={(d) => setField('date_start', d)} />
         </div>
-        <div data-vfield="date_finish" className={inv('date_finish')}>
+        <div data-vfield="date_finish">
           <Label>{t('service.date_finish')}</Label>
-          <Input type="date" value={form.date_finish} onChange={(e) => setField('date_finish', e.target.value)} />
+          <DateTimeInput {...st('date_finish')} withTime={false} value={form.date_finish} onChange={(d) => setField('date_finish', d)} />
           <FieldError issues={issues} field="date_finish" />
         </div>
       </div>
@@ -2415,21 +2423,25 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, onT
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.service.color;
-  const inv = (f) => fieldStateClass(issues, f);
+  const st = (f) => fieldState(issues, f);
   return (
     <>
       <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
-      <div data-vfield="name" className={inv('name')}>
-        <Label>{t('event.company_name_req')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_car_example')} />
+      <div data-vfield="name">
+        <Label field="name">{t('event.company_name')}</Label>
+        <Input {...st('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_car_example')} />
         <FieldError issues={issues} field="name" />
       </div>
 
       <SectionHeader color={color}>{t('event.pickup')}</SectionHeader>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        <div data-vfield="pickupAddress" className={inv('pickupAddress')}>
-          <Label>{isEdit ? t('event.pickup_addr') : t('event.pickup_addr_req')}</Label>
+        <div data-vfield="pickupAddress">
+          {/* Одна подпись: обязательность зависит от создания/редактирования, но
+              это знает валидатор, а не разметка (раньше тут была вилка по двум
+              ключам, отличавшимся ровно звёздочкой). */}
+          <Label field="pickupAddress">{t('event.pickup_addr')}</Label>
           <AddressAutocomplete
+            {...st('pickupAddress')}
             value={form.pickup_address}
             onChange={(v) => setField('pickup_address', v)}
             onPlaceSelected={async (p) => {
@@ -2447,9 +2459,10 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
           />
           <FieldError issues={issues} field="pickupAddress" />
         </div>
-        <div data-vfield="pickup" className={inv('pickup')}>
+        <div data-vfield="pickup">
           <Label>{t('event.date_time')}</Label>
           <DateTimeInput
+            {...st('pickup')}
             value={form.pickup_at_local}
             onChange={(v) => setField('pickup_at_local', v)}
             onTimeMissingChange={(v) => setTime('pickup', v)}
@@ -2488,9 +2501,10 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
             />
           </div>
         )}
-        <div data-vfield="dropoff" className={inv('dropoff')}>
+        <div data-vfield="dropoff">
           <Label>{t('event.date_time_return')}</Label>
           <DateTimeInput
+            {...st('dropoff')}
             value={form.dropoff_at_local}
             onChange={(v) => setField('dropoff_at_local', v)}
             onTimeMissingChange={(v) => setTime('dropoff', v)}

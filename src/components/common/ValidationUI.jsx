@@ -5,7 +5,7 @@
 // data-vfield="<token>" attribute on each field wrapper so the panel can focus it.
 import React, { useMemo, useState, useCallback } from 'react';
 import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
-import { validateEntity, issuesToShow } from '@/lib/validation';
+import { validateEntity, issuesToShow, isFieldRequired } from '@/lib/validation';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Hybrid display state: inline shows for TOUCHED fields; the summary panel and
@@ -24,6 +24,9 @@ export function useHybridValidation(kind, draft, ctx) {
   const displayIssues = issuesToShow(issues, { submitted, touched });
   const panelIssues = issuesToShow(issues, { submitted });
   const reset = useCallback(() => { setTouched(new Set()); setSubmitted(false); }, []);
+  // Обязательность спрашиваем у валидатора, а не размечаем на экране: звёздочка
+  // не может оказаться там, где сохранение на самом деле пройдёт (TRIP-333).
+  const isRequired = useCallback((field) => isFieldRequired(kind, draft, ctx, field), [kind, draft, ctx]);
   // Run onOk only when valid; otherwise reveal everything + scroll to first error.
   const attemptSubmit = useCallback((onOk) => {
     if (canSubmit) { onOk(); return; }
@@ -33,14 +36,17 @@ export function useHybridValidation(kind, draft, ctx) {
       document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }, [canSubmit, issues]);
-  return { issues, displayIssues, panelIssues, canSubmit, submitted, markTouched, attemptSubmit, reset };
+  return { issues, displayIssues, panelIssues, canSubmit, submitted, markTouched, attemptSubmit, reset, isRequired };
 }
 
-// First issue targeting `field` (errors win over warnings).
+// First issue targeting `field` - a token, or a LIST of tokens that share one
+// state (the date blocks: «начало+конец» one colour for the pair). Errors win
+// over warnings, on either end of the pair.
 function pickFieldIssue(issues, field) {
+  const fields = (Array.isArray(field) ? field : [field]).filter(Boolean);
   let warn = null;
   for (const i of issues) {
-    if (i.field !== field) continue;
+    if (!fields.includes(i.field)) continue;
     if (i.level === 'error') return i;
     if (!warn) warn = i;
   }
@@ -62,24 +68,30 @@ export function FieldError({ issues, field, className = '' }) {
   );
 }
 
-// True when `field` has a blocking error - for red-border styling on the wrapper.
-export function fieldHasError(issues, field) {
-  return (issues || []).some((i) => i.field === field && i.level === 'error');
-}
-
-// True when `field` carries a non-blocking warning and no error - for
-// amber-border styling on the wrapper. An error owns the field's colour.
-export function fieldHasWarning(issues, field) {
+// Состояние поля ГОТОВЫМИ АТРИБУТАМИ под spread (TRIP-333): `<Input {...st(f)}>`,
+// `<select {...st(f)}>`, `<InputGroup {...st(f)}>` - одна форма на все контролы,
+// сырые и наши. Своего пропа компоненты не заводят: проп был бы вторым способом
+// сказать то же самое, а такая пара всегда расходится (TRIP-293).
+//
+// `aria-invalid` вместо своего data-атрибута - это стандартный признак, его
+// объявляет скринридер; в приложении не было ни одного. Ошибка старше
+// предупреждения: оба сразу поле не показывает никогда.
+//
+// `field` может быть МАССИВОМ - тогда состояние считается по паре и садится на
+// контейнер, как у `<InputGroup>`: это блоки дат редактора события, где
+// «начало+конец» - одно состояние на двоих, а цвет несёт рамка `.stay-dates`
+// внутри (у самих ячеек её нет). Раньше эта половина жила отдельной парой
+// функций, возвращавших булевы под классы (`.is-invalid` / `.field--warning`),
+// то есть «как выглядит ошибка» было объявлено в ДВУХ местах. На контейнере
+// `aria-invalid` - общий словарь и зацепка для CSS, но НЕ объявление для
+// скринридера: тот читает признак на контроле, а не на `<div>`.
+export function fieldState(issues, field) {
   const issue = pickFieldIssue(issues || [], field);
-  return !!issue && issue.level !== 'error';
-}
-
-// Wrapper class for a field's validation state: `.tv-invalid` (red) or
-// `.field--warning` (amber), never both. Single source for every form wrapper.
-export function fieldStateClass(issues, field) {
-  const issue = pickFieldIssue(issues || [], field);
-  if (!issue) return '';
-  return issue.level === 'error' ? 'tv-invalid' : 'field--warning';
+  const invalid = issue?.level === 'error';
+  return {
+    'aria-invalid': invalid ? 'true' : undefined,
+    'data-warning': issue && !invalid ? '' : undefined,
+  };
 }
 
 function focusField(field) {
