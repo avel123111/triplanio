@@ -32,11 +32,10 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
     const { tripId, fields, addons, main_currency, display } = await req.json();
     if (!tripId) return Response.json({ error: 'tripId required' }, { status: 400, headers: corsHeaders });
 
+    // `details` is the only column this function reads: permission comes from
+    // isCallerEditor and trip-level Pro from the is_trip_pro RPC below (which
+    // also covers "the owner is Pro" — the `is_pro_trip` column does not).
     const { data: trip } = await supabaseAdmin
-      // `details` only: `created_by` went with the hand-rolled permission check,
-      // and `is_pro_trip` was never read here — trip-level Pro comes from the
-      // is_trip_pro RPC below (it also covers "owner is Pro", which the column
-      // does not).
       .from('trips').select('details').eq('id', tripId).single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 

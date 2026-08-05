@@ -25,9 +25,9 @@ Deno.serve(withHandler('telegramStartLink', async (req, corsHeaders) => {
     const { tripId } = await req.json();
     if (!tripId) return Response.json({ error: 'tripId is required' }, { status: 400, headers: corsHeaders });
 
-    // `editor` step. The existence probe above is redundant — isCallerEditor
-    // resolves the trip itself and returns false when it does not exist — but it
-    // is kept so a bad tripId still answers 404 rather than 403.
+    // This existence probe is redundant for the gate — isCallerEditor resolves
+    // the trip itself and returns false when there is none — but it is kept so a
+    // bad tripId answers 404 rather than 403.
     const { data: trip } = await supabaseAdmin
       .from('trips')
       .select('id')

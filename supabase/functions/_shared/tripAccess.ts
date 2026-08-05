@@ -12,17 +12,19 @@
  *                  events, services, cities, budget, documents and bytes,
  *                  settings, members
  *
- * `editor` is a STEP, not the `admin` role: the trip creator clears it without
- * having a `trip_members` row at all, and `owner` members clear it too. It was
- * called `isCallerAdmin`, which read as "role === admin" and is why three
- * functions hand-rolled their own copy instead of reusing it.
+ * `editor` is a STEP, not the `admin` role — the trip creator clears it with no
+ * `trip_members` row at all, and `owner` members clear it too. Name it for the
+ * step, never for a role: a helper called "isCallerAdmin" reads as
+ * `role === 'admin'`, and callers who wanted "an editor" wrote their own copy
+ * rather than reuse it. Three of them did exactly that.
  *
  * The third step (`owner` — delete the trip, billing) has no helper: it is a
  * plain `trips.created_by === caller` and lives in `deleteTrip`.
  *
- * Orthogonal to all of this is "my own row" (leaving a trip, answering an
- * invite, my own private document) — that is not a ladder step and is checked
- * at its call site.
+ * Orthogonal to the ladder is the "own row" axis — leaving a trip, answering an
+ * invite, unlinking a Telegram binding one created. It is not a step and does
+ * not compose here; each call site checks ownership itself and ORs it with a
+ * step (see removeTripMember, telegramDisconnect).
  *
  * Error contract (TRIP-208): these helpers distinguish a genuine "no" (the trip
  * does not exist / the caller is not an active member → returns false) from an
