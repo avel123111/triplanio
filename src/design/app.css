@@ -1868,11 +1868,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 
 /* Severity (Lumo .sev — soft plate with a tinted icon chip) */
+/* ТОЛЬКО ТОН и коробка. Раскладку (ряд, зазор, выравнивание, перенос) даёт
+   примитив `.row` в разметке - тот же, которым собраны карточки «Скопировать
+   путешествие» и «Выйти из трипа»: это один и тот же объект, и второй его
+   реализации здесь больше нет. Свой флекс тут и был причиной, по которой
+   кнопка действия разъезжалась: она была голым ребёнком без `flex`, а ряд не
+   умел переноситься. */
 .sev {
- display: flex; align-items: flex-start; gap: 11px;
  padding: 13px 15px;
  border-radius: var(--r-md);
-
  border: 1px solid;
  color: var(--ink-2);
 }
@@ -1894,11 +1898,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .sev--success .sev__icon { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success-ink); }
 .sev--quiet { background: var(--wash); border-color: var(--line); }
 .sev--quiet .sev__icon { background: var(--surface); color: var(--ink-2); }
-/* Ось выравнивания, как .row--start у .row. По умолчанию плашка держит значок у
-   ПЕРВОЙ строки - это верно для прозы в несколько строк. У статуса же ровно две
-   строки (заголовок + подпись), и значок обязан стоять по центру пары: так уже
-   выглядят ряды каналов в аккаунте. */
-.sev--mid { align-items: center; }
+/* Ось выравнивания больше НЕ своя: `align="mid"` даёт ряду его дефолт (значок по
+   центру пары «заголовок + подпись», как в рядах каналов аккаунта), а проза в
+   несколько строк - `.row--start`. Свой `.sev--mid` был вторым именем для того,
+   что примитив умеет из коробки, и удалён. */
 /* «Предложение», а не состояние: плашка ещё ничего не сообщает, она зовёт нажать
    (разрешить геолокацию). Пунктир - тот же язык, что у кнопок добавления (.gadd,
    .te-end--add): «здесь пока пусто, можно заполнить».
