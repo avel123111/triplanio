@@ -85,7 +85,7 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
 // уехал бы в «ошибку». Карта вместо вилки: новый тон = новая строка.
 const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "check", quiet: "info" };
 
-// align="mid" - значок по центру пары «заголовок + подпись» (см. .sev--mid).
+// align="mid" - значок по центру пары «заголовок + подпись» (дефолт ряда).
 // iconStyle - тинт плитки из реестра брендов. Это ДАННЫЕ, а не тон системы:
 // плашка остаётся системной, фирменный цвет несёт только плитка (то же решение,
 // что принято на экране аккаунта - фон плитки есть оттенок её значка).
@@ -93,13 +93,26 @@ const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "c
 //           Тот же язык, что у кнопок добавления: пунктир = «здесь пока пусто».
 // loading - на месте значка канон-спиннер, как у <Btn loading> (TRIP-130).
 //           Плашка «идёт сохранение» рисовалась руками там же, где и остальные.
+// ★Раскладку плашка БОЛЬШЕ НЕ СОБИРАЕТ САМА. Ровно этот объект - плитка,
+// заголовок с подписью и действие справа - уже собран на карточках «Скопировать
+// путешествие» и «Выйти из трипа», и собран ПРИМИТИВОМ `.row`. Плашка писала
+// тот же ряд своим флексом, а её `{action}` был голым ребёнком без `flex`, и
+// ряд не умел переноситься - поэтому кнопка «Разрешить геолокацию» разъезжалась
+// в узкой колонке планировщика (и так же в шести других местах).
+// За `.sev` остался ТОЛЬКО ТОН - фон и рамка по уровню. Это его единственная
+// роль, которой ни у кого больше нет. Всё остальное - общие примитивы:
+//   .row            ряд (по центру; `--start` когда тело многострочное)
+//   .row--wrap      на узком кнопка уходит ПОД текст, а не давит его
+//   .tile           плитка значка
+//   .grow           текстовый блок
+//   .row__t         заголовок - тот же канон, что у карточек-близнецов
 export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align, dashed, loading }) => (
-  <div className={`sev sev--${level}${align === "mid" ? " sev--mid" : ""}${dashed ? " sev--dashed" : ""}`}>
+  <div className={`sev row row--wrap${align === "mid" ? "" : " row--start"} sev--${level}${dashed ? " sev--dashed" : ""}`}>
     <span className="tile sev__icon" style={iconStyle}>
       {loading ? <span className="spin spin--ring" /> : <Icon name={icon || SEV_ICON[level] || "info"} size={16} />}
     </span>
-    <div className="grow--fit">
-      {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
+    <div className="grow">
+      {title && <div className="row__t">{title}</div>}
       {children}
     </div>
     {action}
