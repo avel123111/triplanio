@@ -8,11 +8,15 @@
  * in Telegram which sends "/start <token>" to our telegramWebhook.
  *
  * Token expires in 10 minutes.
+ *
+ * Authorized at the `editor` step: redeeming the token binds a Telegram chat to
+ * the TRIP (identity = trip_id + telegram_chat_id), so it adds a channel every
+ * participant then receives on — trip config, not a personal setting (TRIP-274).
  */
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { isCallerParticipant } from '../_shared/tripAccess.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 
 Deno.serve(withHandler('telegramStartLink', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -21,7 +25,9 @@ Deno.serve(withHandler('telegramStartLink', async (req, corsHeaders) => {
     const { tripId } = await req.json();
     if (!tripId) return Response.json({ error: 'tripId is required' }, { status: 400, headers: corsHeaders });
 
-    // Verify user has access to this trip
+    // `editor` step. The existence probe above is redundant — isCallerEditor
+    // resolves the trip itself and returns false when it does not exist — but it
+    // is kept so a bad tripId still answers 404 rather than 403.
     const { data: trip } = await supabaseAdmin
       .from('trips')
       .select('id')
@@ -29,8 +35,9 @@ Deno.serve(withHandler('telegramStartLink', async (req, corsHeaders) => {
       .single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    const hasAccess = await isCallerParticipant(tripId, user.id);
-    if (!hasAccess) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    if (!(await isCallerEditor(tripId, user.id))) {
+      return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    }
 
     // Bot username is a static public value — no need to call Telegram (no bot token).
     const botUsername = Deno.env.get('TELEGRAM_BOT_USERNAME');

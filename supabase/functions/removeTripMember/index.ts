@@ -9,7 +9,7 @@
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { isCallerAdmin } from '../_shared/tripAccess.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 import { purgePrivateDocsForMember } from '../_shared/personalDocsTeardown.ts';
 import { renderMemberLeftNotification, renderMemberRemovedNotification } from '../_shared/emailTemplate.ts';
@@ -33,9 +33,9 @@ Deno.serve(withHandler('removeTripMember', async (req, corsHeaders) => {
     }
 
     const isSelf = member.user_id === user.id;
-    const callerIsAdmin = isSelf ? false : await isCallerAdmin(member.trip_id, user.id);
+    const callerIsEditor = isSelf ? false : await isCallerEditor(member.trip_id, user.id);
 
-    if (!callerIsAdmin && !isSelf) {
+    if (!callerIsEditor && !isSelf) {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 

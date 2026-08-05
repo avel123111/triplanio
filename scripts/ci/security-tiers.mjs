@@ -67,7 +67,14 @@ export const TABLES = {
   trip_member_blocks:   { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated' },
   // Ярус B (уточнено в Ф3c): 0 обращений клиента из src/ — таблица edge-only,
   // authenticated DML снят (закрывает REST-обход read-only для viewer, I5).
-  trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3c: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop _write политику (всё через telegram* edge)' },
+  // ⚠ ГДЕ ЖИВЁТ РЕШЕНИЕ «viewer НЕ привязывает Telegram»: Ф3c дропнула
+  // _write-политику, а не перевела её на can_edit_trip, поэтому в БД предиката
+  // РОЛИ по этой таблице НЕТ вовсе — правило целиком держат telegram*-функции.
+  // Полтора месяца они стояли на участии, то есть решение было записано и не
+  // исполнялось; ярусный страж этого не видел и не увидит (он смотрит гранты и
+  // политики, а гейт — в TS). Единственное, что его держит, — гейт `editor` в
+  // telegramStartLink/telegramSetActive/telegramDisconnect (TRIP-274).
+  trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3c: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop _write политику (всё через telegram* edge); роль проверяют сами функции — гейт editor, TRIP-274' },
   // chat_messages: был ярус C с прямым клиентским INSERT (viewer пишет — решение
   // Pavel в силе). TRIP-296 перевёл запись на secdef-функцию send_chat_message:
   // RLS не могла проверить автора (user_id приходил с клиента → подмена участника
@@ -172,5 +179,10 @@ export const BUCKETS = {
 export const DECISIONS = [
   'chat_messages: viewer ПИШЕТ в чат (коллаборативно) — решение в силе, но проверка переехала из RLS в send_chat_message (TRIP-296: RLS не умела проверить автора). [решено: да]',
   'trips: полный Ярус B — без поколоночных исключений, все записи через edge. [решено: Ярус B]',
-  'trip_telegram_integrations: viewer НЕ привязывает Telegram — гейт can_edit_trip в БД (I5). [решено: нет]',
+  // Формулировка «гейт can_edit_trip в БД» была НЕВЕРНА с момента Ф3c: политику
+  // дропнули, а не переписали, и решение полтора месяца не исполнялось (viewer
+  // прямым вызовом API отключал бота всему трипу). Исправлено в TRIP-274 —
+  // гейт `editor` в самих telegram*-функциях. Это ярус B: правило по построению
+  // живёт в edge, а не в RLS, поэтому страж его не проверяет.
+  'trip_telegram_integrations: viewer НЕ привязывает Telegram — гейт editor в telegram* edge-функциях (не в RLS: у таблицы нет write-политики). [решено: нет]',
 ];
