@@ -388,10 +388,11 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    -----------------------------------------------------------------
    Раньше эту пару объявляли заново 39 правил по всему файлу: ровно те же
    две строки под 56 разными именами. Форма поверхности одна, различаются
-   только радиус, тень и размеры — они и остаются в собственном блоке
-   каждого элемента ниже по файлу. Радиусы НЕ сводили намеренно: 24/20/16/
-   14/11 — это разные формы, а прогон по значениям уже ломал живое
-   (TRIP-321, .checkbox 17px → круг).
+   только радиус, тень и размеры. Радиусы НЕ сводили одним прогоном ПО
+   ЗНАЧЕНИЯМ: совпавшая цифра — ещё не совпавшая роль, и такой прогон уже
+   ломал живое (TRIP-321, .checkbox 17px → круг). Сводили по РОЛИ: у карточки
+   и у вложенного контейнера ступень объявлена общим со-селектором ниже по
+   файлу, у остальных остаётся в собственном блоке элемента.
    Блок стоит выше всех компонентов, чтобы любое состояние (:hover,
    .is-active, тёмная тема) перебивало его, а не наоборот.
    Расширять — дописать имя сюда, а НЕ скопировать пару к себе.
@@ -399,7 +400,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* карточки, панели, виджеты (канон TRIP-189; .surface-glass/.surface-panel — алиасы одной роли) */
 .surface-glass, .surface-panel,
 .statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
-.card, .statcard, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
+.card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
 .chat-reply__card, .pl-lastcard,
 /* оверлеи и всплывающее */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
@@ -1334,18 +1335,22 @@ h4,
 .summary,                  /* /stats — полоса из 6 стат-плиток */
 .invite,                   /* баннер-приглашение */
 .acct-hero,                /* шапка аккаунта */
-.chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
 .pl-lastcard {             /* карточка последней брони (планнер) */
   border-radius: var(--r-xl);
 }
+/* ★`.chat-reply__card` в этом списке НЕ стоит намеренно: он объявляет свой
+   радиус ниже по файлу, при равной специфичности выигрывает объявленное
+   позже, и членство здесь ничего не давало - оно читалось как ступень
+   карточки, а рисовалась ступень вложенного контейнера. Скин (фон, рамка) он
+   по-прежнему берёт из роли поверхности. */
 
 /* ── Вложенный контейнер внутри оболочки (TRIP-333) ────────────────────────
    Ступень МЕЖДУ оболочкой и контролом: раздел, который лежит внутри диалога
    или панели и сам держит поля. Значение объявлено ЗДЕСЬ и только здесь -
-   раньше его писали в четырёх местах и получали три разных числа В ОДНОМ
-   ОКНЕ: «Бесплатная отмена» и «N ночей» скруглялись по ступени карточки,
-   секции просмотра - на ступень ниже, а сегмент переезда рисовался инлайном
-   на ступени контрола.
+   раньше его писал каждый носитель у себя и получались три разных числа В
+   ОДНОМ ОКНЕ: «Бесплатная отмена» и «N ночей» скруглялись по ступени
+   карточки, секции просмотра - на ступень ниже, а сегмент переезда рисовался
+   инлайном на ступени контрола.
    ★Аккордеон («Детали брони», «Документы и заметки») сюда переехал из группы
    КАРТОЧЕК: он живёт только внутри редактора события, то есть карточкой
    никогда не был, и носил ступень БОЛЬШЕ той оболочки, в которой лежит.
@@ -1355,7 +1360,7 @@ h4,
    недостижимо; 16 - наибольшее, что не превышает НИ ОДНУ из двух. Это станет
    однозначным, когда оболочка останется одна. */
 .acc, .eed-fcbox, .eed-nightrow,
-.ev-sec, .hv-namecard, .hv-card, .hv-rows {
+.ev-sec, .hv-namecard, .hv-card, .hv-rows, .hv-notes, .tv-card {
   border-radius: var(--r-md);
 }
 
@@ -5007,7 +5012,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-row__k{flex:none; color:var(--muted);}
 .hv-row__sp{flex:1;}
 .hv-row__v{ color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;}
-.hv-notes{padding:12px 14px;border-radius:var(--r-md); color:var(--ink-2);line-height:1.5;}
+.hv-notes{padding:12px 14px; color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--brand);}
@@ -5027,7 +5032,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .badge--on-arrival{background:var(--primary-soft);color:var(--brand);}
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
-.tv-card{padding:16px 17px;border-radius:var(--r-md);}
+.tv-card{padding:16px 17px;}
 .tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
 /* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8), размер иконки - .badge svg;
    здесь остаются только тона. */
