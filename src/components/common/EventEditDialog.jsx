@@ -544,18 +544,6 @@ export default function EventEditDialog({
   const [currentKind, setCurrentKind] = useState(initialKind || 'hotel');
   const isEdit = !!entity;
   const baseMeta = TYPE_META[currentKind] || TYPE_META.hotel;
-  // City-contextual header: "Проживание в Париже" / "Переезд Париж → Рим" /
-  // "Активность в Риме". Falls back to the generic new/edit title when the
-  // city context is unknown (e.g. orphan entity or service without a visit).
-  const ctxTitle = useMemo(() => {
-    if ((currentKind === 'hotel' || currentKind === 'activity') && visit?.city_name) {
-      return t(currentKind === 'hotel' ? 'event.title_ctx_hotel' : 'event.title_ctx_activity', { city: visit.city_name });
-    }
-    if (currentKind === 'transfer' && (fromVisit?.city_name || toVisit?.city_name)) {
-      return t('event.title_ctx_transfer', { from: fromVisit?.city_name || '?', to: toVisit?.city_name || '?' });
-    }
-    return null;
-  }, [currentKind, visit, fromVisit, toVisit, t]);
   const tripId = tripIdProp || entity?.trip_id || visit?.trip_id || fromVisit?.trip_id;
 
   // Timezones - kept for compatibility but the time helpers ignore them
@@ -1203,7 +1191,7 @@ export default function EventEditDialog({
   const hdr = isSvcKind
     ? { eyebrow: t(meta.labelKey), title: t(isEdit ? meta.titleEditKey : meta.titleNewKey), sub: '' }
     : eventHeader({ kind: currentKind, visit, fromVisit, toVisit, entity, t, lang });
-  const title = ctxTitle || hdr.title;
+  const title = hdr.title;
 
   const inner = (
     <>
