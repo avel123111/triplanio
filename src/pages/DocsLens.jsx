@@ -24,14 +24,14 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import './DocsLens.css';
 
@@ -77,7 +77,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   const qc           = useQueryClient();
   const { user }     = useAuth();
   const v    = useHybridValidation('document', { title });
-  const inv  = (f) => fieldStateClass(v.displayIssues, f);
+  const st   = (f) => fieldState(v.displayIssues, f);
 
   async function uploadFiles(files) {
     if (!files?.length) return;
@@ -205,10 +205,10 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           </div>
 
           {/* Title */}
-          <Field label={t('trip.form_title_required')}>
-            <div data-vfield="title" className={inv('title')}>
-              <input
-                className="input"
+          <Field label={t('trip.title_label')} required={v.isRequired('title')}>
+            <div data-vfield="title">
+              <Input
+                {...st('title')}
                 autoFocus={!isMobile}
                 value={title}
                 onChange={e => { setTitle(e.target.value); v.markTouched('title'); }}
@@ -221,8 +221,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           {/* Notes */}
           <div style={{ marginTop: 14 }}>
             <Field label={t('doc.notes_opt_label')}>
-              <textarea
-                className="textarea"
+              <Textarea
                 rows={3}
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
@@ -671,15 +670,15 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
       )}
       {/* ── Toolbar: search + filter ── */}
       <div className="dl-toolbar">
-        <label className="dl-search">
-          <span className="dl-search__icon"><Icon name="search" size={16} /></span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder={t('doc.search_ph')}
-          />
-        </label>
+        <Input
+          className="dl-search"
+          icon="search"
+          type="search"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder={t('doc.search_ph')}
+          aria-label={t('doc.search_ph')}
+        />
         <div className="seg" role="group" aria-label={t('doc.filter_label')}>
           {filterOpts.map(opt => (
             <button

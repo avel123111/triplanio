@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, Btn, Field, useToast } from '@/design/index';
 import CountryFlag from '@/components/common/CountryFlag';
+import DateTimeInput from '@/components/common/DateTimeInput';
 import CitySearch from '@/components/cities/CitySearch';
 
 // Add / edit / delete a manual visit (user_custom_visits) — the write side of the
@@ -137,7 +138,11 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
             <CitySearch onSelect={(c) => { setCity(c); setPicking(false); setErr(''); }} />
           </Field>
         ) : (
-          <Field label={t('stats.field_city')}>
+          /* Та же звёздочка, что и в ветке выбора: поле одно и то же, и город
+             обязателен независимо от того, выбран он уже или ещё нет. Раньше
+             `required` стоял только на одной ветке, и звёздочка на одном и том же
+             поле то появлялась, то исчезала (TRIP-333). */
+          <Field label={t('stats.field_city')} required>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-btn)', background: 'var(--surface)' }}>
               <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
               <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
@@ -149,8 +154,9 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label={t('stats.field_from')}><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label={t('stats.field_to')}><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
+          <Field label={t('stats.field_from')}><DateTimeInput withTime={false} value={from} onChange={setFrom} /></Field>
+          <Field label={t('stats.field_to')}><DateTimeInput withTime={false} value={to} onChange={setTo} /></Field>
         </div>
 
         {err && <div className="t-meta" style={{ color: 'var(--danger)' }}>{err}</div>}

@@ -10,7 +10,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, EmptyState, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, EmptyState, Input, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -724,10 +724,14 @@ export default function Trips() {
                   {t('trips.tab_past')} · <span className="num">{pastTrips.length}</span>
                 </button>
               </div>
-              <div className="trips-toolbar__search">
-                <Icon name="search" size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)' }} />
-                <input className="input" placeholder={t('trips.search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
-              </div>
+              <Input
+                className="trips-toolbar__search"
+                icon="search"
+                placeholder={t('trips.search_placeholder')}
+                aria-label={t('trips.search_placeholder')}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
               <div className="trips-toolbar__spacer" />
               <div className="seg seg--view" role="group" title={t('trips.view')}>
                 <button aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>

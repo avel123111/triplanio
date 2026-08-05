@@ -20,7 +20,7 @@ import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
 import { displayName } from '@/lib/displayName';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
@@ -760,7 +760,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <CurrencyCombobox value={currency} onChange={setCurrency} />
             </Field>
             <Field label={t('trip.form_notes')}>
-              <textarea className="textarea" rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />
+              <Textarea rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />
             </Field>
           </div>
         </div>

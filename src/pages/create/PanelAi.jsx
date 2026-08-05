@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '../../design/icons';
-import { Btn } from '../../design/index';
+import { Btn, Textarea } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import { CityAnchorRow } from './anchors';
 
@@ -42,13 +42,12 @@ export default function PanelAi({ ctx }) {
           purple textarea stacked on it read as one muddy block). */}
       <div className="field" style={{ marginBottom: 0 }}>
         <label className="field__label">{t('ai_plan.assistant_hint')}</label>
-        <textarea
-          className="textarea"
+        <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           disabled={aiState === 'generating'}
           placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-          style={{ minHeight: 120 }}
+          rows={5}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           {aiState === 'generating' ? (

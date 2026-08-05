@@ -1,6 +1,9 @@
 import React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronDown, Search } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
+// Напрямую из модуля, а НЕ из '@/design': барраль реэкспортит этот файл, и
+// импорт оттуда замкнул бы зависимость в кольцо (TRIP-333).
+import { Input } from '@/design/Input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet } from '@/components/ui/Sheet';
 
@@ -69,10 +72,13 @@ export default function SearchSelect({
 
   const body = (
     <>
+      {/* `.ss-search` остаётся ОТДЕЛЬНОЙ обёрткой, а не уезжает в className
+          поля: у неё собственный padding, а обёртка декораций обязана облегать
+          поле вплотную - иначе иконка отсчитывается от края паддинга и встаёт
+          на 6px вместо 12 (поймано замером). */}
       <div className="ss-search">
-        <Search />
-        <input
-          className="input ss-input"
+        <Input
+          icon="search"
           autoFocus={!isMobile}
           value={query}
           onChange={(e) => setQuery(e.target.value)}

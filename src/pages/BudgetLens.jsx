@@ -34,8 +34,9 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, ReadOnlyBanner, fmtDate, CurrencyCombobox } from '../design/index';
-import { FieldError, IssuesPanel, fieldStateClass, useHybridValidation } from '@/components/common/ValidationUI';
+import { Badge, Btn, Dialog, Field, EmptyState, Input, InputGroup, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import DateTimeInput from '@/components/common/DateTimeInput';
+import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('expense', { title, amount, categoryId });
-  const inv = (f) => fieldStateClass(v.displayIssues, f);
+  const st = (f) => fieldState(v.displayIssues, f);
 
   async function save() {
     setSaving(true);
@@ -219,28 +220,34 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       {/* Вертикальный ритм тела диалога - одна колонка со ступенью шкалы вместо
           marginTop на каждом соседе (было 14/14/14/12/10 вручную). */}
       <div className="col col--g7">
-      <Field label={t('trip.description')}>
-        <div data-vfield="title" className={inv('title')}>
-          <input className="input" value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus={!isMobile} />
+      <Field label={t('trip.description')} required={v.isRequired('title')}>
+        {/* Обёртка остаётся ради `[data-vfield]` - по ней прокручивает к первой
+            ошибке `focusField`. Красит теперь само поле. */}
+        <div data-vfield="title">
+          <Input {...st('title')} value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus={!isMobile} />
         </div>
         <FieldError issues={v.displayIssues} field="title" />
       </Field>
       <div className="field-row cols-2">
-        <Field label={t('budget.field_amount')}>
-          <div className="bgt-amtgrp" data-vfield="amount" >
-            <input className={`input num bgt-amtgrp__amt grow--fit ${inv('amount')}`} type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
+        <Field label={t('budget.field_amount')} required={v.isRequired('amount')}>
+          {/* Состояние - на ГРУППЕ, а не на поле внутри: рамку держит
+              контейнер, у детей её нет. Заодно подсвечивается вся группа, а не
+              половина того, что читается как одно поле. */}
+          <InputGroup {...st('amount')} data-vfield="amount">
+            <Input num type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
             <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur num" />
-          </div>
+          </InputGroup>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
         <Field label={t('budget.field_date')}>
-          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+          {/* Не нативный `type="date"`: тот рисуется по локали ОС - см. DateTimeInput.jsx */}
+          <DateTimeInput withTime={false} value={date} onChange={setDate} />
         </Field>
       </div>
       <div className="field-row cols-2">
-        <Field label={t('budget.field_category')}>
-          <div data-vfield="categoryId" className={inv('categoryId')}>
-            <select className="select" value={categoryId} onChange={e => { setCategoryId(e.target.value); v.markTouched('categoryId'); }}>
+        <Field label={t('budget.field_category')} required={v.isRequired('categoryId')}>
+          <div data-vfield="categoryId">
+            <select className="select" {...st('categoryId')} value={categoryId} onChange={e => { setCategoryId(e.target.value); v.markTouched('categoryId'); }}>
               {categories.map(c => <option key={c.id} value={c.id}>{c.displayName || c.name}</option>)}
             </select>
           </div>
@@ -255,7 +262,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         </Field>
       </div>
       <Field label={t('doc.notes_label')}>
-        <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
+        <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
       </Field>
       <IssuesPanel issues={v.panelIssues} />
       {err && <Severity level="error">{err}</Severity>}
@@ -328,7 +335,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('fx', { rates: values });
-  const inv = (f) => fieldStateClass(v.displayIssues, f);
+  const st = (f) => fieldState(v.displayIssues, f);
 
   async function apply() {
     setSaving(true);
@@ -398,7 +405,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
                   <div className="bgt-fxrow__eq">1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</div>
                   <div className={`bgt-fxrow__hint ${hintCls}`}>{hint}</div>
                 </div>
-                <input className={`input num ${inv(`rate.${code}`)}`} type="number" step="0.0001" value={values[code] ?? ''}
+                <input className="input num" {...st(`rate.${code}`)} type="number" step="0.0001" value={values[code] ?? ''}
                   onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" aria-label={`${code} → ${mainCurrency}`} />
               </div>
             );
@@ -431,7 +438,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('category', { name });
-  const inv = (f) => fieldStateClass(v.displayIssues, f);
+  const st = (f) => fieldState(v.displayIssues, f);
 
   async function save() {
     setSaving(true);
@@ -475,9 +482,9 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
       <div className="col col--g7">
-      <Field label={t('trip.title_label')}>
-        <div data-vfield="name" className={inv('name')}>
-          <input className="input" value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus={!isMobile} />
+      <Field label={t('trip.title_label')} required={v.isRequired('name')}>
+        <div data-vfield="name">
+          <Input {...st('name')} value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus={!isMobile} />
         </div>
         <FieldError issues={v.displayIssues} field="name" />
       </Field>
