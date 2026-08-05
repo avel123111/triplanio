@@ -12,5 +12,4 @@
  * are Pro.
  */
 export const PRO_ONLY_ADDONS = ['budget', 'chat', 'telegram_assistant'] as const;
-export type ProAddonKey = typeof PRO_ONLY_ADDONS[number];
 export const PRO_ADDON_SET: ReadonlySet<string> = new Set(PRO_ONLY_ADDONS);

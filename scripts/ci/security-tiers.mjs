@@ -194,3 +194,47 @@ export const DECISIONS = [
   // живёт в edge, а не в RLS, поэтому страж его не проверяет.
   'trip_telegram_integrations: viewer НЕ привязывает Telegram — гейт editor в telegram* edge-функциях (не в RLS: у таблицы нет write-политики). [решено: нет]',
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ДВЕРИ (TRIP-274). Ярусы выше отвечают на «что защищено», DOORS — на «какую
+// ступень спрашивает каждая edge-функция».
+//
+// Зачем отдельно от всего прочего: дыра, которую чинил TRIP-274, была НЕ в
+// правиле и НЕ в политике. Правило было верное, политика на месте — а
+// telegramStartLink спрашивал «ты вообще участник?» там, где нужно «ты
+// редактор?». Ни один страж такого не видит: гранты в порядке, политики в
+// порядке, тесты правила зелёные. Увидеть можно только сверив, КАКУЮ ступень
+// зовёт каждая дверь, со списком, который кто-то однажды утвердил.
+//
+// Ступени вложены: owner ⊃ editor ⊃ participant (см. _shared/tripStep.ts).
+//   participant — viewer ПРОХОДИТ (чтение, чат, шеринг, копия к себе)
+//   editor      — меняет план трипа: контент, настройки, участники, каналы
+//
+// Функции, которых здесь нет, гейтятся не ступенью (публичные, по токену, по
+// N8N_SECRET, по своей строке) — страж их не трогает. Но обратное запрещено:
+// функция, зовущая ступень и не заведённая тут, роняет сборку. Новая дверь =
+// строка здесь, то есть решение принято явно, а не «как у соседа».
+export const DOORS = {
+  // ── participant: viewer проходит осознанно ──
+  getTripDetails:        'participant', // чтение трипа
+  callTriplanioAi:       'participant', // обращение к ассистенту = сообщение в чат
+  copyTrip:              'participant', // копия создаётся как СВОЙ трип
+  ensureShareToken:      'participant', // ссылка открывает то, что зритель и так видит (TRIP-202)
+  resolveProfiles:       'participant', // чтение профилей участников
+  render_share_card:     'participant', // рендер карточки, только чтение
+  telegramGetIntegration:'participant', // чтение статуса привязки
+  parseBookingWithAi:    'participant', // распознавание брони, в БД не пишет
+
+  // ── editor: меняет план трипа ──
+  addOfflineTripMember:  'editor',
+  createTripInviteLink:  'editor',
+  inviteTripMember:      'editor',
+  removeTripMember:      'editor',      // ИЛИ своя строка — вторая ось, см. код
+  resendTripInvite:      'editor',
+  updateTripMemberRole:  'editor',
+  updateTripSettings:    'editor',
+  telegramDisconnect:    'editor',      // ИЛИ своя строка — вторая ось, см. код
+  telegramSetActive:     'editor',
+  telegramStartLink:     'editor',
+  telegramWebhook:       'editor',      // шов ЗАПИСИ привязки, перепроверяет при редиме
+};

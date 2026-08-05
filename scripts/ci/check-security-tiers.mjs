@@ -13,6 +13,11 @@
  *     * anonDml=false ВЕЗДЕ (I3a — anon не пишет никуда);
  *     * authDml=true только на ярусах A и C (I3b — B/D без клиентской записи);
  *     * FUNCTIONS: publicExec ∩ authExec = ∅, authzExempt ⊆ client-вызываемых.
+ *     * DOORS (TRIP-274): какую СТУПЕНЬ зовёт каждая edge-функция — сверяется с
+ *       манифестом чтением её исходника. Дыра, ради которой это заведено, была
+ *       не в правиле и не в политике: гранты в порядке, политики в порядке,
+ *       тесты правила зелёные, а telegramStartLink спрашивал «ты участник?»
+ *       там, где нужно «ты редактор?». Ни одна другая проверка такого не видит.
  *   Ловит попытку «ослабить» правило редактированием манифеста.
  *
  *   LIVE (SECURITY_TIERS_DB_URL задан, post-deploy в supabase-deploy.yml) —
@@ -37,8 +42,9 @@
  * Модель совпадает с ассертом verify_jwt: PR-гейт статики + пост-деплой live-ассерт.
  */
 import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { TABLES, TIERS, FUNCTIONS, BUCKETS } from './security-tiers.mjs';
+import { TABLES, TIERS, FUNCTIONS, BUCKETS, DOORS } from './security-tiers.mjs';
 
 const VALID_TIERS = new Set(Object.keys(TIERS)); // A B C D
 const err = (m) => { console.error(`::error::${m}`); };
@@ -81,8 +87,82 @@ function checkStatic() {
       err(`манифест BUCKETS.${b}: есть writePredicate и политика select, но нет readPredicate`); fail = 1;
     }
   }
-  if (!fail) console.log(`check-security-tiers [static]: манифест согласован — ${Object.keys(TABLES).length} таблиц + ${callable.size} client-вызываемых функций + ${Object.keys(BUCKETS).length} бакета, ярусы ${[...VALID_TIERS].join('/')} — OK`);
+  // ДВЕРИ (TRIP-274) — сверка «какую ступень зовёт функция» с манифестом.
+  const sources = readEdgeSources();
+  if (sources.length === 0) {
+    err('манифест DOORS: не найдено ни одной edge-функции — страж запущен не из корня репо?');
+    fail = 1;
+  } else {
+    for (const m of checkDoors(sources)) { err(m); fail = 1; }
+  }
+
+  if (!fail) console.log(`check-security-tiers [static]: манифест согласован — ${Object.keys(TABLES).length} таблиц + ${callable.size} client-вызываемых функций + ${Object.keys(BUCKETS).length} бакета + ${Object.keys(DOORS).length} дверей (из ${sources.length} edge-функций), ярусы ${[...VALID_TIERS].join('/')} — OK`);
   return fail;
+}
+
+// ── ДВЕРИ: какую ступень зовёт каждая edge-функция (TRIP-274) ────────────────
+// Чистая половина, ради теста. `sources` — [{ name, code }], code = ТЕКСТ
+// index.ts без комментариев (комментарии режет вызывающий: они упоминают
+// соседние гейты и дали бы ложные срабатывания).
+//
+// Ступень, которую функция РЕАЛЬНО требует, читается из вызовов:
+//   isCallerEditor(…)                → editor
+//   isCallerParticipant(…)           → participant
+//   clearsStep(…, 'editor'|'participant') → соответственно (форма callerStep)
+export function checkDoors(sources = [], doors = DOORS) {
+  const errors = [];
+
+  for (const { name, code } of sources) {
+    const required = new Set();
+    if (/\bisCallerEditor\s*\(/.test(code)) required.add('editor');
+    if (/\bisCallerParticipant\s*\(/.test(code)) required.add('participant');
+    for (const m of code.matchAll(/\bclearsStep\s*\([\s\S]*?,\s*'(editor|participant|owner)'\s*\)/g)) {
+      required.add(m[1]);
+    }
+
+    const declared = doors[name];
+    if (required.size === 0) {
+      // Дверь без ступени — публичная / по токену / по своей строке. Но если её
+      // ЗАЯВИЛИ, а гейта нет — это снятая проверка, самый опасный из дрейфов.
+      if (declared) errors.push(`дверь '${name}': манифест требует ступень '${declared}', но функция не зовёт ни одного гейта — проверка снята?`);
+      continue;
+    }
+
+    if (!declared) {
+      errors.push(`дверь '${name}': зовёт ступень (${[...required].join(', ')}), но не заведена в DOORS — заведи строку, чтобы решение было принято явно`);
+      continue;
+    }
+    if (!required.has(declared)) {
+      errors.push(`дверь '${name}': манифест требует '${declared}', код зовёт '${[...required].join(', ')}' — гейт спрашивает не ту ступень`);
+    }
+  }
+
+  // Строка манифеста, под которой нет функции: переименовали или удалили, а
+  // запись осталась — манифест начал врать. Случай «функция есть, но гейта нет»
+  // уже отчитан выше как «проверка снята».
+  for (const name of Object.keys(doors)) {
+    if (!sources.some((s) => s.name === name)) {
+      errors.push(`дверь '${name}' есть в DOORS, но функции с таким именем нет — переименована или удалена?`);
+    }
+  }
+  return errors;
+}
+
+/** Читает edge-функции с диска и режет комментарии. */
+function readEdgeSources(root = 'supabase/functions') {
+  if (!existsSync(root)) return [];
+  const out = [];
+  for (const dir of readdirSync(root, { withFileTypes: true })) {
+    if (!dir.isDirectory() || dir.name.startsWith('_')) continue;
+    const file = `${root}/${dir.name}/index.ts`;
+    if (!existsSync(file)) continue;
+    const raw = readFileSync(file, 'utf8');
+    // Комментарии — вон: они называют соседние гейты и врали бы стражу.
+    const code = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    // Имя папки с дефисом не бывает ключом объекта — нормализуем как в DOORS.
+    out.push({ name: dir.name.replace(/-/g, '_'), code });
+  }
+  return out;
 }
 
 // ── Предикаты storage-политик (TRIP-274) ─────────────────────────────────────

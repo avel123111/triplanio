@@ -115,11 +115,28 @@ export async function isCallerParticipant(tripId: string, userId: string): Promi
 
 /** I/O-половина: достаёт факты и отдаёт их правилу. Решение — в `stepFromFacts`. */
 async function resolveStep(tripId: string, userId: string): Promise<TripStep> {
-  const creator = await fetchTripCreator(tripId);
-  // Трипа нет — дальше спрашивать нечего, и лишний запрос не нужен.
-  if (creator === null) return null;
-  // Создатель проходит без строки членства, поэтому роль тут не читаем вовсе.
-  if (creator === userId) return stepFromFacts(creator, userId, null);
+  return callerStep(tripId, userId, await fetchTripCreator(tripId));
+}
 
-  return stepFromFacts(creator, userId, await fetchActiveMemberRole(tripId, userId));
+/**
+ * Ступень вызывающего, когда `trips.created_by` УЖЕ известен.
+ *
+ * Для горячих путей, которые и так держат строку трипа в руках
+ * (`getTripDetails` — каждое открытие трипа, `callTriplanioAi`): звать
+ * `isCallerParticipant` там значило бы прочитать `trips` второй раз за запрос.
+ * Правило при этом остаётся ОДНО — то же `stepFromFacts`, что и у всех.
+ *
+ * `creatorId` = null означает «трипа нет» (вызывающий уже ответил 404).
+ * Бросает TripAccessError, если запрос роли сорвался (→ 5xx, не ложный 403).
+ */
+export async function callerStep(
+  tripId: string,
+  userId: string,
+  creatorId: string | null,
+): Promise<TripStep> {
+  if (creatorId === null) return null;
+  // Создатель проходит без строки членства — роль не читаем вовсе.
+  if (creatorId === userId) return stepFromFacts(creatorId, userId, null);
+
+  return stepFromFacts(creatorId, userId, await fetchActiveMemberRole(tripId, userId));
 }

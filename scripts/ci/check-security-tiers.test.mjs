@@ -26,7 +26,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkBucketPredicates } from './check-security-tiers.mjs';
+import { checkBucketPredicates, checkDoors } from './check-security-tiers.mjs';
 
 // Манифест-фикстура той же формы, что BUCKETS в security-tiers.mjs.
 const TRIPS = {
@@ -180,4 +180,72 @@ test('предикат-префикс: однокоренное имя не сч
 test('вызов с квалификацией схемой засчитывается', () => {
   const qualified = healthy.map((p) => policy(p.name, p.pred.replace(/_can_(access|write)_trip_file/g, 'public._can_$1_trip_file')));
   assert.deepEqual(checkBucketPredicates(qualified, TRIPS), []);
+});
+
+// ── ДВЕРИ: какую ступень зовёт функция (TRIP-274) ────────────────────────────
+// Дыра, ради которой это писалось, была НЕ в правиле и НЕ в политике: правило
+// верное, политика на месте, а telegramStartLink спрашивал «ты участник?» там,
+// где нужно «ты редактор?». Ни гранты, ни политики, ни тесты правила такого не
+// видят — видно только сверкой «дверь → ступень».
+const src = (name, code) => ({ name, code });
+
+test('здоровая дверь: манифест и код совпали', () => {
+  const doors = { telegramStartLink: 'editor', getTripDetails: 'participant' };
+  const sources = [
+    src('telegramStartLink', 'if (!(await isCallerEditor(tripId, user.id))) return 403;'),
+    src('getTripDetails', 'if (!(await isCallerParticipant(tripId, user.id))) return 403;'),
+  ];
+  assert.deepEqual(checkDoors(sources, doors), []);
+});
+
+test('★ ИСХОДНАЯ ДЫРА: дверь плана стоит на участии', () => {
+  const doors = { telegramStartLink: 'editor' };
+  const sources = [src('telegramStartLink', 'const ok = await isCallerParticipant(tripId, user.id);')];
+  const errors = checkDoors(sources, doors);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /telegramStartLink/);
+  assert.match(errors[0], /не ту ступень/);
+});
+
+test('форма callerStep + clearsStep читается наравне с прямым гейтом', () => {
+  const doors = { getTripDetails: 'participant' };
+  const sources = [src('getTripDetails',
+    "if (!clearsStep(await callerStep(tripId, user.id, trip.created_by), 'participant')) return 403;")];
+  assert.deepEqual(checkDoors(sources, doors), []);
+
+  // ...и ошибается так же, как прямой гейт
+  const bad = [src('getTripDetails',
+    "if (!clearsStep(await callerStep(tripId, user.id, trip.created_by), 'editor')) return 403;")];
+  assert.equal(checkDoors(bad, doors).length, 1);
+});
+
+test('★ снятая проверка: манифест ждёт ступень, а гейта в коде нет', () => {
+  const doors = { updateTripSettings: 'editor' };
+  const sources = [src('updateTripSettings', 'const { data } = await supabaseAdmin.from("trips").update(x);')];
+  const errors = checkDoors(sources, doors);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /проверка снята/);
+});
+
+test('★ новая дверь без строки в манифесте роняет сборку', () => {
+  const sources = [src('somethingNew', 'if (!(await isCallerEditor(t, u))) return 403;')];
+  const errors = checkDoors(sources, {});
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /не заведена в DOORS/);
+});
+
+test('дверь без ступени и без строки в манифесте — тишина (публичная/по токену)', () => {
+  const sources = [src('getPublicTrip', 'if (trip.share_token !== token) return 404;')];
+  assert.deepEqual(checkDoors(sources, {}), []);
+});
+
+test('строка в манифесте без функции ловится (переименовали/удалили)', () => {
+  const errors = checkDoors([src('a', 'isCallerEditor(x)')], { a: 'editor', призрак: 'editor' });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /призрак/);
+});
+
+test('пустой вход не роняет', () => {
+  assert.deepEqual(checkDoors([], {}), []);
+  assert.deepEqual(checkDoors(undefined, {}), []);
 });
