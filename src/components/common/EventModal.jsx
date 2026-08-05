@@ -93,26 +93,27 @@ export default function EventModal(props) {
           padding: 0,
         }}
       >
-        {/* Header */}
-        <div className="ev-dlg-hd">
-          <div className="ev-dlg-ic"><theme.Icon /></div>
-          <div className="ev-dlg-info">
-            <div className="ev-dlg-eyebrow">{eyebrow}</div>
-            <DialogTitle asChild><h2>{title || themeLabel}</h2></DialogTitle>
-          </div>
-          {priceText && (
-            <div className="ev-dlg-price">
-              <div className="amt">{priceText}</div>
-              {entity.currency && <div className="cur">{entity.currency}</div>}
+        {/* Header — ОБЩАЯ шапка события (TRIP-333 §4). Тот же набор, что у
+            панели просмотра и панели добавления: плитка типа, эйбрау, заголовок
+            и вторичная строка моноширинным. Своей у диалога больше нет.
+            Содержимое второй строки у оболочек РАЗНОЕ и таким остаётся: панель
+            просмотра ставит туда даты проживания, диалог - цену. */}
+        <div className="lp-h lp-h--ev">
+          <span className="lp-ic" style={{ background: theme.color, color: '#fff' }}><theme.Icon /></span>
+          <div className="lp-ti">
+            <div className="eyebrow">{eyebrow}</div>
+            <div className="lp-tirow">
+              <DialogTitle asChild><b className="t-title">{title || themeLabel}</b></DialogTitle>
+              {priceText && <span className="t-mono">{priceText}{entity.currency ? ` ${entity.currency}` : ''}</span>}
             </div>
-          )}
+          </div>
           <button className="ev-dlg-close" onClick={() => setOpen(false)} aria-label={t('common.close')}>
             <X />
           </button>
         </div>
 
         {/* Body */}
-        <div className="ev-dlg-body">
+        <div className="lp-b scrollbar-thin">
           {confirmDel ? (
             <Severity level="error" icon="trash" title={t('event.delete_q', { label: themeLabel.toLowerCase() })}>
               <div className="t-meta">{t('event.delete_irreversible')}</div>
@@ -129,7 +130,10 @@ export default function EventModal(props) {
         {/* Footer — only when there are edit/delete actions (map + booking moved
             to the top action row, so read-only events no longer need a footer). */}
         {canEdit && (onDelete || onEdit) && (
-        <div className="ev-dlg-ft">
+        /* Та же пара «удалить + редактировать», что в панели просмотра, значит
+           и раскладка та же (`lp-f--ratio`). Своё мобильное правило, растягивавшее
+           кнопки поровну, вместе с этим отпало. */
+        <div className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}>
           {confirmDel ? (
             <>
               <Btn variant="ghost" onClick={() => setConfirmDel(false)} disabled={deleting}>

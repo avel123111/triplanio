@@ -535,8 +535,6 @@ h3,
 .invite__tx h3,
 .stepper button,
 .sheet-h h3,
-.ev-dlg-info h2,
-.ev-dlg-price .amt,
 .head__av,
 .vp-h h3,
 .bgt-dleg__v,      /* TRIP-243 инсп.: Meta→Subheading (сумма легенды доната) */
@@ -793,8 +791,6 @@ h4,
    реализации, это уехало бы на все четыре разом. Поймано снимком - замер
    геометрии такого не показывает вовсе. */
 .doc-row .ds,
-.ev-dlg-info .sub,
-.ev-dlg-price .cur,
 .bk-link,
 .bk-link .pb,
 .lp-ti span,
@@ -926,7 +922,6 @@ h4,
 .acct-plan__k,
 .acct-tgtrips__lbl,
 .plan-popular-badge,
-.ev-dlg-eyebrow,
 .ev-sec-lbl,
 .kv .k,
 .sec-lbl .sl,
@@ -1456,12 +1451,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
 /* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
-/* Свой `margin-bottom: 12px` снят: ОБА родителя аккордеона уже раскладывают
-   детей зазором (`.ev-dlg-body` 11px, `.lp-b` 13px), поэтому отступ был
-   ДОБАВОЧНЫМ - между двумя разделами выходило 23 и 25px вместо ступени. Без
-   него класс годится и для сегмента переезда, чей список идёт `gap: 0` (между
-   сегментами стоит плашка пересадки, и лишний отступ оторвал бы её от своего
-   сегмента). */
+/* Свой `margin-bottom: 12px` снят: родитель аккордеона (`.lp-b`) уже
+   раскладывает детей зазором, поэтому отступ был ДОБАВОЧНЫМ - между двумя
+   разделами выходило 25px вместо ступени. Без него класс годится и для
+   сегмента переезда, чей список идёт `gap: 0` (между сегментами стоит плашка
+   пересадки, и лишний отступ оторвал бы её от своего сегмента).
+   ★Родитель теперь ОДИН: тело диалога переехало на `.lp-b` вместе со всей
+   оболочкой события (TRIP-333 §4). */
 .acc { overflow: hidden; }
 .acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
 .acc__head:hover { background: var(--wash); } /* TRIP-326: opacity→opaque token */
@@ -4930,23 +4926,9 @@ a.doc-row__n:hover{ color: var(--brand); }
    .notes used by the trip-editor left panels.
    ═══════════════════════════════════════════════════════════════════════════ */
 .ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
-.ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;flex:none;}
-.ev-dlg-hd::before{content:'';position:absolute;inset:0;background:var(--ev-soft);z-index:0;}
-.ev-dlg-hd>*{position:relative;}
-.ev-dlg-ic{width:44px;height:44px;border-radius:var(--r-btn);background:var(--ev-color);color:#fff;display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px color-mix(in srgb,var(--ev-color) 50%,transparent);}
-.ev-dlg-ic svg{width:21px;height:21px;}
-.ev-dlg-info{flex:1;min-width:0;}
-.ev-dlg-eyebrow{ color:var(--ev-ink); margin-bottom:3px;}
-.ev-dlg-info h2{ color:var(--ink); white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;}
-.ev-dlg-info .sub{ color:var(--muted); margin-top:1px;}
-.ev-dlg-price{text-align:right;flex:none;}
-.ev-dlg-price .amt{ color:var(--ink);}
-.ev-dlg-price .cur{ color:var(--muted); }
 .ev-dlg-close{width:30px;height:30px;border-radius:var(--r-sm);color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:background .12s,color .12s;}
 .ev-dlg-close:hover{background:var(--surface-2);color:var(--ink);}
 .ev-dlg-close svg{width:15px;height:15px;}
-.ev-dlg-body{padding:15px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:11px;align-items:stretch;}
-.ev-dlg-ft{padding:11px 20px;border-top:1px solid var(--line);background:var(--wash);display:flex;gap:7px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end;}
 /* Top action chips (booking link + "on map") — wrap on narrow widths. */
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
@@ -5098,9 +5080,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
   textarea, select { font-size: var(--fs-h4) !important; }
-  /* View-modal footer actions (Delete / Edit) share the row evenly instead of
-     crowding on phones. */
-  .ev-dlg-ft .btn { flex: 1 1 auto; justify-content: center; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
