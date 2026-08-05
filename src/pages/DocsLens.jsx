@@ -205,7 +205,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           </div>
 
           {/* Title */}
-          <Field label={t('trip.form_title_required')}>
+          <Field label={t('trip.title_label')} required>
             <div data-vfield="title">
               <Input
                 {...st('title')}

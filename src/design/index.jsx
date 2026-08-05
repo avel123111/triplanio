@@ -33,6 +33,7 @@ export { default as AiField, AiBadge } from '@/components/ui/AiField';
 // Поле живёт своим модулем, чтобы `components/ui/*` мог импортировать его
 // напрямую и не замыкать зависимость на этот барраль (TRIP-333).
 export { Input, Textarea, InputGroup } from './Input';
+import { FieldRequired } from './Input';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
@@ -164,7 +165,11 @@ export const ReadOnlyBanner = ({ children, title }) => {
 // Пропы `error`/`warning` тут были ровно вторым способом сказать то же самое и
 // за всё время не получили НИ ОДНОГО вызова из 46 - удалены вместе со своими
 // строками-иконками и мёртвым скином `.field--error`.
-export const Field = ({ label, hint, sub, ai, children, required }) => (
+// `required` рисует звёздочку И доезжает до самого поля контекстом (TRIP-333):
+// раньше это была ТОЛЬКО звёздочка, то есть признак для зрячих - нативный
+// `required` стоял лишь на сырых полях экрана входа, а `aria-required` не стоял
+// нигде. Провайдер объявлен рядом с полем (`./Input`), которое его и читает.
+export const Field = ({ label, hint, sub, ai, children, required = false }) => (
   <div className={`field ${ai ? "field--ai" : ""}`}>
     {label && (
       <label className="field__label">
@@ -172,7 +177,7 @@ export const Field = ({ label, hint, sub, ai, children, required }) => (
         {hint && <span className="muted t-meta" style={{ marginLeft: 4 }}>· {hint}</span>}
       </label>
     )}
-    {children}
+    <FieldRequired value={required}>{children}</FieldRequired>
     {sub && <span className="field__sub t-meta">{sub}</span>}
   </div>
 );

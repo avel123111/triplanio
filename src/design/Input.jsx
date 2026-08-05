@@ -2,6 +2,39 @@ import React from 'react';
 import { Icon } from './icons';
 
 /**
+ * «Поле обязательное» - ОДИН источник (TRIP-333).
+ *
+ * Раньше это говорилось тремя способами, и ни одно поле не использовало больше
+ * одного: звёздочка от `<Field required>`, звёздочка, ЗАШИТАЯ В СТРОКУ перевода
+ * («Название *»), и нативный атрибут на экране входа. Видимая звёздочка и
+ * признак для скринридера жили порознь, поэтому поле могло выглядеть
+ * обязательным и не быть им для AT - и наоборот.
+ *
+ * Теперь у `<Field>` флаг ставится ОДИН раз (`<Field required>`) и доезжает до
+ * поля контекстом, а не пропом через все промежуточные компоненты. Поля вне
+ * `<Field>` на этот шов ещё не переехали: `<Label>` в `EventEditDialog`
+ * по-прежнему берёт звёздочку из строки (`event.*_req`). Проп у `Input`
+ * не заводится: он был бы вторым способом сказать то же самое, а такая пара
+ * всегда расходится (TRIP-293). Явный атрибут в вызове по-прежнему возможен -
+ * `{...rest}` разливается ПОСЛЕ и перекрывает контекст (поля вне `<Field>`);
+ * признак для AT считается от ИТОГОВОГО значения, иначе `required={false}`
+ * внутри `<Field required>` снял бы атрибут и оставил `aria-required` - ровно
+ * то расхождение видимого и озвученного, которое эта правка и убирает.
+ *
+ * Нативный `required` безопасен: единственные `<form>` с сабмитом - на экране
+ * входа, и они собраны на `.auth-input`, а не на этом компоненте. Если поле
+ * когда-нибудь окажется внутри submit-формы, браузер начнёт валидировать его
+ * сам, поверх `useHybridValidation`.
+ */
+const RequiredCtx = React.createContext(false);
+export const FieldRequired = RequiredCtx.Provider;
+
+// Атрибуты обязательности под spread - той же формы, что и `fieldState`.
+const requiredAttrs = (on) => (on
+  ? { required: true, 'aria-required': 'true' }
+  : null);
+
+/**
  * Поле ввода с декорациями - иконка слева, спиннер справа (TRIP-333).
  *
  * «Поле с иконкой» было собрано заново пять раз - `.dl-search`,
@@ -28,6 +61,7 @@ import { Icon } from './icons';
  * остаётся ОТДЕЛЬНЫМ элементом снаружи.
  */
 export const Input = ({ icon, iconActive, loading, num, className = '', boxRef, ...rest }) => {
+  const required = React.useContext(RequiredCtx);
   // Слот справа резервируется, как только вызов ВООБЩЕ умеет показывать
   // спиннер (даже при `loading={false}`): включать отступ вместе со спиннером
   // значит менять ширину текстового поля прямо во время набора (TRIP-277).
@@ -36,7 +70,7 @@ export const Input = ({ icon, iconActive, loading, num, className = '', boxRef, 
     .filter(Boolean).join(' ');
   return (
     <div className={boxClass} ref={boxRef}>
-      <input className={num ? 'input num' : 'input'} {...rest} />
+      <input className={num ? 'input num' : 'input'} {...requiredAttrs(rest.required ?? required)} {...rest} />
       {icon && (
         <span
           className={`input-affix__ic${iconActive ? ' input-affix__ic--on' : ''}`}
@@ -60,9 +94,16 @@ export const Input = ({ icon, iconActive, loading, num, className = '', boxRef, 
 // Пара к <Input> для многострочного поля: тот же канон `.textarea`, декораций
 // у него нет, поэтому и обёртки-позиционера нет - внешний класс идёт на само
 // поле.
-export const Textarea = ({ className = '', ...rest }) => (
-  <textarea className={className ? `textarea ${className}` : 'textarea'} {...rest} />
-);
+export const Textarea = ({ className = '', ...rest }) => {
+  const required = React.useContext(RequiredCtx);
+  return (
+    <textarea
+      className={className ? `textarea ${className}` : 'textarea'}
+      {...requiredAttrs(rest.required ?? required)}
+      {...rest}
+    />
+  );
+};
 
 /**
  * Несколько контролов, читающихся как ОДНО поле: сумма + валюта, цена «от/до».
