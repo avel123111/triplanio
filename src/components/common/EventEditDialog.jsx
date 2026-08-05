@@ -758,10 +758,12 @@ export default function EventEditDialog({
     return {};
   }, [currentKind, form, tz, startTz, endTz, entity, isEdit]);
 
-  // Обязательность спрашиваем у того же валидатора, что и ошибки, - поэтому
-  // звёздочка не может стоять там, где сохранение на самом деле пройдёт.
+  // Обязательность считается по ТОМУ ЖЕ гейту, который держит кнопку сохранения
+  // (BLOCKING_CODES ниже), а не по сырому вердикту валидатора. Иначе звёздочка
+  // врёт: у аренды авто название - ошибка валидатора, но эта форма понижает её
+  // до совета и сохраняется без названия.
   const askRequired = useCallback(
-    (field) => isFieldRequired(currentKind, vdraft, vctx, field),
+    (field) => isFieldRequired(currentKind, vdraft, vctx, field, (i) => BLOCKING_CODES.has(i.code)),
     [currentKind, vdraft, vctx],
   );
 

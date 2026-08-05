@@ -279,6 +279,18 @@ test('required: приглашение - обязательность завис
   assert.equal(req('invite', { mode: 'link' }, {}, 'email'), false);
 });
 
+test('required: считается по гейту ФОРМЫ, а не по сырому вердикту', () => {
+  // Редактор события понижает всё, кроме семейства *_ORDER, до совета, поэтому
+  // сохраняется и без названия. Звёздочка обязана следовать за этим гейтом -
+  // иначе поле помечено обязательным, а форма его не требует.
+  const car = { service_kind: 'car_rental' };
+  const blocksInEventEditor = (i) => i.code.endsWith('_ORDER');
+  assert.equal(req('service', car, {}, 'name'), true);                                   // сырой вердикт
+  assert.equal(isFieldRequired('service', car, {}, 'name', blocksInEventEditor), false);  // гейт формы
+  // Формы на useHybridValidation блокируют по любой ошибке - там звёздочка есть.
+  assert.equal(req('expense', {}, {}, 'title'), true);
+});
+
 test('required: курс валюты необязателен (пусто = авто-курс)', () => {
   assert.equal(req('fx', { rates: { USD: '1.1' } }, {}, 'rate.USD'), false);
 });
