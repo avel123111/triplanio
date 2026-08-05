@@ -138,10 +138,14 @@ export default function Stay22HotelList({
     : cf.min ? `${cur} ${t('fork.f_from')} ${cf.min}` : `${cur} ${t('fork.f_to')} ${cf.max}`;
 
   // Pill removals: guests/platform re-commit the SERVER filters; price clears the
-  // CLIENT range.
-  const removeGuests = () => onApply({ ...(appliedProvider ? { provider: appliedProvider } : {}) });
-  const removePlatform = () => onApply({ adults: applied?.adults, children: applied?.children, rooms: applied?.rooms });
-  const removePrice = () => onApplyPrice?.('', '');
+  // CLIENT range. Each also clears the popover DRAFT — the chips row stays visible
+  // while the popover is open, so a stale draft would re-apply the filter on the
+  // next "Поиск" and the removal would look ineffective. Same helper shape as
+  // ViatorActivityList (Codex, PR #666).
+  const dropChip = (draftPatch, commit) => { setPending((d) => ({ ...d, ...draftPatch })); commit(); };
+  const removeGuests = () => dropChip(BASE_GUESTS, () => onApply({ ...(appliedProvider ? { provider: appliedProvider } : {}) }));
+  const removePlatform = () => dropChip({ provider: 'all' }, () => onApply({ adults: applied?.adults, children: applied?.children, rooms: applied?.rooms }));
+  const removePrice = () => dropChip({ min: '', max: '' }, () => onApplyPrice?.('', ''));
 
   // Card click = select (no navigation); opening the supplier site (Book button
   // or a second click on the already-selected card) is logged here. The shared
