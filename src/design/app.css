@@ -397,7 +397,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    .is-active, тёмная тема) перебивало его, а не наоборот.
    Расширять — дописать имя сюда, а НЕ скопировать пару к себе.
    ================================================================= */
-/* карточки, панели, виджеты (канон TRIP-189; .surface-glass/.surface-panel — алиасы одной роли) */
+/* карточки, панели, виджеты (канон TRIP-189; имя роли для разметки — .surface-glass) */
 .surface-glass,
 .statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
 .card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
@@ -1316,9 +1316,9 @@ h4,
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
 /* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
-   карточек. Одна плоская роль, без blur, без теней. .surface-glass и
-   .surface-panel остаются как алиасы для совместимости разметки: оба дают
-   одинаковый результат. Внутреннюю раскладку (падинги/хедеры/overflow)
+   карточек. Одна плоская роль, без blur, без теней. Имя роли для разметки одно
+   — .surface-glass; второе имя (.surface-panel) не стояло ни на одном элементе
+   и удалено. Внутреннюю раскладку (падинги/хедеры/overflow)
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
 .surface-glass,
 .statbar,                  /* полоса статистики — /trips и обзор трипа */
@@ -1453,7 +1453,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 /* Свой `margin-bottom: 12px` снят: родитель аккордеона (`.lp-b`) уже
    раскладывает детей зазором, поэтому отступ был ДОБАВОЧНЫМ - между двумя
    разделами выходило 25px вместо ступени. Без него класс годится и для
@@ -2405,7 +2405,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.
    New element (approved 2026-06-20). Distinct from members' .invite-banner. */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; }
 .invite__ic { width: 58px; height: 58px; border-radius: var(--r-md); flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
@@ -2618,7 +2618,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .pl-lastcard { overflow: hidden; }
 .pl-lastcard.is-fin { border-color: var(--brand); }
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
@@ -2953,7 +2953,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ── Assistant reply — a DOCUMENT, not a bubble (TRIP-296) ──
    An assistant answer is routinely 40-80 lines of headings + lists. In a tinted
    bubble (`.chat-bubble--ai`, removed) that reads as a wall of colour, so the
-   answer now sits in a full-width panel on the canonical `.surface-panel` skin,
+   answer now sits in a full-width panel on the canonical surface skin,
    marked as AI by a gradient spine rather than a fill. Long answers clamp with a
    fade and expand on demand. */
 /* The answer and its actions are two stacked rows, not one: the sticky avatar is
@@ -3524,14 +3524,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `ti` сидит подстрокой в `ai-blk-ti` и `lp-ti` и грепом читается как живой), а
    заголовок панели несёт `.lp-ti` с тем же `<b>` внутри. Вместе с правилами
    ушли ко-селекторы `.ti b` и `.ti span` из списков типографики выше. */
-/* Unified panel back button — solid surface chip, always clearly visible with a
-   non-blending hover (used in every light panel header). */
 /* Кнопка «уйти отсюда» в шапке панели/диалога. Была ДВУМЯ классами: этот и
    `.ev-dlg-close` - в одной и той же шапке `.lp-h`, разной формы (34px пилюля
    против 30px со скруглением контрола) и разного цвета покоя. Объект один:
    пять точек вызова из семи носили второй, поэтому его форма и победила, а имя
    осталось за этим - оно не врёт про объект и живёт в семействе шапки.
-   Вариация - ТОЛЬКО иконка (× или стрелка), её ставит вызыватель.
+   Вариация - ТОЛЬКО глиф (× или стрелка), его ставит вызыватель; РАЗМЕР держит
+   класс (`.lp-back svg`), иначе одна и та же кнопка ехала бы 14/15/16 в
+   зависимости от того, что за `size` написали в точке вызова.
    Подсветку несёт ручка `--hl` ниже по файлу, а не своё правило ховера. */
 .lp-back { width: 30px; height: 30px; border-radius: var(--r-sm); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
 .lp-back svg { width: 15px; height: 15px; }
@@ -3696,7 +3696,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ovwrap .ov-col:first-child { container-type: inline-size; }
 
 /* ---- widget shell ---- */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тень только на ховере как affordance */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тень только на ховере как affordance */
 .wdg {
   overflow: hidden;
   transition: transform .16s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s var(--ease-out);
@@ -4049,7 +4049,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    теме это то же значение, в тёмной .16 против .14 (см. блок .tile--*). */
 
 /* profile hero */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .acct-hero { position: relative; overflow: hidden; }
 .acct-hero__band { height: 84px; background: var(--brand-grad); position: relative; overflow: hidden; }
 .acct-hero__band .blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.16); pointer-events: none; }
@@ -4957,7 +4957,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    PANELS). Здесь остаётся то, что живёт ВНУТРИ оболочки и одинаково в обеих:
    ряд действий, секции, пары ключ-значение, поля формы.
    Тон берётся из --ev-color/--ev-soft/--ev-ink, которые вызыватель ставит на
-   корень оболочки (`.ev-dlg` у модалки, `.lp` у панели).
+   корень оболочки (контейнер диалога у модалки, `.lp` у панели).
    ★Кнопка ухода тоже уехала: `.ev-dlg-close` был вторым именем для `.lp-back`
    и удалён, объект один (см. `.lp-back` в блоке панелей).
    ⚠Своего правила у `.ev-dlg` нет и не нужно: три объявления, что тут стояли
@@ -5478,7 +5478,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; margin-top: 18px; }
 @media (max-width: 1040px) { .summary { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
@@ -5497,7 +5497,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Base white card container (V4). Was missing — so .panel / .panel.world /
    .panel.chart rendered with no background, leaving continents, the country/city
    list and the year chart sitting bare on the page. Used only by the stats blocks. */
-/* .panel — скин (panel) целиком из группового селектора .surface-panel (TRIP-189) */
+/* .panel — скин (panel) целиком из группового селектора поверхностей в начале файла (TRIP-189) */
 
 /* — world ring + continents — */
 .world { display: grid; grid-template-columns: 230px 1fr; gap: 24px; padding: 24px; position: relative; overflow: hidden; align-items: center; margin-top: 18px; }

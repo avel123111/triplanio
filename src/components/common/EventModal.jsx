@@ -89,7 +89,7 @@ export default function EventModal(props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className={`${kind === 'service' ? 'dlg--sm' : 'dlg--wide'} ev-dlg`}
+        className={kind === 'service' ? 'dlg--sm' : 'dlg--wide'}
         aria-describedby={undefined}
         style={{
           '--ev-color': theme.color,

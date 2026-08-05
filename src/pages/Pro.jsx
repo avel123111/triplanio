@@ -188,10 +188,7 @@ export default function Pro() {
   const busy = !!loadingPlan;
 
   return (
-    <div
-      className="pro-page app-shell"
-     
-    >
+    <div className="pro-page app-shell">
 
       {/* ── App header ── */}
       <AppHeader
