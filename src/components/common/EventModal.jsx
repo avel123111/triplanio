@@ -1,22 +1,26 @@
 /**
- * EventModal - unified, new-design (Lumo .ev-dlg) read view for a timeline
- * event (hotel / transfer / activity / car rental / esim / insurance).
+ * EventModal - unified read view for a timeline event (hotel / transfer /
+ * activity / car rental / esim / insurance).
  *
  * The per-kind sections, derived display values and document upload live in the
  * SHARED `EventViewBody` module so the in-place left-panel shell renders the
- * same content. EventModal owns the dialog chrome (header + body + footer).
+ * same content. TRIP-333 §4: the chrome around it is shared too - header, body
+ * and footer are the `.lp-*` canon, the same one `PanelShell` renders; this
+ * module owns only the CONTAINER (a Radix dialog instead of an inline panel).
+ * `.ev-dlg` on the container is no longer a chrome family - it is what scopes
+ * the form-label colour to the event shell (see `.ev-dlg .field__label`).
  *
  * Accepts TWO call shapes:
  *   New:    <EventModal open onOpenChange entity kind visit fromVisit toVisit onEdit readOnly />
  *   Legacy: <EventModal event={{ kind, entity, visit, fromVisit, toVisit }} canEdit onClose onEdit onDelete />
  *
- * Visual reference: Lumo design system event dialog (EVENTS_SERVICES_REDESIGN).
+ * Visual reference: Lumo design system event shell (EVENTS_SERVICES_REDESIGN).
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
-  Edit2, Trash2, X,
+  Trash2, X,
 } from 'lucide-react';
 import {
   useEventViewModel, useEntityDocs, EventViewSections,
@@ -153,14 +157,18 @@ export default function EventModal(props) {
             </>
           ) : (
             <>
+              {/* Форма кнопок - та же, что у трёх соседних футеров события:
+                  иконка пропом, подпись под `.btn-label-collapse`. Без этого
+                  `lp-f--ratio` работал вполсилы: на узком экране он гасит
+                  подпись первой кнопки, а гасить было нечего. */}
               {canEdit && onDelete && (
-                <Btn variant="danger" onClick={() => setConfirmDel(true)}>
-                  <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.delete')}
+                <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('trip.delete')}>
+                  <span className="btn-label-collapse">{t('trip.delete')}</span>
                 </Btn>
               )}
               {canEdit && onEdit && (
-                <Btn variant="primary" onClick={onEdit} style={{ '--bg': theme.color }}>
-                  <Edit2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.edit_trip')}
+                <Btn variant="primary" icon="edit" onClick={onEdit} style={{ '--bg': theme.color }}>
+                  {t('trip.edit_trip')}
                 </Btn>
               )}
             </>

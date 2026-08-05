@@ -1,16 +1,19 @@
 /**
- * EventEditDialog - unified create/edit modal (Lumo `.ev-dlg`) for ALL kinds:
- * hotel / transfer / activity, and every service subtype
- * (car_rental / esim / insurance). It is the single edit engine — the legacy
- * per-kind dialogs (Hotel/Transfer/Activity/CarRental/Esim/Insurance) are gone.
+ * EventEditDialog - unified create/edit form for ALL kinds: hotel / transfer /
+ * activity, and every service subtype (car_rental / esim / insurance). It is
+ * the single edit engine — the legacy per-kind dialogs
+ * (Hotel/Transfer/Activity/CarRental/Esim/Insurance) are gone.
  *
- * One shared chrome (tinted header + body + footer), themed per kind/subtype via
- * `meta` (TYPE_META / SERVICE_META → --ev-color/--ev-soft/--ev-ink). Each kind
- * renders its own field group; service dispatches on form.service_kind.
+ * One shared chrome — the `.lp-*` canon (tinted header + body + footer), themed
+ * per kind/subtype via `meta` (TYPE_META / SERVICE_META →
+ * --ev-color/--ev-soft/--ev-ink). TRIP-333 §4: the chrome is literally the same
+ * in both shells; before that the dialog branch drew its own `.ev-dlg-*` family.
+ * Each kind renders its own field group; service dispatches on form.service_kind.
  *
- * Shells: `variant="dialog"` = Radix Dialog overlay (app-wide modal, auto
- * bottom-sheet ≤640px). `variant="panel"` = same content inline for the
- * trip-editor left panel (hotel/transfer create/edit live here).
+ * Shells differ only by CONTAINER: `variant="dialog"` = Radix Dialog overlay
+ * (app-wide modal, auto bottom-sheet ≤640px, container carries `.ev-dlg`).
+ * `variant="panel"` = same content inline for the trip-editor left panel
+ * (hotel/transfer create/edit live here).
  *
  * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
@@ -1206,7 +1209,7 @@ export default function EventEditDialog({
             <div className="lp-h lp-h--ev">
               <span className="lp-ic"><meta.Icon /></span>
               <div className="lp-ti">
-                <div className="eyebrow" style={{ color: meta.color }}>{t(meta.labelKey)}</div>
+                <div className="eyebrow">{t(meta.labelKey)}</div>
                 <div className="lp-tirow"><b className="t-title">{title}</b></div>
               </div>
               <button
@@ -1630,7 +1633,8 @@ function buildServicePayload(form, tripId, t) {
 
 function SectionHeader({ children }) {
   // Lumo form section header: coloured uppercase label + trailing rule.
-  // Colour comes from the --ev-color set on the .ev-dlg root.
+  // Colour comes from the --ev-color set on the shell root — `.ev-dlg` in the
+  // dialog branch, `.lp` in the panel branch (both get it from `evVars`).
   return <div className="f-sec">{children}</div>;
 }
 

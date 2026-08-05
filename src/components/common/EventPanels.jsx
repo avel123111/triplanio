@@ -36,7 +36,7 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
       <div className="lp-h lp-h--ev">
         <span className="lp-ic"><Icon name={icon || kindIcon(kind)} size={17} /></span>
         <div className="lp-ti">
-          {eyebrow && <div className="eyebrow" style={{ color: ev.color }}>{eyebrow}</div>}
+          {eyebrow && <div className="eyebrow">{eyebrow}</div>}
           <div className="lp-tirow">
             <b className="t-title">{title}</b>
             {sub && <span className="t-mono">{sub}</span>}

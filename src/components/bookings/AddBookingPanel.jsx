@@ -63,7 +63,7 @@ export default function AddBookingPanel({
       <div className="lp-h lp-h--ev">
         <span className="lp-ic"><HeaderIcon size={18} /></span>
         <div className="lp-ti">
-          <div className="eyebrow" style={{ color: meta.color }}>{t(meta.eyebrowKey)}</div>
+          <div className="eyebrow">{t(meta.eyebrowKey)}</div>
           <div className="lp-tirow">
             <b className="t-title">{title}</b>
             {subtitle && <span className="t-meta">{subtitle}</span>}

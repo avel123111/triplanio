@@ -3493,7 +3493,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .lp-country .cflag { flex: none; }
 
 .lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line); }
-.lp-h .lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
+/* Геометрия плитки `.lp-ic` объявлена ОДИН раз - ниже, в блоке EDITOR SIDE
+   PANELS. Тут стояла её побайтовая копия под `.lp-h .lp-ic`; лишняя ступень
+   специфичности ничего не держала (свойства те же), но перебивала бы правку
+   канона, если бы копии разошлись. */
 /* TRIP-321 Ф13: `.ti` УДАЛЁН - мёртвый предшественник `.lp-ti`. Ноль вызовов
    className во всём src (проверено разбором самих className, а не грепом слова:
    `ti` сидит подстрокой в `ai-blk-ti` и `lp-ti` и грепом читается как живой), а
@@ -4920,12 +4923,22 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   EVENT/SERVICE DIALOGS — Lumo redesign (view + edit), 2026-06-08
-   Self-contained .ev-dlg system. Uses --ev-color/--ev-soft/--ev-ink set on the
-   .ev-dlg root by the caller. Additive: does not touch the legacy panel class
-   .notes used by the trip-editor left panels.
+   EVENT/SERVICE — содержимое (view + edit), Lumo, 2026-06-08
+   ★Оболочки тут БОЛЬШЕ НЕТ. Своё семейство `.ev-dlg-*` (шапка, плитка типа,
+   тело, футер) удалено в TRIP-333 §4: у события одна оболочка, и она общая с
+   панелями - `.lp-h` / `.lp-b` / `.lp-f` (объявлены ниже, в блоке EDITOR SIDE
+   PANELS). Здесь остаётся то, что живёт ВНУТРИ оболочки и одинаково в обеих:
+   крестик, ряд действий, секции, пары ключ-значение, поля формы.
+   Тон берётся из --ev-color/--ev-soft/--ev-ink, которые вызыватель ставит на
+   корень оболочки (`.ev-dlg` у модалки, `.lp` у панели).
+   ⚠`.ev-dlg-close` носят и панели (город, событие, добавление брони) - имя
+   осталось от диалога, объект общий.
+   ⚠Своего правила у `.ev-dlg` нет и не нужно: три объявления, что тут стояли
+   (`display:flex; flex-direction:column; overflow:hidden`), слово в слово
+   повторяли `.dlg`, а `.dlg` носит КАЖДЫЙ DialogContent. Класс остаётся
+   ЗАЦЕПКОЙ для `.ev-dlg .field__label` - он метит «это оболочка события»,
+   а не рисует её.
    ═══════════════════════════════════════════════════════════════════════════ */
-.ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
 .ev-dlg-close{width:30px;height:30px;border-radius:var(--r-sm);color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:background .12s,color .12s;}
 .ev-dlg-close:hover{background:var(--surface-2);color:var(--ink);}
 .ev-dlg-close svg{width:15px;height:15px;}
@@ -5104,6 +5117,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    поэтому значение переехало сюда. Скоуп именно `--ev`: `.lp-ic` носят и
    не-событийные шапки (город, маршрут, партнёр), у них свои тона. */
 .lp-h--ev .lp-ic { background: var(--ev-color, var(--brand)); color: #fff; }
+/* Эйбрау шапки события - ровно тот же случай, что плитка выше: тон писался
+   инлайном в трёх шапках из четырёх, а четвёртая (просмотр в диалоге) держала
+   его правилом удалённого семейства и после схлопывания осталась бы с базовым
+   серым `.eyebrow`. Токен взят `--ev-ink`, а не `--ev-color`: это ТЕКСТ, а
+   `--ev-ink` и заведён как читаемая версия цвета типа события. */
+.lp-h--ev .eyebrow { color: var(--ev-ink, var(--ev-color, var(--brand))); }
 /* eyebrow (type) + title(city) · meta(dates) row — shared drawer-header title. */
 .lp-tirow { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
 .lp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
