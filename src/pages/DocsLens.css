@@ -85,7 +85,7 @@
   font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; min-height: 160px;
-  border: 1.5px dashed var(--line-strong); border-radius: var(--r-md);
+  border: 1px dashed var(--line-strong); border-radius: var(--r-md);
   background: transparent; color: var(--muted);
   cursor: pointer; text-align: center; padding: 18px;
   transition: border-color .18s, background .18s, color .18s, transform .16s var(--ease-spring);
@@ -117,7 +117,7 @@
 /* ─── Empty state ─────────────────────────────────────────────── */
 .dl-empty {
   text-align: center; padding: 40px 20px;
-  border: 1.5px dashed var(--line); border-radius: var(--r-md);
+  border: 1px dashed var(--line); border-radius: var(--r-md);
   background: var(--surface-3);
 }
 .dl-empty__ic {
@@ -142,7 +142,7 @@
 .dl-visopt {
   font: inherit;
   display: flex; align-items: center; gap: 10px; padding: 12px;
-  border: 1.5px solid var(--line-strong); border-radius: var(--r-btn);
+  border: 1px solid var(--line-strong); border-radius: var(--r-btn);
   cursor: pointer; background: var(--surface-3); text-align: left;
   transition: border-color .16s, background .16s;
 }
