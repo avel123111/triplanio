@@ -40,7 +40,6 @@ export function CityPicker({ value, onChange, placeholder, autoFocus }) {
       placeholder={placeholder || t('planner.city_search_ph')}
       autoFocus={autoFocus}
       icon="pin"
-      iconActive={!!value}
     />
   );
 }

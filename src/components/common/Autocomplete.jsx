@@ -48,7 +48,6 @@ export default function Autocomplete({
   autoFocus,
   disabled,
   icon = 'pin',
-  iconActive = false,
   minChars = 2,
   debounceMs = 300,
   attribution = true,
@@ -197,13 +196,13 @@ export default function Autocomplete({
   return (
     <div style={{ position: 'relative', minWidth: 0 }}>
       {/* `boxRef` - на обёртку поля: по ней меряется позиция выпадающего списка
-          и по ней же определяется «клик вне» (см. onDocDown выше). Слот
-          спиннера держит сам <Input>: `loading` передаётся всегда, поэтому
-          отступ справа зарезервирован и поле не дёргается при наборе. */}
+          и по ней же определяется «клик вне» (см. onDocDown выше). Индикатор
+          держит сам <Input>: кольцо встаёт НА МЕСТО стартовой иконки (она тут
+          есть всегда - у `icon` дефолт `pin`), ширина текстовой зоны при этом
+          не меняется, поэтому дёргаться нечему и резерв справа не нужен. */}
       <Input
         boxRef={wrapRef}
         icon={icon}
-        iconActive={iconActive}
         loading={loading}
         value={inputValue || ''}
         onChange={handleChange}
