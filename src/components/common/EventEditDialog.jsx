@@ -110,7 +110,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { validateEntity, transferAiCityAdvisories, issuesToShow } from '@/lib/validation';
-import { FieldError, IssuesPanel, fieldHasError, fieldHasWarning, fieldState } from '@/components/common/ValidationUI';
+import { FieldError, IssuesPanel, fieldState } from '@/components/common/ValidationUI';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
@@ -2033,14 +2033,12 @@ function DateRangeBlock({
   startLabel, startValue, onStart, onStartMissing, startVField, startTz, startAi,
   endLabel, endValue, onEnd, onEndMissing, endVField, endTz, endAi,
 }) {
-  const eitherEnd = (test) => (startVField && test(issues, startVField))
-    || (endVField && test(issues, endVField));
-  const invalid = eitherEnd(fieldHasError);
+  // Состояние ПАРЫ «начало+конец» - теми же атрибутами, что и у одиночного поля,
+  // только на блоке: цвет несёт рамка `.stay-dates` внутри, у самих ячеек её нет.
   // Day-tolerance warnings (TR_DEP_DAY / TR_ARR_DAY) land on these two fields;
   // a hard error on either end outranks them, so only one tint shows at a time.
-  const warn = !invalid && eitherEnd(fieldHasWarning);
   return (
-    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`} style={style}>
+    <div className="eed-dateblock" {...fieldState(issues, [startVField, endVField])} style={style}>
       {/* The badge marks the pair, the tint marks the end: <AiField> can't be
           used here because it would tint BOTH cells when only one came from the
           parse, and its badge would be clipped by `.stay-dates` (overflow:hidden
@@ -2048,7 +2046,7 @@ function DateRangeBlock({
           cell and the shared <AiBadge> pins to this block, which does not clip. */}
       {(startAi || endAi) && <AiBadge />}
       <div className="eed-dateblock__lbl t-micro">{label}</div>
-      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
+      <div className="stay-dates">
         <div className={`sd-cellwrap${startAi ? ' ai-filled' : ''}`} data-vfield={startVField}>
           <DateTimeInput variant="cell" cellLabel={startLabel} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
         </div>
@@ -2082,24 +2080,22 @@ function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
   const e = splitLocal(form.endLocal);
   const date = s.date || e.date || '';
   const durMin = layoverMins(form.startLocal, form.endLocal);
-  const invalid = fieldHasError(issues, 'start') || fieldHasError(issues, 'end');
-  // Same amber state as DateRangeBlock: both blocks are the start/end pair, so
-  // they must flag validation identically even though no activity warning
-  // targets these fields today.
-  const warn = !invalid && (fieldHasWarning(issues, 'start') || fieldHasWarning(issues, 'end'));
   const emit = (d, st, et) => {
     setField('startLocal', d && st ? `${d}T${st}` : '');
     setField('endLocal', d && et ? `${d}T${et}` : '');
     setTime('start', !!d && !st);
     setTime('end', !!d && !et);
   };
+  // Тот же шов, что у DateRangeBlock: оба блока - пара «начало+конец», и
+  // состояние они обязаны показывать одинаково, даже если предупреждений на эти
+  // поля у активности сегодня нет (их выдаёт только переезд).
   return (
-    <div className={`eed-dateblock${warn ? ' field--warning' : ''}`}>
+    <div className="eed-dateblock" {...fieldState(issues, ['start', 'end'])}>
       <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
       <div data-vfield="start">
         <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
       </div>
-      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`} style={{ marginTop: 8 }}>
+      <div className="stay-dates" style={{ marginTop: 8 }}>
         <div className="sd-cellwrap">
           <div className="sd-cell sd-cell--time">
             <span className="sd-cell__lbl eyebrow">{t('activity.start')}</span>

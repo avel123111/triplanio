@@ -106,24 +106,25 @@ export default function DateTimeInput({
     />
   );
 
-  const trigger = variant === 'cell' ? (
+  // ОДНА кнопка на оба вида: меняются класс и содержимое, а не элемент. Веток
+  // было две, и `{...rest}` стоял только на обычной - переданное ячейке МОЛЧА
+  // пропадало; через этот же канал едет состояние валидации
+  // (`{...fieldState(...)}`), TRIP-333.
+  const isCell = variant === 'cell';
+  const trigger = (
     <button
       type="button"
-      className={`sd-cell${date ? '' : ' is-empty'} ${className || ''}`}
-      onClick={isSheet ? () => setOpen(true) : undefined}
-    >
-      {cellLabel != null && <span className="sd-cell__lbl eyebrow">{cellLabel}</span>}
-      <span className="sd-cell__d t-strong">{cellDate}</span>
-      {withTime && <span className="sd-cell__t t-mono">{time || '—:—'}</span>}
-    </button>
-  ) : (
-    <button
-      type="button"
-      className={`input eed-dtbtn${date ? '' : ' is-empty'} ${className || ''}`}
+      className={`${isCell ? 'sd-cell' : 'input eed-dtbtn'}${date ? '' : ' is-empty'} ${className || ''}`}
       onClick={isSheet ? () => setOpen(true) : undefined}
       {...rest}
     >
-      {label}
+      {isCell ? (
+        <>
+          {cellLabel != null && <span className="sd-cell__lbl eyebrow">{cellLabel}</span>}
+          <span className="sd-cell__d t-strong">{cellDate}</span>
+          {withTime && <span className="sd-cell__t t-mono">{time || '—:—'}</span>}
+        </>
+      ) : label}
     </button>
   );
 

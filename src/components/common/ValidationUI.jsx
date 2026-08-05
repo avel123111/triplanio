@@ -36,11 +36,14 @@ export function useHybridValidation(kind, draft, ctx) {
   return { issues, displayIssues, panelIssues, canSubmit, submitted, markTouched, attemptSubmit, reset };
 }
 
-// First issue targeting `field` (errors win over warnings).
+// First issue targeting `field` - a token, or a LIST of tokens that share one
+// state (the date blocks: «начало+конец» one colour for the pair). Errors win
+// over warnings, on either end of the pair.
 function pickFieldIssue(issues, field) {
+  const fields = (Array.isArray(field) ? field : [field]).filter(Boolean);
   let warn = null;
   for (const i of issues) {
-    if (i.field !== field) continue;
+    if (!fields.includes(i.field)) continue;
     if (i.level === 'error') return i;
     if (!warn) warn = i;
   }
@@ -62,18 +65,6 @@ export function FieldError({ issues, field, className = '' }) {
   );
 }
 
-// True when `field` has a blocking error - for red-border styling on the wrapper.
-export function fieldHasError(issues, field) {
-  return (issues || []).some((i) => i.field === field && i.level === 'error');
-}
-
-// True when `field` carries a non-blocking warning and no error - for
-// amber-border styling on the wrapper. An error owns the field's colour.
-export function fieldHasWarning(issues, field) {
-  const issue = pickFieldIssue(issues || [], field);
-  return !!issue && issue.level !== 'error';
-}
-
 // Состояние поля ГОТОВЫМИ АТРИБУТАМИ под spread (TRIP-333): `<Input {...st(f)}>`,
 // `<select {...st(f)}>`, `<InputGroup {...st(f)}>` - одна форма на все контролы,
 // сырые и наши. Своего пропа компоненты не заводят: проп был бы вторым способом
@@ -82,6 +73,15 @@ export function fieldHasWarning(issues, field) {
 // `aria-invalid` вместо своего data-атрибута - это стандартный признак, его
 // объявляет скринридер; в приложении не было ни одного. Ошибка старше
 // предупреждения: оба сразу поле не показывает никогда.
+//
+// `field` может быть МАССИВОМ - тогда состояние считается по паре и садится на
+// контейнер, как у `<InputGroup>`: это блоки дат редактора события, где
+// «начало+конец» - одно состояние на двоих, а цвет несёт рамка `.stay-dates`
+// внутри (у самих ячеек её нет). Раньше эта половина жила отдельной парой
+// функций, возвращавших булевы под классы (`.is-invalid` / `.field--warning`),
+// то есть «как выглядит ошибка» было объявлено в ДВУХ местах. На контейнере
+// `aria-invalid` - общий словарь и зацепка для CSS, но НЕ объявление для
+// скринридера: тот читает признак на контроле, а не на `<div>`.
 export function fieldState(issues, field) {
   const issue = pickFieldIssue(issues || [], field);
   const invalid = issue?.level === 'error';

@@ -1502,29 +1502,32 @@ fieldset:disabled .field__label { color: var(--muted-2); }
  background: var(--ai); color: white;
  padding: 1px 5px; border-radius: 4px;
 }
-/* Красного близнеца тут нет намеренно: ошибка живёт на САМОМ поле
-   (`[aria-invalid]`, ниже по файлу). `.field--warning` остаётся обёрточным -
-   его ставят два блока дат редактора события на свой контейнер, у которого
-   рамку рисует он сам, а не поле внутри. */
-.field--warning .input, .field--warning .select, .field--warning .textarea {
-  border-color: var(--warning);
-  box-shadow: 0 0 0 3px var(--warning-soft);
-}
-/* Same amber state on the event editor's own controls (date-range block draws
-   its own border, service forms use raw input/select/textarea), so
-   `.field--warning` is the ONE warning skin. Border-only; a field never gets
-   both at once (see `fieldState`). */
-.field--warning .stay-dates,
-.field--warning input,
-.field--warning select,
-.field--warning textarea {
-  border-color: var(--warning);
-}
+/* Состояние ПАРЫ полей - на блоке дат редактора события (TRIP-333).
+   Форма та же, что у одиночного поля (`fieldState` под spread), просто атрибуты
+   садятся на контейнер, как у `.input-group`: цвет несёт рамка `.stay-dates`
+   внутри, у самих кнопок-ячеек её нет. Прежде эта половина жила классами
+   `.field--warning` и `.stay-dates.is-invalid` - то есть «как выглядит ошибка»
+   было объявлено в ДВУХ местах. Ошибка старше предупреждения: обоих сразу не
+   бывает (см. `fieldState`). На контейнере `aria-invalid` - общий словарь и
+   зацепка для CSS, но НЕ объявление для скринридера: тот читает признак на
+   контроле, а не на `<div>`.
+
+   Кнопка даты активности (`.input` НАД рядом времени) цвета состояния не
+   несёт - как не несла и раньше: старое `.field--warning .input` било только по
+   ней, а предупреждений на `start`/`end` активность не выдаёт ни одного (их
+   выдаёт только переезд, а у него в блоке `.input` нет), то есть правило было
+   мёртвым. Живым его тут нельзя было бы оставить и по цене: (0,3,0) против
+   (0,2,0) у `.input:disabled` ниже перебило бы порядок, на котором держится
+   скин нерабочего поля. */
+.eed-dateblock[aria-invalid="true"] .stay-dates { border-color: var(--danger); }
+.eed-dateblock[data-warning] .stay-dates { border-color: var(--warning); }
 
 /* ── Нерабочее поле (TRIP-333) ────────────────────────────────────────────
-   Стоит ПОСЛЕ `.field--ai/--error/--warning`: у `:disabled` специфичность с
-   ними одинаковая (0,2,0), поэтому тон перебивает именно порядок - нерабочее
-   поле важнее подсветки состояния, а не наоборот.
+   Стоит ПОСЛЕ `.field--ai`: специфичность одинаковая (0,2,0), поэтому исход
+   решает порядок - у выключенного поля AI-заливки нет. Ошибка и предупреждение
+   объявлены НИЖЕ и по тому же правилу порядка выигрывают уже у `:disabled`:
+   рамка состояния видна и на погашенной форме (её гасит `<fieldset disabled>`
+   на время распознавания брони).
 
    Гасим ЦВЕТОМ, а не `opacity`, хотя `.btn[disabled]` гасится прозрачностью:
    `opacity` перемножается по предкам, а форма редактора события уже гасит весь
@@ -4896,7 +4899,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .sd-cell--time{cursor:default;}
 .sd-cell--time:hover{background:transparent;}
 .sd-timeinput{border:0;background:transparent;padding:0;margin:0;width:100%;color:var(--ink);outline:0;font-variant-numeric:tabular-nums;}
-.stay-dates.is-invalid{border-color:var(--danger,#DC2626);}
 .eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
@@ -4992,7 +4994,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
 /* TRIP-186: инпуты в диалогах события/броней — «аккуратный» вид дизайн-системы
    (тоньше рамка, крупнее радиус). Цвет рамки НЕ трогаем, чтобы не перебить
-   состояния той же специфичности (.field--ai / .field--warning / [aria-invalid])
+   состояния той же специфичности (.field--ai / [aria-invalid] / [data-warning])
    и hover/focus. */
 .ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
 .lp .input, .lp .select, .lp .textarea,
