@@ -82,6 +82,8 @@ export const Textarea = ({ className = '', ...rest }) => (
  * способом сказать одно и то же, а вторая ручка на одно свойство всегда
  * разъезжается с первой.
  */
+// Состояние приходит теми же атрибутами, что и полю (`{...fieldState(...)}`), и
+// красит КОНТЕЙНЕР: у детей группы рамки нет, красить у них нечего.
 export const InputGroup = ({ className = '', children, ...rest }) => (
   <div className={className ? `input-group ${className}` : 'input-group'} {...rest}>
     {children}

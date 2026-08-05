@@ -1500,6 +1500,30 @@ h4,
   cursor: default;
 }
 
+/* ── Ошибка и предупреждение НА САМОМ ПОЛЕ (TRIP-333) ─────────────────────
+   Живой скин ошибки - `.tv-invalid` на ОБЁРТКЕ (`fieldStateClass`), и он
+   красит потомка. Из-за этого поле, у которого класс оказался на нём самом,
+   молча не краснело - так было у суммы траты и курса валюты. Состояние
+   переезжает на само поле: селектор перестаёт зависеть от того, есть ли
+   обёртка и где именно висит класс.
+
+   `aria-invalid` вместо своего data-атрибута: это стандартный признак, его
+   объявляет скринридер. В приложении не было ни одного - предупреждение об
+   ошибке существовало только для зрячих.
+
+   ПЕРЕХОД: правила стоят РЯДОМ с `.tv-invalid`, а не вместо него. Точки
+   переезжают по одной, поле красное в любом из двух случаев, и ни одна
+   промежуточная ревизия не теряет ошибку. `.tv-invalid` удаляется последним,
+   когда переедут все. */
+.input[aria-invalid="true"], .select[aria-invalid="true"], .textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+.input[data-warning], .select[data-warning], .textarea[data-warning] {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 3px var(--warning-soft);
+}
+
 /* ── Поле с декорациями (TRIP-333) ────────────────────────────────────────
    Обёртка-позиционер для старт-иконки и лоудера; разметку ставит только
    `<Input>` (src/design/Input.jsx) - там же список сборок, которые эти классы
@@ -1561,8 +1585,8 @@ h4,
    (`fieldStateClass`), но красит СЕБЯ, а не потомка: у детей группы рамки нет,
    и `.tv-invalid .input` не дал бы ничего. Оба уйдут в PR6 вместе с
    `.tv-invalid`, на их место встанет `[aria-invalid]`. */
-.input-group.tv-invalid { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
-.input-group.field--warning { border-color: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
+.input-group.tv-invalid, .input-group[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.input-group.field--warning, .input-group[data-warning] { border-color: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
 /* Дети без собственного скина. `.input-affix` внутри группы - не позиционер
    ширины, а обычная колонка флекса. `box-shadow: none` гасит и кольцо фокуса:
    отдельное правило на `:focus` не нужно, у `.input:focus` та же специфичность

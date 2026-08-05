@@ -74,6 +74,26 @@ export function fieldHasWarning(issues, field) {
   return !!issue && issue.level !== 'error';
 }
 
+// Состояние поля ГОТОВЫМИ АТРИБУТАМИ под spread (TRIP-333): `<Input {...st(f)}>`,
+// `<select {...st(f)}>`, `<InputGroup {...st(f)}>` - одна форма на все контролы,
+// сырые и наши. Своего пропа компоненты не заводят: проп был бы вторым способом
+// сказать то же самое, а такая пара всегда расходится (TRIP-293).
+//
+// `aria-invalid` вместо своего data-атрибута - это стандартный признак, его
+// объявляет скринридер; в приложении не было ни одного. Ошибка старше
+// предупреждения: оба сразу поле не показывает никогда.
+//
+// Приходит на смену `fieldStateClass` ниже; пока живут оба - точки переезжают
+// по одной, и ни одна промежуточная ревизия не теряет ошибку.
+export function fieldState(issues, field) {
+  const issue = pickFieldIssue(issues || [], field);
+  const invalid = issue?.level === 'error';
+  return {
+    'aria-invalid': invalid ? 'true' : undefined,
+    'data-warning': !invalid && issue ? '' : undefined,
+  };
+}
+
 // Wrapper class for a field's validation state: `.tv-invalid` (red) or
 // `.field--warning` (amber), never both. Single source for every form wrapper.
 export function fieldStateClass(issues, field) {
