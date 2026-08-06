@@ -99,7 +99,8 @@ jobs:
   #   2g check-column-caps           — new user text column without a length cap (domain/CHECK)
   #   2h check-edge-sentry           — ANY edge function without withHandler/captureEdgeError/manual
   #   2i check-invoke-seam           — raw supabase.functions.invoke() outside src/lib/invokeFn.js
-  #   2j check-posthog-init          — analytics behind the consent gate (single posthog.init)
+  #   2j check-analytics-seam        — one door per side: posthog-js only in the seam, init only
+  #                                    in the consent gate, ingestion only in captureServer
   #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
   #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
   #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
@@ -155,9 +156,9 @@ jobs:
       - name: 2i — frontend invoke seam (no raw functions.invoke)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-invoke-seam.mjs
-      - name: 2j — analytics behind the consent gate (single posthog.init)
+      - name: 2j — analytics seam (events, identity, server ingestion)
         if: ${{ !cancelled() }}
-        run: node scripts/ci/check-posthog-init.mjs
+        run: node scripts/ci/check-analytics-seam.mjs
       - name: 2k — design tokens (typography/colour + whitelist ratchet)
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }

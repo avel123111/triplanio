@@ -14,14 +14,30 @@
 // the banner is answered is held HERE, in the memory of this document, and
 // replayed by startAnalytics() — nothing is written to the device either way.
 import posthog from 'posthog-js';
-import { CAMPAIGN_KEYS, campaignQuery, pickSignupAttribution, readSignupAttribution, resolveCampaign, toInitialPersonProps } from '@/lib/campaign';
+import { CAMPAIGN_KEYS, campaignQuery, marksToColumns, pickSignupMarks, readMarks, resolveCampaign, toInitialPersonProps } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 
 // What the visit arrived with, held in memory until consent: writing marks to the
 // device before someone agrees is what this ticket forbids, and by the time they
 // agree the URL and the page that carried them are gone. startAnalytics() replays
-// all three.
+// all of it.
 const visitSearch = typeof window === 'undefined' ? '' : window.location.search;
+// The campaign marks of THIS document. Null on any page the visitor did not
+// arrive on directly — including every page after Google's OAuth screen or a
+// confirmation link, which is why `recoveredMarks` exists below.
+const visitMarks = readMarks(visitSearch);
+// The same marks, brought across a document replacement by the signup path.
+//
+// ONE CARRIER PER BORDER, both readers on it (TRIP-335). The marks have to cross
+// three borders and no single carrier crosses all of them: in-memory dies with
+// the document, so the OAuth redirect is crossed by the sessionStorage stash
+// below and the confirmation email by Supabase auth metadata. Both were built
+// for the `users` columns; the campaign super-properties used to read only the
+// address, which is why last touch was empty for anyone who ignored the banner
+// and then signed in with Google. Now whichever carrier made it hands the marks
+// here, and both readers take them from one place instead of each growing a
+// courier of its own.
+let recoveredMarks = null;
 let visitRefTripId = '';
 let pendingGroup = null;
 // First-touch marks waiting for consent. Not a nicety: an account can be created
@@ -168,19 +184,22 @@ export function startAnalytics() {
  * them part of the service, before that nobody asked for anything.
  */
 export function rememberAttributionForRedirect() {
-  // Not getSignupAttribution(): that one consumes the stash, so a retry after a
-  // failed sign-in would eat its own marks.
-  const marks = readSignupAttribution(visitSearch);
-  if (!marks) return;
+  // The MARKS, not the columns projected out of them: this stash is the carrier
+  // for that border, and both readers hang off it. Storing one reader's shape is
+  // what silently cost the campaign super-properties their `utm_content` — and,
+  // before that, their whole value (TRIP-335).
+  // Not getSignupMarks(): that one consumes the stash, so a retry after a failed
+  // sign-in would eat its own marks.
+  if (!visitMarks) return;
   try {
-    sessionStorage.setItem(REDIRECT_KEY, JSON.stringify(marks));
+    sessionStorage.setItem(REDIRECT_KEY, JSON.stringify(visitMarks));
   } catch { /* private mode — attribution is lost, the signup still works */ }
 }
 
 /**
  * Put this visit's campaign marks on an outgoing address. For links that REPLACE
  * the document: the snapshot above lives in memory only, so a full load starts a
- * new document with an empty one, and `getSignupAttribution()` then finds nothing
+ * new document with an empty one, and `getSignupMarks()` then finds nothing
  * — a stranger who arrived on a marked invite or share link and pressed the very
  * button the link exists for would register unattributed.
  *
@@ -201,24 +220,55 @@ export function withVisitCampaign(url) {
 }
 
 /**
- * The signup-attribution columns for the account being created, or null. Written
- * for EVERY visitor, refusers included — this is why "which campaign brought
- * this signup" has an answer that does not depend on consent.
+ * The marks of the signup being made, or null: this document's address, else
+ * whatever the OAuth stash carried across. Feeds the `users` columns, which are
+ * written for EVERY visitor, refusers included — this is why "which campaign
+ * brought this signup" has an answer that does not depend on consent.
  *
- * Read-and-forget: the marks belong to ONE signup.
+ * Read-and-forget on the stash: the marks belong to ONE signup, and leaving them
+ * would credit them to whoever registers next in this tab.
+ *
+ * @returns {Record<string, string> | null}  marks, keyed by query parameter
  */
-export function getSignupAttribution() {
-  const fromUrl = readSignupAttribution(visitSearch);
-  if (fromUrl) return fromUrl;
+export function getSignupMarks() {
+  if (visitMarks) return visitMarks;
 
   try {
     const stashed = sessionStorage.getItem(REDIRECT_KEY);
     if (!stashed) return null;
     sessionStorage.removeItem(REDIRECT_KEY);
-    return pickSignupAttribution(JSON.parse(stashed));
+    // Recovered = they made it across the redirect, so the campaign side gets
+    // them too. Announced rather than left to the caller: rememberSignupMarks is
+    // what re-runs setCampaign if analytics is already live by now.
+    const marks = pickSignupMarks(JSON.parse(stashed));
+    rememberSignupMarks(marks);
+    return marks;
   } catch {
     return null;
   }
+}
+
+/**
+ * Hand the campaign side the marks that crossed a document replacement.
+ *
+ * Called by AuthContext at the ONE point a `users` row is born, with whatever
+ * the signup path recovered — the OAuth stash, or the auth metadata that
+ * carried them through a confirmation email to another device entirely. Only
+ * there: those metadata live on the auth user forever, and reading them on a
+ * later login would resurrect a year-old click as a fresh one, which is exactly
+ * the lie last-touch attribution exists to avoid.
+ *
+ * Re-runs `setCampaign` when analytics is already live, because the order is not
+ * ours to choose: on a device that consented long ago, `applyConsent` runs at
+ * page load — before the profile is fetched — so the campaign pass has already
+ * happened by the time the marks arrive.
+ *
+ * @param {Record<string, string> | null} marks  keyed by query parameter
+ */
+export function rememberSignupMarks(marks) {
+  if (!marks) return;
+  recoveredMarks = marks;
+  if (analyticsOn) setCampaign();
 }
 
 /**
@@ -226,13 +276,19 @@ export function getSignupAttribution() {
  * (TRIP-316) — same pattern as setRefTripId, so every later event carries it.
  *
  * Reads the snapshot, never `location.search`: consent arrives long after
- * landing. Once stored, the mark rides PostHog's own storage, which is how it
- * survives Google's OAuth screen. Storage is per-host, so campaign links MUST
- * point at the same host the app runs on (www vs apex are different jars).
+ * landing. Falls back to what the signup path carried across a redirect or a
+ * confirmation email, so the one visitor this used to miss entirely — arrived
+ * marked, ignored the banner, signed in with Google — is covered by the carrier
+ * that was already there (TRIP-335).
+ *
+ * Once stored, the mark rides PostHog's own storage, which is how it survives
+ * Google's OAuth screen on a device that had already consented. Storage is
+ * per-host, so campaign links MUST point at the same host the app runs on (www
+ * vs apex are different jars).
  */
 function setCampaign() {
   const decision = resolveCampaign(
-    visitSearch,
+    visitMarks || recoveredMarks,
     posthog?.get_property?.('camp_ts') || null,
     Date.now(),
   );
