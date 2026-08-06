@@ -346,14 +346,13 @@ const offScaleWidths = (text) => {
 };
 const bp = [];     // @media widths off the BREAKPOINTS scale (TRIP-321)
 
-// Сырые величины отступа файла как МУЛЬТИМНОЖЕСТВО {«12px»: сколько раз} —
-// предикат описан у SPACING_PROPS. `onHit` получает величину и номер строки,
-// чтобы отчёт мог показать, ГДЕ величина прибавилась (без этого «12px +1» по
-// всему репо не найти).
+// Сырые величины отступа ОДНОГО файла как МУЛЬТИМНОЖЕСТВО {«12px»: сколько
+// раз} — предикат описан у SPACING_PROPS. Пофайловая гранулярность нужна не
+// вердикту (он репозиторный), а ОТЧЁТУ: см. комментарий у spacingHead.
 // Комментарии гасим ПРОБЕЛАМИ той же длины, сохраняя переводы строк: иначе
 // съезжают и смещения, и номера строк, а построчный `design-token-exempt`
 // перестаёт попадать на свою строку.
-const spacingValues = (text, onHit) => {
+const spacingValues = (text) => {
   const out = new Map();
   if (!text) return out;
   const body = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
@@ -374,7 +373,6 @@ const spacingValues = (text, onHit) => {
       if (!Number.isFinite(n) || n === 0) continue;  // ноль — не ступень
       const key = `${n}px`;
       out.set(key, (out.get(key) || 0) + 1);
-      onHit?.(key, line);
     }
   }
   return out;
@@ -532,47 +530,70 @@ else console.log('  ✓ ratchet intact — no off-scale width appeared vs ' + BA
 // экрана читался бы как «величина исчезла» ровно так же, как её схлопывание, —
 // но, что важнее, ПЕРЕИМЕНОВАННЫЙ файл дал бы базу пустой и его значения
 // посчитались бы новыми.
-const spacingHead = new Map();          // величина → сколько раз (HEAD)
-const spacingWhere = new Map();         // величина → где встречается (для отчёта)
-for (const file of SCANNED) {
-  if (SPACING_ALLOW.includes(file)) continue;
-  if (!file.endsWith('.css')) continue; // инлайны в JSX держит храповик 2l
-  spacingValues(readFileSync(file, 'utf8'), (key, line) => {
-    spacingHead.set(key, (spacingHead.get(key) || 0) + 1);
-    const at = spacingWhere.get(key) || [];
-    if (at.length < 6) at.push(`${file}:${line}`);
-    spacingWhere.set(key, at);
-  });
-}
+//
+// Обе стороны держатся ФАЙЛ → {величина: сколько раз}, хотя вердикт считается
+// по сумме. Плоская карта «величина → сколько раз» вердикт даёт тот же, а вот
+// отчёт делает вредным: на частой величине («12px ×112, было ×111») адреса
+// брались из общей кучи и показывали шесть случайных мест из ста двенадцати —
+// ни одно из них не тронуто этим PR. Разработчик получал «где-то в репо стало
+// на одно больше». Пофайловая дельта называет ровно те файлы, где счётчик
+// поднялся, и вердикт от этого НЕ становится пофайловым: перенос правила между
+// файлами по-прежнему нейтрален — про него в отчёте просто не будет речи,
+// потому что суммарно ничего не выросло.
+//
+// Шум, названный чтобы не удивлял: на СТОРОНЕ ОТЧЁТА переименованный файл
+// выглядит новым (`— путь новый`), потому что пути сопоставляются по имени.
+// Проявляется только вместе с настоящим ростом той же величины где-то ещё, то
+// есть засоряет и без того красный вывод, а настоящий виновник стоит выше —
+// список отсортирован по дельте. Лечится `--find-renames`, но это новый вызов
+// git и новая ветка кода ради косметики уже красного отчёта. ВЕРДИКТА это не
+// касается: там переименование нейтрально (см. абзац про базовый список).
+const byFile = (files, read) => {
+  const out = new Map();
+  for (const f of files) out.set(f, spacingValues(read(f)));
+  return out;
+};
+// Периметр объявлен ОДИН раз на обе стороны: разъедутся — база и HEAD увидят
+// разные множества файлов, и значения «нового» пути посчитаются приростом
+// (мутация 8 в тесте). Инлайны в JSX держит храповик 2l — тут только CSS.
+const inSpacingScope = (f) => f.endsWith('.css') && !SPACING_ALLOW.includes(f);
+const spacingHead = byFile(SCANNED.filter(inSpacingScope), (f) => readFileSync(f, 'utf8'));
 const spacingBase = (() => {
   if (!baseSrc) return null;            // BASE_REF недостижим — сверять не с чем
-  let files;
   try {
-    files = execFileSync('git', ['ls-tree', '-r', '--name-only', BASE_REF, '--', ROOT, ...SCAN_EXTRA], {
+    const files = execFileSync('git', ['ls-tree', '-r', '--name-only', BASE_REF, '--', ROOT, ...SCAN_EXTRA], {
       encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
-    }).split('\n').filter((f) => f.endsWith('.css') && !SPACING_ALLOW.includes(f));
+    }).split('\n').filter(inSpacingScope);
+    return byFile(files, baseFile);
   } catch {
     return null;
   }
-  const out = new Map();
-  for (const f of files) {
-    for (const [k, n] of spacingValues(baseFile(f))) out.set(k, (out.get(k) || 0) + n);
-  }
-  return out;
 })();
+/** ФАЙЛ → {величина: раз}  ⇒  {величина: раз} по всему репо. Это и есть вердикт. */
+const totals = (byFileMap) => {
+  const out = new Map();
+  for (const vals of byFileMap.values()) for (const [k, n] of vals) out.set(k, (out.get(k) || 0) + n);
+  return out;
+};
+const headTotals = totals(spacingHead);
 const spGrew = [];
 if (spacingBase) {
-  for (const [key, n] of [...spacingHead].sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))) {
-    const had = spacingBase.get(key) || 0;
-    if (n > had) {
-      spGrew.push(`${key} ×${n} (было ×${had}${had ? '' : ' — НОВАЯ величина'})`
-        + `\n        ${spacingWhere.get(key).join('  ')}`);
-    }
+  const baseTotals = totals(spacingBase);
+  for (const [key, n] of [...headTotals].sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))) {
+    const had = baseTotals.get(key) || 0;
+    if (n <= had) continue;
+    // Виноваты только файлы, где счётчик ИМЕННО ЭТОЙ величины поднялся.
+    const culprits = [...spacingHead]
+      .map(([file, vals]) => ({ file, now: vals.get(key) || 0, was: spacingBase.get(file)?.get(key) || 0 }))
+      .filter(({ now, was }) => now > was)
+      .sort((a, b) => (b.now - b.was) - (a.now - a.was))   // кто прибавил больше — тот выше
+      .map(({ file, now, was }) => `        ${file}: ×${now} (было ×${was}${spacingBase.has(file) ? '' : ' — путь новый'})`);
+    spGrew.push(`${key} ×${n} (было ×${had}${had ? '' : ' — НОВАЯ величина'})\n${culprits.join('\n')}`);
   }
 }
-const spTotal = [...spacingHead.values()].reduce((a, b) => a + b, 0);
+const spTotal = [...headTotals.values()].reduce((a, b) => a + b, 0);
 const spOver = spGrew.length > 0;
-console.log(`\nSPACING — ${spTotal} сырых значений отступа, ${spacingHead.size} уникальных (шкала --sp-1…8: 2/4/6/8/10/12/16/20):`);
+console.log(`\nSPACING — ${spTotal} сырых значений отступа, ${headTotals.size} уникальных (шкала --sp-1…8: 2/4/6/8/10/12/16/20):`);
 spGrew.forEach((l) => console.log('  ✗ ' + l));
 if (spOver) {
   console.log(`  ✗ величина отступа выросла против ${BASE_REF}. Храповик крутится только вниз: возьми ступень \`var(--sp-N)\`, схлопни правило с существующим — или поставь на строке \`design-token-exempt\` с причиной.`);
