@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import posthog from 'posthog-js';
 import { supabase } from '@/api/supabaseClient';
-import { forgetStashedAttribution, getSignupAttribution, track, syncCampaignToPerson, syncFirstTouchToPerson } from '@/lib/analytics';
+import { forgetStashedAttribution, getSignupAttribution, identifyUser, resetIdentity, track } from '@/lib/analytics';
 import { pickSignupAttribution } from '@/lib/campaign';
 
 const AuthContext = createContext();
@@ -198,26 +197,13 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
-      // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213).
-      // Personal data stays in Supabase; resolve uid → user there when needed.
-      posthog?.identify(authUser.id);
-      // The campaign mark follows EVERY identify, not just new accounts: a
-      // returning user who clicks a retargeting ad and signs back in is the case
-      // that ends in a purchase, and that purchase is born on the server, where
-      // only person properties reach it. Self-guarded — a repeat login writes
-      // nothing (TRIP-316 A2).
-      syncCampaignToPerson();
-      // First touch, alongside the last-touch mark above. PostHog derives its own
-      // `$initial_*` from the address of the first event it sees a person on, and
-      // that address is always post-OAuth or post-confirmation — the marks are
-      // gone from it by then, so we hand it the value (TRIP-329).
-      //
-      // Fed the PROFILE, on every load, not the freshly-read marks at creation:
+      // Fed the PROFILE, on every load, not the marks freshly read at creation:
       // consent can arrive after the account exists (confirmation link opened on
       // a phone, or Google sign-in before answering the banner), and a reload in
       // between would lose an in-memory value for good. The column cannot be
-      // lost, and set-once makes repeating it free.
-      syncFirstTouchToPerson(profile);
+      // lost, and set-once makes repeating it free. The campaign mark rides the
+      // same call — see identifyUser, which owns all of it.
+      identifyUser(authUser.id, profile);
       // Registration (TRIP-316 A1). The `users` row is the ONE birth point of a
       // user: it is created here, exactly once, and identically for Google,
       // Apple, One Tap and email — the login buttons are not, and the fourth one
@@ -270,7 +256,7 @@ export const AuthProvider = ({ children }) => {
     // hard-redirect to /login - no landing flash in between.
     isLoggingOutRef.current = true;
     if (shouldRedirect) setIsLoadingAuth(true);
-    posthog?.reset();
+    resetIdentity();
     await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
