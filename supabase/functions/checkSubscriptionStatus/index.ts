@@ -7,6 +7,8 @@ import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { reconcileEntitlement, needsEntitlementReconcile, reconcileTripEntitlement } from '../_shared/reconcileEntitlement.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
+import { callerStep } from '../_shared/tripAccess.ts';
+import { clearsStep } from '../_shared/tripStep.ts';
 
 Deno.serve(withHandler('checkSubscriptionStatus', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -40,6 +42,24 @@ Deno.serve(withHandler('checkSubscriptionStatus', async (req, corsHeaders) => {
     // TRIP-208 (taxonomy: _shared/classifyDbError.ts).
     if (tripErr && !isNotFound(tripErr)) throw tripErr;
     if (!trip) return Response.json({ isPro: false, isOwner: false, reason: null }, { headers: corsHeaders });
+
+    // Access check — ступень `participant`: Pro-статус трипа видят все, кто трип
+    // и так открывает (viewer в том числе), поэтому планка низшая. До TRIP-274
+    // проверки тут не было ВООБЩЕ — единственная серверная дверь к данным трипа
+    // без единой: посторонний по UUID узнавал Pro-статус ВЛАДЕЛЬЦА и запускал
+    // записи в его строках (`purchase`, `users`, `subscription`) с исходящими
+    // вызовами в Stripe. Поэтому гейт стоит ДО reconcileTripEntitlement ниже, а
+    // не после: иначе дорогая половина остаётся доступной неучастнику.
+    // `callerStep`, а не `isCallerParticipant` — строка трипа уже в руках, тот
+    // перечитал бы `trips` второй раз (образец: getTripDetails).
+    // Сорванный запрос членства бросает → 5xx, не ложный 403 (TRIP-208).
+    //
+    // Осознанно принято: посторонний отличит существующий трип (403) от
+    // несуществующего (200 + isPro:false) — это контракт getTripDetails
+    // (404/403), а UUID неугадываем.
+    if (!clearsStep(await callerStep(tripId, user.id, trip.created_by), 'participant')) {
+      return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    }
 
     const isOwner = trip.created_by === user.id;
 

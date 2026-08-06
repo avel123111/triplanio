@@ -44,7 +44,7 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { TABLES, TIERS, FUNCTIONS, BUCKETS, DOORS } from './security-tiers.mjs';
+import { TABLES, TIERS, FUNCTIONS, BUCKETS, DOORS, DOORS_VALUES, STEP_VALUES } from './security-tiers.mjs';
 
 const VALID_TIERS = new Set(Object.keys(TIERS)); // A B C D
 const err = (m) => { console.error(`::error::${m}`); };
@@ -109,10 +109,31 @@ function checkStatic() {
 //   isCallerEditor(…)                → editor
 //   isCallerParticipant(…)           → participant
 //   clearsStep(…, 'editor'|'participant') → соответственно (форма callerStep)
+//
+// Карта ТОТАЛЬНАЯ: строка обязана быть у каждой функции, включая негейтовые.
+// Проверяются из них только ступени; остальные значения — объявительные, см.
+// DOORS_VALUES и абзац «что страж НЕ ловит» в шапке DOORS.
 export function checkDoors(sources = [], doors = DOORS) {
   const errors = [];
+  // Найденные ступени печатаются отсортированными во ВСЕХ сообщениях: порядок
+  // множества — порядок регулярок выше, читателю ошибки он ничего не говорит.
+  const found = (set) => [...set].sort().join(', ');
+
+  for (const [name, value] of Object.entries(doors)) {
+    if (!DOORS_VALUES.has(value)) {
+      errors.push(`дверь '${name}': значение '${value}' не из словаря — допустимые: ${[...DOORS_VALUES].join(', ')}`);
+    }
+  }
 
   for (const { name, code } of sources) {
+    // Папка функции без index.ts: readEdgeSources отдаёт её с code = null.
+    // Раньше такая папка стражу не показывалась вовсе — на тотальной карте это
+    // дыра того же вида, что и пропущенная строка.
+    if (code == null) {
+      errors.push(`дверь '${name}': в папке функции нет index.ts — страж не видит её кода; переименуй точку входа или удали папку`);
+      continue;
+    }
+
     const required = new Set();
     if (/\bisCallerEditor\s*\(/.test(code)) required.add('editor');
     if (/\bisCallerParticipant\s*\(/.test(code)) required.add('participant');
@@ -121,15 +142,30 @@ export function checkDoors(sources = [], doors = DOORS) {
     }
 
     const declared = doors[name];
-    if (required.size === 0) {
-      // Дверь без ступени — публичная / по токену / по своей строке. Но если её
-      // ЗАЯВИЛИ, а гейта нет — это снятая проверка, самый опасный из дрейфов.
-      if (declared) errors.push(`дверь '${name}': манифест требует ступень '${declared}', но функция не зовёт ни одного гейта — проверка снята?`);
+    if (!declared) {
+      // Тотальность. Раньше молчанием отвечалось «функция гейта не зовёт» — и
+      // ровно так стражу был невидим checkSubscriptionStatus, единственная
+      // дверь к данным трипа вообще без проверки. Теперь ЛЮБАЯ функция обязана
+      // иметь строку: тогда «проверки нет осознанно» отличимо от «о функции
+      // никто не подумал», а новая папка роняет сборку.
+      errors.push(required.size
+        ? `дверь '${name}': зовёт ступень (${found(required)}), но не заведена в DOORS — заведи строку, чтобы решение было принято явно`
+        : `дверь '${name}': не заведена в DOORS — карта тотальная, объяви чем гейтится (${[...DOORS_VALUES].join(', ')})`);
       continue;
     }
 
-    if (!declared) {
-      errors.push(`дверь '${name}': зовёт ступень (${[...required].join(', ')}), но не заведена в DOORS — заведи строку, чтобы решение было принято явно`);
+    if (!STEP_VALUES.has(declared)) {
+      // Объявительное значение: страж такую дверь не проверяет. Но живой гейт
+      // ступени под ней — расхождение манифеста с кодом в другую сторону.
+      if (required.size) {
+        errors.push(`дверь '${name}': объявлена как '${declared}' (страж не проверяет), но код зовёт ступень '${found(required)}' — либо строка врёт, либо ступень появилась и её не занесли`);
+      }
+      continue;
+    }
+
+    if (required.size === 0) {
+      // Ступень ЗАЯВЛЕНА, а гейта нет — снятая проверка, самый опасный дрейф.
+      errors.push(`дверь '${name}': манифест требует ступень '${declared}', но функция не зовёт ни одного гейта — проверка снята?`);
       continue;
     }
     // Две разные ступени в одной функции — страж не может сказать, КОТОРАЯ из
@@ -140,11 +176,11 @@ export function checkDoors(sources = [], doors = DOORS) {
     // неоднозначность = отказ; понадобится честная дверь на две ступени —
     // разнести их по функциям или расширить манифест осознанно.
     if (required.size > 1) {
-      errors.push(`дверь '${name}': зовёт РАЗНЫЕ ступени (${[...required].sort().join(', ')}) — страж не может определить, которая решает; оставь одну`);
+      errors.push(`дверь '${name}': зовёт РАЗНЫЕ ступени (${found(required)}) — страж не может определить, которая решает; оставь одну`);
       continue;
     }
     if (!required.has(declared)) {
-      errors.push(`дверь '${name}': манифест требует '${declared}', код зовёт '${[...required].join(', ')}' — гейт спрашивает не ту ступень`);
+      errors.push(`дверь '${name}': манифест требует '${declared}', код зовёт '${found(required)}' — гейт спрашивает не ту ступень`);
     }
   }
 
@@ -159,6 +195,53 @@ export function checkDoors(sources = [], doors = DOORS) {
   return errors;
 }
 
+// ── Паритет EDITOR_ROLES ↔ _can_edit_trip (TRIP-274) ────────────────────────
+// Здесь сверяются ДВЕ СЕРВЕРНЫЕ половины одного правила — единственная пара,
+// расхождение которой не видно ниоткуда: обе двери отдают 200, просто пускают
+// разных людей. Полный список мест, где живёт роль, и почему комментарий его не
+// удержит — канон в шапке `EDITOR_ROLES` (_shared/tripStep.ts).
+const TRIP_STEP_FILE = 'supabase/functions/_shared/tripStep.ts';
+// Тело `_can_edit_trip` (pg_get_functiondef) и `EDITOR_ROLES` в tripStep.ts:
+// разные обёртки вокруг одного и того же списка литералов в квадратных скобках.
+const SQL_ROLE_LIST = /\brole\s*=\s*any\s*\(\s*array\s*\[([^\]]*)\]/i;
+const TS_ROLE_LIST = /\bEDITOR_ROLES\s*=\s*\[([^\]]*)\]/;
+
+/** Роли из первого совпадения `re`, либо null — не нашлось.
+ *  Литералы в SQL печатаются с ::text — приведение отбрасываем. */
+function parseRoleList(re, text) {
+  const m = re.exec(text || '');
+  if (!m) return null;
+  // Кавычка любая: SQL печатает одинарные, TS-файл переформатируют на двойные —
+  // это дало бы верное падение с врущим диагнозом («список не нашёлся»).
+  const roles = [...m[1].matchAll(/['"]([^'"]*)['"]/g)].map((q) => q[1]);
+  return roles.length ? roles : null;
+}
+
+/**
+ * Чистая половина ради теста. Возвращает список ошибок.
+ *
+ * Ненайденный список — ОШИБКА, а не пустое множество: сравнение пустого с
+ * пустым дало бы «совпало» на функции, переписанной до неузнаваемости, то есть
+ * проверка молча перестала бы проверять. Это исходный класс дефекта, ради
+ * которого весь TRIP-274.
+ */
+export function checkEditorRoles(sqlDef, tsSource) {
+  const errors = [];
+  const sql = parseRoleList(SQL_ROLE_LIST, sqlDef);
+  const ts = parseRoleList(TS_ROLE_LIST, tsSource);
+  if (!sql) errors.push('паритет ролей: в теле _can_edit_trip не нашёлся список ролей (`role = any (array[...])`) — функцию переписали; сверять не с чем, почини разбор или сверку');
+  if (!ts) errors.push('паритет ролей: в _shared/tripStep.ts не нашёлся EDITOR_ROLES — переименовали? сверять не с чем');
+  if (!sql || !ts) return errors;
+
+  // Сравниваем как МНОЖЕСТВА: порядок и повтор в списке ролей ничего не значат.
+  const sqlSorted = [...new Set(sql)].sort();
+  const tsSorted = [...new Set(ts)].sort();
+  if (sqlSorted.join(',') !== tsSorted.join(',')) {
+    errors.push(`паритет ролей разошёлся: SQL _can_edit_trip = [${sqlSorted.join(', ')}], TS EDITOR_ROLES = [${tsSorted.join(', ')}] — одно правило на двух языках, обе двери отдадут 200 и пустят разных людей`);
+  }
+  return errors;
+}
+
 /** Читает edge-функции с диска и режет комментарии. */
 function readEdgeSources(root = 'supabase/functions') {
   if (!existsSync(root)) return [];
@@ -166,10 +249,13 @@ function readEdgeSources(root = 'supabase/functions') {
   for (const dir of readdirSync(root, { withFileTypes: true })) {
     if (!dir.isDirectory() || dir.name.startsWith('_')) continue;
     const file = `${root}/${dir.name}/index.ts`;
-    if (!existsSync(file)) continue;
-    const raw = readFileSync(file, 'utf8');
+    // Папка без index.ts НЕ пропускается: на тотальной карте невидимая стражу
+    // функция — та же дыра, что и пропущенная строка. Отдаём с code = null,
+    // решение (ошибка) принимает checkDoors.
     // Комментарии — вон: они называют соседние гейты и врали бы стражу.
-    const code = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const code = existsSync(file)
+      ? readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+      : null;
     // Имя папки с дефисом не бывает ключом объекта — нормализуем как в DOORS.
     out.push({ name: dir.name.replace(/-/g, '_'), code });
   }
@@ -253,6 +339,11 @@ const LIVE_SQL = `select json_build_object(
      'auth', has_function_privilege('authenticated', p.oid, 'EXECUTE'),
      'authz', (pg_get_functiondef(p.oid) ~* '(_can_edit_trip|is_trip_participant|is_trip_creator|is_trip_owner|is_trip_pro|is_user_pro|auth\\.(uid|email|jwt|role)\\(\\))')
    )) from pg_proc p join pg_namespace n on n.oid=p.pronamespace and n.nspname='public' where p.prosecdef), '[]'::json),
+  -- Тело _can_edit_trip ЦЕЛИКОМ: 'authz' выше — булево «есть ли упоминание
+  -- авторизации», по нему список ролей не сверить. Нужен текст (TRIP-274).
+  'can_edit_def', coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+     join pg_namespace n on n.oid=p.pronamespace and n.nspname='public'
+     where p.proname='_can_edit_trip' limit 1), ''),
   'buckets', coalesce((select json_agg(json_build_object('id', id, 'public', public)) from storage.buckets), '[]'::json),
   'storage_policies', coalesce((select json_agg(json_build_object(
      'name', policyname,
@@ -314,6 +405,13 @@ function checkLive(dbUrl) {
       fail = 1;
     }
   }
+
+  // ── ПАРИТЕТ РОЛЕЙ: живой _can_edit_trip против TS EDITOR_ROLES ──
+  // Живой, а не из миграции: роль могли завести и мимо репо. TS-половину берём
+  // с диска — edge-модуль в .mjs не импортируется (граница рантаймов, приём из
+  // fileType.test.js), поэтому читаем его как ТЕКСТ.
+  const tsStep = existsSync(TRIP_STEP_FILE) ? readFileSync(TRIP_STEP_FILE, 'utf8') : '';
+  for (const m of checkEditorRoles(live.can_edit_def, tsStep)) { err(`live-дрейф: ${m}`); fail = 1; }
 
   // ── STORAGE: флаг public бакета + наличие политик + их ПРЕДИКАТ ──
   const bucketPublic = Object.fromEntries((live.buckets || []).map((b) => [b.id, b.public]));

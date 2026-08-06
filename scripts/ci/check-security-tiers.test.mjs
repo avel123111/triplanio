@@ -26,7 +26,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkBucketPredicates, checkDoors } from './check-security-tiers.mjs';
+import { checkBucketPredicates, checkDoors, checkEditorRoles } from './check-security-tiers.mjs';
 
 // Манифест-фикстура той же формы, что BUCKETS в security-tiers.mjs.
 const TRIPS = {
@@ -234,9 +234,22 @@ test('★ новая дверь без строки в манифесте рон
   assert.match(errors[0], /не заведена в DOORS/);
 });
 
-test('дверь без ступени и без строки в манифесте — тишина (публичная/по токену)', () => {
+// ДО тотальной карты этот случай был ТИШИНОЙ — и ровно через него проскочил
+// checkSubscriptionStatus: функция не звала гейта, значит стражу её не было
+// видно вовсе. Теперь негейтовая дверь обязана быть ОБЪЯВЛЕНА (`token`, `n8n`,
+// `owner`, `self`, `auth`, `public`) — тогда «дверь без проверки» отличима от
+// «двери, о которой никто не подумал».
+test('★ негейтовая дверь без строки в манифесте роняет сборку (тотальная карта)', () => {
   const sources = [src('getPublicTrip', 'if (trip.share_token !== token) return 404;')];
-  assert.deepEqual(checkDoors(sources, {}), []);
+  const errors = checkDoors(sources, {});
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /getPublicTrip/);
+  assert.match(errors[0], /не заведена в DOORS/);
+});
+
+test('негейтовая дверь с объявительной строкой — тишина', () => {
+  const sources = [src('getPublicTrip', 'if (trip.share_token !== token) return 404;')];
+  assert.deepEqual(checkDoors(sources, { getPublicTrip: 'token' }), []);
 });
 
 test('строка в манифесте без функции ловится (переименовали/удалили)', () => {
@@ -270,4 +283,127 @@ test('неоднозначность ловится и когда объявле
   const doors = { x: 'editor' };
   const sources = [src('x', "isCallerEditor(a); clearsStep(s, 'participant');")];
   assert.equal(checkDoors(sources, doors).length, 1);
+});
+
+// ── Тотальная карта: объявительные значения и закрытый словарь ───────────────
+// Половина дверей гейтится не ступенью: `owner` руками по `trips.created_by`,
+// `token` владением секретом, `n8n` — Bearer N8N_SECRET. Страж их НЕ проверяет
+// (он читает имена, а не поток управления), но требует объявить: невидимая
+// стражу функция — это то, чем был checkSubscriptionStatus.
+test('объявительное значение без гейта в коде — тишина', () => {
+  const sources = [
+    src('deleteTrip', 'if (trip.created_by !== user.id) return 403;'),
+    src('triplanioAiReply', 'requireN8nSecret(req);'),
+  ];
+  assert.deepEqual(checkDoors(sources, { deleteTrip: 'owner', triplanioAiReply: 'n8n' }), []);
+});
+
+// Обратное направление: объявили «гейта тут нет», а гейт есть. Либо строка
+// врёт, либо ступень появилась и её забыли занести — в обоих случаях манифест
+// разошёлся с кодом, а он весь смысл в том, чтобы не расходиться.
+test('★ объявительная строка при живом гейте ступени ловится', () => {
+  const sources = [src('deleteTrip', "if (!clearsStep(await callerStep(t, u, c), 'participant')) return 403;")];
+  const errors = checkDoors(sources, { deleteTrip: 'owner' });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /deleteTrip/);
+  assert.match(errors[0], /participant/);
+});
+
+// Без закрытого словаря опечатка тихо становится «объявительным»: значение,
+// которого страж не знает, он бы просто не проверял — то есть строка выглядит
+// решением, а является пропуском.
+test('★ неизвестное значение (опечатка) роняет сборку', () => {
+  const errors = checkDoors([src('deleteTrip', 'x')], { deleteTrip: 'onwer' });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /onwer/);
+  assert.match(errors[0], /допустимые/);
+});
+
+test('все объявительные значения словаря принимаются', () => {
+  for (const v of ['owner', 'self', 'auth', 'token', 'n8n', 'public']) {
+    assert.deepEqual(checkDoors([src('f', 'нет гейта')], { f: v }), [], `значение '${v}'`);
+  }
+});
+
+// Папка без index.ts стражу не видна ВООБЩЕ — readEdgeSources её пропускает.
+// На частичной карте это было терпимо, на тотальной — дыра ровно того же вида,
+// что и пропущенная строка: функция есть, стража на ней нет.
+test('★ папка функции без index.ts роняет сборку', () => {
+  const errors = checkDoors([{ name: 'somethingNew', code: null }], { somethingNew: 'editor' });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /somethingNew/);
+  assert.match(errors[0], /index\.ts/);
+});
+
+// ── Паритет EDITOR_ROLES ↔ _can_edit_trip (TRIP-274) ────────────────────────
+// Одно правило на двух языках. Сегодня совпадают, и расхождение будет МОЛЧАТЬ:
+// обе двери отдают 200, просто пускают разных людей. Реальный сценарий — роль
+// заводят в SQL и не знают про TS: человек правит бюджет и документы (RLS
+// пустила), но получает 403 на настройках и участниках (edge отказал).
+// Комментарий этого не удержит: завести роль = написать НОВЫЙ файл миграции,
+// комментарий туда не поедет.
+const SQL_OK = `CREATE OR REPLACE FUNCTION public._can_edit_trip(p_trip uuid, p_uid uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $function$
+  select exists (select 1 from trips t where t.id = p_trip and t.created_by = p_uid)
+      or exists (select 1 from trip_members m
+                 where m.trip_id = p_trip and m.user_id = p_uid
+                   and m.role = any (array['owner','admin'])
+                   and m.status = 'active');
+$function$`;
+const TS_OK = `export const EDITOR_ROLES = ['owner', 'admin'];`;
+
+test('паритет ролей: списки совпали — тишина', () => {
+  assert.deepEqual(checkEditorRoles(SQL_OK, TS_OK), []);
+});
+
+test('порядок и пробелы значения не имеют', () => {
+  assert.deepEqual(checkEditorRoles(SQL_OK, `export const EDITOR_ROLES = [ 'admin' ,\n  'owner' ];`), []);
+});
+
+// pg_get_functiondef печатает литералы с явным приведением типа.
+test('приведение ::text в SQL-литералах не мешает', () => {
+  const casted = SQL_OK.replace("array['owner','admin']", "ARRAY['owner'::text, 'admin'::text]");
+  assert.deepEqual(checkEditorRoles(casted, TS_OK), []);
+});
+
+test('★ роль завели в SQL и забыли в TS → ошибка с обоими списками', () => {
+  const sql = SQL_OK.replace("array['owner','admin']", "array['owner','admin','editor']");
+  const errors = checkEditorRoles(sql, TS_OK);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /editor/);
+  assert.match(errors[0], /owner/);
+  assert.match(errors[0], /admin/);
+});
+
+test('★ расхождение в обратную сторону ловится так же', () => {
+  const errors = checkEditorRoles(SQL_OK, `export const EDITOR_ROLES = ['owner', 'admin', 'editor'];`);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /editor/);
+});
+
+// Самая тихая поломка: разбор перестал находить список. Сравнение с пустым
+// множеством дало бы «совпало» на функции, которую переписали до неузнаваемости.
+test('★ тело функции без списка ролей → ошибка, а не молчаливое совпадение', () => {
+  const rewritten = SQL_OK.replace("m.role = any (array['owner','admin'])", 'm.role_id in (select id from editor_roles)');
+  const errors = checkEditorRoles(rewritten, TS_OK);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /_can_edit_trip/);
+});
+
+test('★ TS без EDITOR_ROLES → ошибка, а не молчаливое совпадение', () => {
+  const errors = checkEditorRoles(SQL_OK, 'export const SOMETHING_ELSE = 1;');
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /EDITOR_ROLES/);
+});
+
+test('пустой/отсутствующий вход не молчит', () => {
+  assert.equal(checkEditorRoles('', TS_OK).length, 1);
+  assert.equal(checkEditorRoles(SQL_OK, '').length, 1);
+  assert.equal(checkEditorRoles(null, null).length, 2);
+});
+
+// Двойные кавычки в TS: переформатирование tripStep.ts не должно давать
+// ВЕРНОЕ падение с ВРУЩИМ диагнозом («EDITOR_ROLES не нашёлся» вместо разбора).
+test('EDITOR_ROLES в двойных кавычках читается', () => {
+  assert.deepEqual(checkEditorRoles(SQL_OK, 'export const EDITOR_ROLES = ["owner", "admin"];'), []);
 });
