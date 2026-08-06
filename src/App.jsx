@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from "@/design/index"
 import { track } from '@/lib/analytics'
+import { isProdHost } from '@/lib/consent'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -31,6 +32,14 @@ import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 
+// Витрина дизайн-системы (TRIP-340). Вне прода и БЕЗ логина: геометрия - чистый
+// CSS, поэтому визуальный гейт снимает именно её, а не рукописный стенд.
+// `lazy` тут несущий, а не украшение: без него витрина уехала бы в прод-бандл
+// мёртвым весом, хотя роута там нет. Провайдеры (тема, i18n, Toaster) уже стоят
+// выше в App - ветка возвращается изнутри AuthenticatedApp, как /public/trip и
+// /join, то есть до аут-гейта, но внутри провайдеров.
+const Kit = lazy(() => import('@/pages/Kit'));
+
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
 // (/trip/:id → trip_opened, /pro → pricing_viewed, /public/trip → public_trip_viewed,
@@ -60,8 +69,19 @@ const AuthenticatedApp = () => {
     if (s) track(s.event, s.props);
   }, [location.pathname]);
 
-  // Public read-only trip page - no auth needed
   const path = location.pathname;
+
+  // Витрина: только вне прода. На проде роута нет вовсе - путь провалится в
+  // общую маршрутизацию ниже и отдаст лендинг/404, как любой чужой адрес.
+  if (!isProdHost && path === '/kit') {
+    return (
+      <Suspense fallback={null}>
+        <Kit />
+      </Suspense>
+    );
+  }
+
+  // Public read-only trip page - no auth needed
   if (path.startsWith('/public/trip/')) {
     return (
       <Routes>
