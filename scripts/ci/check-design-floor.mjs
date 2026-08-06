@@ -34,9 +34,28 @@
  * own header: "a count alone is bypassable".
  *
  * ── THE METRIC SET IS A TABLE, NOT FOUR BRANCHES ──
- * Subtask 03 adds a fifth number (classes "under review"), so the word "four"
- * appears nowhere in the logic. Adding a metric is one row — and one row in
- * `audit-design.mjs --json`.
+ * The word "four" appears nowhere in the logic, which is why subtask 03 added
+ * the fifth number as ONE ROW here and one field in `audit-design.mjs --json`.
+ *
+ * ── THE FIFTH NUMBER: CLASSES UNDER REVIEW (TRIP-340) ──
+ * `src/design/catalog.json` files every class family as `canon` (the system's
+ * language) or `triage` (under review); the ratchet is the number of CLASSES
+ * living in `triage` families. Status on the family, count on the classes —
+ * deliberately different units, because a family-level ratchet cannot see the
+ * correct move until its LAST class leaves, while renaming `.bgt-row` onto
+ * `.row` reads `-1` here immediately. The predicate that drafts the file, and
+ * why the obvious one inverts the answer, is in `audit-design.mjs` §1d.
+ *
+ * Three things about the catalog are checked here rather than assumed, because
+ * each of them produces a number that measured something other than what it
+ * says: an unfiled family (understates), a stale entry (fiction), and an
+ * invalid status — which is the nasty one, since a typo is not `triage` and so
+ * the number FALLS. That is the epic's signature failure ("improve the number
+ * you watch by changing what it counts") arriving for the fifth time.
+ *
+ * A `triage → canon` re-labelling lowers the number with no work done. It is a
+ * legal move, so it is not blocked — it is PRINTED, every time, because the
+ * defence is that it costs a visible line in front of a reviewer.
  *
  * ── THE TOKEN PREDICATE (Р8), AND THE HOLE IT LEAVES OPEN ON PURPOSE ──
  * A token is a name declared in `:root` — visible from everywhere. Not counted:
@@ -104,7 +123,18 @@ const METRICS = [
   { key: 'namespaces', field: 'namespaces', label: 'пространств имён' }, //      124
   { key: 'inline', field: 'inlineAll', label: 'инлайнов style={{…}}' }, //       694
   { key: 'tokens', field: 'rootTokens', label: 'токенов в :root' }, //           163
+  // TRIP-340 PR1. `null` is legal on the BASE side and only there — see `bootstrap`.
+  { key: 'triage', field: 'triageClasses', label: 'классов на разборе', bootstrap: true }, // 1127
 ];
+
+/* ★ WHAT `bootstrap: true` ABOVE BUYS, AND ONLY FOR THE SIDE THAT NEEDS IT.
+ * `null` means "there is no catalog", and that is a different fact from 0.
+ * On the PR that introduces the catalog the base branch has no file, so the
+ * fifth metric has no ceiling yet — that run prints "пол установлен этим PR"
+ * instead of a delta, and passes. On HEAD `null` is always RED: after the
+ * catalog merges, "no catalog" can only mean someone deleted it, and deleting
+ * the file must not be a way to switch a metric off. Same rule as everywhere
+ * in this guard: "nothing to check" and "checked, clean" get different words. */
 
 const die = (msg, extra = []) => {
   console.error(`::error::check-design-floor: ${msg}`);
@@ -128,7 +158,7 @@ const git = (args) =>
  *  cwd moves instead, so both sides see identical relative paths — the audit's
  *  OUT_OF_SCOPE test matches on the path, and an absolute temp path could
  *  otherwise classify files differently on the two sides. */
-function measure(cwd, side) {
+function measure(cwd, side, isBase) {
   const r = spawnSync(process.execPath, [AUDIT, '--json'], {
     cwd,
     encoding: 'utf8',
@@ -150,10 +180,21 @@ function measure(cwd, side) {
     die(`${side}: audit-design.mjs could not parse ${json.parseFailures.length} file(s), so the counts are understated`,
       json.parseFailures);
   }
+  // A catalog that exists but cannot be read must NOT degrade into "no catalog":
+  // that would make a stray brace a way to turn the fifth metric off.
+  if (json.catalogError) die(`${side}: ${json.catalogError}`, ['Каталог есть, но не читается - это не «каталога нет».']);
+
   for (const m of METRICS) {
-    if (typeof json[m.field] !== 'number') {
-      die(`${side}: audit-design.mjs does not report \`${m.field}\` — the metric table and the audit have drifted apart`);
+    const v = json[m.field];
+    if (typeof v === 'number') continue;
+    if (v === null && m.bootstrap) {
+      if (isBase) continue; // no ceiling yet — see the note under METRICS
+      die(`HEAD: каталога нет (src/design/catalog.json), метрика «${m.label}» не измеряется`, [
+        'На базе это законно ровно один раз - на PR, который каталог вводит.',
+        'На HEAD это значит, что файл удалили, а удаление метрики - не способ её пройти.',
+      ]);
     }
+    die(`${side}: audit-design.mjs does not report \`${m.field}\` — the metric table and the audit have drifted apart`);
   }
   return json;
 }
@@ -245,23 +286,70 @@ try {
 } catch (e) {
   die(`cannot check out ${BASE_REF} into a worktree: ${e.stderr || e.message}`);
 }
-const base = measure(basePath, `${BASE_REF} (base)`);
-const head = measure(root, 'HEAD');
+const base = measure(basePath, `${BASE_REF} (base)`, true);
+const head = measure(root, 'HEAD', false);
 
 const rows = METRICS.map((m) => {
   const was = base[m.field];
   const now = head[m.field];
   const allowed = exempt[m.key] ?? 0;
-  return { ...m, was, now, allowed, over: now - was - allowed };
+  // `was === null` = this PR establishes the ceiling; there is nothing to be over.
+  return { ...m, was, now, allowed, over: was === null ? 0 : now - was - allowed };
 });
 
 const width = Math.max(...rows.map((r) => r.label.length));
 console.log(`check-design-floor (2o): HEAD vs ${BASE_REF}`);
 for (const r of rows) {
+  if (r.was === null) {
+    console.log(`  ${r.label.padEnd(width)}  ${'—'.padStart(5)} → ${String(r.now).padStart(5)}  пол установлен этим PR`);
+    continue;
+  }
   const delta = r.now - r.was;
   const sign = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '=';
   const note = r.allowed ? `  (floor-exempt +${r.allowed})` : '';
   console.log(`  ${r.label.padEnd(width)}  ${String(r.was).padStart(5)} → ${String(r.now).padStart(5)}  ${sign}${note}`);
+}
+
+/** ★ EVERY STATUS CHANGE IS PRINTED, ALWAYS. Re-labelling a family
+ *  `triage → canon` drops the fifth number without a line of work being done —
+ *  it is the one move that makes this metric look good for free. It is a legal
+ *  move (an object CAN graduate into the system's language), so it is not an
+ *  error; what it must never be is quiet. The whole defence is that it costs a
+ *  line in `catalog.json` and a line here, in front of the reviewer.
+ *
+ *  The reverse (`canon → triage`) needs no policing: it RAISES the number and
+ *  the ratchet catches it by itself. It is printed for symmetry, because a
+ *  reviewer reading "why did triage grow" should not have to diff the file. */
+const wasStatus = base.catalogStatuses ?? {};
+const nowStatus = head.catalogStatuses ?? {};
+const moved = Object.keys(nowStatus)
+  .filter((f) => Object.hasOwn(wasStatus, f) && wasStatus[f] !== nowStatus[f])
+  .sort();
+if (moved.length) {
+  console.log(`  ─ смена статуса в каталоге (${moved.length}):`);
+  for (const f of moved) console.log(`      ${f}: ${wasStatus[f]} → ${nowStatus[f]}`);
+  if (moved.some((f) => nowStatus[f] === 'canon')) {
+    console.log('    Повышение в канон снижает «классов на разборе» БЕЗ работы над кодом.');
+    console.log('    Это законно, но должно быть видно: сверь, что объект действительно стал языком системы.');
+  }
+}
+
+/** The catalog must describe the tree it is measured over. All three ways it can
+ *  stop doing that end in a number that measured something else — and one of
+ *  them (an invalid status) makes it go DOWN, i.e. look like progress. Fixed by
+ *  editing the catalog in this PR, so: a violation, not an "internal error". */
+const catalogFaults = [
+  ['семейство не размечено в каталоге', head.catalogMissing, 'добавь строку со статусом canon или triage'],
+  ['в каталоге есть семейство, которого больше нет', head.catalogStale, 'удали строку'],
+  ['неверный статус (не canon и не triage)', head.catalogInvalid, 'опечатка в статусе НЕ считается разбором - число падает само собой'],
+].filter(([, list]) => list?.length);
+if (catalogFaults.length) {
+  console.error('::error::check-design-floor: каталог разошёлся с деревом - пятое число измерило не то, что называет');
+  for (const [what, list, fix] of catalogFaults) {
+    console.error(`  ✗ ${what} (${list.length}): ${list.join(' · ')}`);
+    console.error(`      → ${fix} (src/design/catalog.json)`);
+  }
+  process.exit(1);
 }
 
 // Non-blocking: names declared outside `:root` that `:root` does not have. Not

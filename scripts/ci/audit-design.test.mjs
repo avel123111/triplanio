@@ -540,3 +540,149 @@ test('a class with no markup usage at all is NOT called excluded perimeter', (t)
   const out = run(fixture(t, { 'app.css': '.orphan { color: red; }' }));
   assert.deepEqual(out.perimeterFamilies, []);
 });
+
+// ── 1d. Каталог: канон и разбор (TRIP-340) ──────────────────────────────────
+/**
+ * ЧТО ИМЕННО ЗДЕСЬ ПИНИТСЯ. Предикат канона был написан в тикете в
+ * ПЕРЕВЁРНУТОМ виде («канон = словарь ДС = 82 одиночки»), и это не описка: он
+ * читается прямо с отчёта выше и ошибается в ОБЕ стороны сразу. Поэтому
+ * фиксируется не «сколько получилось», а обе стороны инверсии - что попадает в
+ * канон и что в него НЕ попадает, - плюс три способа каталогу разойтись с
+ * деревом, из которых один заставляет число ПАДАТЬ.
+ */
+function runDraft(dir) {
+  const r = spawnSync(process.execPath, [SCRIPT, '--catalog-draft'], {
+    env: { ...process.env, AUDIT_ROOT: dir },
+    encoding: 'utf8',
+  });
+  assert.equal(r.status, 0, `script failed:\n${r.stderr}`);
+  return JSON.parse(r.stdout);
+}
+
+const catalog = (families) => JSON.stringify({ families });
+
+test('★ ИНВЕРСИЯ: пространство имён, которое эмитит ДС, - кандидат в канон', (t) => {
+  // Ровно тот случай, который формулировка из тикета отправляла в triage:
+  // .btn владеет .btn--primary, значит `namespace`, а НЕ `standalone`.
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .btn--primary{color:blue}',
+      'design/index.jsx': 'const B = <button className="btn btn--primary"/>;',
+    }),
+  );
+  assert.equal(d.families.btn, 'canon');
+});
+
+test('★ ИНВЕРСИЯ: одиночка, которую ДС не эмитит, каноном НЕ становится', (t) => {
+  // 74 из тех самых 82: экранные остатки (bookrow, wmini, mapfs…). Формулировка
+  // из тикета делала каноном именно их - то есть ту самую кучу, ради которой
+  // всё и затевалось.
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.bookrow{color:red}',
+      'pages/DocsLens.jsx': 'const A = <i className="bookrow"/>;',
+    }),
+  );
+  assert.equal(d.families.bookrow, 'triage');
+});
+
+test('components/ui считается источником ДС наравне с design/', (t) => {
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.toast{color:red} .toast__body{color:blue}',
+      'components/ui/toast.jsx': 'const T = <i className="toast"/>;',
+    }),
+  );
+  assert.equal(d.families.toast, 'canon');
+});
+
+test('нет каталога → triageClasses = null, а не 0 и не «всё разбор»', (t) => {
+  // «Нечего проверять» и «проверено, чисто» обязаны различаться: 0 означало бы
+  // «разбор закончен», и пятое число молча отчиталось бы победой.
+  const out = run(fixture(t, { 'design/app.css': '.a-1{color:red}' }));
+  assert.equal(out.triageClasses, null);
+  assert.equal(out.catalogStatuses, null);
+  assert.deepEqual(out.catalogMissing, []);
+});
+
+test('классы считаются только у семейств в статусе triage', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .btn--p{color:red} .bgt-row{color:red} .bgt-k{color:red} .bgt-v{color:red}',
+      'design/catalog.json': catalog({ btn: 'canon', bgt: 'triage' }),
+    }),
+  );
+  assert.equal(out.triageClasses, 3, 'три .bgt-*, канон .btn в счёт не идёт');
+});
+
+test('семейство, которого нет в каталоге, - НЕ «ноль классов», а catalogMissing', (t) => {
+  // Молчание тут занижает объём работ: класс не посчитан нигде.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .newfam-x{color:red}',
+      'design/catalog.json': catalog({ btn: 'canon' }),
+    }),
+  );
+  assert.deepEqual(out.catalogMissing, ['newfam']);
+  assert.equal(out.triageClasses, 0, 'неразмеченное семейство не считается разобранным');
+});
+
+test('строка каталога про исчезнувшее семейство - catalogStale', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.btn{color:red}',
+      'design/catalog.json': catalog({ btn: 'canon', gone: 'triage' }),
+    }),
+  );
+  assert.deepEqual(out.catalogStale, ['gone']);
+});
+
+test('★ опечатка в статусе НЕ читается как triage - и потому роняет число', (t) => {
+  // Самая опасная из трёх: «canonn» не равно triage, значит классы семейства
+  // выпадают из счёта и метрика ПАДАЕТ - выглядит прогрессом. Пинится и факт
+  // обнаружения, и то, что число при этом действительно занижено: гард 2o
+  // краснеет именно поэтому, а не «на всякий случай».
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.bgt-a{color:red} .bgt-b{color:red}',
+      'design/catalog.json': catalog({ bgt: 'canonn' }),
+    }),
+  );
+  assert.deepEqual(out.catalogInvalid, ['bgt: "canonn"']);
+  assert.equal(out.triageClasses, 0, 'именно так число и падает: опечатка вычла семейство из счёта');
+});
+
+test('сломанный JSON каталога - это catalogError, а НЕ «каталога нет»', (t) => {
+  // Иначе лишняя скобка = способ выключить пятое число.
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-1{color:red}', 'design/catalog.json': '{ "families": { ' }),
+  );
+  assert.match(out.catalogError ?? '', /catalog\.json/);
+  assert.equal(out.triageClasses, null);
+});
+
+test('каталог без объекта families - тоже ошибка, а не пустой каталог', (t) => {
+  const out = run(fixture(t, { 'design/app.css': '.a-1{color:red}', 'design/catalog.json': '[]' }));
+  assert.match(out.catalogError ?? '', /families/);
+});
+
+test('"families": null - ошибка, а не «каталога нет»', (t) => {
+  // `typeof null === 'object'`, поэтому эта форма ближе всего к тому, чтобы
+  // СЛОМАННЫЙ файл прочитался как ОТСУТСТВУЮЩИЙ - то есть ровно тот способ
+  // выключить пятое число, против которого и написана проверка.
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-1{color:red}', 'design/catalog.json': '{ "families": null }' }),
+  );
+  assert.match(out.catalogError ?? '', /families/);
+  assert.equal(out.triageClasses, null);
+});
+
+test('черновик размечает КАЖДОЕ семейство и ничего не выдумывает', (t) => {
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .btn--p{color:red} .bgt-row{color:red}',
+      'design/index.jsx': 'const B = <button className="btn"/>;',
+    }),
+  );
+  assert.deepEqual(Object.keys(d.families).sort(), ['bgt', 'btn']);
+});
