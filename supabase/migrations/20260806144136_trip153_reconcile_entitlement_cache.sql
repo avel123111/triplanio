@@ -283,14 +283,48 @@ begin
          found = v_found, fixed = v_fixed, unfixable = v_unfixable
    where id = v_run;
 
-  -- Алерт НЕ отправляем отсюда. Причина та же, по которой его не отправляет
-  -- chat_ai_run_watchdog: environment из SQL не выводится (обе базы называются
-  -- postgres), а зашитое 'production' на dev даёт поток ложных прод-событий —
-  -- у сторожа напоминаний это работало только потому, что на dev его запрос
-  -- ничего не находит, а наш находит заведомо. Наблюдаемость живёт в журнале;
-  -- внешний сторож с решённым вопросом окружения — PR4.
+  -- ==========================================================================
+  -- 4. Алерт в Sentry
+  -- ==========================================================================
+  -- Тот же ingest-DSN, что у tg_reminders_undelivered_watchdog. `environment`
+  -- зашит 'production' — РЕШЕНИЕ Pavel: из SQL окружение всё равно не выводится
+  -- (обе базы называются postgres), разбирать всё равно руками, а молчащая
+  -- сверка бесполезна. Следствие принято: находки с dev тоже приедут с меткой
+  -- production.
+  --
+  -- Уровень error по всем находкам — решение Pavel «на старте ничего не глушим».
+  --
+  -- ⚠️Сообщение БЕЗ идентификаторов и БЕЗ счётчиков: и то и другое меняется от
+  -- прогона к прогону, а Sentry группирует по тексту — иначе каждый час рождался
+  -- бы новый issue. Числа и run_id уходят в extra, группировка пинится явным
+  -- fingerprint (мы постим в ingest сырым POST, без SDK, который сгруппировал бы
+  -- сам — ровно поэтому у SQL-сторожей fingerprint есть, а у reportPaymentAnomaly
+  -- в edge его нет).
   if v_found > 0 then
     raise warning 'reconcile_entitlement_cache(%): % finding(s), run %', p_mode, v_found, v_run;
+
+    perform net.http_post(
+      url := 'https://o4511457186283520.ingest.de.sentry.io/api/4511498293870672/store/?sentry_key=9c578daf4586c7383f902d365a22b983&sentry_version=7',
+      body := jsonb_build_object(
+        'platform', 'other',
+        'level', 'error',
+        'logger', 'pg_cron',
+        'environment', 'production',
+        'message', 'Entitlement reconcile: drift found',
+        'tags', jsonb_build_object(
+          'surface', 'supabase', 'check', 'entitlement_reconcile', 'mode', p_mode),
+        'fingerprint', jsonb_build_array('supabase', 'entitlement-reconcile', 'drift'),
+        'extra', jsonb_build_object(
+          'run_id', v_run, 'mode', p_mode,
+          'found', v_found, 'fixed', v_fixed, 'unfixable', v_unfixable,
+          'scanned_users', v_scanned_users, 'scanned_trips', v_scanned_trips,
+          'by_kind', (select jsonb_object_agg(k, n) from (
+                        select kind as k, count(*) as n
+                          from reconcile_finding where run_id = v_run
+                         group by kind) x))
+      ),
+      headers := jsonb_build_object('Content-Type', 'application/json')
+    );
   end if;
 
   return v_run;

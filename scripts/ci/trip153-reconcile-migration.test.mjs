@@ -26,7 +26,13 @@
  *   3. cron.schedule зовёт reconcile_entitlement_cache('apply')
  *      → красный «расписание вводится в режиме report»;
  *   4. p_mode text default 'apply'
- *      → красный «дефолт режима — report».
+ *      → красный «дефолт режима — report»;
+ *   5. вырезать `perform net.http_post(` → красный «находки уходят в Sentry»;
+ *   6. 'message', 'x: ' || v_found || ' y'  (переменная в тексте события)
+ *      → красный там же. ⚠️Первая редакция теста ЭТУ мутацию ПРОПУСКАЛА: искала
+ *      `'[^']*'` после 'message' и видела только первый литерал, а конкатенация
+ *      оставалась невидимой. Нашла мутация, не чтение — теперь берётся строка целиком;
+ *   7. убрать fingerprint → красный там же.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,6 +109,30 @@ test('расписание вводится в режиме report, а не appl
   const schedule = cache.slice(cache.indexOf('cron.schedule('));
   assert.match(schedule, /reconcile_entitlement_cache\('report'\)/);
   assert.doesNotMatch(schedule, /reconcile_entitlement_cache\('apply'\)/);
+});
+
+test('находки уходят в Sentry, и группировка не разваливается', () => {
+  // Я один раз уже вырезал этот алерт «из соображений» — решение Pavel было
+  // обратным (environment зашит 'production', молчащая сверка бесполезна).
+  // Тест держит и сам факт отправки, и два свойства, без которых алерт
+  // бесполезен по-другому: стабильный fingerprint и сообщение БЕЗ переменных
+  // частей — иначе Sentry заводит новый issue каждый час.
+  const cache = read(CACHE);
+  assert.match(cache, /perform net\.http_post\(/, 'алерт в Sentry пропал');
+  assert.match(cache, /'environment', 'production'/);
+  assert.match(cache, /'level', 'error'/);
+  assert.match(cache, /'fingerprint', jsonb_build_array\(/, 'без fingerprint сырой POST не сгруппируется');
+
+  // Берём СТРОКУ целиком, а не первый литерал после 'message': первая редакция
+  // этого теста ловила `'[^']*'` и потому пропускала
+  // `'message', 'x: ' || v_found || ' y'` — конкатенация оставалась невидимой.
+  // Нашла мутация, не чтение.
+  const msgLine = cache.split('\n').find((l) => l.includes("'message',"));
+  assert.ok(msgLine, 'не нашёл поле message у события Sentry');
+  assert.ok(
+    !/\|\||format\s*\(|v_run|v_found|v_fixed/.test(msgLine),
+    `message должен быть константой (числа и id — в extra), а он: ${msgLine.trim()}`,
+  );
 });
 
 test('дефолт режима — report, а не apply', () => {
