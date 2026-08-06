@@ -236,6 +236,62 @@ test('★ маркер на базовое состояние не гасит :h
   assert.equal(code, 1, out);
 });
 
+test('★ маркер без @media НЕ гасит изменение внутри @media — мобильное называется отдельно', (t) => {
+  // ★ Ровно та дыра, ради которой media попал в КЛЮЧ: мобильное правило стоит
+  // ниже по файлу и прячет правку десктопного. Escape без media частично
+  // возвращал бы её — автор объявляет «поменял padding у .x», а вместе с этим
+  // молча проезжает правка того же свойства в самой узкой ветке вёрстки.
+  const f = fixture(t, {
+    base: { 'src/a.css': '@media (max-width: 640px) { .x { padding: 4px; } }\n' },
+    head: { 'src/a.css': '/* visual-diff-exempt: .x padding — база */\n@media (max-width: 640px) { .x { padding: 9px; } }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /max-width: 640px.*padding: 4px → 9px/);
+});
+
+test('★ маркер С @media гасит ровно свою ветку — базовая правка того же свойства блокирует', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.x { padding: 8px; }\n@media (max-width: 640px) { .x { padding: 4px; } }\n' },
+    head: {
+      'src/a.css':
+        '/* visual-diff-exempt: .x {@media (max-width: 640px)} padding — ступень шкалы на телефоне */\n' +
+        '.x { padding: 10px; }\n@media (max-width: 640px) { .x { padding: 9px; } }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.x padding: 8px → 10px/); // база — блокирует
+  assert.doesNotMatch(out, /padding: 4px → 9px/); // мобильная — объявлена
+});
+
+test('маркер на ДРУГОЙ media-запрос не гасит — сверяется сам запрос, а не «хоть какой-то»', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '@media (max-width: 640px) { .x { padding: 4px; } }\n' },
+    head: {
+      'src/a.css':
+        '/* visual-diff-exempt: .x {@media (min-width: 900px)} padding — не та ветка */\n' +
+        '@media (max-width: 640px) { .x { padding: 9px; } }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /под маркером изменений нет/);
+});
+
+test('пробелы внутри media-запроса маркера не значат ничего', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '@media (max-width: 640px) { .x { padding: 4px; } }\n' },
+    head: {
+      'src/a.css':
+        '/* visual-diff-exempt: .x {@media (max-width:640px)} padding — ступень */\n' +
+        '@media (max-width: 640px) { .x { padding: 9px; } }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
 test('маркер на БАЗЕ не действует — исключение живёт ровно один PR', (t) => {
   const f = fixture(t, {
     base: { 'src/a.css': '/* visual-diff-exempt: .checkbox gap — старое */\n.checkbox { gap: 9px; }\n' },
