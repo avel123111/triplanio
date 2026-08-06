@@ -57,6 +57,7 @@ import { readFileSync, readdirSync, statSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import { Parser as AcornParser } from 'acorn';
 import acornJsx from 'acorn-jsx';
+import postcss from 'postcss';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 
@@ -536,9 +537,316 @@ synonyms.sort(byUses);
 checkTargets.sort(byUses);
 handles.sort(byUses);
 
+// ── 5. Объекты: предикат раньше числа (TRIP-341 PR 0 · закон 8) ─────────────
+/** ★ ПОЧЕМУ ЭТА СЕКЦИЯ ВООБЩЕ ЕСТЬ. «Ряд 250 правил в 113 семействах»,
+ *  «поверхность 97/91», «плитка 78/55» - числа, по которым предлагалось резать
+ *  подзадачи 05 и 06, и ни одно не воспроизводилось: контрольный прогон дал
+ *  348/108 · 242/97 · 141/79. Расхождение до пяти раз выглядит как небрежность,
+ *  но при разборе обе стороны воспроизвелись ТОЧНО - они не спорили, а считали
+ *  разное. Нефиксированных осей оказалось ТРИ, а в §12 В названа одна:
+ *
+ *    ПРЕДИКАТ  ряд = `flex` / `flex|inline-flex` / без `column` → 288 · 346 · 250
+ *    ЕДИНИЦА   селектор или блок объявлений                     → дубли 949 · 294
+ *    ПЕРИМЕТР  скоуп аудита или весь src                        → ряд 250 · 291
+ *
+ *  Строка «ряд 250 / 113» смешивает оси ВНУТРИ СЕБЯ: 250 правил посчитаны в
+ *  периметре, 113 семейств - по всему `src` (в периметре их 102). Поэтому
+ *  фиксируются все три, а не только предикат.
+ *
+ *  ★★ ЕДИНИЦА = БЛОК ОБЪЯВЛЕНИЙ, И НАИВНАЯ АЛЬТЕРНАТИВА ЦЕЛИТСЯ В СОБСТВЕННЫЙ
+ *  КАНОН. При счёте по СЕЛЕКТОРУ топ «дублей» такой:
+ *      199×  font-family:var(--font-mono); font-size:var(--fs-micro); …
+ *       82×  font-family:var(--font-ui);   font-size:var(--fs-meta);  …
+ *       64×  background:var(--surface); border:1px solid var(--line)
+ *  Это не дубли. Это пять правил канона типографики (`app.css:895-977`) - один
+ *  блок с перечислением через запятую, ровно та форма, к которой TRIP-165/183
+ *  сводили текст и которую сторожит `check:design`. Список из 199 селекторов И
+ *  ЕСТЬ схлопнутое состояние. PR, порезанный по этому числу, пошёл бы разбирать
+ *  дизайн-систему - то есть метрика назначила бы работой свой собственный ответ.
+ *
+ *  ПЕРИМЕТР - тот же `scopedCss`, что у секций выше: одна линейка с полом 2o и
+ *  каталогом, а лендинг и экран входа всё равно нельзя трогать до подзадачи 10.
+ *
+ *  ★★★ РАЗБОР ЗДЕСЬ postcss, А ВЫШЕ РЕГУЛЯРКА - НАМЕРЕННО, НЕ НЕДОСМОТР.
+ *  Секции 1/3/4 читают CSS своим `rulesOf`, и четыре из пяти чисел, которые они
+ *  печатают, стоят под храповиком 2o. Перевести их на postcss В ЭТОМ ЖЕ PR -
+ *  значит сдвинуть потолок теми же руками, которыми вводится измерение: ровно
+ *  та ошибка, против которой написан §12. Новая секция берёт postcss (уже
+ *  прямая зависимость, тот же парсер, что у гарда 2p, рунг 5 лестницы);
+ *  перевод остального - отдельная задача, и она обязана предъявить дельту
+ *  каждого из пяти чисел пола ОТДЕЛЬНО от любой другой работы. */
+
+/** Правило внутри `@media` - ОТДЕЛЬНОЕ объявление объекта, и это осознанно:
+ *  мобильный ряд придётся переселять так же, как десктопный, значит он должен
+ *  быть виден в счёте работы. Но у ДУБЛЕЙ media - часть ключа, иначе мобильное
+ *  и десктопное значение одного класса схлопнутся в «дубль», которым они не
+ *  являются (та же дыра, что ловили мутацией на гарде 2p). */
+const mediaOf = (node) => {
+  const out = [];
+  for (let p = node.parent; p; p = p.parent) if (p.type === 'atrule') out.push(`@${p.name} ${p.params}`);
+  return out.reverse().join(' ');
+};
+
+const cssParseFailures = [];
+/** Один элемент = один блок объявлений (правило). `sels` хранится списком:
+ *  единица счёта - блок, но КЛАССЫ и СЕМЕЙСТВА собираются со всех селекторов
+ *  блока, потому что переселять придётся каждый из них. */
+const blocks = [];
+for (const path of scopedCss) {
+  let root;
+  try {
+    root = postcss.parse(readFileSync(path, 'utf8'), { from: path });
+  } catch (e) {
+    // Молча пропустить нельзя: неразобранный файл выглядит как файл без
+    // объектов, то есть занижает объём работ - то же правило, что у 1c.
+    cssParseFailures.push(`${path}: ${e.message}`);
+    continue;
+  }
+  root.walkRules((rule) => {
+    const decls = new Map();
+    rule.walkDecls((d) => decls.set(d.prop, d.value.replace(/\s+/g, ' ').trim()));
+    if (!decls.size) return;
+    blocks.push({ media: mediaOf(rule), sels: rule.selectors ?? [], decls });
+  });
+}
+
+/** ★ СЕМЕЙСТВО БЕРЁТСЯ ОТ СТИЛИЗУЕМОГО КЛАССА - ПОСЛЕДНЕГО В СЕЛЕКТОРЕ, не от
+ *  ведущего. В `.tl3-card .tile { … }` объявления достаются `.tile`, и переселять
+ *  надо его; `tl3` тут не владелец объекта, а тот, кто до него дотянулся (и он
+ *  же попадёт в счётчик потомковых правил ниже - то есть учтён, но как другой
+ *  дефект). Альтернатива «по ведущему» даёт у ряда 93 семейства вместо 102 и
+ *  приписывает объект тому, кто его не объявлял. */
+const classesIn = (sel) => [...sel.matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)].map((m) => m[1]);
+const styledClass = (sel) => classesIn(sel).at(-1) ?? null;
+
+const has = (b, p) => b.decls.has(p);
+const val = (b, p) => b.decls.get(p) ?? '';
+const isFlex = (b) => /^(inline-)?flex$/.test(val(b, 'display'));
+const isColumn = (b) => /^column\b/.test(val(b, 'flex-direction'));
+const hasBg = (b) => has(b, 'background') || has(b, 'background-color');
+const BORDER = /^border(-(top|right|bottom|left))?(-(color|width|style))?$/;
+const hasBorder = (b) => [...b.decls.keys()].some((p) => BORDER.test(p));
+const centred = (b) => has(b, 'place-items') || (has(b, 'align-items') && has(b, 'justify-content'));
+const COLOR_PROP = /^(color|background|background-color|fill|stroke|opacity|border(-(top|right|bottom|left))?-color)$/;
+const SPACE_PROP = /^(margin|padding|gap|row-gap|column-gap)(-(top|right|bottom|left|inline|block))?(-(start|end))?$/;
+
+/** ТАБЛИЦА, А НЕ ДЕСЯТЬ БЛОКОВ КОДА: добавить объект = добавить строку, и его
+ *  определение читается рядом с его именем. `why` - не украшение: без него
+ *  следующий заход «уточнит» предикат и число снова перестанет быть сравнимым
+ *  с самим собой. */
+const OBJECTS = [
+  {
+    key: 'row', label: 'ряд',
+    pred: (b) => isFlex(b) && !isColumn(b),
+    why: 'flex|inline-flex без column. НЕ «любой flex»: колонка - отдельный объект с отдельным именем .col, и общий счёт считал бы её дважды. НЕ «+ gap обязателен»: ряд без gap остаётся рядом (.row даёт gap по умолчанию), а требование выкинуло бы 45 правил, которые как раз и надо переселить.',
+  },
+  {
+    key: 'col', label: 'колонка',
+    pred: (b) => isFlex(b) && isColumn(b),
+    why: 'то же + column. column-reverse считается колонкой: направление - модификатор, а не второй объект.',
+  },
+  {
+    key: 'grid', label: 'сетка',
+    pred: (b) => /^(inline-)?grid$/.test(val(b, 'display')) && has(b, 'grid-template-columns'),
+    why: 'grid + grid-template-columns. НЕ «любой display:grid»: из 127 таких правил 87 - это place-items:center на квадрате, то есть ПЛИТКА. Без этого условия два объекта считали бы друг друга.',
+  },
+  {
+    key: 'trunc', label: 'обрезка',
+    pred: (b) => val(b, 'text-overflow') === 'ellipsis' || has(b, '-webkit-line-clamp'),
+    why: 'ellipsis или line-clamp. Многострочная обрезка - тот же объект с модификатором «сколько строк», а не второй.',
+  },
+  {
+    key: 'surface', label: 'поверхность',
+    pred: (b) => has(b, 'border-radius') && hasBg(b) && (hasBorder(b) || has(b, 'box-shadow')),
+    why: 'радиус + фон + (рамка или тень). НЕ «радиус+фон»: одних их 176, и туда попадает каждое цветное ПЯТНО - плитка, бейдж, точка. Поверхность от пятна отличает контур.',
+  },
+  {
+    key: 'tile', label: 'плитка',
+    pred: (b) => has(b, 'width') && val(b, 'width') === val(b, 'height') && has(b, 'border-radius') && centred(b),
+    why: 'квадрат + радиус + центрирование. Квадрат = ОДИНАКОВАЯ СТРОКА width и height: var(--tile) равен var(--tile) как текст, а вычислять calc() значило бы завести третий парсер в репозитории.',
+  },
+  {
+    key: 'lift', label: 'подъём при наведении',
+    pred: (b) => b.sels.some((s) => /:hover/.test(s)) && /translateY/.test(val(b, 'transform')),
+    why: 'hover + translateY. НЕ «hover + тень»: тень на ховере - это ПОДСВЕТКА (ярус тинта), другой объект, и смешение раздуло бы счёт с 24 до 35.',
+  },
+  {
+    key: 'colorOnly', label: '«только цвет»',
+    pred: (b) => [...b.decls.keys()].every((p) => COLOR_PROP.test(p)),
+    why: 'все объявления блока цветовые. Кандидат на переезд в модификатор тона, а не в отдельный класс.',
+  },
+  {
+    key: 'spaceOnly', label: '«только отступ»',
+    pred: (b) => [...b.decls.keys()].every((p) => SPACE_PROP.test(p)),
+    why: 'все объявления блока отступные. Закон 1: внешний отступ элементу не принадлежит - это кандидат на gap родителя.',
+  },
+];
+
+const objects = {};
+for (const o of OBJECTS) {
+  const hit = blocks.filter(o.pred);
+  const cls = new Set();
+  const byFamily = {};
+  for (const b of hit) {
+    for (const s of b.sels) {
+      const c = styledClass(s);
+      if (!c) continue;
+      cls.add(c);
+      const fam = familyOf(c);
+      byFamily[fam] = (byFamily[fam] ?? 0) + 1;
+    }
+  }
+  objects[o.key] = {
+    label: o.label,
+    why: o.why,
+    rules: hit.length,
+    classes: cls.size,
+    families: Object.keys(byFamily).length,
+    // Распределение - ЭТО и есть то, по чему режутся 05 и 06 (Р11). Круглое
+    // число из головы даёт равные PR, распределение - PR по зонам приложения.
+    byFamily: Object.fromEntries(Object.entries(byFamily).sort((a, b) => b[1] - a[1])),
+  };
+}
+
+/** Наборы-дубли: блоки с ПОБАЙТОВО совпадающим набором `свойство:значение`.
+ *  Порог ≥2 свойств - одно свойство это не объект, а твик (тот же порог, что у
+ *  секции 3, где он 3, но там ключ - только имена свойств без значений).
+ *  Отдельно отмечается, лежит ли набор в 2+ семействах: набор, размноженный
+ *  внутри ОДНОГО семейства, - его внутреннее дело и не про унификацию. */
+const dupIndex = new Map();
+for (const b of blocks) {
+  if (b.decls.size < 2) continue;
+  const c = styledClass(b.sels[0] ?? '');
+  if (!c) continue;
+  const sig = [...b.decls].map(([p, v]) => `${p}:${v}`).sort().join('; ');
+  const key = `${b.media}||${sig}`;
+  if (!dupIndex.has(key)) dupIndex.set(key, { sig, media: b.media, members: [] });
+  dupIndex.get(key).members.push(c);
+}
+const dupSets = [...dupIndex.values()]
+  .filter((d) => d.members.length >= 2)
+  .map((d) => ({ ...d, families: [...new Set(d.members.map(familyOf))] }))
+  .sort((a, b) => b.members.length - a.members.length);
+const dupCross = dupSets.filter((d) => d.families.length >= 2);
+const rulesIn = (sets) => sets.reduce((n, d) => n + d.members.length, 0);
+const dupSetRules = rulesIn(dupSets);
+const dupSetRulesCrossFamily = rulesIn(dupCross);
+
+/** ★ §12 Б · потомковые правила на примитивах. 47 / 57 / 275 не воспроизводятся
+ *  ни при одном определении, и главное - три числа мерили РАЗНОЕ. Осмысленный
+ *  вопрос ровно один, и его задаёт закон 3: «потомковый селектор на примитиве
+ *  может только переопределить переменную, которую примитив читает». Значит
+ *  предикат нарушения - НЕ «кто-то дотянулся», а «дотянулся И ОБЪЯВИЛ НАСТОЯЩЕЕ
+ *  СВОЙСТВО».
+ *
+ *  Живой образец обоих исходов в одном правиле - `app.css:3840`:
+ *      .tl3-card .tile { --tile:44px; --tile-ic:20px; --tile-r:…;   ← законно
+ *                        background: var(--evs,…); color: var(--evi,…) }  ← нет
+ *  Три переопределения ручек - это ровно то, что закон 3 разрешает; два
+ *  объявления рядом - то, ради чего пишется подзадача 06.
+ *
+ *  ★ ДВЕ ЛОВУШКИ, ОБЕ ЗАВЫШАЮТ ЧИСЛО И ОБЕ БЫЛИ В ПЕРВОЙ РЕДАКЦИИ ЭТОГО СЧЁТЧИКА:
+ *   1. `.btn.is-on` - это ДВА класса, но ОДИН элемент: составной селектор,
+ *      модификатор или состояние, и никакого «дотянулся внутрь» там нет.
+ *      Потомство определяется КОМБИНАТОРОМ (пробел, `>`, `+`, `~`), а не тем,
+ *      что классов в строке больше одного. Без этого в нарушения попадал каждый
+ *      `.btn--primary:hover` и число раздувалось со 105 до 153.
+ *   2. `.card .badge` - канон внутри канона: это КОМПОЗИЦИЯ дизайн-системы,
+ *      её собственное устройство. Считать её долгом экранов - записать в работу
+ *      06 то, что 06 не трогает. Поэтому владелец и цель сравниваются, и
+ *      канон→канон печатается ОТДЕЛЬНОЙ строкой, а не молча приплюсовывается.
+ *
+ *  Разбиение на составные части грубее спеки (`:not(.a .b)` не разворачивается),
+ *  но одинаково для всех строк - тот же компромисс, что у `specificity()` в 2p.
+ *
+ *  ⚠ ЭТО ЧИСЛО ЗАВИСИТ ОТ КАТАЛОГА ПО ПОСТРОЕНИЮ, и знать это надо ДО того, как
+ *  его во что-нибудь вставят. Нарушение определено как «дотянулись до КАНОН-
+ *  семейства», поэтому переклейка `triage → canon` - легальная, бесплатная и
+ *  никогда не блокируемая (см. шапку каталога) - молча ПОДНИМАЕТ его, а
+ *  `canon → triage` молча опускает. Замерено прямо в этом PR: возврат семейства
+ *  `is` в разбор дал 61 → 58 при нуле тронутых строк CSS.
+ *  Для ОТЧЁТА это правильно: вопрос «кто дотягивается внутрь языка системы»
+ *  обязан переезжать вместе с границей языка. Но храповить это число нельзя, и
+ *  размер подзадачи 06 нельзя фиксировать им как константой - та же переклейка,
+ *  которая не стоит ни строки кода, сдвинет объявленный объём работ. Ровно тот
+ *  класс ловушки, о котором вся эта секция: метрика, отвечающая собственным
+ *  определением. Поэтому 06 берёт отсюда СПИСОК (`byFamily`, `samples`), а не
+ *  число, и пересчитывает его на своей базе. */
+const canonFamilies = new Set(
+  catalogStatuses ? Object.entries(catalogStatuses).filter(([, s]) => s === 'canon').map(([f]) => f) : [],
+);
+/** Составные части селектора: `.a > .b .c` → ['.a', '.b', '.c']. Каждая часть -
+ *  ОДИН элемент; классов внутри неё может быть сколько угодно. */
+const compoundsOf = (sel) => sel.split(/\s*[>+~]\s*|\s+/).filter(Boolean);
+const isRealProp = (p) => !p.startsWith('--');
+
+const reach = { violations: 0, varOnly: 0, canonIntoCanon: 0, byFamily: {}, samples: [] };
+for (const b of blocks) {
+  const declaresReal = [...b.decls.keys()].some(isRealProp);
+  let violation = false;
+  let legal = false;
+  let inner = false;
+  for (const s of b.sels) {
+    const parts = compoundsOf(s);
+    if (parts.length < 2) continue; // составной селектор - не потомство
+    const styled = styledClass(parts.at(-1));
+    const owner = classesIn(parts[0])[0];
+    if (!styled || !owner) continue;
+    const styledFam = familyOf(styled);
+    const ownerFam = familyOf(owner);
+    if (!canonFamilies.has(styledFam) || ownerFam === styledFam) continue;
+    if (canonFamilies.has(ownerFam)) { inner = true; continue; }
+    if (declaresReal) {
+      violation = true;
+      reach.byFamily[ownerFam] = (reach.byFamily[ownerFam] ?? 0) + 1;
+      if (reach.samples.length < 12) reach.samples.push(`${s} { ${[...b.decls.keys()].filter(isRealProp).join('; ')} }`);
+    } else {
+      legal = true;
+    }
+  }
+  if (violation) reach.violations += 1;
+  else if (legal) reach.varOnly += 1;
+  if (inner) reach.canonIntoCanon += 1;
+}
+reach.byFamily = Object.fromEntries(Object.entries(reach.byFamily).sort((a, b) => b[1] - a[1]));
+
 // ── Report ──────────────────────────────────────────────────────────────────
 const pad = (s, n) => String(s).padEnd(n);
 const num = (s, n) => String(s).padStart(n);
+
+/** ★ ОДНОГО `writeSync` НЕДОСТАТОЧНО: НА ТРУБЕ ОН ПИШЕТ ЧАСТЬ И ВОЗВРАЩАЕТ,
+ *  СКОЛЬКО ЗАПИСАЛ. Прежняя редакция вылечила асинхронность `console.log` и
+ *  уцелела только потому, что payload помещался в буфер трубы целиком; секция
+ *  объектов его превысила, и остаток молча пропал, а `process.exit(0)` ниже
+ *  добил. Симптом тот же самый, что чинили в прошлый раз (`jq` падает
+ *  «Unfinished JSON term at EOF»), причина другая - поэтому лечение в цикле.
+ *
+ *  Поймал это НЕ ревьюер и не глаз, а собственный тест гарда «--json переживает
+ *  ТРУБУ, а не только перенаправление в файл»: он покраснел ровно на 8192-м
+ *  байте. Ради этого класса ошибок он и написан - в файл на POSIX всё пишется
+ *  разом, и через `> файл` баг невидим.
+ *
+ *  EAGAIN тоже обрабатывается: stdout, привязанный к трубе, Node может держать
+ *  неблокирующим, и тогда переполненная труба отвечает ошибкой, а не нулём. */
+const writeAll = (fd, text) => {
+  const buf = Buffer.from(text, 'utf8');
+  // EAGAIN значит «труба полна, читатель не успевает». Повторять СРАЗУ - это
+  // busy-wait на 100% CPU против медленного читателя, поэтому между попытками
+  // спим миллисекунду. `Atomics.wait` - единственный СИНХРОННЫЙ сон в stdlib
+  // (рунг 3 лестницы), а синхронный он обязан быть: асинхронный сон здесь
+  // вернул бы управление в цикл событий, и `process.exit(0)` ниже оборвал бы
+  // запись - то есть ровно тот баг, ради которого вся эта функция и написана.
+  const idle = new Int32Array(new SharedArrayBuffer(4));
+  let off = 0;
+  while (off < buf.length) {
+    try {
+      off += writeSync(fd, buf, off, buf.length - off);
+    } catch (e) {
+      if (e.code !== 'EAGAIN') throw e;
+      Atomics.wait(idle, 0, 0, 1);
+    }
+  }
+};
 
 /** `--catalog-draft` prints a WHOLE catalog file the way the predicate would
  *  fill it in. It is a proposal for a human to read and edit, which is why it
@@ -550,7 +858,9 @@ if (process.argv.includes('--catalog-draft')) {
   const draft = Object.fromEntries(
     [...families.keys()].sort().map((f) => [f, designFamilies.has(f) ? 'canon' : 'triage']),
   );
-  writeSync(1, JSON.stringify({ families: draft }, null, 2) + '\n');
+  // Тоже через writeAll: черновик каталога - это 282 семейства, он уже сейчас
+  // около границы буфера трубы, и `--catalog-draft | jq` обязан быть целым.
+  writeAll(1, JSON.stringify({ families: draft }, null, 2) + '\n');
   process.exit(0);
 }
 
@@ -562,7 +872,7 @@ if (process.argv.includes('--json')) {
    *  CI-скрипте это читалось бы как «аудит упал», хотя аудит отработал.
    *  Прожило незамеченным потому, что запись в файл на POSIX синхронная - при
    *  проверке через `> файл` всё было цело, и баг видно только через трубу. */
-  writeSync(
+  writeAll(
     1,
     JSON.stringify(
       {
@@ -596,6 +906,15 @@ if (process.argv.includes('--json')) {
         // count go DOWN while the vocabulary is unchanged — the name merely hid.
         rootTokenNames: [...rootTokenNames].sort(),
         privateTokens,
+        // Объекты (TRIP-341 PR 0). `byFamily` - то, по чему режутся 05 и 06.
+        objects,
+        cssParseFailures,
+        dupSets: dupSets.length,
+        dupSetRules,
+        dupSetsCrossFamily: dupCross.length,
+        dupSetRulesCrossFamily,
+        dupTop: dupCross.slice(0, 25).map((d) => ({ sig: d.sig, media: d.media, count: d.members.length, members: d.members })),
+        primitiveReach: reach,
         dupShapes: dupShapes.length,
         dupShapeRules,
         synonyms: synonyms.map((s) => ({ name: s.name, target: s.target, uses: s.uses })),
@@ -684,6 +1003,7 @@ for (const s of dupShapes.slice(0, 6)) {
 }
 console.log();
 
+
 console.log('4. ТОКЕНЫ');
 console.log(`   в :root (гард 2o храповит это число): ${rootTokenNames.size}`);
 if (privateTokens.length) {
@@ -718,5 +1038,34 @@ for (const h of handles) {
   const scopes = [...new Set(h.defs.map((d) => `${d.scope.slice(0, 34)} = ${d.value.slice(0, 26)}`))];
   console.log(`     ${pad(h.name, 18)} ${num(h.uses, 4)} исп.`);
   for (const s of scopes) console.log(`         ${s}`);
+}
+console.log();
+
+console.log('5. ОБЪЕКТЫ (TRIP-341 · единица = БЛОК объявлений, периметр = скоуп выше)');
+if (cssParseFailures.length) {
+  console.log(`   ⚠ НЕ РАЗОБРАНО CSS-ФАЙЛОВ: ${cssParseFailures.length} - их объекты НЕ учтены, числа ниже занижены:`);
+  for (const p of cssParseFailures) console.log(`     ${p}`);
+}
+console.log(`   блоков объявлений в периметре: ${blocks.length}`);
+for (const o of OBJECTS) {
+  const r = objects[o.key];
+  console.log(`   ${pad(r.label, 22)} ${num(r.rules, 4)} правил · ${num(r.classes, 4)} классов · ${num(r.families, 3)} семейств`);
+  const top = Object.entries(r.byFamily).slice(0, 8);
+  if (top.length) console.log(`     ${top.map(([f, n]) => `${f}(${n})`).join(' · ')}`);
+}
+console.log('\n   НАБОРЫ-ДУБЛИ (побайтово тот же набор свойство:значение, ≥2 свойств)');
+console.log(`     всего:            ${num(dupSets.length, 4)} наборов / ${dupSetRules} правил`);
+console.log(`     в 2+ семействах:  ${num(dupCross.length, 4)} наборов / ${dupSetRulesCrossFamily} правил  ← это работа`);
+for (const d of dupCross.slice(0, 10)) {
+  console.log(`       ${num(d.members.length, 3)}× ${d.sig.slice(0, 86)}`);
+  console.log(`            ${d.members.slice(0, 8).map((c) => `.${c}`).join(' ')}${d.members.length > 8 ? ' …' : ''}`);
+}
+console.log('\n   ПОТОМКОВЫЕ ПРАВИЛА НА ПРИМИТИВАХ (§12 Б · закон 3)');
+console.log(`     экран дотянулся и ОБЪЯВИЛ СВОЙСТВО: ${num(reach.violations, 4)}  ← нарушение закона 3, это работа 06`);
+console.log(`     дотянулся и переопределил ТОЛЬКО ручку: ${num(reach.varOnly, 4)}  ← закон 3 это РАЗРЕШАЕТ`);
+console.log(`     канон внутри канона:                ${num(reach.canonIntoCanon, 4)}  ← композиция ДС, не долг экранов`);
+if (Object.keys(reach.byFamily).length) {
+  console.log(`     кто дотягивается: ${Object.entries(reach.byFamily).slice(0, 10).map(([f, n]) => `${f}(${n})`).join(' · ')}`);
+  for (const s of reach.samples.slice(0, 5)) console.log(`       ${s.slice(0, 96)}`);
 }
 console.log();

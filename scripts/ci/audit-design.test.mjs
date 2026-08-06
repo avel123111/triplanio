@@ -686,3 +686,242 @@ test('черновик размечает КАЖДОЕ семейство и н�
   );
   assert.deepEqual(Object.keys(d.families).sort(), ['bgt', 'btn']);
 });
+
+// ── 5. Счётчики объектов (TRIP-341 PR 0) ────────────────────────────────────
+/**
+ * ЗАЧЕМ ЭТИ ТЕСТЫ. Числа объектов - это то, по чему режутся подзадачи 05 и 06,
+ * и до сих пор ни одно из них не воспроизводилось: «ряд 250/113» против
+ * «348/108», «поверхность 97/91» против «242/97». Разбор показал, что стороны
+ * не спорили, а считали РАЗНОЕ - у них расходились предикат, единица счёта и
+ * периметр. Поэтому каждый предикат тут пинится ГРАНИЦЕЙ: не «сколько нашлось»,
+ * а «что входит И ЧТО НЕ ВХОДИТ». Проверка «число совпало с эпиком» доказывала
+ * бы ровно ничего - на токенах уже был случай, когда правильная и сломанная
+ * реализации печатали одну и ту же цифру 163.
+ */
+
+const objectsOf = (dir) => run(dir).objects;
+const css = (body) => ({ 'design/app.css': body, 'design/catalog.json': '{"families":{}}' });
+
+test('РЯД: flex и inline-flex входят, колонка НЕ входит', (t) => {
+  const o = objectsOf(
+    fixture(t, css(`
+      .a-row { display: flex; gap: 8px; }
+      .b-row { display: inline-flex; align-items: center; }
+      .c-col { display: flex; flex-direction: column; }
+      .d-none { display: block; }`)),
+  );
+  assert.equal(o.row.rules, 2, 'колонка и block не ряд');
+  assert.equal(o.col.rules, 1);
+});
+
+test('РЯД: ряд БЕЗ gap - всё равно ряд (отвергнутая альтернатива «+gap обязателен»)', (t) => {
+  // Требование gap выкинуло бы 45 живых правил, которые как раз и надо
+  // переселить на .row - то есть предикат занизил бы собственный объём работ.
+  const o = objectsOf(fixture(t, css('.a-row { display: flex; align-items: center; }')));
+  assert.equal(o.row.rules, 1);
+});
+
+test('КОЛОНКА: column-reverse - та же колонка, а не второй объект', (t) => {
+  const o = objectsOf(
+    fixture(t, css('.a-c { display:flex; flex-direction: column; } .b-c { display:flex; flex-direction: column-reverse; }')),
+  );
+  assert.equal(o.col.rules, 2);
+  assert.equal(o.row.rules, 0, 'column-reverse не должен попасть в ряд');
+});
+
+test('СЕТКА: grid+place-items - это ПЛИТКА, а не сетка', (t) => {
+  // Без этого условия два объекта считали бы друг друга: из 127 живых
+  // `display:grid` 87 - квадрат с центрированной иконкой.
+  const o = objectsOf(
+    fixture(t, css(`
+      .a-g { display: grid; grid-template-columns: 1fr 1fr; }
+      .b-t { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; }`)),
+  );
+  assert.equal(o.grid.rules, 1, 'квадрат с place-items не сетка');
+  assert.equal(o.tile.rules, 1);
+});
+
+test('ОБРЕЗКА: line-clamp - тот же объект, что ellipsis', (t) => {
+  const o = objectsOf(
+    fixture(t, css('.a-t { text-overflow: ellipsis; overflow: hidden; } .b-t { -webkit-line-clamp: 2; }')),
+  );
+  assert.equal(o.trunc.rules, 2);
+});
+
+test('ПОВЕРХНОСТЬ: радиус+фон БЕЗ контура - это пятно, не поверхность', (t) => {
+  // Одних «радиус+фон» 176, и туда попадает каждая плитка и каждый бейдж.
+  const o = objectsOf(
+    fixture(t, css(`
+      .a-s { border-radius: 12px; background: #fff; border: 1px solid #eee; }
+      .b-s { border-radius: 12px; background: #fff; box-shadow: 0 1px 2px #0001; }
+      .c-spot { border-radius: 12px; background: #fff; }`)),
+  );
+  assert.equal(o.surface.rules, 2, 'тень ИЛИ рамка - контур; без них это пятно');
+});
+
+test('ПЛИТКА: квадрат считается по СТРОКЕ значения, поэтому var()==var() работает', (t) => {
+  const o = objectsOf(
+    fixture(t, css(`
+      .a-t { width: var(--tile); height: var(--tile); border-radius: 8px; place-items: center; display: grid; }
+      .b-t { width: 40px; height: 41px; border-radius: 8px; place-items: center; display: grid; }`)),
+  );
+  assert.equal(o.tile.rules, 1, '40 и 41 - не квадрат; вычислять calc() значило бы завести третий парсер');
+});
+
+test('ПОДЪЁМ: тень на ховере - это подсветка, НЕ подъём', (t) => {
+  // Смешение раздувает счёт с 24 до 35 и подмешивает в 06 работу яруса тинта.
+  const o = objectsOf(
+    fixture(t, css('.a-l:hover { transform: translateY(-2px); } .b-h:hover { box-shadow: 0 4px 8px #0002; }')),
+  );
+  assert.equal(o.lift.rules, 1);
+});
+
+test('ТОЛЬКО ЦВЕТ / ТОЛЬКО ОТСТУП: одна посторонняя строка выводит блок из счёта', (t) => {
+  const o = objectsOf(
+    fixture(t, css(`
+      .a-c { color: red; background: blue; }
+      .b-c { color: red; padding: 4px; }
+      .c-s { margin-top: 8px; gap: 4px; }`)),
+  );
+  assert.equal(o.colorOnly.rules, 1);
+  assert.equal(o.spaceOnly.rules, 1);
+});
+
+// ── Единица счёта: САМАЯ ДОРОГАЯ ГРАНИЦА ────────────────────────────────────
+
+test('★ ДУБЛИ: список через запятую - ОДИН блок, а не N дублей', (t) => {
+  // ЭТО ГЛАВНЫЙ ТЕСТ СЕКЦИИ. При счёте по СЕЛЕКТОРУ топ «дублей» в живом репо -
+  // это 199× и 82× канона типографики (app.css:895-977), то есть ровно та
+  // форма, к которой TRIP-165/183 сводили текст и которую сторожит
+  // check:design. Список селекторов И ЕСТЬ схлопнутое состояние; PR,
+  // порезанный по этому числу, пошёл бы разбирать дизайн-систему - метрика
+  // назначила бы работой собственный ответ.
+  const out = run(
+    fixture(t, css('.a-x, .b-x, .c-x { color: red; font-size: 12px; }')),
+  );
+  assert.equal(out.dupSets, 0, 'ко-селекторный канон - это НЕ дубль');
+  assert.equal(out.dupSetsCrossFamily, 0);
+});
+
+test('ДУБЛИ: два ОТДЕЛЬНЫХ блока с тем же набором - настоящий дубль', (t) => {
+  const out = run(
+    fixture(t, css('.a-x { color: red; font-size: 12px; } .b-x { color: red; font-size: 12px; }')),
+  );
+  assert.equal(out.dupSetsCrossFamily, 1);
+  assert.equal(out.dupSetRulesCrossFamily, 2);
+});
+
+test('ДУБЛИ: одно и то же значение в РАЗНЫХ @media - не дубль', (t) => {
+  // Иначе мобильное и десктопное объявление схлопнутся в «дубль», которым они
+  // не являются - та же дыра, что ловили мутацией на гарде 2p.
+  const out = run(
+    fixture(t, css(`
+      .a-x { color: red; font-size: 12px; }
+      @media (max-width: 640px) { .b-x { color: red; font-size: 12px; } }`)),
+  );
+  assert.equal(out.dupSets, 0);
+});
+
+test('ДУБЛИ: набор внутри ОДНОГО семейства не идёт в «работу»', (t) => {
+  const out = run(
+    fixture(t, css('.a-x { color: red; gap: 2px; } .a-y { color: red; gap: 2px; }')),
+  );
+  assert.equal(out.dupSets, 1, 'набор виден');
+  assert.equal(out.dupSetsCrossFamily, 0, 'но унификации между семействами тут нет');
+});
+
+test('ДУБЛИ: одно свойство - это твик, а не объект', (t) => {
+  const out = run(fixture(t, css('.a-x { color: red; } .b-x { color: red; }')));
+  assert.equal(out.dupSets, 0);
+});
+
+// ── Потомковые правила на примитивах (§12 Б, закон 3) ───────────────────────
+
+const CATALOG = '{"families":{"btn":"canon","card":"canon","badge":"canon","scr":"triage","tile":"canon"}}';
+
+test('★ ЗАКОН 3: составной селектор - НЕ потомство (канон СПРАВА, иначе тест инертен)', (t) => {
+  // Первая редакция счётчика считала «классов в селекторе больше одного» и
+  // записывала в нарушения каждый модификатор и каждое состояние - число
+  // раздувалось с 61 до 153. Потомство определяется КОМБИНАТОРОМ.
+  //
+  // ⚠ ПЕРВАЯ РЕДАКЦИЯ ЭТОГО ТЕСТА БЫЛА ИНЕРТНА, и нашла это мутация, а не
+  // чтение. Фикстура была `.btn.is-on`: под мутацией «потомство = 2+ класса»
+  // стилизуемым становился ПОСЛЕДНИЙ класс `is-on`, семейства `is` в фикстурном
+  // каталоге нет - и блок отсеивался, но ПО ДРУГОЙ ПРИЧИНЕ. Вердикт совпадал,
+  // проверка не проверяла ничего. Ловушка срабатывает, только когда канон-класс
+  // стоит в составном селекторе ПОСЛЕДНИМ - поэтому здесь `.scr-a.btn`, и это
+  // же живая форма записи (`className="btn scr-a"`). Тот же класс ошибки, что с
+  // `.gone-row` у гарда 2n: фикстура, не попадающая в проверяемую ветку.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.scr-a.btn { background: red; } .btn.scr-a:hover { background: blue; }',
+      'design/catalog.json': CATALOG,
+    }),
+  );
+  assert.equal(out.primitiveReach.violations, 0, 'составной селектор - один элемент, никто никуда не дотягивался');
+});
+
+test('ЗАКОН 3: экран дотянулся и ОБЪЯВИЛ свойство - нарушение', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.scr-a .btn { background: red; }', 'design/catalog.json': CATALOG }),
+  );
+  assert.equal(out.primitiveReach.violations, 1);
+  assert.deepEqual(out.primitiveReach.byFamily, { scr: 1 });
+});
+
+test('ЗАКОН 3: дотянулся и переопределил ТОЛЬКО ручку - это РАЗРЕШЕНО', (t) => {
+  // Живых таких сегодня ноль, и именно поэтому ветка обязана быть на фикстуре:
+  // непокрытая ветка с нулём в проде неотличима от мёртвого кода. По мере
+  // работы 06 правила должны переезжать из violations СЮДА - это направление
+  // движения, а не украшение отчёта.
+  const out = run(
+    fixture(t, { 'design/app.css': '.scr-a .tile { --tile: 44px; }', 'design/catalog.json': CATALOG }),
+  );
+  assert.equal(out.primitiveReach.violations, 0);
+  assert.equal(out.primitiveReach.varOnly, 1);
+});
+
+test('ЗАКОН 3: канон внутри канона - композиция ДС, отдельная строка', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.card .badge { background: red; }', 'design/catalog.json': CATALOG }),
+  );
+  assert.equal(out.primitiveReach.violations, 0, 'это не долг экранов');
+  assert.equal(out.primitiveReach.canonIntoCanon, 1);
+});
+
+test('ЗАКОН 3: дотянулись до НЕ-канона - вообще не про этот счётчик', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.scr-a .scr-b { background: red; }', 'design/catalog.json': CATALOG }),
+  );
+  assert.equal(out.primitiveReach.violations, 0);
+});
+
+// ── Периметр и громкость ────────────────────────────────────────────────────
+
+test('ОБЪЕКТЫ считаются в том же периметре, что классы и семейства', (t) => {
+  // Иначе получается «250 правил в периметре / 113 семейств по всему src» -
+  // строка, смешивающая оси внутри себя, с которой всё и началось.
+  const o = objectsOf(
+    fixture(t, {
+      'design/app.css': '.a-row { display: flex; }',
+      'pages/login.css': '.b-row { display: flex; } .c-row { display: flex; }',
+      'design/catalog.json': '{"families":{}}',
+    }),
+  );
+  assert.equal(o.row.rules, 1, 'login.css вне периметра');
+});
+
+test('НЕРАЗОБРАННЫЙ CSS громкий: «нечего считать» != «посчитано, чисто»', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-row { display: flex; }', 'design/b.css': '.x { color:', 'design/catalog.json': '{"families":{}}' }),
+  );
+  assert.equal(out.cssParseFailures.length, 1);
+  assert.match(out.cssParseFailures[0], /b\.css/);
+});
+
+test('РАСПРЕДЕЛЕНИЕ ПО СЕМЕЙСТВАМ печатается - по нему режутся 05 и 06', (t) => {
+  const o = objectsOf(
+    fixture(t, css('.aa-1 { display:flex; } .aa-2 { display:flex; } .bb-1 { display:flex; }')),
+  );
+  assert.deepEqual(o.row.byFamily, { aa: 2, bb: 1 });
+});
