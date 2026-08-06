@@ -2,14 +2,17 @@
 //
 // Every custom event capture goes through track() so that adding a second
 // destination later (e.g. GA4 / an ad pixel — TRIP-227) is a one-file change
-// instead of touching every call-site. Identity (identify/reset) lives in
-// AuthContext, and whether PostHog runs at all is decided by consent.js.
+// instead of touching every call-site. Identity lives here too: identifyUser()
+// is the ONE door onto `$identify` (see it for why a second one costs us the
+// acquisition channel), and whether PostHog runs at all is decided by consent.js.
 //
 // Naming convention: object_action, snake_case; variant info goes in props,
 // never in the event name. No PII in props (uid only, set via identify).
 //
-// Everything here is safe to call before consent: PostHog is not initialised, an
-// uninitialised client is a no-op, and nothing is queued (TRIP-311).
+// Everything here is safe to call before consent: PostHog is not initialised and
+// an uninitialised client is a no-op (TRIP-311). What the visit produced before
+// the banner is answered is held HERE, in the memory of this document, and
+// replayed by startAnalytics() — nothing is written to the device either way.
 import posthog from 'posthog-js';
 import { CAMPAIGN_KEYS, campaignQuery, pickSignupAttribution, readSignupAttribution, resolveCampaign, toInitialPersonProps } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
@@ -24,12 +27,28 @@ let pendingGroup = null;
 // First-touch marks waiting for consent. Not a nicety: an account can be created
 // BEFORE the banner is answered (confirmation link on a second device, or a
 // visitor who signs in with Google without answering), and PostHog is a no-op
-// until then. Replayed by applyConsent, after identify — set before it, person
-// properties would land on the anonymous id.
+// until then. Replayed by applyConsent through identifyUser, riding INSIDE that
+// `$identify` as its third argument — the only moment that lands, see there.
 let pendingFirstTouch = null;
 // Marks the send as done for this device, so a later login does not repost what
 // set_once will discard. Mirrors `camp_synced_ts` next door.
 const FIRST_TOUCH_SYNCED = 'first_touch_synced';
+
+// Events captured before the banner is answered, waiting for a destination.
+// Dropping them instead is what loses the FIRST screen of every first-time
+// visitor — `public_trip_viewed`, `landing_viewed`, `login_opened` all fire on
+// load, long before anyone can click a button, and no effect re-runs on consent
+// (TRIP-335). A returning visitor is counted normally, so the undercount is
+// invisible in the reports and hits exactly the newcomer the marked links exist
+// for. Memory only, same as the three holds above: nothing reaches the device.
+//
+// null once the question has been answered — after a refusal or a withdrawal
+// there is nothing left to wait for, and holding on would mean replaying what
+// someone declined if they changed their mind later in this same document.
+let pendingEvents = [];
+// A visitor who ignores the banner and keeps navigating must not grow this
+// without end. Keeps the FIRST events: the entry screen is the one worth having.
+const MAX_PENDING_EVENTS = 50;
 
 // Single source of truth for "analytics is live in this document". Set AFTER
 // init, so a failed init cannot leave it lying.
@@ -51,15 +70,34 @@ const REDIRECT_KEY = 'tp-signup-attribution';
  * @param {Record<string, unknown>} [props]  event properties (no PII)
  */
 export function track(event, props) {
-  // Only matters after a withdrawal made in ANOTHER tab: capturing there would
-  // re-create the `ph_*` keys the withdrawal just deleted.
-  if (!analyticsOn) return;
+  // Never capture while analytics is off: before consent PostHog does not exist,
+  // and after a withdrawal made in ANOTHER tab a capture would re-create the
+  // `ph_*` keys the withdrawal just deleted. Held rather than dropped — see
+  // `pendingEvents`. The timestamp rides along so a replayed view keeps the
+  // minute it happened in instead of the minute the banner was answered.
+  if (!analyticsOn) {
+    if (pendingEvents && pendingEvents.length < MAX_PENDING_EVENTS) {
+      pendingEvents.push({ event, props, timestamp: new Date() });
+    }
+    return;
+  }
   posthog?.capture?.(event, props);
 }
 
 /** Stop feeding an already-running PostHog — init() cannot be undone. */
 export function stopAnalytics() {
   analyticsOn = false;
+  forgetPendingEvents();
+}
+
+/**
+ * Drop what this document was holding for a destination that will not come.
+ * Called on a withdrawal and on a refusal: the answer is "no", and a later
+ * change of mind in this same document must not resurrect events captured while
+ * it was "no".
+ */
+export function forgetPendingEvents() {
+  pendingEvents = null;
 }
 
 /**
@@ -114,6 +152,12 @@ export function startAnalytics() {
     groupTrip(pendingGroup.tripId, pendingGroup.props);
     pendingGroup = null;
   }
+  // Events LAST, so the replayed ones carry the campaign, the referring trip and
+  // the group that the three lines above just registered. They go out on the
+  // anonymous id and are attached to the person by the `$identify` that follows
+  // — the same path `login_opened` already takes on a normal visit.
+  pendingEvents?.forEach(({ event, props, timestamp }) => posthog?.capture?.(event, props, { timestamp }));
+  forgetPendingEvents();
 }
 
 /**
@@ -205,12 +249,13 @@ function setCampaign() {
  * (the Stripe webhook, where the purchase actually completes) attributable,
  * because person-on-events is enabled for this project.
  *
- * Call after EVERY identify(), not only for brand-new accounts: an existing user
+ * Runs after EVERY identify(), not only for brand-new accounts: an existing user
  * who clicks a retargeting ad and logs back in is exactly the case that ends in
  * a purchase, and their new campaign would otherwise never leave the browser.
  * Before identify there is nothing to write to (`person_profiles:
  * 'identified_only'`), and setPersonProperties would create a profile for an
- * anonymous visitor.
+ * anonymous visitor — which is why this is called BY `identifyUser` rather than
+ * being a second thing every call-site has to remember.
  *
  * `camp_synced_ts` records what we last pushed, so a repeat login — identify()
  * runs on every page load — costs nothing instead of a $set event each time. It
@@ -226,7 +271,7 @@ function setCampaign() {
  * mark that expires AFTER a logout stays on the person, which is why `camp_ts`
  * rides along on the person too — a report can window on it.
  */
-export function syncCampaignToPerson() {
+function syncCampaignToPerson() {
   if (!analyticsOn) return;
   const ts = posthog?.get_property?.('camp_ts') || '';
   if ((posthog?.get_property?.('camp_synced_ts') || '') === ts) return;
@@ -249,46 +294,70 @@ export function syncCampaignToPerson() {
 }
 
 /**
- * Record where this account came from as PostHog's own FIRST-touch properties.
+ * Tell PostHog who this is — and, in the SAME call, where the account came from.
  *
- * Fed the `users` row on every profile load, so the source is the COLUMN rather
- * than the moment of signup. PostHog cannot work this out on its own: it derives
- * `$initial_*` from the address of the first event it sees a person on, and by
- * then the visitor has been through Google's OAuth screen or a confirmation
- * email and the marks are long gone from the URL (verified on prod:
- * `$initial_utm_* = NULL` for all 24 persons).
+ * THE ONLY place the app identifies anyone. Not tidiness: `$identify` is the
+ * event that CREATES the person, and PostHog attaches its own `$initial_*` block
+ * to it — including an explicit `$initial_utm_source: null`, because it reads
+ * them off the address of the first event it sees, which by then is post-OAuth
+ * `/trips` or a confirmation link with a bare URL. `$initial_*` is set-once, and
+ * a null IS a written value, so whoever identifies FIRST decides the answer
+ * forever. A second, bare `identify(uid)` anywhere in the app would therefore
+ * cost us the acquisition channel of every account it touched, silently and
+ * unrepairably.
  *
- * Sent as set-once, which is what makes it FIRST touch: unlike the `camp_*`
- * super-properties above, no later click can overwrite it, so a purchase born on
- * the server can be credited to the channel that actually acquired the person
- * rather than to the last link they happened to open. Set-once is also why
- * feeding it repeatedly is safe — the second call cannot change the answer.
+ * That is what killed the previous shape (TRIP-329), a `setPersonProperties`
+ * next to `identify`: measured on prod, it lost from BOTH sides. Sent after
+ * `$identify`, the key was already taken by the null; sent before it, the person
+ * did not exist yet (`person_profiles: 'identified_only'`) and the update had
+ * nothing to land on. Handed to `identify` as `$set_once`, it rides inside that
+ * same event, where the SDK spreads it OVER its own block — so it wins, and it
+ * stays honest first-touch: no later click can move it.
  *
- * Analytics may not be running yet: consent can be given AFTER the account
- * exists (the confirmation link opened on a phone that never saw the banner, or
- * a visitor who ignores the banner and signs in with Google first). The value is
- * held and replayed by `applyConsent`, the same shape as `pendingGroup` above —
- * without it the marks would be dropped in silence for exactly the people the
- * link was marked for.
+ * The value comes from the `users` COLUMN, not from the moment of signup, which
+ * is what makes it survive everything the visit does not: a confirmation link
+ * opened on another device, consent given after the account exists, a reload
+ * between the two. `pendingFirstTouch` only covers the one gap the column
+ * cannot — the profile loaded while analytics was still off, in THIS document.
  *
- * Silent for anyone who declines — PostHog does not exist for them and
+ * Silent for anyone who declines: PostHog does not exist for them and
  * `users.signup_utm_*` stays their only record.
  *
- * @param {Record<string, string> | null} [marks]  the `users` row, or the
- *   signup columns alone; omit to flush what an earlier call held
+ * @param {string} uid  the Supabase user id — no PII ever goes to analytics
+ * @param {Record<string, string> | null} [marks]  the `users` row, or the signup
+ *   columns alone; omit when the caller has no profile in hand (consent.js)
  */
-export function syncFirstTouchToPerson(marks) {
-  const props = toInitialPersonProps(marks) || pendingFirstTouch;
-  if (!props) return;
+export function identifyUser(uid, marks) {
+  if (!uid) return;
 
-  if (!analyticsOn) { pendingFirstTouch = props; return; }
-  // One send per device: without the marker every login posts a `$set` that
-  // set_once will discard anyway. Same self-guard as syncCampaignToPerson.
-  if (posthog?.get_property?.(FIRST_TOUCH_SYNCED)) { pendingFirstTouch = null; return; }
+  const props = toInitialPersonProps(marks);
+  if (props) pendingFirstTouch = props;
+  // Nothing to identify to yet. The value is held above; applyConsent calls this
+  // again the moment there is a PostHog to say it to.
+  if (!analyticsOn) return;
 
-  // Second argument = set_once. Not the first: that would overwrite, and this
-  // property answers "which channel acquired this person", which cannot change.
-  posthog?.setPersonProperties?.(undefined, props);
-  posthog?.register?.({ [FIRST_TOUCH_SYNCED]: true });
+  // One send per device: without the marker every page load would post a `$set`
+  // that set_once discards anyway. Cleared by resetIdentity() on logout, so the
+  // next person on this device gets their own source. Same self-guard as
+  // syncCampaignToPerson.
+  const firstTouch = posthog?.get_property?.(FIRST_TOUCH_SYNCED) ? null : pendingFirstTouch;
+  // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
+  // data stays in Supabase; resolve uid → user there when needed. Third argument
+  // is `$set_once`, second would be `$set` and would overwrite.
+  posthog?.identify?.(uid, undefined, firstTouch || undefined);
+  if (firstTouch) {
+    posthog?.register?.({ [FIRST_TOUCH_SYNCED]: true });
+    pendingFirstTouch = null;
+  }
+  syncCampaignToPerson();
+}
+
+/**
+ * Forget who this was. On logout, so the next person on this device is a new
+ * person: `reset()` drops the distinct id, the campaign mark and the first-touch
+ * marker together, and the held value goes with them.
+ */
+export function resetIdentity() {
   pendingFirstTouch = null;
+  posthog?.reset?.();
 }

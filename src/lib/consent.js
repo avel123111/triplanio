@@ -7,7 +7,7 @@
 // CI guard 2j fails the build if a second `posthog.init` appears. TRIP-227 hangs
 // GTM / GA4 / ad pixels off `applyConsent`.
 import posthog from 'posthog-js';
-import { isAnalyticsOn, startAnalytics, stopAnalytics, syncCampaignToPerson, syncFirstTouchToPerson } from '@/lib/analytics';
+import { forgetPendingEvents, identifyUser, isAnalyticsOn, startAnalytics, stopAnalytics } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -52,6 +52,10 @@ export function setConsent(accepted) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
   } catch { /* private mode — the answer holds for this visit only */ }
+  // "No" is an answer too: whatever this document held waiting for a destination
+  // now has none. Not stopAnalytics() — that would flip `isAnalyticsOn()` and rob
+  // the banner of the one thing it reads to decide a downgrade needs a reload.
+  if (!accepted) forgetPendingEvents();
   return record;
 }
 
@@ -112,18 +116,12 @@ export function applyConsent(record, uid) {
   // `env` super-property tags every event → prod dashboards filter env=prod.
   posthog.register({ env: isProdHost ? 'prod' : 'dev' });
   startAnalytics();
-  if (uid) {
-    posthog.identify(uid);
-    // AuthContext’s own call already ran as a no-op before consent, and only the
-    // PERSON carries the campaign into server-born events (the Stripe webhook).
-    syncCampaignToPerson();
-    // Same replay for first touch: the account can already exist when the banner
-    // is answered — a confirmation link opened on a phone that never saw it, or
-    // a visitor who ignores it and signs in with Google first. AuthContext held
-    // the marks when it found analytics off; this is the first moment there is a
-    // person to hang them on. After identify, never before (TRIP-329).
-    syncFirstTouchToPerson();
-  }
+  // The account can already exist when the banner is answered — a confirmation
+  // link opened on a phone that never saw it, or a visitor who ignores it and
+  // signs in with Google first. AuthContext's own identify ran as a no-op back
+  // then and held the marks; this is the first moment there is a PostHog to say
+  // them to, and the person must be born carrying them (TRIP-335).
+  if (uid) identifyUser(uid);
 }
 
 /**
