@@ -21,7 +21,6 @@ import StatsMap from '@/components/views/StatsMap';
 import {
   Greeting, StatBar, WorldMini, AllStatsCta,
 } from '@/components/stats/widgets';
-import '../design/app.css';
 
 import { useCreateTrip, ChoiceCard } from '@/components/create/CreateTripProvider';
 import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';

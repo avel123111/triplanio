@@ -48,7 +48,6 @@ import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import '../design/app.css';
 
 // Per-section open events (TRIP-213 Ф2c) — one distinct event per lens so it's
 // clear which section the user opened, instead of a single section_opened+breakdown.

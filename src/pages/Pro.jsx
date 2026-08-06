@@ -9,7 +9,6 @@ import { isProActive } from '@/lib/subscription';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton, Severity } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
-import '../design/app.css';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
 // modal - callers navigate here with `/pro?tripId=...&hidePerTrip=1`.

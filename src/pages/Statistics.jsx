@@ -24,7 +24,6 @@ import {
 import { Btn, Skeleton } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
-import '../design/app.css';
 
 // "Моя статистика" — full Ф5 screen. Reads the same get_user_travel_stats RPC the
 // home screen uses, year-filters + aggregates entirely on the client via

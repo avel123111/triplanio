@@ -32,7 +32,6 @@ import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
-import '../design/app.css';
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
 function daysBetweenISO(a, b) {
