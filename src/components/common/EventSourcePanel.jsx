@@ -13,7 +13,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Severity, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
-import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, fmtDate, stayNights } from '@/components/common/EventViewBody';
+import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, eventHeader } from '@/components/common/EventViewBody';
 import { PanelShell, kindIcon } from '@/components/common/EventPanels';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
@@ -77,24 +77,17 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const themeLabel = kind === 'transfer'
     ? t(data.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer')
     : t(LABEL_KEY[kind] || 'budget.source_activity');
-  // Drawer header (redesign): eyebrow = TYPE, title = city (hotel: the name is
-  // in the body name-card, not repeated here), meta/sub = stay dates.
-  const hotelNights = kind === 'hotel' ? stayNights(data.check_in_datetime, data.check_out_datetime) : null;
-  const hotelDates = kind === 'hotel' && data.check_in_datetime && data.check_out_datetime
-    ? `${fmtDate(data.check_in_datetime)} — ${fmtDate(data.check_out_datetime)}${hotelNights != null ? ` · ${t('fork.stay22_nights', { count: hotelNights })}` : ''}`
-    : '';
   // city_visits has no `city_name` column — resolve the localized name from
   // name_i18n/city_name_en (raw rows from useEntitySource aren't pre-localized).
   const visitCity = cityLabel(visit, lang);
-  const routeCity = [cityLabel(fromVisit, lang), cityLabel(toVisit, lang)].filter(Boolean).join(' → ');
-  const title = kind === 'hotel' ? (visitCity || themeLabel)
-    : kind === 'activity' ? (data.title || themeLabel)
-    : kind === 'service' ? (data.name || themeLabel)
-    : (data.carrier || routeCity || themeLabel);
-  const sub = kind === 'hotel' ? (hotelDates || visitCity || '')
-    : kind === 'transfer'
-      ? (routeCity || themeLabel)
-      : (visitCity || themeLabel);
+  // Шапка - ОБЩИЙ шов `eventHeader`, тот же у создания и у редактирования.
+  // Своя сборка здесь была ЧЕТВЁРТОЙ и давала «Перелёт / перевозчик» там, где
+  // создание писало «Трансфер / Барселона → Мадрид».
+  const hdr = eventHeader({ kind, visit, fromVisit, toVisit, entity: data, t, lang });
+  const isSvc = kind === 'service';
+  const eyebrow = isSvc ? themeLabel : hdr.eyebrow;
+  const title = isSvc ? (data.name || themeLabel) : (hdr.title || themeLabel);
+  const sub = isSvc ? (visitCity || '') : hdr.sub;
 
   const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   const doDelete = async () => {
@@ -135,7 +128,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     <PanelShell
       kind={kind}
       icon={kindIcon(kind, data)}
-      eyebrow={themeLabel}
+      eyebrow={eyebrow}
       title={title}
       sub={sub}
       onBack={onClose}

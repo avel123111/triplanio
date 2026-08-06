@@ -123,7 +123,7 @@
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
   /* Radii (Lumo names + legacy aliases) */
-  --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
+  --r-card:24px; --r-md:16px; --r-btn:10px; --r-sm:8px; --r-pill:999px;
   /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
      controls derive from --r-btn directly, so every control outer shape shares
      one radius. The segment track uses it as-is; its inner buttons are
@@ -388,27 +388,34 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    -----------------------------------------------------------------
    Раньше эту пару объявляли заново 39 правил по всему файлу: ровно те же
    две строки под 56 разными именами. Форма поверхности одна, различаются
-   только радиус, тень и размеры — они и остаются в собственном блоке
-   каждого элемента ниже по файлу. Радиусы НЕ сводили намеренно: 24/20/16/
-   14/11 — это разные формы, а прогон по значениям уже ломал живое
-   (TRIP-321, .checkbox 17px → круг).
+   только радиус, тень и размеры. Радиусы НЕ сводили одним прогоном ПО
+   ЗНАЧЕНИЯМ: совпавшая цифра — ещё не совпавшая роль, и такой прогон уже
+   ломал живое (TRIP-321, .checkbox 17px → круг). Сводили по РОЛИ: у карточки
+   и у вложенного контейнера ступень объявлена общим со-селектором ниже по
+   файлу, у остальных остаётся в собственном блоке элемента.
    Блок стоит выше всех компонентов, чтобы любое состояние (:hover,
    .is-active, тёмная тема) перебивало его, а не наоборот.
    Расширять — дописать имя сюда, а НЕ скопировать пару к себе.
    ================================================================= */
-/* карточки, панели, виджеты (канон TRIP-189; .surface-glass/.surface-panel — алиасы одной роли) */
-.surface-glass, .surface-panel,
+/* карточки, панели, виджеты (канон TRIP-189/326). Отдельного ИМЕНИ у роли
+   больше нет: `.surface-glass` был последним следом стекла - блюра и тени,
+   которых нет с TRIP-326, - и висел ровно на одном элементе. Каждый носитель
+   входит сюда своим именем. */
 .statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
-.card, .statcard, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
-.chat-reply__card, .pl-lastcard,
-/* оверлеи и всплывающее */
+.card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
+.chat-reply__card, .pl-lastcard, .map-route,
+/* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
+   ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
 .te-row.te-row--plan, .acct-chan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
-.addon-card, .tm-manage, .tm-account, .stay-dates, .records, .eroute,
-.hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel,
+.addon-card, .tm-manage, .tm-account, .records, .eroute,
+.hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel, .ev-sec,
+/* держали эту пару своей копией, а не именем в роли */
+.eed-fcbox, .eed-nightrow, .docfield, .choice-card,
+.plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
 .cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
 .pro-up .lockmsg, .map-ctl button, .map-legend .c, .mapfs-close,
@@ -418,8 +425,12 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 }
 
 /* Утопленное поле — фон отступает НАЗАД от несущей карточки (заметки, адрес,
-   секции просмотра события, строка «город/даты»). */
-.addr, .notes, .notes-block, .ev-sec, .cdu {
+   строка «город/даты»).
+   ★`.ev-sec` отсюда ушёл (TRIP-333). Он не поле, а РАЗДЕЛ - тот же объект, что
+   `Accordion` в форме и `.hv-*` в просмотре, а те живут на роли поверхности.
+   Из-за этого один и тот же «раздел» был серым в просмотре события и белым в
+   его редактировании: разными были не поля, а сама коробка вокруг них. */
+.addr, .notes, .notes-block, .cdu {
   background: var(--surface-3);
   border: 1px solid var(--line);
 }
@@ -427,7 +438,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* Контрол с сильной рамкой — граница несёт кликабельность (фильтр-пилюля,
    «назад», крестик диалога). Композер чата отсюда ушёл: он `InputGroup`, фон и
    рамку держит группа (TRIP-333). */
-.fpill, .lp-back, .ev-dlg-close {
+.fpill, .lp-back {
   background: var(--surface);
   border: 1px solid var(--line-strong);
 }
@@ -534,8 +545,6 @@ h3,
 .invite__tx h3,
 .stepper button,
 .sheet-h h3,
-.ev-dlg-info h2,
-.ev-dlg-price .amt,
 .head__av,
 .vp-h h3,
 .bgt-dleg__v,      /* TRIP-243 инсп.: Meta→Subheading (сумма легенды доната) */
@@ -571,7 +580,10 @@ h3,
 .t-label,
 h4,
 .te-step,
-.sheet .ss-search .input,
+/* `.sheet .ss-search .input` снят отсюда: это ПОЛЕ ПОИСКА, человек в него
+   набирает, а канон-подзаголовок делал набранное Golos 700/13. Селектор весил
+   (0,3,0) и перебивал канон самого поля - после переезда ввода на `.t-body`
+   это осталось бы единственное поле в приложении с жирным текстом. */
 .plan-card__name,
 .nonext b,
 .bgt-donutcard__h b,
@@ -614,13 +626,21 @@ h4,
 .ts-in,
 .brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
 .nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
+/* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
+   `.t-ui` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
+   как надпись НА кнопке: Golos 600/12.5. Стало 400/13. Высоту это не трогает -
+   её держит `min-height: var(--ctl-h)` при нулевом вертикальном паддинге. */
+.input, .select, .textarea,
+.sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
+.stay-dates__lbl,  /* они же в просмотре события */
 .ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-183: .t-body ← body макета (Golos 400/13/1.55); был --fs-strong 15/lh1.6 */
 .t-ui,
+.eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
+.hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
 .trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
 .btn,
 .field__label,
 .app-side__item,
-.input, .select, .textarea,
 .addsheet__tx b,
 .eroute p,
 .invite__tx p,
@@ -634,7 +654,6 @@ h4,
 .mrow .mn,
 .tl3-card .meta,
 .tl3-card--tr .rv-mode,
-.settings-identity .field__label,
 .acct-content,
 .acct-nav a,
 .acct-plan__line,
@@ -678,7 +697,7 @@ h4,
 .btn-ghost,
 .brand-col__sub,
 .faq__a-inner,
-.s22f-cur,
+.input-unit,
 .fork-manual__tx b,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
 .bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
@@ -702,7 +721,6 @@ h4,
 .app-header__trip-meta,
 .app-header__pro,
 .app-side__item-badge,
-.field--ai .field__label::after,
 .err, .wrn,
 .pro-up p,
 .pro-up .lockmsg,
@@ -783,8 +801,6 @@ h4,
    реализации, это уехало бы на все четыре разом. Поймано снимком - замер
    геометрии такого не показывает вовсе. */
 .doc-row .ds,
-.ev-dlg-info .sub,
-.ev-dlg-price .cur,
 .bk-link,
 .bk-link .pb,
 .lp-ti span,
@@ -893,6 +909,12 @@ h4,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
+/* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
+   `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
+   `.field__label` вне диалога оставался на `.t-ui` - одна и та же подпись
+   выглядела по-разному в зависимости от ОБОЛОЧКИ. Резать надо было именно
+   поимённо: сам канон трогать нельзя, его носят ещё 44 объекта (бейджи,
+   эйбрау шапок, дни недели календаря, футер лендинга). */
 .t-micro,
 .badge,
 .eyebrow,
@@ -910,11 +932,7 @@ h4,
 .acct-plan__k,
 .acct-tgtrips__lbl,
 .plan-popular-badge,
-.ev-dlg-eyebrow,
-.ev-sec-lbl,
 .kv .k,
-.ev-dlg .field__label,
-.lp .field__label,
 .sec-lbl .sl,
 .nextcard__tag,
 .cdu span,
@@ -997,7 +1015,7 @@ h4,
 .fork-partner__mid span,
 .fork-or span, .s22f-resetall,
 .fork-pg, .s22f-val, .s22-count, .pcard__score,
-.s22f-cur, .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
+.s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
 .s22mk,
@@ -1243,14 +1261,16 @@ h4,
   transition: transform .16s var(--ease-spring), background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
 }
 .btn:hover { transform: translateY(-2px); }
-.btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .btn--primary { --bg: var(--brand); --fg: #fff; --bd: transparent; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--brand) 70%, transparent); }
 .btn--primary:hover { --bg: var(--primary-hover); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent); }
 .btn--primary:active { --bg: var(--primary-press); }
 .btn--secondary { --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong); }
 .btn--secondary:hover { --bd: var(--brand); --fg: var(--brand); box-shadow: var(--sh-1); }
-.btn--soft { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
-.btn--soft:hover { --bg: var(--primary-soft-2); }
+/* `.btn.is-on` было ВТОРЫМ именем для этого же состояния - набор объявлений
+   совпадал побайтово. Сведено в один селектор, второе имя удалено. */
+.btn--soft, .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
+.btn--soft:hover, .btn.is-on:hover { --bg: var(--primary-soft-2); }
 .btn--ghost { --bg: transparent; --fg: var(--ink-2); --bd: transparent; }
 .btn--ghost:hover { --bg: var(--surface-2); --fg: var(--ink); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
@@ -1286,7 +1306,6 @@ h4,
    --icon (42x42) выпилена как мёртвая: ноль потребителей, реальные иконочные
    кнопки живут на отдельном .icon-btn (34x34). */
 .btn--block { width: 100%; }
-.btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
 
 /* Strong card lift (collection cards): -2px + card shadow. Declarative replacement
    for JS onMouseEnter style mutation; the base border lives here (not inline) so
@@ -1303,12 +1322,10 @@ h4,
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
 /* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
-   карточек. Одна плоская роль, без blur, без теней. .surface-glass и
-   .surface-panel остаются как алиасы для совместимости разметки: оба дают
-   одинаковый результат. Внутреннюю раскладку (падинги/хедеры/overflow)
+   карточек. Одна плоская роль, без blur, без теней. Имя роли для разметки одно
+   Своего ИМЕНИ у роли нет - оба прежних (.surface-glass, .surface-panel)
+   удалены как след стекла. Внутреннюю раскладку (падинги/хедеры/overflow)
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
-.surface-glass,
-.surface-panel,
 .statbar,                  /* полоса статистики — /trips и обзор трипа */
 .wmini,                    /* /trips — «Мир исследован» */
 .nextcard,                 /* /trips — следующий трип */
@@ -1320,15 +1337,39 @@ h4,
 .panel,                    /* экран трипа/статистика — плоские панели/виджеты */
 .summary,                  /* /stats — полоса из 6 стат-плиток */
 .invite,                   /* баннер-приглашение */
-.acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
-.chat-reply__card,         /* ответ ассистента-документ в чате (TRIP-296) */
-.pl-lastcard {             /* карточка последней брони (планнер) */
+.pl-lastcard,              /* карточка последней брони (планнер) */
+.lp {                      /* панель-оболочка (та же ступень, что у модалки) */
   border-radius: var(--r-xl);
 }
+/* ★`.chat-reply__card` в этом списке НЕ стоит намеренно: он объявляет свой
+   радиус ниже по файлу, при равной специфичности выигрывает объявленное
+   позже, и членство здесь ничего не давало - оно читалось как ступень
+   карточки, а рисовалась ступень вложенного контейнера. Скин (фон, рамка) он
+   по-прежнему берёт из роли поверхности. */
 
-/* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
-   class on the element); this block is layout only. Floats top-left over the
+/* ── Вложенный контейнер внутри оболочки (TRIP-333) ────────────────────────
+   Ступень МЕЖДУ оболочкой и контролом: раздел, который лежит внутри диалога
+   или панели и сам держит поля. Значение объявлено ЗДЕСЬ и только здесь -
+   раньше его писал каждый носитель у себя и получались три разных числа В
+   ОДНОМ ОКНЕ: «Бесплатная отмена» и «N ночей» скруглялись по ступени
+   карточки, секции просмотра - на ступень ниже, а сегмент переезда рисовался
+   инлайном на ступени контрола.
+   ★Аккордеон («Детали брони», «Документы и заметки») сюда переехал из группы
+   КАРТОЧЕК: он живёт только внутри редактора события, то есть карточкой
+   никогда не был, и носил ступень БОЛЬШЕ той оболочки, в которой лежит.
+   ⚠ Ступень выбрана замером вложенности, а не по шкале: диалог события - 16,
+   контрол - 10, промежуточной ступени между ними в шкале НЕТ. Пока оболочек
+   две и они разной величины (диалог 16, панель 24), «строго меньше внешней»
+   недостижимо; 16 - наибольшее, что не превышает НИ ОДНУ из двух. Это станет
+   однозначным, когда оболочка останется одна. */
+.acc, .eed-fcbox, .eed-nightrow,
+.ev-sec, .hv-namecard, .hv-card, .hv-rows, .hv-notes, .tv-card {
+  border-radius: var(--r-md);
+}
+
+/* Map lens route panel (TRIP-33): скин - роль поверхности, `.map-route` стоит
+   в её co-селекторе СВОИМ именем; этот блок - только раскладка. Floats top-left over the
    full-bleed map; collapses to a bottom sheet on phones (below). */
 .map-route {
   position: absolute; z-index: 2;
@@ -1397,7 +1438,8 @@ h4,
 
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 7px; }
-/* Lumo DS: form labels are 13px / 800 / ink-2 — readable, not thin. */
+/* Подпись поля - ink-2, чтобы не спорить с самим значением. Размер/вес тут НЕ
+   объявлены: их держит канон .t-ui (Golos 600/12.5), см. co-selector выше. */
 .field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-ui (co-selector, TRIP-165) */
 /* Звёздочка обязательного поля - одна на всё приложение (TRIP-333). Знак и цвет
    объявлены здесь; КОМУ ставить `data-required`, отвечает валидатор
@@ -1417,8 +1459,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
-.acc { margin-bottom: 12px; overflow: hidden; }
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
+/* Свой `margin-bottom: 12px` снят: родитель аккордеона (`.lp-b`) уже
+   раскладывает детей зазором, поэтому отступ был ДОБАВОЧНЫМ - между двумя
+   разделами выходило 25px вместо ступени. Без него класс годится и для
+   сегмента переезда, чей список идёт `gap: 0` (между сегментами стоит плашка
+   пересадки, и лишний отступ оторвал бы её от своего сегмента).
+   ★Родитель теперь ОДИН: тело диалога переехало на `.lp-b` вместе со всей
+   оболочкой события (TRIP-333 §4). */
+.acc { overflow: hidden; }
 .acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
 .acc__head:hover { background: var(--wash); } /* TRIP-326: opacity→opaque token */
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -1428,19 +1477,29 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .acc__chev { flex: none; display: inline-flex; color: var(--muted); transform: rotate(90deg); transition: transform .18s var(--ease-out); }
 .acc.is-open .acc__chev { transform: rotate(-90deg); }
 .acc__body { padding: 14px; border-top: 1px solid var(--line); }
-/* Lumo DS inputs: 14.5px/500 on a defined 1.5px line-strong border + 4px focus
-   ring.
+/* Lumo DS inputs: типографику держит канон `.t-body` (co-selector выше по
+   файлу), форму - рамка `--line-strong` и кольцо фокуса `--primary-ring`.
+   Числа здесь намеренно НЕ повторяются: эта шапка уже дважды расходилась с
+   правилами под ней (кегль уехал в PR-3, толщина рамки и кольцо - в PR-4), а
+   единственный носитель значения - само правило.
 
    ★Фон поля - ОДИН на всё приложение и объявлен ровно здесь (TRIP-333):
    светлая тема - `--surface` (белый, как поверхности), тёмная - `--bg` (фон
    приложения, ниже панелей). Рамка есть в обеих: она, а не заливка, говорит
    «сюда можно писать». Раньше поле заливалось `--surface-3`, из-за чего в
    светлой теме белое поле в форме траты вставало рядом с серым селектом.
-   Тёмная половина - в `[data-theme="dark"]` сразу под этим правилом. */
-.input, .select, .textarea {
+   Тёмная половина - в `[data-theme="dark"]` сразу под этим правилом.
+
+   ★★Скин носит РОЛЬ, а не тег: одиночный контрол, группа контролов
+   (`.input-group`) и блок дат (`.stay-dates`) - это одно и то же поле, поэтому
+   рамка, фон, тень, радиус и переход объявлены им ОДНОЙ строкой. `.input-group`
+   держал свою побайтово одинаковую копию, а `.stay-dates` сидел в роли
+   ПОВЕРХНОСТИ - оттуда бледная `--line` в светлой и чужой фон в тёмной.
+   Раскладка у каждого своя и остаётся при своём правиле. */
+.input, .select, .textarea, .input-group, .stay-dates {
  width: 100%;
  border-radius: var(--r-btn);
- border: 1.5px solid var(--line-strong);
+ border: 1px solid var(--line-strong);
  background: var(--surface);
  /* Тень только в светлой: без заливки рамка - единственный признак поля, а её
     контраст к белому 1.41:1 при норме WCAG 3:1. Не `--sh-1` - та карточная
@@ -1463,12 +1522,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .s22f-sel,
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
+[data-theme="dark"] .stay-dates,
 [data-theme="dark"] .ts-startctl--block { background: var(--bg); }
 /* Тень - светлотемная компенсация слабой рамки, в тёмной она только грязнит. */
 [data-theme="dark"] .input,
 [data-theme="dark"] .select,
 [data-theme="dark"] .textarea,
-[data-theme="dark"] .input-group { box-shadow: none; }
+[data-theme="dark"] .input-group,
+[data-theme="dark"] .stay-dates { box-shadow: none; }
 /* Два исключения: AI-блок и композер чата - `InputGroup`, но не поля в форме, а
    приподнятые поверхности. Их собственные правила (0,1,0) проигрывают строкам
    выше (0,2,0), поэтому тёмную половину надо назвать явно. У композера общий
@@ -1486,16 +1547,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    бы с почти-чёрного на серый панели. Цвет несёт рамка. */
 .input:focus, .select:focus, .textarea:focus {
   outline: none; border-color: var(--brand);
-  box-shadow: 0 0 0 4px var(--primary-ring);
-}
-.field--ai .input, .field--ai .select, .field--ai .textarea {
-  background: var(--ai-soft);
-  border-color: var(--ai-soft-2);
-}
-.field--ai .field__label::after {
- content: "AI";
- background: var(--ai); color: white;
- padding: 1px 5px; border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--primary-ring);
 }
 /* Состояние ПАРЫ полей - на блоке дат: цвет несёт рамка `.stay-dates`, у самих
    кнопок-ячеек её нет. Форма та же (`fieldState` под spread), просто атрибуты
@@ -1508,9 +1560,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .eed-dateblock[data-warning] .stay-dates { border-color: var(--warning); }
 
 /* ── Нерабочее поле (TRIP-333) ────────────────────────────────────────────
-   Порядок несущий: стоит ПОСЛЕ `.field--ai` (одинаковые 0,2,0), а ошибка и
-   предупреждение объявлены НИЖЕ и выигрывают уже у `:disabled` - рамка
-   состояния видна и на погашенной форме.
+   Порядок несущий: ошибка и предупреждение объявлены НИЖЕ и выигрывают уже у
+   `:disabled` - рамка состояния видна и на погашенной форме.
    ★Гасим ЦВЕТОМ, а не `opacity`: она перемножается по предкам, а редактор
    события уже гасит весь `<fieldset>` своей `.5` - вышло бы 0.275.
    ★Плашка у `:disabled` и `[readonly]` одна (`--wash`), различают их чернила и
@@ -1580,42 +1631,34 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .input-affix__end { inset-inline-end: 12px; }
 .input-affix--ic .input { padding-inline-start: 36px; }
 .input-affix--end .input { padding-inline-end: 36px; }
-/* Иконка подсвечивается, когда поле в фокусе ИЛИ когда значение уже выбрано
-   (`--on` - город в автокомплите). Оба состояния означают «поле работает». */
-.input-affix__ic--on,
-.input-affix .input:focus ~ .input-affix__ic { color: var(--brand); }
-/* Нерабочее поле гасит подсветку обратно: без этого иконка выбранного города
-   осталась бы яркой на погашенном поле. Только `__ic` - `__end` (спиннер) в
-   бренд не поднимается ничем, и правило на него было бы объявлением уже
-   стоящего значения. */
-.input-affix .input:disabled ~ .input-affix__ic,
-.input-affix .input[readonly]:not(:disabled) ~ .input-affix__ic { color: var(--muted-2); }
+/* Иконка НЕ участвует в состоянии: раньше она поднималась в `--brand` при
+   фокусе и при заполненном значении, и в фокусе поле давало три синих сигнала
+   разом - рамку, кольцо и иконку. Состояние несёт рамка, иконка нейтральна
+   всегда. Вместе с подсветкой ушло и правило, гасившее её обратно на
+   нерабочем поле: оно объявляло `--muted-2`, который тут и так базовый. */
 
 /* ── Группа контролов как одно поле (TRIP-333) ────────────────────────────
    Сумма + валюта, цена «от/до». Скин и состояния держит КОНТЕЙНЕР, дети идут
    без своей рамки - см. `InputGroup` в src/design/Input.jsx.
 
    Стоит ПОСЛЕ базового `.input`: правила ниже гасят его рамку, фон и кольцо
-   у детей при равной специфичности (0,2,0), и делает это порядок. */
+   у детей при равной специфичности (0,2,0), и делает это порядок.
+
+   Здесь ТОЛЬКО раскладка. Рамку, фон, тень, радиус и переход группа берёт из
+   общего скина контрола выше по файлу - своей копии у неё больше нет. */
 .input-group {
   display: flex; align-items: center; gap: 6px;
-  width: 100%; min-width: 0;
-  /* Та же коробка, что у одиночного поля: тот же токен высоты, те же боковые
-     отступы и тот же фон. Своя копия вертикального паддинга здесь и была
-     причиной, по которой цена «от/до» форк-панели не совпадала по росту с
-     соседним полем: два места объявляли высоту, и правка одного не доезжала
-     до другого. */
+  min-width: 0;
+  /* Та же коробка, что у одиночного поля: тот же токен высоты и те же боковые
+     отступы. Своя копия вертикального паддинга здесь и была причиной, по
+     которой цена «от/до» форк-панели не совпадала по росту с соседним полем:
+     два места объявляли высоту, и правка одного не доезжала до другого. */
   min-height: var(--ctl-h);
   padding: 0 13px;
-  border-radius: var(--r-btn);
-  border: 1.5px solid var(--line-strong);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(39, 36, 51, .05);   /* та же тень, что у одиночного поля */
-  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 /* Подсвечивается ВСЯ группа: кольцо вокруг одного ребёнка обвело бы половину
    того, что пользователь видит как одно поле. */
-.input-group:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.input-group:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
 /* Состояние приходит теми же атрибутами, что и полю (`fieldState`), но красит
    СЕБЯ, а не потомка: у детей группы рамки нет, правило на потомка не дало бы
    ничего. */
@@ -1648,6 +1691,31 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Сброс только у `.input`: у `.textarea` токена высоты нет, её `min-height` -
    это минимальное поле для текста. */
 .input-group .input { min-height: 0; align-self: stretch; }
+/* Зона единицы измерения внутри группы - валюта суммы, код валюты у цены
+   «от/до». Отдельная ЯЧЕЙКА за вертикальным разделителем, а не текст рядом со
+   значением: без разделителя «RUB» и плейсхолдер «от» читались одной фразой.
+   ★Единица ≠ префикс. Префикс (`₽`, `€`) поясняет ФОРМАТ значения и живёт внутри
+   текстовой зоны перед ним, без разделителя и без своей ячейки; единица
+   ИЗМЕРЯЕТ значение и потому стоит отдельно.
+   Разделитель на стороне, обращённой к полю: `--lead` для единицы ПЕРЕД
+   значением. Это модификатор, а не правило по позиции в дереве
+   (`:first-child`): позиционное потребовало бы рукописного исключения от
+   первого же соседа. Собрано из двух приватных копий - `.bgt-amtgrp__cur`
+   (несла разделитель) и `.s22f-cur` (несла цвет, но не разделитель).
+   ★Селектор с `.input-group` в начале - не украшение. Единица бывает кнопкой
+   (`CurrencyCombobox` рендерит триггер как `.input`), а сброс скина у детей
+   группы весит (0,2,0): голый `.input-unit` (0,1,0) проиграл бы ему, и
+   разделитель молча не нарисовался бы. Стоит НИЖЕ сброса - решает порядок. */
+.input-group .input-unit {
+  align-self: stretch; display: flex; align-items: center; flex: none;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--line);
+  color: var(--muted); font-weight: 400;
+}
+.input-group .input-unit--lead {
+  padding-inline: 0 12px;
+  border-inline-start: none; border-inline-end: 1px solid var(--line);
+}
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
@@ -1664,10 +1732,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .checkbox input {
   appearance: none;
   width: 17px; height: 17px;
-  border: 1.5px solid var(--line-strong);
-  /* Браузер зажимает радиус до половины стороны, поэтому на стороне 17px даже
-     наименьшая ступень шкалы (--r-sm, 11px) даёт идеальный круг - чекбокс
-     становится неотличим от радиокнопки. */
+  border: 1px solid var(--line-strong);
+  /* Браузер зажимает радиус до половины стороны - на стороне 17px это 8.5px,
+     то есть наименьшая ступень шкалы (--r-sm) упирается в круг вплотную и
+     чекбокс становится неотличим от радиокнопки. Цифру ступени тут не
+     повторяем: она уже уезжала (11 -> 8), а вывод от неё не зависит. */
   border-radius: 5px;   /* design-token-exempt: ниже шкалы радиус - это форма, а не ступень */
   background: var(--surface);
   display: inline-grid; place-items: center;
@@ -1684,7 +1753,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   border-bottom: 1.8px solid var(--primary-fg);
   transform: rotate(-45deg) translate(1px, -1px);
 }
-.checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--primary-ring); }
+.checkbox input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 /* Dimmed via a sibling selector rather than `:has()`: the build target includes
    Firefox 78, which predates `:has()`, and a disabled tint does not justify
    being the first thing in this codebase to depend on it. */
@@ -1796,14 +1865,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--primary-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
-.badge--outline { background: transparent; color: var(--muted); border: 1.5px solid var(--line-strong); }
+.badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 
 /* Severity (Lumo .sev — soft plate with a tinted icon chip) */
+/* ТОЛЬКО ТОН и коробка. Раскладку (ряд, зазор, выравнивание, перенос) даёт
+   примитив `.row` в разметке - тот же, которым собраны карточки «Скопировать
+   путешествие» и «Выйти из трипа»: это один и тот же объект, и второй его
+   реализации здесь больше нет. Свой флекс тут и был причиной, по которой
+   кнопка действия разъезжалась: она была голым ребёнком без `flex`, а ряд не
+   умел переноситься. */
 .sev {
- display: flex; align-items: flex-start; gap: 11px;
  padding: 13px 15px;
  border-radius: var(--r-md);
-
  border: 1px solid;
  color: var(--ink-2);
 }
@@ -1825,11 +1898,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .sev--success .sev__icon { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success-ink); }
 .sev--quiet { background: var(--wash); border-color: var(--line); }
 .sev--quiet .sev__icon { background: var(--surface); color: var(--ink-2); }
-/* Ось выравнивания, как .row--start у .row. По умолчанию плашка держит значок у
-   ПЕРВОЙ строки - это верно для прозы в несколько строк. У статуса же ровно две
-   строки (заголовок + подпись), и значок обязан стоять по центру пары: так уже
-   выглядят ряды каналов в аккаунте. */
-.sev--mid { align-items: center; }
+/* Ось выравнивания больше НЕ своя: `align="mid"` даёт ряду его дефолт (значок по
+   центру пары «заголовок + подпись», как в рядах каналов аккаунта), а проза в
+   несколько строк - `.row--start`. Свой `.sev--mid` был вторым именем для того,
+   что примитив умеет из коробки, и удалён. */
 /* «Предложение», а не состояние: плашка ещё ничего не сообщает, она зовёт нажать
    (разрешить геолокацию). Пунктир - тот же язык, что у кнопок добавления (.gadd,
    .te-end--add): «здесь пока пусто, можно заполнить».
@@ -1853,8 +1925,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .avatar--lg { width: 36px; height: 36px; }
 .avatar--sm { width: 22px; height: 22px; }
 .avatar--ai { background: var(--ai-gradient) !important; }
-.avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1.5px dashed var(--line); }
-.avatar--deleted { background: var(--wash) !important; color: var(--muted) !important; }
+/* Аватар БЕЗ картинки - один скин на оба случая (инициалы и удалённый
+   аккаунт), объявлен один раз. Два имени тут не дубль, а настоящая вариация:
+   различает их ровно пунктирная рамка, и она объявлена отдельной строкой -
+   ровно то, чем вариация и должна быть. Раньше общая половина была написана
+   дважды побайтово, и правка одной копии молча расходилась с другой. */
+.avatar--placeholder, .avatar--deleted { background: var(--wash) !important; color: var(--muted) !important; }
+.avatar--placeholder { border: 1px dashed var(--line); }
 
 .avatar-stack { display: inline-flex; }
 .avatar-stack .avatar { margin-left: -8px; }
@@ -2043,8 +2120,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Переводя экран из полосы 42-46, СВЕРЬ его текущий радиус, иначе ступень тихо
    перекрасит угол (.invite-banner__ic 44px сегодня на --r-sm, а не --r-btn).
    ★ГРАНИЦА ВНИЗУ: ниже 26px репозиторий радиус не токенизирует вовсе (17-24px несут
-   рукописные 5-7px), а дефолтный --r-sm = 11px на стороне 20px даёт уже не квадрат,
-   а пилюлю - ровно ловушка Ф3b, где .checkbox 17px под 11px стал радиокнопкой.
+   рукописные 5-7px), а дефолтный --r-sm на стороне ~20px подходит к половине
+   стороны вплотную и даёт уже не квадрат, а пилюлю - ровно ловушка Ф3b, где
+   .checkbox 17px стал радиокнопкой. Порог записан ОТНОШЕНИЕМ к стороне, а не
+   числом: сама ступень уже уезжала (11 -> 8), и зашитая цифра тут же соврала бы.
    Ступени мельче --sm тут НЕТ по этой же причине: она обязана нести собственный
    --tile-r, а до появления настоящего потребителя выдумывать его - гадание.
    position:relative СОЗНАТЕЛЬНО не здесь: он нужен только .icon-btn под метку
@@ -2171,6 +2250,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Phones: burger → bottom-nav "…", profile → bottom-nav. Theme + bell are
    already hidden ≤880 (.app-header .icon-btn), so the phone header is just
    back + brand/title. Content scrollers get clearance for the floating nav. */
+
+/* Оболочка отдельного экрана приложения (Путешествия · Аккаунт · Входящие ·
+   Статистика · Pro). Класс существовал ТОЛЬКО в разметке и в медиа-запросе
+   ниже, а свою раскладку все ПЯТЬ экранов писали одинаковым инлайном в пять
+   строк. Повторённый у существующего класса инлайн - ошибка класса, поэтому
+   объявление стоит здесь, а у вызывателей не осталось ничего.
+   Телефонная половина (фикс-высота, свой скролл внутри) - в медиа ниже, она
+   эти значения перебивает намеренно. */
+.app-shell {
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg, var(--wash));
+}
+
 @media (max-width: 640px) {
   .app-header__menu { display: none; }
   .app-header__account { display: none; }
@@ -2261,8 +2354,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
-  border: 1.5px solid var(--line); border-radius: var(--r-card);
-  background: var(--surface); cursor: pointer; text-align: left;
+  border-radius: var(--r-card);
+  cursor: pointer; text-align: left;
   transition: border-color .2s, box-shadow .22s, transform .16s var(--ease-spring);
 }
 .choice-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--brand); }
@@ -2321,7 +2414,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.
    New element (approved 2026-06-20). Distinct from members' .invite-banner. */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; }
 .invite__ic { width: 58px; height: 58px; border-radius: var(--r-md); flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
@@ -2534,7 +2627,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .pl-lastcard { overflow: hidden; }
 .pl-lastcard.is-fin { border-color: var(--brand); }
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
@@ -2580,7 +2673,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    шаге 1 создания трипа. Тот же элемент .ts-startctl, без отдельного контрола.
    ★Высота - общий токен: прежние 48px были хардкодом, а комментарий над ним
    утверждал, что они «matches the .input height», хотя поле было 41.5 (TRIP-333). */
-.ts-startctl--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1.5px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
+.ts-startctl--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
 /* `height: 100%` тут больше не работает и работать не может: у контрола теперь
    `min-height`, то есть высота НЕОПРЕДЕЛЁННАЯ, и процент от неё разрешается в
    `auto` - кнопка схлопывалась до высоты своей иконки (замер: 40 -> 18px, при
@@ -2749,8 +2842,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .btn--ai .ai-dots span { background: rgba(255,255,255,.85); }
 [data-theme="dark"] .btn--ai .ai-dots span { background: rgba(12,10,30,.65); }
 .btn--ai[disabled], .btn--ai.is-disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+/* Ступень ОБОЛОЧКИ - одна на модалку и панель. Было три разных числа у трёх
+   контейнеров одного ранга: диалог 16, панель 24, карточка 20, из-за чего одна
+   и та же форма события скруглялась по-разному при создании и редактировании,
+   а вложенный контейнер (16) оказывался РАВЕН диалогу, в котором лежит.
+   Теперь лестница целая: оболочка 20 > вложенный контейнер 16 > контрол 10. */
 .dlg {
-  border-radius: var(--r-md);
+  border-radius: var(--r-xl);
   box-shadow: var(--sh-3);
   width: 100%;
   max-width: 560px;
@@ -2869,7 +2967,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ── Assistant reply — a DOCUMENT, not a bubble (TRIP-296) ──
    An assistant answer is routinely 40-80 lines of headings + lists. In a tinted
    bubble (`.chat-bubble--ai`, removed) that reads as a wall of colour, so the
-   answer now sits in a full-width panel on the canonical `.surface-panel` skin,
+   answer now sits in a full-width panel on the canonical surface skin,
    marked as AI by a gradient spine rather than a fill. Long answers clamp with a
    fade and expand on demand. */
 /* The answer and its actions are two stacked rows, not one: the sticky avatar is
@@ -2941,16 +3039,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `.textarea` — the `.input-group` child reset does not touch it, and neither
    does the ≤640 anti-zoom guard; both layers get their 16px from the dedicated
    `.chat-ov, .chat-ta` media rule below, which is what keeps the caret aligned).
-   Только ДЕЛЬТА к `.input-group`: фон, рамку, фокус-кольцо и переход держит
-   группа. Своё здесь - выравнивание по низу (поле авто-растёт вверх, кнопки
-   остаются у нижнего края), свои отступы под кнопки внутри, крупный радиус и
+   Только ДЕЛЬТА к `.input-group`: фон, рамку, радиус, фокус-кольцо и переход
+   держит группа. Своё здесь - выравнивание по низу (поле авто-растёт вверх,
+   кнопки остаются у нижнего края), свои отступы под кнопки внутри и
    «плавающая» тень: это док над лентой, а не поле в форме.
-   ⚠ В ТЁМНОЙ теме обе последние ручки перебиваются группой:
+   ★Радиус СВОИМ больше не является. Он был крупным (ступень поверхности),
+   и это читалось как акцент, пока контрол скруглялся почти так же; на
+   нынешней шкале та же ступень стала другим языком - док переставал быть
+   полем. Приподнятость несёт тень, а не форма угла.
+   ⚠ В ТЁМНОЙ теме фон и тень дока перебиваются группой:
    `[data-theme="dark"] .input-group` (0,2,0) ставит `background: var(--bg)` и
-   `box-shadow: none`, а этот блок - всего (0,1,0). */
+   `box-shadow: none`, а этот блок - всего (0,1,0). Поэтому обе названы заново
+   явным исключением `[data-theme="dark"] .chat-composer__row` выше по файлу
+   (фон здесь не объявлен вовсе - в светлой он приходит от группы). */
 .chat-composer__row {
   gap: 8px; align-items: flex-end; padding: 8px;
-  border-radius: var(--r-xl); box-shadow: var(--sh-1);
+  box-shadow: var(--sh-1);
 }
 .chat-composer__field { flex: 1; min-width: 0; position: relative; min-height: 40px; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
@@ -3000,7 +3104,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    16px on mobile so their glyph advances stay identical. */
 @media (max-width: 640px) { .chat-ov, .chat-ta { font-size: var(--fs-h4); } }
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
-   the border + 4px ring from .textarea:focus still render around the field. */
+   the border + focus ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }
 /* ONE send button for both shells. The lens used to draw a wide .btn--primary
    with a label while the widget drew this square on --ai-gradient: the same
@@ -3106,9 +3210,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .dock-panel .chat-reply { margin-top: 20px; }
 .dock-panel .chat-reply__card { padding: 12px 14px 12px 17px; }
 /* The composer already carries its own surface, so inside the widget dock it
-   drops the outer bar chrome and runs a denser variant of the same markup. */
+   drops the outer bar chrome and runs a denser variant of the same markup.
+   ★Плотность - это отступы и размер кнопок, НЕ скругление. Своего радиуса у
+   дока и не было: он стоял ступенью НИЖЕ комнаты, пока комната стояла на
+   поверхностной. После переезда комнаты на ступень контрола док остался бы
+   скруглён СИЛЬНЕЕ полноразмерного - один объект с двумя разными углами.
+   Ступень теперь общая, у дока остаются свои отступы и отсутствие тени. */
 .dock-panel .chat-composer { border-top: 0; padding: 0; }
-.dock-panel .chat-composer__row { border-radius: var(--r-md); padding: 6px; box-shadow: none; }
+.dock-panel .chat-composer__row { padding: 6px; box-shadow: none; }
 .dock-panel .chat-at, .dock-panel .chat-send { width: 34px; height: 34px; border-radius: var(--r-sm); }
 .dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
@@ -3345,17 +3454,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-cellbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
     /* Empty add-cells recede so unfilled rows don't read as a column of dashed
        boxes; they surface on row hover or keyboard focus. */
-    .te-cellbtn--ghost { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
+    .te-cellbtn--ghost { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
     .te-row:hover .te-cellbtn--ghost { opacity: 1; }
     .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
     /* add-cell hover takes the cell's own event colour (design .edl: hotel=blue, activity=pink) */
     .te-cell--hotel .te-cellbtn--ghost:hover,
     .te-cell--act .te-cellbtn--ghost:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
     @media (hover: none) { .te-cellbtn--ghost { opacity: 1; } }
-    .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1.5px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
+    .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
     .te-hotelicon.is-warn { background: var(--warning-soft); }
-    .te-actchip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1.5px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
+    .te-actchip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
     .te-actchip:hover { border-color: var(--ev-activity); }
     .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: scale(0.94); }
     .te-actchip.is-warn { background: var(--warning-soft); color: var(--warning-ink); }
@@ -3390,11 +3499,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
-    .te-seam__pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1.5px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
+    .te-seam__pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
     .te-seam__pill:hover { box-shadow: var(--sh-3); transform: translateY(-1px) scale(1.02); }
     .te-seam__pill:active { transform: scale(0.96); }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
-    .te-seam__pill--add { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); gap: 7px; box-shadow: var(--sh-1); }
+    .te-seam__pill--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); gap: 7px; box-shadow: var(--sh-1); }
     .te-seam__pill--add:hover { color: var(--ev-transfer-ink); border-color: var(--ev-transfer); background: var(--ev-transfer-soft); transform: translateY(-1px); }
 
     .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
@@ -3420,15 +3529,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .lp-country .cflag { flex: none; }
 
 .lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line); }
-.lp-h .lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
+/* Геометрия плитки `.lp-ic` объявлена ОДИН раз - ниже, в блоке EDITOR SIDE
+   PANELS. Тут стояла её побайтовая копия под `.lp-h .lp-ic`; лишняя ступень
+   специфичности ничего не держала (свойства те же), но перебивала бы правку
+   канона, если бы копии разошлись. */
 /* TRIP-321 Ф13: `.ti` УДАЛЁН - мёртвый предшественник `.lp-ti`. Ноль вызовов
    className во всём src (проверено разбором самих className, а не грепом слова:
    `ti` сидит подстрокой в `ai-blk-ti` и `lp-ti` и грепом читается как живой), а
    заголовок панели несёт `.lp-ti` с тем же `<b>` внутри. Вместе с правилами
    ушли ко-селекторы `.ti b` и `.ti span` из списков типографики выше. */
-/* Unified panel back button — solid surface chip, always clearly visible with a
-   non-blending hover (used in every light panel header). */
-.lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
+/* Кнопка «уйти отсюда» в шапке панели/диалога. Была ДВУМЯ классами: этот и
+   `.ev-dlg-close` - в одной и той же шапке `.lp-h`, разной формы (34px пилюля
+   против 30px со скруглением контрола) и разного цвета покоя. Объект один:
+   пять точек вызова из семи носили второй, поэтому его форма и победила, а имя
+   осталось за этим - оно не врёт про объект и живёт в семействе шапки.
+   Вариация - ТОЛЬКО глиф (× или стрелка), его ставит вызыватель; РАЗМЕР держит
+   класс (`.lp-back svg`), иначе одна и та же кнопка ехала бы 14/15/16 в
+   зависимости от того, что за `size` написали в точке вызова.
+   Подсветку несёт ручка `--hl` ниже по файлу, а не своё правило ховера. */
+.lp-back { width: 30px; height: 30px; border-radius: var(--r-sm); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
+.lp-back svg { width: 15px; height: 15px; }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
@@ -3455,11 +3575,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bt span { color: var(--muted); }
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
-.gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); background: transparent; border: 1.5px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
+.gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); background: transparent; border: 1px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
 .gadd:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); transform: translateY(-1px); }
 .gi { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--secondary); display: grid; place-items: center; color: var(--muted); flex: none; transition: .16s; }
 /* inside a ghost-add the icon is a DASHED placeholder (design-system .gadd .gi) */
-.gadd .gi { width: 34px; height: 34px; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
+.gadd .gi { width: 34px; height: 34px; border: 1px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
 .gadd:hover .gi { border-color: var(--a, var(--brand)); color: var(--a, var(--brand)); }
 /* Без плитки слева содержимое встаёт по центру: так выглядит «добавить ещё
    город» в планировщике - там нечему стоять слева, кнопка замыкает список. */
@@ -3488,9 +3608,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .addr div { color: var(--ink-2); }
 /* Notes block — Lumo .notes: surface-3 card with hairline border. */
 .notes { color: var(--ink-2); padding: 11px 13px; border-radius: var(--r-sm); white-space: pre-wrap; word-break: break-word; }
-/* Document upload field (dropzone + file rows) — unified on the DocsLens
-   reference classes .dl-dropzone / .dl-uplist / .dl-upitem (DocsLens.css),
-   reused by DocumentsField so the field looks identical everywhere (TRIP-275). */
 /* Planning left list: hide the scrollbar entirely (still scrolls). */
 .ts-leftscroll { scrollbar-width: none; -ms-overflow-style: none; }
 .ts-leftscroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
@@ -3593,7 +3710,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ovwrap .ov-col:first-child { container-type: inline-size; }
 
 /* ---- widget shell ---- */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тень только на ховере как affordance */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тень только на ховере как affordance */
 .wdg {
   overflow: hidden;
   transition: transform .16s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s var(--ease-out);
@@ -3712,7 +3829,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 .tl3-ev { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-199); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-199); тут только раскладка */
 .tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
 @media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); } }
 /* Единственный экземпляр семейства, существовавший до примитива: геометрия
@@ -3946,7 +4063,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    теме это то же значение, в тёмной .16 против .14 (см. блок .tile--*). */
 
 /* profile hero */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .acct-hero { position: relative; overflow: hidden; }
 .acct-hero__band { height: 84px; background: var(--brand-grad); position: relative; overflow: hidden; }
 .acct-hero__band .blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.16); pointer-events: none; }
@@ -4351,7 +4468,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* "Add trip" phantom card */
 .tc-add {
-  border: 1.5px dashed var(--line-strong); background: transparent;
+  border: 1px dashed var(--line-strong); background: transparent;
   border-radius: var(--r-card); padding: 24px;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   gap: 10px; cursor: pointer; color: var(--muted); min-height: 256px; font-family: inherit;
@@ -4369,7 +4486,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tc-add small { text-align: center; max-width: 200px; }
 
 /* ── Строка-список (list view) ─────────────────────────────── */
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .tr {
   display: flex; align-items: center; gap: 14px;
   padding: 11px 14px;
@@ -4418,7 +4535,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* List-view "add trip" placeholder — mirrors the grid .tc-add language but as a
    row, reusing .tr / .tr__main. Placed after .tr so it wins on equal specificity. */
 .tr--add {
-  border: 1.5px dashed var(--line-strong);
+  border: 1px dashed var(--line-strong);
   background: transparent;
   box-shadow: none;
   color: var(--muted);
@@ -4544,15 +4661,14 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* ── Plan card ── */
 .plan-card {
   position: relative; display: flex; flex-direction: column;
-  background: var(--surface); border: 1.5px solid var(--line);
   border-radius: var(--r-card);
   transition: box-shadow .22s var(--ease-out), border-color .2s;
 }
 /* Featured (Yearly) = the PRO plan → bound to the --pro accent (not --brand):
    a --pro-gradient BORDER over a surface fill (gradient-border trick), matching
-   the design's 1.5px pro-gradient wrapper. */
+   the design's pro-gradient wrapper. */
 .plan-card--featured {
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   background:
     linear-gradient(var(--surface), var(--surface)) padding-box,
     var(--pro-gradient) border-box;
@@ -4611,8 +4727,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Plan card skeleton — THIS is the only thing that animates in (staggered). The
    real .plan-card then swaps in statically on top, so the reveal plays once. */
 .plan-card-skel {
-  border-radius: var(--r-card); background: var(--surface);
-  border: 1.5px solid var(--line); padding: 24px;
+  border-radius: var(--r-card); padding: 24px;
   animation: cardReveal .45s var(--ease-out) var(--card-delay, .05s) both;
 }
 
@@ -4624,7 +4739,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .pro-trip-bar {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 18px 22px; border-radius: var(--r-card);
-  border: 1.5px solid var(--line); background: var(--surface);
 }
 .pro-trip-bar__actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
@@ -4774,8 +4888,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* ─── Document format badge ─────────────────────────────────────────────────
    Leads every document row on every screen that shows one (documents lens,
-   document field, event read view) — one look for one attachment, wherever it
-   appears. Rendered only by `FileTypeBadge`; a screen must not restyle it, or
+   document field, event read view, booking parse) — one look for one attachment,
+   wherever it appears. It reaches all four through `FileRow`, which is the only
+   thing that draws a file row at all.
+   Rendered only by `FileTypeBadge`; a screen must not restyle it, or
    the same file starts looking different depending on where you opened it.
    The `dl-` prefix does not scope it to the documents lens. */
 .dl-ftag {
@@ -4812,16 +4928,31 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* TRIP-321 Ф14.5, апрув Pavel. Вложенный файл рисовался ЧЕТЫРЬМЯ реализациями:
    .doc-row (просмотр события), .dl-filechip и .dl-upitem (Документы, лежали в
    одном файле и отличались одним пикселем) и .ai-file (распознавание брони).
-   Разница между ними была 1px по вертикали и цвет рамки - решение Pavel: файл
-   выглядит одинаково везде, рамка ИИ остаётся вариантом.
-   Рамка - модификатор, а не своё семейство: строка-ССЫЛКА (просмотр события)
-   рамки не носит, поэтому она не может уехать в базовый класс. Гашение ховера
-   у обоих вариантов обязательно: `.doc-row:hover` специфичнее модификатора и
-   иначе перекрасил бы фон рамочной строки, которая ссылкой не является. */
-.doc-row--framed{background:var(--surface-3);border:1px solid var(--line);}
-.doc-row--framed:hover{background:var(--surface-3);}
-.doc-row--ai{background:var(--surface);border:1.5px solid var(--ai-soft-2);}
-.doc-row--ai:hover{background:var(--surface);}
+   Решение Pavel: файл выглядит одинаково везде, рамка ИИ остаётся вариантом.
+
+   ★★TRIP-333: «одинаково» доведено до конца. Скин у строки ОДИН - фон и рамка
+   роли (co-selector «строки-списки и ряды» в начале файла, TRIP-326), и
+   вариант остался ровно один - ИИ, и тот отличается ТОЛЬКО цветом рамки.
+   Заливка `--surface-3`, которую носили Документы трипа и поле формы, снята:
+   тот же список файлов в просмотре события был белым, поэтому одно и то же
+   наведение давало РАЗНЫЙ скачок - с белого на серый в одном месте и почти
+   незаметную ступень в другом. Разницы за этим не стояло никакой: оба списка
+   лежат на одной и той же светлой подложке.
+   ⚠ Тонировать ВСЕ вместо этого было нельзя, и ломается это ровно в ОДНОЙ
+   точке вызова из шести: у типа «услуга» список висит внутри `.ev-sec`, а тот
+   сам `--surface-3` - тонированная строка на нём пропала бы. Остальные тела
+   просмотра кладут список в `.hv-sec`, у которого фона нет вовсе.
+   ★Ховер этот заход НЕ менял: он был сведён к общему `--surface-2` раньше, а
+   выглядел разным именно из-за расхождения ПОКОЯ - с белого скачок вдвое
+   больше, чем с тонированного. У ИИ-строки ступень своего семейства -
+   тот же `--ai-soft`, которым подсвечиваются строка упоминания в чате и
+   «собачка» композера. `--ai-soft` полупрозрачен, то есть подмешивается к фону
+   РОДИТЕЛЯ: у себя дома (`.ai-blk`, родитель `--surface`) это ожидаемый тон;
+   на более тёмной подложке оттенок уедет вместе с ней.
+   ⚠ Правило ИИ обязано стоять НИЖЕ базового ховера: специфичность у них
+   одинаковая (0,2,0), решает порядок. */
+.doc-row--ai{border:1px solid var(--ai-soft-2);}
+.doc-row--ai:hover{background:var(--ai-soft);}
 /* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),
    с одинаковым поведением: прозрачная кнопка, при наведении - опасный тон. */
 .doc-row__rm{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted-2);cursor:pointer;display:grid;place-items:center;flex:none;transition:background .14s,color .14s;}
@@ -4833,34 +4964,34 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   EVENT/SERVICE DIALOGS — Lumo redesign (view + edit), 2026-06-08
-   Self-contained .ev-dlg system. Uses --ev-color/--ev-soft/--ev-ink set on the
-   .ev-dlg root by the caller. Additive: does not touch the legacy panel class
-   .notes used by the trip-editor left panels.
+   EVENT/SERVICE — содержимое (view + edit), Lumo, 2026-06-08
+   ★Оболочки тут БОЛЬШЕ НЕТ. Своё семейство `.ev-dlg-*` (шапка, плитка типа,
+   тело, футер) удалено в TRIP-333 §4: у события одна оболочка, и она общая с
+   панелями - `.lp-h` / `.lp-b` / `.lp-f` (объявлены ниже, в блоке EDITOR SIDE
+   PANELS). Здесь остаётся то, что живёт ВНУТРИ оболочки и одинаково в обеих:
+   ряд действий, секции, пары ключ-значение, поля формы.
+   Тон берётся из --ev-color/--ev-soft/--ev-ink, которые вызыватель ставит на
+   корень оболочки (контейнер диалога у модалки, `.lp` у панели).
+   ★Кнопка ухода тоже уехала: `.ev-dlg-close` был вторым именем для `.lp-back`
+   и удалён, объект один (см. `.lp-back` в блоке панелей).
+   ⚠Своего правила у `.ev-dlg` нет и не нужно: три объявления, что тут стояли
+   (`display:flex; flex-direction:column; overflow:hidden`), слово в слово
+   повторяли `.dlg`, а `.dlg` носит КАЖДЫЙ DialogContent. Класс остаётся
+   ЗАЦЕПКОЙ для `.ev-dlg .field__label` - он метит «это оболочка события»,
+   а не рисует её.
    ═══════════════════════════════════════════════════════════════════════════ */
-.ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
-.ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;flex:none;}
-.ev-dlg-hd::before{content:'';position:absolute;inset:0;background:var(--ev-soft);z-index:0;}
-.ev-dlg-hd>*{position:relative;}
-.ev-dlg-ic{width:44px;height:44px;border-radius:var(--r-btn);background:var(--ev-color);color:#fff;display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px color-mix(in srgb,var(--ev-color) 50%,transparent);}
-.ev-dlg-ic svg{width:21px;height:21px;}
-.ev-dlg-info{flex:1;min-width:0;}
-.ev-dlg-eyebrow{ color:var(--ev-ink); margin-bottom:3px;}
-.ev-dlg-info h2{ color:var(--ink); white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;}
-.ev-dlg-info .sub{ color:var(--muted); margin-top:1px;}
-.ev-dlg-price{text-align:right;flex:none;}
-.ev-dlg-price .amt{ color:var(--ink);}
-.ev-dlg-price .cur{ color:var(--muted); }
-.ev-dlg-close{width:30px;height:30px;border-radius:var(--r-sm);color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:background .12s,color .12s;}
-.ev-dlg-close:hover{background:var(--surface-2);color:var(--ink);}
-.ev-dlg-close svg{width:15px;height:15px;}
-.ev-dlg-body{padding:15px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:11px;align-items:stretch;}
-.ev-dlg-ft{padding:11px 20px;border-top:1px solid var(--line);background:var(--wash);display:flex;gap:7px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end;}
 /* Top action chips (booking link + "on map") — wrap on narrow widths. */
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
-.ev-sec{border-radius:var(--r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
-.ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ev-color,var(--brand));}
+.ev-sec{padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
+/* Заголовок раздела - ОДИН на просмотр и на форму (TRIP-333). Раньше это были
+   два разных объекта: тут мелкая метка канона `.t-micro` цветом типа события, а
+   в форме (`.acc__title`) - `.t-ui` цветом `--ink`. Один и тот же «Детали
+   брони» читался как подпись в одном месте и как заголовок в другом.
+   Канон и цвет теперь общие (`.t-ui` ставится в разметке, цвет `--ink`), а
+   тип события несёт ПЛАНКА-АКЦЕНТ ниже - это вариация чтения, как шеврон и
+   бейдж - вариация формы. */
+.ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ink);}
 .ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
 .ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
 /* key/value grid */
@@ -4871,8 +5002,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
-/* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border-radius:var(--r-xl);overflow:hidden;}
+/* Роль КОНТРОЛА, а не поверхности: блок дат - это пара полей в общей рамке,
+   как `.input-group`. Рамку, фон, тень и радиус он берёт из общего скина
+   контрола (co-selector с `.input`); здесь остаётся только его раскладка. */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
@@ -4894,7 +5027,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
-.hv-namecard{padding:16px 17px;border-radius:var(--r-md);}
+.hv-namecard{padding:16px 17px;}
 .hv-name{ color:var(--ink);line-height:1.2;}
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
 .hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
@@ -4907,10 +5040,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
 .hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
-.hv-card{padding:13px 15px;border-radius:var(--r-md);}
+.hv-card{padding:13px 15px;}
 .hv-price{ color:var(--ink);}
 .hv-pernight{ color:var(--muted);margin-top:2px;}
-.hv-rows{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;}
+.hv-rows{display:flex;flex-direction:column;overflow:hidden;}
 /* Раскладку даёт .row .row--g6 в разметке (зазор 12 = ступень --sp-6, ТОЧНОЕ
    совпадение). Отбивка своя: строка живёт внутри рамки .hv-rows, у которой нет
    боковых полей, - в отличие от .row--div, что стоит в .card со своими полями. */
@@ -4921,7 +5054,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-row__k{flex:none; color:var(--muted);}
 .hv-row__sp{flex:1;}
 .hv-row__v{ color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;}
-.hv-notes{padding:12px 14px;border-radius:var(--r-md); color:var(--ink-2);line-height:1.5;}
+.hv-notes{padding:12px 14px; color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--brand);}
@@ -4941,7 +5074,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .badge--on-arrival{background:var(--primary-soft);color:var(--brand);}
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
-.tv-card{padding:16px 17px;border-radius:var(--r-md);}
+.tv-card{padding:16px 17px;}
 .tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
 /* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8), размер иконки - .badge svg;
    здесь остаются только тона. */
@@ -4984,10 +5117,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ev-dlg .field__label,
 .lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
 /* Отдельного «аккуратного» варианта поля для диалогов и панелей БОЛЬШЕ НЕТ
-   (TRIP-333). Здесь TRIP-186 переопределял рамку на 1px и радиус на `--r-md`,
-   то есть одно и то же поле выглядело по-разному в зависимости от того, в какой
-   оболочке оно открыто, - а это ровно то, что задача убирает. Канон один:
-   рамка 1.5px, радиус `--r-btn`. */
+   (TRIP-333). Здесь TRIP-186 переопределял рамку и радиус, то есть одно и то же
+   поле выглядело по-разному в зависимости от того, в какой оболочке оно открыто,
+   - а это ровно то, что задача убирает. Канон один и объявлен в `.input`;
+   значения не дублируются сюда, чтобы эта запись не разошлась с ним. */
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
@@ -5005,9 +5138,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
   textarea, select { font-size: var(--fs-h4) !important; }
-  /* View-modal footer actions (Delete / Edit) share the row evenly instead of
-     crowding on phones. */
-  .ev-dlg-ft .btn { flex: 1 1 auto; justify-content: center; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -5015,7 +5145,19 @@ a.doc-row__n:hover{ color: var(--brand); }
    Reuses existing .lp-h / .lp-b / .lp-f / .lp-back / .lp-hero / .stepper /
    .bookrow / .gadd / .ai-blk*. Adds the design shell + tinted header + bits.
    ═══════════════════════════════════════════════════════════════════════════ */
-.lp { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }  /* TRIP-176: драйвер сливается с фоном приложения (var(--bg)), а не «приподнят» через --surface */
+/* Панель - ПОВЕРХНОСТЬ, как всё остальное. TRIP-176 давала ей фон приложения
+   (`--bg`), чтобы «сливалась», и это разъехалось: одна и та же форма события
+   имела ТРИ заливки - панель редактирования возвращала себе `--surface`
+   ИНЛАЙНОМ, панель создания оставалась на `--bg`, модалка была `--surface` из
+   роли. Фон и рамку панель берёт из роли своим именем, радиус - из ступени
+   оболочки; здесь остаётся только тень и раскладка. */
+/* ОБОЛОЧКА формы - одна заливка на панель и на модалку, и это заливка
+   СОЗДАНИЯ (`--bg`, фон приложения): редактирование обязано выглядеть как
+   создание, а не наоборот. Раньше панель была `--bg`, модалка `--surface`, а
+   панель редактора возвращала себе `--surface` инлайном - три заливки у одной
+   формы. Объявлено ЗДЕСЬ, у обеих, поэтому разъехаться больше нечему. */
+.lp, .dlg { background: var(--bg); }
+.lp { box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }
 .lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .lp-ic svg { width: 17px; height: 17px; }
 .lp-ti { min-width: 0; flex: 1; }
@@ -5025,11 +5167,23 @@ a.doc-row__n:hover{ color: var(--brand); }
    TRIP-176: soft vertical gradient — one drawer-header look shared by the
    add-booking panel and the view/edit panels. */
 .lp-h--ev { background: linear-gradient(180deg, var(--ev-soft, var(--primary-soft)), transparent 94%); border-bottom-color: color-mix(in srgb, var(--ev-soft, var(--primary-soft)) 60%, var(--line)); }
+/* Плитка типа события. Цвет брался ИНЛАЙНОМ во всех ЧЕТЫРЁХ шапках события
+   (просмотр в диалоге и в панели, редактор, добавление) - одним и тем же
+   выражением, при том что `--ev-color` уже лежит на корне оболочки. Повторённый
+   у существующего класса инлайн - ошибка КЛАССА, а не образец для копирования,
+   поэтому значение переехало сюда. Скоуп именно `--ev`: `.lp-ic` носят и
+   не-событийные шапки (город, маршрут, партнёр), у них свои тона. */
+.lp-h--ev .lp-ic { background: var(--ev-color, var(--brand)); color: #fff; }
+/* Эйбрау шапки события - ровно тот же случай, что плитка выше: тон писался
+   инлайном в трёх шапках из четырёх, а четвёртая (просмотр в диалоге) держала
+   его правилом удалённого семейства и после схлопывания осталась бы с базовым
+   серым `.eyebrow`. Токен взят `--ev-ink`, а не `--ev-color`: это ТЕКСТ, а
+   `--ev-ink` и заведён как читаемая версия цвета типа события. */
+.lp-h--ev .eyebrow { color: var(--ev-ink, var(--ev-color, var(--brand))); }
 /* eyebrow (type) + title(city) · meta(dates) row — shared drawer-header title. */
 .lp-tirow { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
 .lp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-tirow span { flex: none; }
-.lp-h--ev .lp-back { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .sec-lbl .sl { color: var(--ev-ink, var(--brand)); }
@@ -5101,7 +5255,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22mk { position: relative; display: inline-grid; place-items: center; cursor: pointer; }
 .s22mk__core {
  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px;
- background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--r-pill);
+ background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-pill);
  box-shadow: 0 3px 10px -3px rgba(20,24,40,.28), 0 1px 2px rgba(20,24,40,.16);
  color: var(--ink);
  font-variant-numeric: tabular-nums; white-space: nowrap;
@@ -5314,7 +5468,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--line); }
 .map-skel { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); gap: 8px; z-index: 1; }
 
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .wmini { padding: 18px 20px; position: relative; overflow: hidden; }
 .wmini .top { display: flex; align-items: center; gap: 13px; position: relative; z-index: 1; }
 .wring { position: relative; flex: none; }
@@ -5325,7 +5479,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ring__c .l { color: var(--muted); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
 
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 @media (hover: hover) { .nextcard:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
 .nextcard:active { transform: translateY(0) scale(.995); }
@@ -5341,7 +5495,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .cdu { text-align: center; border-radius: var(--r-sm); padding: 7px 0; flex: 1; min-width: 0; }
 .cdu b { display: block; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cdu span { color: var(--muted); }
-/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+/* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }
@@ -5357,7 +5511,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
-/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; margin-top: 18px; }
 @media (max-width: 1040px) { .summary { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
@@ -5376,7 +5530,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Base white card container (V4). Was missing — so .panel / .panel.world /
    .panel.chart rendered with no background, leaving continents, the country/city
    list and the year chart sitting bare on the page. Used only by the stats blocks. */
-/* .panel — скин (panel) целиком из группового селектора .surface-panel (TRIP-189) */
+/* .panel — скин (panel) целиком из группового селектора поверхностей в начале файла (TRIP-189) */
 
 /* — world ring + continents — */
 .world { display: grid; grid-template-columns: 230px 1fr; gap: 24px; padding: 24px; position: relative; overflow: hidden; align-items: center; margin-top: 18px; }
@@ -5568,10 +5722,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-searchrow { display: flex; gap: 10px; }
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .s22f-search { flex: 1; }
-.s22f-fbtn { position: relative; flex: none; width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-btn); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
+.s22f-fbtn { position: relative; flex: none; width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-btn); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
 .s22f-fbtn:hover { border-color: var(--line-hover); }
 .s22f-fbtn:active { transform: scale(.96); }
-.s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
 .s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
 .s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
 
@@ -5579,14 +5733,13 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-pmuted { color: var(--muted); }
 /* Только раскладка: скин и состояния держит `<InputGroup>` (TRIP-333). */
 .s22f-field { flex: 1; }
-.s22f-cur { color: var(--muted); flex: none; }
 .s22f-dash { color: var(--muted-2); flex: none; }
 .s22f-selwrap { position: relative; }
-.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; min-height: var(--ctl-h); border-radius: var(--r-md); padding: 0 40px 0 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут; TRIP-333: фон и высота - общие с .input */
-.s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; min-height: var(--ctl-h); border-radius: var(--r-btn); padding: 0 40px 0 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут; TRIP-333: фон, высота И СТУПЕНЬ СКРУГЛЕНИЯ - общие с .input. Пока --r-btn был 14, а --r-md 16, чужой токен был невиден; на 10 против 16 селект стал заметно круглее полей цены прямо над ним. */
+.s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
 .s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
 
-.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-md); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
+.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; border-radius: var(--r-btn); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
 .s22f-panelfoot .btn { flex: 1; }

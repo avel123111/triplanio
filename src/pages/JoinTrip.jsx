@@ -25,7 +25,7 @@ const STYLES = `
   transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
 .jt-btn:hover{transform:translateY(-2px);box-shadow:0 16px 32px -10px rgba(33,115,200,.62);}
 .jt-btn:active{transform:translateY(0);}
-.jt-btn--ghost{background:transparent;color:#2173C8;box-shadow:none;border:1.5px solid #E9E8F2;margin-top:14px;}
+.jt-btn--ghost{background:transparent;color:#2173C8;box-shadow:none;border:1px solid #E9E8F2;margin-top:14px;}
 .jt-btn--ghost:hover{background:rgba(33,115,200,.06);border-color:#62A6F0;transform:none;}
 .jt-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(33,115,200,.08);color:#2173C8;
   padding:8px 14px;border-radius:var(--r-pill);margin-bottom:22px;}

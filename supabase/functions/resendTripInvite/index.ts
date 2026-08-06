@@ -9,7 +9,7 @@
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { isCallerAdmin } from '../_shared/tripAccess.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { renderInviteTemplate } from '../_shared/emailTemplate.ts';
 import { sendEmail } from '../_shared/sendEmail.ts';
 
@@ -31,8 +31,8 @@ Deno.serve(withHandler('resendTripInvite', async (req, corsHeaders) => {
       return Response.json({ error: 'Invitation is not pending' }, { status: 400, headers: corsHeaders });
     }
 
-    const callerIsAdmin = await isCallerAdmin(member.trip_id, user.id);
-    if (!callerIsAdmin) {
+    const callerIsEditor = await isCallerEditor(member.trip_id, user.id);
+    if (!callerIsEditor) {
       return Response.json({ error: 'Only trip admins can resend invitations' }, { status: 403, headers: corsHeaders });
     }
 

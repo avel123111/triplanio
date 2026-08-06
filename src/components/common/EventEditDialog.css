@@ -1,7 +1,11 @@
 /* EventEditDialog — ported off Tailwind onto Lumo tokens (TRIP-53 / ретайр Tailwind, Этап 1b).
    1:1 visual port. radius values mirror the former tailwind.config (rounded-lg = var(--r-md),
-   rounded-sm = calc(var(--r-md) - 8px)) so the result is pixel-identical. Keep the calc:
-   Tailwind's rounded-sm was 8px here, while our --r-sm is 11px — not the same radius. */
+   rounded-sm = calc(var(--r-md) - 8px)) so the result is pixel-identical.
+   ⚠ Причина держать этот calc ОТПАЛА: он писался, когда `--r-sm` было 11px и от
+   Tailwind-овских 8px отличалось. После TRIP-333 `--r-sm` = 8px, то есть calc и
+   ступень шкалы сегодня дают ОДНО значение. Само по себе совпадение цифр - не
+   повод схлопывать (прогон по значениям сделал чекбокс круглым в Ф3b): решать
+   надо по смыслу элемента, при переводе этого экрана на шкалу. */
 
 
 /* transport-kind picker — was: grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3 */
@@ -11,8 +15,10 @@
 /* FROM / TO eyebrow labels — was: text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold.
    Typography now on the .t-micro canon (co-selector in app.css). */
 
-/* free-cancellation box — was: rounded-lg border bg-secondary/30 p-3 */
-.eed-fcbox { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-xl); padding: 12px; }
+/* free-cancellation box — was: rounded-lg border bg-secondary/30 p-3.
+   Скин (фон+рамка) — роль поверхности, скругление — ступень вложенного
+   контейнера; оба co-selector'а в app.css. Здесь только раскладка. */
+.eed-fcbox { padding: 12px; }
 .eed-fclabel { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }   /* flex items-start gap-2 cursor-pointer */
 .eed-fcbody { flex: 1; }                                                   /* flex-1 */
 /* .eed-fctitle typography now on the .t-ui canon (co-selector in app.css) */
@@ -39,7 +45,7 @@
 /* position: anchor for the AI badge — .stay-dates below is overflow:hidden and
    would clip it, so the badge pins to this outer block instead (TRIP-277). */
 .eed-dateblock { margin-bottom: 12px; position: relative; }
-.eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-micro (JSX, TRIP-183) */
+.eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-ui (co-selector в app.css, TRIP-333) */
 /* Finance block (design "Стоимость за всё"): price+currency row + payment pills */
 .eed-finance { margin-bottom: 12px; }
 .eed-pricerow { display: grid; grid-template-columns: 1fr 108px; gap: 8px; }
@@ -47,7 +53,7 @@
 .eed-finance .seg { margin-top: 10px; }
 /* Overnight — standalone card below the transfer date-range (design). TRIP-186:
    порядок свитч · иконка · текст, всё прижато влево (flex:1 убран). */
-.eed-nightrow { display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 12px 14px; margin-top: 12px; border-radius: var(--r-xl); border: 1px solid var(--line); background: var(--surface); }
+.eed-nightrow { display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 12px 14px; margin-top: 12px; }
 .eed-nightrow__l { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); }
 /* Second stacked row inside an accordion body — spacing between rows. */
 .eed-accrow { margin-top: 10px; }

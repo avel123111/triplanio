@@ -11,9 +11,11 @@
  *      never block the delete).
  *   3. The trip DELETE last; Postgres cascades wipe the child tables.
  *
- * Auth: OWNER ONLY (trips.created_by === caller). Mirrors the RLS policy
- * `trips_delete: created_by = auth.uid()` — the admin client bypasses RLS, so
- * the check is duplicated explicitly here.
+ * Auth: OWNER ONLY (trips.created_by === caller). This check IS the gate, not a
+ * mirror of one: since TRIP-190 Ф3c the `trips` table has a single policy left
+ * (`trips_select`) and `update`/`delete` are revoked from `authenticated`
+ * outright, so there is no `trips_delete` RLS policy to mirror. Every write to
+ * `trips` goes through an edge function on the service role.
  *
  * Storage layout. Every trip file lives in the single private `trips` bucket as
  * `<tripId>/<uid>-<file>` (covers included), so the whole trip is one flat
@@ -57,7 +59,7 @@ Deno.serve(withHandler('deleteTrip', async (req, corsHeaders) => {
     const tripId = body?.tripId;
     if (!tripId) return Response.json({ error: 'Missing tripId' }, { status: 400, headers: corsHeaders });
 
-    // Step 1 — ownership: OWNER ONLY (mirrors RLS trips_delete).
+    // Step 1 — ownership: OWNER ONLY. There is no RLS behind it; this is the gate.
     const { data: trip, error: tripErr } = await supabaseAdmin
       .from('trips').select('id, created_by').eq('id', tripId).single();
     if (tripErr || !trip) return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });

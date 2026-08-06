@@ -23,6 +23,8 @@
 
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
+import { callerStep } from '../_shared/tripAccess.ts';
+import { clearsStep } from '../_shared/tripStep.ts';
 import { withHandler } from '../_shared/http.ts';
 import { fetchTripProfiles } from '../_shared/profiles.ts';
 
@@ -75,27 +77,14 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
       return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
     }
 
-    // Access check — ALWAYS runs (user is guaranteed non-null above).
-    // Caller must be the trip creator or an active member.
-    const isCreator = trip.created_by === user.id;
-    if (!isCreator) {
-      const { data: memberRows, error: memberError } = await supabaseAdmin
-        .from('trip_members')
-        .select('id')
-        .eq('trip_id', tripId)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .limit(1);
-
-      // A failed membership query must NOT read as "not a member" (false 403).
-      // Fail LOUD → 5xx so the client retries instead of showing "No access". TRIP-208.
-      if (memberError) throw memberError;
-
-      const isMember = (memberRows ?? []).length > 0;
-
-      if (!isMember) {
-        return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
-      }
+    // Access check — ALWAYS runs (user is guaranteed non-null above). Reading a
+    // trip is the `participant` step: a viewer is MEANT to pass here.
+    // `callerStep` rather than `isCallerParticipant` because the trip row is
+    // already in hand — the latter would re-read `trips` a second time, and this
+    // runs on every trip open. The rule itself is the shared one (TRIP-274); a
+    // failed membership query throws → 5xx, never a false 403 (TRIP-208).
+    if (!clearsStep(await callerStep(tripId, user.id, trip.created_by), 'participant')) {
+      return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 
     // Build parallel fetch list — only what was requested

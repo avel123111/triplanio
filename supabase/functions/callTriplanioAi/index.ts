@@ -2,6 +2,8 @@ import { HttpError, readJson, withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
+import { callerStep } from '../_shared/tripAccess.ts';
+import { clearsStep } from '../_shared/tripStep.ts';
 
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/group-chat';
 
@@ -53,16 +55,15 @@ Deno.serve(withHandler('callTriplanioAi', async (req, corsHeaders) => {
       .single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    const isCreator = trip.created_by === user.id;
-    if (!isCreator) {
-      const { data: member } = await supabaseAdmin
-        .from('trip_members')
-        .select('id')
-        .eq('trip_id', msg.trip_id)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle();
-      if (!member) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    // Обращение к ассистенту — ступень `participant`: viewer пишет в чат, и это
+    // решение в силе (тот же предикат держит send_chat_message). `callerStep`, а
+    // не `isCallerParticipant`, потому что строка трипа уже прочитана выше.
+    //
+    // Прежняя рукописная копия разбирала только `data` и роняла ошибку запроса
+    // на пол: транзиентный сбой БД читался как «ты не участник» и отдавал 403
+    // живому участнику. Шов держит контракт TRIP-208 и падает громко в 5xx.
+    if (!clearsStep(await callerStep(msg.trip_id, user.id, trip.created_by), 'participant')) {
+      return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 
     // ── Pro/addon-гейт (TRIP-47) ──

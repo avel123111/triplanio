@@ -64,28 +64,34 @@
 
 /* ─── File chips ──────────────────────────────────────────────── */
 /* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
-   design/app.css next to `.doc-row`, since three screens draw it. */
+   design/app.css next to `.doc-row`, since all four callers of `FileRow` draw
+   it (documents lens, document field, event read view, booking parse). */
 .dl-filemore {
   color: var(--muted); padding: 2px 4px;
 }
 
-/* ─── Link row (in card: visual only; in detail: real link) ───── */
+/* ─── Link row (в карточке: только вид; в диалоге ссылка своя, .dl-dview-link) ───
+   Была залита токенами события «ОТЕЛЬ» (--ev-hotel-soft / --ev-hotel-ink), хотя
+   ссылка произвольная и к отелю отношения не имеет: смысл токена к объекту не
+   относится. Тон нейтральный. Цвета обеих иконок стояли инлайнами тем же чужим
+   токеном - переехали сюда. */
 .dl-linkrow {
   display: flex; align-items: center; gap: 9px;
   padding: 9px 11px; border-radius: var(--r-sm);
-  background: var(--ev-hotel-soft); text-decoration: none;
+  background: var(--wash); text-decoration: none;
 }
 .dl-linkrow b {
-  color: var(--ev-hotel-ink); flex: 1;
+  color: var(--ink-2); flex: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.dl-linkrow svg { color: var(--muted); flex-shrink: 0; }
 
 /* ─── Add-card ghost placeholder in grid ─────────────────────── */
 .dl-addcard {
   font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; min-height: 160px;
-  border: 1.5px dashed var(--line-strong); border-radius: var(--r-md);
+  border: 1px dashed var(--line-strong); border-radius: var(--r-md);
   background: transparent; color: var(--muted);
   cursor: pointer; text-align: center; padding: 18px;
   transition: border-color .18s, background .18s, color .18s, transform .16s var(--ease-spring);
@@ -117,7 +123,7 @@
 /* ─── Empty state ─────────────────────────────────────────────── */
 .dl-empty {
   text-align: center; padding: 40px 20px;
-  border: 1.5px dashed var(--line); border-radius: var(--r-md);
+  border: 1px dashed var(--line); border-radius: var(--r-md);
   background: var(--surface-3);
 }
 .dl-empty__ic {
@@ -142,7 +148,7 @@
 .dl-visopt {
   font: inherit;
   display: flex; align-items: center; gap: 10px; padding: 12px;
-  border: 1.5px solid var(--line-strong); border-radius: var(--r-btn);
+  border: 1px solid var(--line-strong); border-radius: var(--r-btn);
   cursor: pointer; background: var(--surface-3); text-align: left;
   transition: border-color .16s, background .16s;
 }

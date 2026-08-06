@@ -73,7 +73,7 @@
 .bgt-glist__r { text-align: right; flex: none; }
 .bgt-glist__v { color: var(--ink); }
 .bgt-glist__v.muted { color: var(--muted-2); }
-.bgt-glist__add { justify-content: center; width: 100%; padding: var(--sp-6); border-radius: var(--r-btn); border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; margin-top: var(--sp-2); transition: border-color .16s, color .16s, background .16s; }
+.bgt-glist__add { justify-content: center; width: 100%; padding: var(--sp-6); border-radius: var(--r-btn); border: 1px dashed var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; margin-top: var(--sp-2); transition: border-color .16s, color .16s, background .16s; }
 
 /* detail pane */
 .bgt-detail { padding: var(--sp-8); min-height: 280px; }
@@ -86,7 +86,7 @@
 
 /* expense rows */
 .bgt-exlist { padding-top: var(--sp-7); }
-.bgt-exrow { padding: var(--sp-6); border-radius: var(--r-btn); background: var(--surface); border: 1px solid var(--line); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+.bgt-exrow { padding: var(--sp-6); border-radius: var(--r-btn); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 .bgt-exrow__t { color: var(--ink); }
 .bgt-exrow__s { color: var(--muted); margin-top: var(--sp-2); }
 .bgt-exrow__s .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-2); flex: none; }
@@ -121,17 +121,11 @@
 }
 
 /* ════════ MODAL INTERNALS ════════ */
-/* Триггер выбора валюты внутри `<InputGroup>` (сумма + валюта, TRIP-333). Рамку,
-   фон и радиус группы держит контейнер, за этим классом осталась ширина
-   триггера и шов между суммой и валютой.
-   Шов обязан быть: до перевода на группу его роль играла правая рамка поля
-   суммы, и без него «1240 EUR» читается одной строкой. Селектор с `.input-group`
-   в начале - не украшение: голый класс весит (0,1,0) и проигрывает сбросу
-   скина `.input-group .input` (0,2,0), поэтому шов молча не рисовался.
-   1px `--line` вместо прежних 1.5px `--line-strong`: это внутренний
-   разделитель, а не внешняя граница коробки. */
-.bgt-amtgrp__cur { width: 122px; flex: none; }
-.input-group .bgt-amtgrp__cur { border-left: 1px solid var(--line); padding-left: 10px; }
+/* Триггер выбора валюты внутри `<InputGroup>` (сумма + валюта, TRIP-333). Зону,
+   разделитель и растяжку по высоте держит общий `.input-unit`; за этим классом
+   осталась ТОЛЬКО ширина триггера - она про длину названия валюты, а не про
+   устройство поля, и общей быть не должна. */
+.bgt-amtgrp__cur { width: 122px; }
 
 /* colour swatches */
 .bgt-swatch { cursor: pointer; border: 2.5px solid transparent; padding: 0; transition: transform .14s var(--ease-spring); }
@@ -139,7 +133,7 @@
 .bgt-swatch.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
 
 /* icon picker */
-.bgt-iconpick button { border: 1.5px solid var(--line); background: var(--wash-2); color: var(--muted); cursor: pointer; transition: background .14s, border-color .14s, color .14s; }
+.bgt-iconpick button { border: 1px solid var(--line); background: var(--wash-2); color: var(--muted); cursor: pointer; transition: background .14s, border-color .14s, color .14s; }
 
 /* fx rate rows */
 .bgt-fxrow { padding: var(--sp-6) 0; border-bottom: 1px solid var(--line); }

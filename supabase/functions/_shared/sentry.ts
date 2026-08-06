@@ -40,9 +40,6 @@ if (dsn) {
   if (region) Sentry.setTag('region', region);
 }
 
-export function sentryEnabled(): boolean {
-  return Boolean(dsn);
-}
 
 /**
  * Capture an edge-function error and flush before the isolate is frozen

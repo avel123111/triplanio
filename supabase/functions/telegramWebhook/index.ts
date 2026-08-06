@@ -10,11 +10,17 @@
  * (welcome / no-token). Adding a language = add a block to T below.
  *
  * Identity is (trip_id, telegram_chat_id) — many chats per trip, many trips per chat.
+ *
+ * This is the WRITE seam for a Telegram binding, so it re-checks the `editor`
+ * step against the token's issuer before the upsert. telegramStartLink also
+ * checks it, but that only gates MINTING a 10-minute token — the binding itself
+ * happens here, and rights can change in between (TRIP-274).
  */
 
 import { corsFor } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { captureServer } from '../_shared/analytics.ts';
 import { type Lang, pickLang, resolveLang } from '../_shared/tgLang.ts';
@@ -25,6 +31,7 @@ const T: Record<Lang, {
   invalid: string;
   used: string;
   expired: string;
+  forbidden: string;
 }> = {
   ru: {
     linked: (t) => `✅ Готово! Подключено к поездке «${t}». Буду присылать напоминания о событиях.`,
@@ -32,6 +39,7 @@ const T: Record<Lang, {
     invalid: '❌ Ссылка недействительна. Сгенерируйте новую в настройках поездки.',
     used: '❌ Эта ссылка уже использована. Сгенерируйте новую в настройках поездки.',
     expired: '❌ Срок действия ссылки истёк. Сгенерируйте новую в настройках поездки.',
+    forbidden: '❌ Больше нет прав на привязку бота к этой поездке. Привязать может владелец или администратор.',
   },
   en: {
     linked: (t) => `✅ Done! Connected to "${t}". I'll send you reminders about events.`,
@@ -39,6 +47,7 @@ const T: Record<Lang, {
     invalid: '❌ This link is invalid. Generate a new one in the trip settings.',
     used: '❌ This link has already been used. Generate a new one in the trip settings.',
     expired: '❌ This link has expired. Generate a new one in the trip settings.',
+    forbidden: '❌ You no longer have permission to connect the bot to this trip. Only the owner or an admin can.',
   },
   es: {
     linked: (t) => `✅ ¡Listo! Conectado a «${t}». Te enviaré recordatorios de los eventos.`,
@@ -46,6 +55,7 @@ const T: Record<Lang, {
     invalid: '❌ El enlace no es válido. Genera uno nuevo en los ajustes del viaje.',
     used: '❌ Este enlace ya se ha usado. Genera uno nuevo en los ajustes del viaje.',
     expired: '❌ El enlace ha caducado. Genera uno nuevo en los ajustes del viaje.',
+    forbidden: '❌ Ya no tienes permiso para conectar el bot a este viaje. Solo el propietario o un administrador puede hacerlo.',
   },
 };
 
@@ -96,6 +106,17 @@ Deno.serve(async (req) => {
     if (new Date(tok.expires_at).getTime() < Date.now()) {
       const lang = await resolveLang(tok.user_id, langCode);
       return Response.json({ ok: false, reason: 'expired', message: T[lang].expired }, { headers: corsHeaders });
+    }
+
+    // Право проверяется ЗДЕСЬ, а не только при выпуске токена: связывание —
+    // это ЗАПИСЬ, и гейт обязан стоять на шве записи (TRIP-274). Токен живёт
+    // 10 минут, поэтому между «нажал Привязать» и «нажал Start» человека можно
+    // понизить или удалить из поездки; плюс токены, выпущенные ДО этой правки,
+    // не знают ни о какой ступени. Проверка по `tok.user_id` — это тот, кто
+    // токен выпустил; сам чат Telegram здесь ничего не авторизует.
+    if (!(await isCallerEditor(tok.trip_id, tok.user_id))) {
+      const lang = await resolveLang(tok.user_id, langCode);
+      return Response.json({ ok: false, reason: 'forbidden', message: T[lang].forbidden }, { headers: corsHeaders });
     }
 
     const { error: upsertErr } = await supabaseAdmin

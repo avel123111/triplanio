@@ -235,7 +235,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
               половина того, что читается как одно поле. */}
           <InputGroup {...st('amount')} data-vfield="amount">
             <Input num type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
-            <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur num" />
+            <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur input-unit num" />
           </InputGroup>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
@@ -489,7 +489,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
         <FieldError issues={v.displayIssues} field="name" />
       </Field>
       <div className="col col--g4">
-        <div className="eyebrow">{t('budget.color_label')}</div>
+        <div className="field__label">{t('budget.color_label')}</div>
         <div className="row row--g4 row--wrap" role="group" aria-label={t('budget.color_label')}>
           {CAT_COLORS.map(c => (
             <button key={c} type="button" className={`bgt-swatch tile tile--sm ${color === c ? 'on' : ''}`} style={{ background: c }}
@@ -498,7 +498,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
         </div>
       </div>
       <div className="col col--g4">
-        <div className="eyebrow">{t('budget.icon_label')}</div>
+        <div className="field__label">{t('budget.icon_label')}</div>
         <div className="bgt-iconpick row row--g4 row--wrap" role="group" aria-label={t('budget.icon_label')}>
           {CAT_ICONS_BUDGET.map(ic => (
             <button key={ic} type="button" className={`tile tile--lg ${icon === ic ? 'on' : ''}`} aria-pressed={icon === ic}

@@ -123,7 +123,7 @@ export default function DateTimeInput({
     >
       {isCell ? (
         <>
-          {cellLabel != null && <span className="sd-cell__lbl eyebrow" data-required={cellRequired || undefined}>{cellLabel}</span>}
+          {cellLabel != null && <span className="sd-cell__lbl" data-required={cellRequired || undefined}>{cellLabel}</span>}
           <span className="sd-cell__d t-strong">{cellDate}</span>
           {withTime && <span className="sd-cell__t t-mono">{time || '—:—'}</span>}
         </>

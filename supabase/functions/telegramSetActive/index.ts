@@ -4,12 +4,13 @@
  * POST body: { tripId, integrationId, isActive: boolean }
  *
  * Toggles is_active on ONE binding of the trip (multi-account).
- * Authorized by trip participation.
+ * Authorized at the `editor` step — muting the bot changes it for the whole
+ * trip, not for the caller, so it is trip config (TRIP-274).
  */
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { isCallerParticipant } from '../_shared/tripAccess.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 
 Deno.serve(withHandler('telegramSetActive', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -20,7 +21,7 @@ Deno.serve(withHandler('telegramSetActive', async (req, corsHeaders) => {
       return Response.json({ error: 'tripId, integrationId and isActive required' }, { status: 400, headers: corsHeaders });
     }
 
-    if (!(await isCallerParticipant(tripId, user.id))) {
+    if (!(await isCallerEditor(tripId, user.id))) {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 

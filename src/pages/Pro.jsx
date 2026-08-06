@@ -188,10 +188,7 @@ export default function Pro() {
   const busy = !!loadingPlan;
 
   return (
-    <div
-      className="pro-page app-shell"
-      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}
-    >
+    <div className="pro-page app-shell">
 
       {/* ── App header ── */}
       <AppHeader

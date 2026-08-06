@@ -67,7 +67,14 @@ export const TABLES = {
   trip_member_blocks:   { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated' },
   // Ярус B (уточнено в Ф3c): 0 обращений клиента из src/ — таблица edge-only,
   // authenticated DML снят (закрывает REST-обход read-only для viewer, I5).
-  trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3c: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop _write политику (всё через telegram* edge)' },
+  // ⚠ ГДЕ ЖИВЁТ РЕШЕНИЕ «viewer НЕ привязывает Telegram»: Ф3c дропнула
+  // _write-политику, а не перевела её на can_edit_trip, поэтому в БД предиката
+  // РОЛИ по этой таблице НЕТ вовсе — правило целиком держат telegram*-функции.
+  // Полтора месяца они стояли на участии, то есть решение было записано и не
+  // исполнялось; ярусный страж этого не видел и не увидит (он смотрит гранты и
+  // политики, а гейт — в TS). Единственное, что его держит, — гейт `editor` в
+  // telegramStartLink/telegramSetActive/telegramDisconnect (TRIP-274).
+  trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3c: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop _write политику (всё через telegram* edge); роль проверяют сами функции — гейт editor, TRIP-274' },
   // chat_messages: был ярус C с прямым клиентским INSERT (viewer пишет — решение
   // Pavel в силе). TRIP-296 перевёл запись на secdef-функцию send_chat_message:
   // RLS не могла проверить автора (user_id приходил с клиента → подмена участника
@@ -111,10 +118,14 @@ export const TABLES = {
 //        ПРЕДЕЛ (осознанный): это проверка НАЛИЧИЯ ссылки (regex), а не факта, что
 //        функция гейтит правильный трип/право — тонкий случай остаётся на ревью.
 export const FUNCTIONS = {
-  // _can_access_trip_file — предикат storage-RLS приватного бакета `trips`; стал
-  // SECURITY DEFINER в гигиене TRIP-120 (чтобы его private-проверка не слепла под RLS
-  // вызывающего), исполним anon+authenticated из storage-политик TO public.
-  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file'],
+  // _can_access_trip_file / _can_write_trip_file — предикаты storage-RLS приватного
+  // бакета `trips` (чтение и запись, TRIP-274). Оба SECURITY DEFINER, иначе их
+  // private-проверка слепнет под RLS вызывающего (гигиена TRIP-120), и оба
+  // исполнимы anon+authenticated, потому что storage-политики стоят TO public:
+  // для anon они вернут false, но обязаны вернуть, а не упасть «permission denied»
+  // посреди вычисления политики. Слагаемые (`_trip_file_trip_id`,
+  // `_trip_file_not_others_private`) — internal, гранта клиенту нет (IF3).
+  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
@@ -142,14 +153,165 @@ export const FUNCTIONS = {
 //     мимо RLS; SELECT рулит только `.list()` → анонимный листинг всего бакета);
 //   • не существует публичного бакета ВНЕ манифеста (слепая зона, из-за которой
 //     share-cards/share-maps проскользнули незамеченными).
+// TRIP-274: проверки НАЛИЧИЯ мало — она была зелёной ровно тогда, когда все четыре
+// команды бакета `trips` стояли на ЧИТАЮЩЕМ предикате и viewer клал байты в папку
+// трипа: политика существовала, просто пускала не тех. Поэтому у бакета можно
+// объявить ожидаемые предикаты, и LIVE сверяет ТЕКСТ политики — тем же приёмом,
+// каким инвариант I2 держит роль-осведомлённость таблиц яруса A:
+//   readPredicate  — обязан вызываться в SELECT-политике и НЕ должен вызываться
+//                    в write-политиках: они склеиваются через OR, поэтому
+//                    `read(name) OR write(name)` содержит write и всё равно
+//                    пускает участника — гейт обойдён дизъюнкцией при зелёном
+//                    страже (нашёл ревьюер Codex на PR #678);
+//   writePredicate — обязан вызываться в INSERT/UPDATE/DELETE и НЕ должен в
+//                    SELECT (иначе чтение молча ужалось до редакторов и участник
+//                    перестал видеть файлы трипа).
+// Сверка идёт по ВЫЗОВУ (`имя(`) на границе идентификатора, а не по подстроке:
+// иначе `_can_access_trip_file` находился бы внутри `_can_access_trip_file_v2`,
+// и запрет read-предиката в write-политике давал бы ложное падение на любой
+// паре, где одно имя — префикс другого. ПРЕДЕЛ остаётся: страж видит ИМЕНА в
+// тексте политики, а не смысл предиката — что именно проверяет функция с этим
+// именем, остаётся на ревью (тот же предел, что у IF4).
 export const BUCKETS = {
   avatars: { public: true,  policies: ['insert', 'update', 'delete'], note: 'публичный; детерм. ключ <uid>/avatar, БЕЗ SELECT (TRIP-48)' },
-  trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы + _can_access_trip_file (DEFINER); черновая обложка — только своя папка _drafts/<uid>/ (TRIP-281)' },
+  trips:   {
+    public: false,
+    policies: ['select', 'insert', 'update', 'delete'],
+    readPredicate: '_can_access_trip_file',
+    writePredicate: '_can_write_trip_file',
+    note: 'приватный; TRIP-118 private-файлы; TRIP-274 чтение=участие, запись=_can_edit_trip (оба DEFINER, общая половина «не чужой private»); черновая обложка — только своя папка _drafts/<uid>/ (TRIP-281)',
+  },
 };
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
 export const DECISIONS = [
   'chat_messages: viewer ПИШЕТ в чат (коллаборативно) — решение в силе, но проверка переехала из RLS в send_chat_message (TRIP-296: RLS не умела проверить автора). [решено: да]',
   'trips: полный Ярус B — без поколоночных исключений, все записи через edge. [решено: Ярус B]',
-  'trip_telegram_integrations: viewer НЕ привязывает Telegram — гейт can_edit_trip в БД (I5). [решено: нет]',
+  // Формулировка «гейт can_edit_trip в БД» была НЕВЕРНА с момента Ф3c: политику
+  // дропнули, а не переписали, и решение полтора месяца не исполнялось (viewer
+  // прямым вызовом API отключал бота всему трипу). Исправлено в TRIP-274 —
+  // гейт `editor` в самих telegram*-функциях. Это ярус B: правило по построению
+  // живёт в edge, а не в RLS, поэтому страж его не проверяет.
+  'trip_telegram_integrations: viewer НЕ привязывает Telegram — гейт editor в telegram* edge-функциях (не в RLS: у таблицы нет write-политики). [решено: нет]',
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ДВЕРИ (TRIP-274). Ярусы выше отвечают на «что защищено», DOORS — на «какую
+// ступень спрашивает каждая edge-функция».
+//
+// Зачем отдельно от всего прочего: дыра, которую чинил TRIP-274, была НЕ в
+// правиле и НЕ в политике. Правило было верное, политика на месте — а
+// telegramStartLink спрашивал «ты вообще участник?» там, где нужно «ты
+// редактор?». Ни один страж такого не видит: гранты в порядке, политики в
+// порядке, тесты правила зелёные. Увидеть можно только сверив, КАКУЮ ступень
+// зовёт каждая дверь, со списком, который кто-то однажды утвердил.
+//
+// ★ РОЛЬ, дающая ступень `editor`, живёт в ЧЕТЫРЁХ местах — канон списка и
+// последствий в шапке `EDITOR_ROLES` (_shared/tripStep.ts). Пару SQL↔TS сверяет
+// LIVE-ассерт `checkEditorRoles`.
+//
+// Ступени вложены: owner ⊃ editor ⊃ participant (см. _shared/tripStep.ts).
+//
+// Карта ТОТАЛЬНАЯ: строка обязана быть у КАЖДОЙ папки в supabase/functions,
+// включая негейтовые. Частичная карта не видит функцию, которая не зовёт гейта
+// вовсе — а это и есть самый тяжёлый случай: так стражу был невидим
+// checkSubscriptionStatus, единственная дверь к данным трипа без единой
+// проверки. Молчание манифеста обязано означать «такой функции нет», а не
+// «функция ничего не проверяет». Новая папка без строки роняет сборку.
+//
+// Значения (DOORS_VALUES):
+//   ПРОВЕРЯЕМЫЕ — страж сверяет со ступенью, которую функция реально зовёт:
+//     participant — viewer ПРОХОДИТ (чтение, чат, шеринг, копия к себе)
+//     editor      — меняет план трипа: контент, настройки, участники, каналы
+//   ОБЪЯВИТЕЛЬНЫЕ — страж НЕ проверяет, но требует объявить:
+//     owner   — `trips.created_by === caller`, проверка руками на месте
+//     self    — своя строка / свой аккаунт (`user.id`), трипа не касается
+//     auth    — любой залогиненный, трип не при чём (справочники, прайсы)
+//     token   — владение секретом в запросе (share_token, invite-токен, подпись)
+//     n8n     — Bearer N8N_SECRET, вызов сервер-сервер
+//     public  — без аутентификации вовсе (по замыслу, держится rate-limit)
+//
+// ★ ЧТО СТРАЖ НЕ ЛОВИТ (граница инструмента, выписана намеренно — у соседних
+// инвариантов IF4 и предикатов бакета она есть, а у дверей не было). Прогон
+// семи подделок: ловятся «названа не та ступень» и «ступень убрана вместе с
+// вызовом». ПРОПУСКАЮТСЯ:
+//   1. гейт вызван, но результат не применён (`await isCallerEditor(...)` без if)
+//   2. условие инвертировано (`if (ok) return 403`)
+//   3. гейт стоит ПОСЛЕ записи в БД
+//   4. гейт спрашивает про ЧУЖОЙ trip_id (не тот, который меняем)
+//   5. гейт под флагом/условием (`if (strict) ...`)
+//   6. гейт на одной из двух веток обработчика
+//   7. объявительное значение — это ДОКУМЕНТАЦИЯ, а не проверка: снятый
+//      `created_by`-гейт под строкой 'owner' страж не увидит
+// Причина одна: страж читает ИМЕНА вызовов, а не поток управления. Усиливать
+// его до разбора условий не надо — это начало своего линтера, поймает три
+// случая из семи и создаст ложное чувство полноты.
+
+/** Значения, которые страж действительно СВЕРЯЕТ с кодом. Остальные объявительные. */
+export const STEP_VALUES = new Set(['participant', 'editor']);
+
+/** Весь словарь: проверяемые ступени + объявительные. Вложенность задана
+ *  построением — второй рукописный список ступеней разъехался бы с первым. */
+export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 'token', 'n8n', 'public']);
+
+export const DOORS = {
+  // ── participant: viewer проходит осознанно ──
+  getTripDetails:        'participant', // чтение трипа
+  callTriplanioAi:       'participant', // обращение к ассистенту = сообщение в чат
+  copyTrip:              'participant', // копия создаётся как СВОЙ трип
+  ensureShareToken:      'participant', // ссылка открывает то, что зритель и так видит (TRIP-202)
+  resolveProfiles:       'participant', // чтение профилей участников
+  render_share_card:     'participant', // рендер карточки, только чтение
+  telegramGetIntegration:'participant', // чтение статуса привязки
+  parseBookingWithAi:    'participant', // распознавание брони, в БД не пишет
+  checkSubscriptionStatus: 'participant', // Pro-статус трипа видит всякий, кто трип открывает
+
+  // ── editor: меняет план трипа ──
+  addOfflineTripMember:  'editor',
+  createTripInviteLink:  'editor',
+  inviteTripMember:      'editor',
+  removeTripMember:      'editor',      // ИЛИ своя строка — вторая ось, см. код
+  resendTripInvite:      'editor',
+  updateTripMemberRole:  'editor',
+  updateTripSettings:    'editor',
+  telegramDisconnect:    'editor',      // ИЛИ своя строка — вторая ось, см. код
+  telegramSetActive:     'editor',
+  telegramStartLink:     'editor',
+  telegramWebhook:       'editor',      // шов ЗАПИСИ привязки, перепроверяет при редиме
+
+  // ── owner: создатель трипа, проверка руками по trips.created_by ──
+  deleteTrip:            'owner',       // удалить трип
+  createStripeCheckout:  'owner',       // pro_trip покупает только владелец
+
+  // ── self: своя строка / свой аккаунт ──
+  createBillingPortal:   'self',
+  deleteMyAccount:       'self',
+  getActiveTrips:        'self',
+  getUserPlan:           'self',
+  respondTripInvite:     'self',        // приглашение адресовано вызывающему
+  telegramGetMyIntegrations: 'self',
+
+  // ── auth: любой залогиненный, трип не при чём ──
+  geoLocationiq:         'auth',        // геокодер, кэш общий
+  getFxRates:            'auth',
+  getStripePrices:       'auth',        // витрина каталога
+  planTripWithAi:        'auth',        // Pro-гейта нет — продуктовое решение, TRIP-32
+  stay22Accommodations:  'auth',
+  viatorActivities:      'auth',
+
+  // ── token: владение секретом в запросе ──
+  getPublicTrip:         'token',       // tripId + share_token, без аутентификации
+  redeemTripInviteLink:  'token',       // залогинен + валидный invite-токен
+  stripe_webhook:        'token',       // подпись Stripe в заголовке
+
+  // ── n8n: Bearer N8N_SECRET, сервер-сервер ──
+  aiGate:                'n8n',
+  getPendingReminders:   'n8n',
+  getTripById:           'n8n',
+  getTripByTelegramChatId: 'n8n',
+  triplanioAiReply:      'n8n',
+
+  // ── public: без аутентификации по замыслу, держится rate-limit ──
+  requestPasswordReset:  'public',
+  signupPrecheck:        'public',
+};

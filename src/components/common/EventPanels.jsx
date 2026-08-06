@@ -34,15 +34,15 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
   return (
     <div className="lp lp--wide" style={{ '--ev-color': ev.color, '--ev-soft': ev.soft, '--ev-ink': ev.ink }}>
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic" style={{ background: ev.color, color: '#fff' }}><Icon name={icon || kindIcon(kind)} size={17} /></span>
+        <span className="lp-ic"><Icon name={icon || kindIcon(kind)} size={17} /></span>
         <div className="lp-ti">
-          {eyebrow && <div className="eyebrow" style={{ color: ev.color }}>{eyebrow}</div>}
+          {eyebrow && <div className="eyebrow">{eyebrow}</div>}
           <div className="lp-tirow">
             <b className="t-title">{title}</b>
             {sub && <span className="t-mono">{sub}</span>}
           </div>
         </div>
-        <button className="ev-dlg-close" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
+        <button className="lp-back" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
       </div>
       <div className="lp-b scrollbar-thin">{children}</div>
       {foot && <div className={'lp-f' + (footClass ? ' ' + footClass : '')}>{foot}</div>}

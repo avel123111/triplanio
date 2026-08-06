@@ -133,7 +133,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
                 ))}
               </div>
             </div>
-            <div style={{ border: '1.5px solid var(--pro)', borderRadius: 'var(--r-sm)', padding: 16, background: 'var(--pro-soft)' }}>
+            <div style={{ border: '1px solid var(--pro)', borderRadius: 'var(--r-sm)', padding: 16, background: 'var(--pro-soft)' }}>
               <div className="t-micro" style={{ color: 'var(--pro-ink)', marginBottom: 12 }}>PRO</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proRows.map((node, i) => (

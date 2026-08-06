@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, FileText, BedDouble, Plane, Ticket, X } from 'lucide-react';
-import { fmtDate } from '@/design';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
+import { eventHeader } from '@/components/common/EventViewBody';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 
@@ -37,39 +37,32 @@ export default function AddBookingPanel({
   // the manual Cancel — only one child is visible at a time.
   onClose,
 }) {
-  const { t } = useI18nFormat();
+  const { t, lang } = useI18nFormat();
   const [tab, setTab] = useState(initialTab === 'manual' ? 'manual' : 'find');
   const meta = KIND_META[kind] || KIND_META.hotel;
   const HeaderIcon = meta.Icon;
 
-  // Contextual header: eyebrow = kind, title = city (or "from → to" for a
-  // transfer), subtitle = the city's stay window · nights (hotel/activity only).
-  const isTransfer = kind === 'transfer';
-  const title = isTransfer
-    ? `${fromVisit?.city_name || '?'} → ${toVisit?.city_name || '?'}`
-    : (visit?.city_name || '');
-  let subtitle = '';
-  if (!isTransfer && visit) {
-    const range = [fmtDate(visit.start_date), fmtDate(visit.end_date)].filter(Boolean).join(' — ');
-    const nights = visit.nights > 0 ? t('fork.stay22_nights', { count: visit.nights }) : '';
-    subtitle = [range, nights].filter(Boolean).join(' · ');
-  }
+  // Шапка собирается ОБЩИМ швом `eventHeader` — тем же, что у просмотра и у
+  // редактирования. Своя сборка здесь и была одной из трёх, из-за которых один
+  // и тот же отель назывался «Отель / Барселона» при создании и «Проживание /
+  // название брони» в просмотре.
+  const { eyebrow, title, sub: subtitle } = eventHeader({ kind, visit, fromVisit, toVisit, t, lang });
 
   const close = () => onClose?.();
 
   return (
-    <div className="lp lp--wide abp" style={{ '--ev-soft': meta.soft, '--ev-ink': meta.color }}>
+    <div className="lp lp--wide abp" style={{ '--ev-color': meta.color, '--ev-soft': meta.soft, '--ev-ink': meta.color }}>
       {/* Shared contextual header (× closes the panel). */}
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><HeaderIcon size={18} /></span>
+        <span className="lp-ic"><HeaderIcon size={18} /></span>
         <div className="lp-ti">
-          <div className="eyebrow" style={{ color: meta.color }}>{t(meta.eyebrowKey)}</div>
+          <div className="eyebrow">{eyebrow}</div>
           <div className="lp-tirow">
             <b className="t-title">{title}</b>
             {subtitle && <span className="t-meta">{subtitle}</span>}
           </div>
         </div>
-        <button className="ev-dlg-close" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
+        <button className="lp-back" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
           <X size={15} />
         </button>
       </div>

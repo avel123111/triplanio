@@ -1,16 +1,19 @@
 /**
- * EventEditDialog - unified create/edit modal (Lumo `.ev-dlg`) for ALL kinds:
- * hotel / transfer / activity, and every service subtype
- * (car_rental / esim / insurance). It is the single edit engine — the legacy
- * per-kind dialogs (Hotel/Transfer/Activity/CarRental/Esim/Insurance) are gone.
+ * EventEditDialog - unified create/edit form for ALL kinds: hotel / transfer /
+ * activity, and every service subtype (car_rental / esim / insurance). It is
+ * the single edit engine — the legacy per-kind dialogs
+ * (Hotel/Transfer/Activity/CarRental/Esim/Insurance) are gone.
  *
- * One shared chrome (tinted header + body + footer), themed per kind/subtype via
- * `meta` (TYPE_META / SERVICE_META → --ev-color/--ev-soft/--ev-ink). Each kind
- * renders its own field group; service dispatches on form.service_kind.
+ * One shared chrome — the `.lp-*` canon (tinted header + body + footer), themed
+ * per kind/subtype via `meta` (TYPE_META / SERVICE_META →
+ * --ev-color/--ev-soft/--ev-ink). TRIP-333 §4: the chrome is literally the same
+ * in both shells; before that the dialog branch drew its own `.ev-dlg-*` family.
+ * Each kind renders its own field group; service dispatches on form.service_kind.
  *
- * Shells: `variant="dialog"` = Radix Dialog overlay (app-wide modal, auto
- * bottom-sheet ≤640px). `variant="panel"` = same content inline for the
- * trip-editor left panel (hotel/transfer create/edit live here).
+ * Shells differ only by CONTAINER: `variant="dialog"` = Radix Dialog overlay
+ * (app-wide modal, auto bottom-sheet ≤640px, container carries `.ev-dlg`).
+ * `variant="panel"` = same content inline for the trip-editor left panel
+ * (hotel/transfer create/edit live here).
  *
  * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
@@ -106,7 +109,6 @@ function CityPicker({ value, onPick, placeholder, ...rest }) {
       renderRow={cityOptionRow}
       placeholder={placeholder || t('event.layover_city_ph')}
       icon="pin"
-      iconActive={!!value}
     />
   );
 }
@@ -209,6 +211,7 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
   );
 }
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
+import { eventHeader } from '@/components/common/EventViewBody';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
 import TimezoneHint from '@/components/common/TimezoneHint';
@@ -228,17 +231,14 @@ const TYPE_META = {
   hotel: {
     color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', ink: 'var(--ev-hotel-ink)',
     Icon: BedDouble, labelKey: 'event.type_hotel',
-    titleNewKey: 'event.title_new_hotel', titleEditKey: 'event.title_edit_hotel',
   },
   transfer: {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
     Icon: Plane, labelKey: 'event.type_transfer',
-    titleNewKey: 'event.title_new_transfer', titleEditKey: 'event.title_edit_transfer',
   },
   activity: {
     color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)',
     Icon: Ticket, labelKey: 'event.type_activity',
-    titleNewKey: 'event.title_new_activity', titleEditKey: 'event.title_edit_activity',
   },
   service: {
     color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', ink: 'var(--ev-car-ink)',
@@ -544,18 +544,6 @@ export default function EventEditDialog({
   const [currentKind, setCurrentKind] = useState(initialKind || 'hotel');
   const isEdit = !!entity;
   const baseMeta = TYPE_META[currentKind] || TYPE_META.hotel;
-  // City-contextual header: "Проживание в Париже" / "Переезд Париж → Рим" /
-  // "Активность в Риме". Falls back to the generic new/edit title when the
-  // city context is unknown (e.g. orphan entity or service without a visit).
-  const ctxTitle = useMemo(() => {
-    if ((currentKind === 'hotel' || currentKind === 'activity') && visit?.city_name) {
-      return t(currentKind === 'hotel' ? 'event.title_ctx_hotel' : 'event.title_ctx_activity', { city: visit.city_name });
-    }
-    if (currentKind === 'transfer' && (fromVisit?.city_name || toVisit?.city_name)) {
-      return t('event.title_ctx_transfer', { from: fromVisit?.city_name || '?', to: toVisit?.city_name || '?' });
-    }
-    return null;
-  }, [currentKind, visit, fromVisit, toVisit, t]);
   const tripId = tripIdProp || entity?.trip_id || visit?.trip_id || fromVisit?.trip_id;
 
   // Timezones - kept for compatibility but the time helpers ignore them
@@ -1185,37 +1173,50 @@ export default function EventEditDialog({
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
-  // Editor panel uses the Lumo `.lp` shell; the app-wide modal uses `.ev-dlg`.
-  // Body content (AI block + fields + IssuesPanel) is identical for both.
+  // Оболочка события ОДНА (TRIP-333 §4). Раньше этот же компонент рисовал две:
+  // в панели - `.lp-*`, в диалоге - собственное семейство `.ev-dlg-*`, и ветка
+  // стояла у каждой из четырёх частей (шапка, плитка типа, тело, футер). Тело
+  // при этом было общим всегда - расходился только хром вокруг него.
+  // Различаются оболочки теперь только КОНТЕЙНЕРОМ (модалка против панели) и
+  // способом ухода, как и задумано.
   const isPanel = variant === 'panel' || embedded;
-  const bodyCls = isPanel ? 'lp-b scrollbar-thin' : 'ev-dlg-body';
-  const title = ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey));
+  const bodyCls = 'lp-b scrollbar-thin';
+  // Шапка - ОБЩИЙ шов `eventHeader`, тот же, что у создания и у просмотра.
+  // Прежние `event.title_edit_*` («Проживание в Барселона», «Переезд A → B»)
+  // были ТРЕТЬИМ способом назвать то же самое и умерли вместе со сборкой.
+  // ⚠Сервисы (eSIM / страховка / аренда авто) сюда НЕ входят: у них нет ни
+  // города, ни окна проживания, и заголовок у них - название услуги. Общий шов
+  // покрывает три вида, которые везде показывают МЕСТО и КОГДА.
+  const isSvcKind = currentKind === 'service';
+  const hdr = isSvcKind
+    ? { eyebrow: t(meta.labelKey), title: t(isEdit ? meta.titleEditKey : meta.titleNewKey), sub: '' }
+    : eventHeader({ kind: currentKind, visit, fromVisit, toVisit, entity, t, lang });
+  const title = hdr.title;
 
   const inner = (
     <>
-          {/* Header — hidden when embedded (AddBookingPanel owns the shared header). */}
-          {embedded ? null : isPanel ? (
-            // TRIP-186: шапка edit унифицирована с остальными состояниями (канон
-            // PanelShell / view): eyebrow сверху, .t-title, крестик справа — без
-            // левой стрелки-назад.
+          {/* Header — hidden when embedded (AddBookingPanel owns the shared header).
+              TRIP-186: шапка edit унифицирована с остальными состояниями (канон
+              PanelShell / view): eyebrow сверху, .t-title, крестик справа — без
+              левой стрелки-назад. TRIP-333 §4: диалог рисует ЕЁ ЖЕ, своей у него
+              больше нет; отличается только подпись крестика (уход из панели -
+              «назад», из модалки - «отмена»). */}
+          {embedded ? null : (
             <div className="lp-h lp-h--ev">
-              <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><meta.Icon /></span>
+              <span className="lp-ic"><meta.Icon /></span>
               <div className="lp-ti">
-                <div className="eyebrow" style={{ color: meta.color }}>{t(meta.labelKey)}</div>
-                <div className="lp-tirow"><b className="t-title">{title}</b></div>
+                <div className="eyebrow">{hdr.eyebrow}</div>
+                <div className="lp-tirow">
+                  <b className="t-title">{title}</b>
+                  {hdr.sub && <span className="t-meta">{hdr.sub}</span>}
+                </div>
               </div>
-              <button className="ev-dlg-close" onClick={() => onOpenChange?.(false)} title={t('common.back')} aria-label={t('common.back')}>
-                <X style={{ width: 15, height: 15 }} />
-              </button>
-            </div>
-          ) : (
-            <div className="ev-dlg-hd">
-              <div className="ev-dlg-ic"><meta.Icon /></div>
-              <div className="ev-dlg-info">
-                <div className="ev-dlg-eyebrow">{t(meta.labelKey)}</div>
-                <h2>{title}</h2>
-              </div>
-              <button className="ev-dlg-close" onClick={() => onOpenChange(false)} aria-label={t('common.cancel')}>
+              <button
+                className="lp-back"
+                onClick={() => onOpenChange?.(false)}
+                title={isPanel ? t('common.back') : undefined}
+                aria-label={isPanel ? t('common.back') : t('common.cancel')}
+              >
                 <X style={{ width: 15, height: 15 }} />
               </button>
             </div>
@@ -1339,9 +1340,11 @@ export default function EventEditDialog({
 
           {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
               + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
-              в панельном режиме. */}
+              в панельном режиме. TRIP-333 §4: класс один на оба режима, своим у
+              диалога остался только прилипший низ, и тот не нужен модалке -
+              она и так не прокручивает футер. */}
           <div
-            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + (confirmDel ? '' : ' lp-f--ratio')}
+            className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
@@ -1378,10 +1381,15 @@ export default function EventEditDialog({
   // AddBookingPanel wrapper provides the .lp shell + shared header + tabs.
   if (embedded) return inner;
 
+  // Панельная ветка больше НЕ возвращает себе фон инлайном: она берёт его из
+  // роли поверхности, как модалка и как панель создания. Прежний
+  // `background: var(--surface)` был поправкой к `.lp`, который заливался
+  // фоном приложения, - из-за него одна и та же форма выглядела по-разному
+  // при создании и при редактировании события.
   return (
     <>
       {variant === 'panel' ? (
-        <div className="te-edit-panel-body lp lp--wide" style={{ ...evVars, minHeight: 0, height: '100%', background: 'var(--surface)' }}>
+        <div className="te-edit-panel-body lp lp--wide" style={{ ...evVars, minHeight: 0, height: '100%' }}>
           {inner}
         </div>
       ) : (
@@ -1629,7 +1637,8 @@ function buildServicePayload(form, tripId, t) {
 
 function SectionHeader({ children }) {
   // Lumo form section header: coloured uppercase label + trailing rule.
-  // Colour comes from the --ev-color set on the .ev-dlg root.
+  // Colour comes from the --ev-color set on the shell root — `.ev-dlg` in the
+  // dialog branch, `.lp` in the panel branch (both get it from `evVars`).
   return <div className="f-sec">{children}</div>;
 }
 
@@ -1688,7 +1697,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
 
       {/* Price + currency + payment pills (design: "Стоимость за всё") */}
       <div className="eed-finance">
-        <div className="hv-lbl eyebrow">{t('event.price_total')}</div>
+        <div className="hv-lbl">{t('event.price_total')}</div>
         <div className="eed-pricerow">
           <AiField active={aiFields.has('price')}>
             <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
@@ -1867,7 +1876,11 @@ function TransferLegCard({
   return (
     // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
     // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    <div style={isMulti ? { border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
+    // TRIP-333 §5: сегмент — это сворачиваемый раздел с шапкой и телом, то есть
+    // тот же объект, что «Детали брони» и «Документы и заметки» в этом же окне.
+    // Он рисовался инлайном и сидел на СВОЕЙ ступени скругления; теперь идёт
+    // через `.acc`, и рамку, заливку, скругление и обрезку углов держит класс.
+    <div className={isMulti ? 'acc' : undefined}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
@@ -1896,7 +1909,7 @@ function TransferLegCard({
 
       <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line)' : 'none' }}>
         {isMulti && <div style={{ height: 10 }} />}
-        <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
+        <div className="field__label" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
 
         {/* From / To — city (readonly endpoint, or layover picker) + address */}
@@ -2086,7 +2099,7 @@ function DateRangeBlock({
           for the rounded border). So the shared `.ai-filled` class stays on each
           cell and the shared <AiBadge> pins to this block, which does not clip. */}
       {(startAi || endAi) && <AiBadge />}
-      <div className="eed-dateblock__lbl t-micro">{label}</div>
+      <div className="eed-dateblock__lbl">{label}</div>
       <div className="stay-dates">
         <div className={`sd-cellwrap${startAi ? ' ai-filled' : ''}`} data-vfield={startVField}>
           <DateTimeInput variant="cell" cellLabel={startLabel} cellRequired={startRequired} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
@@ -2119,7 +2132,7 @@ function SegTransportGrid({ value, onChange, color }) {
         const active = value === k.id; const Ic = k.Icon;
         return (
           <button key={k.id} type="button" className="t-meta" onClick={() => onChange(k.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1px solid ' + (active ? color : 'var(--line)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
             <Ic size={16} />{t(k.labelKey)}
           </button>
         );
@@ -2229,7 +2242,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
       })}
 
       <button type="button" className="t-meta" onClick={addSegment}
-        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 'var(--r-sm)', background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+        style={{ marginTop: 6, padding: '11px 14px', border: '1px dashed ' + color, borderRadius: 'var(--r-sm)', background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
         {t('event.add_layover')}
       </button>
     </div>

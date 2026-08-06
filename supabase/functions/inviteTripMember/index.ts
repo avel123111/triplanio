@@ -9,7 +9,7 @@
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { isCallerAdmin } from '../_shared/tripAccess.ts';
+import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { renderInviteTemplate, renderInviteNotification } from '../_shared/emailTemplate.ts';
 import { sendEmail } from '../_shared/sendEmail.ts';
 
@@ -32,8 +32,8 @@ Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
     }
 
     // Verify caller is owner or admin
-    const callerIsAdmin = await isCallerAdmin(trip_id, user.id);
-    if (!callerIsAdmin) {
+    const callerIsEditor = await isCallerEditor(trip_id, user.id);
+    if (!callerIsEditor) {
       return Response.json({ error: 'Only trip admins can invite members' }, { status: 403, headers: corsHeaders });
     }
 

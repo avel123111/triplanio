@@ -60,7 +60,6 @@ function DocRows({ docs }) {
           fallback={t('event.file_word')}
           href={normalizeExternalUrl(d.file_url)}
           size={d.file_size}
-          plain
         />
       ))}
     </div>
@@ -89,6 +88,43 @@ export function eventTheme(kind, entity) {
   return {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
     Icon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
+  };
+}
+
+/* ── Шапка события — ОДИН источник на все три поверхности ────────────────────
+   Создание, редактирование и просмотр собирали её каждый по-своему, и на экране
+   это читалось как три разных объекта:
+
+     отель      создание  «Отель»      / Барселона · даты
+                правка    «Отель»      / «Проживание в Барселона»
+                просмотр  «Проживание» / название отеля
+     переезд    просмотр  «Перелёт»    / перевозчик
+                правка    «Трансфер»   / «Переезд Барселона → Мадрид»
+
+   Тип брался из ТРЁХ разных ключей на один вид, заголовок - из трёх разных
+   источников. Здесь он один: тип - по виду, заголовок - МЕСТО (город или
+   маршрут), вторая строка - КОГДА. Название брони и перевозчик живут в теле,
+   а не в шапке: в шапке они меняли смысл строки от поверхности к поверхности. */
+const HEADER_EYEBROW = {
+  hotel: 'budget.cat_accommodation',
+  transfer: 'event.type_transfer',
+  activity: 'event.type_activity',
+};
+
+export function eventHeader({ kind, visit, fromVisit, toVisit, entity, t, lang }) {
+  if (kind === 'transfer') {
+    const from = cityLabel(fromVisit, lang) || fromVisit?.city_name || '';
+    const to = cityLabel(toVisit, lang) || toVisit?.city_name || '';
+    const when = fmtDate(entity?.start_datetime) || fmtDate(fromVisit?.end_date) || '';
+    return { eyebrow: t(HEADER_EYEBROW.transfer), title: [from, to].filter(Boolean).join(' → '), sub: when };
+  }
+  const city = cityLabel(visit, lang) || visit?.city_name || '';
+  const range = [fmtDate(visit?.start_date), fmtDate(visit?.end_date)].filter(Boolean).join(' — ');
+  const n = visit?.nights > 0 ? t('fork.stay22_nights', { count: visit.nights }) : '';
+  return {
+    eyebrow: t(HEADER_EYEBROW[kind] || HEADER_EYEBROW.hotel),
+    title: city,
+    sub: [range, n].filter(Boolean).join(' · '),
   };
 }
 
@@ -123,7 +159,9 @@ export function stayNights(checkInIso, checkOutIso) {
 export function Section({ title, accent, count, children }) {
   return (
     <div className="ev-sec" style={accent ? { '--ev-color': accent } : undefined}>
-      <div className="ev-sec-lbl">
+      {/* Канон тот же, что у заголовка раздела в форме (`.acc__title`) — раздел
+          один объект, и подпись на нём одна. Тип события несёт планка-акцент. */}
+      <div className="ev-sec-lbl t-ui">
         {title}{count != null && count > 0 ? ` · ${count}` : ''}
       </div>
       {children}
@@ -197,10 +235,10 @@ function HotelBody({ entity, docs = [] }) {
       {/* Stay dates */}
       {(entity.check_in_datetime || entity.check_out_datetime) && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('event.stay_dates')}</div>
+          <div className="hv-lbl">{t('event.stay_dates')}</div>
           <div className="stay-dates">
             <div className="stay-dates__cell">
-              <div className="stay-dates__lbl eyebrow">{t('trip.hotel_check_in')}</div>
+              <div className="stay-dates__lbl">{t('trip.hotel_check_in')}</div>
               <div className="stay-dates__v t-strong">{fmtDate(entity.check_in_datetime)}</div>
               <div className="stay-dates__t t-meta">{fmtTime(entity.check_in_datetime)}</div>
             </div>
@@ -209,7 +247,7 @@ function HotelBody({ entity, docs = [] }) {
               {nights != null && <span className="t-meta">{t('fork.stay22_nights', { count: nights })}</span>}
             </div>
             <div className="stay-dates__cell">
-              <div className="stay-dates__lbl eyebrow">{t('trip.hotel_check_out')}</div>
+              <div className="stay-dates__lbl">{t('trip.hotel_check_out')}</div>
               <div className="stay-dates__v t-strong">{fmtDate(entity.check_out_datetime)}</div>
               <div className="stay-dates__t t-meta">{fmtTime(entity.check_out_datetime)}</div>
             </div>
@@ -220,7 +258,7 @@ function HotelBody({ entity, docs = [] }) {
       {/* Cost */}
       {priceText && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('event.cost')}</div>
+          <div className="hv-lbl">{t('event.cost')}</div>
           <div className="hv-card row row--g6">
             <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
@@ -246,7 +284,7 @@ function HotelBody({ entity, docs = [] }) {
       {/* Booking details */}
       {(entity.booking_reference || entity.phone || entity.email) && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
+          <div className="hv-lbl">{t('event.booking_details')}</div>
           <div className="hv-rows">
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
@@ -279,7 +317,7 @@ function HotelBody({ entity, docs = [] }) {
       {/* Documents */}
       {docs.length > 0 && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
+          <div className="hv-lbl">{t('activity.documents_label')}</div>
           <DocRows docs={docs} />
         </div>
       )}
@@ -287,7 +325,7 @@ function HotelBody({ entity, docs = [] }) {
       {/* Notes */}
       {notes && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('activity.view_notes')}</div>
+          <div className="hv-lbl">{t('activity.view_notes')}</div>
           <div className="hv-notes t-body">{notes}</div>
         </div>
       )}
@@ -370,7 +408,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {/* Cost */}
       {priceText && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('event.cost')}</div>
+          <div className="hv-lbl">{t('event.cost')}</div>
           <div className="hv-card row row--g6">
             <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
@@ -384,7 +422,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {/* Booking details */}
       {hasDetails && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
+          <div className="hv-lbl">{t('event.booking_details')}</div>
           <div className="hv-rows">
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
@@ -417,7 +455,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {/* Documents */}
       {docs.length > 0 && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
+          <div className="hv-lbl">{t('activity.documents_label')}</div>
           <DocRows docs={docs} />
         </div>
       )}
@@ -425,7 +463,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {/* Notes */}
       {notes && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('activity.view_notes')}</div>
+          <div className="hv-lbl">{t('activity.view_notes')}</div>
           <div className="hv-notes t-body">{notes}</div>
         </div>
       )}
@@ -444,10 +482,10 @@ function ActivityBody({ entity, docs = [] }) {
     <div className="col col--g7">
       {(entity.start_datetime || entity.end_datetime) && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('event.when')}</div>
+          <div className="hv-lbl">{t('event.when')}</div>
           <div className="stay-dates">
             <div className="stay-dates__cell">
-              <div className="stay-dates__lbl eyebrow">{t('activity.start')}</div>
+              <div className="stay-dates__lbl">{t('activity.start')}</div>
               <div className="stay-dates__v t-strong">{fmtDate(entity.start_datetime)}</div>
               <div className="stay-dates__t t-meta">{fmtTime(entity.start_datetime)}</div>
             </div>
@@ -456,7 +494,7 @@ function ActivityBody({ entity, docs = [] }) {
               {dur && <span className="t-meta">{dur}</span>}
             </div>
             <div className="stay-dates__cell">
-              <div className="stay-dates__lbl eyebrow">{t('event.end')}</div>
+              <div className="stay-dates__lbl">{t('event.end')}</div>
               <div className="stay-dates__v t-strong">{fmtDate(entity.end_datetime)}</div>
               <div className="stay-dates__t t-meta">{fmtTime(entity.end_datetime)}</div>
             </div>
@@ -466,7 +504,7 @@ function ActivityBody({ entity, docs = [] }) {
 
       {entity.location_address && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('event.meeting_point')}</div>
+          <div className="hv-lbl">{t('event.meeting_point')}</div>
           <div className="hv-rows">
             <div className="hv-row row row--g6">
               <span className="hv-row__ic"><MapIcon /></span>
@@ -478,7 +516,7 @@ function ActivityBody({ entity, docs = [] }) {
 
       {priceText && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('activity.price')}</div>
+          <div className="hv-lbl">{t('activity.price')}</div>
           <div className="hv-card row row--g6">
             <div className="grow--fit"><div className="hv-price t-heading">{priceText}</div></div>
           </div>
@@ -487,14 +525,14 @@ function ActivityBody({ entity, docs = [] }) {
 
       {docs.length > 0 && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
+          <div className="hv-lbl">{t('activity.documents_label')}</div>
           <DocRows docs={docs} />
         </div>
       )}
 
       {notes && (
         <div className="hv-sec">
-          <div className="hv-lbl eyebrow">{t('activity.view_notes')}</div>
+          <div className="hv-lbl">{t('activity.view_notes')}</div>
           <div className="hv-notes t-body">{notes}</div>
         </div>
       )}
