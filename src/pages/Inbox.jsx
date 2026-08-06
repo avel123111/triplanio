@@ -14,7 +14,6 @@ import { notifMeta, emphasize } from '@/components/notifications/NotificationsBe
 import { useQueryGate } from '@/lib/useQueryGate';
 import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
-import '../design/app.css';
 
 function dateGroup(iso) {
   if (!iso) return 'earlier';
