@@ -2,7 +2,7 @@
 /**
  * Design-system guard.
  *
- * Scans src/ for values that bypass the design tokens and reports them in four
+ * Scans src/ for values that bypass the design tokens and reports them in five
  * tiers:
  *   • TYPOGRAPHY  — ENFORCED. Raw font sizes (text-[Npx], font-size:Npx,
  *     inline fontSize:<number>) must come from --fs-* tokens. A violation
@@ -20,6 +20,16 @@
  *     alone would be bypassable — normalise one 768px, add a 777px, same total.
  *     Range syntax and multiline preludes are parsed; escape hatch is
  *     `design-token-exempt` inside the @media prelude.
+ *   • SPACING     — ENFORCED as a composition ratchet (since TRIP-339). Раз
+ *     `gap:10` и `gap:11` независимы, два одинаковых на вид блока формально
+ *     различны и не схлопываются никогда — поэтому язык значений закрывается
+ *     раньше, чем начинается схлопывание объектов (эпик TRIP-337, фаза Ф1).
+ *     Мультимножество сырых px-величин сверяется с BASE_REF ПО ВСЕМУ РЕПО:
+ *     величина может исчезнуть, но не появиться. Область — репозиторий, а не
+ *     файл, потому что фазы 04–09 переносят правила в базу, и пофайловый
+ *     счётчик краснел бы на файле-приёмнике при каждом правильном ходе.
+ *     Предикат (что вообще считается сырым отступом) — код, см. SPACING_PROPS;
+ *     escape — `design-token-exempt` на строке.
  *
  * Whitelisted files legitimately carry raw values (external brand colours,
  * Mapbox/canvas paint that needs concrete hex, SVG illustration fills, the
@@ -52,6 +62,12 @@ import { join } from 'node:path';
 const COLOR_ENFORCED = true; // Lumo colour pass landed (TRIP-53): raw colour now fails CI
 
 const ROOT = 'src';
+// Сканируемое ВНЕ `src`. Константа, а не литерал в двух местах: ярус SPACING
+// собирает базовое множество через `git ls-tree … -- <пути>`, и стоит этому
+// списку разъехаться со `SCANNED`, как файл, отсутствующий на базовой стороне,
+// прочитается «новым» ЦЕЛИКОМ — красный на том самом PR, который всего лишь
+// вносит его в периметр (ровно это ждало бы подзадачу 10 с landing.css).
+const SCAN_EXTRA = ['public/landing.css'];
 
 // Files allowed to contain raw COLOUR values (hex / palette classes).
 // RATCHET — may only shrink. See the header for the three rules; lower
@@ -177,6 +193,85 @@ const LAYERS_ALLOW = ['public/landing.css'];
 const BREAKPOINTS = [640, 880];
 const BREAKPOINT_ALLOW = ['public/landing.css'];
 
+// ── SPACING (TRIP-339) — язык значений отступа ──────────────────────────────
+// Шкала: --sp-1 2px · --sp-2 4 · --sp-3 6 · --sp-4 8 · --sp-5 10 · --sp-6 12 ·
+// --sp-7 16 · --sp-8 20. Она НЕ двигается; модификаторы .row--gN легальны.
+//
+// ПРЕДИКАТ — ЭТО КОД, А НЕ ЧИСЛО. Три независимых прогона по «сырым отступам»
+// дали 962 / 1011 / 1304 и 38 / 45 / 42 уникальных (TRIP-337 §12). Расхождение
+// не в чьих-то ошибках, а в том, что «сырой отступ» никем не определён. Поэтому
+// абсолютное число тут не константа и ни на что не влияет — его печатает сам
+// этот предикат:
+//   • свойства — padding/margin/gap + longhand'ы и логические (см. SPACING_PROPS);
+//     `grid-gap`/`scroll-padding` НЕ попадают: перед именем обязан стоять `;{`
+//     или пробел, а не дефис;
+//   • shorthand разбирается ПОЗНАЧЕННО: `padding: 8px 12px` — это ДВЕ единицы
+//     словаря. Иначе правка 12→10 внутри shorthand'а невидима для храповика;
+//   • px внутри `calc()` и внутри фолбэка `var(--x, 96px)` считается: скобка не
+//     отмывает литерал (9 и 4 живых случая соответственно);
+//   • отрицательное — ОТДЕЛЬНАЯ величина (`-8px` ≠ `8px`): иначе смена знака
+//     проходит мимо храповика. Оговорка: минус читается как знак, только если
+//     он ПРИЖАТ к числу. В `calc(var(--num) - 14px)` (PublicTrip.css, 1 живой
+//     случай) это оператор вычитания, и величина считается как `14px` — литерал
+//     не теряется, но величиной он числится положительной;
+//   • ноль не считается: `0px` не ступень и роли не несёт (1 живой случай);
+//   • `var(--sp-N)` — уже на шкале, к сырым не относится.
+// Инлайновые отступы в JSX сюда НЕ входят намеренно: их держит храповик 2l
+// (`scripts/ci/check-inline-styles.mjs`), и двойной учёт дал бы двойную красноту
+// за один и тот же ход.
+//
+// ОБЛАСТЬ — РЕПОЗИТОРИЙ, А НЕ ФАЙЛ, и это не удобство, а требование эпика.
+// Фазы 04–09 переносят правила ИЗ файлов экранов В app.css. Пофайловый счётчик
+// краснел бы на файле-приёмнике при каждом таком переносе, то есть ровно на
+// правильном движении (в app.css уже большая часть сырых значений).
+//
+// УСТРОЙСТВО — как у BREAKPOINTS: не счёт, а МУЛЬТИМНОЖЕСТВО {величина: сколько
+// раз}, сверяемое с BASE_REF. Величина может исчезнуть, но не появиться. Счёта
+// одного мало по той же причине, что и у брейкпоинтов: заменил одно значение,
+// добавил другое — сумма та же. Что это даёт:
+//   перенос правила между файлами            → нейтрально
+//   два правила схлопнулись в одно           → вниз
+//   сырое значение заменено на var(--sp-N)   → вниз
+//   появилась новая величина 19px            → КРАСНЫЙ
+//   прогон 11px → 12px                       → КРАСНЫЙ (count(12) вырос)
+// Последняя строка — не побочный эффект, а §10 «никаких прогонов по значениям»:
+// именно такой прогон уже сделал .checkbox круглым (TRIP-321 Ф3b).
+//
+// ⚠️ ОЖИДАЕМАЯ КРАСНОТА, КОТОРАЯ НЕ ЕСТЬ ПОЛОМКА. В 04–06 при схлопывании двух
+// объектов канон-значение побеждает по большинству, и count(канона) вырастет.
+// Это правильно — §10 требует, чтобы такой ход был ВИДЕН, — но встречать это
+// надо как ожидаемое. Выход штатный: `design-token-exempt` на строке с причиной.
+//
+// ИЗВЕСТНАЯ ДЫРА, названная чтобы не была тихой: маркер исключения снимает
+// строку со счёта на ОБЕИХ сторонах, поэтому дописать его к строке, которую ты
+// иначе не трогаешь, — значит освободить бюджет под новое значение той же
+// величины. Машиной это здесь не закрывается (в отличие от 2o маркер тут
+// построчный и вечный, как у цвета с типографикой), но добавление маркера
+// видно в диффе и обязано нести причину — это решение ревью, а не гарда.
+//
+// ВТОРАЯ ИЗВЕСТНАЯ ДЫРА, того же класса, что понижение токена на гарде 2o
+// (`163 → 162`: имя не сократилось, а СПРЯТАЛОСЬ): величину можно увести в
+// собственную переменную — `--x: 19px; padding: var(--x)`. Объявление `--x`
+// не является объявлением отступа, предикат его не видит, и счётчик падает,
+// хотя словарь не сократился. Живых случаев сегодня НОЛЬ: единственные
+// px-значные переменные в `src/**.css` — сама шкала `--sp-1…8`. Закрывать это
+// счётом «всех `--x: Npx`» нельзя по той же причине, по которой пол 2o не
+// считает переменные на вариантах: закон 3 в правильном исполнении производит
+// их пачками, и предикат стал бы тормозом на верном движении.
+//
+// public/landing.css — вне периметра до подзадачи 10 (standalone-лендинг со
+// своим языком; там ещё 171 сырое значение / 30 уникальных).
+const SPACING_PROPS = [
+  // Longhand'ы ПЕРВЫМИ: иначе альтернатива `padding` съест префикс `padding-top`.
+  'padding-inline-start', 'padding-inline-end', 'padding-block-start', 'padding-block-end',
+  'margin-inline-start', 'margin-inline-end', 'margin-block-start', 'margin-block-end',
+  'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'padding-inline', 'padding-block',
+  'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'margin-inline', 'margin-block',
+  'row-gap', 'column-gap',
+  'padding', 'margin', 'gap',
+];
+const SPACING_ALLOW = ['public/landing.css'];
+
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {
   textPx:    /text-\[[0-9.]+px\]/,
@@ -207,6 +302,12 @@ const RE = {
   // Ширина внутри прелюдии: legacy `max-width: 700px` И range `width <= 700px`
   // / `700px <= width`. Иначе новый брейкпоинт заезжает через range-синтаксис.
   mediaWidth: /(?:(?:min-|max-)?width\s*[:<>=]+\s*(\d+)px)|(?:(\d+)px\s*[<>=]+\s*width)/g,
+  // TRIP-339 — объявление отступа. Перед именем обязан стоять `;`, `{` или
+  // пробел, поэтому `grid-gap` / `scroll-padding` (там дефис) не ловятся.
+  spacingDecl: new RegExp(`(?:^|[;{\\s])(${SPACING_PROPS.join('|')})\\s*:\\s*([^;}]*)`, 'gi'),
+  // Длина в px внутри значения. Знак — часть величины. `(?<![\\w.])` не пускает
+  // хвост более длинного токена (`--sp-4`, `1e2px`) за начало числа.
+  spacingPx: /(?<![\w.])(-?\d*\.?\d+)px\b/g,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
@@ -244,6 +345,41 @@ const offScaleWidths = (text) => {
   return out;
 };
 const bp = [];     // @media widths off the BREAKPOINTS scale (TRIP-321)
+
+// Сырые величины отступа файла как МУЛЬТИМНОЖЕСТВО {«12px»: сколько раз} —
+// предикат описан у SPACING_PROPS. `onHit` получает величину и номер строки,
+// чтобы отчёт мог показать, ГДЕ величина прибавилась (без этого «12px +1» по
+// всему репо не найти).
+// Комментарии гасим ПРОБЕЛАМИ той же длины, сохраняя переводы строк: иначе
+// съезжают и смещения, и номера строк, а построчный `design-token-exempt`
+// перестаёт попадать на свою строку.
+const spacingValues = (text, onHit) => {
+  const out = new Map();
+  if (!text) return out;
+  const body = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+  const lines = text.split('\n');
+  for (const d of body.matchAll(RE.spacingDecl)) {
+    // Строка ОБЪЯВЛЕНИЯ (не файла): значение бывает многострочным, но маркер
+    // ставится там, где человек его видит — у имени свойства.
+    // Отсчёт ведётся от ИМЕНИ СВОЙСТВА, а не от начала матча: граничный символ
+    // `[;{\s]` матчем СЪЕДЕН и сам бывает переводом строки (свойство в нулевой
+    // колонке) — от начала матча номер уехал бы на строку выше, и построчный
+    // маркер молча перестал бы срабатывать. Та же дыра, что у мутации 4 в
+    // тесте, только с другого конца. `indexOf` тут точен: граничный символ
+    // ровно один и заведомо не буква, так что имя свойства встречается первым.
+    const line = body.slice(0, d.index + d[0].indexOf(d[1])).split('\n').length;
+    if (lines[line - 1]?.includes('design-token-exempt')) continue;
+    for (const px of d[2].matchAll(RE.spacingPx)) {
+      const n = Number(px[1]);
+      if (!Number.isFinite(n) || n === 0) continue;  // ноль — не ступень
+      const key = `${n}px`;
+      out.set(key, (out.get(key) || 0) + 1);
+      onHit?.(key, line);
+    }
+  }
+  return out;
+};
+
 // Raw-colour count per whitelisted file — the unification worklist (TRIP-321).
 // A whitelisted file that reaches 0 must leave the list; see the header.
 const wlDebt = new Map(COLOR_WHITELIST.map((f) => [f, 0]));
@@ -265,7 +401,7 @@ const area = (f) => {
 const typoComp = {}; // area -> { offSize, inlineWeight, inlineLh, inlineLs, inlineFamily }
 const bump = (f, k) => { const a = area(f); (typoComp[a] ||= { offSize: 0, inlineWeight: 0, inlineLh: 0, inlineLs: 0, inlineFamily: 0 })[k]++; };
 
-const SCANNED = [...walk(ROOT), 'public/landing.css'];
+const SCANNED = [...walk(ROOT), ...SCAN_EXTRA];
 for (const file of SCANNED) {
   const isCss = file.endsWith('.css');
   const lines = readFileSync(file, 'utf8').split('\n');
@@ -387,6 +523,63 @@ if (bpOver) console.log(`  ✗ new off-scale breakpoint vs ${BASE_REF}. Use ${BR
 else if (!baseSrc) console.log(`  ✓ ${BASE_REF} unavailable — composition not compared`);
 else console.log('  ✓ ratchet intact — no off-scale width appeared vs ' + BASE_REF + ' (normalising one moves the layout switch: visual decision, not a sweep)');
 
+// ── SPACING — храповик по СОСТАВУ, область = репозиторий (TRIP-339) ──
+// Почему репозиторий, а не файл, и почему мультимножество, а не счёт — см.
+// комментарий у SPACING_PROPS. Здесь только сама сверка.
+//
+// База берётся списком файлов из дерева BASE_REF, а не по именам файлов HEAD:
+// иначе удалённый на HEAD файл не попал бы в базовое множество, и снос целого
+// экрана читался бы как «величина исчезла» ровно так же, как её схлопывание, —
+// но, что важнее, ПЕРЕИМЕНОВАННЫЙ файл дал бы базу пустой и его значения
+// посчитались бы новыми.
+const spacingHead = new Map();          // величина → сколько раз (HEAD)
+const spacingWhere = new Map();         // величина → где встречается (для отчёта)
+for (const file of SCANNED) {
+  if (SPACING_ALLOW.includes(file)) continue;
+  if (!file.endsWith('.css')) continue; // инлайны в JSX держит храповик 2l
+  spacingValues(readFileSync(file, 'utf8'), (key, line) => {
+    spacingHead.set(key, (spacingHead.get(key) || 0) + 1);
+    const at = spacingWhere.get(key) || [];
+    if (at.length < 6) at.push(`${file}:${line}`);
+    spacingWhere.set(key, at);
+  });
+}
+const spacingBase = (() => {
+  if (!baseSrc) return null;            // BASE_REF недостижим — сверять не с чем
+  let files;
+  try {
+    files = execFileSync('git', ['ls-tree', '-r', '--name-only', BASE_REF, '--', ROOT, ...SCAN_EXTRA], {
+      encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+    }).split('\n').filter((f) => f.endsWith('.css') && !SPACING_ALLOW.includes(f));
+  } catch {
+    return null;
+  }
+  const out = new Map();
+  for (const f of files) {
+    for (const [k, n] of spacingValues(baseFile(f))) out.set(k, (out.get(k) || 0) + n);
+  }
+  return out;
+})();
+const spGrew = [];
+if (spacingBase) {
+  for (const [key, n] of [...spacingHead].sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))) {
+    const had = spacingBase.get(key) || 0;
+    if (n > had) {
+      spGrew.push(`${key} ×${n} (было ×${had}${had ? '' : ' — НОВАЯ величина'})`
+        + `\n        ${spacingWhere.get(key).join('  ')}`);
+    }
+  }
+}
+const spTotal = [...spacingHead.values()].reduce((a, b) => a + b, 0);
+const spOver = spGrew.length > 0;
+console.log(`\nSPACING — ${spTotal} сырых значений отступа, ${spacingHead.size} уникальных (шкала --sp-1…8: 2/4/6/8/10/12/16/20):`);
+spGrew.forEach((l) => console.log('  ✗ ' + l));
+if (spOver) {
+  console.log(`  ✗ величина отступа выросла против ${BASE_REF}. Храповик крутится только вниз: возьми ступень \`var(--sp-N)\`, схлопни правило с существующим — или поставь на строке \`design-token-exempt\` с причиной.`);
+  console.log('    Перенос правила между файлами и схлопывание двух правил в одно этот храповик НЕ трогают — он считает по всему репо.');
+} else if (!spacingBase) console.log(`  ✓ ${BASE_REF} unavailable — состав не сверялся`);
+else console.log(`  ✓ ratchet intact — ни одна величина не выросла против ${BASE_REF} (прогон по значениям «11→12» тут краснеет: §10 запрещает их, а сумма при таком прогоне не меняется)`);
+
 // ── COLOUR WHITELIST — ratchet + unification worklist (TRIP-321) ──
 // The per-file counts below are the remaining raw-colour debt: this is the
 // Ф2 progress meter, and it is only allowed to go down.
@@ -428,6 +621,6 @@ for (const [a, o] of compAreas) {
 }
 if (!compSum) console.log('  ✓ none — every component text is on a .t-* canon');
 
-const failed = typo.length > 0 || layers.length > 0 || bpOver || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
+const failed = typo.length > 0 || layers.length > 0 || bpOver || spOver || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0) || wlFailed;
 console.log(`\n${hr}\n${failed ? '✗ FAILED' : '✓ PASSED'}\n${hr}\n`);
 process.exit(failed ? 1 : 0);
