@@ -59,15 +59,18 @@
  * Что элемент реально переехал — показывает ярус 1 (`cmp` собранного CSS не
  * поможет) и рендер; см. рецепт скриншота в memory/triplanio-visual-check-playwright.
  *
- * Escape: `visual-diff-exempt: <класс> <свойство> — <причина>` в ДОБАВЛЕННЫХ
- * строках диффа (как `floor-exempt` у 2o) — действует ровно один PR и гасит
- * ровно НАЗВАННЫЙ ключ. ★ Бланкетным (`if (exempt) exit(0)`) он был ровно один
- * PR и это был отказ в опасную сторону: один маркер на легитимный перенос
- * пропускал в том же прогоне `.grow--fit padding: + 999px` — правку общего
- * класса, задевающую каждый элемент на нём. Проверено прогоном, не чтением.
- * Огрубление названо: `@media` в маркер не входит, поэтому маркер на
- * `.x padding` гасит и десктопное, и мобильное изменение этого свойства. Класс,
- * состояние и свойство назвать обязан — на них ошибиться молча нельзя.
+ * Escape: `visual-diff-exempt: <класс> [{@media …}] <свойство> — <причина>` в
+ * ДОБАВЛЕННЫХ строках диффа (как `floor-exempt` у 2o) — действует ровно один PR
+ * и гасит ровно НАЗВАННЫЙ ключ. ★ Бланкетным (`if (exempt) exit(0)`) он был
+ * ровно один PR и это был отказ в опасную сторону: один маркер на легитимный
+ * перенос пропускал в том же прогоне `.grow--fit padding: + 999px` — правку
+ * общего класса, задевающую каждый элемент на нём. Проверено прогоном, не
+ * чтением. ★★ Маркер называет ПОЛНЫЙ ключ, включая `@media`: без него escape
+ * частично возвращал бы ту самую дыру, ради которой media попал в ключ —
+ * мобильное правило стоит ниже по файлу и прячет правку десктопного, и поймала
+ * её мутация, а не чтение кода. Маркер без фигурных скобок адресует базовый
+ * контекст и только его; мобильное изменение называется отдельной строкой.
+ * Форма маркера = ровно то, что гард печатает слева от двоеточия.
  *
  * Env: BASE_REF (по умолчанию origin/dev).
  */
@@ -79,7 +82,10 @@ const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const EXEMPT = 'visual-diff-exempt';
 const MOVE = 'visual-diff-move';
 const SYNTAX = [
-  `  ${EXEMPT}: <класс> <свойство> — <причина>   (напр. ${EXEMPT}: .checkbox gap — ступень шкалы)`,
+  `  ${EXEMPT}: <класс> [{@media …}] <свойство> — <причина>`,
+  `      база:   ${EXEMPT}: .checkbox gap — ступень шкалы`,
+  `      media:  ${EXEMPT}: .checkbox {@media (max-width: 640px)} gap — то же на телефоне`,
+  '      Ключ маркера = то, что напечатано в строке изменения слева от двоеточия.',
   `  ${MOVE}: <класс-источник> -> <класс-цель>   (напр. ${MOVE}: brow__body -> grow--fit)`,
 ];
 
@@ -242,11 +248,30 @@ const addedLines = [
   .filter((l) => l.startsWith('+'));
 
 const CLS = String.raw`\.?[-\w]+`;
-const reExempt = new RegExp(String.raw`${EXEMPT}:\s*(${CLS}(?::{1,2}[-\w]+(?:\([^)]*\))?)*)\s+([-\w]+)`);
+/* ★ Маркер называет ПОЛНЫЙ ключ, включая `@media`. Соблазн опустить его велик
+ * (маркер короче), но это частично возвращает дыру, ради которой media вообще
+ * попал в ключ: мобильное правило стоит ниже по файлу и прячет правку
+ * десктопного. Маркер БЕЗ фигурных скобок адресует базовый контекст и только
+ * его — отказ в безопасную сторону, — а мобильное изменение приходится назвать
+ * отдельной строкой. Форма маркера = ровно то, что гард печатает слева от
+ * двоеточия: `.btn:hover {@media (max-width: 640px)} gap`. */
+const reExempt = new RegExp(
+  String.raw`${EXEMPT}:\s*(${CLS}(?::{1,2}[-\w]+(?:\([^)]*\))?)*)\s*(?:\{([^}]*)\}\s*)?([-\w]+)`,
+);
 const reMove = new RegExp(String.raw`${MOVE}:\s*(${CLS})\s*->\s*(${CLS})`);
 /** Имя класса из маркера: `.btn:hover` → `btn`; состояние берёт тот же stateOf,
  *  что строил ключ, — иначе маркер и ключ разошлись бы по орфографии. */
 const bare = (sel) => classesOf(sel.startsWith('.') ? sel : `.${sel}`)[0];
+/** Пробелы внутри `@media (max-width:640px)` — не смысл: сверяем нормализованно.
+ *  Гасятся только пробелы ВОКРУГ пунктуации; между словами (`screen and (…)`)
+ *  они остаются границей идентификатора, поэтому два РАЗНЫХ запроса совпасть не
+ *  могут. Маркер, отвергнутый из-за пропавшего пробела после двоеточия, — это
+ *  маркер, который удаляют в раздражении, а с ним и проверку. */
+const normMedia = (s) =>
+  (s || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([:,()])\s*/g, '$1')
+    .trim();
 
 const exempts = [];
 const moves = [];
@@ -254,7 +279,7 @@ const malformed = [];
 for (const line of addedLines) {
   if (line.includes(`${EXEMPT}:`)) {
     const m = line.match(reExempt);
-    if (m) exempts.push({ cls: bare(m[1]), state: stateOf(m[1]), prop: m[2], used: false });
+    if (m) exempts.push({ cls: bare(m[1]), media: normMedia(m[2]), state: stateOf(m[1]), prop: m[3], used: false });
     else malformed.push(line.trim());
   }
   if (line.includes(`${MOVE}:`)) {
@@ -303,13 +328,15 @@ for (const mv of moves) {
 
 for (const c of changes) {
   if (declared.has(c.key)) continue;
-  const ex = exempts.find((e) => e.cls === c.cls && e.state === c.state && e.prop === c.prop);
+  const ex = exempts.find(
+    (e) => e.cls === c.cls && e.media === normMedia(c.media) && e.state === c.state && e.prop === c.prop,
+  );
   if (!ex) continue;
   ex.used = true;
   declared.add(c.key);
 }
 for (const e of exempts) {
-  const id = `${EXEMPT}: .${e.cls}${e.state} ${e.prop}`;
+  const id = `${EXEMPT}: .${e.cls}${e.state}${e.media ? ` {${e.media}}` : ''} ${e.prop}`;
   notes.push(e.used ? `${id} — изменение объявлено намеренным` : `${id} — под маркером изменений нет`);
 }
 
