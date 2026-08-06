@@ -92,7 +92,9 @@ export function stopAnalytics() {
 
 /**
  * Drop what this document was holding for a destination that will not come.
- * Called on a withdrawal and on a refusal: the answer is "no", and a later
+ * Called on a withdrawal and on a refusal — the one just clicked (setConsent) and
+ * the one recorded on an earlier visit (applyConsent), which shows no banner and
+ * so would otherwise never reach here. The answer is "no", and a later
  * change of mind in this same document must not resurrect events captured while
  * it was "no".
  */

@@ -55,6 +55,7 @@ export function setConsent(accepted) {
   // "No" is an answer too: whatever this document held waiting for a destination
   // now has none. Not stopAnalytics() — that would flip `isAnalyticsOn()` and rob
   // the banner of the one thing it reads to decide a downgrade needs a reload.
+  // The answer given HERE only — a recorded one is applyConsent's half.
   if (!accepted) forgetPendingEvents();
   return record;
 }
@@ -94,6 +95,13 @@ export function applyConsent(record, uid) {
 
   // Sent for a refusal too: once TRIP-227 loads tags, silence is the wrong signal.
   updateGoogleConsent(record);
+
+  // A refusal on RECORD, not just one clicked in this document: someone who said
+  // no on an earlier visit gets no banner, so `setConsent` never runs, and what
+  // this document held would be replayed in full the moment they reopened
+  // "Cookie settings" and changed their mind — events captured while their
+  // answer was already "no". Both roads to a refusal have to clear the hold.
+  if (!record.analytics) forgetPendingEvents();
 
   if (!record.analytics || isAnalyticsOn() || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
 
