@@ -13,13 +13,16 @@
 #
 # Ordering (one shape for dev and main), via `needs` + result-aware `if`:
 #   gate + detect
-#     → migrate   (db push, STRICT — no --include-all)
-#       → deploy  (edge functions; never outruns its migration)
-#         → vercel (frontend; never ships before the backend)
-#           → notify (Telegram, success AND failure, if: always())
+#     → migrate       (db push, STRICT — no --include-all)
+#       → assert_tiers (live RLS/grants/doors vs manifest; EVERY push, no path filter)
+#         → deploy    (edge functions; never outruns its migration)
+#           → vercel  (frontend; never ships before the backend)
+#             → notify (Telegram, success AND failure, if: always())
 # Front-only fast-path: if no supabase/** changed, migrate+deploy are skipped and
-# vercel runs straight after the gate. A failure anywhere upstream stops the chain
-# before vercel (frontend stays on the last good build) and notify reports it.
+# vercel runs after the gate and the tier assert. A failure anywhere upstream stops
+# the chain before vercel (frontend stays on the last good build) and notify reports it.
+# `assert_tiers` is the one job with no path filter (TRIP-274): drift that did not
+# come from a migration used to hang unnoticed until the next migration.
 #
 # MIGRATIONS (TRIP-68): history reconciled to a single baseline; repo == dev ==
 # prod journals. New migrations MUST be timestamped (`supabase migration new`),
@@ -220,35 +223,74 @@ jobs:
           # mode gives each connection its own backend, so prepared statements work.
           supabase db push --db-url "$URL" --yes
 
-      - name: Assert security tiers (RLS/grants) match manifest
-        env:
-          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
-          DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
-        run: |
-          set -euo pipefail
-          # Пост-деплой ассерт: живые pg_policies + relacl совпадают с манифестом
-          # ярусов (scripts/ci/security-tiers.mjs). Ловит дрейф грантов/политик от
-          # только что применённой миграции — anon-DML где угодно, authenticated-DML
-          # на ярусах B/D, ярус-A без роль-политики, новая незаклассифицированная
-          # таблица с дефолтным GRANT ALL. Модель как у verify_jwt-ассерта ниже.
-          # psql преднастроен на ubuntu-latest; DB URL = SESSION pooler (как db push).
-          case "${{ github.ref_name }}" in
-            dev)  URL="$DB_URL_DEV" ;;
-            main) URL="$DB_URL_PROD" ;;
-            *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
-          esac
-          SECURITY_TIERS_DB_URL="$URL" node scripts/ci/check-security-tiers.mjs
-
-  # 2. Edge functions — after migrations succeed (or are skipped).
-  deploy:
-    name: Deploy functions
+  # 1b. Ассерт ярусов — ОТДЕЛЬНЫЙ job и БЕЗ фильтра по путям (TRIP-274).
+  #
+  # Был шагом внутри `migrate`, а тот условен по `supabase/migrations/**` — то
+  # есть единственная проверка, сверяющая ЖИВЫЕ политики с манифестом, молчала
+  # на всём, что пришло не из миграции: правка в дашборде, обновление платформы,
+  # откат. Прецедент есть: Ф3c дропнула политику, и решение полтора месяца не
+  # исполнялось, потому что никто не смотрел. Здесь он гоняется на КАЖДОМ
+  # мердже; цена — один psql-запрос, ~5 секунд.
+  #
+  # `needs: migrate` СОХРАНЯЕТСЯ, снят только фильтр по путям: параллельный job
+  # опросил бы БД посреди `db push` и упал на полунакаченной схеме. Отдельно про
+  # main: прод штатно отстаёт от dev на один мердж, и накат идёт этим же
+  # прогоном — значит ассерт обязан идти ПОСЛЕ него, иначе он увидит состояние ДО
+  # наката и отчитается «дырой» о том, что через минуту закроется.
+  #
+  # Блокирующий: `deploy` (и `vercel` следом) ждут его успеха. Пока это был шаг
+  # внутри `migrate`, красный ассерт останавливал выкат; вынести его наружу и не
+  # переподключить `needs` значило бы молча лишить проверку зубов.
+  assert_tiers:
+    name: Assert security tiers
     needs: [gate, detect, tolgee_sync, migrate]
     if: >-
       ${{ !cancelled()
           && needs.gate.result == 'success'
           && needs.detect.result == 'success'
           && (needs.tolgee_sync.result == 'success' || needs.tolgee_sync.result == 'skipped')
+          && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Assert security tiers (RLS/grants/doors) match manifest
+        env:
+          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+          DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: |
+          set -euo pipefail
+          # Живые pg_policies + relacl + secdef-функции + бакеты совпадают с
+          # манифестом ярусов (scripts/ci/security-tiers.mjs): anon-DML где
+          # угодно, authenticated-DML на ярусах B/D, ярус-A без роль-политики,
+          # новая незаклассифицированная таблица с дефолтным GRANT ALL, предикат
+          # бакета не той ступени, паритет EDITOR_ROLES ↔ _can_edit_trip.
+          # psql преднастроен на ubuntu-latest; DB URL = SESSION pooler (как db push).
+          case "${{ github.ref_name }}" in
+            dev)  URL="$DB_URL_DEV" ;;
+            main) URL="$DB_URL_PROD" ;;
+            *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
+          esac
+          if [ -z "$URL" ]; then
+            echo "::error::Missing DB URL secret for ${{ github.ref_name }} (SUPABASE_DB_URL_DEV/_PROD)"; exit 1
+          fi
+          SECURITY_TIERS_DB_URL="$URL" node scripts/ci/check-security-tiers.mjs
+
+  # 2. Edge functions — after migrations succeed (or are skipped) and the tier
+  # assert passes.
+  deploy:
+    name: Deploy functions
+    needs: [gate, detect, tolgee_sync, migrate, assert_tiers]
+    if: >-
+      ${{ !cancelled()
+          && needs.gate.result == 'success'
+          && needs.detect.result == 'success'
+          && (needs.tolgee_sync.result == 'success' || needs.tolgee_sync.result == 'skipped')
           && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+          && needs.assert_tiers.result == 'success'
           && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.functions == 'true') }}
     runs-on: ubuntu-latest
     steps:
@@ -316,13 +358,14 @@ jobs:
   # migrate+deploy skipped (fast-path).
   vercel:
     name: Deploy frontend (Vercel)
-    needs: [gate, detect, tolgee_sync, migrate, deploy]
+    needs: [gate, detect, tolgee_sync, migrate, assert_tiers, deploy]
     if: >-
       ${{ !cancelled()
           && needs.gate.result == 'success'
           && needs.detect.result == 'success'
           && (needs.tolgee_sync.result == 'success' || needs.tolgee_sync.result == 'skipped')
           && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+          && needs.assert_tiers.result == 'success'
           && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
     runs-on: ubuntu-latest
     env:
@@ -381,7 +424,7 @@ jobs:
   #   TELEGRAM_OPS_CHAT_ID   — chat/channel id the ops bot posts to
   notify:
     name: Notify (Telegram)
-    needs: [gate, detect, tolgee_sync, migrate, deploy, vercel]
+    needs: [gate, detect, tolgee_sync, migrate, assert_tiers, deploy, vercel]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -393,6 +436,7 @@ jobs:
           DETECT: ${{ needs.detect.result }}
           TOLGEE: ${{ needs.tolgee_sync.result }}
           MIGRATE: ${{ needs.migrate.result }}
+          ASSERT: ${{ needs.assert_tiers.result }}
           DEPLOY: ${{ needs.deploy.result }}
           VERCEL: ${{ needs.vercel.result }}
         run: |
@@ -423,7 +467,7 @@ jobs:
 
           # Overall: bad if any tracked job failed or was cancelled.
           OVERALL="success"
-          for r in "$GATE" "$DETECT" "$TOLGEE" "$MIGRATE" "$DEPLOY" "$VERCEL"; do
+          for r in "$GATE" "$DETECT" "$TOLGEE" "$MIGRATE" "$ASSERT" "$DEPLOY" "$VERCEL"; do
             case "$r" in failure|cancelled) OVERALL="failure" ;; esac
           done
           if [ "$OVERALL" = "success" ]; then HEAD="✅ Deploy OK"; else HEAD="❌ Deploy FAILED"; fi
@@ -437,6 +481,7 @@ jobs:
           $(glyph "$GATE") gate
           $(glyph "$TOLGEE") tolgee sync (i18n)
           $(glyph "$MIGRATE") migrate (db push)
+          $(glyph "$ASSERT") assert (security tiers)
           $(glyph "$DEPLOY") deploy (functions)
           $(glyph "$VERCEL") vercel (frontend)
 
