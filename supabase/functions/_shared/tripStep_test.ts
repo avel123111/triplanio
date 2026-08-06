@@ -31,18 +31,18 @@ Deno.test('создатель — owner, даже без строки членс
 Deno.test('создатель остаётся owner при ЛЮБОЙ своей строке членства (TRIP-143)', () => {
   // Залётная строка created_by-юзера не должна его понижать.
   for (const role of ['viewer', 'admin', 'owner', 'что-то новое']) {
-    assertEquals(stepFromFacts(OWNER, OWNER, role), 'owner', `роль ${role}`);
+    assertEquals(stepFromFacts(OWNER, OWNER, { role: role }), 'owner', `роль ${role}`);
   }
 });
 
 Deno.test('admin и owner-строка дают editor', () => {
   for (const role of EDITOR_ROLES) {
-    assertEquals(stepFromFacts(OWNER, OTHER, role), 'editor', `роль ${role}`);
+    assertEquals(stepFromFacts(OWNER, OTHER, { role: role }), 'editor', `роль ${role}`);
   }
 });
 
 Deno.test('viewer — participant, не выше', () => {
-  assertEquals(stepFromFacts(OWNER, OTHER, 'viewer'), 'participant');
+  assertEquals(stepFromFacts(OWNER, OTHER, { role: 'viewer' }), 'participant');
 });
 
 Deno.test('нет активной строки — не на трипе вовсе', () => {
@@ -50,9 +50,9 @@ Deno.test('нет активной строки — не на трипе вов�
 });
 
 Deno.test('нет трипа или нет пользователя — не на трипе вовсе', () => {
-  assertEquals(stepFromFacts(null, OTHER, 'admin'), null);
-  assertEquals(stepFromFacts(OWNER, null, 'admin'), null);
-  assertEquals(stepFromFacts(null, null, 'admin'), null);
+  assertEquals(stepFromFacts(null, OTHER, { role: 'admin' }), null);
+  assertEquals(stepFromFacts(OWNER, null, { role: 'admin' }), null);
+  assertEquals(stepFromFacts(null, null, { role: 'admin' }), null);
 });
 
 // ★ Гейт БЕЛЫЙ, а не чёрный. Фронтовый roleCanEdit — чёрный (`!== 'viewer'`), и
@@ -60,8 +60,8 @@ Deno.test('нет трипа или нет пользователя — не н�
 // незнакомая или пустая роль проваливается в «нельзя», а не в «можно».
 Deno.test('незнакомая роль НЕ даёт editor (белый список, TRIP-120)', () => {
   for (const role of ['', 'Admin', 'ADMIN', 'editor', 'guest', 'member', 'null']) {
-    assertEquals(stepFromFacts(OWNER, OTHER, role), 'participant', `роль ${role}`);
-    assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, role), 'editor'), false, `роль ${role}`);
+    assertEquals(stepFromFacts(OWNER, OTHER, { role: role }), 'participant', `роль ${role}`);
+    assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, { role: role }), 'editor'), false, `роль ${role}`);
   }
 });
 
@@ -91,9 +91,9 @@ Deno.test('null не перекрывает ничего', () => {
 
 Deno.test('★ viewer не перекрывает editor ни при каком раскладе', () => {
   const asViewer: Array<[string, TripStep]> = [
-    ['активный viewer', stepFromFacts(OWNER, OTHER, 'viewer')],
+    ['активный viewer', stepFromFacts(OWNER, OTHER, { role: 'viewer' })],
     ['не участник', stepFromFacts(OWNER, OTHER, null)],
-    ['нет трипа', stepFromFacts(null, OTHER, 'viewer')],
+    ['нет трипа', stepFromFacts(null, OTHER, { role: 'viewer' })],
   ];
   for (const [what, step] of asViewer) {
     assertEquals(clearsStep(step, 'editor'), false, what);
@@ -102,11 +102,11 @@ Deno.test('★ viewer не перекрывает editor ни при каком 
 });
 
 Deno.test('★ viewer ПРОХОДИТ там, где нужно участие (чат, шеринг, копия)', () => {
-  assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, 'viewer'), 'participant'), true);
+  assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, { role: 'viewer' }), 'participant'), true);
 });
 
 Deno.test('★ editor не становится owner (удаление трипа и биллинг)', () => {
-  assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, 'admin'), 'owner'), false);
+  assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, { role: 'admin' }), 'owner'), false);
 });
 
 // EDITOR_ROLES — это и есть список из SQL `_can_edit_trip`. Расхождение сделало
@@ -114,4 +114,29 @@ Deno.test('★ editor не становится owner (удаление трип
 // проде: обе двери молчат, просто пускают разных людей.
 Deno.test('EDITOR_ROLES совпадает с ролями из _can_edit_trip', () => {
   assertEquals([...EDITOR_ROLES].sort(), ['admin', 'owner']);
+});
+
+// ── Пустая роль: активная строка БЕЗ роли ────────────────────────────────────
+// Нашёл ревьюер Codex на PR #684. `trip_members.role` — колонка без NOT NULL
+// (CHECK `role = ANY(...)` на NULL не срабатывает: NULL — не FALSE), а
+// канонический SQL `is_trip_participant` смотрит ТОЛЬКО `status = 'active'` и
+// роль не читает вовсе. Если схлопнуть «строки нет» и «строка есть, роль
+// пустая» в одно значение, TS-половина правила становится СТРОЖЕ SQL-половины
+// и такой участник получает отказ на открытии трипа.
+Deno.test('★ активная строка с ПУСТОЙ ролью — это участник, а не отказ', () => {
+  assertEquals(stepFromFacts(OWNER, OTHER, { role: null }), 'participant');
+  assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, { role: null }), 'participant'), true);
+});
+
+Deno.test('★ но пустая роль НЕ даёт editor (как и в _can_edit_trip)', () => {
+  assertEquals(clearsStep(stepFromFacts(OWNER, OTHER, { role: null }), 'editor'), false);
+});
+
+Deno.test('строка без поля role ведёт себя как строка с пустой ролью', () => {
+  assertEquals(stepFromFacts(OWNER, OTHER, {}), 'participant');
+});
+
+Deno.test('«строки нет» и «роль пустая» — РАЗНЫЕ факты', () => {
+  assertEquals(stepFromFacts(OWNER, OTHER, null), null, 'строки нет → не на трипе');
+  assertEquals(stepFromFacts(OWNER, OTHER, { role: null }), 'participant', 'строка есть → участник');
 });

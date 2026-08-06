@@ -35,20 +35,33 @@ const LADDER: Record<Exclude<TripStep, null>, number> = { participant: 1, editor
  * Ступень по уже добытым фактам.
  *
  * `creatorId` — `trips.created_by`, либо null, если трипа нет.
- * `activeRole` — роль АКТИВНОЙ строки `trip_members` вызывающего, либо null,
- * если такой строки нет (статусы pending/declined/offline сюда не попадают).
+ * `membership` — АКТИВНАЯ строка `trip_members` вызывающего, либо null, если
+ * такой строки нет (pending/declined/offline сюда не попадают).
+ *
+ * ⚠ Членство передаётся ОБЪЕКТОМ, а не голой ролью, и это не украшательство:
+ * `trip_members.role` — колонка БЕЗ `NOT NULL` (CHECK `role = ANY(...)` на NULL
+ * не срабатывает, потому что NULL — не FALSE). Голая роль схлопывает два разных
+ * факта в одно значение: «строки нет» и «строка есть, роль пустая». А
+ * канонический SQL `is_trip_participant` смотрит ТОЛЬКО `status = 'active'` и
+ * роль не читает вовсе — то есть активная строка с пустой ролью это участник.
+ * Схлопни их — и TS-половина правила станет строже SQL-половины, а разойтись
+ * они не имеют права: это одно правило на двух языках.
  */
 export function stepFromFacts(
   creatorId: string | null,
   userId: string | null,
-  activeRole: string | null,
+  membership: { role?: string | null } | null,
 ): TripStep {
   if (!creatorId || !userId) return null;
   // Владение — это `trips.created_by` и только оно. Залётная строка членства с
   // ролью 'owner' владением НЕ является: ниже она даёт `editor` (TRIP-143).
   if (creatorId === userId) return 'owner';
-  if (activeRole === null) return null;
-  return EDITOR_ROLES.includes(activeRole) ? 'editor' : 'participant';
+  if (!membership) return null;
+
+  const role = membership.role ?? null;
+  // Белый список: пустая и незнакомая роль дают участие, но не редактора —
+  // ровно так ведёт себя SQL `_can_edit_trip`.
+  return role !== null && EDITOR_ROLES.includes(role) ? 'editor' : 'participant';
 }
 
 /** Перекрывает ли `step` планку `required`. null не перекрывает ничего. */

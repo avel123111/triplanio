@@ -71,9 +71,16 @@ async function fetchTripCreator(tripId: string): Promise<string | null> {
   return (data?.created_by as string | null) ?? null;
 }
 
-/** Active-membership role for the caller, or null when not an active member.
+/** The caller's ACTIVE trip_members row, or null when there is none.
+ *  Returns the row (not the bare role) because `role` is nullable: an active row
+ *  with a NULL role is still a participant, and collapsing both into `null`
+ *  would make this stricter than SQL `is_trip_participant`, which reads only
+ *  `status`. See the note on `stepFromFacts`.
  *  Throws TripAccessError on a query error. */
-async function fetchActiveMemberRole(tripId: string, userId: string): Promise<string | null> {
+async function fetchActiveMembership(
+  tripId: string,
+  userId: string,
+): Promise<{ role: string | null } | null> {
   const { data, error } = await supabaseAdmin
     .from('trip_members')
     .select('role')
@@ -83,7 +90,8 @@ async function fetchActiveMemberRole(tripId: string, userId: string): Promise<st
     .limit(1);
 
   if (error) throw new TripAccessError(error);
-  return (data?.[0]?.role as string | null) ?? null;
+  const row = data?.[0];
+  return row ? { role: (row.role as string | null) ?? null } : null;
 }
 
 /**
@@ -115,11 +123,28 @@ export async function isCallerParticipant(tripId: string, userId: string): Promi
 
 /** I/O-половина: достаёт факты и отдаёт их правилу. Решение — в `stepFromFacts`. */
 async function resolveStep(tripId: string, userId: string): Promise<TripStep> {
-  const creator = await fetchTripCreator(tripId);
-  // Трипа нет — дальше спрашивать нечего, и лишний запрос не нужен.
-  if (creator === null) return null;
-  // Создатель проходит без строки членства, поэтому роль тут не читаем вовсе.
-  if (creator === userId) return stepFromFacts(creator, userId, null);
+  return callerStep(tripId, userId, await fetchTripCreator(tripId));
+}
 
-  return stepFromFacts(creator, userId, await fetchActiveMemberRole(tripId, userId));
+/**
+ * Ступень вызывающего, когда `trips.created_by` УЖЕ известен.
+ *
+ * Для горячих путей, которые и так держат строку трипа в руках
+ * (`getTripDetails` — каждое открытие трипа, `callTriplanioAi`): звать
+ * `isCallerParticipant` там значило бы прочитать `trips` второй раз за запрос.
+ * Правило при этом остаётся ОДНО — то же `stepFromFacts`, что и у всех.
+ *
+ * `creatorId` = null означает «трипа нет» (вызывающий уже ответил 404).
+ * Бросает TripAccessError, если запрос роли сорвался (→ 5xx, не ложный 403).
+ */
+export async function callerStep(
+  tripId: string,
+  userId: string,
+  creatorId: string | null,
+): Promise<TripStep> {
+  if (creatorId === null) return null;
+  // Создатель проходит без строки членства — роль не читаем вовсе.
+  if (creatorId === userId) return stepFromFacts(creatorId, userId, null);
+
+  return stepFromFacts(creatorId, userId, await fetchActiveMembership(tripId, userId));
 }
