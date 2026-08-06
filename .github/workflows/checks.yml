@@ -104,6 +104,7 @@ jobs:
   #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
   #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
   #   2n check-orphan-css            — a rule left pointing at a class the markup stopped emitting
+  #   2p check-css-semantics        — итоговые объявления класса: база vs HEAD (ярус 2 виз. гейта)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -209,6 +210,14 @@ jobs:
       - name: 2o — design floor
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run check:floor
+      # 2p — ЯРУС 2 визуального гейта (TRIP-340 PR3, Р13). Здесь, а не в
+      # `guards`, по той же причине, что и 2o: гард разбирает CSS через
+      # `postcss` (уже прямая зависимость репо), то есть требует `npm ci`, а
+      # `guards` намеренно живёт на стандартной библиотеке.
+      - name: 2p — семантический дифф CSS (что реально достаётся классу)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: npm run check:semantics
 
   deno:
     name: Deno typecheck (edge functions)

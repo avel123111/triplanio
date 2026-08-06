@@ -16,7 +16,8 @@
     "audit:design": "node scripts/ci/audit-design.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "test": "node --test \"src/**/*.test.js\" \"scripts/**/*.test.mjs\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:semantics": "node scripts/ci/check-css-semantics.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",
