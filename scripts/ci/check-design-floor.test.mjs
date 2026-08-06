@@ -169,6 +169,56 @@ test('a variable on a component variant → green (law 3, and phases 04–06 add
   assert.match(r.out, /вне :root \(репорт, не блокирует\)/, 'the hole must still be visible');
 });
 
+/* ── demotion: the count goes DOWN and it is still a violation ───────────── */
+
+test('★ a token moved from :root onto a class is a violation, though the count FELL', (t) => {
+  // Found on the live repo by moving `--accent` out of `:root`: the line read
+  // `163 → 162  -1`, a minus, i.e. progress — while the vocabulary was
+  // unchanged and the name had merely hidden. Same failure as "classes down,
+  // namespaces up", transposed onto the token axis; a count-only ratchet cannot
+  // see it by construction.
+  // `.card` exists on BOTH sides on purpose: the class count must not move, so
+  // the ONLY thing that can make this red is the demotion itself.
+  const f = fixture(t, {
+    base: { 'src/app.css': ':root { --ink: #111; --accent: #f00; } .card { color: red; }' },
+    head: { 'src/app.css': ':root { --ink: #111; } .card { color: red; --accent: #f00; }' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, `a demotion must be red even though the count fell:\n${r.out}`);
+  assert.doesNotMatch(r.out, /✗ классов/, 'and red for the demotion, not for anything else');
+  assert.match(r.out, /--accent: был в :root/);
+  assert.match(r.out, /токенов в :root.*2\s*→\s*1/, 'and the falling count is still shown honestly');
+});
+
+test('DELETING a token outright is not a demotion — that is the direction we want', (t) => {
+  const f = fixture(t, {
+    base: { 'src/app.css': ':root { --ink: #111; --accent: #f00; } .card { color: red; }' },
+    head: { 'src/app.css': ':root { --ink: #111; } .card { color: red; }' },
+  });
+  assert.equal(run(f).code, 0);
+});
+
+test('moving a token between two :root files is not a demotion', (t) => {
+  const f = fixture(t, {
+    base: { 'src/app.css': ':root { --ink: #111; --accent: #f00; }' },
+    head: { 'src/app.css': ':root { --ink: #111; }', 'src/index.css': ':root { --accent: #f00; }' },
+  });
+  assert.equal(run(f).code, 0);
+});
+
+test('a name also defined in the dark :root cannot be demoted by touching the light one', (t) => {
+  // The set is keyed by NAME, so the dark block holds the name up. This is why
+  // only the "light-only" names are demotable at all — worth pinning, because
+  // the first attempt to reproduce the bug picked `--sh-1` and saw nothing.
+  const f = fixture(t, {
+    base: { 'src/app.css': ':root { --sh-1: a; } :root[data-theme="dark"] { --sh-1: b; } .card { color: red; }' },
+    head: { 'src/app.css': ':root[data-theme="dark"] { --sh-1: b; } .card { color: red; --sh-1: a; }' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /токенов в :root.*1\s*→\s*1/);
+});
+
 /* ───────────────────────────── the escape ───────────────────────────────── */
 
 test('an exemption on an ADDED line grants exactly its budget', (t) => {

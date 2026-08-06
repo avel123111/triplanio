@@ -467,6 +467,10 @@ if (process.argv.includes('--json')) {
         inlineScoped,
         inlineAll,
         rootTokens: rootTokenNames.size,
+        // The NAMES, not just how many. Guard 2o needs both sides' sets to spot
+        // a DEMOTION: a name that leaves `:root` for a class scope makes the
+        // count go DOWN while the vocabulary is unchanged — the name merely hid.
+        rootTokenNames: [...rootTokenNames].sort(),
         privateTokens,
         dupShapes: dupShapes.length,
         dupShapeRules,

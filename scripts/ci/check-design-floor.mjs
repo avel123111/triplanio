@@ -15,9 +15,17 @@
  * The SAME `audit-design.mjs` — the one sitting next to this file, resolved
  * from `import.meta.url`, never the base branch's copy — is run twice: once
  * against a detached worktree of BASE_REF, once against the working tree. One
- * instrument, both sides. Change the instrument and BOTH numbers move together,
- * so re-defining a metric buys nothing; and the re-definition is right there in
- * the diff. It also sidesteps the fact that the base worktree has no
+ * instrument, both sides: change the instrument and BOTH numbers move together,
+ * so simply lowering the counts buys nothing.
+ *
+ * That is ALMOST a closed door, and the gap is worth naming rather than
+ * overclaiming: an edit that under-counts by a feature which exists only on
+ * HEAD (say, "ignore classes in files added this PR") moves one side and not
+ * the other, and would go green on real growth. What holds that shut is not
+ * this guard — it is that the edit must appear in `audit-design.mjs`, in the
+ * diff, under 43 tests. Cheap to see, hard to do by accident.
+ *
+ * Running this checkout's script also sidesteps the fact that the base worktree has no
  * `node_modules`: the script that executes is always this checkout's, so its
  * `acorn` import resolves from this checkout.
  *
@@ -273,6 +281,44 @@ if (priv.length) {
   const fresh = priv.filter((t) => !wasPriv.has(t.name)).map((t) => t.name);
   console.log(`  ─ вне :root (репорт, не блокирует): ${priv.length}${fresh.length ? `, новых: ${fresh.join(' · ')}` : ''}`);
   for (const [f, names] of [...byFile].sort()) console.log(`      ${f}: ${[...new Set(names)].sort().join(' · ')}`);
+}
+
+/** ★ A DEMOTION IS A VIOLATION EVEN THOUGH THE COUNT WENT DOWN.
+ *  Move `--accent` from `:root` onto `.card` and the token line reads
+ *  `163 → 162  -1` — a minus, i.e. progress. The vocabulary did not shrink by
+ *  one; the NAME HID. This is precisely the failure the floor exists to stop
+ *  ("lower the one being watched, grow the one that is not"), transposed onto
+ *  the token axis, and a count-only ratchet cannot see it by construction.
+ *
+ *  The predicate is exact and cannot false-positive: the name was in `:root` on
+ *  the base, is NOT in `:root` on HEAD, and STILL EXISTS in src/ under a class
+ *  scope. Deleting a token outright is not a demotion (it stops existing —
+ *  green, and it is the direction the epic wants). Moving it between two
+ *  `:root` files is not one either. A name also defined in the dark `:root`
+ *  cannot be demoted by touching only the light one — the set is keyed by name,
+ *  so 88 of the 163 hold each other up; only "light-only" names can demote.
+ *
+ *  NO ESCAPE MARKER, DELIBERATELY. Under the 04–10 plan this is never a legal
+ *  move: the direction is the opposite one, islands collapse INTO `:root` or
+ *  disappear. And §5 of the epic says the composition of L0 does not change —
+ *  so a real case for demoting a token is an argument about the epic, not
+ *  something a line comment should be able to wave through. */
+const headPrivate = new Set((head.privateTokens ?? []).map((t) => t.name));
+const demoted = (base.rootTokenNames ?? []).filter((n) => headPrivate.has(n));
+if (demoted.length) {
+  console.error('::error::check-design-floor: токен ушёл из :root на класс — словарь не сократился, имя спряталось');
+  for (const n of demoted) {
+    const files = (head.privateTokens.find((t) => t.name === n)?.files ?? []).join(' · ');
+    console.error(`  ✗ ${n}: был в :root на ${BASE_REF}, теперь только на классе (${files})`);
+  }
+  console.error('');
+  console.error('  Число токенов при этом ПАДАЕТ, то есть выглядит как прогресс — это тот самый');
+  console.error('  провал «снизили одно, вырастили другое» (TRIP-337 §4), только на токенной оси.');
+  console.error('  По плану 04-10 такой ход не бывает легальным: направление обратное, островки');
+  console.error('  схлопываются В :root или исчезают, а §5 говорит, что состав L0 не меняется.');
+  console.error('  Поэтому escape-маркера здесь намеренно нет — случай обсуждается в эпике.');
+  console.error('  Если токен больше не нужен - удали его, а не переноси на класс: это зелёный путь.');
+  process.exit(1);
 }
 
 const broken = rows.filter((r) => r.over > 0);
