@@ -63,6 +63,12 @@ begin
        values ('cache', p_mode, 'running')
     returning id into v_run;
 
+  -- Ретеншн 30 дней. Чистим В НАЧАЛЕ своего же прогона, а не отдельной джобой:
+  -- одна движущаяся часть вместо двух, и чистка не может «отстать» от писателя.
+  -- Находки уезжают каскадом по run_id.
+  delete from reconcile_run r
+   where r.started_at < now() - interval '30 days';
+
   -- ==========================================================================
   -- 1. Юзеры: кэш подписки + откат аддонов
   -- ==========================================================================
@@ -72,6 +78,11 @@ begin
     v_before_end    := v_user.subscription_end_date;
     v_err           := null;
     v_addon_hits    := '[]'::jsonb;
+    -- Сбрасываем «стало» явно. Читается оно только на пути v_err is null, но это
+    -- держится на одном `continue` ниже: стоит его тронуть — и в находку уедет
+    -- значение от ПРЕДЫДУЩЕГО юзера. Одна строка убирает целый класс ошибки.
+    v_after_status  := null;
+    v_after_end     := null;
 
     select coalesce(jsonb_object_agg(t.id::text, coalesce(t.details->'addons', '{}'::jsonb)), '{}'::jsonb)
       into v_addons_before
@@ -84,8 +95,13 @@ begin
     --     apply. Именно это позволяет не держать второй формулы;
     --   • apply — сбой на одном юзере не роняет весь прогон, он становится
     --     находкой action='failed' (иначе один битый ряд лишал бы сверки всех).
-    -- Цена — подтранзакция на строку (XID). При 38 юзерах в час это ничто;
-    -- когда проход станет выборочным, пересмотреть здесь же.
+    -- Цена — подтранзакция на строку. Считать её надо НЕ в XID, а в ПОРОГЕ 64:
+    -- столько subxid кэшируется в PGPROC, дальше снимок помечается suboverflowed и
+    -- ВСЕ остальные бэкенды начинают ходить в pg_subtrans на каждой проверке
+    -- видимости. 38 юзеров + 50 трипов = 88 подтранзакций, порог уже перейдён.
+    -- Спасает миграция «elide»: подтранзакция БЕЗ записи не получает XID и в кэш не
+    -- попадает, поэтому в установившемся режиме почти все они пустые, и кусается
+    -- это только на первом apply-прогоне и при массовом дрейфе.
     begin
       perform recompute_user_entitlement(v_user.id);
 
@@ -113,11 +129,15 @@ begin
       end loop;
 
       if p_mode = 'report' then
-        raise exception 'reconcile_probe';
+        -- Свой SQLSTATE, а не опознание по ТЕКСТУ: голый `raise exception` даёт
+        -- P0001 — тот же код, что у любого прикладного raise внутри вызываемых
+        -- функций, и совпадение по тексту сообщения ничем не запрещено.
+        raise exception 'reconcile_probe' using errcode = 'ZZ001';
       end if;
     exception
-      when others then
-        if sqlerrm <> 'reconcile_probe' then v_err := sqlerrm; end if;
+      when sqlstate 'ZZ001' then null;   -- ожидаемый откат report-режима
+      -- SQLSTATE сохраняем в находке: иначе 23514 от 40P01 придётся отличать по строке.
+      when others then v_err := sqlstate || ': ' || sqlerrm;
     end;
 
     if v_err is not null then
@@ -151,17 +171,22 @@ begin
   for v_trip in select id, is_pro_trip from trips loop
     v_scanned_trips := v_scanned_trips + 1;
     v_before_pro := v_trip.is_pro_trip;
-    v_err := null;
+    v_err        := null;
+    v_after_pro  := null;   -- см. тот же довод в цикле по юзерам
 
     begin
       perform recompute_trip_entitlement(v_trip.id);
       select is_pro_trip into v_after_pro from trips where id = v_trip.id;
       if p_mode = 'report' then
-        raise exception 'reconcile_probe';
+        -- Свой SQLSTATE, а не опознание по ТЕКСТУ: голый `raise exception` даёт
+        -- P0001 — тот же код, что у любого прикладного raise внутри вызываемых
+        -- функций, и совпадение по тексту сообщения ничем не запрещено.
+        raise exception 'reconcile_probe' using errcode = 'ZZ001';
       end if;
     exception
-      when others then
-        if sqlerrm <> 'reconcile_probe' then v_err := sqlerrm; end if;
+      when sqlstate 'ZZ001' then null;   -- ожидаемый откат report-режима
+      -- SQLSTATE сохраняем в находке: иначе 23514 от 40P01 придётся отличать по строке.
+      when others then v_err := sqlstate || ': ' || sqlerrm;
     end;
 
     if v_err is not null then
@@ -230,16 +255,30 @@ begin
 
   -- Итоги считаем ПО ЖУРНАЛУ, а не встречными счётчиками в ветках: журнал —
   -- единственный источник (счётчик в ветке разъезжается с ним молча, стоит
-  -- добавить ветку и забыть инкремент), и report-прогон обязан побайтово
-  -- предсказывать apply-прогон.
+  -- добавить ветку и забыть инкремент).
+  --
+  -- ⚠️report НЕ предсказывает apply один в один, и обещать этого нельзя. Секции 1-2
+  -- совпадают (их «стало» посчитано тем же кодом), а вот секция 3 читает КЭШ
+  -- (`is_trip_pro`), правки которого в report-режиме откачены подтранзакциями.
+  -- Поэтому трип, у которого в apply флаг флипнулся бы в true, в report всё равно
+  -- попадёт в tg_binding_on_non_pro_trip. Держать это в голове при разборе первого
+  -- прод-прогона: в report класс завышен, а не занижен.
   select count(*),
          count(*) filter (where action = 'fixed'),
          count(*) filter (where action in ('reported', 'failed'))
     into v_found, v_fixed, v_unfixable
     from reconcile_finding where run_id = v_run;
 
+  -- 'partial' = прогон дошёл до конца, но часть субъектов упала. Раньше тут стояло
+  -- жёсткое 'ok': прогон, где упали ВСЕ юзеры, рапортовал бы успех, объявленные в
+  -- CHECK 'partial'/'failed' не писались никогда, а вью reconcile_open_findings
+  -- фильтровала по мёртвому значению.
   update reconcile_run
-     set finished_at = now(), status = 'ok',
+     set finished_at = now(),
+         status = case when exists (
+                    select 1 from reconcile_finding f
+                     where f.run_id = v_run and f.action = 'failed'
+                  ) then 'partial' else 'ok' end,
          scanned_users = v_scanned_users, scanned_trips = v_scanned_trips,
          found = v_found, fixed = v_fixed, unfixable = v_unfixable
    where id = v_run;
