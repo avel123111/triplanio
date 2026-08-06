@@ -191,9 +191,9 @@ export function planUserSubscriptions(
 
   // Наши энтайтлинг-строки, которых в выгрузке Stripe нет вовсе → 'canceled'.
   // Это тоже демоушен, поэтому идёт в ту же группу, что и проигравшие.
-  const seen = new Set(known.map((s) => s.id));
+  const stripeIds = new Set(known.map((s) => s.id));
   for (const r of localRows) {
-    if (r.providerSubscriptionId && seen.has(r.providerSubscriptionId)) continue;
+    if (r.providerSubscriptionId && stripeIds.has(r.providerSubscriptionId)) continue;
     if (!ENTITLING_STATUSES.has(r.status)) continue;
     losers.push({
       op: 'cancel_local',

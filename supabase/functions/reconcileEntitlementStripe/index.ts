@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
 
   const j: Journal = { runId: runRow.id, mode, found: 0, fixed: 0, unfixable: 0, failed: 0, scannedStripe: 0 };
   const adapter = new StripeAdapter(key, stripeEnv(key));
-  let status: 'ok' | 'partial' | 'failed' = 'ok';
+  let runStatus: 'ok' | 'partial' | 'failed' = 'ok';
   let fatal: string | null = null;
 
   try {
@@ -170,7 +170,8 @@ Deno.serve(async (req) => {
     const { data: liveLocal } = await admin.from('subscription')
       .select('user_id').in('status', [...ENTITLING_STATUSES]);
     for (const r of liveLocal ?? []) {
-      if (!byUser.has(r.user_id as string)) byUser.set(r.user_id as string, []);
+      const userId = r.user_id as string;
+      if (!byUser.has(userId)) byUser.set(userId, []);
     }
 
     for (const [userId, stripeSubs] of byUser) {
@@ -238,7 +239,7 @@ Deno.serve(async (req) => {
         await finding(j, 'sub_status_drift', 'user', userId, {
           action: 'failed', error: (e as Error).message,
         });
-        status = 'partial';
+        runStatus = 'partial';
       }
     }
 
@@ -251,10 +252,11 @@ Deno.serve(async (req) => {
           j.scannedStripe += 1;
           const { data: existing } = await admin.from('purchase')
             .select('id, trip_id, status').eq('provider_charge_id', pi.id).limit(1);
-          const row = existing && existing.length > 0 ? existing[0] : null;
+          const row = existing?.[0] ?? null;
 
           const charge = (typeof pi.latest_charge === 'object' ? pi.latest_charge : null) as Stripe.Charge | null;
-          const revoked = charge ? (isFullyRefunded(charge) || charge.disputed === true) : false;
+          const refunded = charge !== null && isFullyRefunded(charge);
+          const revoked = refunded || charge?.disputed === true;
 
           if (!row) {
             if (pi.status !== 'succeeded') continue;
@@ -286,7 +288,7 @@ Deno.serve(async (req) => {
               source: { user_id: userId, amount: pi.amount, currency: pi.currency },
             });
           } else if (row.status === 'active' && revoked) {
-            const newStatus = charge && isFullyRefunded(charge) ? 'refunded' : 'disputed';
+            const newStatus = refunded ? 'refunded' : 'disputed';
             if (mode === 'apply') {
               const { error } = await admin.from('purchase')
                 .update({ status: newStatus, ...(newStatus === 'refunded' ? { refunded_at: new Date().toISOString() } : {}) })
@@ -306,19 +308,19 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         await finding(j, 'purchase_missing', 'user', userId, { action: 'failed', error: (e as Error).message });
-        status = 'partial';
+        runStatus = 'partial';
       }
     }
   } catch (e) {
     fatal = (e as Error).message;
-    status = 'failed';
+    runStatus = 'failed';
     await captureEdgeError(e, 'reconcileEntitlementStripe');
   }
 
-  if (status === 'ok' && j.failed > 0) status = 'partial';
+  if (runStatus === 'ok' && j.failed > 0) runStatus = 'partial';
 
   await admin.from('reconcile_run').update({
-    finished_at: new Date().toISOString(), status,
+    finished_at: new Date().toISOString(), status: runStatus,
     scanned_stripe_objects: j.scannedStripe,
     found: j.found, fixed: j.fixed, unfixable: j.unfixable, error: fatal,
   }).eq('id', j.runId);
@@ -326,16 +328,16 @@ Deno.serve(async (req) => {
   // Алерт уровня error по любым находкам — решение «на старте ничего не глушим».
   // Идентификаторов в сообщении нет: SDK группирует по тексту, а run_id и числа
   // уезжают в extra (иначе каждый прогон рождал бы новый issue).
-  if (j.found > 0 || status !== 'ok') {
+  if (j.found > 0 || runStatus !== 'ok') {
     await reportPaymentAnomaly('entitlement_reconcile_stripe', {
-      run_id: j.runId, mode, status,
+      run_id: j.runId, mode, status: runStatus,
       found: j.found, fixed: j.fixed, unfixable: j.unfixable,
       scanned_stripe_objects: j.scannedStripe, error: fatal,
     }, 'error');
   }
 
   return Response.json({
-    run_id: j.runId, mode, status,
+    run_id: j.runId, mode, status: runStatus,
     scanned_stripe_objects: j.scannedStripe,
     found: j.found, fixed: j.fixed, unfixable: j.unfixable,
   }, { headers: corsHeaders });
