@@ -14,6 +14,19 @@
  * report, а не apply.
  *
  * Приём чтения файла как ТЕКСТА — из fileType.test.js / viralLink.test.js.
+ *
+ * ЗЕЛЁНЫЙ ТЕСТ НИЧЕГО НЕ ЗНАЧИТ, ПОКА НЕ УВИДЕЛ ЕГО КРАСНЫМ. Прогнанные мутации
+ * (каждая ловится СВОИМ тестом, восстановление — снова 5/5):
+ *
+ *   1. убрать `+ interval '1 day'` из формулы в …_recompute_elide_…sql
+ *      → красные «формула скопирована дословно» И «грейс past_due остался»;
+ *   2. опечатка в классе находки: 'tg_binding_on_non_pro_trip'
+ *      → 'tg_binding_on_nonpro_trip' в …_reconcile_entitlement_cache.sql
+ *      → красный «каждый записываемый класс объявлен в CHECK»;
+ *   3. cron.schedule зовёт reconcile_entitlement_cache('apply')
+ *      → красный «расписание вводится в режиме report»;
+ *   4. p_mode text default 'apply'
+ *      → красный «дефолт режима — report».
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
