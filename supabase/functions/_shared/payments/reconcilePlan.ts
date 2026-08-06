@@ -118,8 +118,14 @@ export function pickWinner(subs: readonly StripeSubView[]): StripeSubView | null
   for (const s of subs) {
     if (!ENTITLING_STATUSES.has(s.status)) continue;
     if (best === null) { best = s; continue; }
-    const d = epoch(s.currentPeriodEnd) - epoch(best.currentPeriodEnd);
-    if (d > 0 || (d === 0 && s.created > best.created)) best = s;
+    // Сравнение через равенство, а не через вычитание: у двух отсутствующих дат
+    // epoch() даёт -Infinity, а `-Inf - -Inf` = NaN, при котором и `d > 0`, и
+    // `d === 0` ложны — тай-брейк по created молча отключался, и победитель
+    // начинал зависеть от ПОРЯДКА ОБХОДА, то есть ровно от того, что этот
+    // предикат обязан устранять.
+    const a = epoch(s.currentPeriodEnd);
+    const b = epoch(best.currentPeriodEnd);
+    if (a > b || (a === b && s.created > best.created)) best = s;
   }
   return best;
 }

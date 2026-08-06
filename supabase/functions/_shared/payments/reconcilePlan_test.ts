@@ -94,6 +94,17 @@ Deno.test('победитель — максимальный current_period_end'
   assertEquals(winner?.id, 'sub_FAR');
 });
 
+Deno.test('★тай-брейк работает и когда даты ОТСУТСТВУЮТ у обеих', () => {
+  // Обе даты null → epoch() у обеих -Infinity. Вычитание давало NaN, при котором
+  // и `> 0`, и `=== 0` ложны: тай-брейк молча отключался и победитель определялся
+  // ПОРЯДКОМ ОБХОДА — ровно тот дефект, который pickWinner обязан устранять.
+  // Достижимо: getPeriodEndUnix существует потому, что Stripe уже переносил это поле.
+  const early = sub({ id: 'sub_EARLY', currentPeriodEnd: null, created: 1_000 });
+  const late = sub({ id: 'sub_LATE', currentPeriodEnd: null, created: 2_000 });
+  assertEquals(pickWinner([early, late])?.id, 'sub_LATE');
+  assertEquals(pickWinner([late, early])?.id, 'sub_LATE', 'порядок обхода не должен решать');
+});
+
 Deno.test('тай-брейк при равных датах — по created', () => {
   const winner = pickWinner([
     sub({ id: 'sub_EARLY', created: 1_000 }),
