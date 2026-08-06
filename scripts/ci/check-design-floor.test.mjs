@@ -32,8 +32,42 @@ const git = (cwd, args) =>
 
 function put(dir, path, body) {
   const full = join(dir, path);
+  if (body === null) {
+    rmSync(full, { force: true }); // "this side has no such file"
+    return;
+  }
   mkdirSync(dirname(full), { recursive: true });
   writeFileSync(full, body);
+}
+
+/** Since TRIP-340 a tree with no `src/design/catalog.json` is RED on HEAD — that
+ *  is the point of the fifth metric, and it would otherwise turn every fixture
+ *  here into a test of the catalog rather than of the thing it is named for. So
+ *  each side gets a catalog covering its own families, filed `triage`, unless
+ *  the test states one itself (or `null` to say "this side has none").
+ *
+ *  This re-derives "what is a family" in test support, which is a duplicate —
+ *  but a self-checking one: get it wrong and the guard reports the family as
+ *  unfiled and the test goes RED. It cannot go quietly green. */
+const CATALOG = 'src/design/catalog.json';
+const OUT_OF_SCOPE = /(^|\/)(login\.css|PublicTrip|JoinTrip|SiteChrome|Landing|Privacy|Terms)/;
+
+/** A catalog body. Declared here rather than next to the tests that spell one
+ *  out, because `autoCatalog` needs it too — and a `const` read from above its
+ *  own line only works at all because test callbacks run after the module has
+ *  finished evaluating. */
+const cat = (families) => JSON.stringify({ families }, null, 2);
+
+function autoCatalog(files) {
+  if (CATALOG in files) return files;
+  const fams = new Set();
+  for (const [p, body] of Object.entries(files)) {
+    if (!p.endsWith('.css') || typeof body !== 'string' || OUT_OF_SCOPE.test(p)) continue;
+    for (const m of body.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g)) {
+      fams.add(m[1].replace(/(__|--).*/, '').split('-')[0]);
+    }
+  }
+  return { ...files, [CATALOG]: cat(Object.fromEntries([...fams].sort().map((f) => [f, 'triage']))) };
 }
 
 /**
@@ -52,12 +86,16 @@ function fixture(t, { base = {}, head = {} }) {
   git(dir, ['config', 'core.hooksPath', '/dev/null']);
 
   put(dir, 'src/.keep', '');
-  for (const [p, body] of Object.entries(base)) put(dir, p, body);
+  for (const [p, body] of Object.entries(autoCatalog(base))) put(dir, p, body);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-qm', 'base']);
   const baseRef = git(dir, ['rev-parse', 'HEAD']).trim();
 
-  for (const [p, body] of Object.entries(head)) put(dir, p, body);
+  // The head side sees the base files too, so its catalog is derived over both.
+  // When either side states one, `autoCatalog` keeps it and this rewrites the
+  // same body — which is why there is no "does head have one already" branch.
+  const merged = autoCatalog({ ...base, ...head });
+  for (const [p, body] of Object.entries({ ...head, [CATALOG]: merged[CATALOG] })) put(dir, p, body);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-qm', 'head', '--allow-empty']);
 
@@ -222,11 +260,41 @@ test('a name also defined in the dark :root cannot be demoted by touching the li
 /* ───────────────────────────── the escape ───────────────────────────────── */
 
 test('an exemption on an ADDED line grants exactly its budget', (t) => {
+  // `.a-*` is a `triage` family here, so the new class raises TWO numbers —
+  // see the test below, which is where that is the subject rather than setup.
   const f = fixture(t, {
     base: { 'src/a.css': family(2) },
-    head: { 'src/a.css': `/* floor-exempt: classes +1 — примитив раскладки, апрув Pavel */\n${family(3)}` },
+    head: {
+      'src/a.css':
+        `/* floor-exempt: classes +1 — примитив раскладки, апрув Pavel */\n` +
+        `/* floor-exempt: triage +1 — он же, семейство ещё на разборе */\n${family(3)}`,
+    },
   });
   assert.equal(run(f).code, 0);
+});
+
+test('★ новый класс в семействе НА РАЗБОРЕ требует двух разрешений, в КАНОНЕ - одного', (t) => {
+  // Не бюрократия, а сообщение: два маркера означают «дописал в кучу», один -
+  // «дописал в систему». Разницу видно в диффе до того, как её объяснят словами.
+  const inTriage = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: {
+      'src/a.css': `/* floor-exempt: classes +1 — апрув Pavel */\n${family(3)}`,
+      'src/design/catalog.json': cat({ a: 'triage' }),
+    },
+  });
+  const r1 = run(inTriage);
+  assert.equal(r1.code, 1, r1.out);
+  assert.match(r1.out, /классов на разборе: 2 → 3/);
+
+  const inCanon = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'canon' }) },
+    head: {
+      'src/a.css': `/* floor-exempt: classes +1 — апрув Pavel */\n${family(3)}`,
+      'src/design/catalog.json': cat({ a: 'canon' }),
+    },
+  });
+  assert.equal(run(inCanon).code, 0, 'в каноне пятое число не растёт - одного разрешения хватает');
 });
 
 test('an exemption smaller than the growth does not cover it', (t) => {
@@ -346,4 +414,121 @@ test('the metric table and the audit cannot drift apart silently', (t) => {
   for (const label of ['классов', 'пространств имён', 'инлайнов', 'токенов в :root']) {
     assert.match(r.out, new RegExp(`${label}.*\\d+\\s*→\\s*\\d+`), `${label} must be printed with both numbers`);
   }
+});
+
+/* ───────────── the fifth number: classes under review (TRIP-340) ─────────── */
+/**
+ * Разделение труда прежнее: ЧТО считается каноном и разбором пинится в
+ * audit-design.test.mjs на фикстурах AUDIT_ROOT. Здесь - обвязка: что пол
+ * пятое число действительно храповит, что отсутствие каталога на базе и на
+ * HEAD - РАЗНЫЕ вердикты, и что три способа каталогу разойтись с деревом
+ * краснеют, а не тихо занижают число.
+ */
+
+test('★ каталога нет на БАЗЕ - пол по нему устанавливается этим PR, не падает', (t) => {
+  // Ровно этот PR: на dev файла ещё нет. Вердикт обязан отличаться от «=».
+  const f = fixture(t, {
+    base: { 'src/a.css': family(3), 'src/design/catalog.json': null },
+    head: { 'src/a.css': family(3), 'src/design/catalog.json': cat({ a: 'triage' }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /классов на разборе\s+—\s+→\s+3\s+пол установлен этим PR/);
+});
+
+test('★ каталога нет на HEAD - красный: удаление файла не способ пройти метрику', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(3), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: { 'src/a.css': family(3), 'src/design/catalog.json': null },
+  });
+  const r = run(f);
+  assert.notEqual(r.code, 0, r.out);
+  assert.match(r.out, /каталога нет/);
+});
+
+test('классов на разборе стало больше → нарушение', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: { 'src/a.css': family(4), 'src/design/catalog.json': cat({ a: 'triage' }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /классов на разборе: 2 → 4/);
+});
+
+test('классов на разборе стало меньше → зелёный', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(4), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage' }) },
+  });
+  assert.equal(run(f).code, 0);
+});
+
+test('★ повышение triage → canon печатается: число упало без работы над кодом', (t) => {
+  // Единственный ход, которым пятое число улучшается бесплатно. Он законный,
+  // поэтому не блокируется - но обязан быть перед глазами ревьюера.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(3), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: { 'src/a.css': family(3), 'src/design/catalog.json': cat({ a: 'canon' }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /a: triage → canon/);
+  assert.match(r.out, /БЕЗ работы над кодом/);
+});
+
+test('понижение canon → triage поднимает число и ловится храповиком', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(3), 'src/design/catalog.json': cat({ a: 'canon' }) },
+    head: { 'src/a.css': family(3), 'src/design/catalog.json': cat({ a: 'triage' }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /a: canon → triage/);
+  assert.match(r.out, /классов на разборе: 0 → 3/);
+});
+
+test('новое семейство без строки в каталоге → красный, а не тихий ноль', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: {
+      'src/a.css': family(2),
+      'src/b.css': '.b-1{color:red}',
+      'src/design/catalog.json': cat({ a: 'triage' }),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /не размечено в каталоге \(1\): b/);
+});
+
+test('строка каталога про исчезнувшее семейство → красный', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage', b: 'triage' }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage', b: 'triage' }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /которого больше нет \(1\): b/);
+});
+
+test('★ опечатка в статусе → красный, хотя число при этом ПАДАЕТ', (t) => {
+  // Без этой проверки «canonn» проходит как улучшение: 2 → 0.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'canonn' }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /неверный статус/);
+});
+
+test('сломанный каталог - «не смог измерить» (2), а не «каталога нет»', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': cat({ a: 'triage' }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': '{ "families": {' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /не читается/);
 });

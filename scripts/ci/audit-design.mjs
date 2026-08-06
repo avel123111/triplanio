@@ -253,6 +253,107 @@ const namespacesInReach = Object.entries(familyKinds).filter(
   ([fam, kind]) => kind === 'namespace' && !perimeterFamilies.includes(fam),
 ).length;
 
+// ── 1d. The catalog: canon vs triage (TRIP-340 PR1) ─────────────────────────
+/** ★ THE PREDICATE, IN CODE, BECAUSE OTHERWISE THE NUMBER DOES NOT EXIST
+ *  (law 8 of the epic). A family is a CANDIDATE for `canon` when the design
+ *  system ITSELF emits one of its classes — read out of `className` in
+ *  `src/design/**` and `src/components/ui/**` by the same acorn walk that
+ *  everything else here uses.
+ *
+ *  THE OBVIOUS PREDICATE IS AN INVERSION, AND IT WAS THE ONE IN THE TICKET.
+ *  "canon = the DS vocabulary = the 82 standalone singletons" reads plausibly
+ *  off the report above and is wrong in BOTH directions, measured on dev @
+ *  dc8ebb2:
+ *    · of those 82, the DS emits EIGHT (checkbox icon num partner readonly sr
+ *      textarea trunc). The other 74 are one-off screen names — `addmini`,
+ *      `bookrow`, `cbar`, `mapwrap`, `wmini`, `vpanel` — i.e. the exact pile
+ *      the epic exists to remove, filed as the thing it must be measured
+ *      against;
+ *    · and the actual spine of the system — btn, badge, card, field, tile,
+ *      sev, spin, toast, sheet, avatar, dlg, menu, pop, row, t — owns
+ *      descendants (`btn--primary`), so it is `namespace`, never `standalone`.
+ *      The whole design system would have started life as `triage`.
+ *
+ *  CANDIDATE, NOT VERDICT. The list this produces is the DRAFT (`--catalog-draft`);
+ *  the committed `catalog.json` is what counts, because the machine cannot see
+ *  the leakage it contains: `tl3`, `lp`, `rv`, `sb`, `mi` are screen names
+ *  hard-coded INSIDE a DS component. They satisfy the predicate and are not
+ *  canon — they are a finding for subtask 04 (epic Б5, the zoo inside the DS
+ *  itself). A file the review can edit is the point here, unlike a baseline a
+ *  ratchet reads: the number that ratchets is `triageClasses`, and every status
+ *  change is one line in the diff. */
+const DESIGN_SOURCE = /(^|\/)(design|components\/ui)\//;
+const designFamilies = new Set();
+for (const f of jsxFiles) {
+  if (!DESIGN_SOURCE.test(f)) continue;
+  for (const tok of tokensByFile.get(f)) {
+    const fam = familyOf(tok);
+    if (families.has(fam)) designFamilies.add(fam);
+  }
+}
+
+/** The committed catalog. ABSENT is a legal state exactly once — on the PR that
+ *  introduces it, where the BASE side has no file yet — and it reports `null`,
+ *  never 0 and never "everything is triage". Guard 2o turns `null` on HEAD into
+ *  a red and `null` on the base into "floor established by this PR", so
+ *  "nothing to check" and "checked, clean" cannot print the same verdict.
+ *
+ *  UNREADABLE is NOT absent. A syntax error in the file must not degrade into
+ *  "no catalog" — that would make deleting a brace a way to switch the fifth
+ *  metric off. It is reported as `catalogError` and 2o dies on it. */
+const CATALOG_PATH = join(ROOT, 'design', 'catalog.json');
+const STATUSES = new Set(['canon', 'triage']);
+let catalogStatuses = null;
+let catalogError = null;
+try {
+  const parsed = JSON.parse(readFileSync(CATALOG_PATH, 'utf8'));
+  // `families: null` passes `typeof … === 'object'` and would otherwise read as
+  // "no catalog" — i.e. the malformed file switching the metric off, which is
+  // the one thing the paragraph above says it must not be able to do.
+  if (!parsed?.families || typeof parsed.families !== 'object' || Array.isArray(parsed.families)) {
+    catalogError = `${CATALOG_PATH}: expected an object under "families"`;
+  } else {
+    catalogStatuses = parsed.families;
+  }
+} catch (e) {
+  if (e.code !== 'ENOENT') catalogError = `${CATALOG_PATH}: ${e.message}`;
+}
+
+/** Three ways the catalog can stop describing the tree, and all three make
+ *  `triageClasses` a number that measured something other than what it says:
+ *    MISSING — a family exists and is not filed → its classes are counted
+ *              nowhere, so the metric silently UNDERSTATES the work left;
+ *    STALE   — a family is filed and no longer exists → a line nobody will ever
+ *              clean up, and the "→ canon" progress it implies is fiction;
+ *    INVALID — a typo in the status (`"canonn"`) is NOT triage, so the number
+ *              DROPS. That looks like progress and is the epic's signature
+ *              failure mode transposed once more: improve the number you watch
+ *              by changing what it counts. */
+// `hasOwn`, not `in`: `.constructor` is a legal class name, and an inherited key
+// would read as "filed" while contributing nothing to the count — unfiled has to
+// stay loud, that is the whole job of this list.
+const catalogMissing = catalogStatuses
+  ? [...families.keys()].filter((f) => !Object.hasOwn(catalogStatuses, f)).sort()
+  : [];
+const catalogStale = catalogStatuses ? Object.keys(catalogStatuses).filter((f) => !families.has(f)).sort() : [];
+const catalogInvalid = catalogStatuses
+  ? Object.entries(catalogStatuses)
+      .filter(([, v]) => !STATUSES.has(v))
+      .map(([f, v]) => `${f}: ${JSON.stringify(v)}`)
+      .sort()
+  : [];
+
+/** ★ STATUS ON THE FAMILY, COUNT ON THE CLASSES — and the two are different on
+ *  purpose. The family is the unit a namespace is bought in (what guard 2m
+ *  polices, what the epic's "124 → ~30" targets), so that is what carries a
+ *  verdict. But ratcheting the FAMILY count would stall on the correct move:
+ *  renaming `.bgt-row` onto `.row` empties a family long before it disappears,
+ *  and until the last class leaves, a family-level ratchet sees nothing. On
+ *  classes the same move reads `-1` immediately. */
+const triageClasses = catalogStatuses
+  ? [...families].reduce((n, [fam, list]) => n + (catalogStatuses[fam] === 'triage' ? list.length : 0), 0)
+  : null;
+
 // ── 2. Inline styles ────────────────────────────────────────────────────────
 const inlineCount = (f) => readFileSync(f, 'utf8').match(/style=\{\{/g)?.length ?? 0;
 
@@ -439,6 +540,20 @@ handles.sort(byUses);
 const pad = (s, n) => String(s).padEnd(n);
 const num = (s, n) => String(s).padStart(n);
 
+/** `--catalog-draft` prints a WHOLE catalog file the way the predicate would
+ *  fill it in. It is a proposal for a human to read and edit, which is why it
+ *  goes to stdout instead of overwriting `catalog.json`: a generator that
+ *  rewrites the file it is checked against turns the catalog into 2l's editable
+ *  baseline, and the whole point of committing it is that a status change is a
+ *  reviewable line rather than a re-run. */
+if (process.argv.includes('--catalog-draft')) {
+  const draft = Object.fromEntries(
+    [...families.keys()].sort().map((f) => [f, designFamilies.has(f) ? 'canon' : 'triage']),
+  );
+  writeSync(1, JSON.stringify({ families: draft }, null, 2) + '\n');
+  process.exit(0);
+}
+
 if (process.argv.includes('--json')) {
   /** `writeSync`, НЕ `console.log`. В ТРУБУ (`… --json | jq`) stdout у Node
    *  асинхронный, и стоящий ниже `process.exit(0)` рвал вывод на полуслове: в
@@ -463,6 +578,15 @@ if (process.argv.includes('--json')) {
         familyKinds,
         perimeterFamilies,
         parseFailures,
+        // The catalog (TRIP-340). `triageClasses` is the fifth number guard 2o
+        // ratchets; `catalogStatuses` is what lets it name the promotions.
+        triageClasses,
+        catalogStatuses,
+        catalogMissing,
+        catalogStale,
+        catalogInvalid,
+        catalogError,
+        designFamilies: [...designFamilies].sort(),
         familiesInReach,
         inlineScoped,
         inlineAll,
@@ -516,6 +640,33 @@ if (perimeterFamilies.length) {
   if (parseFailures.length) {
     console.log(`\n   ⚠ НЕ РАЗОБРАНО ФАЙЛОВ: ${parseFailures.length} - их классы НЕ учтены, число выше занижено:`);
     for (const p of parseFailures) console.log(`     ${p}`);
+  }
+}
+console.log();
+
+console.log('1d. КАТАЛОГ: КАНОН И РАЗБОР (гард 2o храповит «на разборе»)');
+if (catalogError) {
+  console.log(`   ⚠ КАТАЛОГ НЕ ПРОЧИТАН: ${catalogError}`);
+  console.log('     Это НЕ «каталога нет»: сломанный файл не должен выключать пятое число.');
+} else if (!catalogStatuses) {
+  console.log(`   каталога нет (${CATALOG_PATH}) - пятое число не измеряется`);
+} else {
+  // Both lines read the STATUS; neither is `total - canon`. The subtraction is
+  // the tempting spelling, and it files unmarked and mistyped families under
+  // "under review" — while `triageClasses` does not count their classes. Two
+  // lines of one block would then disagree by exactly the families the ⚠ below
+  // is about: the same "the number counted something else" trap 2o reds on.
+  const fams = (status) => [...families.keys()].filter((f) => catalogStatuses[f] === status).length;
+  console.log(`   канон:               ${num(fams('canon'), 5)} семейств`);
+  console.log(`   на разборе:          ${num(fams('triage'), 5)} семейств`);
+  console.log(`   КЛАССОВ НА РАЗБОРЕ:  ${num(triageClasses, 5)}  ← это число храповит 2o`);
+  if (catalogMissing.length) console.log(`   ⚠ НЕ РАЗМЕЧЕНЫ (${catalogMissing.length}): ${catalogMissing.join(' · ')}`);
+  if (catalogStale.length) console.log(`   ⚠ УСТАРЕЛИ, семейства уже нет (${catalogStale.length}): ${catalogStale.join(' · ')}`);
+  if (catalogInvalid.length) console.log(`   ⚠ НЕВЕРНЫЙ СТАТУС (${catalogInvalid.length}): ${catalogInvalid.join(' · ')}`);
+  const drift = [...designFamilies].filter((f) => catalogStatuses[f] !== 'canon').sort();
+  if (drift.length) {
+    console.log(`   ─ предикат зовёт каноном, а в каталоге разбор (${drift.length}): ${drift.join(' · ')}`);
+    console.log('     Это не ошибка: машина не видит экранных имён, зашитых ВНУТРЬ компонента ДС.');
   }
 }
 console.log();
