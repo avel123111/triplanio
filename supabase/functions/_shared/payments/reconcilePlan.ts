@@ -128,17 +128,40 @@ function stateOf(r: LocalSubRow) {
   return { status: r.status, currentPeriodEnd: r.currentPeriodEnd, cancelAtPeriodEnd: r.cancelAtPeriodEnd };
 }
 
+export interface UserPlanInput {
+  /** Подписки Stripe, отнесённые К ЭТОМУ юзеру. */
+  stripeSubs: readonly StripeSubView[];
+  /** Наши строки реестра этого юзера. */
+  localRows: readonly LocalSubRow[];
+  /**
+   * ВСЕ id подписок, увиденные в выгрузке Stripe: по всему аккаунту, ДО фильтра
+   * каталога и ДО атрибуции по юзеру.
+   *
+   * ★ЗАЧЕМ ОТДЕЛЬНЫМ ВХОДОМ. «Существует ли подписка в Stripe» — вопрос ГЛОБАЛЬНЫЙ и
+   * не совпадает ни с «относится ли она к этому юзеру», ни с «знаем ли мы её продукт».
+   * Первая редакция отвечала на него из пер-юзерного среза, отфильтрованного каталогом,
+   * и потому гасила ЖИВЫЕ подписки в двух случаях: продукт не резолвится из каталога
+   * (нет/неактивна строка `provider_price`) и подписка неатрибутируема (нет
+   * `metadata.user_id`, клиента нет в `provider_customer`). Оба давали
+   * `sub_missing_in_stripe` → `canceled` → recompute роняет юзера во Free, то есть
+   * ровно тот исход, который сверка обязана исключать.
+   *
+   * ⚠️Множество обязано быть ПОЛНЫМ: отсутствие в нём трактуется как «подписки нет»,
+   * поэтому оборванная выгрузка = ложное снятие права. Вызывающий передаёт его только
+   * после успешно ЗАВЕРШЁННОГО обхода.
+   */
+  stripeSubIdsSeen: ReadonlySet<string>;
+}
+
 /**
- * План по ОДНОМУ юзеру. `stripeSubs` — все его подписки в Stripe (любого статуса),
- * `localRows` — все его строки реестра.
+ * План по ОДНОМУ юзеру.
  *
- * Строки без `productCode` (продукт не из нашего каталога) пропускаются: право они
- * не дают, а писать чужой продукт в наш реестр нечего.
+ * Каталожный фильтр (`productCode !== null`) применяется ТОЛЬКО к решениям «кто
+ * победитель» и «что писать»: чужой продукт права не даёт и в наш реестр не пишется.
+ * На вопрос о СУЩЕСТВОВАНИИ он не влияет — для этого есть `stripeSubIdsSeen`.
  */
-export function planUserSubscriptions(
-  stripeSubs: readonly StripeSubView[],
-  localRows: readonly LocalSubRow[],
-): UserSubPlan {
+export function planUserSubscriptions(input: UserPlanInput): UserSubPlan {
+  const { stripeSubs, localRows, stripeSubIdsSeen } = input;
   const known = stripeSubs.filter((s) => s.productCode !== null);
   const winner = pickWinner(known);
   const liveInStripe = known.filter((s) => ENTITLING_STATUSES.has(s.status)).length;
@@ -191,9 +214,14 @@ export function planUserSubscriptions(
 
   // Наши энтайтлинг-строки, которых в выгрузке Stripe нет вовсе → 'canceled'.
   // Это тоже демоушен, поэтому идёт в ту же группу, что и проигравшие.
-  const stripeIds = new Set(known.map((s) => s.id));
   for (const r of localRows) {
-    if (r.providerSubscriptionId && stripeIds.has(r.providerSubscriptionId)) continue;
+    // Строку без id подписки сверить со Stripe НЕЧЕМ. Гасить её означало бы снять
+    // право не по факту, а по отсутствию у нас ссылки — решение без доказательства,
+    // причём в опасную сторону. Оставляем как есть: сегодня её всё равно никто не
+    // трогает, так что это не регресс, а отказ действовать вслепую.
+    if (!r.providerSubscriptionId) continue;
+    // Существование — по ГЛОБАЛЬНОМУ множеству, не по срезу этого юзера и не по каталогу.
+    if (stripeSubIdsSeen.has(r.providerSubscriptionId)) continue;
     if (!ENTITLING_STATUSES.has(r.status)) continue;
     losers.push({
       op: 'cancel_local',

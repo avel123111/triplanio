@@ -52,10 +52,7 @@ type Mode = 'report' | 'apply';
 interface Journal {
   runId: string;
   mode: Mode;
-  found: number;
-  fixed: number;
-  unfixable: number;
-  failed: number;
+  /** Счётчиков находок тут НЕТ: их единственный источник — сам журнал (см. finding). */
   scannedStripe: number;
 }
 
@@ -66,11 +63,11 @@ async function finding(
   subjectId: string,
   opts: { before?: unknown; after?: unknown; source?: unknown; action?: 'fixed' | 'reported' | 'failed'; error?: string } = {},
 ) {
+  // Счётчиков тут НЕТ намеренно: итоги считаются по журналу в конце прогона (как в
+  // Сверке А). Встречный счётчик увеличивался бы ДО вставки, а её ошибка только
+  // логируется — прогон рапортовал бы N находок при меньшем числе строк, то есть врал
+  // бы о денежном состоянии. Один источник, а не два.
   const action = opts.action ?? (j.mode === 'apply' ? 'fixed' : 'reported');
-  j.found += 1;
-  if (action === 'fixed') j.fixed += 1;
-  else if (action === 'failed') { j.failed += 1; j.unfixable += 1; }
-  else j.unfixable += 1;
   const { error } = await admin.from('reconcile_finding').insert({
     run_id: j.runId, kind, subject_type: subjectType, subject_id: subjectId,
     before: opts.before ?? null, after: opts.after ?? null, source: opts.source ?? null,
@@ -122,7 +119,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'cannot open run' }, { status: 500, headers: corsHeaders });
   }
 
-  const j: Journal = { runId: runRow.id, mode, found: 0, fixed: 0, unfixable: 0, failed: 0, scannedStripe: 0 };
+  const j: Journal = { runId: runRow.id, mode, scannedStripe: 0 };
   const adapter = new StripeAdapter(key, stripeEnv(key));
   let runStatus: 'ok' | 'partial' | 'failed' = 'ok';
   let fatal: string | null = null;
@@ -146,14 +143,22 @@ Deno.serve(async (req) => {
     // Полная, а не выборка кандидатов: выборка — это предикат, а промах предиката
     // не краснеет, он молча не проверяет.
     const byUser = new Map<string, StripeSubView[]>();
+    // Глобальное множество «что вообще есть в Stripe»: заполняется ДО фильтра
+    // каталога и ДО атрибуции, потому что существование подписки не зависит ни от
+    // того, знаем ли мы её продукт, ни от того, смогли ли отнести её к юзеру.
+    const stripeSubIdsSeen = new Set<string>();
+    let listingComplete = false;
+
     for await (const s of adapter.listAllSubscriptions()) {
       j.scannedStripe += 1;
+      stripeSubIdsSeen.add(s.id);
       const view = toView(s, codeByProduct);
       const customerId = typeof s.customer === 'string' ? s.customer : s.customer?.id ?? null;
       const userId = (s.metadata?.user_id as string | undefined)
         || (customerId ? userByCustomer.get(customerId) : undefined);
       if (!userId) {
-        // Чинить не к кому: подписка есть, а чья — неизвестно.
+        // Чинить не к кому: подписка есть, а чья — неизвестно. Но в множество выше
+        // она УЖЕ попала, поэтому чужую строку она больше не погасит.
         await finding(j, 'unattributable', 'subscription', s.id, {
           action: 'reported',
           source: { status: s.status, customer: customerId, current_period_end: view.currentPeriodEnd },
@@ -164,6 +169,12 @@ Deno.serve(async (req) => {
       list.push(view);
       byUser.set(userId, list);
     }
+    // Обход дошёл до конца — только теперь «нет в множестве» значит «нет в Stripe».
+    // Сегодня обрыв выгрузки и так уводит в внешний catch мимо планирования, но
+    // инвариант обязан держаться СТРУКТУРНО, а не совпадением потока управления:
+    // достаточно кому-то обернуть цикл выше в свой try — и сверка начнёт снимать
+    // право по неполной выгрузке, молча и у платящих.
+    listingComplete = true;
 
     // Юзеры с нашими энтайтлинг-строками, которых в выгрузке Stripe нет вовсе —
     // их тоже надо прогнать через план, иначе «пропала в Stripe» никогда не найдётся.
@@ -188,7 +199,7 @@ Deno.serve(async (req) => {
           needsReview: r.needs_review === true,
         }));
 
-        const plan = planUserSubscriptions(stripeSubs, localRows);
+        const plan = planUserSubscriptions({ stripeSubs, localRows, stripeSubIdsSeen });
 
         // Настоящая двойная оплата: две живые подписки В STRIPE. Разбор — TRIP-152.
         if (plan.liveInStripe > 1) {
@@ -209,6 +220,11 @@ Deno.serve(async (req) => {
             // Stripe), поэтому вывод намерения из nullability промахивался мимо
             // обеих веток и строка молча не гасилась.
             if (w.op === 'cancel_local' && w.localRowId) {
+              // Снятие права допустимо ТОЛЬКО по полной выгрузке: «не нашли» и «не
+              // долистали» — разные факты, и второй не даёт оснований гасить.
+              if (!listingComplete) {
+                throw new Error('refusing to cancel on an incomplete Stripe listing');
+              }
               const { error } = await admin.from('subscription')
                 .update({ status: w.status }).eq('id', w.localRowId);
               if (error) throw new Error(`subscription cancel ${w.localRowId}: ${error.message}`);
@@ -326,21 +342,35 @@ Deno.serve(async (req) => {
     await captureEdgeError(e, 'reconcileEntitlementStripe');
   }
 
-  if (runStatus === 'ok' && j.failed > 0) runStatus = 'partial';
+  // Итоги — ПО ЖУРНАЛУ, единственному источнику. Если чтение сводки не удалось,
+  // прогон не может честно отчитаться о числах: помечаем 'partial' и не выдумываем
+  // нули, иначе «сверка прошла, находок 0» было бы неотличимо от «мы не сосчитали».
+  const { data: tally, error: tallyErr } = await admin
+    .from('reconcile_finding').select('action').eq('run_id', j.runId);
+  const rows = tally ?? [];
+  const found = rows.length;
+  const fixed = rows.filter((r) => r.action === 'fixed').length;
+  const failed = rows.filter((r) => r.action === 'failed').length;
+  const unfixable = rows.filter((r) => r.action === 'reported' || r.action === 'failed').length;
+  if (tallyErr) {
+    fatal = fatal ?? `tally read failed: ${tallyErr.message}`;
+    if (runStatus === 'ok') runStatus = 'partial';
+  }
+  if (runStatus === 'ok' && failed > 0) runStatus = 'partial';
 
   await admin.from('reconcile_run').update({
     finished_at: new Date().toISOString(), status: runStatus,
     scanned_stripe_objects: j.scannedStripe,
-    found: j.found, fixed: j.fixed, unfixable: j.unfixable, error: fatal,
+    found, fixed, unfixable, error: fatal,
   }).eq('id', j.runId);
 
   // Алерт уровня error по любым находкам — решение «на старте ничего не глушим».
   // Идентификаторов в сообщении нет: SDK группирует по тексту, а run_id и числа
   // уезжают в extra (иначе каждый прогон рождал бы новый issue).
-  if (j.found > 0 || runStatus !== 'ok') {
+  if (found > 0 || runStatus !== 'ok') {
     await reportPaymentAnomaly('entitlement_reconcile_stripe', {
       run_id: j.runId, mode, status: runStatus,
-      found: j.found, fixed: j.fixed, unfixable: j.unfixable,
+      found, fixed, unfixable,
       scanned_stripe_objects: j.scannedStripe, error: fatal,
     }, 'error');
   }
@@ -348,6 +378,6 @@ Deno.serve(async (req) => {
   return Response.json({
     run_id: j.runId, mode, status: runStatus,
     scanned_stripe_objects: j.scannedStripe,
-    found: j.found, fixed: j.fixed, unfixable: j.unfixable,
+    found, fixed, unfixable,
   }, { headers: corsHeaders });
 });

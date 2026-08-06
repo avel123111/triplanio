@@ -42,18 +42,23 @@ const row = (o: Partial<LocalSubRow> & { id: string }): LocalSubRow => ({
   ...o,
 });
 
+// Вход планировщика. По умолчанию stripeSubIdsSeen = id ВСЕХ переданных подписок:
+// то есть «выгрузка Stripe увидела ровно их». Тесты про живую-но-неучтённую подписку
+// передают множество ЯВНО — именно там и жил баг.
+const inp = (stripeSubs: StripeSubView[], localRows: LocalSubRow[], seen?: Set<string>) => ({
+  stripeSubs, localRows,
+  stripeSubIdsSeen: seen ?? new Set(stripeSubs.map((s) => s.id)),
+});
+
 Deno.test('совпадающее состояние не порождает записи', () => {
-  const plan = planUserSubscriptions([sub({ id: 'sub_A' })], [row({ id: 'sub_A' })]);
+  const plan = planUserSubscriptions(inp([sub({ id: 'sub_A' })], [row({ id: 'sub_A' })]));
   assertEquals(plan.writes, []);
   assertEquals(plan.winnerSubId, 'sub_A');
   assertEquals(plan.liveInStripe, 1);
 });
 
 Deno.test('расхождение статуса даёт ровно одну запись', () => {
-  const plan = planUserSubscriptions(
-    [sub({ id: 'sub_A', status: 'canceled' })],
-    [row({ id: 'sub_A', status: 'active' })],
-  );
+  const plan = planUserSubscriptions(inp([sub({ id: 'sub_A', status: 'canceled' })], [row({ id: 'sub_A', status: 'active' })]));
   assertEquals(plan.writes.length, 1);
   assertEquals(plan.writes[0].status, 'canceled');
   assertEquals(plan.writes[0].reason, 'sub_status_drift');
@@ -64,7 +69,7 @@ Deno.test('расхождение статуса даёт ровно одну з
 
 Deno.test('подписки, которой у нас нет, создаётся запись без localRowId', () => {
   // Ровно кейс «подписка заведена мимо чекаута»: в Stripe есть, у нас ноль строк.
-  const plan = planUserSubscriptions([sub({ id: 'sub_NEW' })], []);
+  const plan = planUserSubscriptions(inp([sub({ id: 'sub_NEW' })], []));
   assertEquals(plan.writes.length, 1);
   assertEquals(plan.writes[0].localRowId, null);
   assertEquals(plan.writes[0].subId, 'sub_NEW');
@@ -102,13 +107,10 @@ Deno.test('демоушен идёт раньше повышения (uq_subscri
   // Локально живой числится sub_NEAR — то есть нужно ОДНОВРЕМЕННО понизить его и
   // повысить sub_FAR. Если порядок перевернуть, между запросами будет две живые
   // строки и вторая запись упадёт на частичном UNIQUE.
-  const plan = planUserSubscriptions(
-    [
+  const plan = planUserSubscriptions(inp([
       sub({ id: 'sub_NEAR', currentPeriodEnd: '2027-01-01T00:00:00.000Z' }),
       sub({ id: 'sub_FAR', currentPeriodEnd: '2028-01-01T00:00:00.000Z' }),
-    ],
-    [row({ id: 'sub_NEAR' })],
-  );
+    ], [row({ id: 'sub_NEAR' })]));
   assertEquals(plan.winnerSubId, 'sub_FAR');
   assertEquals(plan.writes.length, 2);
 
@@ -122,16 +124,13 @@ Deno.test('демоушен идёт раньше повышения (uq_subscri
 });
 
 Deno.test('две живые подписки видны как двойная оплата', () => {
-  const plan = planUserSubscriptions(
-    [sub({ id: 'sub_A' }), sub({ id: 'sub_B', currentPeriodEnd: '2028-01-01T00:00:00.000Z' })],
-    [],
-  );
+  const plan = planUserSubscriptions(inp([sub({ id: 'sub_A' }), sub({ id: 'sub_B', currentPeriodEnd: '2028-01-01T00:00:00.000Z' })], []));
   assertEquals(plan.liveInStripe, 2);
   assertEquals(plan.writes.filter((w) => w.reason === 'sub_duplicate_demoted').length, 1);
 });
 
 Deno.test('пропавшая в Stripe энтайтлинг-строка гасится', () => {
-  const plan = planUserSubscriptions([], [row({ id: 'sub_GONE', status: 'active' })]);
+  const plan = planUserSubscriptions(inp([], [row({ id: 'sub_GONE', status: 'active' })]));
   assertEquals(plan.writes.length, 1);
   assertEquals(plan.writes[0].status, 'canceled');
   assertEquals(plan.writes[0].reason, 'sub_missing_in_stripe');
@@ -145,10 +144,7 @@ Deno.test('пропавшая в Stripe энтайтлинг-строка гас
 
 Deno.test('операция объявлена на каждой записи плана', () => {
   // Тотальность: любая запись обязана нести op, иначе исполнитель молча её пропустит.
-  const plan = planUserSubscriptions(
-    [sub({ id: 'sub_A' }), sub({ id: 'sub_B', currentPeriodEnd: '2028-01-01T00:00:00.000Z' })],
-    [row({ id: 'sub_GONE', status: 'active' })],
-  );
+  const plan = planUserSubscriptions(inp([sub({ id: 'sub_A' }), sub({ id: 'sub_B', currentPeriodEnd: '2028-01-01T00:00:00.000Z' })], [row({ id: 'sub_GONE', status: 'active' })]));
   for (const w of plan.writes) {
     assertEquals(['upsert', 'cancel_local'].includes(w.op), true, `нет op у записи ${w.subId}`);
   }
@@ -158,12 +154,45 @@ Deno.test('операция объявлена на каждой записи п
 
 Deno.test('пропавшая в Stripe НЕэнтайтлинг-строка не трогается', () => {
   // Уже canceled у нас и нет в выгрузке — гасить нечего, записи быть не должно.
-  const plan = planUserSubscriptions([], [row({ id: 'sub_OLD', status: 'canceled' })]);
+  const plan = planUserSubscriptions(inp([], [row({ id: 'sub_OLD', status: 'canceled' })]));
+  assertEquals(plan.writes, []);
+});
+
+// ── Существование в Stripe — ГЛОБАЛЬНЫЙ факт. Три теста ниже пинят ровно то, на
+// чём первая редакция гасила ЖИВЫЕ подписки. ────────────────────────────────────
+
+Deno.test('★живая подписка с нераспознанным продуктом НЕ гасится', () => {
+  // Продукт не резолвится из каталога (нет/неактивна строка provider_price), но
+  // подписка в Stripe ЖИВА и наша строка на неё есть. Раньше каталожный фильтр
+  // выкидывал её из среза, существование считалось по обрезанному множеству →
+  // 'canceled' → recompute роняет ПЛАТЯЩЕГО во Free.
+  const plan = planUserSubscriptions(
+    inp([sub({ id: 'sub_LIVE', productCode: null })], [row({ id: 'sub_LIVE' })]),
+  );
+  assertEquals(plan.writes, [], 'живую подписку нельзя трогать ни при каком каталоге');
+});
+
+Deno.test('★неатрибутируемая подписка не гасит строку своего юзера', () => {
+  // Подписка есть в выгрузке, но к юзеру не отнеслась (нет metadata.user_id, клиента
+  // нет в provider_customer) → в его stripeSubs её НЕТ. В ГЛОБАЛЬНОМ множестве она
+  // есть, и этого достаточно, чтобы право не снимать.
+  const plan = planUserSubscriptions(
+    inp([], [row({ id: 'sub_ORPHAN', status: 'active' })], new Set(['sub_ORPHAN'])),
+  );
+  assertEquals(plan.writes, [], 'подписка существует в Stripe — гасить нечего');
+});
+
+Deno.test('строку без id подписки не гасим — сверять нечем', () => {
+  // Доказательства отсутствия нет: у строки просто нет ссылки на Stripe. Снятие
+  // права здесь принималось бы вслепую и в опасную сторону.
+  const plan = planUserSubscriptions(
+    inp([], [row({ id: 'row_NOID', providerSubscriptionId: null, status: 'active' })]),
+  );
   assertEquals(plan.writes, []);
 });
 
 Deno.test('чужой продукт игнорируется целиком', () => {
-  const plan = planUserSubscriptions([sub({ id: 'sub_X', productCode: null })], []);
+  const plan = planUserSubscriptions(inp([sub({ id: 'sub_X', productCode: null })], []));
   assertEquals(plan.writes, []);
   assertEquals(plan.winnerSubId, null);
   assertEquals(plan.liveInStripe, 0);
