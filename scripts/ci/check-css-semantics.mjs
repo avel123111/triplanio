@@ -36,8 +36,38 @@
  * одинаково с обеих сторон. Этого достаточно, чтобы поймать изменение, и
  * недостаточно, чтобы утверждать «на экране будет 8px».
  *
- * Escape: `visual-diff-exempt: <причина>` в ДОБАВЛЕННЫХ строках диффа (как
- * `floor-exempt` у 2o) — действует ровно один PR.
+ * ★ ПЕРЕНОС РАЗМЕТКИ ≠ УДАЛЕНИЕ ПРАВИЛА (TRIP-351). Гард ключуется на КЛАССЕ и
+ * читает только `.css` — разметку он не видит вообще. Поэтому канонический ход
+ * фаз 04–06 (класс отдаёт раскладку, элемент уезжает на общий `.grow--fit`)
+ * неотличим от сноса правила и печатается как `− 1`, `− 0`. Это не редкий
+ * случай: ряд 250 + колонка 96 + сетка 34 ≈ 380 правил раскладки, то есть гард
+ * был бы красным на КАЖДОМ правильном ходе — а выключенный гард не ловит ничего.
+ * Перенос поэтому ОБЪЯВЛЯЕТСЯ:
+ *
+ *     /* visual-diff-move: brow__body -> grow--fit *\/
+ *
+ * и гард проверяет, что ушедшие с источника объявления ЕСТЬ на цели с теми же
+ * значениями (в том же `@media` и состоянии). Перенос со сменой значения
+ * («перенёс и заодно поменял 8px на 10px») остаётся красным, и маркер на
+ * несуществующую цель — тоже красный, иначе он был бы бланкетным гашением под
+ * другим именем.
+ *
+ * ★★ ГРАНИЦА, КОТОРУЮ НЕ НАДО ВЫДАВАТЬ ЗА БОЛЬШЕЕ. Гард сверяет ОБЪЯВЛЕНИЯ, но
+ * НЕ то, что элемент действительно получил целевой класс: разметки он не видит.
+ * `visual-diff-move` доказывает «значения на цели те же», а не «на экране то же
+ * самое». Это слабее полноценной проверки и сильно лучше бланкетного гашения.
+ * Что элемент реально переехал — показывает ярус 1 (`cmp` собранного CSS не
+ * поможет) и рендер; см. рецепт скриншота в memory/triplanio-visual-check-playwright.
+ *
+ * Escape: `visual-diff-exempt: <класс> <свойство> — <причина>` в ДОБАВЛЕННЫХ
+ * строках диффа (как `floor-exempt` у 2o) — действует ровно один PR и гасит
+ * ровно НАЗВАННЫЙ ключ. ★ Бланкетным (`if (exempt) exit(0)`) он был ровно один
+ * PR и это был отказ в опасную сторону: один маркер на легитимный перенос
+ * пропускал в том же прогоне `.grow--fit padding: + 999px` — правку общего
+ * класса, задевающую каждый элемент на нём. Проверено прогоном, не чтением.
+ * Огрубление названо: `@media` в маркер не входит, поэтому маркер на
+ * `.x padding` гасит и десктопное, и мобильное изменение этого свойства. Класс,
+ * состояние и свойство назвать обязан — на них ошибиться молча нельзя.
  *
  * Env: BASE_REF (по умолчанию origin/dev).
  */
@@ -47,6 +77,11 @@ import postcss from 'postcss';
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const EXEMPT = 'visual-diff-exempt';
+const MOVE = 'visual-diff-move';
+const SYNTAX = [
+  `  ${EXEMPT}: <класс> <свойство> — <причина>   (напр. ${EXEMPT}: .checkbox gap — ступень шкалы)`,
+  `  ${MOVE}: <класс-источник> -> <класс-цель>   (напр. ${MOVE}: brow__body -> grow--fit)`,
+];
 
 const die = (msg, extra = []) => {
   console.error(`::error::check-css-semantics: ${msg}`);
@@ -58,7 +93,7 @@ const unknown = process.argv.slice(2).filter((a) => a !== '--');
 if (unknown.length) {
   die(`unknown flag ${unknown.join(' ')}.`, [
     'Обновлять нечего: потолок — базовая ветка. Разрешить одно изменение:',
-    `  ${EXEMPT}: <причина>`,
+    ...SYNTAX,
   ]);
 }
 
@@ -180,44 +215,137 @@ if (failures.length) die(`postcss не разобрал ${failures.length} фа�
 
 /* ------------------------------- сравнение -------------------------------- */
 
+const mkChange = (key, from, to) => {
+  const [cls, media, state, prop] = key.split('|');
+  return { key, cls, media, state, prop, from, to };
+};
+
 const changes = [];
 for (const [key, { value }] of head.best) {
   const was = base.best.get(key);
-  if (!was) changes.push({ key, from: null, to: value });
-  else if (was.value !== value) changes.push({ key, from: was.value, to: value });
+  if (!was) changes.push(mkChange(key, null, value));
+  else if (was.value !== value) changes.push(mkChange(key, was.value, value));
 }
-for (const [key, { value }] of base.best) if (!head.best.has(key)) changes.push({ key, from: value, to: null });
+for (const [key, { value }] of base.best) if (!head.best.has(key)) changes.push(mkChange(key, value, null));
 
-const exempt = git(['diff', '--unified=0', `${BASE_REF}...HEAD`, '--', 'src'])
+/* ------------------------- маркеры: точечные, не бланкетные ----------------
+ * Читаются из ДОБАВЛЕННЫХ строк диффа (действуют один PR) — из коммитов ветки
+ * И из рабочего дерева, чтобы маркер вёл себя локально так же, как в CI: замер
+ * CSS берётся из рабочего дерева, и разъезд источников уже один раз стоил
+ * гарду тихого «изменений нет».                                              */
+const addedLines = [
+  git(['diff', '--unified=0', `${BASE_REF}...HEAD`, '--', 'src']),
+  git(['diff', '--unified=0', 'HEAD', '--', 'src']),
+]
+  .join('\n')
   .split('\n')
-  .filter((l) => l.startsWith('+') && l.includes(EXEMPT)).length;
+  .filter((l) => l.startsWith('+'));
 
-const fmt = ({ key, from, to }) => {
-  const [cls, media, state, prop] = key.split('|');
-  const where = [media, state].filter(Boolean).join(' ');
-  const move = from === null ? `+ ${to}` : to === null ? `− ${from}` : `${from} → ${to}`;
-  return `  .${cls}${state}${where && media ? ` {${media}}` : ''} ${prop}: ${move}`;
-};
+const CLS = String.raw`\.?[-\w]+`;
+const reExempt = new RegExp(String.raw`${EXEMPT}:\s*(${CLS}(?::{1,2}[-\w]+(?:\([^)]*\))?)*)\s+([-\w]+)`);
+const reMove = new RegExp(String.raw`${MOVE}:\s*(${CLS})\s*->\s*(${CLS})`);
+/** Имя класса из маркера: `.btn:hover` → `btn`; состояние берёт тот же stateOf,
+ *  что строил ключ, — иначе маркер и ключ разошлись бы по орфографии. */
+const bare = (sel) => classesOf(sel.startsWith('.') ? sel : `.${sel}`)[0];
+
+const exempts = [];
+const moves = [];
+const malformed = [];
+for (const line of addedLines) {
+  if (line.includes(`${EXEMPT}:`)) {
+    const m = line.match(reExempt);
+    if (m) exempts.push({ cls: bare(m[1]), state: stateOf(m[1]), prop: m[2], used: false });
+    else malformed.push(line.trim());
+  }
+  if (line.includes(`${MOVE}:`)) {
+    const m = line.match(reMove);
+    if (m) moves.push({ from: bare(m[1]), to: bare(m[2]) });
+    else malformed.push(line.trim());
+  }
+}
+// Маркер, который автор считает работающим, а гард не разобрал, — самая дорогая
+// из тишин: PR уезжает красным по причине, которой в выводе нет.
+if (malformed.length) die('маркер(ы) не разобраны — синтаксис ниже', [...malformed, '', ...SYNTAX]);
+
+/* --------- что из изменений ОБЪЯВЛЕНО: сначала переносы, потом точечные ----- */
+
+const fmtId = (c) => `.${c.cls}${c.state}${c.media ? ` {${c.media}}` : ''} ${c.prop}`;
+const fmt = (c) => `  ${fmtId(c)}: ${c.from === null ? `+ ${c.to}` : c.to === null ? `− ${c.from}` : `${c.from} → ${c.to}`}`;
+
+const headClasses = new Set([...head.best.keys()].map((k) => k.split('|')[0]));
+const byKey = new Map(changes.map((c) => [c.key, c]));
+const declared = new Set();
+const notes = [];
+const rejected = [];
+
+for (const mv of moves) {
+  if (!headClasses.has(mv.to)) {
+    rejected.push(`${MOVE}: .${mv.from} → .${mv.to} — у цели на HEAD нет ни одного объявления`);
+    continue;
+  }
+  let moved = 0;
+  for (const c of changes) {
+    if (c.to !== null || c.cls !== mv.from) continue; // с источника ушло объявление
+    const dstKey = `${mv.to}|${c.media}|${c.state}|${c.prop}`;
+    const dst = head.best.get(dstKey);
+    if (!dst) rejected.push(`${fmtId(c)}: ${c.from} — на .${mv.to} этого объявления нет`);
+    else if (dst.value !== c.from) rejected.push(`${fmtId(c)}: ${c.from} → ${dst.value} — перенос на .${mv.to} СО СМЕНОЙ значения`);
+    else {
+      declared.add(c.key);
+      moved += 1;
+      // Цель, ТОЛЬКО ПРИОБРЁТШУЮ объявление, покрывает тот же перенос. Если у
+      // цели значение было другим — это правка живого класса, её не гасим.
+      if (byKey.get(dstKey)?.from === null) declared.add(dstKey);
+    }
+  }
+  notes.push(`перенос .${mv.from} → .${mv.to}: объявлений ${moved}`);
+}
+
+for (const c of changes) {
+  if (declared.has(c.key)) continue;
+  const ex = exempts.find((e) => e.cls === c.cls && e.state === c.state && e.prop === c.prop);
+  if (!ex) continue;
+  ex.used = true;
+  declared.add(c.key);
+}
+for (const e of exempts) {
+  const id = `${EXEMPT}: .${e.cls}${e.state} ${e.prop}`;
+  notes.push(e.used ? `${id} — изменение объявлено намеренным` : `${id} — под маркером изменений нет`);
+}
+
+const blocking = changes.filter((c) => !declared.has(c.key));
 
 console.log(`check-css-semantics (2p): HEAD vs ${BASE_REF}`);
-console.log(`  классов под наблюдением: ${new Set([...head.best.keys()].map((k) => k.split('|')[0])).size}`);
+console.log(`  классов под наблюдением: ${headClasses.size}`);
 console.log(`  объявлений сравнено:     ${head.best.size}`);
+if (changes.length) console.log(`  изменений: ${changes.length} · объявлено: ${declared.size} · блокирует: ${blocking.length}`);
+notes.forEach((n) => console.log(`  ${n}`));
 
-if (!changes.length) {
-  console.log('  итоговые объявления не изменились ни у одного класса.');
-  process.exit(0);
+if (blocking.length) {
+  console.log('');
+  blocking.slice(0, 60).sort((a, b) => a.key.localeCompare(b.key)).forEach((c) => console.log(fmt(c)));
+  if (blocking.length > 60) console.log(`  … и ещё ${blocking.length - 60}`);
 }
-
-console.log(`\n  изменений: ${changes.length}${exempt ? ` · маркеров ${EXEMPT}: ${exempt}` : ''}`);
-changes.slice(0, 60).sort((a, b) => a.key.localeCompare(b.key)).forEach((c) => console.log(fmt(c)));
-if (changes.length > 60) console.log(`  … и ещё ${changes.length - 60}`);
-
-if (exempt) {
-  console.log(`\n  ${exempt} маркер(ов) ${EXEMPT} в диффе — изменения объявлены намеренными.`);
-  process.exit(0);
+if (rejected.length) {
+  console.log('');
+  rejected.forEach((r) => console.log(`  ${r}`));
+  console.error(
+    `::error::check-css-semantics: объявленный ${MOVE} не сошёлся, случаев: ${rejected.length}. ` +
+      'На цели либо нет этого объявления, либо значение при переносе изменилось.',
+  );
+  process.exit(1);
 }
-console.error(
-  `::error::check-css-semantics: итоговые объявления изменились у ${changes.length} ключ(ей). ` +
-    `Если это намеренно — добавь строку \`${EXEMPT}: <причина>\` в диффе.`,
+if (blocking.length) {
+  console.error(
+    `::error::check-css-semantics: итоговые объявления изменились у ${blocking.length} ключ(ей). ` +
+      `Если это намеренно — объяви каждое изменение отдельной строкой в диффе:\n` +
+      SYNTAX.join('\n'),
+  );
+  process.exit(1);
+}
+console.log(
+  changes.length
+    ? `  необъявленных изменений нет: все ${changes.length} объявлены переносом или исключением.`
+    : '  итоговые объявления не изменились ни у одного класса.',
 );
-process.exit(1);
+process.exit(0);
