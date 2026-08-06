@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
-import { forgetStashedAttribution, getSignupAttribution, identifyUser, resetIdentity, track } from '@/lib/analytics';
-import { pickSignupAttribution } from '@/lib/campaign';
+import { forgetStashedAttribution, getSignupMarks, identifyUser, rememberSignupMarks, resetIdentity, track } from '@/lib/analytics';
+import { marksToColumns, pickSignupMarks } from '@/lib/campaign';
 
 const AuthContext = createContext();
 
@@ -149,6 +149,21 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (error && error.code === 'PGRST116') {
+        // The marks this signup arrived with, from whichever carrier crossed the
+        // border the visitor took: auth metadata for email (they survive
+        // confirming on another device entirely), the sessionStorage stash for
+        // OAuth. Resolved ONCE, here, and handed to both readers below — the
+        // `users` columns and the campaign super-properties. Announcing them is
+        // what gives last touch a value for someone who arrived marked, ignored
+        // the cookie banner and signed in with Google (TRIP-335); doing it only
+        // on this branch is what stops a year-old click resurrecting on a later
+        // login, since the metadata live on the auth user forever.
+        // `pickSignupMarks` is a whitelist, never a raw spread: `user_metadata`
+        // is client-owned, so an unfiltered one would set any column.
+        const signupMarks = pickSignupMarks(authUser.user_metadata?.signup_attribution)
+          || getSignupMarks();
+        rememberSignupMarks(signupMarks);
+
         // Profile doesn't exist yet - create it (first login via Google or email).
         // Avatar policy: keep ONLY a real uploaded/OAuth image. When there is
         // none, leave avatar_url null — <Avatar> renders a gradient fallback.
@@ -166,12 +181,9 @@ export const AuthProvider = ({ children }) => {
             // an OAuth redirect does have to happen per button: once the provider
             // replaces the document there is no choke point left.)
             // Account data, not tracking: recorded whatever the visitor answered
-            // on the cookie banner. Email carries the marks through auth metadata
-            // (they survive confirming on another device); OAuth recovers them
-            // from the stash left behind before the redirect. Filtered through
-            // pickSignupAttribution, never spread raw — `user_metadata` is
-            // client-owned, so an unfiltered spread would set any column.
-            ...(pickSignupAttribution(authUser.user_metadata?.signup_attribution) || getSignupAttribution() || {}),
+            // on the cookie banner. `utm_content` has no column and stops here —
+            // it says which creative, which is ad reporting, not account data.
+            ...(marksToColumns(signupMarks) || {}),
           })
           .select()
           .single();

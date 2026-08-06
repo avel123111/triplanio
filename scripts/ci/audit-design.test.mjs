@@ -193,6 +193,94 @@ test('out-of-scope files do not contribute to family/class counts', (t) => {
   assert.equal(out.classes, 2);
 });
 
+// ── The token vocabulary: the number guard 2o ratchets (TRIP-337 §2) ────────
+/** ★ WHY EVERY ONE OF THESE IS PINNED SEPARATELY. On the live repo the count is
+ *  163 — AND 163 IS REACHABLE TWO WAYS. A naive count over app.css alone that
+ *  does NOT strip comments also prints 163: `--sp-9` survives in a comment
+ *  (app.css:141) and contributes exactly the one unit that `--font-sans` from
+ *  index.css contributes to the correct answer. A right implementation and a
+ *  broken one print the same number, so "it matches the epic" proves nothing
+ *  and the acceptance criterion has to be these fixtures instead.
+ *
+ *  The predicate is `:root`, and the two obvious "simplifications" of it — drop
+ *  the scope test and count every `--x:` in src/, or keep only app.css — are
+ *  each wrong in a way that costs real work. They are pinned as tests so a
+ *  future refactor cannot make the number come out right for the wrong reason. */
+
+test('a token that exists ONLY in a comment is not counted (--sp-9, app.css:141)', (t) => {
+  const out = run(
+    fixture(t, { 'app.css': ':root { --sp-8: 20px; /* --sp-9:24px выпилен - шкала кончается на 8 */ }' }),
+  );
+  assert.equal(out.rootTokens, 1, 'the comment must not mint a token');
+});
+
+test('a token in the :root of a SECOND file is counted (--font-sans, index.css)', (t) => {
+  // The "app.css only" spelling would leave index.css — which already has a
+  // `:root` — as a free door, and the third `:root` file of subtask 10 as
+  // another one. A token is a name visible from everywhere; `:root` carries it.
+  const out = run(
+    fixture(t, { 'app.css': ':root { --ink: #111; }', 'index.css': ':root { --font-sans: Golos; }' }),
+  );
+  assert.equal(out.rootTokens, 2);
+});
+
+test('a dark-theme re-pointing adds nothing: the set is keyed by NAME', (t) => {
+  // 88 names live under :root[data-theme=dark] on the live repo and every one of
+  // them is a re-pointing of a name the light :root already has.
+  const out = run(
+    fixture(t, {
+      'app.css': ':root { --ink: #111; --bg: #fff; } :root[data-theme="dark"] { --ink: #eee; --bg: #000; }',
+    }),
+  );
+  assert.equal(out.rootTokens, 2);
+});
+
+test('a variable on a component variant is NOT a token (.btn--primary{--fg:…})', (t) => {
+  // Law 3 done RIGHT: set on a container, read by its own subtree. Phases 04–06
+  // produce these by the handful — collapsing an object into "base + modifier"
+  // IS this move — so counting them would make the floor a brake on the correct
+  // direction. It is reported without blocking instead.
+  const out = run(
+    fixture(t, {
+      'app.css': ':root { --ink: #111; } .btn { --fg: var(--ink); color: var(--fg); } .btn--primary { --fg: #fff; }',
+    }),
+  );
+  assert.equal(out.rootTokens, 1, 'only --ink is vocabulary');
+  assert.deepEqual(names(out.privateTokens), ['--fg']);
+  // Reported BY FILE: the live repo's 20 are two different things, and one
+  // number says the wrong one (14 in app.css are law 3, 6 elsewhere are a hole).
+  assert.deepEqual(out.privateTokens[0].files.map((f) => f.split('/').pop()), ['app.css']);
+});
+
+test('a private dictionary in a token island is reported, never counted (.auth)', (t) => {
+  // login.css `.auth` holds 4 such names (`--font-body` is a private twin of
+  // `--font-sans`, both TRIP-165). That IS the hole — and it is not this
+  // subtask's: login.css is outside the perimeter until subtask 10.
+  const out = run(
+    fixture(t, {
+      'app.css': ':root { --font-sans: Golos; }',
+      'login.css': '.auth { --font-body: Golos; --line-2: #eee; }',
+    }),
+  );
+  assert.equal(out.rootTokens, 1);
+  assert.deepEqual(names(out.privateTokens), ['--font-body', '--line-2']);
+});
+
+test('a name defined BOTH in :root and on a class is vocabulary, not private', (t) => {
+  const out = run(
+    fixture(t, { 'app.css': ':root { --tile: 38px; } .tile--lg { --tile: 46px; }' }),
+  );
+  assert.equal(out.rootTokens, 1);
+  assert.deepEqual(names(out.privateTokens), [], 'a re-pointing of a global name is not a private name');
+});
+
+test('a token defined inside @media { :root } is counted', (t) => {
+  const out = run(
+    fixture(t, { 'app.css': '@media (min-width: 640px) { :root { --ctl-h: 44px; } }' }),
+  );
+  assert.equal(out.rootTokens, 1);
+});
+
 test('inline styles are counted in scope and overall', (t) => {
   const out = run(
     fixture(t, {
@@ -451,4 +539,150 @@ test('a class with no markup usage at all is NOT called excluded perimeter', (t)
   // (`.card > .x`) has no className of its own and would be misfiled wholesale.
   const out = run(fixture(t, { 'app.css': '.orphan { color: red; }' }));
   assert.deepEqual(out.perimeterFamilies, []);
+});
+
+// ── 1d. Каталог: канон и разбор (TRIP-340) ──────────────────────────────────
+/**
+ * ЧТО ИМЕННО ЗДЕСЬ ПИНИТСЯ. Предикат канона был написан в тикете в
+ * ПЕРЕВЁРНУТОМ виде («канон = словарь ДС = 82 одиночки»), и это не описка: он
+ * читается прямо с отчёта выше и ошибается в ОБЕ стороны сразу. Поэтому
+ * фиксируется не «сколько получилось», а обе стороны инверсии - что попадает в
+ * канон и что в него НЕ попадает, - плюс три способа каталогу разойтись с
+ * деревом, из которых один заставляет число ПАДАТЬ.
+ */
+function runDraft(dir) {
+  const r = spawnSync(process.execPath, [SCRIPT, '--catalog-draft'], {
+    env: { ...process.env, AUDIT_ROOT: dir },
+    encoding: 'utf8',
+  });
+  assert.equal(r.status, 0, `script failed:\n${r.stderr}`);
+  return JSON.parse(r.stdout);
+}
+
+const catalog = (families) => JSON.stringify({ families });
+
+test('★ ИНВЕРСИЯ: пространство имён, которое эмитит ДС, - кандидат в канон', (t) => {
+  // Ровно тот случай, который формулировка из тикета отправляла в triage:
+  // .btn владеет .btn--primary, значит `namespace`, а НЕ `standalone`.
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .btn--primary{color:blue}',
+      'design/index.jsx': 'const B = <button className="btn btn--primary"/>;',
+    }),
+  );
+  assert.equal(d.families.btn, 'canon');
+});
+
+test('★ ИНВЕРСИЯ: одиночка, которую ДС не эмитит, каноном НЕ становится', (t) => {
+  // 74 из тех самых 82: экранные остатки (bookrow, wmini, mapfs…). Формулировка
+  // из тикета делала каноном именно их - то есть ту самую кучу, ради которой
+  // всё и затевалось.
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.bookrow{color:red}',
+      'pages/DocsLens.jsx': 'const A = <i className="bookrow"/>;',
+    }),
+  );
+  assert.equal(d.families.bookrow, 'triage');
+});
+
+test('components/ui считается источником ДС наравне с design/', (t) => {
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.toast{color:red} .toast__body{color:blue}',
+      'components/ui/toast.jsx': 'const T = <i className="toast"/>;',
+    }),
+  );
+  assert.equal(d.families.toast, 'canon');
+});
+
+test('нет каталога → triageClasses = null, а не 0 и не «всё разбор»', (t) => {
+  // «Нечего проверять» и «проверено, чисто» обязаны различаться: 0 означало бы
+  // «разбор закончен», и пятое число молча отчиталось бы победой.
+  const out = run(fixture(t, { 'design/app.css': '.a-1{color:red}' }));
+  assert.equal(out.triageClasses, null);
+  assert.equal(out.catalogStatuses, null);
+  assert.deepEqual(out.catalogMissing, []);
+});
+
+test('классы считаются только у семейств в статусе triage', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .btn--p{color:red} .bgt-row{color:red} .bgt-k{color:red} .bgt-v{color:red}',
+      'design/catalog.json': catalog({ btn: 'canon', bgt: 'triage' }),
+    }),
+  );
+  assert.equal(out.triageClasses, 3, 'три .bgt-*, канон .btn в счёт не идёт');
+});
+
+test('семейство, которого нет в каталоге, - НЕ «ноль классов», а catalogMissing', (t) => {
+  // Молчание тут занижает объём работ: класс не посчитан нигде.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .newfam-x{color:red}',
+      'design/catalog.json': catalog({ btn: 'canon' }),
+    }),
+  );
+  assert.deepEqual(out.catalogMissing, ['newfam']);
+  assert.equal(out.triageClasses, 0, 'неразмеченное семейство не считается разобранным');
+});
+
+test('строка каталога про исчезнувшее семейство - catalogStale', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.btn{color:red}',
+      'design/catalog.json': catalog({ btn: 'canon', gone: 'triage' }),
+    }),
+  );
+  assert.deepEqual(out.catalogStale, ['gone']);
+});
+
+test('★ опечатка в статусе НЕ читается как triage - и потому роняет число', (t) => {
+  // Самая опасная из трёх: «canonn» не равно triage, значит классы семейства
+  // выпадают из счёта и метрика ПАДАЕТ - выглядит прогрессом. Пинится и факт
+  // обнаружения, и то, что число при этом действительно занижено: гард 2o
+  // краснеет именно поэтому, а не «на всякий случай».
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.bgt-a{color:red} .bgt-b{color:red}',
+      'design/catalog.json': catalog({ bgt: 'canonn' }),
+    }),
+  );
+  assert.deepEqual(out.catalogInvalid, ['bgt: "canonn"']);
+  assert.equal(out.triageClasses, 0, 'именно так число и падает: опечатка вычла семейство из счёта');
+});
+
+test('сломанный JSON каталога - это catalogError, а НЕ «каталога нет»', (t) => {
+  // Иначе лишняя скобка = способ выключить пятое число.
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-1{color:red}', 'design/catalog.json': '{ "families": { ' }),
+  );
+  assert.match(out.catalogError ?? '', /catalog\.json/);
+  assert.equal(out.triageClasses, null);
+});
+
+test('каталог без объекта families - тоже ошибка, а не пустой каталог', (t) => {
+  const out = run(fixture(t, { 'design/app.css': '.a-1{color:red}', 'design/catalog.json': '[]' }));
+  assert.match(out.catalogError ?? '', /families/);
+});
+
+test('"families": null - ошибка, а не «каталога нет»', (t) => {
+  // `typeof null === 'object'`, поэтому эта форма ближе всего к тому, чтобы
+  // СЛОМАННЫЙ файл прочитался как ОТСУТСТВУЮЩИЙ - то есть ровно тот способ
+  // выключить пятое число, против которого и написана проверка.
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-1{color:red}', 'design/catalog.json': '{ "families": null }' }),
+  );
+  assert.match(out.catalogError ?? '', /families/);
+  assert.equal(out.triageClasses, null);
+});
+
+test('черновик размечает КАЖДОЕ семейство и ничего не выдумывает', (t) => {
+  const d = runDraft(
+    fixture(t, {
+      'design/app.css': '.btn{color:red} .btn--p{color:red} .bgt-row{color:red}',
+      'design/index.jsx': 'const B = <button className="btn"/>;',
+    }),
+  );
+  assert.deepEqual(Object.keys(d.families).sort(), ['bgt', 'btn']);
 });

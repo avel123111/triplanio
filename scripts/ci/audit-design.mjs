@@ -10,14 +10,16 @@
  * (TRIP-321: the first plan quoted 294 families / 90% spacing coverage; both
  * were eyeballed, and the second one was off by 28 points.)
  *
- * Four sections:
+ * Five sections:
  *   1. FAMILIES  — a class-name prefix is a namespace. 37 heavy families hold
  *      the real work, ~280 tiny ones are one-off noise.
  *   2. INLINE    — `style={{…}}` occurrences (the ratchet itself is guard 2l).
  *   3. SHAPES    — rules grouped by their SET of properties. A shape declared
  *      in 4+ different families is the same object re-invented under a new
  *      name; this is the number the whole unification is aimed at.
- *   4. ALIASES   — tokens whose value is nothing but `var(--other)`.
+ *   4. TOKENS    — names declared in `:root` (the vocabulary guard 2o
+ *      ratchets), plus the names that exist only outside it.
+ *   4b. ALIASES  — tokens whose value is nothing but `var(--other)`.
  *
  * ── The alias criterion, and why the obvious one is wrong ──
  * The tempting test is "the value is a pure var()". It is wrong three ways, and
@@ -251,6 +253,107 @@ const namespacesInReach = Object.entries(familyKinds).filter(
   ([fam, kind]) => kind === 'namespace' && !perimeterFamilies.includes(fam),
 ).length;
 
+// ── 1d. The catalog: canon vs triage (TRIP-340 PR1) ─────────────────────────
+/** ★ THE PREDICATE, IN CODE, BECAUSE OTHERWISE THE NUMBER DOES NOT EXIST
+ *  (law 8 of the epic). A family is a CANDIDATE for `canon` when the design
+ *  system ITSELF emits one of its classes — read out of `className` in
+ *  `src/design/**` and `src/components/ui/**` by the same acorn walk that
+ *  everything else here uses.
+ *
+ *  THE OBVIOUS PREDICATE IS AN INVERSION, AND IT WAS THE ONE IN THE TICKET.
+ *  "canon = the DS vocabulary = the 82 standalone singletons" reads plausibly
+ *  off the report above and is wrong in BOTH directions, measured on dev @
+ *  dc8ebb2:
+ *    · of those 82, the DS emits EIGHT (checkbox icon num partner readonly sr
+ *      textarea trunc). The other 74 are one-off screen names — `addmini`,
+ *      `bookrow`, `cbar`, `mapwrap`, `wmini`, `vpanel` — i.e. the exact pile
+ *      the epic exists to remove, filed as the thing it must be measured
+ *      against;
+ *    · and the actual spine of the system — btn, badge, card, field, tile,
+ *      sev, spin, toast, sheet, avatar, dlg, menu, pop, row, t — owns
+ *      descendants (`btn--primary`), so it is `namespace`, never `standalone`.
+ *      The whole design system would have started life as `triage`.
+ *
+ *  CANDIDATE, NOT VERDICT. The list this produces is the DRAFT (`--catalog-draft`);
+ *  the committed `catalog.json` is what counts, because the machine cannot see
+ *  the leakage it contains: `tl3`, `lp`, `rv`, `sb`, `mi` are screen names
+ *  hard-coded INSIDE a DS component. They satisfy the predicate and are not
+ *  canon — they are a finding for subtask 04 (epic Б5, the zoo inside the DS
+ *  itself). A file the review can edit is the point here, unlike a baseline a
+ *  ratchet reads: the number that ratchets is `triageClasses`, and every status
+ *  change is one line in the diff. */
+const DESIGN_SOURCE = /(^|\/)(design|components\/ui)\//;
+const designFamilies = new Set();
+for (const f of jsxFiles) {
+  if (!DESIGN_SOURCE.test(f)) continue;
+  for (const tok of tokensByFile.get(f)) {
+    const fam = familyOf(tok);
+    if (families.has(fam)) designFamilies.add(fam);
+  }
+}
+
+/** The committed catalog. ABSENT is a legal state exactly once — on the PR that
+ *  introduces it, where the BASE side has no file yet — and it reports `null`,
+ *  never 0 and never "everything is triage". Guard 2o turns `null` on HEAD into
+ *  a red and `null` on the base into "floor established by this PR", so
+ *  "nothing to check" and "checked, clean" cannot print the same verdict.
+ *
+ *  UNREADABLE is NOT absent. A syntax error in the file must not degrade into
+ *  "no catalog" — that would make deleting a brace a way to switch the fifth
+ *  metric off. It is reported as `catalogError` and 2o dies on it. */
+const CATALOG_PATH = join(ROOT, 'design', 'catalog.json');
+const STATUSES = new Set(['canon', 'triage']);
+let catalogStatuses = null;
+let catalogError = null;
+try {
+  const parsed = JSON.parse(readFileSync(CATALOG_PATH, 'utf8'));
+  // `families: null` passes `typeof … === 'object'` and would otherwise read as
+  // "no catalog" — i.e. the malformed file switching the metric off, which is
+  // the one thing the paragraph above says it must not be able to do.
+  if (!parsed?.families || typeof parsed.families !== 'object' || Array.isArray(parsed.families)) {
+    catalogError = `${CATALOG_PATH}: expected an object under "families"`;
+  } else {
+    catalogStatuses = parsed.families;
+  }
+} catch (e) {
+  if (e.code !== 'ENOENT') catalogError = `${CATALOG_PATH}: ${e.message}`;
+}
+
+/** Three ways the catalog can stop describing the tree, and all three make
+ *  `triageClasses` a number that measured something other than what it says:
+ *    MISSING — a family exists and is not filed → its classes are counted
+ *              nowhere, so the metric silently UNDERSTATES the work left;
+ *    STALE   — a family is filed and no longer exists → a line nobody will ever
+ *              clean up, and the "→ canon" progress it implies is fiction;
+ *    INVALID — a typo in the status (`"canonn"`) is NOT triage, so the number
+ *              DROPS. That looks like progress and is the epic's signature
+ *              failure mode transposed once more: improve the number you watch
+ *              by changing what it counts. */
+// `hasOwn`, not `in`: `.constructor` is a legal class name, and an inherited key
+// would read as "filed" while contributing nothing to the count — unfiled has to
+// stay loud, that is the whole job of this list.
+const catalogMissing = catalogStatuses
+  ? [...families.keys()].filter((f) => !Object.hasOwn(catalogStatuses, f)).sort()
+  : [];
+const catalogStale = catalogStatuses ? Object.keys(catalogStatuses).filter((f) => !families.has(f)).sort() : [];
+const catalogInvalid = catalogStatuses
+  ? Object.entries(catalogStatuses)
+      .filter(([, v]) => !STATUSES.has(v))
+      .map(([f, v]) => `${f}: ${JSON.stringify(v)}`)
+      .sort()
+  : [];
+
+/** ★ STATUS ON THE FAMILY, COUNT ON THE CLASSES — and the two are different on
+ *  purpose. The family is the unit a namespace is bought in (what guard 2m
+ *  polices, what the epic's "124 → ~30" targets), so that is what carries a
+ *  verdict. But ratcheting the FAMILY count would stall on the correct move:
+ *  renaming `.bgt-row` onto `.row` empties a family long before it disappears,
+ *  and until the last class leaves, a family-level ratchet sees nothing. On
+ *  classes the same move reads `-1` immediately. */
+const triageClasses = catalogStatuses
+  ? [...families].reduce((n, [fam, list]) => n + (catalogStatuses[fam] === 'triage' ? list.length : 0), 0)
+  : null;
+
 // ── 2. Inline styles ────────────────────────────────────────────────────────
 const inlineCount = (f) => readFileSync(f, 'utf8').match(/style=\{\{/g)?.length ?? 0;
 
@@ -347,6 +450,70 @@ const usageCount = (name) => {
  *  scope and can split them. */
 const isRootScope = (sel) => /^(:root|html|body)\b/.test(sel.trim());
 
+// ── 4a. The token vocabulary (TRIP-337 §2 · the number guard 2o ratchets) ───
+/** A TOKEN IS A NAME VISIBLE FROM EVERYWHERE, AND THE CARRIER OF THAT
+ *  VISIBILITY IS `:root`. That is the whole predicate, and every other spelling
+ *  of it is wrong in a way that costs something:
+ *
+ *   • "every `--x:` in src/" (169 today) counts `--num` / `--gap` on
+ *     `.pt-itin` and the 40 `--x` on `.btn--primary` / `.tile--xl` /
+ *     `.fork-state--err`. Those are set on a container and read by its own
+ *     subtree — law 3 of the epic done RIGHT. Worse, collapsing an object into
+ *     "base + modifier" is exactly what phases 04–06 produce by the handful, so
+ *     that predicate would turn the floor into a brake on the correct move.
+ *   • "app.css only" (162) leaves `index.css` — which already has a `:root` —
+ *     as a free door, and would leave the third `:root` file of subtask 10 as
+ *     another one.
+ *
+ *  So: root-scoped definitions anywhere under src/. Today 163 = app.css 162 +
+ *  `--font-sans` from index.css. The 88 names under `:root[data-theme=dark]`
+ *  add NOTHING: they are re-pointings of names the light `:root` already has,
+ *  and the set is keyed by NAME.
+ *
+ *  ★ 163 IS REACHABLE TWO WAYS, AND ONE OF THEM IS BROKEN. A naive count over
+ *  app.css alone WITHOUT stripping comments also prints 163: `--sp-9` lives
+ *  only in a comment (app.css:141, deleted in Ф13) and contributes exactly the
+ *  one unit that `--font-sans` contributes here. A correct implementation and a
+ *  broken one print the same number, so "it matches the epic" proves nothing —
+ *  the two behaviours are pinned separately, on fixtures, in
+ *  check-design-floor.test.mjs. Comments are already gone by this point:
+ *  `defs` is built from `stripComments(...)` above. */
+const rootTokenNames = new Set();
+const scopedDefs = [];
+for (const d of defs) {
+  if (isRootScope(d.scope)) rootTokenNames.add(d.name);
+  else scopedDefs.push(d);
+}
+
+/** Names that exist ONLY outside `:root`. REPORTED, NEVER RATCHETED — and
+ *  reported BY FILE, because the 20 of them are two different things and a
+ *  single number says the wrong one:
+ *
+ *   • app.css (14) — `--bd`/`--fg` on the `.btn--*` variants, `--tile*` on
+ *     `.tile--*`, `--st-accent*` on `.fork-state*`, `--spin*`, `--tmk`, `--ac`.
+ *     A variable set on a container and read by its own subtree: law 3 done
+ *     RIGHT. Phases 04–06 produce these by the handful — collapsing an object
+ *     into "base + modifier" IS this move. Counting them as vocabulary growth
+ *     would make the floor a brake on the correct direction.
+ *   • everything else (6) — a private dictionary inside a token island:
+ *     login.css `.auth` 4 (`--font-body` is a private twin of `--font-sans`,
+ *     both TRIP-165) and PublicTrip.css `.pt-itin` 2 (`--num`, `--gap`).
+ *     THIS is the hole. It is not this subtask's: login.css is outside the
+ *     perimeter until subtask 10, and when it comes in these either collapse
+ *     or move into `:root` and fall under the floor by themselves. Printing
+ *     them is what stops the hole from being silent.
+ *
+ *  ⚠ `--gap` is therefore ALREADY TAKEN as a local name on `.pt-itin`. */
+const privateFiles = new Map(); // name → the files that declare it outside `:root`
+for (const d of scopedDefs) {
+  if (rootTokenNames.has(d.name)) continue;
+  if (!privateFiles.has(d.name)) privateFiles.set(d.name, new Set());
+  privateFiles.get(d.name).add(d.file);
+}
+const privateTokens = [...privateFiles.keys()]
+  .sort()
+  .map((name) => ({ name, files: [...privateFiles.get(name)].sort() }));
+
 const synonyms = []; // safe to collapse
 const checkTargets = []; // a synonym, but the TARGET is re-pointed on a descendant
 const handles = []; // pure var() somewhere, but re-pointed → a parameter
@@ -373,6 +540,20 @@ handles.sort(byUses);
 const pad = (s, n) => String(s).padEnd(n);
 const num = (s, n) => String(s).padStart(n);
 
+/** `--catalog-draft` prints a WHOLE catalog file the way the predicate would
+ *  fill it in. It is a proposal for a human to read and edit, which is why it
+ *  goes to stdout instead of overwriting `catalog.json`: a generator that
+ *  rewrites the file it is checked against turns the catalog into 2l's editable
+ *  baseline, and the whole point of committing it is that a status change is a
+ *  reviewable line rather than a re-run. */
+if (process.argv.includes('--catalog-draft')) {
+  const draft = Object.fromEntries(
+    [...families.keys()].sort().map((f) => [f, designFamilies.has(f) ? 'canon' : 'triage']),
+  );
+  writeSync(1, JSON.stringify({ families: draft }, null, 2) + '\n');
+  process.exit(0);
+}
+
 if (process.argv.includes('--json')) {
   /** `writeSync`, НЕ `console.log`. В ТРУБУ (`… --json | jq`) stdout у Node
    *  асинхронный, и стоящий ниже `process.exit(0)` рвал вывод на полуслове: в
@@ -397,9 +578,24 @@ if (process.argv.includes('--json')) {
         familyKinds,
         perimeterFamilies,
         parseFailures,
+        // The catalog (TRIP-340). `triageClasses` is the fifth number guard 2o
+        // ratchets; `catalogStatuses` is what lets it name the promotions.
+        triageClasses,
+        catalogStatuses,
+        catalogMissing,
+        catalogStale,
+        catalogInvalid,
+        catalogError,
+        designFamilies: [...designFamilies].sort(),
         familiesInReach,
         inlineScoped,
         inlineAll,
+        rootTokens: rootTokenNames.size,
+        // The NAMES, not just how many. Guard 2o needs both sides' sets to spot
+        // a DEMOTION: a name that leaves `:root` for a class scope makes the
+        // count go DOWN while the vocabulary is unchanged — the name merely hid.
+        rootTokenNames: [...rootTokenNames].sort(),
+        privateTokens,
         dupShapes: dupShapes.length,
         dupShapeRules,
         synonyms: synonyms.map((s) => ({ name: s.name, target: s.target, uses: s.uses })),
@@ -448,6 +644,33 @@ if (perimeterFamilies.length) {
 }
 console.log();
 
+console.log('1d. КАТАЛОГ: КАНОН И РАЗБОР (гард 2o храповит «на разборе»)');
+if (catalogError) {
+  console.log(`   ⚠ КАТАЛОГ НЕ ПРОЧИТАН: ${catalogError}`);
+  console.log('     Это НЕ «каталога нет»: сломанный файл не должен выключать пятое число.');
+} else if (!catalogStatuses) {
+  console.log(`   каталога нет (${CATALOG_PATH}) - пятое число не измеряется`);
+} else {
+  // Both lines read the STATUS; neither is `total - canon`. The subtraction is
+  // the tempting spelling, and it files unmarked and mistyped families under
+  // "under review" — while `triageClasses` does not count their classes. Two
+  // lines of one block would then disagree by exactly the families the ⚠ below
+  // is about: the same "the number counted something else" trap 2o reds on.
+  const fams = (status) => [...families.keys()].filter((f) => catalogStatuses[f] === status).length;
+  console.log(`   канон:               ${num(fams('canon'), 5)} семейств`);
+  console.log(`   на разборе:          ${num(fams('triage'), 5)} семейств`);
+  console.log(`   КЛАССОВ НА РАЗБОРЕ:  ${num(triageClasses, 5)}  ← это число храповит 2o`);
+  if (catalogMissing.length) console.log(`   ⚠ НЕ РАЗМЕЧЕНЫ (${catalogMissing.length}): ${catalogMissing.join(' · ')}`);
+  if (catalogStale.length) console.log(`   ⚠ УСТАРЕЛИ, семейства уже нет (${catalogStale.length}): ${catalogStale.join(' · ')}`);
+  if (catalogInvalid.length) console.log(`   ⚠ НЕВЕРНЫЙ СТАТУС (${catalogInvalid.length}): ${catalogInvalid.join(' · ')}`);
+  const drift = [...designFamilies].filter((f) => catalogStatuses[f] !== 'canon').sort();
+  if (drift.length) {
+    console.log(`   ─ предикат зовёт каноном, а в каталоге разбор (${drift.length}): ${drift.join(' · ')}`);
+    console.log('     Это не ошибка: машина не видит экранных имён, зашитых ВНУТРЬ компонента ДС.');
+  }
+}
+console.log();
+
 console.log('2. ИНЛАЙНОВЫЕ СТИЛИ');
 console.log(`   в скоупе:            ${num(inlineScoped, 5)}`);
 console.log(`   весь src:            ${num(inlineAll, 5)}`);
@@ -461,7 +684,28 @@ for (const s of dupShapes.slice(0, 6)) {
 }
 console.log();
 
-console.log('4. ТОКЕНЫ-АЛИАСЫ');
+console.log('4. ТОКЕНЫ');
+console.log(`   в :root (гард 2o храповит это число): ${rootTokenNames.size}`);
+if (privateTokens.length) {
+  console.log(`   объявлены ТОЛЬКО вне :root (под пол НЕ попадают, репорт без блокировки): ${privateTokens.length}`);
+  const byFile = new Map();
+  for (const t of privateTokens) {
+    for (const f of t.files) {
+      if (!byFile.has(f)) byFile.set(f, []);
+      byFile.get(f).push(t.name);
+    }
+  }
+  for (const [f, names] of [...byFile].sort()) {
+    const note = /app\.css$/.test(f)
+      ? 'переменная на варианте, читается своим же поддеревом - закон 3, так и надо'
+      : 'приватный словарь в островке токенов - дыра, закрывается в подзадаче 10';
+    console.log(`     ${f} (${names.length}) - ${note}`);
+    console.log(`       ${[...new Set(names)].sort().join(' · ')}`);
+  }
+}
+console.log();
+
+console.log('4b. ТОКЕНЫ-АЛИАСЫ');
 console.log(`   СИНОНИМЫ (все определения → одна цель, цель не расщеплена; схлопываются): ${synonyms.length}`);
 for (const s of synonyms) console.log(`     ${pad(s.name, 18)} → ${pad(s.target, 18)} ${num(s.uses, 4)} исп.`);
 console.log(`\n   СИНОНИМЫ С РАСЩЕПЛЁННОЙ ЦЕЛЬЮ (сверить места использования глазами): ${checkTargets.length}`);

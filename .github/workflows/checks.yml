@@ -99,11 +99,13 @@ jobs:
   #   2g check-column-caps           — new user text column without a length cap (domain/CHECK)
   #   2h check-edge-sentry           — ANY edge function without withHandler/captureEdgeError/manual
   #   2i check-invoke-seam           — raw supabase.functions.invoke() outside src/lib/invokeFn.js
-  #   2j check-posthog-init          — analytics behind the consent gate (single posthog.init)
+  #   2j check-analytics-seam        — one door per side: posthog-js only in the seam, init only
+  #                                    in the consent gate, ingestion only in captureServer
   #   2k check:design                — raw typography/colour off the tokens + COLOR_WHITELIST ratchet
   #   2l check-inline-styles         — inline styles in touched files may not grow or repeat
   #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
   #   2n check-orphan-css            — a rule left pointing at a class the markup stopped emitting
+  #   2p check-css-semantics        — итоговые объявления класса: база vs HEAD (ярус 2 виз. гейта)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -154,9 +156,9 @@ jobs:
       - name: 2i — frontend invoke seam (no raw functions.invoke)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-invoke-seam.mjs
-      - name: 2j — analytics behind the consent gate (single posthog.init)
+      - name: 2j — analytics seam (events, identity, server ingestion)
         if: ${{ !cancelled() }}
-        run: node scripts/ci/check-posthog-init.mjs
+        run: node scripts/ci/check-analytics-seam.mjs
       - name: 2k — design tokens (typography/colour + whitelist ratchet)
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
@@ -176,6 +178,47 @@ jobs:
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
+
+  # 2o — the design floor (TRIP-337 Ф0). Runs `audit-design.mjs` twice (a
+  # detached worktree of the PR base, then HEAD) and refuses any growth in the
+  # headline numbers: classes / namespaces / inline styles / `:root` tokens.
+  #
+  # ЖИВЁТ ОТДЕЛЬНОЙ ДЖОБОЙ, А НЕ ШАГОМ В `guards`, ПО ТОЙ ЖЕ ПРИЧИНЕ, ПО КОТОРОЙ
+  # ТУДА НЕ ПОЕХАЛ РЕПОРТЁР: у `guards` НЕТ `npm ci`, и это её свойство - все 14
+  # гардов обходятся стандартной библиотекой и потому стартуют мгновенно. Аудит
+  # разбирает JSX парсером (`acorn` + `acorn-jsx` - в шапке audit-design.mjs
+  # записано, почему регулярками это не сходится), то есть требует зависимостей.
+  # Ставить их в джобу гардов = ломать её инвариант.
+  #
+  # `fetch-depth: 0` здесь не «на всякий случай»: гард делает `git worktree add`
+  # на базовую ветку и на недостижимой базе ПАДАЕТ, а не пропускает (пол, который
+  # ничего не измерил, не должен печатать «OK»).
+  design-floor:
+    name: Design floor (2o — ни одно число не растёт)
+    if: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "${{ github.base_ref }}"
+      - name: 2o — design floor
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: npm run check:floor
+      # 2p — ЯРУС 2 визуального гейта (TRIP-340 PR3, Р13). Здесь, а не в
+      # `guards`, по той же причине, что и 2o: гард разбирает CSS через
+      # `postcss` (уже прямая зависимость репо), то есть требует `npm ci`, а
+      # `guards` намеренно живёт на стандартной библиотеке.
+      - name: 2p — семантический дифф CSS (что реально достаётся классу)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: npm run check:semantics
 
   deno:
     name: Deno typecheck (edge functions)
