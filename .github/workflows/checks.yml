@@ -177,6 +177,39 @@ jobs:
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
 
+  # 2o — the design floor (TRIP-337 Ф0). Runs `audit-design.mjs` twice (a
+  # detached worktree of the PR base, then HEAD) and refuses any growth in the
+  # headline numbers: classes / namespaces / inline styles / `:root` tokens.
+  #
+  # ЖИВЁТ ОТДЕЛЬНОЙ ДЖОБОЙ, А НЕ ШАГОМ В `guards`, ПО ТОЙ ЖЕ ПРИЧИНЕ, ПО КОТОРОЙ
+  # ТУДА НЕ ПОЕХАЛ РЕПОРТЁР: у `guards` НЕТ `npm ci`, и это её свойство - все 14
+  # гардов обходятся стандартной библиотекой и потому стартуют мгновенно. Аудит
+  # разбирает JSX парсером (`acorn` + `acorn-jsx` - в шапке audit-design.mjs
+  # записано, почему регулярками это не сходится), то есть требует зависимостей.
+  # Ставить их в джобу гардов = ломать её инвариант.
+  #
+  # `fetch-depth: 0` здесь не «на всякий случай»: гард делает `git worktree add`
+  # на базовую ветку и на недостижимой базе ПАДАЕТ, а не пропускает (пол, который
+  # ничего не измерил, не должен печатать «OK»).
+  design-floor:
+    name: Design floor (2o — ни одно число не растёт)
+    if: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "${{ github.base_ref }}"
+      - name: 2o — design floor
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: npm run check:floor
+
   deno:
     name: Deno typecheck (edge functions)
     runs-on: ubuntu-latest

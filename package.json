@@ -12,6 +12,7 @@
     "check:inline": "node scripts/ci/check-inline-styles.mjs",
     "check:prefixes": "node scripts/ci/check-css-prefixes.mjs",
     "check:orphans": "node scripts/ci/check-orphan-css.mjs",
+    "check:floor": "node scripts/ci/check-design-floor.mjs",
     "audit:design": "node scripts/ci/audit-design.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "test": "node --test \"src/**/*.test.js\" \"scripts/**/*.test.mjs\"",

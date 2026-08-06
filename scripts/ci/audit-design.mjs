@@ -10,14 +10,16 @@
  * (TRIP-321: the first plan quoted 294 families / 90% spacing coverage; both
  * were eyeballed, and the second one was off by 28 points.)
  *
- * Four sections:
+ * Five sections:
  *   1. FAMILIES  — a class-name prefix is a namespace. 37 heavy families hold
  *      the real work, ~280 tiny ones are one-off noise.
  *   2. INLINE    — `style={{…}}` occurrences (the ratchet itself is guard 2l).
  *   3. SHAPES    — rules grouped by their SET of properties. A shape declared
  *      in 4+ different families is the same object re-invented under a new
  *      name; this is the number the whole unification is aimed at.
- *   4. ALIASES   — tokens whose value is nothing but `var(--other)`.
+ *   4. TOKENS    — names declared in `:root` (the vocabulary guard 2o
+ *      ratchets), plus the names that exist only outside it.
+ *   4b. ALIASES  — tokens whose value is nothing but `var(--other)`.
  *
  * ── The alias criterion, and why the obvious one is wrong ──
  * The tempting test is "the value is a pure var()". It is wrong three ways, and
@@ -347,6 +349,70 @@ const usageCount = (name) => {
  *  scope and can split them. */
 const isRootScope = (sel) => /^(:root|html|body)\b/.test(sel.trim());
 
+// ── 4a. The token vocabulary (TRIP-337 §2 · the number guard 2o ratchets) ───
+/** A TOKEN IS A NAME VISIBLE FROM EVERYWHERE, AND THE CARRIER OF THAT
+ *  VISIBILITY IS `:root`. That is the whole predicate, and every other spelling
+ *  of it is wrong in a way that costs something:
+ *
+ *   • "every `--x:` in src/" (169 today) counts `--num` / `--gap` on
+ *     `.pt-itin` and the 40 `--x` on `.btn--primary` / `.tile--xl` /
+ *     `.fork-state--err`. Those are set on a container and read by its own
+ *     subtree — law 3 of the epic done RIGHT. Worse, collapsing an object into
+ *     "base + modifier" is exactly what phases 04–06 produce by the handful, so
+ *     that predicate would turn the floor into a brake on the correct move.
+ *   • "app.css only" (162) leaves `index.css` — which already has a `:root` —
+ *     as a free door, and would leave the third `:root` file of subtask 10 as
+ *     another one.
+ *
+ *  So: root-scoped definitions anywhere under src/. Today 163 = app.css 162 +
+ *  `--font-sans` from index.css. The 88 names under `:root[data-theme=dark]`
+ *  add NOTHING: they are re-pointings of names the light `:root` already has,
+ *  and the set is keyed by NAME.
+ *
+ *  ★ 163 IS REACHABLE TWO WAYS, AND ONE OF THEM IS BROKEN. A naive count over
+ *  app.css alone WITHOUT stripping comments also prints 163: `--sp-9` lives
+ *  only in a comment (app.css:141, deleted in Ф13) and contributes exactly the
+ *  one unit that `--font-sans` contributes here. A correct implementation and a
+ *  broken one print the same number, so "it matches the epic" proves nothing —
+ *  the two behaviours are pinned separately, on fixtures, in
+ *  check-design-floor.test.mjs. Comments are already gone by this point:
+ *  `defs` is built from `stripComments(...)` above. */
+const rootTokenNames = new Set();
+const scopedDefs = [];
+for (const d of defs) {
+  if (isRootScope(d.scope)) rootTokenNames.add(d.name);
+  else scopedDefs.push(d);
+}
+
+/** Names that exist ONLY outside `:root`. REPORTED, NEVER RATCHETED — and
+ *  reported BY FILE, because the 20 of them are two different things and a
+ *  single number says the wrong one:
+ *
+ *   • app.css (14) — `--bd`/`--fg` on the `.btn--*` variants, `--tile*` on
+ *     `.tile--*`, `--st-accent*` on `.fork-state*`, `--spin*`, `--tmk`, `--ac`.
+ *     A variable set on a container and read by its own subtree: law 3 done
+ *     RIGHT. Phases 04–06 produce these by the handful — collapsing an object
+ *     into "base + modifier" IS this move. Counting them as vocabulary growth
+ *     would make the floor a brake on the correct direction.
+ *   • everything else (6) — a private dictionary inside a token island:
+ *     login.css `.auth` 4 (`--font-body` is a private twin of `--font-sans`,
+ *     both TRIP-165) and PublicTrip.css `.pt-itin` 2 (`--num`, `--gap`).
+ *     THIS is the hole. It is not this subtask's: login.css is outside the
+ *     perimeter until subtask 10, and when it comes in these either collapse
+ *     or move into `:root` and fall under the floor by themselves. Printing
+ *     them is what stops the hole from being silent.
+ *
+ *  ⚠ `--gap` is therefore ALREADY TAKEN as a local name on `.pt-itin`. */
+const privateFiles = new Map(); // name → the files that declare it outside `:root`
+for (const d of scopedDefs) {
+  if (rootTokenNames.has(d.name)) continue;
+  if (!privateFiles.has(d.name)) privateFiles.set(d.name, new Set());
+  privateFiles.get(d.name).add(d.file);
+}
+const privateTokens = [...privateFiles.keys()]
+  .sort()
+  .map((name) => ({ name, files: [...privateFiles.get(name)].sort() }));
+
 const synonyms = []; // safe to collapse
 const checkTargets = []; // a synonym, but the TARGET is re-pointed on a descendant
 const handles = []; // pure var() somewhere, but re-pointed → a parameter
@@ -400,6 +466,8 @@ if (process.argv.includes('--json')) {
         familiesInReach,
         inlineScoped,
         inlineAll,
+        rootTokens: rootTokenNames.size,
+        privateTokens,
         dupShapes: dupShapes.length,
         dupShapeRules,
         synonyms: synonyms.map((s) => ({ name: s.name, target: s.target, uses: s.uses })),
@@ -461,7 +529,28 @@ for (const s of dupShapes.slice(0, 6)) {
 }
 console.log();
 
-console.log('4. ТОКЕНЫ-АЛИАСЫ');
+console.log('4. ТОКЕНЫ');
+console.log(`   в :root (гард 2o храповит это число): ${rootTokenNames.size}`);
+if (privateTokens.length) {
+  console.log(`   объявлены ТОЛЬКО вне :root (под пол НЕ попадают, репорт без блокировки): ${privateTokens.length}`);
+  const byFile = new Map();
+  for (const t of privateTokens) {
+    for (const f of t.files) {
+      if (!byFile.has(f)) byFile.set(f, []);
+      byFile.get(f).push(t.name);
+    }
+  }
+  for (const [f, names] of [...byFile].sort()) {
+    const note = /app\.css$/.test(f)
+      ? 'переменная на варианте, читается своим же поддеревом - закон 3, так и надо'
+      : 'приватный словарь в островке токенов - дыра, закрывается в подзадаче 10';
+    console.log(`     ${f} (${names.length}) - ${note}`);
+    console.log(`       ${[...new Set(names)].sort().join(' · ')}`);
+  }
+}
+console.log();
+
+console.log('4b. ТОКЕНЫ-АЛИАСЫ');
 console.log(`   СИНОНИМЫ (все определения → одна цель, цель не расщеплена; схлопываются): ${synonyms.length}`);
 for (const s of synonyms) console.log(`     ${pad(s.name, 18)} → ${pad(s.target, 18)} ${num(s.uses, 4)} исп.`);
 console.log(`\n   СИНОНИМЫ С РАСЩЕПЛЁННОЙ ЦЕЛЬЮ (сверить места использования глазами): ${checkTargets.length}`);

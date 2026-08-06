@@ -193,6 +193,94 @@ test('out-of-scope files do not contribute to family/class counts', (t) => {
   assert.equal(out.classes, 2);
 });
 
+// ── The token vocabulary: the number guard 2o ratchets (TRIP-337 §2) ────────
+/** ★ WHY EVERY ONE OF THESE IS PINNED SEPARATELY. On the live repo the count is
+ *  163 — AND 163 IS REACHABLE TWO WAYS. A naive count over app.css alone that
+ *  does NOT strip comments also prints 163: `--sp-9` survives in a comment
+ *  (app.css:141) and contributes exactly the one unit that `--font-sans` from
+ *  index.css contributes to the correct answer. A right implementation and a
+ *  broken one print the same number, so "it matches the epic" proves nothing
+ *  and the acceptance criterion has to be these fixtures instead.
+ *
+ *  The predicate is `:root`, and the two obvious "simplifications" of it — drop
+ *  the scope test and count every `--x:` in src/, or keep only app.css — are
+ *  each wrong in a way that costs real work. They are pinned as tests so a
+ *  future refactor cannot make the number come out right for the wrong reason. */
+
+test('a token that exists ONLY in a comment is not counted (--sp-9, app.css:141)', (t) => {
+  const out = run(
+    fixture(t, { 'app.css': ':root { --sp-8: 20px; /* --sp-9:24px выпилен - шкала кончается на 8 */ }' }),
+  );
+  assert.equal(out.rootTokens, 1, 'the comment must not mint a token');
+});
+
+test('a token in the :root of a SECOND file is counted (--font-sans, index.css)', (t) => {
+  // The "app.css only" spelling would leave index.css — which already has a
+  // `:root` — as a free door, and the third `:root` file of subtask 10 as
+  // another one. A token is a name visible from everywhere; `:root` carries it.
+  const out = run(
+    fixture(t, { 'app.css': ':root { --ink: #111; }', 'index.css': ':root { --font-sans: Golos; }' }),
+  );
+  assert.equal(out.rootTokens, 2);
+});
+
+test('a dark-theme re-pointing adds nothing: the set is keyed by NAME', (t) => {
+  // 88 names live under :root[data-theme=dark] on the live repo and every one of
+  // them is a re-pointing of a name the light :root already has.
+  const out = run(
+    fixture(t, {
+      'app.css': ':root { --ink: #111; --bg: #fff; } :root[data-theme="dark"] { --ink: #eee; --bg: #000; }',
+    }),
+  );
+  assert.equal(out.rootTokens, 2);
+});
+
+test('a variable on a component variant is NOT a token (.btn--primary{--fg:…})', (t) => {
+  // Law 3 done RIGHT: set on a container, read by its own subtree. Phases 04–06
+  // produce these by the handful — collapsing an object into "base + modifier"
+  // IS this move — so counting them would make the floor a brake on the correct
+  // direction. It is reported without blocking instead.
+  const out = run(
+    fixture(t, {
+      'app.css': ':root { --ink: #111; } .btn { --fg: var(--ink); color: var(--fg); } .btn--primary { --fg: #fff; }',
+    }),
+  );
+  assert.equal(out.rootTokens, 1, 'only --ink is vocabulary');
+  assert.deepEqual(names(out.privateTokens), ['--fg']);
+  // Reported BY FILE: the live repo's 20 are two different things, and one
+  // number says the wrong one (14 in app.css are law 3, 6 elsewhere are a hole).
+  assert.deepEqual(out.privateTokens[0].files.map((f) => f.split('/').pop()), ['app.css']);
+});
+
+test('a private dictionary in a token island is reported, never counted (.auth)', (t) => {
+  // login.css `.auth` holds 4 such names (`--font-body` is a private twin of
+  // `--font-sans`, both TRIP-165). That IS the hole — and it is not this
+  // subtask's: login.css is outside the perimeter until subtask 10.
+  const out = run(
+    fixture(t, {
+      'app.css': ':root { --font-sans: Golos; }',
+      'login.css': '.auth { --font-body: Golos; --line-2: #eee; }',
+    }),
+  );
+  assert.equal(out.rootTokens, 1);
+  assert.deepEqual(names(out.privateTokens), ['--font-body', '--line-2']);
+});
+
+test('a name defined BOTH in :root and on a class is vocabulary, not private', (t) => {
+  const out = run(
+    fixture(t, { 'app.css': ':root { --tile: 38px; } .tile--lg { --tile: 46px; }' }),
+  );
+  assert.equal(out.rootTokens, 1);
+  assert.deepEqual(names(out.privateTokens), [], 'a re-pointing of a global name is not a private name');
+});
+
+test('a token defined inside @media { :root } is counted', (t) => {
+  const out = run(
+    fixture(t, { 'app.css': '@media (min-width: 640px) { :root { --ctl-h: 44px; } }' }),
+  );
+  assert.equal(out.rootTokens, 1);
+});
+
 test('inline styles are counted in scope and overall', (t) => {
   const out = run(
     fixture(t, {
