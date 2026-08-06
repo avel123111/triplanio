@@ -69,7 +69,7 @@ create table if not exists public.reconcile_finding (
   kind         public.short_text not null check (kind in (
                  'cache_drift_user', 'cache_drift_trip', 'addons_revoked',
                  'tg_binding_on_non_pro_trip',
-                 'sub_missing_in_stripe', 'sub_status_drift',
+                 'sub_missing_in_stripe', 'sub_status_drift', 'sub_duplicate_demoted',
                  'purchase_missing', 'purchase_refunded_in_stripe',
                  'unattributable', 'needs_review', 'orphan_purchase',
                  'multi_live_sub', 'webhook_event_failed')),
