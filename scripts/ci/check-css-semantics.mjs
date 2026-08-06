@@ -52,6 +52,63 @@
  * несуществующую цель — тоже красный, иначе он был бы бланкетным гашением под
  * другим именем.
  *
+ * ★ ЗНАЧЕНИЯ ТОКЕНОВ В `:root` (TRIP-360). Гард ключевался на КЛАССЕ, а у `:root`
+ * класса нет — и правка `--brand-soft: rgba(…,.14) → rgba(…,.99)` (альфа в семь
+ * раз) проезжала ЗЕЛЁНОЙ. Две причины, обе структурные: правило без класса
+ * выпадало из наблюдения, а у правил, которые токен потребляют, сравнивается
+ * ТЕКСТ объявления — `background: var(--brand-soft)` побайтово одинаков с обеих
+ * сторон, что бы ни лежало в самом токене. Смену значения токена не ловил при
+ * этом НИ ОДИН гард: 2o сверяет СОСТАВ имён в `:root` и значения не читает,
+ * `check:design` ищет сырые литералы (в `:root` литерал легален по построению),
+ * SPACING считает величины отступов. А подзадача 04 (тинт) состоит из правок
+ * токенов целиком — она поехала бы без визуального гейта вовсе, ровно в фазе,
+ * ради которой ярус 2 и строился.
+ *
+ * Поэтому правило БЕЗ класса тоже под наблюдением — ключом служит сам СЕЛЕКТОР:
+ *
+ *     :root[data-theme=dark] --brand-soft: rgba(111,178,255,.14) → rgba(…,.99)
+ *
+ * ★ ПОД НАБЛЮДЕНИЕ ИДЁТ ВСЁ БЕСКЛАССОВОЕ, А НЕ ТОЛЬКО ТОКЕНЫ. Соблазн ограничиться
+ * `--*` (ход точечный, два адреса, +253 объявления) отвергнут по трём причинам,
+ * и все три — про то же самое «закрыть узкое, оставив широкое»:
+ *   1. голый тег — это ОБЩЕЕ в чистом виде: `button {}` и `h2 {}` бьют по всему
+ *      приложению разом, шире любого токена;
+ *   2. живой дефект уже на руках и он именно там — `index.css:211–219` держит
+ *      ВТОРОЙ полный канон типографики на голых тегах, перебивающий `.t-*`
+ *      (`<h4>` ×8 Exo 16/600 вместо Golos 13/700, `<h2>` ×16 вес 600 вместо
+ *      800, мёртвое `a{color:var(--brand)}`); его снос — отдельный визуальный
+ *      PR, и без включения он поехал бы вслепую ровно как тинт без токенов;
+ *   3. краснота на таком PR — ЦЕЛЬ, а не издержка: это намеренная правка
+ *      общего, и маркер с причиной в диффе — ровно та форма, в которой мы
+ *      такое пропускаем (закон 6). Гард, молчащий на сносе канона типографики,
+ *      бесполезен именно в тот момент, ради которого строился.
+ * Итог на dev: 83 бесклассовых селектора, 576 объявлений ПОСЛЕ каскада — 252
+ * токена и 324 прочих; сырых в файлах 623, разница съедена дубликатами, которые
+ * каскад схлопывает в один ключ (`--font-display` объявлен в двух `:root`).
+ * Печатать надо именно разрешённое число: сырое соблазнительнее (больше), но
+ * гард сравнивает разрешённые, и отчёт обязан быть о том, что он сравнил.
+ * Обе половины печатаются ОТДЕЛЬНО — по ним видно, что слепая зона была не
+ * только про цвет, а ноль в любой из них означает, что ветка перестала мериться.
+ *
+ * ★★ КЛЮЧ КЕЙФРЕЙМА — ВМЕСТЕ С ИМЕНЕМ АНИМАЦИИ. Шаг `from` сам по себе не
+ * единица: в репо 19 анимаций, и `from`/`to` повторяются в них по многу раз,
+ * так что ключ по одному шагу склеил бы `fadeIn` и `dockUp` — либо ложная
+ * краснота, либо, что хуже, ОДИН маркер гасит обе. Имя приходит из того же
+ * поля контекста, что и `@media` (это тоже родительский at-rule), поэтому
+ * ключ звучит `to {@keyframes dockUp} opacity`. Это тот же класс дефекта, что
+ * `@media` в ключе escape: КЛЮЧ, НАЗВАННЫЙ НЕ ЦЕЛИКОМ, СКЛЕИВАЕТ РАЗНЫЕ ВЕЩИ
+ * В ОДНУ. Второй раз за день — значит это свойство любого ключа здесь, а не
+ * частный случай; пинится мутацией «правка в одной анимации, маркер на другую».
+ *
+ * ⚠️ ГРАНИЦА, названная вслух: `@font-face` — не rule, а at-rule с
+ * объявлениями напрямую, `walkRules` его не видит, и смена `src` шрифта под
+ * наблюдение НЕ попадает. Ключевать его пришлось бы тройкой
+ * family+weight+style — это отдельный ключ со своей ценой ошибки, и делать его
+ * наполовину здесь значило бы третий раз за день наступить на «ключ назван не
+ * целиком». Островной словарь на КЛАССЕ (`login.css .auth`, 4 токена) под
+ * наблюдением был всегда — он класс; он запинен тестом, потому что единица
+ * наблюдения здесь переписана.
+ *
  * ★★ ГРАНИЦА, КОТОРУЮ НЕ НАДО ВЫДАВАТЬ ЗА БОЛЬШЕЕ. Гард сверяет ОБЪЯВЛЕНИЯ, но
  * НЕ то, что элемент действительно получил целевой класс: разметки он не видит.
  * `visual-diff-move` доказывает «значения на цели те же», а не «на экране то же
@@ -59,7 +116,13 @@
  * Что элемент реально переехал — показывает ярус 1 (`cmp` собранного CSS не
  * поможет) и рендер; см. рецепт скриншота в memory/triplanio-visual-check-playwright.
  *
- * Escape: `visual-diff-exempt: <класс> [{@media …}] <свойство> — <причина>` в
+ * ★ `var()` ПО ЦЕПОЧКЕ НЕ РЕЗОЛВИТСЯ. Алиас `--hl-soft: var(--brand-soft)`
+ * печатается как есть: его собственное значение сравнится на своей строке, а
+ * значение `--brand-soft` — на своей. Вычисленный цвет гард тоже не считает —
+ * он сравнивает два своих одинаково посчитанных замера, и этого достаточно,
+ * чтобы НАЗВАТЬ изменение.
+ *
+ * Escape: `visual-diff-exempt: <класс|селектор> [{@media …}] <свойство> — <причина>` в
  * ДОБАВЛЕННЫХ строках диффа (как `floor-exempt` у 2o) — действует ровно один PR
  * и гасит ровно НАЗВАННЫЙ ключ. ★ Бланкетным (`if (exempt) exit(0)`) он был
  * ровно один PR и это был отказ в опасную сторону: один маркер на легитимный
@@ -82,9 +145,10 @@ const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const EXEMPT = 'visual-diff-exempt';
 const MOVE = 'visual-diff-move';
 const SYNTAX = [
-  `  ${EXEMPT}: <класс> [{@media …}] <свойство> — <причина>`,
+  `  ${EXEMPT}: <класс|селектор> [{@media …}] <свойство> — <причина>`,
   `      база:   ${EXEMPT}: .checkbox gap — ступень шкалы`,
   `      media:  ${EXEMPT}: .checkbox {@media (max-width: 640px)} gap — то же на телефоне`,
+  `      токен:  ${EXEMPT}: :root[data-theme=dark] --brand-soft — выравнивание тинта`,
   '      Ключ маркера = то, что напечатано в строке изменения слева от двоеточия.',
   `  ${MOVE}: <класс-источник> -> <класс-цель>   (напр. ${MOVE}: brow__body -> grow--fit)`,
 ];
@@ -133,6 +197,20 @@ const stateOf = (sel) => (sel.match(/:{1,2}[\w-]+(\([^)]*\))?/g) || []).sort().j
 
 const classesOf = (sel) => [...new Set((sel.match(/\.(-?[a-zA-Z_][\w-]*)/g) || []).map((c) => c.slice(1)))];
 
+/** Селектор как ЕДИНИЦА наблюдения — для правил без класса (`:root`). Кавычки
+ *  внутри `[data-theme="dark"]` снимаются, чтобы маркер и печать гарда сошлись
+ *  в одной орфографии: обе стороны нормализуются одинаково, поэтому сравнение
+ *  остаётся честным, а автор не ловит «под маркером изменений нет» из-за кавычки. */
+const normSel = (sel) => sel.replace(/\s+/g, ' ').replace(/["']/g, '').trim();
+
+/** Единица наблюдения = `.класс` (с точкой) либо целый селектор. Точка в имени
+ *  делает две ветки различимыми БЕЗ отдельного флага в ключе: `.checkbox` и
+ *  `:root` не могут столкнуться, а маркер адресует ровно то, что напечатано. */
+const unitsOf = (sel) => {
+  const cls = classesOf(sel);
+  return cls.length ? { units: cls.map((c) => `.${c}`), state: stateOf(sel) } : { units: [normSel(sel)], state: '' };
+};
+
 /** media-контекст = все родительские at-rule'ы. Правило внутри `@media` — другой
  *  контекст: иначе мобильное значение схлопнулось бы с десктопным. */
 const mediaOf = (node) => {
@@ -141,7 +219,9 @@ const mediaOf = (node) => {
   return out.reverse().join(' ');
 };
 
-/** Карта: `класс|media|состояние|свойство` → победившее значение. */
+/** Карта: `единица|media|состояние|свойство` → победившее значение.
+ *  Единица — `.класс` или селектор без класса (`:root`); у второго смотрятся
+ *  ТОЛЬКО токены `--*` (обоснование границы — в шапке файла). */
 function semantics(files) {
   const best = new Map();
   const failures = [];
@@ -161,12 +241,10 @@ function semantics(files) {
       const media = mediaOf(rule);
       for (const sel of rule.selectors || []) {
         const spec = specificity(sel);
-        const state = stateOf(sel);
-        const cls = classesOf(sel);
-        if (!cls.length) continue;
+        const { units, state } = unitsOf(sel);
         rule.walkDecls((decl) => {
           const weight = [decl.important ? 1 : 0, spec, ...orderOf(path, i)];
-          for (const c of cls) {
+          for (const c of units) {
             const key = `${c}|${media}|${state}|${decl.prop}`;
             const prev = best.get(key);
             if (!prev || cmpWeight(weight, prev.weight) >= 0) {
@@ -222,8 +300,8 @@ if (failures.length) die(`postcss не разобрал ${failures.length} фа�
 /* ------------------------------- сравнение -------------------------------- */
 
 const mkChange = (key, from, to) => {
-  const [cls, media, state, prop] = key.split('|');
-  return { key, cls, media, state, prop, from, to };
+  const [unit, media, state, prop] = key.split('|');
+  return { key, unit, media, state, prop, from, to };
 };
 
 const changes = [];
@@ -255,13 +333,27 @@ const CLS = String.raw`\.?[-\w]+`;
  * его — отказ в безопасную сторону, — а мобильное изменение приходится назвать
  * отдельной строкой. Форма маркера = ровно то, что гард печатает слева от
  * двоеточия: `.btn:hover {@media (max-width: 640px)} gap`. */
-const reExempt = new RegExp(
-  String.raw`${EXEMPT}:\s*(${CLS}(?::{1,2}[-\w]+(?:\([^)]*\))?)*)\s*(?:\{([^}]*)\}\s*)?([-\w]+)`,
-);
+/* ★ Единица маркера — ЛЮБАЯ непробельная лексема (`\S+`), а не «класс с
+ * состояниями»: селектор `:root[data-theme=dark]` под прежний шаблон не
+ * подходил. Свобода тут безопасна, потому что имя нормализуется в ту же
+ * орфографию, что и ключ, а неразобранный маркер — код 2, не тишина. */
+const reExempt = new RegExp(String.raw`${EXEMPT}:\s*(\S+)\s+(?:\{([^}]*)\}\s+)?([-\w]+)`);
+/* Перенос — про КЛАССЫ (разметка переезжает с класса на класс), поэтому здесь
+ * шаблон остаётся узким: `visual-diff-move: :root -> …` не разберётся и упадёт
+ * кодом 2, а не притворится работающим маркером. */
 const reMove = new RegExp(String.raw`${MOVE}:\s*(${CLS})\s*->\s*(${CLS})`);
 /** Имя класса из маркера: `.btn:hover` → `btn`; состояние берёт тот же stateOf,
  *  что строил ключ, — иначе маркер и ключ разошлись бы по орфографии. */
 const bare = (sel) => classesOf(sel.startsWith('.') ? sel : `.${sel}`)[0];
+/** Единица маркера → та же пара (единица, состояние), которой ключуется карта.
+ *  ★ ТОЧКА ОБЯЗАТЕЛЬНА для класса: прежняя вольность (`checkbox` = `.checkbox`)
+ *  стала неоднозначной, как только под наблюдение попали голые теги — `button`
+ *  теперь законная единица, и «догадаться» за автора значило бы гасить не то.
+ *  Правило одно и проверяемое глазом: ключ маркера = то, что гард НАПЕЧАТАЛ.
+ *  У бесклассовой единицы состояние уже внутри имени (`a:hover`, `:root[…]`),
+ *  отдельным полем оно не выносится. */
+const unitOf = (u) =>
+  u.startsWith('.') ? { unit: `.${bare(u)}`, state: stateOf(u) } : { unit: normSel(u), state: '' };
 /** Пробелы внутри `@media (max-width:640px)` — не смысл: сверяем нормализованно.
  *  Гасятся только пробелы ВОКРУГ пунктуации; между словами (`screen and (…)`)
  *  они остаются границей идентификатора, поэтому два РАЗНЫХ запроса совпасть не
@@ -279,12 +371,12 @@ const malformed = [];
 for (const line of addedLines) {
   if (line.includes(`${EXEMPT}:`)) {
     const m = line.match(reExempt);
-    if (m) exempts.push({ cls: bare(m[1]), media: normMedia(m[2]), state: stateOf(m[1]), prop: m[3], used: false });
+    if (m) exempts.push({ ...unitOf(m[1]), media: normMedia(m[2]), prop: m[3], used: false });
     else malformed.push(line.trim());
   }
   if (line.includes(`${MOVE}:`)) {
     const m = line.match(reMove);
-    if (m) moves.push({ from: bare(m[1]), to: bare(m[2]) });
+    if (m) moves.push({ from: `.${bare(m[1])}`, to: `.${bare(m[2])}` });
     else malformed.push(line.trim());
   }
 }
@@ -294,27 +386,27 @@ if (malformed.length) die('маркер(ы) не разобраны — синт
 
 /* --------- что из изменений ОБЪЯВЛЕНО: сначала переносы, потом точечные ----- */
 
-const fmtId = (c) => `.${c.cls}${c.state}${c.media ? ` {${c.media}}` : ''} ${c.prop}`;
+const fmtId = (c) => `${c.unit}${c.state}${c.media ? ` {${c.media}}` : ''} ${c.prop}`;
 const fmt = (c) => `  ${fmtId(c)}: ${c.from === null ? `+ ${c.to}` : c.to === null ? `− ${c.from}` : `${c.from} → ${c.to}`}`;
 
-const headClasses = new Set([...head.best.keys()].map((k) => k.split('|')[0]));
+const headUnits = new Set([...head.best.keys()].map((k) => k.split('|')[0]));
 const byKey = new Map(changes.map((c) => [c.key, c]));
 const declared = new Set();
 const notes = [];
 const rejected = [];
 
 for (const mv of moves) {
-  if (!headClasses.has(mv.to)) {
-    rejected.push(`${MOVE}: .${mv.from} → .${mv.to} — у цели на HEAD нет ни одного объявления`);
+  if (!headUnits.has(mv.to)) {
+    rejected.push(`${MOVE}: ${mv.from} → ${mv.to} — у цели на HEAD нет ни одного объявления`);
     continue;
   }
   let moved = 0;
   for (const c of changes) {
-    if (c.to !== null || c.cls !== mv.from) continue; // с источника ушло объявление
+    if (c.to !== null || c.unit !== mv.from) continue; // с источника ушло объявление
     const dstKey = `${mv.to}|${c.media}|${c.state}|${c.prop}`;
     const dst = head.best.get(dstKey);
-    if (!dst) rejected.push(`${fmtId(c)}: ${c.from} — на .${mv.to} этого объявления нет`);
-    else if (dst.value !== c.from) rejected.push(`${fmtId(c)}: ${c.from} → ${dst.value} — перенос на .${mv.to} СО СМЕНОЙ значения`);
+    if (!dst) rejected.push(`${fmtId(c)}: ${c.from} — на ${mv.to} этого объявления нет`);
+    else if (dst.value !== c.from) rejected.push(`${fmtId(c)}: ${c.from} → ${dst.value} — перенос на ${mv.to} СО СМЕНОЙ значения`);
     else {
       declared.add(c.key);
       moved += 1;
@@ -323,27 +415,38 @@ for (const mv of moves) {
       if (byKey.get(dstKey)?.from === null) declared.add(dstKey);
     }
   }
-  notes.push(`перенос .${mv.from} → .${mv.to}: объявлений ${moved}`);
+  notes.push(`перенос ${mv.from} → ${mv.to}: объявлений ${moved}`);
 }
 
 for (const c of changes) {
   if (declared.has(c.key)) continue;
   const ex = exempts.find(
-    (e) => e.cls === c.cls && e.media === normMedia(c.media) && e.state === c.state && e.prop === c.prop,
+    (e) => e.unit === c.unit && e.media === normMedia(c.media) && e.state === c.state && e.prop === c.prop,
   );
   if (!ex) continue;
   ex.used = true;
   declared.add(c.key);
 }
 for (const e of exempts) {
-  const id = `${EXEMPT}: .${e.cls}${e.state}${e.media ? ` {${e.media}}` : ''} ${e.prop}`;
+  const id = `${EXEMPT}: ${e.unit}${e.state}${e.media ? ` {${e.media}}` : ''} ${e.prop}`;
   notes.push(e.used ? `${id} — изменение объявлено намеренным` : `${id} — под маркером изменений нет`);
 }
 
 const blocking = changes.filter((c) => !declared.has(c.key));
 
+/* Бесклассовый ярус печатается ОТДЕЛЬНО и с разбивкой «токены · прочее»: по
+ * ней видно, что слепая зона была не только про цвет, а ноль в любой из
+ * половин — внятный сигнал, что ветка перестала измеряться. Суммарное число
+ * такую пропажу растворило бы в тысяче классов. */
+const nClasses = [...headUnits].filter((u) => u.startsWith('.')).length;
+const looseKeys = [...head.best.keys()].filter((k) => !k.startsWith('.'));
+const nTokens = looseKeys.filter((k) => k.split('|')[3].startsWith('--')).length;
 console.log(`check-css-semantics (2p): HEAD vs ${BASE_REF}`);
-console.log(`  классов под наблюдением: ${headClasses.size}`);
+console.log(`  классов под наблюдением: ${nClasses}`);
+console.log(
+  `  бесклассовых селекторов: ${headUnits.size - nClasses}` +
+    ` (объявлений ${looseKeys.length}: токенов ${nTokens} · прочих ${looseKeys.length - nTokens})`,
+);
 console.log(`  объявлений сравнено:     ${head.best.size}`);
 if (changes.length) console.log(`  изменений: ${changes.length} · объявлено: ${declared.size} · блокирует: ${blocking.length}`);
 notes.forEach((n) => console.log(`  ${n}`));
@@ -373,6 +476,6 @@ if (blocking.length) {
 console.log(
   changes.length
     ? `  необъявленных изменений нет: все ${changes.length} объявлены переносом или исключением.`
-    : '  итоговые объявления не изменились ни у одного класса.',
+    : '  итоговые объявления не изменились ни у одного класса и ни у одного токена.',
 );
 process.exit(0);

@@ -434,6 +434,203 @@ test('маркер переноса на БАЗЕ не действует — к
   assert.equal(code, 1, out);
 });
 
+/* ─────────── значения токенов: правило без класса тоже под наблюдением ───────────
+ * TRIP-360. Гард ключевался на классе, а у `:root` класса нет — правка альфы в
+ * семь раз проезжала зелёной, и не ловил её при этом НИ ОДИН гард репо.
+ * Каждое поведение пинится своей фикстурой: мутация «вернуть `if (!cls.length)
+ * continue`» обязана валить первые четыре теста и не трогать остальные.      */
+
+test('★ смена ЗНАЧЕНИЯ токена в :root[data-theme=dark] — красный, с «было → стало»', (t) => {
+  // Ровно воспроизведение из тикета: `background: var(--brand-soft)` у всех
+  // потребителей побайтово одинаков с обеих сторон, поэтому увидеть правку
+  // можно ТОЛЬКО на строке самого токена.
+  const consumer = '.tile { background: var(--brand-soft); }\n';
+  const f = fixture(t, {
+    base: { 'src/a.css': `:root[data-theme="dark"] { --brand-soft: rgba(111,178,255,.14); }\n${consumer}` },
+    head: { 'src/a.css': `:root[data-theme="dark"] { --brand-soft: rgba(111,178,255,.99); }\n${consumer}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root\[data-theme=dark\] --brand-soft: rgba\(111,178,255,\.14\) → rgba\(111,178,255,\.99\)/);
+});
+
+test('★ добавление имени в :root — красный (2o видит только СОСТАВ, значения не читает)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --a: 1px; }\n' },
+    head: { 'src/a.css': ':root { --a: 1px; --b: 2px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --b: \+ 2px/);
+});
+
+test('★ удаление имени из :root — красный', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --a: 1px; --b: 2px; }\n' },
+    head: { 'src/a.css': ':root { --a: 1px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --b: − 2px/);
+});
+
+test('★ светлый и тёмный :root — РАЗНЫЕ единицы, правка одного не прячется за другим', (t) => {
+  // Селектор целиком и есть ключ. Схлопни их в одну единицу — победит тот, что
+  // ниже по файлу, и правка светлой темы станет невидимой.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --brand: #111; }\n:root[data-theme="dark"] { --brand: #eee; }\n' },
+    head: { 'src/a.css': ':root { --brand: #222; }\n:root[data-theme="dark"] { --brand: #eee; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --brand: #111 → #222/);
+  assert.equal(out.match(/изменений: 1 /)?.length, 1); // тёмная ветка не задета
+  assert.doesNotMatch(out, /:root\[data-theme=dark\] --brand:/);
+});
+
+test('★ островной словарь на КЛАССЕ (login.css .auth) — под наблюдением', (t) => {
+  // Он был под наблюдением всегда (`.auth` — класс), и именно поэтому его надо
+  // запинить: единица наблюдения переписана, и обратный ход обязан покраснеть.
+  const f = fixture(t, {
+    base: { 'src/pages/login.css': '.auth { --brand-soft: rgba(33,103,226,.08); }\n' },
+    head: { 'src/pages/login.css': '.auth { --brand-soft: rgba(33,103,226,.99); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.auth --brand-soft: rgba\(33,103,226,\.08\) → rgba\(33,103,226,\.99\)/);
+});
+
+test('★ visual-diff-exempt гасит РОВНО свой токен — соседний продолжает блокировать', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --brand-soft: rgba(1,1,1,.14); --brand-soft-12: rgba(1,1,1,.24); }\n' },
+    head: {
+      'src/a.css':
+        '/* visual-diff-exempt: :root --brand-soft — выравнивание тинта, апрув Pavel */\n' +
+        ':root { --brand-soft: rgba(1,1,1,.99); --brand-soft-12: rgba(1,1,1,.88); }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --brand-soft-12: rgba\(1,1,1,\.24\) → rgba\(1,1,1,\.88\)/);
+  assert.doesNotMatch(out, /--brand-soft: rgba\(1,1,1,\.14\) → /);
+  assert.match(out, /изменение объявлено намеренным/);
+});
+
+test('★ маркер на СВЕТЛЫЙ :root не гасит тёмный — селектор целиком часть ключа', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root[data-theme="dark"] { --brand: #eee; }\n' },
+    head: {
+      'src/a.css': '/* visual-diff-exempt: :root --brand — не та ветка */\n:root[data-theme="dark"] { --brand: #fff; }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /под маркером изменений нет/);
+});
+
+test('кавычки в атрибуте маркера не значат ничего — обе орфографии адресуют один ключ', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root[data-theme="dark"] { --brand: #eee; }\n' },
+    head: {
+      'src/a.css':
+        '/* visual-diff-exempt: :root[data-theme="dark"] --brand — апрув */\n' +
+        ':root[data-theme="dark"] { --brand: #fff; }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★ алиас var() НЕ резолвится по цепочке — сравнивается текст, значение ловится на своей строке', (t) => {
+  // Граница, названная в шапке: `--hl-soft: var(--brand-soft)` не меняется ни на
+  // байт, и красным становится строка самого `--brand-soft`. Иначе гарду
+  // пришлось бы считать вычисленный цвет — это уже не «два своих замера».
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --brand-soft: #111; --hl-soft: var(--brand-soft); }\n' },
+    head: { 'src/a.css': ':root { --brand-soft: #222; --hl-soft: var(--brand-soft); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --brand-soft: #111 → #222/);
+  assert.doesNotMatch(out, /--hl-soft/);
+});
+
+test('★ токен в @media — отдельный контекст (у --ctl-h в репо ровно так)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --ctl-h: 40px; }\n@media (max-width: 640px) { :root { --ctl-h: 44px; } }\n' },
+    head: { 'src/a.css': ':root { --ctl-h: 41px; }\n@media (max-width: 640px) { :root { --ctl-h: 44px; } }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --ctl-h: 40px → 41px/);
+});
+
+test('★ ГЕОМЕТРИЯ голого тега — тоже под наблюдением: `h2 {}` шире любого токена', (t) => {
+  // Довод, отвергнувший «только токены»: голый тег бьёт по всему приложению
+  // разом. Живой дефект уже на руках — index.css держит второй канон
+  // типографики на `h2`/`h4`, и его снос обязан быть красным и объявленным.
+  const f = fixture(t, {
+    base: { 'src/a.css': 'h2 { font-weight: 600; }\n' },
+    head: { 'src/a.css': 'h2 { font-weight: 800; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /h2 font-weight: 600 → 800/);
+});
+
+test('★★ шаг кейфрейма ключуется ВМЕСТЕ С ИМЕНЕМ анимации — иначе from у двух анимаций один ключ', (t) => {
+  // В репо 19 анимаций, `from`/`to` повторяются в них по многу раз. Мутация
+  // «выкинуть имя анимации из контекста» склеивает fadeIn и dockUp: правка
+  // одной либо краснеет ложно, либо гасится маркером на другую.
+  const two = (a, b) => `@keyframes fadeIn { from { opacity: ${a}; } }\n@keyframes dockUp { from { opacity: ${b}; } }\n`;
+  const f = fixture(t, { base: { 'src/a.css': two('0', '0') }, head: { 'src/a.css': two('0', '.5') } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /from \{@keyframes dockUp\} opacity: 0 → \.5/);
+  assert.doesNotMatch(out, /fadeIn/);
+});
+
+test('★★ маркер на ОДНУ анимацию не гасит правку в ДРУГОЙ', (t) => {
+  // Та же мутация с другой стороны: при ключе по одному шагу этот маркер
+  // потушил бы обе анимации разом — «один маркер гасит две вещи».
+  const two = (a, b) => `@keyframes fadeIn { from { opacity: ${a}; } }\n@keyframes dockUp { from { opacity: ${b}; } }\n`;
+  const f = fixture(t, {
+    base: { 'src/a.css': two('0', '0') },
+    head: {
+      'src/a.css': '/* visual-diff-exempt: from {@keyframes fadeIn} opacity — плавнее вход */\n' + two('.2', '.5'),
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /@keyframes dockUp\} opacity: 0 → \.5/);
+  assert.doesNotMatch(out, /@keyframes fadeIn\} opacity: 0 → \.2/);
+});
+
+test('★ маркер БЕЗ точки адресует голый тег, а не класс — ключ = то, что напечатано', (t) => {
+  // Прежняя вольность (`checkbox` = `.checkbox`) стала неоднозначной, как
+  // только под наблюдение попали голые теги: `button` — законная единица.
+  // Догадка за автора гасила бы не то, поэтому правило одно и проверяемое.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.button { gap: 1px; }\n' },
+    head: { 'src/a.css': '/* visual-diff-exempt: button gap — без точки */\n.button { gap: 9px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /под маркером изменений нет/);
+});
+
+test('visual-diff-move про КЛАССЫ — селектор в маркере переноса не разбирается (код 2)', (t) => {
+  // Перенос — это «разметка уехала с класса на класс». Маркер с `:root` не
+  // должен молча превращаться в неработающий: неразобранный маркер = код 2.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --x: 1px; }\n' },
+    head: { 'src/a.css': '/* visual-diff-move: :root -> grow--fit */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 2, out);
+  assert.match(out, /не разобран/);
+});
+
 /* ───────────────── рабочее дерево, а не индекс (та самая дыра) ───────────────── */
 
 test('★ гард видит НЕЗАСТЕЙДЖЕННУЮ правку — читает рабочее дерево, не индекс', (t) => {
