@@ -25,8 +25,12 @@ export interface PurchaseInsertInput {
   tripId: string;
   /** Разовый продукт покупки трипа (сейчас всегда 'trip_pro_lifetime'). */
   productCode: ProductCode;
-  /** id чек-сессии провайдера — держит идемпотентность вставки. */
-  providerRef: string;
+  /** id чек-сессии провайдера — держит идемпотентность вставки.
+   *  null допустим и означает «покупка восстановлена не из чекаута»: Сверка Б идёт
+   *  от payment_intent'а, чек-сессии у неё на руках нет. Колонка в БД nullable —
+   *  тип здесь был строже схемы. Идемпотентность в этом пути держит НЕ provider_ref,
+   *  а частичный UNIQUE `uq_purchase_provider_charge (provider, provider_charge_id)`. */
+  providerRef: string | null;
   /** payment_intent провайдера (для последующего резолва рефанда/диспута). */
   providerChargeId: string | null;
   /** Статус: 'active' или 'duplicate' при детекте второй оплаты того же трипа. */

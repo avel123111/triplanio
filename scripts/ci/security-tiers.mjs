@@ -313,6 +313,10 @@ export const DOORS = {
   // ── n8n: Bearer N8N_SECRET, сервер-сервер ──
   aiGate:                'n8n',
   getPendingReminders:   'n8n',
+  // Сверка Б (TRIP-153): расписание держит n8n, авторизация — requireN8nSecret,
+  // как у соседей выше. Пользовательской двери нет: функция не принимает ничей
+  // запрос кроме планировщика и ходит только в Stripe и в свой журнал.
+  reconcileEntitlementStripe: 'n8n',
   getTripById:           'n8n',
   getTripByTelegramChatId: 'n8n',
   triplanioAiReply:      'n8n',

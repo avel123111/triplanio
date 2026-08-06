@@ -65,10 +65,44 @@ export class StripeAdapter implements PaymentAdapter {
     return this.stripe.subscriptions.retrieve(id, opts);
   }
 
-  /** Все подписки клиента (для reconcile stuck-FREE — материализация потерянной активации). */
-  async listSubscriptionsByCustomer(customerId: string, limit = 10): Promise<Stripe.Subscription[]> {
-    const res = await this.stripe.subscriptions.list({ customer: customerId, status: 'all', limit });
-    return res.data;
+  // ---- Списки. ПАГИНАЦИЯ ОБЯЗАТЕЛЬНА ----
+  // Раньше здесь стоял одиночный `list({ limit: 10 })` с возвратом `res.data`:
+  // `has_more` ВЫБРАСЫВАЛСЯ, то есть с 11-й подписки клиента данные молча терялись, и
+  // «в Stripe ничего нет» становилось неотличимо от «мы не долистали». Для сверки это
+  // означает тихое снятие права. Пагинацию не пишем руками — у Stripe SDK есть
+  // штатная автопагинация через async-итератор, свой курсор по `starting_after` был бы
+  // третьей реализацией того, что уже работает.
+
+  /** Все подписки клиента (reconcile stuck-FREE — материализация потерянной активации). */
+  async listSubscriptionsByCustomer(customerId: string): Promise<Stripe.Subscription[]> {
+    const out: Stripe.Subscription[] = [];
+    for await (const s of this.stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 100 })) {
+      out.push(s);
+    }
+    return out;
+  }
+
+  /** ВСЕ подписки аккаунта — вход Сверки Б (полная выгрузка, без выборки кандидатов). */
+  async *listAllSubscriptions(): AsyncGenerator<Stripe.Subscription> {
+    for await (const s of this.stripe.subscriptions.list({ status: 'all', limit: 100 })) {
+      yield s;
+    }
+  }
+
+  /** Все платежи клиента — сверка разовых покупок Trip Pro.
+   *  По КЛИЕНТУ, а не глобальным списком: у List PaymentIntents нет фильтра по
+   *  metadata (только customer/created; metadata умеет лишь Search API), а у
+   *  исторических платежей metadata нет вовсе. `customer` есть всегда — его
+   *  проставляет createStripeCheckout до создания сессии. */
+  //  ⚠️`expand: ['data.latest_charge']` ОБЯЗАТЕЛЕН: без него список отдаёт
+  //  latest_charge СТРОКОЙ-id, и вызывающий, ожидающий объект, тихо получает
+  //  «рефанда нет» по каждому платежу — детект возврата не сработал бы ни разу.
+  async *listPaymentIntentsByCustomer(customerId: string): AsyncGenerator<Stripe.PaymentIntent> {
+    for await (const pi of this.stripe.paymentIntents.list({
+      customer: customerId, limit: 100, expand: ['data.latest_charge'],
+    })) {
+      yield pi;
+    }
   }
 
   fetchCharge(id: string): Promise<Stripe.Charge> {
