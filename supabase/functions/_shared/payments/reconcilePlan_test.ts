@@ -127,7 +127,7 @@ Deno.test('две живые подписки видны как двойная �
     [],
   );
   assertEquals(plan.liveInStripe, 2);
-  assertEquals(plan.writes.filter((w) => w.reason === 'duplicate').length, 1);
+  assertEquals(plan.writes.filter((w) => w.reason === 'sub_duplicate_demoted').length, 1);
 });
 
 Deno.test('пропавшая в Stripe энтайтлинг-строка гасится', () => {

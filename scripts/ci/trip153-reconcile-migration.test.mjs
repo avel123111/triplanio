@@ -36,7 +36,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DIR = join(import.meta.dirname, '..', '..', 'supabase', 'migrations');
@@ -99,6 +99,25 @@ test('каждый записываемый класс находки объяв
 
   for (const kind of used) {
     assert.ok(declared.has(kind), `класс '${kind}' пишется, но не объявлен в CHECK`);
+  }
+
+  // ★ВТОРАЯ СТОРОНА. Первая редакция этого теста сверяла ТОЛЬКО классы, которые
+  // встречаются в самом SQL-файле, и про edge-функцию не знала — а Сверка Б кладёт
+  // в `kind` значение `WriteReason` из reconcilePlan.ts. Одно из них ('duplicate')
+  // в CHECK отсутствовало: вставка находки падала бы на констрейнте, при этом
+  // счётчики прогона уже увеличены, то есть журнал рапортовал бы больше находок,
+  // чем в нём строк. Тест был зелёным и ничего не проверял на этой оси.
+  const planPath = join(
+    import.meta.dirname, '..', '..',
+    'supabase', 'functions', '_shared', 'payments', 'reconcilePlan.ts',
+  );
+  if (!existsSync(planPath)) return; // Сверка Б ещё не в этой ветке — сверять нечего
+  const plan = readFileSync(planPath, 'utf8');
+  const block = plan.slice(plan.indexOf('export type WriteReason'), plan.indexOf('export type WriteOp'));
+  const reasons = [...block.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.ok(reasons.length >= 3, `в WriteReason разобрано подозрительно мало значений: ${reasons.length}`);
+  for (const r of reasons) {
+    assert.ok(declared.has(r), `WriteReason '${r}' пишется в reconcile_finding.kind, но не объявлен в CHECK`);
   }
 });
 

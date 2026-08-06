@@ -60,7 +60,7 @@ export interface LocalSubRow {
 export type WriteReason =
   | 'sub_status_drift'      // строка есть с обеих сторон, состояние разошлось
   | 'sub_missing_in_stripe' // наша энтайтлинг-строка, которой в Stripe нет вовсе
-  | 'duplicate';            // энтайтлинговая в Stripe, но проигравшая по правилу победителя
+  | 'sub_duplicate_demoted';            // энтайтлинговая в Stripe, но проигравшая по правилу победителя
 
 /**
  * Что физически сделать. Намерение объявляется ЯВНО, а не выводится из того, какие
@@ -182,7 +182,7 @@ export function planUserSubscriptions(
       cancelAtPeriodEnd: s.cancelAtPeriodEnd,
       currency: s.currency,
       productCode: s.productCode,
-      reason: entitlingLoser ? 'duplicate' : 'sub_status_drift',
+      reason: entitlingLoser ? 'sub_duplicate_demoted' : 'sub_status_drift',
       before,
       after,
     };

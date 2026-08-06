@@ -222,6 +222,15 @@ Deno.serve(async (req) => {
                   providerMeta: { mode: 'leave' },
                 }), { onConflict: 'provider_subscription_id' });
               if (error) throw new Error(`subscription upsert ${w.subId}: ${error.message}`);
+            } else {
+              // Ни одна ветка не подошла — план несёт форму, которую исполнитель
+              // применить не умеет. Молчать нельзя: finding() ниже проставил бы
+              // action='fixed', и журнал соврал бы о денежном состоянии. Ровно этот
+              // класс уже кусал (вывод намерения из nullability пропускал
+              // cancel_local), поэтому выход громкий, а не пропуск.
+              throw new Error(
+                `unapplicable plan write: op=${w.op} sub=${w.subId} local=${w.localRowId} product=${w.productCode}`,
+              );
             }
           }
           await finding(j, w.reason, 'subscription', w.subId ?? w.localRowId ?? userId, {
