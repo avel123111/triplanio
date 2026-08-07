@@ -67,7 +67,7 @@ export function useViatorActivities({ visit, currency, lang, enabled = true }) {
   const canFetch = !!enabled && !!visit?.geonameid;
   const poolKey = VIATOR_KEY(visit, currency, lang);
   const base = {
-    destinationId: undefined, // resolved lazily inside the query
+    destinationId: undefined, // read off the visit inside the query, below
     startDate: (visit?.start_date || '').slice(0, 10) || undefined,
     endDate: (visit?.end_date || '').slice(0, 10) || undefined,
     currency,

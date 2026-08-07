@@ -606,7 +606,11 @@ export default function Trips() {
   }, [allTrips, visitsByTrip, t]);
 
 
-  // Visits come from the RPC — ready once the stats query resolves.
+  // Visits come from the RPC, so "stats resolved" IS "visits ready" — no separate
+  // check on trip_visits. That rests on the RPC always returning the key (it
+  // coalesces to '{}', see get_user_travel_stats): were it ever to come back
+  // missing, the cards would paint from an empty map — no dates, nothing past —
+  // instead of holding the skeleton.
   const isLoadingData = isLoading || (hasTrips && !statsLoaded);
   // TRIP-188: склоняем каждое существительное отдельно (Intl.PluralRules) — «1 путешествие»,
   // «2 страны», «5 городов» вместо застывшего множественного числа.
