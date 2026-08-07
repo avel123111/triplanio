@@ -449,6 +449,131 @@ test('маркер переноса на БАЗЕ не действует — к
   assert.equal(code, 1, out);
 });
 
+/* ───────── источник переноса называется ЦЕЛИКОМ (TRIP-363) ─────────
+ * Объявление составного правила приписывается ВСЕМ классам селектора, поэтому
+ * однословный маркер закрывал только половину ключей, и зелёным гард становился
+ * от ВТОРОГО маркера — заведомо ложного («уехал и предок»). Проверяется, что
+ * одной правдивой строки достаточно И что она не гасит ничего сверх своего
+ * правила.                                                                  */
+
+const TARGET = '.grow--fit { flex: 1; min-width: 0; }\n';
+
+test('★★ перенос из СОСТАВНОГО селектора объявляется ОДНОЙ строкой — зелёный', (t) => {
+  // Воспроизведение из тикета (`app.css:1867`): раскладку отдаёт `.pu-body`
+  // внутри `.pro-up--inline`, а ключи заводятся на ОБА класса — четыре штуки.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.pro-up--inline .pu-body { flex: 1; min-width: 0; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .pro-up--inline .pu-body -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /перенос \.pro-up--inline \.pu-body → \.grow--fit: объявлений 4/);
+});
+
+test('★★ маркер на СОСТАВНОЙ не гасит снос ОДИНОЧНОГО правила того же класса', (t) => {
+  // ★ Ради этого перенос скоупится СЕЛЕКТОРОМ, а не набором его классов.
+  // `.pu { flex: 1 }` живёт своей жизнью, и его снос — не объявленный перенос,
+  // хотя значение совпадает с целью. Мутация «сверять набор классов маркера»
+  // проходит все прочие фикстуры насквозь и валится только здесь.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.wrap .pu { min-width: 0; }\n.pu { flex: 1; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .wrap .pu -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.pu flex: − 1/);
+});
+
+test('★ маркер на ДРУГОЙ составной селектор не гасит — сверяется сам селектор', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': `.pu .pu-body { flex: 1; min-width: 0; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .other .pu-body -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.pu flex: − 1/);
+});
+
+test('★ перенос из составного СО СМЕНОЙ значения — красный (регрессия TRIP-351)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pu .pu-body { flex: 1; }\n.grow--fit { flex: 1; }\n' },
+    head: { 'src/a.css': '/* visual-diff-move: .pu .pu-body -> grow--fit */\n.grow--fit { flex: 2; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /flex: 1 → 2 — перенос на \.grow--fit СО СМЕНОЙ значения/);
+});
+
+test('★ перенос из составного на несуществующую цель — красный', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pu .pu-body { flex: 1; }\n' },
+    head: { 'src/a.css': '/* visual-diff-move: .pu .pu-body -> grow--ftt */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /у цели на HEAD нет ни одного объявления/);
+});
+
+test('★ `.a.b` — обе половины закрывает один маркер (подлежащего у него нет)', (t) => {
+  // У селектора на ОДНОМ элементе правого класса-подлежащего не существует:
+  // объявление получают оба. 92 таких селектора в репо.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.field-row.cols-2 { display: flex; gap: 8px; }\n.row--split { display: flex; gap: 8px; }\n` },
+    head: { 'src/a.css': '/* visual-diff-move: .field-row.cols-2 -> row--split */\n.row--split { display: flex; gap: 8px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /объявлений 4/);
+});
+
+test('★ комбинатор: `.a>.b` в файле и `.a > .b` в маркере — одна орфография', (t) => {
+  // Пробел возле `>` на рендер не влияет вообще. Маркер, отвергнутый из-за него,
+  // удаляют в раздражении, а с ним и проверку.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.sc-actions-sec>.btn { flex: 1; min-width: 0; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .sc-actions-sec > .btn -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ печать НАЗЫВАЕТ правило-источник — иначе маркер не из чего составить', (t) => {
+  // Автор видит ключ `.pro-up--inline flex` и без источника не знает, из какого
+  // правила объявление пришло: форма маркера ему известна, а содержание — нет.
+  // Мутация «не печатать источник» валит ровно этот тест.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up--inline .pu-body { flex: 1; }\n' },
+    head: { 'src/a.css': '' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.pro-up--inline flex: − 1 {3}\(правило \.pro-up--inline \.pu-body\)/);
+  assert.match(out, /\.pu-body flex: − 1 {3}\(правило \.pro-up--inline \.pu-body\)/);
+});
+
+test('★ у одноклассового правила источник НЕ печатается — это был бы шум на 2595 строках', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'src/a.css': '.checkbox { gap: 17px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.doesNotMatch(out, /\(правило/);
+
+  // ★ Состояние УЖЕ напечатано слева от двоеточия (`.btn:hover gap`), поэтому
+  // подсказка `(правило .btn:hover)` была бы дословным повтором ключа — а таких
+  // правил в репо сотни, и шум съел бы ровно те строки, ради которых источник и
+  // печатается. Сверять с единицей БЕЗ состояния — значит печатать его всегда.
+  const h = fixture(t, {
+    base: { 'src/a.css': '.btn:hover { gap: 8px; }\n' },
+    head: { 'src/a.css': '.btn:hover { gap: 9px; }\n' },
+  });
+  const r = run(h);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /\.btn:hover gap: 8px → 9px$/m);
+  assert.doesNotMatch(r.out, /\(правило/);
+});
+
 /* ─────────── значения токенов: правило без класса тоже под наблюдением ───────────
  * TRIP-360. Гард ключевался на классе, а у `:root` класса нет — правка альфы в
  * семь раз проезжала зелёной, и не ловил её при этом НИ ОДИН гард репо.
@@ -700,9 +825,10 @@ test('★ `|` в селекторе не режет ключ — раздели�
   assert.match(out, /изменение объявлено намеренным/);
 });
 
-test('visual-diff-move про КЛАССЫ — селектор в маркере переноса не разбирается (код 2)', (t) => {
-  // Перенос — это «разметка уехала с класса на класс». Маркер с `:root` не
-  // должен молча превращаться в неработающий: неразобранный маркер = код 2.
+test('visual-diff-move про КЛАССЫ — источник БЕЗ единого класса не разбирается (код 2)', (t) => {
+  // Перенос — это «разметка уехала с класса на класс». Целый селектор источником
+  // законен (TRIP-363), но только если в нём есть класс: маркер с `:root` не
+  // должен молча превращаться в неработающий — неразобранный маркер = код 2.
   const f = fixture(t, {
     base: { 'src/a.css': ':root { --x: 1px; }\n' },
     head: { 'src/a.css': '/* visual-diff-move: :root -> grow--fit */\n' },
