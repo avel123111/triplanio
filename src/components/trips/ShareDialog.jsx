@@ -258,7 +258,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
                 <div className="t-label" style={{ marginBottom: 7 }}>{t('share.card_bg')}</div>
                 {/* Only the Standard background for now; more styles land here later. */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 'var(--r-btn)', overflow: 'hidden', border: '2.5px solid var(--brand)', boxShadow: '0 0 0 3px var(--brand-soft)', background: 'var(--primary-soft)' }}>
+                  <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 'var(--r-btn)', overflow: 'hidden', border: '2.5px solid var(--brand)', boxShadow: '0 0 0 3px var(--brand-soft)', background: 'var(--brand-soft)' }}>
                     <span className="t-nano" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'rgba(20,25,35,.55)', color: '#fff', textAlign: 'center', padding: '2px 0' }}>{t('share.card_bg_standard')}</span>
                   </div>
                 </div>

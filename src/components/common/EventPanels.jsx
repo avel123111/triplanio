@@ -32,7 +32,7 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
   const { t } = useI18n();
   const ev = EV[kind] || EV.hotel;
   return (
-    <div className="lp lp--wide" style={{ '--ev-color': ev.color, '--ev-soft': ev.soft, '--ev-ink': ev.ink }}>
+    <div className="lp lp--wide" style={{ '--hl': ev.color, '--hl-soft': ev.soft, '--hl-ink': ev.ink }}>
       <div className="lp-h lp-h--ev">
         <span className="lp-ic"><Icon name={icon || kindIcon(kind)} size={17} /></span>
         <div className="lp-ti">

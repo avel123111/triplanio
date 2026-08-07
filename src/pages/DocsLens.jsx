@@ -476,7 +476,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
       {/* Icon + title + visibility chip */}
       <div className="dl-card__top">
-        <div className={`dl-card__ic dl-card__ic--${isShared ? 'shared' : 'mine'}`}>
+        <div className={`dl-card__ic${isShared ? '' : ' dl-card__ic--mine'}`}>
           <Icon name="file" size={20} />
         </div>
         <div className="dl-card__h">
@@ -488,7 +488,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
             {doc.link_url && t('doc.has_link')}
           </div>
         </div>
-        <span className={`dl-vischip dl-vischip--${isShared ? 'shared' : 'mine'}`}>
+        <span className={`dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
           <Icon name={isShared ? 'users' : 'lock'} size={11} />
         </span>
       </div>
@@ -543,7 +543,7 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
   const isShared = scope !== 'personal';
   return (
     <div className="dl-empty">
-      <div className={`dl-empty__ic dl-empty__ic--${isShared ? 'shared' : 'mine'}`}>
+      <div className={`dl-empty__ic${isShared ? '' : ' dl-empty__ic--mine'}`}>
         <Icon name="file" size={28} />
       </div>
       <b>{isShared ? t('doc.empty_shared') : t('doc.empty_private')}</b>
@@ -694,7 +694,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
       {/* ── Shared section ── */}
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
-          <div className="dl-sec-ic dl-sec-ic--shared">
+          <div className="dl-sec-ic">
             <Icon name="users" size={17} />
           </div>
           <div>

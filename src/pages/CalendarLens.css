@@ -75,13 +75,13 @@
 .ncal-nav-trip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 12px; border-radius: var(--r-pill);
-  background: var(--primary-soft); color: var(--brand);
+  background: var(--brand-soft); color: var(--brand);
   border: none;
   transition: background .15s, color .15s;
   cursor: pointer;
 }
 .ncal-nav-trip svg { width: 13px; height: 13px; flex: none; }
-.ncal-nav-trip:hover { background: var(--primary-soft-2); }
+.ncal-nav-trip:hover { background: var(--brand-soft-12); }
 
 /* ── View toggle ───────────────────────────────────────────────── */
 .ncal-vtgl {
@@ -140,8 +140,8 @@
   box-shadow: var(--sh-2);   /* ступень вверх от базовой --sh-1, как у .ncal-wdc */
 }
 .ncal-dc.is-out { opacity: .22; pointer-events: none; box-shadow: none; }
-.ncal-dc.is-trip { background: var(--primary-soft); }
-.ncal-dc.is-trip:hover { background: var(--primary-soft-2); }
+.ncal-dc.is-trip { background: var(--brand-soft); }
+.ncal-dc.is-trip:hover { background: var(--brand-soft-12); }
 
 /* ── City strip ────────────────────────────────────────────────── */
 .ncal-cstrip {
@@ -215,12 +215,12 @@
 .ncal-more {
   display: inline-flex; align-items: center;
   padding: 2px 8px; border-radius: var(--r-pill);
-  background: var(--primary-soft); color: var(--brand);
+  background: var(--brand-soft); color: var(--brand);
   border: none;
   margin-top: 2px; cursor: pointer;
   transition: background .14s;
 }
-.ncal-more:hover { background: var(--primary-soft-2); }
+.ncal-more:hover { background: var(--brand-soft-12); }
 
 /* ── Week view ─────────────────────────────────────────────────── */
 .ncal-wv-scroll {

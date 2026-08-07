@@ -3,14 +3,25 @@
    All visual values come from app.css tokens. No raw colours/px.
    ================================================================ */
 
+/* ─── Тон «общее / личное» ────────────────────────────────────────
+   Экран различает ровно ДВА тона: общий документ - брендовый, личный - тёплый.
+   Раньше это было написано ЧЕТЫРЬМЯ парами классов (`--shared`/`--mine` у
+   заголовка секции, карточки, чипа видимости и пустого экрана) - восемь имён на
+   одну мысль. Теперь тон едет по общему каналу --hl* (04 PR3, Р7):
+     • «общее» СВОЕГО класса не имеет - брендовый тон и есть дефолт канала в :root;
+     • «личное» остаётся вариантом, но ПОДСТАВЛЯЕТ ЗНАЧЕНИЕ в канал, а не
+       объявляет свою пару фон+текст.
+   Ровно так же уже собран `.dl-addcard--mine` в app.css - это его продолжение,
+   а не новая идея. */
+
 /* ─── Section header icon tile ────────────────────────────────── */
 .dl-sec-ic {
   width: 34px; height: 34px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: none;
+  background: var(--hl-soft); color: var(--hl-ink);
 }
 .dl-sec-ic svg { width: 17px; height: 17px; }
-.dl-sec-ic--shared { background: var(--brand-soft); color: var(--brand); }
-.dl-sec-ic--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
+.dl-sec-ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── Doc card ────────────────────────────────────────────────── */
 /* Layout + base — lift is handled by compound .dz-lift-card */
@@ -30,10 +41,10 @@
 .dl-card__ic {
   width: 42px; height: 42px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: none;
+  background: var(--hl-soft); color: var(--hl-ink);
 }
 .dl-card__ic svg { width: 20px; height: 20px; }
-.dl-card__ic--shared { background: var(--brand-soft); color: var(--brand); }
-.dl-card__ic--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
+.dl-card__ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 .dl-card__h     { flex: 1; min-width: 0; }
 .dl-card__title { color: var(--ink); }
@@ -57,10 +68,10 @@
   display: inline-flex; align-items: center; gap: 4px;
   padding: 3px 8px;
   border-radius: var(--r-pill); flex: none;
+  background: var(--hl-soft); color: var(--hl-ink);
 }
 .dl-vischip svg { width: 11px; height: 11px; }
-.dl-vischip--shared { background: var(--brand-soft); color: var(--brand); }
-.dl-vischip--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
+.dl-vischip--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── File chips ──────────────────────────────────────────────── */
 /* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
@@ -129,10 +140,12 @@
 .dl-empty__ic {
   width: 62px; height: 62px; border-radius: var(--r-md);
   display: grid; place-items: center; margin: 0 auto 14px;
+  background: var(--hl-soft); color: var(--hl-ink);
 }
 .dl-empty__ic svg { width: 28px; height: 28px; }
-.dl-empty__ic--shared { background: var(--brand-soft);  color: var(--brand); }
-.dl-empty__ic--mine   { background: var(--warm-soft-2); color: var(--warm-ink); }
+/* Личный пустой экран берёт --warm-soft-2, а не --warm-soft: пятно тут крупнее
+   (62px), и это расхождение осознанное, а не забытая копия соседа. */
+.dl-empty__ic--mine { --hl-soft: var(--warm-soft-2); --hl-ink: var(--warm-ink); }
 .dl-empty b    { display: block; color: var(--ink); }
 .dl-empty span { color: var(--muted); display: block; margin: 5px 0 16px; }
 
