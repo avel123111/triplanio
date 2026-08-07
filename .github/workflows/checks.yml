@@ -106,7 +106,8 @@ jobs:
   #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
   #   2n check-orphan-css            — a rule left pointing at a class the markup stopped emitting
   #   2p check-css-semantics        — итоговые объявления класса: база vs HEAD (ярус 2 виз. гейта)
-  #   2q check-data-door             — табло эпика TRIP-374: ни одно число «единой двери» не растёт
+  #   2q check-design-axes         — обличье канон-объекта вне объявленных осей каталога
+  #   2r check-data-door             — табло эпика TRIP-374: ни одно число «единой двери» не растёт
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -176,7 +177,7 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-orphan-css.mjs
-      # 2q — табло эпика «единая дверь в данные» (TRIP-376, Ф0.4 эпика TRIP-374).
+      # 2r — табло эпика «единая дверь в данные» (TRIP-376, Ф0.4 эпика TRIP-374).
       # Живёт ЗДЕСЬ, а не рядом с 2o/2p: гард обходится стандартной библиотекой
       # (гашение комментариев + регулярка по всему файлу вместо парсера — в его
       # шапке записано, почему не `acorn` и не новая зависимость), то есть не
@@ -186,7 +187,7 @@ jobs:
       # эпика печатается всегда, но красит прогон лишь под `--assert-target`:
       # блокирующая проверка «доехали до цели» была бы красной все Ф1–Ф6, а
       # постоянно красная джоба перестаёт нести информацию и её выключают.
-      - name: 2q — data door (табло TRIP-374, ни одно число не растёт)
+      - name: 2r — data door (табло TRIP-374, ни одно число не растёт)
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-data-door.mjs
@@ -234,6 +235,19 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run check:semantics
+      # 2q — ОСИ КАНОН-ОБЪЕКТА (TRIP-364). Зависимостей у гарда нет, но он
+      # живёт рядом с 2o/2p, потому что читает тот же каталог и отвечает на
+      # соседний вопрос: 2o считает, СКОЛЬКО имён, 2q - какие из них ЗАКОННЫ.
+      - name: 2q — оси канон-объекта (обличье вне осей)
+        if: ${{ !cancelled() }}
+        run: npm run check:axes
+      # Репортёр обходов: НЕ блокирует, печатает цену рядом с результатом.
+      # Идёт последним и всегда, даже если что-то выше упало, - иначе число
+      # обходов не увидят ровно на тех прогонах, где оно интереснее всего.
+      - name: обходы гардов (репортёр, не блокирует)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: npm run report:exemptions
 
   deno:
     name: Deno typecheck (edge functions)

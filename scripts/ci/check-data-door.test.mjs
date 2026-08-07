@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Tests for CI guard 2q (scripts/ci/check-data-door.mjs) — TRIP-376.
+ * Tests for CI guard 2r (scripts/ci/check-data-door.mjs) — TRIP-376.
  *
  * WHY THIS FILE IS THE FIRST THING WRITTEN, AND WHY IT IS THE SPEC.
  * Three independent runs over "direct writes from the browser" produced three
@@ -71,7 +71,7 @@ function put(dir, path, body) {
 
 /** Build a repo with two commits: `base` is the PR base, `head` is applied on top. */
 function fixture(t, { base = {}, head = {} }) {
-  const dir = mkdtempSync(join(tmpdir(), 'guard2q-'));
+  const dir = mkdtempSync(join(tmpdir(), 'guard2r-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
 
   git(dir, ['init', '-q', '-b', 'main']);

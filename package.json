@@ -18,6 +18,8 @@
     "test": "node --test \"src/**/*.test.js\" \"scripts/**/*.test.mjs\"",
     "preview": "vite preview",
     "check:semantics": "node scripts/ci/check-css-semantics.mjs",
+    "check:axes": "node scripts/ci/check-design-axes.mjs",
+    "report:exemptions": "node scripts/ci/report-exemptions.mjs",
     "check:door": "node scripts/ci/check-data-door.mjs"
   },
   "dependencies": {

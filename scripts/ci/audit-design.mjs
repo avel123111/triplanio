@@ -772,16 +772,79 @@ const dupSetRulesCrossFamily = rulesIn(dupCross);
  *  класс ловушки, о котором вся эта секция: метрика, отвечающая собственным
  *  определением. Поэтому 06 берёт отсюда СПИСОК (`byFamily`, `samples`), а не
  *  число, и пересчитывает его на своей базе. */
+/** ★★ ГРАНИЦА ЯЗЫКА, ПО КОТОРОЙ СЧИТАЕТСЯ ДОСЯГАЕМОСТЬ, УМЕЕТ ЗАДАВАТЬСЯ ИЗВНЕ
+ *  (TRIP-364, `AUDIT_CANON_FAMILIES`). Это НЕ настройка на вкус, а лечение
+ *  противоречия, названного абзацем выше: число зависит от каталога по
+ *  построению, поэтому переклейка `triage → canon` - легальный, бесплатный и
+ *  никогда не блокируемый ход - его ПОДНИМАЕТ. Захрапови сырое число, и гард
+ *  станет красным на правильном ходе, а такой гард выключают.
+ *
+ *  Лечение доктринальное: не ослабить проверку и не заставлять писать
+ *  `floor-exempt` на поощряемое движение, а МЕРИТЬ ОБЕ СТОРОНЫ ОДНОЙ МЕРКОЙ.
+ *  Пол 2o передаёт сюда канон-набор БАЗЫ, когда меряет HEAD, — тогда число
+ *  двигают только правки CSS, а переклейка не двигает вовсе. Отчёт (без env)
+ *  по-прежнему считает по своему каталогу: вопрос «кто дотягивается внутрь
+ *  языка» обязан переезжать вместе с границей языка. */
+const canonOverride = process.env.AUDIT_CANON_FAMILIES;
 const canonFamilies = new Set(
-  catalogStatuses ? Object.entries(catalogStatuses).filter(([, s]) => s === 'canon').map(([f]) => f) : [],
+  canonOverride !== undefined
+    ? canonOverride.split(',').filter(Boolean)
+    : catalogStatuses
+      ? Object.entries(catalogStatuses).filter(([, s]) => s === 'canon').map(([f]) => f)
+      : [],
 );
 /** Составные части селектора: `.a > .b .c` → ['.a', '.b', '.c']. Каждая часть -
  *  ОДИН элемент; классов внутри неё может быть сколько угодно. */
 const compoundsOf = (sel) => sel.split(/\s*[>+~]\s*|\s+/).filter(Boolean);
 const isRealProp = (p) => !p.startsWith('--');
 
-const reach = { violations: 0, varOnly: 0, canonIntoCanon: 0, byFamily: {}, samples: [] };
+/** ★★ ВЫЧЕТ СОБСТВЕННОГО КАНОНА ТИПОГРАФИКИ (TRIP-364), без которого число нельзя
+ *  храповить. Единый источник текст-стилей объявлен СО-СЕЛЕКТОРНЫМ списком
+ *  (`app.css:578` и соседние): рядом с `.t-subheading` перечислены `.wdg-h h4`,
+ *  `.bell-dd__head .t-ui`, `.tl3-card .body b` - элементы, которым канон
+ *  ПЕРЕНАЗНАЧАЕТ текст-стиль. Предикат `reach` читает такую строку как «экран
+ *  дотянулся до примитива `.t` и объявил font-family», хотя это механизм самой
+ *  ДС (TRIP-175/183), а не долг экрана. Захрапови мы сырое число - считали бы
+ *  долгом собственный канон; в этом эпике наивный предикат целился в свой канон
+ *  уже дважды (199 «дублей» и «canon = одиночки»).
+ *
+ *  Предикат ВЫБРАН ЗАМЕРОМ, а не на глаз, и два кандидата различаются ровно
+ *  живым дефектом: «правило объявляет ТОЛЬКО типографические свойства» даёт 14,
+ *  «правило ЕСТЬ канон - среди его селекторов есть голый `.t-*`» даёт 13, и
+ *  разница - `.ncal-ev .t { font-size }` в CalendarLens.css, то есть экран,
+ *  ужимающий кегль примитива. Это НАСТОЯЩЕЕ нарушение, и первый предикат его
+ *  прощал. Берём второй.
+ *
+ *  Вычтенное печатается ОТДЕЛЬНОЙ строкой, а не исчезает: вычет, которого не
+ *  видно, - это тот же бланкетный escape, только внутри метрики.
+ *
+ *  ★★ ВТОРОЕ УСЛОВИЕ - НЕ УКРАШЕНИЕ, А ЗАКРЫТИЕ КАНАЛА ОБХОДА (нашёл
+ *  `code-simplifier` прогоном). Проверяй мы только «есть голый `.t-*` среди
+ *  селекторов» - допиши такой со-селектор к своему правилу, и ЛЮБОЕ нарушение
+ *  закона 3 исчезнет из ЗАХРАПОВЛЕННОГО числа: `.t-sub, .scr-a .card { padding:
+ *  99px }` давало 0. Поэтому вычитается правило, которое И стоит в канон-списке,
+ *  И объявляет ТОЛЬКО типографику. На живом коде оба условия дают одни и те же
+ *  13 правил (пересечение замерено), то есть закрытие канала не стоит ни одного
+ *  числа - но снимает дверь, которой у храповика быть не должно. */
+const TYPO_PROPS = new Set([
+  'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing',
+  'text-transform', 'font-style', 'font-variant-numeric',
+]);
+const isTypographyCanon = (b) =>
+  b.sels.some((s) => /^\.t-[a-z]+$/.test(s.trim())) &&
+  [...b.decls.keys()].filter(isRealProp).every((p) => TYPO_PROPS.has(p));
+
+const reach = {
+  violations: 0,
+  varOnly: 0,
+  canonIntoCanon: 0,
+  canonTypography: 0,
+  canonTypographyWouldViolate: 0,
+  byFamily: {},
+  samples: [],
+};
 for (const b of blocks) {
+  const typographyCanon = isTypographyCanon(b);
   const declaresReal = [...b.decls.keys()].some(isRealProp);
   let violation = false;
   let legal = false;
@@ -798,11 +861,22 @@ for (const b of blocks) {
     if (canonFamilies.has(ownerFam)) { inner = true; continue; }
     if (declaresReal) {
       violation = true;
+      // Вычтенное правило не попадает НИ В ОДИН счётчик долга, включая
+      // разбивку по семьям и примеры: иначе 06 пошла бы чинить канон.
+      if (typographyCanon) continue;
       reach.byFamily[ownerFam] = (reach.byFamily[ownerFam] ?? 0) + 1;
       if (reach.samples.length < 12) reach.samples.push(`${s} { ${[...b.decls.keys()].filter(isRealProp).join('; ')} }`);
     } else {
       legal = true;
     }
+  }
+  if (typographyCanon) {
+    // Печатается и то, СКОЛЬКО из вычтенного было бы долгом: строка «вычтено 13»
+    // рядом со «53» читается как «на самом деле 66», а это неправда - долгом из
+    // них были бы единицы. Число в ревью никто не перепроверяет.
+    reach.canonTypography += 1;
+    if (violation) reach.canonTypographyWouldViolate += 1;
+    continue;
   }
   if (violation) reach.violations += 1;
   else if (legal) reach.varOnly += 1;
@@ -915,6 +989,10 @@ if (process.argv.includes('--json')) {
         dupSetRulesCrossFamily,
         dupTop: dupCross.slice(0, 25).map((d) => ({ sig: d.sig, media: d.media, count: d.members.length, members: d.members })),
         primitiveReach: reach,
+        // Плоское число для храповика 2o (метрики читаются как `json[field]`), и
+        // канон-набор, которым оно посчитано, — им пол меряет HEAD той же меркой.
+        reachViolations: reach.violations,
+        canonFamiliesUsed: [...canonFamilies].sort(),
         dupShapes: dupShapes.length,
         dupShapeRules,
         synonyms: synonyms.map((s) => ({ name: s.name, target: s.target, uses: s.uses })),
@@ -1064,6 +1142,8 @@ console.log('\n   ПОТОМКОВЫЕ ПРАВИЛА НА ПРИМИТИВАХ 
 console.log(`     экран дотянулся и ОБЪЯВИЛ СВОЙСТВО: ${num(reach.violations, 4)}  ← нарушение закона 3, это работа 06`);
 console.log(`     дотянулся и переопределил ТОЛЬКО ручку: ${num(reach.varOnly, 4)}  ← закон 3 это РАЗРЕШАЕТ`);
 console.log(`     канон внутри канона:                ${num(reach.canonIntoCanon, 4)}  ← композиция ДС, не долг экранов`);
+console.log(`     вычтен канон типографики:           ${num(reach.canonTypography, 4)}  ← со-селекторный список .t-*, механизм самой ДС`);
+console.log(`       из них были бы долгом:            ${num(reach.canonTypographyWouldViolate, 4)}  ← остальные не нарушали и без вычета`);
 if (Object.keys(reach.byFamily).length) {
   console.log(`     кто дотягивается: ${Object.entries(reach.byFamily).slice(0, 10).map(([f, n]) => `${f}(${n})`).join(' · ')}`);
   for (const s of reach.samples.slice(0, 5)) console.log(`       ${s.slice(0, 96)}`);

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CI guard 2q (TRIP-376, Ф0.4 эпика TRIP-374) — табло «единой двери в данные».
+ * CI guard 2r (TRIP-376, Ф0.4 эпика TRIP-374) — табло «единой двери в данные».
  *
  * Печатает ВСЕ числа эпика разом и не пускает рост ни одного. Ратчет на всех
  * числах сразу И ЕСТЬ смысл гарда: прошлый заход по дизайн-системе снизил
@@ -681,7 +681,7 @@ const rows = METRICS.map((m) => {
 });
 
 const width = Math.max(...rows.map((r) => r.label.length));
-console.log(`check-data-door (2q): HEAD vs ${BASE_REF} — табло эпика TRIP-374`);
+console.log(`check-data-door (2r): HEAD vs ${BASE_REF} — табло эпика TRIP-374`);
 for (const r of rows) {
   const delta = r.now - r.was;
   const sign = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '=';

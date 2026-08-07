@@ -837,6 +837,7 @@ test('ДУБЛИ: одно свойство - это твик, а не объе�
 
 // ── Потомковые правила на примитивах (§12 Б, закон 3) ───────────────────────
 
+const CATALOG_T = '{"families":{"btn":"canon","card":"canon","t":"canon","scr":"triage"}}';
 const CATALOG = '{"families":{"btn":"canon","card":"canon","badge":"canon","scr":"triage","tile":"canon"}}';
 
 test('★ ЗАКОН 3: составной селектор - НЕ потомство (канон СПРАВА, иначе тест инертен)', (t) => {
@@ -887,6 +888,75 @@ test('ЗАКОН 3: канон внутри канона - композиция 
   );
   assert.equal(out.primitiveReach.violations, 0, 'это не долг экранов');
   assert.equal(out.primitiveReach.canonIntoCanon, 1);
+});
+
+test('★★ ЗАКОН 3: СО-СЕЛЕКТОРНЫЙ КАНОН ТИПОГРАФИКИ вычтен, а не засчитан в долг', (t) => {
+  // Единый источник текст-стилей объявлен списком со-селекторов: рядом с
+  // `.t-subheading` перечислены элементы, которым канон ПЕРЕНАЗНАЧАЕТ стиль.
+  // Предикат читает такую строку как «экран дотянулся до примитива .t», хотя
+  // это механизм самой ДС. Захрапови сырое число - считали бы долгом
+  // собственный канон (в этом эпике наивный предикат целился в свой канон уже
+  // дважды: 199 «дублей» и «canon = одиночки»).
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.t-sub, .scr-a .t-ui { font-size: 13px; }',
+      'design/catalog.json': CATALOG_T,
+    }),
+  );
+  assert.equal(out.primitiveReach.violations, 0, 'это канон, а не долг экрана');
+  assert.equal(out.primitiveReach.canonTypography, 1, 'и вычет обязан быть ВИДЕН отдельной строкой');
+});
+
+test('★★ ЗАКОН 3: экран, ужимающий кегль примитива ВНЕ канон-правила, - нарушение', (t) => {
+  // Предикат выбран ЗАМЕРОМ, и два кандидата различаются ровно этим случаем:
+  // «правило объявляет только типографические свойства» даёт 14 и прощает
+  // `.ncal-ev .t { font-size }` - живой дефект; «правило ЕСТЬ канон: среди его
+  // селекторов есть голый .t-*» даёт 13 и его ловит. Взят второй.
+  const out = run(
+    fixture(t, { 'design/app.css': '.scr-a .t-ui { font-size: 9px; }', 'design/catalog.json': CATALOG_T }),
+  );
+  assert.equal(out.primitiveReach.violations, 1);
+  assert.equal(out.primitiveReach.canonTypography, 0);
+});
+
+test('★★ ЗАКОН 3: со-селектор `.t-*` НЕ прячет нетипографическое нарушение', (t) => {
+  // Канал обхода у ЗАХРАПОВЛЕННОГО числа: проверяй мы только «есть голый .t-*
+  // среди селекторов», допиши такой со-селектор - и любое нарушение закона 3
+  // исчезнет из метрики пола. Нашёл `code-simplifier` прогоном: замерено 0.
+  const out = run(
+    fixture(t, { 'design/app.css': '.t-sub, .scr-a .card { padding: 99px; }', 'design/catalog.json': CATALOG_T }),
+  );
+  assert.equal(out.primitiveReach.violations, 1, 'padding - не типографика, вычету не подлежит');
+  assert.equal(out.primitiveReach.canonTypography, 0);
+});
+
+test('★ ЗАКОН 3: печатается, сколько из вычтенного БЫЛО БЫ долгом', (t) => {
+  // «вычтено 13» рядом с «53» читается как «на самом деле 66». Неправда: долгом
+  // из них были бы единицы, и это число обязано стоять рядом.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.t-sub, .scr-a .t-ui { font-size: 13px; }\n.t-two, .card { font-size: 12px; }',
+      'design/catalog.json': CATALOG_T,
+    }),
+  );
+  assert.equal(out.primitiveReach.canonTypography, 2);
+  assert.equal(out.primitiveReach.canonTypographyWouldViolate, 1, 'второе правило не было бы нарушением и без вычета');
+});
+
+test('★ ЗАКОН 3: граница языка берётся из AUDIT_CANON_FAMILIES, когда её задали', (t) => {
+  // Пол 2o меряет HEAD канон-набором БАЗЫ: число зависит от каталога по
+  // построению, и переклейка семьи двигает его в ОБЕ стороны без единой строки
+  // CSS (замерено: `bgt` triage→canon дал 53 → 47, то есть молча ЗАБАНКОВАЛ бы
+  // прогресс). Одна мерка на две стороны оставляет под наблюдением правки CSS.
+  const dir = fixture(t, { 'design/app.css': '.scr-a .btn { background: red; }', 'design/catalog.json': CATALOG_T });
+  const r = spawnSync(process.execPath, [SCRIPT, '--json'], {
+    env: { ...process.env, AUDIT_ROOT: dir, AUDIT_CANON_FAMILIES: 'card' },
+    encoding: 'utf8',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout);
+  assert.equal(out.primitiveReach.violations, 0, 'btn не канон по ПЕРЕДАННОЙ границе');
+  assert.deepEqual(out.canonFamiliesUsed, ['card']);
 });
 
 test('ЗАКОН 3: дотянулись до НЕ-канона - вообще не про этот счётчик', (t) => {
