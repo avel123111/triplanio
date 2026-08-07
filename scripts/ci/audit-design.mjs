@@ -61,7 +61,7 @@ import postcss from 'postcss';
 /** Периметр эпика вынесен в общий модуль: тот же предикат нужен гарду 2q, а два
  *  гарда по одному дереву с РАЗНЫМ периметром молча выдают разные вердикты - это
  *  и случилось (см. шапку `perimeter.mjs`). */
-import { OUT_OF_SCOPE } from './perimeter.mjs';
+import { OUT_OF_SCOPE, inScope } from './perimeter.mjs';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 
@@ -79,7 +79,6 @@ const cssFiles = files.filter((f) => f.endsWith('.css'));
 const jsxFiles = files.filter((f) => /\.(jsx|tsx|js)$/.test(f));
 
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
-const inScope = (f) => !OUT_OF_SCOPE.test(f);
 
 // ── 1. Families & classes ───────────────────────────────────────────────────
 /** Prefix = the class name up to the first `-`, `--` or `__`. That is the unit a
