@@ -609,7 +609,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           <div className="tl3-dhx">
             <div className="tl3-dhrow">
               <span className="wd">{weekdayLong(day, lang)}</span>
-              {_isToday && <span className="badge badge--xs tl3-today">{t('view.today')}</span>}
+              {_isToday && <span className="badge badge--xs badge--brand">{t('view.today')}</span>}
             </div>
             {dayCities.length > 0 && (
               <span className="daycity"><Icon name="pin" size={13} />{dayCities.map(c => c.city_name).join(' · ')}</span>
@@ -1342,7 +1342,7 @@ export default function TripView() {
         <div className="addsheet">
           {isAddonEnabled(trip, 'budget') && (
             <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('expense'); }}>
-              <span className="addsheet__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="wallet" size={20} /></span>
+              <span className="addsheet__ic" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="wallet" size={20} /></span>
               <span className="addsheet__tx"><b>{t('budget.manual_expense')}</b></span>
               <Icon name="chev" size={16} className="addsheet__chev" />
             </button>

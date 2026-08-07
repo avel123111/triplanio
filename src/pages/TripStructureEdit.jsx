@@ -1286,8 +1286,11 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
   const [type, setType] = useState('transit');
   const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
   const meta = POINT_TYPES.find((p) => p.id === type);
+  // Канал тинта --hl* тут не заполняется: у панели добавления точки своего тона
+  // нет, а дефолт канала в :root и есть бренд. Инлайн, писавший на корень ровно
+  // эти два дефолта, снят в 04 PR3 — он не менял ничего.
   return (
-    <div className="lp lp--wide" style={{ '--ev-soft': 'var(--brand-soft)', '--ev-ink': 'var(--brand)' }}>
+    <div className="lp lp--wide">
       <div className="lp-h lp-h--ev">
         <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={14} /></button>
         <span className="lp-ic" style={{ background: 'var(--brand)', color: '#fff' }}><Icon name="pin" size={17} /></span>

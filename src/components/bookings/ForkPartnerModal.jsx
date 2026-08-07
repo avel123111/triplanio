@@ -269,7 +269,7 @@ export default function ForkPartnerModal({
 
   if (variant === 'panel') {
     return (
-      <div className="lp lp--wide" style={{ '--ev-soft': meta.colorSoft, '--ev-ink': meta.color }}>
+      <div className="lp lp--wide" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
         <div className="lp-h lp-h--ev">
           <button className="lp-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft size={16} /></button>
           <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon size={16} /></span>

@@ -48,7 +48,7 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
       onClick={onClick}
       className={`choice-card${isAi ? ' choice-card--ai' : ''}`}
     >
-      <div className={`choice-card__ic choice-card__ic--${isAi ? 'ai' : 'man'}`}>
+      <div className={`choice-card__ic${isAi ? ' choice-card__ic--ai' : ''}`}>
         <Icon name={icon} size={23} />
       </div>
       <div className="choice-card__tx">

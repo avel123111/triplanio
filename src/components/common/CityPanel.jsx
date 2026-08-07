@@ -91,11 +91,14 @@ export default function CityPanel({
   const nights = isWaypoint ? 0 : (node.nights || 0);
 
   return (
-    <div className="lp lp--wide" style={{ '--ev-color': 'var(--brand)', '--ev-soft': 'var(--primary-soft)', '--ev-ink': 'var(--brand)' }}>
+    <div className="lp lp--wide">
       {/* Header — канон .lp-h с brand-градиентом (как остальные драйверы, но не цвет
-          эвента): слева номер города / иконка пересадки, затем 3 строки. */}
+          эвента): слева номер города / иконка пересадки, затем 3 строки.
+          У города СВОЕГО тона нет, поэтому канал --hl* тут ничем не заполняется:
+          значения приходят из :root, а они и есть бренд. Инлайн, который писал
+          сюда ровно эти три дефолта, снят в 04 PR3 — он ничего не менял. */}
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+        <span className="lp-ic" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
           {isWaypoint ? <Icon name="arrowSwap" size={17} /> : <b className="t-strong">{cityNo}</b>}
         </span>
         <div className="lp-ti col col--g1">

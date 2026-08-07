@@ -31,8 +31,11 @@
   --brand-soft-12:rgba(33,115,200,.16);
   --map-route:    #2173C8;   /* concrete hex for Mapbox line paint (CSS vars can't be used in paint); mirrors --brand */
   --map-route-ring: rgba(33,115,200,.30);   /* translucent casing under a selected route segment */
-  --primary-soft:   rgba(33,115,200,.10);   /* Lumo soft-primary tint (was referenced but undefined) */
-  --primary-soft-2: rgba(33,115,200,.16);
+  /* Имена --primary-soft и --primary-soft-2 УДАЛЕНЫ (TRIP-352 шаг 2). Это было
+     ВТОРОЕ имя того же тона, заведённое заплаткой («was referenced but
+     undefined»), а не второй тон: тон общий, расходилась только альфа тёмной
+     темы, и её выровнял #699. Все читатели переехали на --brand-soft /
+     --brand-soft-12. Словарь :root: 163 -> 161. */
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
@@ -145,8 +148,17 @@
      14 раз в 10 пространствах имён, и каждый раз это была одна и та же тройка
      фон+рамка+текст. Цвет вынесен в ручки, правил стало два (мягкое и залитое).
      Ручки, а не классы, потому что триггер - :hover / .is-active: класс в
-     разметку на состояние не поставишь. Узор взят у существующего --st-accent
-     (состояния fork-панели), а не выдуман. */
+     разметку на состояние не поставишь. Узор взят у состояний fork-панели
+     (тогда они держали свою тройку --st-accent*), а не выдуман.
+     ★ЕДИНСТВЕННЫЙ КАНАЛ МЯГКОГО ТОНА (04 PR3, Р7). Тех же трёх ручек было
+     ЧЕТЫРЕ комплекта под разными именами: --st-accent* (fork), --evs/--evi
+     (плитка ленты) и --hl/--hl-soft/--hl-ink (категория события, ставился
+     из 8 JSX-файлов). Сведены сюда ВСЕ. Категории при этом не исчезли: канал
+     один, ЗНАЧЕНИЕ подставляет вызыватель - драйвером-классом (ниже по файлу)
+     или инлайном на корне оболочки, как это делают панели и диалоги события.
+     ⚠ Читатели пишут var(--hl-soft) БЕЗ фолбэка и это не небрежность: имя
+     объявлено здесь, в :root, поэтому второй аргумент var() не сработал бы
+     НИКОГДА - он был бы мёртвым кодом, которого не видит ни один гард. */
   --hl: var(--brand); --hl-soft: var(--brand-soft); --hl-ink: var(--brand); --hl-fg: var(--primary-fg);
   --sp-1:2px; --sp-2:4px; --sp-3:6px; --sp-4:8px; --sp-5:10px;
   --sp-6:12px; --sp-7:16px; --sp-8:20px;
@@ -243,23 +255,13 @@
   --primary-ring:  rgba(111,178,255,.36);
   --brand:        #6FB2FF;
   --primary-fg:   #08182B;               /* ink ON a --brand surface — dark */
-  /* --brand-soft и --primary-soft - ОДНО семейство, а не два тона: тон общий,
-     расходилась только альфа тёмной темы (след двух портов; --primary-soft
-     заведён заплаткой, см. светлый :root). Схлопываются в 04 PR3, здесь
-     TRIP-352 выровнял значения ЗАРАНЕЕ - и берёт их у --primary-soft, а не
-     наоборот, вот почему. Места вида var(--ev-soft, var(--primary-soft))
-     подставляют фолбэк, когда драйвер не выставил ручку --ev-soft: --ev-soft
-     нигде не объявлена, её ставят инлайном вызыватели. В 04 PR3 ручка
-     переезжает на канон --hl-soft, а он ОБЪЯВЛЕН в :root (см. --hl-soft ниже) -
-     то есть первый аргумент определён всегда и фолбэк не сработает больше
-     никогда. Значение там молча сменилось бы с --primary-soft на --brand-soft;
-     после выравнивания менять нечего. */
+  /* --brand-soft и удалённый --primary-soft были ОДНИМ семейством, а не двумя
+     тонами: тон общий, расходилась только альфа тёмной темы (след двух портов).
+     #699 выровнял значения, 04 PR3 удалил второе имя - см. светлый :root. */
   --brand-soft:   rgba(111,178,255,.16);
   --brand-soft-12:rgba(111,178,255,.24);
   --map-route:    #6FB2FF;   /* concrete hex for Mapbox line paint — dark; mirrors --brand */
   --map-route-ring: rgba(111,178,255,.42);   /* selected-route casing — dark */
-  --primary-soft:   rgba(111,178,255,.16);
-  --primary-soft-2: rgba(111,178,255,.24);
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
   --bk:           #1A66D9;  /* Booking navy — dark theme */
@@ -938,7 +940,6 @@ h4,
 .te-endlabel,
 .te-wptag,
 .tl3-dh .datechip .m,
-.tl3-today,
 .cityrail .cr-h,
 .acct-plan__k,
 .acct-tgtrips__lbl,
@@ -1280,8 +1281,8 @@ h4,
 .btn--secondary:hover { --bd: var(--brand); --fg: var(--brand); box-shadow: var(--sh-1); }
 /* `.btn.is-on` было ВТОРЫМ именем для этого же состояния - набор объявлений
    совпадал побайтово. Сведено в один селектор, второе имя удалено. */
-.btn--soft, .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
-.btn--soft:hover, .btn.is-on:hover { --bg: var(--primary-soft-2); }
+.btn--soft, .btn.is-on { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
+.btn--soft:hover, .btn.is-on:hover { --bg: var(--brand-soft-12); }
 .btn--ghost { --bg: transparent; --fg: var(--ink-2); --bd: transparent; }
 .btn--ghost:hover { --bg: var(--surface-2); --fg: var(--ink); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
@@ -1874,7 +1875,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
-.badge--brand { background: var(--primary-soft); color: var(--brand); }
+.badge--brand { background: var(--brand-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 
@@ -1989,12 +1990,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
  transition: color .2s, background .2s, box-shadow .2s, transform .16s var(--ease-spring);
 }
 .seg button[aria-pressed="true"] {
-  /* TRIP-176: активный сегмент = мягкая заливка. В драйверах корни задают
-     --ev-soft/--ev-ink (цвет эвента) → таб окрашивается в цвет типа события;
-     вне драйверов переменные не заданы → откат на brand (--primary-soft/--brand).
-     Тот же fallback-паттерн, что у шапки .lp-h--ev. */
-  color: var(--ev-ink, var(--brand));
-  background: var(--ev-soft, var(--primary-soft));
+  /* TRIP-176: активный сегмент = мягкая заливка общего канала --hl* — тот же
+     механизм, что у шапки .lp-h--ev. Внутри оболочки события корень ставит в
+     канал цвет типа (отель/переезд/…) и таб окрашивается им; вне оболочки
+     значение приходит из :root, то есть бренд. 04 PR3: фолбэки `var(--ev-soft,
+     var(--primary-soft))` сняты — имя канала объявлено в :root, второй аргумент
+     var() не сработал бы никогда и был бы мёртвым кодом. */
+  color: var(--hl-ink);
+  background: var(--hl-soft);
   box-shadow: none;
 }
 .seg button:active { transform: scale(.95); }
@@ -2189,9 +2192,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    один мёртвый класс, поэтому новый заводится вместе со своим первым вызовом.
    --brand-soft и --primary-soft расходились в тёмной теме (.14 против .16),
    поэтому плитки на --primary-soft переезжали сюда только вместе со своим
-   экраном. TRIP-352 шаг 1 значения выровнял - семейства идентичны во всех
-   темах, и перевод оставшихся плиток стал правкой без визуального эффекта
-   (сама замена имён - в 04 PR3, вместе с удалением двух имён из :root). */
+   экраном. TRIP-352 шаг 1 значения выровнял, 04 PR3 удалил второе имя целиком -
+   тон один во всех темах, и перевод оставшихся плиток стал правкой без
+   визуального эффекта. */
 .tile--brand  { background: var(--brand-soft);  color: var(--brand); }
 .tile--danger { background: var(--danger-soft); color: var(--danger); }
 /* TRIP-321 Ф12.2a, апрув Pavel. Заведены ВМЕСТЕ со своими первыми вызовами (аккаунт)
@@ -2333,7 +2336,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__ico { position: relative; display: grid; place-items: center; width: 30px; height: 26px; }
   .mbnav__ico > * { position: relative; z-index: 1; }
   .mbnav__item.is-active .mbnav__ico::before {
-    content: ''; position: absolute; inset: -3px -7px; border-radius: var(--r-sm); background: var(--primary-soft); z-index: 0;
+    content: ''; position: absolute; inset: -3px -7px; border-radius: var(--r-sm); background: var(--brand-soft); z-index: 0;
   }
   .mbnav__lbl { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mbnav__avatar { width: 24px !important; height: 24px !important; }
@@ -2374,8 +2377,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .choice-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--brand); }
 .choice-card:active { transform: translateY(0); }
 .choice-card--ai:hover { border-color: var(--ai); }
-.choice-card__ic { width: 46px; height: 46px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; }
-.choice-card__ic--man { background: var(--primary-soft); color: var(--brand); }
+/* Тон плитки - канал --hl* с дефолтом из :root, поэтому «ручной» вариант
+   отдельным классом больше не описан: он ЗАПИСЫВАЛ дефолт (04 PR3). Своё имя
+   осталось только у того варианта, у которого тон действительно свой - ИИ. */
+.choice-card__ic { width: 46px; height: 46px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--hl-soft); color: var(--hl-ink); }
 .choice-card__ic--ai  { background: var(--ai-gradient); color: #fff; }
 .choice-card__tx { min-width: 0; }
 .choice-card__ttl { color: var(--ink); }
@@ -3271,10 +3276,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
 .bell-dd__foot { padding: 9px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
 /* Compact soft pill — single line, never wraps, reads as a clean secondary action. */
-.bell-dd__mark { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--primary-soft); border: none; color: var(--brand); cursor: pointer; padding: 6px 11px; border-radius: var(--r-pill); transition: background .14s, color .14s; }
+.bell-dd__mark { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--brand-soft); border: none; color: var(--brand); cursor: pointer; padding: 6px 11px; border-radius: var(--r-pill); transition: background .14s, color .14s; }
 .bell-dd__mark:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); }
 .bell-dd__more { display: flex; align-items: center; justify-content: center; width: 100%; background: transparent; border: none; color: var(--brand); cursor: pointer; padding: 9px; border-radius: var(--r-sm); transition: background .14s; }
-.bell-dd__more:hover { background: var(--primary-soft); }
+.bell-dd__more:hover { background: var(--brand-soft); }
 .bell-dd__loading { display: flex; justify-content: center; padding: 28px 0; color: var(--muted); }
 
 /* Per-type icon tile — colour passed in via inline `--ic` (the notifMeta accent) */
@@ -3311,7 +3316,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   transition: border-color .16s, box-shadow .2s, transform .16s var(--ease-out);
 }
 @media (hover: hover) { .nrow:hover { border-color: var(--line-hover); transform: translateY(-1px); } }
-.nrow--unread { background: var(--primary-soft); border-color: transparent; box-shadow: inset 3px 0 0 var(--brand), var(--sh-1); }
+.nrow--unread { background: var(--brand-soft); border-color: transparent; box-shadow: inset 3px 0 0 var(--brand), var(--sh-1); }
 .nrow__body { min-width: 0; }
 .nrow__title { color: var(--ink); }
 .nrow__title em { font-style: normal; color: var(--brand); }
@@ -3329,8 +3334,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   position: relative; display: flex; gap: 11px; padding: 11px 11px 11px 13px;
   border-radius: var(--r-btn); align-items: flex-start; transition: background .14s;
 }
-.brow--unread { background: var(--primary-soft); cursor: pointer; }
-@media (hover: hover) { .brow:hover { background: var(--surface-2); } .brow--unread:hover { background: var(--primary-soft-2); } }
+.brow--unread { background: var(--brand-soft); cursor: pointer; }
+@media (hover: hover) { .brow:hover { background: var(--surface-2); } .brow--unread:hover { background: var(--brand-soft-12); } }
 .brow--unread::before { content: ""; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
 .brow__body { flex: 1; min-width: 0; }
 .brow__title { color: var(--ink); }
@@ -3610,7 +3615,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
-.lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+.lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
 .lp-stepper__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .lp-stepper__tx b { color: var(--ink); }
 .lp-stepper__tx span { color: var(--muted); }
@@ -3732,8 +3737,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .wdg-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px 12px; }
 .wdg-h .wi { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .wdg-h .wi svg { width: 17px; height: 17px; }
-.wi--primary { background: var(--primary-soft); color: var(--brand); }
-.wi--activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+/* Значок виджета берёт тон из канала --hl* (04 PR3). `.wi--primary` больше нет:
+   он ЗАПИСЫВАЛ дефолт канала, и его носили три вызова из четырёх - то есть класс
+   существовал ради значения, которое уже приходит из :root. Четвёртый вызов
+   (участники) остаётся вариантом, но теперь он ПОДСТАВЛЯЕТ ЗНАЧЕНИЕ в канал, а
+   не объявляет свою пару фон+текст. */
+.wi { background: var(--hl-soft); color: var(--hl-ink); }
+.wi--activity { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .wdg-h h4 { flex: 1; margin: 0; }
 .wdg-b { padding: 4px 18px 18px; }
 .wdg-act {
@@ -3825,7 +3835,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tl3 { display: flex; flex-direction: column; }
 .tl3-day { padding-bottom: 8px; scroll-margin-top: 12px; overflow-x: clip; }
 .tl3-dh { display: flex; align-items: center; gap: 12px; padding: 16px 0 12px; }
-.tl3-dh .datechip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 54px; border-radius: var(--r-btn); background: var(--primary-soft); flex: none; transition: background .2s var(--ease-out); }
+.tl3-dh .datechip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 54px; border-radius: var(--r-btn); background: var(--brand-soft); flex: none; transition: background .2s var(--ease-out); }
 .tl3-dh .datechip .d { color: var(--brand); }
 .tl3-dh .datechip .m { color: var(--brand); opacity: .85; margin-top: 2px; }
 /* right column: weekday on one line, the day's cities tucked under it */
@@ -3835,8 +3845,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* cities line: subtle and iconic — pin + name(s), no heavy pill (waypoints excluded) */
 .tl3-dh .daycity { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow-wrap: anywhere; color: var(--muted); }
 .tl3-dh .daycity svg { width: 13px; height: 13px; color: var(--brand); flex: none; }
-/* Today — filled date chip + badge next to the weekday */
-.tl3-today { background: var(--primary-soft); color: var(--brand); }
+/* Today — filled date chip + badge next to the weekday.
+   Своего класса у бейджа «Сегодня» больше нет: `.tl3-today` держал ровно те же
+   два объявления, что `.badge--brand`, а типографику и паддинг ему и так давали
+   канон `.t-micro` и ступень `.badge--xs` из той же разметки. Прошлый заход это
+   уже заметил (см. комментарий у `.badge--sm/--xs`), но остановился на замере. */
 .tl3-day.today .datechip { background: var(--brand); }
 .tl3-day.today .datechip .d, .tl3-day.today .datechip .m { color: var(--primary-fg); opacity: 1; }
 
@@ -3850,7 +3863,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    44/20px - ВНЕ ступеней (ближайшая --xl это 46/21); переезд на ступень меняет
    вид ленты, поэтому делается в PR своего экрана (Ф12.7 TripView) со скриншотом.
    Ручка тут и есть маркер этого долга - раньше он был не виден. */
-.tl3-card .tile { --tile: 44px; --tile-ic: 20px; --tile-r: var(--r-btn); background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
+/* Тон плитки берётся из общего канала --hl* (04 PR3): раньше он назывался
+   --evs/--evi - ТРЕТЬЕ имя того же канала, с одной точкой вызова. Фолбэки
+   `var(--evs, …)` сняты: значение ставит StreamEventRow на самой .tl3-card, а
+   имя канала объявлено в :root, так что второй аргумент не сработал бы никогда. */
+.tl3-card .tile { --tile: 44px; --tile-ic: 20px; --tile-r: var(--r-btn); background: var(--hl-soft); color: var(--hl-ink); }
 /* body keeps a real min-width so the meta (price + partner pill) wraps to a new
    flex line instead of squeezing the title into a vertical char-stack. */
 .tl3-card .body { flex: 1 1 auto; min-width: 130px; }
@@ -3891,7 +3908,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .cr-item .cr-nm { color: var(--ink-2); transition: color .2s; }
 .cr-item .cr-dt { color: var(--muted); margin-top: 2px; }
 .cr-item:hover .cr-nm { color: var(--ink); }
-.cr-item.on .cr-dot { border-color: var(--brand); background: var(--brand); box-shadow: 0 0 0 5px var(--primary-soft); }
+.cr-item.on .cr-dot { border-color: var(--brand); background: var(--brand); box-shadow: 0 0 0 5px var(--brand-soft); }
 .cr-item.on .cr-nm { color: var(--brand); }
 
 @media (prefers-reduced-motion: reduce) { .tl3-card:hover { transform: none; } }
@@ -4030,7 +4047,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .acct-nav { position: sticky; top: 78px; }
 .acct-nav a { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
 .acct-nav a:hover { background: var(--surface-2); color: var(--ink); }
-.acct-nav a.active { background: var(--primary-soft); color: var(--brand); }
+.acct-nav a.active { background: var(--brand-soft); color: var(--brand); }
 .acct-nav a.active::before { content: ""; position: absolute; left: -1px; top: 9px; bottom: 9px; width: 3px; border-radius: var(--r-pill); background: var(--brand); }
 .acct-content { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 .acct-content section { scroll-margin-top: 78px; }
@@ -4072,9 +4089,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    внелестничных 38px. Вызовы -> .tile.tile--lg (40px), значок 18 -> 19px.
    Тон: 7 вызовов сели на класс (--brand/--ai/--quiet), 2 (удаление аккаунта,
    выход) намеренно остались инлайном - их цвет не совпадает с модификатором.
-   Дефолтный тинт был --primary-soft, у .tile--brand он --brand-soft: на момент
-   перевода в тёмной теме это было .16 против .14, с TRIP-352 значения обоих
-   семейств совпадают во всех темах (см. блок .tile--*). */
+   Дефолтный тинт был на --primary-soft, у .tile--brand - на --brand-soft: на
+   момент перевода в тёмной теме это было .16 против .14. TRIP-352 значения
+   выровнял (#699), 04 PR3 удалил второе имя - тон теперь один (см. :root). */
 
 /* profile hero */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
@@ -4116,7 +4133,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-linktext { background: none; border: none; color: var(--brand); cursor: pointer; font: inherit; padding: 0; text-align: left; }
 
 /* language flag chip (reused by the language SearchSelect trigger + options) */
-.acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+.acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
 
 /* CountryFlag — SVG country flag (from /public/flags/<iso2>.svg), the single
    flag primitive that replaced emoji flags. Height ties to the surrounding
@@ -4178,7 +4195,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    сняты скриншотом до и после. */
 /* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
    нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
-   и тинт --primary-soft -> --brand-soft у .tile--brand (тогда в тёмной теме это
+   и тинт --brand-soft -> --brand-soft у .tile--brand (тогда в тёмной теме это
    был сдвиг .16 -> .14, см. блок .tile--*). */
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
@@ -4492,11 +4509,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tc-add:active { transform: scale(.99); }
 .tc-add__ic {
   width: 48px; height: 48px; border-radius: var(--r-md);
-  background: var(--primary-soft); color: var(--brand);
+  background: var(--brand-soft); color: var(--brand);
   display: grid; place-items: center;
   transition: background .2s;
 }
-.tc-add:hover .tc-add__ic { background: var(--primary-soft-2); }
+.tc-add:hover .tc-add__ic { background: var(--brand-soft-12); }
 .tc-add b { color: inherit; }
 .tc-add small { text-align: center; max-width: 200px; }
 
@@ -4557,17 +4574,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 }
 .tr--add:hover {
   border-color: var(--brand); color: var(--brand);
-  background: var(--primary-soft);
+  background: var(--brand-soft);
   transform: translateY(-2px); box-shadow: none;
 }
 .tr--add:active { transform: translateY(0) scale(.995); }
 .tr__addic {
   width: 46px; height: 46px; border-radius: var(--r-sm); flex: none;
-  background: var(--primary-soft); color: var(--brand);
+  background: var(--brand-soft); color: var(--brand);
   display: grid; place-items: center;
   transition: background .2s;
 }
-.tr--add:hover .tr__addic { background: var(--primary-soft-2); }
+.tr--add:hover .tr__addic { background: var(--brand-soft-12); }
 .tr--add b { color: inherit; display: block; }
 .tr--add small { color: var(--muted); }
 
@@ -4647,7 +4664,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .pro-hero-eyebrow {
  display: inline-flex; align-items: center; gap: 7px;
  padding: 5px 13px 5px 7px;
- background: var(--primary-soft);
+ background: var(--brand-soft);
  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
  border-radius: var(--r-pill); margin-bottom: 10px;
  color: var(--brand);
@@ -4985,7 +5002,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    панелями - `.lp-h` / `.lp-b` / `.lp-f` (объявлены ниже, в блоке EDITOR SIDE
    PANELS). Здесь остаётся то, что живёт ВНУТРИ оболочки и одинаково в обеих:
    ряд действий, секции, пары ключ-значение, поля формы.
-   Тон берётся из --ev-color/--ev-soft/--ev-ink, которые вызыватель ставит на
+   Тон берётся из --hl/--hl-soft/--hl-ink, которые вызыватель ставит на
    корень оболочки (контейнер диалога у модалки, `.lp` у панели).
    ★Кнопка ухода тоже уехала: `.ev-dlg-close` был вторым именем для `.lp-back`
    и удалён, объект один (см. `.lp-back` в блоке панелей).
@@ -5007,8 +5024,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    тип события несёт ПЛАНКА-АКЦЕНТ ниже - это вариация чтения, как шеврон и
    бейдж - вариация формы. */
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ink);}
-.ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
-.ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
+.ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--hl);flex:none;}
+.ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--hl) 18%,transparent);}
 /* key/value grid */
 /* Форма - .grid .grid--2 в разметке; здесь остаётся ТОЛЬКО двухосевой зазор 9/13:
    он вне шкалы (та одноосевая), и это видимое исключение, а не форма. TRIP-321 Ф14.9 */
@@ -5072,7 +5089,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-notes{padding:12px 14px; color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
-.bk-link:hover{background:var(--primary-soft);color:var(--brand);}
+.bk-link:hover{background:var(--brand-soft);color:var(--brand);}
 .bk-link svg{width:12px;height:12px;color:var(--muted);}
 /* .warn-banner и .del-confirm УДАЛЕНЫ (TRIP-321 Ф14.2): обе плашки были
    переизобретённым <Severity> - тот же флекс по верхнему краю, тот же
@@ -5086,7 +5103,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* payment status badges */
 .badge--paid{background:var(--success-soft);color:var(--success-ink);}
 .badge--partial{background:var(--warning-soft);color:var(--warning-ink);}
-.badge--on-arrival{background:var(--primary-soft);color:var(--brand);}
+/* «Оплата на месте» СВОЕГО тона не имеет: её правило было побайтово равно
+   .badge--brand (после схлопывания --primary-soft/--brand-soft это стало видно),
+   и разметка теперь берёт сам .badge--brand. Третьего синего бейджа нет. */
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv-card{padding:16px 17px;}
@@ -5118,8 +5137,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .tv-carrier__av{width:26px;height:26px;flex:none;border-radius:var(--r-sm);background:var(--ev-transfer);color:#fff;display:flex;align-items:center;justify-content:center;}
 .tv-carrier__nm{color:var(--ink-2);}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
-.f-sec{ color:var(--ev-color,var(--brand));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
-.f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
+.f-sec{ color:var(--hl);display:flex;align-items:center;gap:8px;margin:6px 0 0;}
+.f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--hl) 18%,transparent);}
 .fld-grid{gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
 
@@ -5178,31 +5197,36 @@ a.doc-row__n:hover{ color: var(--brand); }
 .lp-ti { min-width: 0; flex: 1; }
 .lp-ti b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-ti span { color: var(--muted); }
-/* tinted header (per-kind colour via --ev-soft/--ev-ink on the .lp root).
+/* tinted header (per-kind colour via --hl-soft/--hl-ink on the .lp root).
    TRIP-176: soft vertical gradient — one drawer-header look shared by the
    add-booking panel and the view/edit panels. */
-.lp-h--ev { background: linear-gradient(180deg, var(--ev-soft, var(--primary-soft)), transparent 94%); border-bottom-color: color-mix(in srgb, var(--ev-soft, var(--primary-soft)) 60%, var(--line)); }
+.lp-h--ev { background: linear-gradient(180deg, var(--hl-soft), transparent 94%); border-bottom-color: color-mix(in srgb, var(--hl-soft) 60%, var(--line)); }
 /* Плитка типа события. Цвет брался ИНЛАЙНОМ во всех ЧЕТЫРЁХ шапках события
    (просмотр в диалоге и в панели, редактор, добавление) - одним и тем же
-   выражением, при том что `--ev-color` уже лежит на корне оболочки. Повторённый
+   выражением, при том что `--hl` уже лежит на корне оболочки. Повторённый
    у существующего класса инлайн - ошибка КЛАССА, а не образец для копирования,
-   поэтому значение переехало сюда. Скоуп именно `--ev`: `.lp-ic` носят и
+   поэтому значение переехало сюда. Скоуп именно `.lp-h--ev`: `.lp-ic` носят и
    не-событийные шапки (город, маршрут, партнёр), у них свои тона. */
-.lp-h--ev .lp-ic { background: var(--ev-color, var(--brand)); color: #fff; }
+.lp-h--ev .lp-ic { background: var(--hl); color: #fff; }
 /* Эйбрау шапки события - ровно тот же случай, что плитка выше: тон писался
    инлайном в трёх шапках из четырёх, а четвёртая (просмотр в диалоге) держала
    его правилом удалённого семейства и после схлопывания осталась бы с базовым
-   серым `.eyebrow`. Токен взят `--ev-ink`, а не `--ev-color`: это ТЕКСТ, а
-   `--ev-ink` и заведён как читаемая версия цвета типа события. */
-.lp-h--ev .eyebrow { color: var(--ev-ink, var(--ev-color, var(--brand))); }
+   серым `.eyebrow`. Ручка взята `--hl-ink`, а не `--hl`: это ТЕКСТ, а `--hl-ink`
+   и заведён как читаемая версия цвета.
+   ⚠ Двухступенчатый фолбэк `var(--ev-ink, var(--ev-color, …))` снят (04 PR3) и
+   НЕ заменён на `var(--hl-ink, var(--hl))`: вторая ступень существовала на
+   случай «вызыватель поставил цвет, но не поставил чернила», а такого вызывателя
+   у этой шапки нет ни одного - все семь ставят `--hl-ink` (проверено поимённо).
+   Плюс имя объявлено в :root, поэтому фолбэк не сработал бы в любом случае. */
+.lp-h--ev .eyebrow { color: var(--hl-ink); }
 /* eyebrow (type) + title(city) · meta(dates) row — shared drawer-header title. */
 .lp-tirow { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
 .lp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-tirow span { flex: none; }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
-.sec-lbl .sl { color: var(--ev-ink, var(--brand)); }
-.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
+.sec-lbl .sl { color: var(--hl-ink); }
+.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
 .sec-lbl .addmini svg { width: 12px; height: 12px; }
 /* vertical stack used between rows */
 /* AI parsing progress bar */
@@ -5407,7 +5431,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    Ячейки тут без плитки-иконки, поэтому шаг плотнее. */
 .statbar--inset { margin-top: 0; border-bottom: 1px solid var(--line); }
 .statbar--inset .s { padding: 12px 16px; }
-.statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
+.statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--brand-soft); color: var(--brand); }
 .statbar .ic svg { width: 20px; height: 20px; }
 /* Loading chip borrows the real .ic so it tracks the same size the container
    rules give it — otherwise the row height pops when the data lands. */
@@ -5512,7 +5536,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .cdu span { color: var(--muted); }
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
-.nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; }
+.nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }
 .nonext b { color: var(--ink); }
 .nonext p { color: var(--muted); margin: 0; }
@@ -5532,7 +5556,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
 .sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s, transform .16s var(--ease-spring); }
 @media (hover: hover) { .sfig:hover { background: var(--surface); box-shadow: var(--sh-1); transform: translateY(-2px); } }
-.sfig .ic { width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); }
+.sfig .ic { width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
 .sfig .ic svg { width: 17px; height: 17px; }
 .sfig.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .sfig.c-cont .ic { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
@@ -5572,7 +5596,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vrow { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-btn); text-align: left; font-family: inherit; transition: background .15s, transform .16s var(--ease-spring); }
 @media (hover: hover) { .vrow:hover { background: var(--surface-2); } }
 .vrow:active { transform: scale(.99); }
-.vrow.sel { background: var(--primary-soft); }
+.vrow.sel { background: var(--brand-soft); }
 .vrow .fl { width: 34px; height: 34px; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; flex: none; }
 .vrow .fl img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .vrow .fl svg { width: 16px; height: 16px; }
@@ -5641,7 +5665,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state--boxed .empty-state__t { margin-bottom: 4px; }
 .empty-state--boxed .empty-state__act { margin-top: 12px; }
 
-.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: var(--sp-8); }
+.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--brand-soft); border: 1px solid var(--brand-soft-12); margin-bottom: var(--sp-8); }
 .empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
 .empty-note .en-tx span { color: var(--ink-2); }
@@ -5696,7 +5720,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vp-grip { display: none; }
 @media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); margin: 10px auto 2px; } }
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
-.vp-h .ic { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); flex: none; }
+.vp-h .ic { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
 .vp-h .ic svg { width: 22px; height: 22px; }
 .vp-h.city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .vp-h h3 { color: var(--ink); margin: 0; }
@@ -5724,7 +5748,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .triplink { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: var(--r-sm); background: var(--surface-2); cursor: pointer; border: 0; font: inherit; color: var(--ink-2); transition: .15s; }
 .triplink .d { width: 16px; height: 16px; border-radius: 5px; flex: none; }
 .triplink svg { width: 14px; height: 14px; color: var(--muted); }
-@media (hover: hover) { .triplink:hover { background: var(--primary-soft); color: var(--brand); } .triplink:hover svg { color: var(--brand); } }
+@media (hover: hover) { .triplink:hover { background: var(--brand-soft); color: var(--brand); } .triplink:hover svg { color: var(--brand); } }
 .vmanual { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 
 /* ===== Fork search + filter toolbar (TRIP-176) — SHARED primitive =====
@@ -5766,8 +5790,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); }
-.s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--primary-soft-2); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
+.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
+.s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
 .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .s22f-resetall:hover { color: var(--ink); }
 
@@ -5790,31 +5814,35 @@ a.doc-row__n:hover{ color: var(--brand); }
 .fork-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
 /* Empty / error / no-match state — shared medal surface (TRIP-287 redesign).
    Accent is per-STATE (identical across hotels + activities): err=red,
-   emp=blue, nomatch=yellow — driven by the --st-accent* trio. */
+   emp=blue, nomatch=yellow — driven by the shared --hl* channel (04 PR3; these
+   three handles used to be a private --st-accent* trio, which was the second of
+   four names for one channel). */
 .fork-state {
-  --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink);
+  --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink);
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
   gap: 6px; padding: 26px 20px 22px; border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
-  background: radial-gradient(120% 92% at 50% -12%, var(--st-accent-soft), transparent 62%), var(--surface);
+  background: radial-gradient(120% 92% at 50% -12%, var(--hl-soft), transparent 62%), var(--surface);
   border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
 }
 [data-theme="dark"] .fork-state { box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--sh-1); }
-.fork-state::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, transparent, var(--st-accent), transparent); opacity: .6; }
-.fork-state--err     { --st-accent: var(--danger);  --st-accent-soft: var(--danger-soft);  --st-accent-ink: var(--danger-ink); }
-.fork-state--emp     { --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink); }
-.fork-state--nomatch { --st-accent: var(--warning); --st-accent-soft: var(--warning-soft); --st-accent-ink: var(--warning-ink); }
+.fork-state::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, transparent, var(--hl), transparent); opacity: .6; }
+.fork-state--err     { --hl: var(--danger);  --hl-soft: var(--danger-soft);  --hl-ink: var(--danger-ink); }
+.fork-state--nomatch { --hl: var(--warning); --hl-soft: var(--warning-soft); --hl-ink: var(--warning-ink); }
+/* `.fork-state--emp` СВОЕГО правила не имеет: оно слово в слово повторяло тройку
+   базы выше (синий = дефолт состояния). Класс остаётся в разметке как имя
+   варианта, но второй копии значений у него больше нет. */
 
 .fork-state__art { position: relative; height: 82px; display: grid; place-items: center; }
-.fork-state__glow { position: absolute; inset: 50% auto auto 50%; width: 150px; height: 100px; transform: translate(-50%, -46%); background: radial-gradient(closest-side, var(--st-accent-soft), transparent 72%); }
+.fork-state__glow { position: absolute; inset: 50% auto auto 50%; width: 150px; height: 100px; transform: translate(-50%, -46%); background: radial-gradient(closest-side, var(--hl-soft), transparent 72%); }
 .fork-si {
-  position: relative; width: 66px; height: 66px; border-radius: var(--r-xl); display: grid; place-items: center; color: var(--st-accent-ink);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 86%, var(--st-accent) 14%), var(--surface));
-  border: 1px solid color-mix(in srgb, var(--st-accent) 34%, var(--line));
-  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--st-accent) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.55);
+  position: relative; width: 66px; height: 66px; border-radius: var(--r-xl); display: grid; place-items: center; color: var(--hl-ink);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 86%, var(--hl) 14%), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--hl) 34%, var(--line));
+  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--hl) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.55);
 }
-[data-theme="dark"] .fork-si { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--st-accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
-.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; color: #fff; background: var(--st-accent); border: 2.5px solid var(--surface); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--st-accent) 80%, transparent); }
+[data-theme="dark"] .fork-si { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--hl) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
+.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; color: #fff; background: var(--hl); border: 2.5px solid var(--surface); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--hl) 80%, transparent); }
 .fork-state b { color: var(--ink); margin-top: 4px; }
 .fork-state p { margin: 0; color: var(--muted); max-width: 30ch; }
 .fork-state__actions { display: flex; flex-direction: column; gap: 9px; align-items: stretch; width: 100%; max-width: 264px; margin-top: 14px; }
@@ -5875,13 +5903,14 @@ a.doc-row__n:hover{ color: var(--brand); }
    Был написан 14 раз в 10 пространствах имён, каждый раз одной и той же тройкой
    фон + рамка + цвет текста. Здесь он объявлен ДВА раза - мягкий и залитый, -
    а цвет подставляется ручками --hl / --hl-soft / --hl-ink / --hl-fg
-   (значения по умолчанию в :root, узор взят у существующего --st-accent).
+   (значения по умолчанию в :root, узор взят у существующего --hl).
    Почему co-selector, а не класс в разметке: триггер - :hover / .is-active /
    [data-state=open]; на состояние класс не повесишь. Ровно так же собраны
    каноны типографики в этом файле.
    Побочно выровнено то, ради чего объект и сводился: шесть «синих» мест стояли
    на ДВУХ разных токенах синего (--primary-soft и --brand-soft; в тёмной теме
-   тогда .16 против .14 - TRIP-352 значения выровнял), три «залитых» писали
+   тогда .16 против .14 - TRIP-352 выровнял, 04 PR3 первое имя удалил вовсе),
+   три «залитых» писали
    белый ТРЕМЯ способами (#fff ×2 и var(--primary-fg)). Теперь синий один и
    белый один. */
 .tc-add:hover,
@@ -5901,3 +5930,176 @@ a.doc-row__n:hover{ color: var(--brand); }
 .te-cell--act   { --hl: var(--ev-activity); --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .dl-addcard--mine { --hl: var(--warm); --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 .lp-back { --hl: var(--line-hover); --hl-soft: var(--wash); --hl-ink: var(--ink); }
+
+/* ═══ ЖУРНАЛ 2p ДЛЯ ЭТОГО PR (04 PR3, тинт) ═══════════════════════════════════
+   Ярус 2 визуального гейта печатает КАЖДОЕ изменившееся итоговое объявление, а
+   этот PR меняет их 152: замена имени токена у читателей, переезд трёх
+   параллельных наборов ручек на один канал --hl и снятие вариантов, которые
+   записывали дефолт канала. Все изменения НАМЕРЕННЫЕ и объявлены ниже - каждое
+   своей строкой с ПОЛНЫМ ключом (класс · состояние · @media · свойство) и
+   причиной.
+   ★Почему не одним бланкетным маркером: маркер, названный не целиком, гасит всё
+   на классе - и правку, которой автор не заметил, тоже. Так гард уже однажды
+   пропустил изменение общего класса, поэтому escape тут точечный по построению.
+   ★Почему НИ ОДНОГО маркера переноса - переносы разметки в PR есть (.tl3-today и
+   .badge--on-arrival уехали на .badge--brand, .wi--primary на .wi, четыре
+   .dl-…--shared на свои базы), но маркер переноса утверждает «на цели ЗНАЧЕНИЕ
+   то же», а здесь одновременно переименован сам токен внутри значения - текст
+   объявления на цели ДРУГОЙ. Гард такой маркер отверг бы, а подогнанный под него
+   был бы ложным утверждением о разметке. Поэтому эти ключи объявлены точечно.
+   ⚠ Маркеры читаются из ДОБАВЛЕННЫХ строк диффа, то есть действуют РОВНО ОДИН
+   PR. После мерджа блок - мёртвый текст: снести первым же PR, который тронет
+   файл.
+   visual-diff-exempt: :root --primary-soft — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: :root --primary-soft-2 — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: :root[data-theme=dark] --primary-soft — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: :root[data-theme=dark] --primary-soft-2 — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: .acct-lang__flag background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .acct-nav background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .active background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .addmini background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .auth --primary-soft — пин удалённого имени снят с острова .auth: читателей под .auth ноль, оставлять - мёртвая строка
+   visual-diff-exempt: .auth --primary-soft-2 — пин удалённого имени снят с острова .auth: читателей под .auth ноль, оставлять - мёртвая строка
+   visual-diff-exempt: .badge--brand background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .badge--on-arrival background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .badge--on-arrival color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .bell-dd__mark background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bell-dd__more:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bgt-glist__row background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bgt-glist__row border-color — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bgt-stat--total background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bk-link:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .brow--unread:hover {@media (hover: hover)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .brow--unread background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn--soft --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn--soft:hover --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn:hover --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .choice-card__ic--man background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .choice-card__ic--man color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .choice-card__ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .choice-card__ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .cr-dot box-shadow — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .cr-item box-shadow — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .dl-card__ic--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-card__ic--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-card__ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-card__ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-empty__ic--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-empty__ic--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-empty__ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-empty__ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-sec-ic--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-sec-ic--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-sec-ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-sec-ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-vischip--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-vischip--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-vischip background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-vischip color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .empty-note border — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ev-sec-lbl::after background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .ev-sec-lbl::before background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .f-sec::after background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .f-sec color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .fork-si background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-si border — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-si box-shadow — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-si color — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state__glow background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state__spark background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state__spark box-shadow — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--emp --st-accent — правило .fork-state--emp было побайтовым повтором базы .fork-state и удалено; значения приходят с базы
+   visual-diff-exempt: .fork-state--emp --st-accent-ink — правило .fork-state--emp было побайтовым повтором базы .fork-state и удалено; значения приходят с базы
+   visual-diff-exempt: .fork-state--emp --st-accent-soft — правило .fork-state--emp было побайтовым повтором базы .fork-state и удалено; значения приходят с базы
+   visual-diff-exempt: .fork-state--err --hl — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --hl-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --hl-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --st-accent — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --st-accent-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --st-accent-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --hl — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --hl-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --hl-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --hl — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --hl-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --hl-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --st-accent — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --st-accent-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --st-accent-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --st-accent — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --st-accent-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --st-accent-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state::before background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .is-active::before {@media (max-width: 640px)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-on --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-on:hover --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-trip:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-trip background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .lp-h--ev background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-h--ev border-bottom-color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-h--ev color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-ic background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-stepper__ic background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .mbnav__ico::before {@media (max-width: 640px)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .mbnav__item::before {@media (max-width: 640px)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-dc:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-more:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-more background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-nav-trip:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-nav-trip background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .nonext background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .nrow--unread background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .pro-hero-eyebrow background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ptrip --brand-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
+   visual-diff-exempt: .ptrip --primary-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
+   visual-diff-exempt: .s22f-pill background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .sec-lbl background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .seg background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .seg color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .sl color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tc-add__ic:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tc-add__ic background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tc-add:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tile background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tile color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tl3-card background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tl3-dh background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tl3-today background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tl3-today color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today font-family — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today font-size — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today font-weight — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today letter-spacing — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today line-height — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today text-transform — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tr__addic:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tr__addic background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tr--add:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .triplink:hover {@media (hover: hover)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .wi--activity --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--activity --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--activity background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--activity color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--primary background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .wi--primary color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .wi background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .wi color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   ═══════════════════════════════════════════════════════════════════════ */

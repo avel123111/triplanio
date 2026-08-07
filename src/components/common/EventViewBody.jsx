@@ -158,7 +158,7 @@ export function stayNights(checkInIso, checkOutIso) {
 
 export function Section({ title, accent, count, children }) {
   return (
-    <div className="ev-sec" style={accent ? { '--ev-color': accent } : undefined}>
+    <div className="ev-sec" style={accent ? { '--hl': accent } : undefined}>
       {/* Канон тот же, что у заголовка раздела в форме (`.acc__title`) — раздел
           один объект, и подпись на нём одна. Тип события несёт планка-акцент. */}
       <div className="ev-sec-lbl t-ui">
@@ -186,13 +186,15 @@ function paymentLabel(t, status) {
   return status || null;
 }
 
-// Payment status as a Lumo badge (design: badge--paid / --partial / --on-arrival).
+// Payment status as a Lumo badge (design: badge--paid / --partial / --brand).
+// «На месте» = синий бейдж, то есть ровно .badge--brand: своего класса у него
+// больше нет — .badge--on-arrival был вторым именем того же тона (04 PR3).
 function PaymentBadge({ t, status }) {
   const label = paymentLabel(t, status);
   if (!label) return null;
   const cls = status === 'paid' ? 'badge--paid'
     : status === 'partial' ? 'badge--partial'
-    : status === 'pay_on_arrival' ? 'badge--on-arrival' : 'badge--quiet';
+    : status === 'pay_on_arrival' ? 'badge--brand' : 'badge--quiet';
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 

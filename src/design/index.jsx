@@ -552,7 +552,9 @@ function _evMeta(e) {
   return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", labelKey: "" };
 }
 
-// Event-type → Lumo tile colour tokens (--evs soft bg / --evi ink).
+// Event-type → значения общего канала тинта --hl-soft / --hl-ink (04 PR3).
+// Своих имён (--evs / --evi) у плитки ленты больше нет: канал один на всё
+// приложение, а вызыватель подставляет в него ЗНАЧЕНИЕ — вот это.
 const _EV_TOK = {
   hotel:    { s: "var(--ev-hotel-soft)",    i: "var(--ev-hotel-ink)" },
   transfer: { s: "var(--ev-transfer-soft)", i: "var(--ev-transfer-ink)" },
@@ -621,7 +623,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <button className="tl3-card" style={{ "--evs": tok.s, "--evi": tok.i }} onClick={onClick}>
+      <button className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>
