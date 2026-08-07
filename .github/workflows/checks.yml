@@ -106,6 +106,7 @@ jobs:
   #   2m check-css-prefixes          — a new CSS class-name prefix (namespace) needs approval
   #   2n check-orphan-css            — a rule left pointing at a class the markup stopped emitting
   #   2p check-css-semantics        — итоговые объявления класса: база vs HEAD (ярус 2 виз. гейта)
+  #   2q check-data-door             — табло эпика TRIP-374: ни одно число «единой двери» не растёт
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -175,6 +176,20 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-orphan-css.mjs
+      # 2q — табло эпика «единая дверь в данные» (TRIP-376, Ф0.4 эпика TRIP-374).
+      # Живёт ЗДЕСЬ, а не рядом с 2o/2p: гард обходится стандартной библиотекой
+      # (гашение комментариев + регулярка по всему файлу вместо парсера — в его
+      # шапке записано, почему не `acorn` и не новая зависимость), то есть не
+      # ломает инвариант этой джобы «без `npm ci`».
+      #
+      # Блокирует только РАТЧЕТ (рост любого из 9 чисел). Дистанция до целей
+      # эпика печатается всегда, но красит прогон лишь под `--assert-target`:
+      # блокирующая проверка «доехали до цели» была бы красной все Ф1–Ф6, а
+      # постоянно красная джоба перестаёт нести информацию и её выключают.
+      - name: 2q — data door (табло TRIP-374, ни одно число не растёт)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-data-door.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.

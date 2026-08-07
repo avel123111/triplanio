@@ -17,7 +17,8 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "test": "node --test \"src/**/*.test.js\" \"scripts/**/*.test.mjs\"",
     "preview": "vite preview",
-    "check:semantics": "node scripts/ci/check-css-semantics.mjs"
+    "check:semantics": "node scripts/ci/check-css-semantics.mjs",
+    "check:door": "node scripts/ci/check-data-door.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",
