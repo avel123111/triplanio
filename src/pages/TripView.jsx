@@ -237,11 +237,11 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 //
 // Скелетон ЗНАЕТ СЕКЦИЮ: у обзора и чата свои заглушки, иначе на их месте
 // мигала бы лента (плюс правый рейл, которого у чата нет вовсе).
-function LoadingBody({ section = 'overview' }) {
+function LoadingBody({ section = DEFAULT_SECTION }) {
   if (section === 'overview') return <OverviewLens isLoading />;
   if (section === 'chat') return <ChatLensSkeleton />;
   return (
-    <div className="tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
       <SkeletonTimeline />
       <RightRailSkeleton />
     </div>
@@ -925,7 +925,10 @@ export default function TripView() {
   // выглядел бы недоступным и мигнул бы скелетоном обзора вместо чата.
   if (shellGate === 'loading' || shellGate === 'auth') {
     return (
-      <TripShell tripId={tripId} section={lens} loading>
+      // onNavigate нужен и тут: раньше мост к доку висел ВЫШЕ этого раннего
+      // возврата, поэтому пункты дока работали и на грузящемся экране - тап по
+      // «Календарю» менял адрес сразу, и по приходу данных открывался календарь.
+      <TripShell tripId={tripId} section={lens} onNavigate={setLens} loading>
         <LoadingBody section={lens} />
       </TripShell>
     );
@@ -973,45 +976,43 @@ export default function TripView() {
   // несущая — он позиционируется абсолютом относительно `.trip-content` (уже
   // ниже шапки и правее меню) и НЕ должен скроллиться вместе с содержимым,
   // поэтому он сосед <main>, а не его потомок.
+  // TRIP-195: глобальный ящик для отеля/переезда/активности — привязан к
+  // .trip-content (ниже шапки, правее меню), левые 50% со скримом. Хостит ЛИБО
+  // создание брони (AddBookingPanel — поиск + вручную, та же панель, что у
+  // редактора), ЛИБО просмотр/правку события (EventSourcePanel). Сервисы
+  // остаются на модалке (выше). Создание открывается из ленты (onAddTransfer/
+  // Hotel/Activity); просмотр/правка — из ленты/календаря (openEventView) и из
+  // бюджета (onOpenSource, поднят сюда).
   const eventDrawer = (
-    <>
-        {/* TRIP-195: global drawer for hotel/transfer/activity — anchored to
-            .trip-content (below header, right of menu), left 50% with a scrim.
-            Hosts EITHER booking-create (AddBookingPanel — find + manual, the
-            same panel the editor uses) OR event view/edit (EventSourcePanel).
-            Services keep the modal (above). Create is opened from the timeline
-            (onAddTransfer/Hotel/Activity); view/edit from timeline/calendar
-            (openEventView) and the budget (onOpenSource, lifted here). */}
-        <EventDrawerHost
-          open={drawerOpen}
-          onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
-          scrim
-        >
-          {bookingCreate.open ? (
-            <AddBookingPanel
-              kind={bookingCreate.kind}
-              tripId={tripId}
-              trip={trip}
-              visit={bookingCreate.visit}
-              fromVisit={bookingCreate.fromVisit}
-              toVisit={bookingCreate.toVisit}
-              stay22={createStay22}
-              defaultCurrency={trip?.details?.main_currency || 'EUR'}
-              defaultStart={bookingCreate.defaultStart}
-              initialTab={bookingCreate.initialTab}
-              onClose={closeBookingCreate}
-            />
-          ) : eventDrawerOpen ? (
-            <EventSourcePanel
-              kind={eventView.kind}
-              id={eventView.id}
-              warning={eventView.warning}
-              canEdit={canEditMode}
-              onClose={() => setEventView(s => ({ ...s, open: false }))}
-            />
-          ) : null}
-        </EventDrawerHost>
-    </>
+    <EventDrawerHost
+      open={drawerOpen}
+      onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
+      scrim
+    >
+      {bookingCreate.open ? (
+        <AddBookingPanel
+          kind={bookingCreate.kind}
+          tripId={tripId}
+          trip={trip}
+          visit={bookingCreate.visit}
+          fromVisit={bookingCreate.fromVisit}
+          toVisit={bookingCreate.toVisit}
+          stay22={createStay22}
+          defaultCurrency={trip?.details?.main_currency || 'EUR'}
+          defaultStart={bookingCreate.defaultStart}
+          initialTab={bookingCreate.initialTab}
+          onClose={closeBookingCreate}
+        />
+      ) : eventDrawerOpen ? (
+        <EventSourcePanel
+          kind={eventView.kind}
+          id={eventView.id}
+          warning={eventView.warning}
+          canEdit={canEditMode}
+          onClose={() => setEventView(s => ({ ...s, open: false }))}
+        />
+      ) : null}
+    </EventDrawerHost>
   );
 
   // Слот `overlays`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне

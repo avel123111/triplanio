@@ -27,7 +27,7 @@
  * Правило одно: дефолтная секция ведёт на список трипов, любая другая - на
  * дефолтную секцию этого же трипа (TRIP-349 п.3).
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
@@ -46,21 +46,23 @@ import { Skeleton } from '@/design/index';
 // перерисовали меню под пользователем.
 function SidebarSkeleton() {
   const t = useT();
-  const row = (i) => (
+  // Ширины полос — как были: у разделов своя формула, у управления своя. Свести
+  // их в одну значило бы поменять картинку загрузки без повода.
+  const row = (w) => (i) => (
     <div key={i} className="app-side__item">
       <Skeleton w={15} h={15} r={4} />
-      <Skeleton w={70 + (i % 3) * 15} h={12} r={4} />
+      <Skeleton w={w(i)} h={12} r={4} />
     </div>
   );
   return (
     <aside className="app-side">
       <div className="app-side__group">
         <div className="app-side__group-label">{t('trip.sections_title')}</div>
-        {[1, 2, 3, 4, 5, 6].map(row)}
+        {[1, 2, 3, 4, 5, 6].map(row((i) => 80 + (i % 3) * 15))}
       </div>
       <div className="app-side__group">
         <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-        {[1, 2, 3, 4].map(row)}
+        {[1, 2, 3, 4].map(row((i) => 70 + (i % 3) * 10))}
       </div>
     </aside>
   );
@@ -107,16 +109,33 @@ export default function TripShell({
   // контекст, через который тот же док получал «+» и «Ещё». Два канала на одну
   // работу, один из них мутируемый глобал. Регистрирует оболочка: у неё на
   // руках и текущая секция, и переход, и открытие меню.
-  useEffect(() => {
-    setTripNav({
+  //
+  // Колбэки держим в ref, а зависимости - только по ЗНАЧЕНИЯМ: вызыватель даёт
+  // свежие стрелки на каждый рендер, и эффект на них перерегистрировал бы док
+  // каждый раз. Сегодня цикла нет (TripView сам этот контекст не читает), но
+  // держаться это будет ровно до первого, кто его прочитает.
+  const navCbs = useRef({ onNavigate, onAdd });
+  navCbs.current = { onNavigate, onAdd };
+  const hasAdd = !!onAdd;
+  const ownsBottomEdge = sectionById(section)?.ownsBottomEdge === true;
+  // useLayoutEffect, а не useEffect: пассивный эффект выполняется ПОСЛЕ отрисовки,
+  // и док успевал показать один кадр общего варианта («Поездки · + · Профиль»)
+  // поверх открывшегося трипа - а тап, попавший в этот кадр, открывал создание
+  // трипа вместо добавления в трип. Раньше вариант решался синхронно по адресу.
+  useLayoutEffect(() => {
+    const mine = {
       current: section,
-      onNavigate: (id) => onNavigate?.(id),
+      onNavigate: (id) => navCbs.current.onNavigate?.(id),
       openMenu: () => setSideOpen(true),
-      openAdd: onAdd ? () => onAdd() : null,
-      ownsBottomEdge: sectionById(section)?.ownsBottomEdge === true,
-    });
-    return () => setTripNav(null);
-  }, [setTripNav, section, onNavigate, onAdd]);
+      openAdd: hasAdd ? () => navCbs.current.onAdd?.() : null,
+      ownsBottomEdge,
+    };
+    setTripNav(mine);
+    // Снимаем ТОЛЬКО свою регистрацию: когда экранов с оболочкой станет два
+    // (редактор во втором PR), порядок «размонтировался старый после того, как
+    // смонтировался новый» иначе оставил бы док в общем варианте при живом трипе.
+    return () => setTripNav((cur) => (cur === mine ? null : cur));
+  }, [setTripNav, section, hasAdd, ownsBottomEdge]);
 
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
   const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;
@@ -125,10 +144,10 @@ export default function TripShell({
   // паддинга и без скролла, поверхность в край.
   const flush = sectionById(section)?.flush === true;
 
-  const menuProps = useMemo(() => ({
+  const menuProps = {
     tripId, trip, lens: section, isPro, proResolved, isOwner, myRole,
     onUpgrade, onProInfo,
-  }), [tripId, trip, section, isPro, proResolved, isOwner, myRole, onUpgrade, onProInfo]);
+  };
 
   return (
     <div className="trip-shell">
@@ -140,7 +159,10 @@ export default function TripShell({
         onToggleTheme={toggleTheme}
         onBack={() => nav(backTo)}
         backTitle={t('trip.back')}
-        onMenu={() => setSideOpen(true)}
+        // Пока грузимся, бургера нет - как и было. Открывать нечего: меню ещё
+        // скелетон, а скрим и телефонный шит в этой ветке не отрисованы, то
+        // есть выехавший ящик было бы нечем закрыть.
+        onMenu={loading ? undefined : () => setSideOpen(true)}
         title={loading ? <Skeleton w={190} h={18} r={6} /> : title}
         meta={loading ? <Skeleton w={150} h={12} r={5} /> : meta}
       />
