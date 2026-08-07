@@ -125,6 +125,11 @@ const METRICS = [
   { key: 'tokens', field: 'rootTokens', label: 'токенов в :root' }, //           163
   // TRIP-340 PR1. `null` is legal on the BASE side and only there — see `bootstrap`.
   { key: 'triage', field: 'triageClasses', label: 'классов на разборе', bootstrap: true }, // 1127
+  // TRIP-364. Экран дотянулся внутрь примитива и ОБЪЯВИЛ свойство (закон 3).
+  // ТОЛЬКО «не расти»: убывание — работа 06, и фиксировать её объём этим числом
+  // нельзя. Из числа вычтен со-селекторный канон типографики — иначе храповик
+  // считал бы долгом собственный механизм ДС (см. audit-design.mjs, §12 Б).
+  { key: 'reach', field: 'reachViolations', label: 'экран дотянулся в примитив' }, // 53
 ];
 
 /* ★ WHAT `bootstrap: true` ABOVE BUYS, AND ONLY FOR THE SIDE THAT NEEDS IT.
@@ -158,12 +163,19 @@ const git = (args) =>
  *  cwd moves instead, so both sides see identical relative paths — the audit's
  *  OUT_OF_SCOPE test matches on the path, and an absolute temp path could
  *  otherwise classify files differently on the two sides. */
-function measure(cwd, side, isBase) {
+function measure(cwd, side, isBase, canonFamilies) {
   const r = spawnSync(process.execPath, [AUDIT, '--json'], {
     cwd,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, AUDIT_ROOT: 'src' },
+    // ★ HEAD меряется КАНОН-НАБОРОМ БАЗЫ (TRIP-364). Шестая метрика — «экран
+    // дотянулся внутрь примитива» — зависит от каталога по построению: перевод
+    // семьи `triage → canon` расширяет язык и тем самым ПОДНИМАЕТ число, хотя
+    // не стоит ни строки CSS. Такая переклейка объявлена легальной, бесплатной
+    // и никогда не блокируемой, поэтому храповик по «своему» каталогу краснел
+    // бы на правильном ходе — а красный на правильном ходе гард выключают.
+    // Одна мерка на обе стороны оставляет под наблюдением ровно правки CSS.
+    env: { ...process.env, AUDIT_ROOT: 'src', ...(canonFamilies ? { AUDIT_CANON_FAMILIES: canonFamilies.join(',') } : {}) },
   });
   if (r.error) die(`cannot run audit-design.mjs on ${side}: ${r.error.message}`);
   if (r.status !== 0) die(`audit-design.mjs failed on ${side} (exit ${r.status})`, (r.stderr || '').split('\n'));
@@ -287,7 +299,12 @@ try {
   die(`cannot check out ${BASE_REF} into a worktree: ${e.stderr || e.message}`);
 }
 const base = measure(basePath, `${BASE_REF} (base)`, true);
-const head = measure(root, 'HEAD', false);
+// Проверка стоит ДО замера HEAD: иначе HEAD успевает измериться СВОИМ каталогом,
+// то есть ровно той меркой, которую этот `die` и объявляет негодной.
+if (!Array.isArray(base.canonFamiliesUsed)) {
+  die('base: audit-design.mjs не отдал `canonFamiliesUsed` — шестую метрику нечем мерить одной меркой');
+}
+const head = measure(root, 'HEAD', false, base.canonFamiliesUsed);
 
 const rows = METRICS.map((m) => {
   const was = base[m.field];

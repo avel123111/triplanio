@@ -532,3 +532,38 @@ test('сломанный каталог - «не смог измерить» (2)
   assert.equal(r.code, 2, r.out);
   assert.match(r.out, /не читается/);
 });
+
+/* ────────── шестая метрика: экран дотянулся в примитив (TRIP-364) ────────── */
+
+test('★ шестая метрика ловит НОВОЕ потомковое правило на примитиве', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/a.css': '.btn { color: red; }',
+      [CATALOG]: '{"families":{"btn":"canon","scr":"triage"}}',
+    },
+    head: {
+      'src/a.css': '.btn { color: red; }\n.scr-x .btn { flex: 1; }',
+      [CATALOG]: '{"families":{"btn":"canon","scr":"triage"}}',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /экран дотянулся в примитив: 0 → 1/);
+});
+
+test('★★ ПЕРЕКЛЕЙКА triage → canon шестую метрику НЕ двигает', (t) => {
+  // Число зависит от каталога по построению: расширение языка меняет его без
+  // единой строки CSS, причём в ОБЕ стороны (на живом репо `bgt` triage→canon
+  // дал 53 → 47, то есть молча забанковал бы прогресс). Переклейка объявлена
+  // легальной, бесплатной и никогда не блокируемой, поэтому храповик по «своему»
+  // каталогу краснел бы на правильном ходе - а такой гард выключают. Лечение:
+  // HEAD меряется канон-набором БАЗЫ.
+  const css = '.btn { color: red; }\n.scr-x .btn { flex: 1; }\n.scr-x .card { gap: 2px; }';
+  const f = fixture(t, {
+    base: { 'src/a.css': css, [CATALOG]: '{"families":{"btn":"canon","card":"triage","scr":"triage"}}' },
+    head: { 'src/a.css': css, [CATALOG]: '{"families":{"btn":"canon","card":"canon","scr":"triage"}}' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /экран дотянулся в примитив\s+1 →\s+1/);
+});
