@@ -1,12 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
-import { invokeGetTripDetails } from '@/lib/invokeTripFn';
-import { useQueryGate } from '@/lib/useQueryGate';
-import TripLoadError from '@/components/trips/TripLoadError';
-import PageNotFound from '@/lib/PageNotFound';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -16,10 +10,9 @@ import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit } from '@/lib/members';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, Skeleton, useToast } from '../design/index';
+import { Btn, useToast } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import LpSheet from '@/components/ui/LpSheet';
@@ -30,16 +23,8 @@ import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
-import AppHeader from '@/components/AppHeader';
-import { useAuth } from '@/lib/AuthContext';
-import { useTheme } from '@/lib/ThemeContext';
-import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useStay22Bundle } from '@/lib/stay22';
-import TripSidebar from '@/components/trips/TripSidebar';
-import TripAccessError from '@/components/trips/TripAccessError';
-import ShareDialog from '@/components/trips/ShareDialog';
-import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
 import { transferKind } from '@/lib/transport';
@@ -139,17 +124,23 @@ function buildDraft(shell, transfers = [], lang) {
 // Compact month-grid date picker for the trip-start control. Tokens/icons from
 // the design system; no new shared component. Picks an absolute start date which
 // the caller turns into a delta shift (shiftStart) of the whole itinerary.
-export default function TripStructureEdit() {
-  const { tripId } = useParams();
+// Секция «Структура» — содержимое, а не экран. До TRIP-349 это был отдельный
+// роут со СВОЕЙ оболочкой (шапка, два инстанса меню, свой drawer, свои запросы
+// и гейты), дублировавшей оболочку экранов трипа. Теперь оболочку держит
+// TripShell, а сюда приезжает уже загруженное и уже отгейченное:
+//   shell   — тот же ответ TRIP_SHELL_KEY, что у TripView (trip + cityVisits)
+//   content — тот же ответ TRIP_CONTENT_KEY (hotels/activities/transfers/members)
+// Роль сюда НЕ передаётся: право на редактор проверяет реестр секций
+// (canAccess: roleCanEdit), а resolveSection подменяет недоступную секцию
+// дефолтной — то есть по прямому адресу `?lens=edit` наблюдатель просто не
+// попадёт. Своего ролевого гарда здесь нет намеренно, второй такой проверки
+// быть не должно.
+export default function EditLens({ tripId, shell, content }) {
   const t = useT();
   const { lang } = useI18n();
   const { fmtMoney } = useI18nFormat();
-  const nav = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { isDark, toggle: toggleTheme } = useTheme();
-  const accountPro = isProActive(user);
   const [draft, setDraft] = useState(null);
   // Left-column panel FSM (replaces the old view/add modals). null = the city
   // list; otherwise the left pane swaps in-place to a panel:
@@ -181,20 +172,12 @@ export default function TripStructureEdit() {
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
   const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
-  const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
-  const [shareOpen, setShareOpen] = useState(false);
-  // Pro "enabled by owner" info modal for non-owners (TRIP-63 №1) — mirrors
-  // TripView. A non-owner tapping the Pro lock must get the explanation, not a
-  // navigation to /pro (which would show them an upgrade they can't apply).
-  const { openProUpsell } = useProUpsell();
-  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: (content?.members || []).find(m => m.user_id === trip?.created_by)?.user_full_name || '' });
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
   // Drag / FLIP / keyboard reorder live in the shared useRouteDnD hook (also used by
   // the trip-creation flow). It's instantiated below — once `ordered`, `isAnchor`
   // and the commit callback are in scope — and its returns are destructured there.
-  // Live model: every change is persisted immediately (no draft/lock/save), so
-  // leaving is a plain navigation — nothing to save, no lock to release, no prompt.
-  const leaveNow = (to) => nav(typeof to === 'string' ? to : `/trip/${tripId}`);
+  // Живая модель: каждое изменение пишется сразу (ни драфта, ни лока, ни
+  // «сохранить»), поэтому уход из секции — это просто размонтирование.
   // Optimistic local patch only; the server owns the authoritative state (refetched
   // after each action via runAction/closePanelAndSync). No undo/dirty/reset.
   const editDraft = (updater) => setDraft((d) => (d ? updater(d) : d));
@@ -246,38 +229,50 @@ export default function TripStructureEdit() {
   const startCommit = useRef(null);         // debounce handle for trip start shift
   const startTarget = useRef(null);         // latest target trip start ISO (sync source of truth)
 
-  // isPending + fetchStatus feed useQueryGate: OFFLINE pauses these queries
-  // (fetchStatus 'paused') rather than throwing, so the gate reads that state
-  // directly instead of mistaking "paused, no data" for "no access" (TRIP-56).
-  const { data: shell, isLoading: loadingShell, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
-    queryKey: TRIP_SHELL_KEY(tripId),
-    // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
-    // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
-    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_SHELL_INCLUDE }),
-    enabled: !!tripId,
-    retry: false,
-    staleTime: 30000, // reuse TripView's cached shell on entry → no reload flicker
-  });
-  // Shares TripView's cache entry → must request the SAME include even though
-  // the editor ignores the budget half (TRIP-277; rationale in trip-data.js).
-  const { data: content, error: contentError, isPending: contentPending, fetchStatus: contentFetchStatus } = useQuery({
-    queryKey: TRIP_CONTENT_KEY(tripId),
-    queryFn: () => invokeGetTripDetails({ tripId, include: TRIP_CONTENT_INCLUDE }),
-    enabled: !!tripId && !loadingShell,
-    retry: false,
-  });
+  // ДОСЫЛКА ОТЛОЖЕННОГО ПРИ УХОДЕ. Оба дебаунса ждут 350 мс после последнего
+  // клика, и до TRIP-349 у них не было ни cleanup, ни досылки: тап по степперу
+  // ночей и уход в эти 350 мс — и RPC не улетал НИКОГДА. Локальная правка при
+  // этом уже отрисована, поэтому потеря выглядит как «сервер молча откатил».
+  //
+  // Раньше, чтобы нарваться, надо было успеть сменить РОУТ; теперь уход — это
+  // один тап по пункту меню, то есть попасть в окно стало заметно проще. Шлём
+  // из cleanup напрямую, а не через runAction: компонент уже размонтирован,
+  // seq-guard и рефетч ему ни к чему, а показать тост уже негде.
+  //
+  // Зависимостей нет намеренно: эффект обязан сработать РОВНО один раз, на
+  // размонтировании, и прочитать refs в их последнем состоянии.
+  useEffect(() => () => {
+    const nights = nightsCommit.current;
+    for (const [id, handle] of nights) {
+      clearTimeout(handle);
+      const finalN = nightsTarget.current.get(id);
+      if (finalN != null) rpcSetCityNights(id, finalN).catch(() => {});
+    }
+    nights.clear();
+    nightsTarget.current.clear();
+    if (startCommit.current) {
+      clearTimeout(startCommit.current);
+      startCommit.current = null;
+      const finalBase = startTarget.current;
+      startTarget.current = null;
+      if (finalBase) rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId]);
 
-  // Build the draft SYNCHRONOUSLY during render (not in an effect) the moment
-  // shell+content are available — they're cached from TripView, so the editor
-  // paints on the very first render with no skeleton frame (no entry flicker).
+  // Запросов тут больше НЕТ: shell и content приезжают пропами от TripView.
+  // Свои useQuery были не «второй загрузкой» (ключи и include те же, кэш общий),
+  // а вторым набором ГЕЙТОВ рядом с первым - и разъехаться они могли молча, что
+  // для экрана записи опаснее лишнего запроса.
+
+  // Драфт строится СИНХРОННО в рендере (не эффектом), как только есть обе
+  // половины: они уже в кэше у родителя, поэтому секция рисуется первым же
+  // кадром, без скелетона.
   if (draft === null && shell && content) {
     setDraft(buildDraft(shell, content.transfers, lang));
   }
 
   const trip = shell?.trip;
-  // Trip-level Pro for the shared sidebar's "upgrade" card — owner-aware, via the
-  // same CACHED hook as TripView so the card doesn't re-flash on the edit boundary.
-  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
   // Bookings are read LIVE from content. A removed city + its bookings are deleted
   // server-side immediately (remove_city cascade) and gone on the next refetch.
   const liveHotels = useMemo(() => (content?.hotels || []), [content]);
@@ -541,78 +536,22 @@ export default function TripStructureEdit() {
     setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: a, toVisit: b });
   };
 
-  // Persistent app-header - rendered in EVERY branch (loading / blocked / error /
-  // ready) so it never blanks out while the lock RPC + queries resolve. The page
-  // title (name · dates · nights) lives in the LEFT column, not here; the header
-  // is the global app bar + the editor action buttons.
-  //   Undo     = revert the last single action (step back).
-  //   Отменить = discard ALL edits, release the lock, return to the timeline.
-  //   Сброс    = discard all edits but STAY in the editor.
-  const headerEl = (
-    <AppHeader
-      isTrip
-      user={user}
-      isPro={accountPro}
-      isDark={isDark}
-      onToggleTheme={toggleTheme}
-      onBack={() => leaveNow(`/trip/${tripId}`)}
-      backTitle={t('tse.exit_editor')}
-      onBrand={() => leaveNow('/trips')}
-    />
-  );
-
-  // The map is always shown beside the itinerary now (the old "hide map" toggle
-  // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
-
-  // TRIP-56: distinguish the trip-load state instead of one catch-all "no
-  // access", and read isPending + fetchStatus (not just error) so OFFLINE —
-  // where React Query PAUSES the query and never throws — resolves to the retry
-  // screen rather than a false "no access" (or, for content, an endless skeleton
-  // since the draft can't build without it). 'auth' = session gone → /login;
-  // 'temporary' = 500/network/offline → retry; 'access' (403/404) → no-access.
-  // Mirrors TripView's gate (shared useQueryGate hook: classification + auto
-  // /login on a dead session). Render stays per-screen.
-  // emptyIsOk:false on both — single-resource fetches: an empty shell means "no
-  // access" (belt over the thrown-403/404 path), and empty content can't build a
-  // draft, so it must gate to retry rather than render an empty editor (TRIP-220).
-  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shell?.trip, false);
-  const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!content, false);
-  if (shellGate === 'auth' || contentGate === 'auth') return <>{headerEl}</>;
-  if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
-  // not_found = no such trip / broken id (404) → neutral "doesn't exist", not
-  // "no access". Split from 'access' in TRIP-208 (mirrors TripView).
-  if (shellGate === 'not_found') return <PageNotFound />;
-  if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
-  // Shell is fine but content can't be loaded (offline with nothing cached) →
-  // the draft would never build → show the retry screen, not a forever-skeleton.
-  // (content has no perms of its own, so any non-loadable state → retry.)
-  if (contentGate === 'temporary' || contentGate === 'access' || contentGate === 'not_found') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
-  // shell/content are cached (shared with TripView) so the editor paints instantly.
-  if (shellGate === 'loading' || contentGate === 'loading' || !draft) {
-    return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
-  }
+  // Ни шапки, ни гейтов, ни ролевого гарда тут больше нет:
+  //   шапку и меню держит TripShell (раньше это была вторая, своя копия);
+   //   гейты shell/content отработал TripView до того, как отрисовать секцию;
+  //   право на редактор проверил реестр секций (canAccess: roleCanEdit), и
+  //   он же не пускает сюда по прямому адресу - resolveSection подменит
+  //   недоступную секцию дефолтной.
+  // Осталась ОДНА собственная проверка: без content драфт не построить.
+  if (!draft) return null;
 
   const ordered = sortVisits(draft.nodes);
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
-  // Header count = unique transit cities (a city visited twice counts once),
-  // matching the trip header / overview / trips card everywhere.
   const cityCount = uniqueCityCount(draft.nodes);
-  // Header date range — SAME formatter and SAME input (all draft nodes) as the
-  // trip header in TripView, so the editor header reads identically (incl. the
-  // year): "10 сент. – 4 окт. 2026".
   const dateRange = formatTripRange(draft.nodes, '-');
   const startDate = seq[0]?.start_date;
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
-  // Shared role rule: created_by wins over any trip_members row, so the creator
-  // is never blocked from their own editor with "no access" (TRIP-143).
-  const myRole = resolveMyRole(content?.members, trip, user);
-  const isOwner = myRole === 'owner';
-  // The /edit route is reachable by direct URL — a viewer has no edit rights, so
-  // guard it here with the SAME shared "no access" stub used for shellError above
-  // (role is resolved only after content loads, so this can't flash). Server-side
-  // RLS hardening for direct REST writes is tracked as a separate task.
-  if (!roleCanEdit(myRole)) return <TripAccessError onBack={() => nav(`/trip/${tripId}`)} />;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
@@ -812,58 +751,17 @@ export default function TripStructureEdit() {
   // (TripSidebar drawer); Copy trip moved into the Settings lens. The editor
   // header carries no duplicate buttons.
 
+  // Секция отдаёт ТОЛЬКО своё содержимое. Оболочка (`.trip-shell` -> шапка ->
+  // меню -> `.trip-content` -> скроллящееся тело) приезжает от TripShell, а
+  // секция объявлена flush - тело без паддинга и без своего скролла, потому что
+  // скроллит она сама, внутри колонок.
+  //
+  // Раньше здесь стояла ВТОРАЯ оболочка: `.ts-screen` с раскладкой инлайном
+  // (`height: 100vh` вместо `100dvh` у трип-экранов), своя шапка, СВОЙ
+  // выезжающий `.ts-drawer` и ДВА инстанса TripSidebar - для рельса и для
+  // ящика. Телефонного шита меню у неё не было вовсе, поэтому на ≤640 меню
+  // редактора вело себя не так, как на всех остальных экранах трипа.
   return (
-    <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
-    <AppHeader
-      isTrip
-      user={user}
-      isPro={accountPro}
-      isDark={isDark}
-      onToggleTheme={toggleTheme}
-      onBack={() => leaveNow(`/trip/${tripId}`)}
-      backTitle={t('tse.exit_editor')}
-      onBrand={() => leaveNow('/trips')}
-      onMenu={() => setSideOpen(true)}
-      title={trip?.title}
-      meta={
-        <>
-          {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
-          {totalNights != null && <><span>·</span><span>{totalNights} {dayWord(totalNights, t)}</span></>}
-          {cityCount > 0 && <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
-        </>
-      }
-    />
-    {/* Mobile menu drawer — burger opens the full sidebar (the static icon-rail
-        is hidden on mobile). */}
-    <div className={'ts-drawer' + (sideOpen ? ' is-open' : '')}>
-      <div className="ts-drawer__scrim" onClick={() => setSideOpen(false)} />
-      <TripSidebar
-        tripId={tripId} trip={trip} isEditScreen
-        onNavigate={(id) => { setSideOpen(false); leaveNow(`/trip/${tripId}?lens=${id}`); }}
-        isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
-        onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-        onProInfo={() => { setSideOpen(false); openProInfo(); }}
-        onShare={() => setShareOpen(true)}
-      />
-    </div>
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <div className="ts-sidecol">
-        <TripSidebar
-          tripId={tripId} trip={trip} isEditScreen
-          onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}
-          isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
-          onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-          onProInfo={openProInfo}
-          onShare={() => setShareOpen(true)}
-        />
-      </div>
-      {/* content column — screen-title bar sits BESIDE the sidebar (like every
-          other screen) so the menu doesn't shift when navigating into the editor */}
-      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Two columns: itinerary (left, with the "Маршрут" panel header) + the
-          always-on map (right). The per-screen title bar was removed; the map
-          starts at the same top edge as the route header. On phones the map is
-          hidden via CSS (.ts-col-right) and the itinerary spans full width. */}
       <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - bordered container (same 14px inset / radius as the map box on
             the right). The "Маршрут" header is the container's header; an open
@@ -1042,89 +940,10 @@ export default function TripStructureEdit() {
             </button>
           </div>
         </div>
-      </div>{/* /ts-grid */}
-      </div>{/* /editor content column */}
-    </div>
-
-
-      <style>{`
-        .ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
-        .ts-step:hover { background: var(--wash); }
-        .ts-step:active:not(:disabled) { transform: scale(0.9); }
-        .ts-step:disabled { opacity: .3; cursor: default; }
-        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
-        /* TRIP-186: левая колонка «оголена» — контейнерная рамка/радиус/фон и
-           маржины убраны, рейл и заголовок «Маршрут» лежат прямо на канвасе, а
-           список растягивается. Карта справа рамку сохраняет. */
-        .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 0; overflow: hidden; background: transparent; }
-        /* Открытая боковая панель теперь сама себе рамка (карточка на канвасе),
-           с тем же инсетом, что и карта. */
-        .ts-leftbox .lp { margin: 14px 7px 14px 14px; }
-        /* Заголовок «Маршрут» скроллится со списком, выровнен с колонками. */
-        .ts-leftscroll > .ts-routehead { margin: 0 0 8px; }
-        /* "Маршрут" panel header (left column) + trip-start control. */
-        .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 4px; }
-        .ts-routehead__tt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        /* TRIP-188: «Маршрут» = класс "t-mono tp-caption" (моно + caption-модификатор
-           капс/трекинг/синий, app.css). Своего правила на .ts-routehead__title тут нет —
-           иначе scoped-специфичность styled-jsx перебила бы .tp-caption. */
-        .ts-routehead__sub { color: var(--muted); }
-        .ts-routehead__sp { flex: 1; }
-        .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
-        .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
-        .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
-        .ts-startctl__date:hover { background: var(--wash); }
-        /* Trip-start calendar popover content. */
-        .ts-cal { width: 248px; }
-        .ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .ts-cal__title { color: var(--ink); text-transform: capitalize; }
-        .ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-        .ts-cal__wd { margin-bottom: 4px; }
-        .ts-cal__wdc { text-align: center; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
-        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: var(--r-sm); cursor: pointer; color: var(--ink); display: grid; place-items: center; }
-        .ts-cal__day:hover { background: var(--wash); }
-        .ts-cal__day.on { background: var(--brand); color: #fff; }
-        /* In the mobile bottom-sheet the calendar spans the sheet width. */
-        .sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; }
-        @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
-        .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
-        @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
-        /* TRIP-176: side-panel drawer. Absolute-fills the LEFT column only — below
-           the app header and to the right of the icon rail — so it never covers the
-           header or the left menu. Stops at the column seam, leaving the natural gap
-           to the map. No scrim: the map (right half) stays interactive. Route rail
-           mounted beneath. Desktop two-column only. */
-        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
-        .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
-        @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-        /* Warnings FAB: lift on hover, press on click. */
-        .ts-fab { transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
-        .ts-fab:hover { transform: scale(1.06); }
-        .ts-fab:active { transform: scale(0.96); }
-        /* Delete-confirm: backdrop fades, card scales up from near-full (never from nothing), centered. */
-        .ts-confirm-backdrop { animation: tsBackdropIn .16s var(--ease-out) both; }
-        .ts-confirm-card { transform-origin: center; animation: tsCardIn .2s var(--ease-out) both; }
-        @keyframes tsBackdropIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes tsCardIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-        @media (prefers-reduced-motion: reduce) {
-          .te-panefade, .ts-confirm-backdrop, .ts-confirm-card, .ts-pdrawer { animation: none; }
-          .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
-        }
-        @media (max-width: 1080px) {
-          .ts-screen { height: auto !important; min-height: 100vh; overflow: visible !important; }
-          .ts-grid { grid-template-columns: 1fr !important; overflow: visible !important; }
-          .ts-leftscroll { overflow: visible !important; }
-          .ts-leftbox { margin: 0 !important; }
-          .ts-map { flex: 0 0 340px !important; left: 14px !important; }
-          .ts-warn { flex: 0 0 auto !important; min-height: 300px; }
-        }
-      `}</style>
-      {/* Unsaved-changes guard when leaving the editor (menu / logo / back). */}
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={draft?.nodes || []} transfers={liveTransfers} />
-
-    </div>
+      </div>
   );
 }
+
 
 
 function Conf({ n }) {

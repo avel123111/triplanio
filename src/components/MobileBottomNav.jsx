@@ -29,7 +29,7 @@ import { DOCK_SECTIONS, sectionById } from '@/lib/tripMenu';
 
 // ─── Context bridge ──────────────────────────────────────────────────────────
 // TripShell регистрирует { current, onNavigate, openMenu, openAdd,
-// ownsBottomEdge } пока смонтирован; null = экрана трипа сейчас нет.
+// hidesDock } пока смонтирован; null = экрана трипа сейчас нет.
 const MobileNavContext = createContext({ tripNav: null, setTripNav: () => {} });
 
 export function MobileNavProvider({ children }) {
@@ -66,14 +66,17 @@ export default function MobileBottomNav() {
   const { openChoice } = useCreateTrip();
   const path = loc.pathname;
 
-  // Секция забирает нижнюю кромку экрана (композер чата) → плавающий док сел бы
-  // на кнопку отправки. Флаг объявлен в реестре секций, а не разобран здесь по
-  // адресу.
-  const sectionOwnsBottom = tripNav?.ownsBottomEdge === true;
+  // Секция сама объявляет, что дока на ней быть не должно (композер чата забрал
+  // нижнюю кромку; у редактора раскладка под док ещё не сделана). Причина живёт
+  // в реестре секций строкой — здесь нужен только факт, поэтому приводим к
+  // булеву, а не сверяем с true.
+  const sectionHidesDock = !!tripNav?.hidesDock;
 
   // Роуты, которые владеют своей навигацией / не являются экранами приложения.
   // Первые четыре — пояс поверх ремня: до них исполнение не доходит, App.jsx
   // возвращает эти ветки ДО аут-гейта, под которым живёт этот док.
+  // Строки про /trip/:id/edit тут больше НЕТ: редактор стал секцией и прячет
+  // док сам, объявлением в реестре.
   const hidden =
     path.startsWith('/login') ||
     path.startsWith('/reset-password') ||
@@ -82,17 +85,13 @@ export default function MobileBottomNav() {
     path === '/' ||
     path.startsWith('/new-trip') ||
     path.startsWith('/plan-trip-ai') ||
-    // Структурный редактор — пока отдельный роут со своей оболочкой, поэтому
-    // `TripShell` там не смонтирован и решить по регистрации нельзя. Строка
-    // уходит вторым PR TRIP-349, когда редактор станет секцией.
-    /^\/trip\/[^/]+\/edit\/?$/.test(path) ||
-    sectionOwnsBottom;
+    sectionHidesDock;
 
   // Помечаем корень, пока нижней кромкой кто-то владеет — этим доком либо
   // композером на той секции, что его прячет. Консент-баннер живёт соседом
   // роутера и не видит ни того, ни другого, поэтому читает класс (TRIP-311).
   // Класс, а не `:has()`: цель сборки включает Firefox 104, где его ещё нет.
-  const bottomOwned = !hidden || sectionOwnsBottom;
+  const bottomOwned = !hidden || sectionHidesDock;
   useEffect(() => {
     document.documentElement.classList.toggle('has-bottom-dock', bottomOwned);
     return () => document.documentElement.classList.remove('has-bottom-dock');

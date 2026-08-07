@@ -117,7 +117,9 @@ export default function TripShell({
   const navCbs = useRef({ onNavigate, onAdd });
   navCbs.current = { onNavigate, onAdd };
   const hasAdd = !!onAdd;
-  const ownsBottomEdge = sectionById(section)?.ownsBottomEdge === true;
+  // Значение флага — ПРИЧИНА (строка), поэтому приводим к булеву, а не сверяем
+  // с true: `=== true` тихо вернул бы false на любой живой причине.
+  const hidesDock = !!sectionById(section)?.hidesDock;
   // useLayoutEffect, а не useEffect: пассивный эффект выполняется ПОСЛЕ отрисовки,
   // и док успевал показать один кадр общего варианта («Поездки · + · Профиль»)
   // поверх открывшегося трипа - а тап, попавший в этот кадр, открывал создание
@@ -128,14 +130,14 @@ export default function TripShell({
       onNavigate: (id) => navCbs.current.onNavigate?.(id),
       openMenu: () => setSideOpen(true),
       openAdd: hasAdd ? () => navCbs.current.onAdd?.() : null,
-      ownsBottomEdge,
+      hidesDock,
     };
     setTripNav(mine);
     // Снимаем ТОЛЬКО свою регистрацию: когда экранов с оболочкой станет два
     // (редактор во втором PR), порядок «размонтировался старый после того, как
     // смонтировался новый» иначе оставил бы док в общем варианте при живом трипе.
     return () => setTripNav((cur) => (cur === mine ? null : cur));
-  }, [setTripNav, section, hasAdd, ownsBottomEdge]);
+  }, [setTripNav, section, hasAdd, hidesDock]);
 
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
   const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;

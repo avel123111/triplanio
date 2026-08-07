@@ -85,7 +85,7 @@ test('availableSections отдаёт группу в порядке реестр
   const lenses = availableSections(tripWith({ budget: true, chat: true }), 'owner', 'lens');
   assert.deepEqual(lenses.map((s) => s.id), ['overview', 'timeline', 'map', 'calendar', 'budget', 'docs', 'chat']);
   const manage = availableSections(plainTrip, 'owner', 'manage');
-  assert.deepEqual(manage.map((s) => s.id), ['members', 'settings']);
+  assert.deepEqual(manage.map((s) => s.id), ['edit', 'members', 'settings']);
 });
 
 test('availableSections режет и по аддону, и по роли одновременно', () => {
@@ -111,8 +111,19 @@ test('несуществующая секция падает на дефолт, 
   assert.equal(resolveSection('опечатка', plainTrip, 'owner'), DEFAULT_SECTION);
   assert.equal(resolveSection('', plainTrip, 'owner'), DEFAULT_SECTION);
   assert.equal(resolveSection(undefined, plainTrip, 'owner'), DEFAULT_SECTION);
-  // 'edit' пока НЕ секция (отдельный роут) — вторым PR TRIP-349 станет секцией.
-  assert.equal(resolveSection('edit', plainTrip, 'owner'), DEFAULT_SECTION);
+});
+
+test('редактор структуры закрыт наблюдателю и открыт правящим ролям', () => {
+  // Это ЕДИНСТВЕННЫЙ гард на вход в редактор: своей проверки роли у секции
+  // больше нет (была — в отдельном роуте), а по прямому `?lens=edit`
+  // наблюдателя разворачивает resolveSection. Ломается предикат — открывается
+  // экран записи тому, кто писать не может.
+  assert.equal(isSectionAvailable('edit', plainTrip, 'viewer'), false);
+  assert.equal(resolveSection('edit', plainTrip, 'viewer'), DEFAULT_SECTION);
+  for (const role of ['owner', 'admin']) {
+    assert.equal(isSectionAvailable('edit', plainTrip, role), true, role);
+    assert.equal(resolveSection('edit', plainTrip, role), 'edit', role);
+  }
 });
 
 test('недоступная секция падает на дефолт, доступная остаётся', () => {
@@ -126,16 +137,23 @@ test('недоступная секция падает на дефолт, дос
 
 test('flush стоит ровно у секций, которые сами владеют своим скроллом', () => {
   const flush = SECTIONS.filter((s) => s.flush).map((s) => s.id);
-  assert.deepEqual(flush, ['map', 'chat']);
+  assert.deepEqual(flush, ['map', 'chat', 'edit']);
 });
 
-test('нижнюю кромку забирает только чат (композер)', () => {
-  const owns = SECTIONS.filter((s) => s.ownsBottomEdge).map((s) => s.id);
-  assert.deepEqual(owns, ['chat']);
-  // Забирающая кромку секция обязана быть flush: док прячется ради того, чтобы
-  // поверхность дошла до края, а падающее тело этот край отдаёт обратно.
-  for (const s of SECTIONS) {
-    if (s.ownsBottomEdge) assert.equal(s.flush, true, `${s.id} забирает кромку, но не flush`);
+test('док прячут только чат и редактор, и у каждого НАЗВАНА причина', () => {
+  const hiding = SECTIONS.filter((s) => s.hidesDock);
+  assert.deepEqual(hiding.map((s) => s.id), ['chat', 'edit']);
+  // Значение — ПРИЧИНА, а не true: у чата нижнюю кромку забрал композер, у
+  // редактора раскладка под док вынесена отдельной задачей. `true` или пустая
+  // строка означали бы «причину забыли», и следующий, кто придёт возвращать
+  // док, не поймёт, какой из двух случаев он закрывает.
+  const REASONS = new Set(['composer', 'pending-layout']);
+  for (const s of hiding) {
+    assert.equal(typeof s.hidesDock, 'string', `${s.id}: причина не строка`);
+    assert.ok(REASONS.has(s.hidesDock), `${s.id}: незнакомая причина ${s.hidesDock}`);
+    // Прячущая док секция обязана быть flush: док убирают ради того, чтобы
+    // поверхность дошла до края, а падающее тело этот край отдаёт обратно.
+    assert.equal(s.flush, true, `${s.id} прячет док, но не flush`);
   }
 });
 

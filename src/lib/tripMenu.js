@@ -23,8 +23,12 @@ import { roleCanEdit } from './members.js';
 //   event     — имя события аналитики при открытии (TRIP-213 Ф2c)
 //   flush     — секция сама владеет своим скроллом: тело без паддинга и без
 //               скролла (`.trip-screen-body--flush`), поверхность в край
-//   ownsBottomEdge — секция забирает нижнюю кромку экрана (композер чата), то
-//               есть плавающий мобильный док на ней не показывается
+//   hidesDock — на секции не показывается плавающий мобильный док. Значение —
+//               ПРИЧИНА, а не просто true: причины разные, и следующий, кто
+//               придёт возвращать док, должен видеть, какую из них он закрывает.
+//                 'composer'       — нижнюю кромку забрал композер чата
+//                 'pending-layout' — раскладка под док ещё не сделана
+//                                    (TRIP-349 п.2 отложен намеренно)
 export const SECTIONS = [
   { id: 'overview', group: 'lens', labelKey: 'trip_menu.overview', icon: 'grid', event: 'overview_opened' },
   { id: 'timeline', group: 'lens', labelKey: 'trip_menu.timeline', icon: 'list', event: 'timeline_opened' },
@@ -32,7 +36,11 @@ export const SECTIONS = [
   { id: 'calendar', group: 'lens', labelKey: 'trip_menu.calendar', icon: 'calendar', event: 'calendar_opened' },
   { id: 'budget', group: 'lens', labelKey: 'trip.sidebar_budget', icon: 'wallet', event: 'budget_opened', addon: 'budget' },
   { id: 'docs', group: 'lens', labelKey: 'trip_menu.documents', icon: 'file', event: 'documents_opened' },
-  { id: 'chat', group: 'lens', labelKey: 'trip_menu.chat', icon: 'chat', event: 'chat_opened', addon: 'chat', flush: true, ownsBottomEdge: true },
+  { id: 'chat', group: 'lens', labelKey: 'trip_menu.chat', icon: 'chat', event: 'chat_opened', addon: 'chat', flush: true, hidesDock: 'composer' },
+  // Структурный редактор. Секция как любая другая — до TRIP-349 это был
+  // отдельный роут со СВОЕЙ оболочкой, и именно из этого дубля выросло всё
+  // остальное. Гейт тот же, что пускал в роут (зеркалит _can_edit_trip).
+  { id: 'edit', group: 'manage', labelKey: 'trip.edit_structure', icon: 'edit', event: 'trip_editor_opened', canAccess: roleCanEdit, flush: true, hidesDock: 'pending-layout' },
   // Наблюдатель видит Настройки (read-only — чтобы выйти из трипа), но не
   // Участников (TRIP-137).
   { id: 'members', group: 'manage', labelKey: 'trip.sidebar_members', icon: 'users', event: 'members_opened', canAccess: (role) => role !== 'viewer' },
@@ -85,11 +93,3 @@ export function resolveSection(id, trip, myRole) {
   return isSectionAvailable(id, trip, myRole) ? id : DEFAULT_SECTION;
 }
 
-// Структурный редактор — пока отдельный роут (/trip/:id/edit), показывается в
-// группе управления только тем, кто может править (зеркалит _can_edit_trip).
-// Переезжает в SECTIONS вторым PR TRIP-349.
-export const EDIT_ITEM = { id: 'edit', labelKey: 'trip.edit_structure', icon: 'edit' };
-
-export function canEditStructure(myRole) {
-  return roleCanEdit(myRole);
-}

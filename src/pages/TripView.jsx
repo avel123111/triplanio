@@ -36,6 +36,7 @@ import MembersLens, { InviteDialog } from './MembersLens';
 import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
+import EditLens from './EditLens';
 import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
@@ -1283,6 +1284,14 @@ export default function TripView() {
               members={members}
               myRole={myRole}
             />
+          )}
+          {/* Структурный редактор. До TRIP-349 — отдельный роут /trip/:id/edit со
+              своей оболочкой; теперь такая же секция, как остальные, и получает
+              те же shell/content, что уже загружены здесь (ключи и include у его
+              прежних запросов совпадали с этими — общий кэш, но ВТОРОЙ набор
+              гейтов). Роль не передаём: право в реестре секций. */}
+          {shownLens === 'edit' && (
+            <EditLens tripId={tripId} shell={shellData} content={contentData} />
           )}
           {shownLens === 'settings' && (
             <SettingsLens
