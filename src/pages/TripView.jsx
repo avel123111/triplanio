@@ -11,15 +11,12 @@ import PageNotFound from '@/lib/PageNotFound';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { useIsPhone } from '@/hooks/use-mobile';
-import { isProActive, useTripProStatus } from '@/lib/subscription';
+import { useTripProStatus } from '@/lib/subscription';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { isAddonEnabled } from '@/lib/tripAddons';
-import { isLensVisible } from '@/lib/tripMenu';
-import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
-import AppHeader from '@/components/AppHeader';
-import { useMobileNav } from '@/components/MobileBottomNav';
+import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from '@/lib/tripMenu';
+import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
-import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
@@ -49,19 +46,9 @@ import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
-// Per-section open events (TRIP-213 Ф2c) — one distinct event per lens so it's
-// clear which section the user opened, instead of a single section_opened+breakdown.
-const SECTION_OPEN_EVENT = {
-  overview: 'overview_opened',
-  timeline: 'timeline_opened',
-  map: 'map_opened',
-  calendar: 'calendar_opened',
-  budget: 'budget_opened',
-  docs: 'documents_opened',
-  members: 'members_opened',
-  settings: 'settings_opened',
-  chat: 'chat_opened',
-};
+// Событие открытия секции (TRIP-213 Ф2c — по одному на секцию, чтобы было видно,
+// что именно открыли) живёт в реестре секций рядом с самой секцией: отдельной
+// картой оно было ещё одним списком, который надо не забыть.
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -244,68 +231,19 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 
 // ─── LoadingScreen / ErrorScreen ──────────────────────────────────────────────
 
-function LoadingScreen({ lens = 'overview', user, isPro, isDark, onToggleTheme, onBack }) {
-  const { t } = useI18n();
+// Тело экрана на время загрузки shell-запроса. Оболочку (шапку со скелетонами
+// названия/меты и скелетон меню) держит TripShell — она одна и та же для
+// загруженного и грузящегося экрана, поэтому при резолве ничего не перекладывается.
+//
+// Скелетон ЗНАЕТ СЕКЦИЮ: у обзора и чата свои заглушки, иначе на их месте
+// мигала бы лента (плюс правый рейл, которого у чата нет вовсе).
+function LoadingBody({ section = 'overview' }) {
+  if (section === 'overview') return <OverviewLens isLoading />;
+  if (section === 'chat') return <ChatLensSkeleton />;
   return (
-    <div className="trip-shell">
-      {/* TRIP-225: правый кластер хедера (профиль/тема/колокольчик) и бренд доступны
-          оптимистично (AuthContext/ThemeContext/своя query) — рендерим НАСТОЯЩИЙ
-          AppHeader, а не скелетон. Скелетоним только название/мету трипа: они ждут
-          shell-запрос. */}
-      <AppHeader
-        isTrip
-        user={user}
-        isPro={isPro}
-        isDark={isDark}
-        onToggleTheme={onToggleTheme}
-        onBack={onBack}
-        backTitle={t('trip.back')}
-        title={<Skeleton w={190} h={18} r={6} />}
-        meta={<Skeleton w={150} h={12} r={5} />}
-      />
-      <div className="trip-body">
-        {/* Skeleton sidebar */}
-        <aside className="app-side">
-          <div className="app-side__group">
-            <div className="app-side__group-label">{t('trip.sections_title')}</div>
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
-                <Skeleton w={15} h={15} r={4} />
-                <Skeleton w={80 + (i % 3) * 15} h={12} r={4} />
-              </div>
-            ))}
-          </div>
-          <div className="app-side__group">
-            <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
-                <Skeleton w={15} h={15} r={4} />
-                <Skeleton w={70 + (i % 3) * 10} h={12} r={4} />
-              </div>
-            ))}
-          </div>
-        </aside>
-        <div className="trip-content">
-          {/* Chat is a full-bleed room, exactly as when it is loaded — otherwise
-              the skeleton sits in a padded body and the whole screen jumps. */}
-          <main className={'trip-screen-body' + (lens === 'chat' ? ' trip-screen-body--flush' : '')}>
-            {/* Same building blocks as the loaded layout, so nothing reshuffles
-                when shell → content resolves. Lens-aware: overview and chat each
-                get their OWN skeleton, instead of flashing a timeline (plus a
-                right rail the chat lens does not even have). */}
-            {lens === 'overview' ? (
-              <OverviewLens isLoading />
-            ) : lens === 'chat' ? (
-              <ChatLensSkeleton />
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-                <SkeletonTimeline />
-                <RightRailSkeleton />
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
+    <div className="tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+      <SkeletonTimeline />
+      <RightRailSkeleton />
     </div>
   );
 }
@@ -791,9 +729,10 @@ export default function TripView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const lens = searchParams.get('lens') || 'overview';
+  const lens = searchParams.get('lens') || DEFAULT_SECTION;
 
-  const { isDark, toggle: toggleTheme } = useTheme();
+  // Тема и аккаунт-Pro нужны только шапке, а её держит TripShell и берёт их из
+  // контекстов сама.
   // Right-rail service add - opens ForkPartnerModal for the chosen kind, then
   // routes to the right edit dialog when the user picks "Manual". Services stay
   // on the modal (TRIP-195 leaves esim/insurance/car_rental on modals for now).
@@ -831,28 +770,16 @@ export default function TripView() {
     setEventView({ open: true, kind, id, warning: null });
   };
 
-  // Wire window.__navigate so Screen components can navigate
-  useEffect(() => {
-    window.__navigate = (target) => {
-      if (target === 'collection') { nav('/trips'); return; }
-      if (target === 'ai-planner') { nav('/plan-trip-ai'); return; }
-      const lensIds = ['overview', 'timeline', 'map', 'calendar', 'budget', 'docs', 'members', 'settings', 'chat'];
-      if (lensIds.includes(target)) {
-        const sp = new URLSearchParams(searchParams);
-        // overview is the default lens → drop the param; everything else sets it.
-        if (target === 'overview') sp.delete('lens'); else sp.set('lens', target);
-        setSearchParams(sp, { replace: false });
-      }
-    };
-    return () => { window.__navigate = undefined; };
-  }, [tripId, nav, searchParams, setSearchParams]);
-
+  // Переход между секциями. Единственный писатель `?lens=` — раньше их было
+  // два: этот и глобал `window.__navigate`, который вешался на window ради
+  // мобильного дока. Док теперь ходит через тот же контекст, что и «+»/«Ещё»
+  // (см. TripShell), поэтому писатель остался один.
   const setLens = (id) => {
     const sp = new URLSearchParams(searchParams);
-    if (id === 'overview') sp.delete('lens'); else sp.set('lens', id);
+    // Дефолтная секция в адрес не пишется; всё остальное — пишется.
+    if (id === DEFAULT_SECTION) sp.delete('lens'); else sp.set('lens', id);
     setSearchParams(sp, { replace: false });
-    setSideOpen(false); // close the mobile sidebar after navigating
-    const sectionEvent = SECTION_OPEN_EVENT[id];
+    const sectionEvent = sectionById(id)?.event;
     if (sectionEvent) track(sectionEvent, { trip_id: tripId });
   };
 
@@ -929,8 +856,6 @@ export default function TripView() {
 
   // Unified engine: same validateTrip that powers Edit Mode, collapsed to <=1
   // issue per entity so the timeline panel never piles up duplicates.
-  // Account-level Pro (header chip). For IN-TRIP gating use tripIsPro below.
-  const accountPro = isProActive(user);
   const isOwner = myRole === 'owner';
 
   // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
@@ -966,36 +891,21 @@ export default function TripView() {
   const openProInfo = () => openProUpsell({ mode: 'info', ownerName: members.find(m => m.user_id === trip?.created_by)?.user_full_name || '' });
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
-  // Global trip-header state: mobile sidebar, and the right-hand actions the
-  // active lens projects into the screen-title bar. (Trip name + cover editing
-  // moved into the Settings lens; the metadata modal was retired.)
-  const [sideOpen, setSideOpen] = useState(false);
-  // Mobile bottom-nav bridge: the global nav's "…" opens this menu sheet and its
-  // central "+" opens the add sheet below. Intent drives auto-opening the add
-  // dialog of the lens we navigate to.
-  const { setTripCtx } = useMobileNav();
+  // Открытие бокового меню и мобильный док теперь на TripShell — она владеет
+  // оболочкой целиком. Отсюда наверх уезжает только «+»: что именно добавлять,
+  // знает экран, а не оболочка.
   const [addOpen, setAddOpen] = useState(false);
   const [addModal, setAddModal] = useState(null); // null | 'expense' | 'docs' | 'members' — trip-level create dialog opened by the bottom-nav "+"
-  useEffect(() => {
-    setTripCtx({ openMenu: () => setSideOpen(true), openAdd: () => setAddOpen(true) });
-    return () => setTripCtx(null);
-  }, [setTripCtx]);
-  // Phones (≤640px) get the menu as a bottom-sheet instead of the slide-in
-  // drawer; the drawer + its scrim are suppressed at this breakpoint in CSS.
   const isPhone = useIsPhone();
 
-  // If the URL points at a lens the trip has disabled, fall back to the timeline.
-  // Viewers can't open Settings/Members even by deep link → fall back too.
-  // Viewers may open Settings (read-only — see SettingsLens `readOnly`) so they
-  // can leave the trip; Members stays owner/admin-only. (TRIP-137)
-  const VIEWER_BLOCKED_LENSES = new Set(['members']);
-  let shownLens = isLensVisible(trip, lens) ? lens : 'overview';
-  if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'overview';
+  // Что реально показать: недоступная секция (выключенный аддон, роль без права)
+  // и несуществующая (`?lens=` с опечаткой) одинаково падают на дефолт. Правило
+  // живёт в реестре секций — тут только его применение.
+  const shownLens = resolveSection(lens, trip, myRole);
 
-  // The screen body is a persistent scroll container (the shell doesn't scroll),
-  // so reset it to the top whenever the active lens changes.
+  // Тело — постоянный скролл-контейнер; сброс наверх при смене секции держит
+  // TripShell (ref прокидываем, он же нужен рейлу городов в ленте).
   const screenBodyRef = useRef(null);
-  useEffect(() => { if (screenBodyRef.current) screenBodyRef.current.scrollTop = 0; }, [shownLens]);
 
   // TRIP-56: map the shell-load state to the right screen instead of one
   // catch-all "no access". useQueryGate reads isPending + fetchStatus + error
@@ -1010,7 +920,16 @@ export default function TripView() {
   const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shellData?.trip, false);
 
   // 'auth' shows the same loading placeholder while useQueryGate's effect redirects to /login.
-  if (shellGate === 'loading' || shellGate === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} />;
+  // Секция берётся СЫРОЙ из адреса, а не через resolveSection: аддоны приезжают
+  // тем же shell-запросом, которого мы ждём, поэтому `?lens=chat` до ответа
+  // выглядел бы недоступным и мигнул бы скелетоном обзора вместо чата.
+  if (shellGate === 'loading' || shellGate === 'auth') {
+    return (
+      <TripShell tripId={tripId} section={lens} loading>
+        <LoadingBody section={lens} />
+      </TripShell>
+    );
+  }
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
   // exist" page, NOT the accusatory "no access". Split from 'access' in TRIP-208.
@@ -1046,54 +965,158 @@ export default function TripView() {
       )}
     </>
   );
-  // Trip actions (Share / Edit / Settings / Members) all live in the left trip
-  // menu (TripSidebar); Copy trip moved into the Settings lens. The header
-  // carries no duplicate action buttons.
-  // Map and chat are both edge-to-edge, no-scroll surfaces that own their inner
-  // scrolling (TRIP-296: the chat lens became a full-bleed room, so its former
-  // `--chat` modifier was an exact duplicate of `--flush`). Everything else =
-  // the default scrolling body.
-  const screenBodyClass = 'trip-screen-body'
-    + (shownLens === 'map' || shownLens === 'chat' ? ' trip-screen-body--flush' : '');
+  // Действия трипа (Поделиться / Редактор / Настройки / Участники) живут в левом
+  // меню, копия трипа — в настройках; в шапке дублей нет. Раскладку тела
+  // (обычное / в край) и «назад» держит TripShell по реестру секций.
+
+  // Слот `drawer` оболочки: глобальный ящик брони/события. Позиция в DOM тут
+  // несущая — он позиционируется абсолютом относительно `.trip-content` (уже
+  // ниже шапки и правее меню) и НЕ должен скроллиться вместе с содержимым,
+  // поэтому он сосед <main>, а не его потомок.
+  const eventDrawer = (
+    <>
+        {/* TRIP-195: global drawer for hotel/transfer/activity — anchored to
+            .trip-content (below header, right of menu), left 50% with a scrim.
+            Hosts EITHER booking-create (AddBookingPanel — find + manual, the
+            same panel the editor uses) OR event view/edit (EventSourcePanel).
+            Services keep the modal (above). Create is opened from the timeline
+            (onAddTransfer/Hotel/Activity); view/edit from timeline/calendar
+            (openEventView) and the budget (onOpenSource, lifted here). */}
+        <EventDrawerHost
+          open={drawerOpen}
+          onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
+          scrim
+        >
+          {bookingCreate.open ? (
+            <AddBookingPanel
+              kind={bookingCreate.kind}
+              tripId={tripId}
+              trip={trip}
+              visit={bookingCreate.visit}
+              fromVisit={bookingCreate.fromVisit}
+              toVisit={bookingCreate.toVisit}
+              stay22={createStay22}
+              defaultCurrency={trip?.details?.main_currency || 'EUR'}
+              defaultStart={bookingCreate.defaultStart}
+              initialTab={bookingCreate.initialTab}
+              onClose={closeBookingCreate}
+            />
+          ) : eventDrawerOpen ? (
+            <EventSourcePanel
+              kind={eventView.kind}
+              id={eventView.id}
+              warning={eventView.warning}
+              canEdit={canEditMode}
+              onClose={() => setEventView(s => ({ ...s, open: false }))}
+            />
+          ) : null}
+        </EventDrawerHost>
+    </>
+  );
+
+  // Слот `overlays`: диалоги, шиты и плавающий виджет — внутри оболочки, но вне
+  // колонок, ровно как было.
+  const overlays = (
+    <>
+    <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
+  
+    {/* Add bottom-sheet — opened by the mobile bottom-nav "+". Each item opens
+        a trip-level create dialog (addModal) IN PLACE, without navigating to the
+        lens. Items are gated: expense needs the budget addon, member needs owner/admin. */}
+    <Sheet open={addOpen} onOpenChange={setAddOpen} title={t('common.add')}>
+      <div className="addsheet">
+        {isAddonEnabled(trip, 'budget') && (
+          <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('expense'); }}>
+            <span className="addsheet__ic" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="wallet" size={20} /></span>
+            <span className="addsheet__tx"><b>{t('budget.manual_expense')}</b></span>
+            <Icon name="chev" size={16} className="addsheet__chev" />
+          </button>
+        )}
+        <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('docs'); }}>
+          <span className="addsheet__ic" style={{ background: 'var(--ev-hotel-soft)', color: 'var(--ev-hotel-ink)' }}><Icon name="file" size={20} /></span>
+          <span className="addsheet__tx"><b>{t('doc.add_doc')}</b></span>
+          <Icon name="chev" size={16} className="addsheet__chev" />
+        </button>
+        {(myRole === 'owner' || myRole === 'admin') && (
+          <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('members'); }}>
+            <span className="addsheet__ic" style={{ background: 'var(--ev-activity-soft)', color: 'var(--ev-activity-ink)' }}><Icon name="users" size={20} /></span>
+            <span className="addsheet__tx"><b>{t('members.invite')}</b></span>
+            <Icon name="chev" size={16} className="addsheet__chev" />
+          </button>
+        )}
+      </div>
+    </Sheet>
+  
+    {/* Trip-level create dialogs opened by the add sheet — render over ANY lens
+        without navigating (same pattern as the event dialogs above). */}
+    {addModal === 'expense' && (
+      <AddExpenseDialog
+        open
+        onOpenChange={(o) => { if (!o) setAddModal(null); }}
+        tripId={tripId}
+        categories={budgetCategoryOptions(budgetCategories, t)}
+        mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
+        cities={visits.filter((v) => v.city_name)}
+        onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
+      />
+    )}
+    {addModal === 'docs' && (
+      <AddDocDialog open onOpenChange={(o) => { if (!o) setAddModal(null); }} tripId={tripId} />
+    )}
+    {addModal === 'members' && (
+      <InviteDialog
+        open
+        onOpenChange={(o) => { if (!o) setAddModal(null); }}
+        tripId={tripId}
+        onSaved={() => { qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); qc.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) }); }}
+      />
+    )}
+  
+    {/* Ф6а: budgetAddonOff on Radix (focus-trap, Esc) */}
+    <Dialog
+      title={t('trip.budget_breakdown_off')}
+      icon="wallet"
+      open={budgetAddonOff}
+      onOpenChange={(o) => { if (!o) setBudgetAddonOff(false); }}
+      foot={<>
+        <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>{t('common.close')}</Btn>
+        <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
+      </>}
+    >
+      <div className="muted t-body">
+        {t('trip.budget_addon_off_desc')}
+      </div>
+    </Dialog>
+  
+    {/* Floating chat widget: requires the chat addon AND the trip-level
+        "chat widget" display toggle (default ON). The full Chat lens stays
+        reachable from the sidebar regardless of this toggle. */}
+    {!isPhone && isSectionAvailable('chat', trip, myRole) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
+      <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
+    )}
+    </>
+  );
 
   return (
-    <div className="trip-shell">
-      <AppHeader
-        isTrip
-        user={user}
-        isPro={accountPro}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        onBack={() => nav('/trips')}
-        backTitle={t('trip.back')}
-        onMenu={() => setSideOpen(true)}
-        title={trip?.title}
-        meta={heroSub}
-      />
-      <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
-          <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={openProInfo} onShare={() => setShareOpen(true)} />
-          <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
-          {/* Phone menu: bottom-sheet variant of the same sidebar (≤640px). The
-              slide-in drawer above is hidden by CSS at this breakpoint. */}
-          <TripSidebarSheet
-            open={isPhone && sideOpen}
-            onOpenChange={setSideOpen}
-            tripId={tripId}
-            trip={trip}
-            lens={lens}
-            onNavigate={setLens}
-            isPro={tripIsPro}
-            proResolved={tripProResolved}
-            isOwner={isOwner}
-            myRole={myRole}
-            onUpgrade={() => { setSideOpen(false); openUpgrade(); }}
-            onProInfo={() => { setSideOpen(false); openProInfo(); }}
-            onShare={() => { setSideOpen(false); setShareOpen(true); }}
-            user={user}
-            onAccount={() => { setSideOpen(false); nav('/settings'); }}
-          />
-          <div className="trip-content">
-            <main ref={screenBodyRef} className={screenBodyClass}>
+    <TripShell
+      tripId={tripId}
+      trip={trip}
+      section={shownLens}
+      myRole={myRole}
+      isOwner={isOwner}
+      isPro={tripIsPro}
+      proResolved={tripProResolved}
+      title={trip?.title}
+      meta={heroSub}
+      onNavigate={setLens}
+      onShare={() => setShareOpen(true)}
+      onUpgrade={openUpgrade}
+      onProInfo={openProInfo}
+      onAdd={() => setAddOpen(true)}
+      bodyRef={screenBodyRef}
+      drawer={eventDrawer}
+      overlays={overlays}
+    >
           {/* TRIP-195: hotel / activity / transfer create moved to the global
               add-booking DRAWER (see EventDrawerHost below). Only services keep
               the ForkPartnerModal. */}
@@ -1293,122 +1316,6 @@ export default function TripView() {
             />
           )}
           </ErrorBoundary>
-            </main>
-            {/* TRIP-195: global drawer for hotel/transfer/activity — anchored to
-                .trip-content (below header, right of menu), left 50% with a scrim.
-                Hosts EITHER booking-create (AddBookingPanel — find + manual, the
-                same panel the editor uses) OR event view/edit (EventSourcePanel).
-                Services keep the modal (above). Create is opened from the timeline
-                (onAddTransfer/Hotel/Activity); view/edit from timeline/calendar
-                (openEventView) and the budget (onOpenSource, lifted here). */}
-            <EventDrawerHost
-              open={drawerOpen}
-              onClose={bookingCreate.open ? closeBookingCreate : () => setEventView(s => ({ ...s, open: false }))}
-              scrim
-            >
-              {bookingCreate.open ? (
-                <AddBookingPanel
-                  kind={bookingCreate.kind}
-                  tripId={tripId}
-                  trip={trip}
-                  visit={bookingCreate.visit}
-                  fromVisit={bookingCreate.fromVisit}
-                  toVisit={bookingCreate.toVisit}
-                  stay22={createStay22}
-                  defaultCurrency={trip?.details?.main_currency || 'EUR'}
-                  defaultStart={bookingCreate.defaultStart}
-                  initialTab={bookingCreate.initialTab}
-                  onClose={closeBookingCreate}
-                />
-              ) : eventDrawerOpen ? (
-                <EventSourcePanel
-                  kind={eventView.kind}
-                  id={eventView.id}
-                  warning={eventView.warning}
-                  canEdit={canEditMode}
-                  onClose={() => setEventView(s => ({ ...s, open: false }))}
-                />
-              ) : null}
-            </EventDrawerHost>
-          </div>
-        </div>
-
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
-
-      {/* Add bottom-sheet — opened by the mobile bottom-nav "+". Each item opens
-          a trip-level create dialog (addModal) IN PLACE, without navigating to the
-          lens. Items are gated: expense needs the budget addon, member needs owner/admin. */}
-      <Sheet open={addOpen} onOpenChange={setAddOpen} title={t('common.add')}>
-        <div className="addsheet">
-          {isAddonEnabled(trip, 'budget') && (
-            <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('expense'); }}>
-              <span className="addsheet__ic" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="wallet" size={20} /></span>
-              <span className="addsheet__tx"><b>{t('budget.manual_expense')}</b></span>
-              <Icon name="chev" size={16} className="addsheet__chev" />
-            </button>
-          )}
-          <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('docs'); }}>
-            <span className="addsheet__ic" style={{ background: 'var(--ev-hotel-soft)', color: 'var(--ev-hotel-ink)' }}><Icon name="file" size={20} /></span>
-            <span className="addsheet__tx"><b>{t('doc.add_doc')}</b></span>
-            <Icon name="chev" size={16} className="addsheet__chev" />
-          </button>
-          {(myRole === 'owner' || myRole === 'admin') && (
-            <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('members'); }}>
-              <span className="addsheet__ic" style={{ background: 'var(--ev-activity-soft)', color: 'var(--ev-activity-ink)' }}><Icon name="users" size={20} /></span>
-              <span className="addsheet__tx"><b>{t('members.invite')}</b></span>
-              <Icon name="chev" size={16} className="addsheet__chev" />
-            </button>
-          )}
-        </div>
-      </Sheet>
-
-      {/* Trip-level create dialogs opened by the add sheet — render over ANY lens
-          without navigating (same pattern as the event dialogs above). */}
-      {addModal === 'expense' && (
-        <AddExpenseDialog
-          open
-          onOpenChange={(o) => { if (!o) setAddModal(null); }}
-          tripId={tripId}
-          categories={budgetCategoryOptions(budgetCategories, t)}
-          mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
-          cities={visits.filter((v) => v.city_name)}
-          onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
-        />
-      )}
-      {addModal === 'docs' && (
-        <AddDocDialog open onOpenChange={(o) => { if (!o) setAddModal(null); }} tripId={tripId} />
-      )}
-      {addModal === 'members' && (
-        <InviteDialog
-          open
-          onOpenChange={(o) => { if (!o) setAddModal(null); }}
-          tripId={tripId}
-          onSaved={() => { qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); qc.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) }); }}
-        />
-      )}
-
-      {/* Ф6а: budgetAddonOff on Radix (focus-trap, Esc) */}
-      <Dialog
-        title={t('trip.budget_breakdown_off')}
-        icon="wallet"
-        open={budgetAddonOff}
-        onOpenChange={(o) => { if (!o) setBudgetAddonOff(false); }}
-        foot={<>
-          <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>{t('common.close')}</Btn>
-          <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
-        </>}
-      >
-        <div className="muted t-body">
-          {t('trip.budget_addon_off_desc')}
-        </div>
-      </Dialog>
-
-      {/* Floating chat widget: requires the chat addon AND the trip-level
-          "chat widget" display toggle (default ON). The full Chat lens stays
-          reachable from the sidebar regardless of this toggle. */}
-      {!isPhone && isLensVisible(trip, 'chat') && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
-        <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
-      )}
-    </div>
+    </TripShell>
   );
 }

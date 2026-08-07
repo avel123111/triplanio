@@ -1216,16 +1216,22 @@ h4,
 .app-side__group-label {
  color: var(--muted-2); padding: 10px 10px 6px;
 }
+/* Ряд бокового меню. Геометрия - у КЛАССА (это то, чем ряд ЯВЛЯЕТСЯ), интерактив
+   - у ЭЛЕМЕНТА (это то, что делает КНОПКА): под тем же классом живёт скелетон
+   меню на время загрузки, и он не кликается. Правило по элементу вместо руки в
+   вызывателе - узор из шапки гарда 2l. Все живые пункты меню это <button>,
+   поэтому набор объявлений на классе не меняется, только его специфичность. */
 .app-side__item {
  display: flex; align-items: center; gap: 10px;
  padding: 8px 10px; border-radius: var(--r-sm);
  color: var(--ink-2);
- cursor: pointer; border: none; background: transparent; width: 100%; text-align: left;
+ border: none; background: transparent; width: 100%; text-align: left;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
 }
+button.app-side__item { cursor: pointer; }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
-.app-side__item:active { transform: scale(.985); }
-.app-side__item:hover { background: var(--wash); }
+button.app-side__item:active { transform: scale(.985); }
+button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
 .app-side__item-badge {
  margin-left: auto;

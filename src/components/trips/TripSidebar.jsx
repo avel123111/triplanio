@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Avatar, Badge, Btn, Sheet } from '@/design/index';
-import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
+import { availableSections, isSectionAvailable, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
 import { canShareTrip } from '@/lib/members';
 import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
@@ -20,17 +20,17 @@ function SidebarBody({
 }) {
   const { t } = useI18n();
   const navSb = useNavigate();
-  const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
-  // Viewers see Settings (read-only, to leave the trip) but not Members. (TRIP-137)
-  const mgmtItems = MGMT_ITEMS.filter((item) =>
-    !(myRole === 'viewer' && item.id === 'members'));
+  // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
+  // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
+  const lensItems = availableSections(trip, myRole, 'lens');
+  const mgmtItems = availableSections(trip, myRole, 'manage');
   const canShare = canShareTrip(myRole);
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro;
   // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
   // the badge only renders under a visible chat item, so a chat-off trip holds
   // zero realtime subscriptions instead of a live one that can never show.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isLensVisible(trip, 'chat') });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myRole) });
   return (
     <>
       <div className="app-side__group">
@@ -143,11 +143,11 @@ function SidebarSheetBody({
 }) {
   const { t } = useI18n();
   const navSb = useNavigate();
-  const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
-  const mgmtItems = MGMT_ITEMS.filter((item) => !(myRole === 'viewer' && item.id === 'members'));
+  const lensItems = availableSections(trip, myRole, 'lens');
+  const mgmtItems = availableSections(trip, myRole, 'manage');
   const canShare = canShareTrip(myRole);
   const showUpgrade = proResolved && !isPro;
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isLensVisible(trip, 'chat') });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myRole) });
   const accountName = displayName(user?.email, user?.full_name);
 
   // Management rows: edit-structure (owner/admin) + members/settings + share.
