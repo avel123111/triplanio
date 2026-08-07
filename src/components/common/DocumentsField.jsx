@@ -85,10 +85,10 @@ export default function DocumentsField({
   return (
     <section className={bare ? '' : 'docfield'}>
       {!bare && (
-        <div className="docfield__head">
-          <div className="docfield__title">
+        <div className="row row--j-between row--g4 docfield__head">
+          <div className="row row--g4 docfield__title">
             <Icon name="paperclip" size={16} className="ico" style={{ color: iconColor }} />
-            <span className="docfield__name">{label || t('event.documents')}</span>
+            <span className="trunc docfield__name">{label || t('event.documents')}</span>
             {docs.length > 0 && (
               <span className="docfield__count">· {docs.length}</span>
             )}
@@ -124,7 +124,7 @@ export default function DocumentsField({
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
+          className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}
         >
           <input
             ref={inputRef}

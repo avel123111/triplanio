@@ -17,9 +17,15 @@ ToastViewport.displayName = "ToastViewport";
 
 // Maps the toast `variant` to a Lumo type class + leading icon.
 // `destructive` is kept as an alias of `error` for the existing call sites.
+// `default`/`neutral` carry NO class on purpose: the grey icon chip is what the
+// base `.toast .tic` already paints, so "neutral" is the ABSENCE of a tone. The
+// axis is declared in src/design/catalog.json (toast → «тон», дефолт neutral)
+// and guard 2q keeps the two in step. Until TRIP-364 these two keys emitted
+// `toast--neutral`, a class with no rule anywhere in the repo: it reached the
+// DOM, did nothing, and read like a special case.
 const TOAST_TYPE = {
-  default: { cls: "toast--neutral", Icon: Info },
-  neutral: { cls: "toast--neutral", Icon: Info },
+  default: { Icon: Info },
+  neutral: { Icon: Info },
   success: { cls: "toast--success", Icon: Check },
   error: { cls: "toast--error", Icon: AlertCircle },
   destructive: { cls: "toast--error", Icon: AlertCircle },

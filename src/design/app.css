@@ -2689,7 +2689,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    blue endpoint look across the flow (no warm/orange divergence). */
 .te-row.te-row--plan.te-row--fin { background: var(--brand-soft); border-color: var(--brand); }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
-.te-row.te-row--plan .te-row__pacts { display: inline-flex; align-items: center; gap: 8px; justify-self: end; }
+/* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
+.te-row.te-row--plan .te-row__pacts { justify-self: end; }
 /* Planner has no reliable row-hover (esp. touch) → nights +/- and delete are
    ALWAYS visible (the editor reveals them on hover for table density). */
 .te-row.te-row--plan .te-step { opacity: 1; }
@@ -3000,7 +3001,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    раскладка уехала: chat-msgs__in -> col */
 .chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; gap: 0; }
 /* раскладка уехала: chat-hist -> row */
-.chat-hist { padding-bottom: 20px; gap: 0; }
+.chat-hist { padding-bottom: 20px; gap: 0; align-items: stretch; }
 /* Rule-and-label, not a pill: the divider spans the column so a day break reads
    as a section edge rather than another chip in the stream. */
 /* раскладка уехала: chat-daydiv -> row */
@@ -3508,19 +3509,36 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Used by the in-place left panels (EventPanels / CityPanel).
    ==================================================================== */
     /* ---- table header ---- */
-    .te-thead { display: grid; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
-    .te-th { color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    /* ★`row-gap: 0` - не новое значение, а прежнее под своим именем: у сетки начальный зазор 0, а `.grid` несёт дефолтные 10px по ОБЕИМ осям, тогда как правило задаёт только `column-gap`. Без этой строки между строками появились бы 10px, которых не было. Тот же приём, что `gap: 0` у флекса в зоне 1.
+     visual-diff-move: te-thead -> grid */
+    .te-thead { grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
+    /* visual-diff-move: te-th -> trunc */
+    .te-th { color: var(--muted); min-width: 0; }
     .te-th--c { text-align: center; }
 
     /* ---- list rows ---- */
-    .te-row { position: relative; display: grid; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+    /* ★`align-items: center` ОСТАЁТСЯ приватным, и это не недоделка: у `.grid` оси
+       выравнивания нет вовсе, а собственный дефолт сетки - `stretch`. Снять его
+       значило бы растянуть ячейки строки редактора по высоте. Поймал гард 2p
+       («на .grid этого объявления нет»), а не глаз.
+       ★`row-gap: 0` - прежнее значение под своим именем: правило задаёт только
+       `column-gap`, а `.grid` несёт дефолтные 10px по обеим осям.
+       ★Маркера переноса у этого правила НЕТ намеренно: ключ `.te-row` по display
+       и gap принадлежал СОСТАВНОМУ правилу планировщика (оно специфичнее), и его
+       перенос удостоверен своим маркером на полный селектор. Заявить их переносом
+       на `.grid` было бы неправдой. Объявлены исключением в конце файла. */
+    .te-row { position: relative; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--surface); border-color: var(--brand); box-shadow: var(--sh-2); }
     .te-row:hover .te-cityname { color: var(--brand); }
-    .te-cityname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; transition: color .12s; }
+    /* visual-diff-move: te-cityname -> trunc */
+    .te-cityname { min-width: 0; transition: color .12s; }
     .te-citycell { min-width: 0; }
-    .te-cityline { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    /* ★ОСТАТОК: зазор 7px вне шкалы (--sp даёт 6 и 8) - удержан приватным.
+     visual-diff-move: te-cityline -> row */
+    .te-cityline { gap: 7px; min-width: 0; }
     .te-country { color: var(--muted); white-space: nowrap; flex: none; }
-    .te-dts { color: var(--muted); margin-top: 1px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+    /* visual-diff-move: te-dts -> row row--g3 */
+    .te-dts { color: var(--muted); margin-top: 1px; min-width: 0; }
     .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; touch-action: none; -webkit-user-select: none; user-select: none; }
     .te-row:hover .te-grip { opacity: 1; }
     .te-grip:active { cursor: grabbing; }
@@ -3534,7 +3552,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     @media (prefers-reduced-motion: reduce) { .te-row.is-dragging { transform: none; } }
     .te-row__num { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
-    .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning-ink); }
+    /* visual-diff-move: te-warnbadge -> row row--inline row--g1 */
+    .te-warnbadge { color: var(--warning-ink); }
     /* A11y: keyboard-visible focus rings on editor controls. */
     .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
     .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible {
@@ -3552,7 +3571,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        hairline +/− that recede), so a column of these doesn't stripe the table.
        On row hover it lifts into a real segmented control. */
     /* Nights stepper — design .edl-step: always-on surface-2 pill, round primary buttons. */
-    .te-stepper { display: inline-flex; align-items: center; gap: 3px; background: transparent; border: 0; border-radius: var(--r-pill); padding: 3px; justify-self: center; transition: background .14s var(--ease-out); }
+    /* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
+     visual-diff-move: te-stepper -> row row--inline */
+    .te-stepper { gap: 3px; background: transparent; border: 0; border-radius: var(--r-pill); padding: 3px; justify-self: center; transition: background .14s var(--ease-out); }
     .te-row:hover .te-stepper { background: var(--surface-2); }
     .te-row:hover .te-step { opacity: 1; }
     .te-step { width: 26px; height: 26px; border: 0; background: transparent; border-radius: 50%; color: var(--brand); cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .14s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
@@ -3564,7 +3585,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-cell { flex-shrink: 0; }
     .te-cell--hotel { justify-self: center; min-width: 0; }
     .te-cell--act { justify-self: center; }
-    .te-cellbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
+    /* visual-diff-move: te-cellbtn -> row row--inline row--j-center row--g3 */
+    .te-cellbtn { height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
     /* Empty add-cells recede so unfilled rows don't read as a column of dashed
        boxes; they surface on row hover or keyboard focus. */
     .te-cellbtn--ghost { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
@@ -3577,7 +3599,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
     .te-hotelicon.is-warn { background: var(--warning-soft); }
-    .te-actchip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
+    /* visual-diff-move: te-actchip -> row row--inline row--j-center row--g3 */
+    .te-actchip { height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
     .te-actchip:hover { border-color: var(--ev-activity); }
     .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: scale(0.94); }
     .te-actchip.is-warn { background: var(--warning-soft); color: var(--warning-ink); }
@@ -3601,18 +3624,23 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-seam__pill.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
     .te-table .te-row { border-radius: var(--r-btn); box-shadow: var(--sh-1); }
     .te-table .te-row:hover { box-shadow: var(--sh-2); border-color: var(--brand); }
-    .te-end { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
+    /* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан.
+     visual-diff-move: te-end -> row */
+    .te-end { gap: 11px; padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
     .te-row__node { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { display: block; margin-bottom: 1px; }
     .te-wptag { color: var(--ev-transfer-ink); padding: 2px 7px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
     /* Transfer badge: ONE symmetric transition drives both directions — it melts
        away (fade+shrink) when a drag starts and eases back in on drop. No keyframe
        animation: a filled animation pins opacity and breaks the fade-out. */
-    .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; display: flex; justify-content: center; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }
+    /* visual-diff-move: te-seam -> row row--j-center */
+    .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; align-items: stretch; }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
-    .te-seam__pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
+    /* ★ОСТАТОК: зазор 7px вне шкалы - удержан.
+     visual-diff-move: te-seam__pill -> row row--inline */
+    .te-seam__pill { gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
     .te-seam__pill:hover { box-shadow: var(--sh-3); transform: translateY(-1px) scale(1.02); }
     .te-seam__pill:active { transform: scale(0.96); }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
@@ -3679,7 +3707,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .addmini { width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
 .addmini:hover { background: var(--accent); color: var(--accent-ink); }
 
-.bookrow { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
+/* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан приватным.
+   visual-diff-move: bookrow -> row */
+.bookrow { gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
 .bookrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
 .bookrow:active { transform: translateY(0) scale(.99); }
 .bi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
@@ -5210,7 +5240,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* `.sd-timeinput` и `.sd-cell--time` удалены вместе со своей сборкой (TRIP-333
    §5): у активности была СВОЯ пара голых `<input type="time">` в ячейке-«не
    кнопке», теперь она на общем `DateRangeBlock`, как отель и переезд. */
-.eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
+/* visual-diff-move: eed-drange-tz -> row row--g6 */
+.eed-drange-tz { margin-top: 8px; align-items: stretch; }
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
@@ -5264,32 +5295,47 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv-card{padding:16px 17px;}
-.tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
+/* visual-diff-move: tv-eyebrows -> row row--wrap row--g3 */
+.tv-eyebrows { margin-bottom: 15px; align-items: stretch; }
 /* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8), размер иконки - .badge svg;
    здесь остаются только тона. */
 .tv-chip--type{background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);}
 .tv-chip--night{background:var(--night-soft);color:var(--night-ink);}
-.tv-route{display:grid;grid-template-columns:76px 16px 1fr;column-gap:12px;}
+/* visual-diff-move: tv-route -> grid */
+.tv-route { grid-template-columns: 76px 16px 1fr; column-gap: 12px; row-gap: 0; }
 .tv-when{text-align:right;}
 .tv-when__t{color:var(--ink);}
 .tv-when__d{color:var(--muted);margin-top:3px;white-space:nowrap;}
-.tv-arr{display:flex;align-items:baseline;justify-content:flex-end;gap:4px;}
+/* ★ОСТАТОК: `justify-content: flex-end` удержан приватным - значения `j-end` у оси «вдоль» ряда в каталоге НЕТ, а каталог правится параллельной задачей 03f и в границы этого PR не входит.
+     visual-diff-move: tv-arr -> row row--a-baseline row--g2 */
+.tv-arr { justify-content: flex-end; }
 .tv-plus1{color:var(--night-ink);}
-.tv-nodecell{display:flex;justify-content:center;padding-top:5px;}
+/* visual-diff-move: tv-nodecell -> row row--j-center */
+.tv-nodecell { padding-top: 5px; gap: 0; align-items: stretch; }
 .tv-node{width:9px;height:9px;flex:none;border-radius:var(--r-pill);}
 .tv-node--from{border:2.5px solid var(--ev-transfer);background:var(--bg);}
 .tv-node--to{background:var(--ev-transfer);}
-.tv-conncell{display:flex;justify-content:center;}
+/* visual-diff-move: tv-conncell -> row row--j-center */
+/* ★`align-items: stretch` ВОССТАНОВЛЕН явно: у правила своего выравнивания не
+   было, то есть действовал флексовый дефолт `stretch`, а `.row` центрирует. Без
+   этой строки ребёнок перестаёт растягиваться по высоте. Поймано ЗАМЕРОМ (у
+   .tv-conncell соединительная линия рейса схлопнулась с 33px до 18px), гарду
+   такое не видно: 2p сверяет объявления, а тут менялся УНАСЛЕДОВАННЫЙ дефолт. */
+.tv-conncell { gap: 0; align-items: stretch; }
 .tv-conn{width:0;border-left:2px dashed color-mix(in srgb,var(--ev-transfer) 45%,transparent);min-height:34px;}
 .tv-loc{min-width:0;}
 .tv-loc--from{padding-bottom:4px;}
 .tv-loc--to{padding-top:1px;}
 .tv-loc__c{color:var(--ink);}
 .tv-loc__a{color:var(--muted);margin-top:3px;}
-.tv-durcell{display:flex;align-items:center;justify-content:flex-end;}
+/* ★ОСТАТОК: `justify-content: flex-end` удержан - см. .tv-arr.
+     visual-diff-move: tv-durcell -> row */
+.tv-durcell { justify-content: flex-end; gap: 0; }
 .tv-dur{color:var(--ev-transfer-ink);white-space:nowrap;}
-.tv-carrier{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 0;}
-.tv-carrier__av{width:26px;height:26px;flex:none;border-radius:var(--r-sm);background:var(--ev-transfer);color:#fff;display:flex;align-items:center;justify-content:center;}
+/* visual-diff-move: tv-carrier -> row row--g4 */
+.tv-carrier { min-width: 0; padding: 6px 0; }
+/* visual-diff-move: tv-carrier__av -> row row--j-center */
+.tv-carrier__av { width: 26px; height: 26px; flex: none; border-radius: var(--r-sm); background: var(--ev-transfer); color: #fff; gap: 0; }
 .tv-carrier__nm{color:var(--ink-2);}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--hl);display:flex;align-items:center;gap:8px;margin:6px 0 0;}
@@ -5487,7 +5533,11 @@ a.doc-row__n:hover{ color: var(--brand); }
    so price ↔ Book stays one row at any container width. The thumb scales with the
    container (26cqw) — the lists set container-type: inline-size. Shared by the
    Stay22 hotel and Viator activity fork lists via PartnerResultCard. */
-.pcard { position: relative; display: grid; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+/* ★`row-gap: 0` - прежнее значение под своим именем: у сетки начальный зазор 0, а
+   `.grid` несёт дефолтные 10px по обеим осям, тогда как правило задаёт только
+   `column-gap`. Между строкой карточки и её нижней планкой появились бы 10px.
+   visual-diff-move: pcard -> grid */
+.pcard { position: relative; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; row-gap: 0; }
 .pcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); }
@@ -5507,6 +5557,14 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
    Booking navy token. Activities: glass star pill (.pcard__score--star). */
 .pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px /* design-token-exempt: асимметричный уголок бейджа рейтинга, форма а не шкала */; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
+/* ★ЭТОТ ПЕРЕНОС ОТМЕНЁН, и причину надо знать: базовый `.pcard__score` объявляет
+   `display: inline-grid` СТРОКОЙ ВЫШЕ, при той же специфичности (0,1,0) и ПОЗЖЕ
+   примитива в файле - то есть он выигрывает у `.row--inline`. Отдать display
+   примитиву значило бы отдать его проигравшему: пилюля рейтинга становится
+   inline-grid, и звезда встаёт НАД числом внутри 18px. Гард 2p такого не видит по
+   построению - он проверяет, что объявление есть на цели, а не что цель ПОБЕЖДАЕТ.
+   Перенос станет возможен, когда на примитив уедет сам `.pcard__score` - это плитка
+   (объект 06), а не раскладка. ★ОСТАТОК: зазор 3px вне шкалы. */
 .pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
@@ -5516,27 +5574,38 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* Body — grid cell (col 2), vertically centred against the photo. Name wraps to
    a 2nd line then ellipsis. */
-.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+/* ★ОСТАТОК: зазор 3px вне шкалы - удержан. Выравнивания у правила нет, и у `.col`
+   его тоже нет - дефолт `stretch` сохраняется сам.
+   visual-diff-move: pcard__body -> col col--j-center */
+.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; gap: 3px; }
 .pcard__name { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 
 /* Meta line (stars · reviews / duration · reviews): one row, ellipsis on the
    text, separators/numbers never squeeze. */
 /* align-items: baseline — stars (16px) and the review text (meta) share one
    baseline so the bigger star glyphs never sit lower than the digits. */
-.pcard__meta { display: flex; align-items: baseline; column-gap: 5px; min-width: 0; color: var(--muted); }
+/* ★ОСТАТОК: зазор 5px вне шкалы - удержан.
+   visual-diff-move: pcard__meta -> row row--a-baseline */
+.pcard__meta { column-gap: 5px; min-width: 0; color: var(--muted); }
 .pcard__meta > * { flex: none; }
 .pcard__stars { color: var(--rating); font-size: 16px; line-height: 1; letter-spacing: 1px; /* design-token-exempt: размер/разрядка глифов ★ (декоративные звёзды отеля), не текст */ }
-.pcard__mtx { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* visual-diff-move: pcard__mtx -> trunc */
+.pcard__mtx { flex: 0 1 auto; min-width: 0; }
 
 /* Subline (address / free cancellation) — one muted line, ellipsis. */
-.pcard__addr { color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* visual-diff-move: pcard__addr -> trunc */
+.pcard__addr { color: var(--muted-2); min-width: 0; }
 .pcard__addr--ok { color: var(--success); }
 
 /* Footer — full-width row (spans both columns), price ↔ Book on one line at any
    container width; the price sub-note shrinks first, price + Book never do. */
-.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* Зазор 10px - собственный зазор `.row`, модификатор не нужен и был бы no-op.
+   visual-diff-move: pcard__bar -> row */
+.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; min-width: 0; }
 .pcard__spacer { flex: 1; min-width: 8px; }
-.pcard__price { flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+/* ★ОСТАТОК: зазор 5px вне шкалы - удержан.
+   visual-diff-move: pcard__price -> row row--a-baseline */
+.pcard__price { flex: 0 1 auto; min-width: 0; gap: 5px; white-space: nowrap; }
 .pcard__price b { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
 .pcard__price span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .pcard__go { flex: none; border-radius: var(--r-pill); }
@@ -6368,4 +6437,46 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .row--center justify-content — раскладка уехала на примитив, значение то же
    visual-diff-exempt: .row--j-center justify-content — раскладка уехала на примитив, значение то же
    visual-diff-exempt: .row--start align-items — раскладка уехала на примитив, значение то же
+   */
+
+/* ═══ TRIP-342 зона 2: объявленные изменения ════════════════════════════════
+   ★Про два ключа `.te-row`. Гард заводит ключи на ВСЕ классы селектора, поэтому
+   правило `.te-row.te-row--plan .te-row__pacts` (специфичнее и ниже по файлу)
+   было победителем и для ключа `.te-row`. Его объявления уехали на
+   `row row--inline row--g4` и удостоверены СВОИМ маркером на полный селектор
+   (гард печатает: «объявлений 8, из них 3 сошлись через токен»). Строки ниже
+   закрывают тень того же переноса на классовом ключе - объявить их переносом
+   на `.grid` было бы неправдой: туда они не ехали.
+
+   ★Нулевые зазоры названы явно: у сетки и у флекса начальный зазор 0, а
+   `.grid`/`.row` несут дефолтные 10px. Это прежнее значение под своим именем.
+   visual-diff-exempt: .te-row row-gap — сетка задаёт только column-gap, .grid дал бы 10px между строками
+   visual-diff-exempt: .te-thead row-gap — то же
+   visual-diff-exempt: .tv-route row-gap — то же
+   visual-diff-exempt: .te-seam gap — контейнер без зазора, .row дал бы 10px
+   visual-diff-exempt: .tv-nodecell gap — то же
+   visual-diff-exempt: .tv-conncell gap — то же
+   visual-diff-exempt: .tv-durcell gap — то же
+   visual-diff-exempt: .tv-carrier__av gap — то же
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ TRIP-342 зона 2: восстановленный неявный stretch ═══════════════════════
+   Шесть правил не объявляли `align-items` вовсе (седьмой кандидат, `.chat-msgs__in`,
+   сидит на `.col`, а у колонки выравнивания нет вовсе - там дефолт не менялся), то есть работали на флексовом
+   дефолте `stretch`, а `.row` центрирует. Строка возвращает ПРЕЖНЕЕ вычисленное
+   значение под своим именем - как `gap: 0` возвращает прежний нулевой зазор.
+   Это не перенос: на `.row` такого объявления нет и быть не должно.
+   ★Найдено ЗАМЕРОМ, не гардом: у `.tv-conncell` соединительная линия рейса
+   схлопнулась с 33px до 18px. 2p сверяет ОБЪЯВЛЕНИЯ и по построению не видит
+   смены УНАСЛЕДОВАННОГО дефолта - граница, названная в его же шапке.
+   visual-diff-exempt: .chat-hist align-items — вернул дефолт stretch, .row навязывал center
+   visual-diff-exempt: .tv-eyebrows align-items — то же (пропущен в первом заходе, нашёл code-simplifier)
+   visual-diff-exempt: .eed-drange-tz align-items — то же
+   visual-diff-exempt: .te-seam align-items — то же
+   visual-diff-exempt: .tv-conncell align-items — то же, поймано замером (линия рейса 33px → 18px)
+   visual-diff-exempt: .tv-nodecell align-items — то же
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* TRIP-342 зона 3.
+   visual-diff-exempt: .pcard row-gap — прежний нулевой зазор под своим именем: карточка задаёт только column-gap, а .grid несёт дефолтные 10px по обеим осям
    */

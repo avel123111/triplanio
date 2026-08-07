@@ -808,11 +808,11 @@ export default function EditLens({ tripId, shell, content }) {
             <span className="ts-routehead__sp" />
             {startDateControl}
           </div>
-          <div className="te-thead" style={{ padding: '0 4px 6px' }}>
-            <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
-            <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
-            <span className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
-            <span className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
+          <div className="grid te-thead" style={{ padding: '0 4px 6px' }}>
+            <span className="trunc te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
+            <span className="trunc te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
+            <span className="trunc te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
+            <span className="trunc te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
           </div>
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
@@ -962,14 +962,14 @@ export default function EditLens({ tripId, shell, content }) {
 function Conf({ n }) {
   const t = useT();
   if (!n) return null;
-  return <span className="te-warnbadge" title={t('tse.conflicts_n', { n })}><Icon name="warning" size={10} /> {n}</span>;
+  return <span className="row row--inline row--g1 te-warnbadge" title={t('tse.conflicts_n', { n })}><Icon name="warning" size={10} /> {n}</span>;
 }
 
 // inline hotel / activity cells (design mockup HotelCell / ActCell)
 function HotelCell({ hotel, warn, onClick }) {
   const t = useT();
   if (!hotel) return (
-    <button className="te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('hotel.add')}>
+    <button className="row row--inline row--j-center row--g3 te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('hotel.add')}>
       <Icon name="bed" size={14} /> <Icon name="plus" size={12} />
     </button>
   );
@@ -984,12 +984,12 @@ function HotelCell({ hotel, warn, onClick }) {
 function ActCell({ count, warn, onClick }) {
   const t = useT();
   if (!count) return (
-    <button className="te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('budget.source_activity')}>
+    <button className="row row--inline row--j-center row--g3 te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('budget.source_activity')}>
       <Icon name="ticket" size={14} /> <Icon name="plus" size={12} />
     </button>
   );
   return (
-    <button className={'te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
+    <button className={'row row--inline row--j-center row--g3 te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
       <Icon name="ticket" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
       <span className="num t-meta">{count}</span>
       {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
@@ -1053,8 +1053,8 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   const click = disabled ? undefined : onOpen; // a seam next to a pending city is inert
   if (!t) {
     return (
-      <div className="te-seam">
-        <button className={'te-seam__pill te-seam__pill--add' + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
+      <div className="row row--j-center te-seam">
+        <button className={'row row--inline te-seam__pill te-seam__pill--add' + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
           <Icon name="plus" size={11} /> {tx('tse.add_transfer')}
         </button>
       </div>
@@ -1062,8 +1062,8 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   }
   const meta = transferKind(t.transport_type);
   return (
-    <div className="te-seam">
-      <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
+    <div className="row row--j-center te-seam">
+      <button className={'row row--inline te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
         <span className="t-meta" style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
@@ -1082,14 +1082,14 @@ function GridEndpoint({ node, date, onRemove }) {
   const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
   const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <div className="te-end">
+    <div className="row te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
       <div className="te-citycell grow">
         <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-        <div className="te-cityline">
-          <span className="te-cityname">{node.city_name}</span>
+        <div className="row te-cityline">
+          <span className="trunc te-cityname">{node.city_name}</span>
         </div>
-        <div className="te-dts">
+        <div className="row row--g3 te-dts">
           {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}
         </div>
       </div>

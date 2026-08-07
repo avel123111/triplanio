@@ -53,7 +53,7 @@ export default function CityRow({
   children,
 }) {
   const cls = [
-    'te-row',
+    'grid te-row',
     variant === 'planner' ? 'te-row--plan' : '',
     dragging ? 'is-dragging' : '',
     pressing ? 'is-pressing' : '',
@@ -68,16 +68,16 @@ export default function CityRow({
       <div className="te-citycell" onPointerDown={stopCellPointer ? (e) => e.stopPropagation() : undefined}>
         {editingSlot || (
           <>
-            <div className="te-cityline">
-              <span className="te-cityname">{name}</span>
+            <div className="row te-cityline">
+              <span className="trunc te-cityname">{name}</span>
               {country ? <span className="te-country">{country}</span> : null}
               {conf || null}
             </div>
-            {dates ? <div className="te-dts">{dates}</div> : null}
+            {dates ? <div className="row row--g3 te-dts">{dates}</div> : null}
           </>
         )}
       </div>
-      {variant === 'planner' ? <div className="te-row__pacts">{children}</div> : children}
+      {variant === 'planner' ? <div className="row row--inline row--g4 te-row__pacts">{children}</div> : children}
     </div>
   );
 }

@@ -184,13 +184,13 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
           {/* Visibility */}
           <div style={{ marginBottom: 16 }}>
-            <div className="dl-label">{t('doc.access_label')}</div>
+            <div className="row row--g3 dl-label">{t('doc.access_label')}</div>
             <div className="grid grid--2">
               {visOpts.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
-                  className={`dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
+                  className={`row dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
                   onClick={() => setVisibility(opt.value)}>
                   <span className="dl-visopt__ic">
                     <Icon name={opt.icon} size={17} />
@@ -246,7 +246,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
           {/* Files */}
           <div style={{ marginTop: 16 }}>
-            <div className="dl-label">
+            <div className="row row--g3 dl-label">
               <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
               {t('doc.files_label')}
               {documents.length > 0 && (
@@ -284,7 +284,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
             {/* Drop zone */}
             <div
-              className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
+              className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}>
@@ -395,7 +395,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
           {/* href is normalized on save, but rows stored before TRIP-230 still
               hold a bare "google.com" — keep the read side safe for them too. */}
           {doc.link_url && (
-            <a className="dl-dview-link" href={normalizeExternalUrl(doc.link_url)} target="_blank" rel="noreferrer">
+            <a className="row dl-dview-link" href={normalizeExternalUrl(doc.link_url)} target="_blank" rel="noreferrer">
               <Icon name="external" size={16} />
               <b>{doc.link_url}</b>
             </a>
@@ -403,7 +403,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
 
           {doc.documents?.length > 0 && (
             <div>
-              <div className="dl-label" style={{ marginTop: doc.notes || doc.link_url ? 14 : 0 }}>
+              <div className="row row--g3 dl-label" style={{ marginTop: doc.notes || doc.link_url ? 14 : 0 }}>
                 <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
                 {t('doc.files_label')}
               </div>
@@ -422,7 +422,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
           )}
 
           {doc.created_at && (
-            <div className="dl-dview-meta">
+            <div className="row row--g4 dl-dview-meta">
               <Icon name="calendar" size={13} />
               {formatDate(doc.created_at)}
             </div>
@@ -471,11 +471,11 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
   return (
     <button
-      className="dl-card dz-lift-card"
+      className="col dl-card dz-lift-card"
       onClick={() => onOpenDetail?.(doc)}>
 
       {/* Icon + title + visibility chip */}
-      <div className="dl-card__top">
+      <div className="row row--a-start dl-card__top">
         <div className={`dl-card__ic${isShared ? '' : ' dl-card__ic--mine'}`}>
           <Icon name="file" size={20} />
         </div>
@@ -488,7 +488,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
             {doc.link_url && t('doc.has_link')}
           </div>
         </div>
-        <span className={`dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
+        <span className={`row row--inline row--g2 dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
           <Icon name={isShared ? 'users' : 'lock'} size={11} />
         </span>
       </div>
@@ -510,7 +510,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
       {/* Link row (visual, non-navigating — detail dialog has the real link) */}
       {doc.link_url && (
-        <div className="dl-linkrow">
+        <div className="row dl-linkrow">
           <Icon name="external" size={14} />
           <b>{doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}</b>
           <Icon name="chev" size={13} style={{ opacity: .55 }} />
@@ -518,16 +518,16 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
       )}
 
       {/* Footer: avatar + name + date */}
-      <div className="dl-card__foot">
+      <div className="row dl-card__foot">
         {isShared ? (
           <>
             <Avatar name={uploader.name} photo={uploader.photo} deleted={uploader.deleted} size="sm" />
-            <span className="dl-card__foot-who">{uploader.name}</span>
+            <span className="grow--fit trunc dl-card__foot-who">{uploader.name}</span>
           </>
         ) : (
           <>
             <Avatar name={displayName(user?.email, user?.full_name)} size="sm" />
-            <span className="dl-card__foot-who">{t('doc.only_you')}</span>
+            <span className="grow--fit trunc dl-card__foot-who">{t('doc.only_you')}</span>
           </>
         )}
         <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
@@ -573,7 +573,7 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
       ))}
       {canAdd && (
         <button
-          className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
+          className={`col col--g4 col--j-center dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
           onClick={() => onOpenAdd?.()}>
           <span className="dl-addcard__ic">
             <Icon name="plus" size={22} />
@@ -669,7 +669,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
         <ReadOnlyBanner>{t('doc.readonly_banner_desc')}</ReadOnlyBanner>
       )}
       {/* ── Toolbar: search + filter ── */}
-      <div className="dl-toolbar">
+      <div className="row row--wrap row--g6 dl-toolbar">
         <Input
           className="dl-search"
           icon="search"
