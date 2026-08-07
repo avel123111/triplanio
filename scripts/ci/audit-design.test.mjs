@@ -995,3 +995,205 @@ test('РАСПРЕДЕЛЕНИЕ ПО СЕМЕЙСТВАМ печатается 
   );
   assert.deepEqual(o.row.byFamily, { aa: 2, bb: 1 });
 });
+
+// ── 6. Доля «приложение собрано из системы» (TRIP-337 §1) ───────────────────
+/** ГЛАВНОЕ ЧИСЛО ЭПИКА, и предикат у него дороже обычного: у «доли» три оси
+ *  (что в числителе, что в знаменателе, какой периметр), и на живом дереве они
+ *  дают 16.2% · 17.0% · 19.2% · 19.4% · 20.3% · 23.1% — ровно тот разброс, из-за
+ *  которого §12 требует кода раньше числа. Каждая граница ниже пиньется своим
+ *  тестом, потому что каждая из них меняет ответ.
+ *
+ *  ★ И ОДНА ИЗ НИХ ЦЕЛИТСЯ В СОБСТВЕННЫЙ КАНОН — тест «внутренности ДС»
+ *  ровно про это: `Btn` внутри собран из `<button>`, и наивный предикат
+ *  записывает систему в долг сама себе. */
+
+test('элемент из design/** — в числителе, сырой тег — в знаменателе', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/index.jsx': 'export const Btn = () => null;',
+      'pages/S.jsx': "import { Btn } from '@/design';\nexport default () => (<div><Btn /></div>);",
+    }),
+  );
+  assert.equal(out.dsShare.ds, 1);
+  assert.equal(out.dsShare.host, 1);
+  assert.equal(out.dsShareBp, 5000, 'половина листьев взята из системы');
+});
+
+test('импорт ДС узнаётся и относительным путём, не только через @/', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/index.jsx': 'export const Btn = () => null;',
+      'pages/S.jsx': "import { Btn } from '../design/index.jsx';\nexport default () => <Btn />;",
+    }),
+  );
+  assert.equal(out.dsShare.ds, 1);
+  assert.equal(out.dsShareBp, 10000);
+});
+
+test('★ ВНУТРЕННОСТИ ДС В ЗНАМЕНАТЕЛЬ НЕ ПОПАДАЮТ — иначе предикат целится в свой канон', (t) => {
+  // `Btn` обязан быть собран из `<button>`: это система, а не долг. С её
+  // потрохами в знаменателе 100% недостижимы ПО ПОСТРОЕНИЮ, а каждый новый
+  // примитив ухудшает число - то есть метрика штрафует ровно ту работу,
+  // ради которой заведена.
+  const out = run(
+    fixture(t, {
+      'design/Btn.jsx': "export const Btn = () => (<button className='btn'><span /></button>);",
+      'pages/S.jsx': "import { Btn } from '@/design/Btn.jsx';\nexport default () => <Btn />;",
+    }),
+  );
+  assert.equal(out.dsShare.host, 0, 'button и span внутри примитива не считаются');
+  assert.equal(out.dsShareBp, 10000);
+  assert.equal(out.dsShare.implHost, 2, 'но они ПЕЧАТАЮТСЯ: свалить разметку экрана в design/ видно');
+});
+
+test('components/ui — в ЗНАМЕНАТЕЛЕ, не в числителе: переезд ui → design поднимает долю', (t) => {
+  const legacy = run(
+    fixture(t, {
+      'components/ui/button.jsx': 'export const Button = () => null;',
+      'pages/S.jsx': "import { Button } from '@/components/ui/button.jsx';\nexport default () => <Button />;",
+    }),
+  );
+  assert.equal(legacy.dsShare.ui, 1);
+  assert.equal(legacy.dsShareBp, 0, 'шадсн-остаток - это НЕ «собрано из системы»');
+
+  const moved = run(
+    fixture(t, {
+      'design/button.jsx': 'export const Button = () => null;',
+      'pages/S.jsx': "import { Button } from '@/design/button.jsx';\nexport default () => <Button />;",
+    }),
+  );
+  assert.equal(moved.dsShareBp, 10000, 'тот же элемент после переезда - уже система');
+});
+
+test('★ своя композиция, вендор и локальный компонент НЕ считаются вовсе', (t) => {
+  // Иначе гард краснеет на правильном ходе: разбиение экрана на подкомпоненты -
+  // это фаза 09, а каждый новый <CityRow/> опускал бы долю.
+  const out = run(
+    fixture(t, {
+      'components/MembersLens.jsx': 'export default () => null;',
+      'pages/S.jsx':
+        "import Lens from '@/components/MembersLens.jsx';\nimport { Check } from 'lucide-react';\n" +
+        'const Row = () => null;\nexport default () => (<div><Lens /><Check /><Row /></div>);',
+    }),
+  );
+  assert.equal(out.dsShare.host, 1, 'в знаменателе только div');
+  assert.equal(out.dsShare.denominator, 1);
+  assert.deepEqual(
+    { app: out.dsShare.app, vendor: out.dsShare.vendor, local: out.dsShare.local },
+    { app: 1, vendor: 1, local: 1 },
+    'исключённые кучи ПЕЧАТАЮТСЯ поимённо, а не растворяются',
+  );
+});
+
+test('потроха <svg> не считаются: это графика, заменить её примитивом нечем', (t) => {
+  const out = run(
+    fixture(t, { 'pages/S.jsx': 'export default () => (<div><svg><path /><g><circle /></g></svg></div>);' }),
+  );
+  assert.equal(out.dsShare.host, 1, 'только div');
+  assert.equal(out.dsShare.svg, 4, 'svg + path + g + circle');
+});
+
+test('нерендерящий тег (<style>) не элемент интерфейса', (t) => {
+  const out = run(fixture(t, { 'pages/S.jsx': 'export default () => (<div><style>{".a{}"}</style></div>);' }));
+  assert.equal(out.dsShare.host, 1);
+});
+
+test('периметр тот же, что у классов: лендинг и публичка вне числа', (t) => {
+  const out = run(
+    fixture(t, {
+      'pages/PublicTrip.jsx': 'export default () => (<div><div><div /></div></div>);',
+      'pages/S.jsx': 'export default () => <div />;',
+    }),
+  );
+  assert.equal(out.dsShare.host, 1, 'три div публички не считаются - тронуть их нельзя до подзадачи 10');
+});
+
+test('★ пустое дерево даёт null, а не 0: «мерить нечего» != «померили, чисто»', (t) => {
+  const out = run(fixture(t, { 'a.css': ':root { --x: 1px; }' }));
+  assert.equal(out.dsShareBp, null);
+  assert.equal(out.dsShare.denominator, 0);
+});
+
+test('★ ЦЕНА ГРАНИЦЫ НАЗВАНА: локальный шим с именем из ДС печатается отдельно', (t) => {
+  // 41 вызов рукописного <Label> виден как ОДИН сырой <label> в месте
+  // объявления. Дыра границы «своя композиция не считается» - и она названа
+  // строкой отчёта, а не спрятана в числе.
+  const out = run(
+    fixture(t, {
+      'design/index.jsx': 'export const Input = () => null;',
+      'pages/S.jsx': 'const Input = () => (<input />);\nexport default () => (<div><Input /><Input /></div>);',
+    }),
+  );
+  assert.equal(out.dsShare.shims.length, 1);
+  assert.equal(out.dsShare.shims[0].name, 'Input');
+  assert.equal(out.dsShare.shims[0].uses, 2);
+});
+
+test('<Dialog.Title/> считается по КОРНЮ имени, а не по последнему слову', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/index.jsx': 'export const Dialog = () => null;',
+      'pages/S.jsx': "import { Dialog } from '@/design';\nexport default () => (<Dialog.Title />);",
+    }),
+  );
+  assert.equal(out.dsShare.ds, 1);
+});
+
+test('★ составное имя - ВСЕГДА компонент, регистр корня роли не играет', (t) => {
+  // По грамматике JSX `<x.Y/>` не может быть host-тегом. Без этого `<theme.Icon/>`
+  // (три живых случая в src) попадал в ЗНАМЕНАТЕЛЬ как «экран нарисовал сам», а
+  // `<ds.Btn/>` при `import * as ds` - тоже, то есть предикат штрафовал ровно
+  // тот ход, ради которого заведён.
+  const out = run(
+    fixture(t, {
+      'design/index.jsx': 'export const Btn = () => null;',
+      'pages/S.jsx':
+        "import * as ds from '@/design';\nimport { motion } from 'framer-motion';\n" +
+        'const theme = {};\nexport default () => (<div><ds.Btn /><motion.div /><theme.Icon /></div>);',
+    }),
+  );
+  assert.equal(out.dsShare.host, 1, 'сырой тег тут ровно один - div');
+  assert.equal(out.dsShare.ds, 1, '<ds.Btn/> через `import * as` - это ДС');
+  assert.equal(out.dsShare.vendor, 1, '<motion.div/> - вендор, а не разметка');
+  assert.equal(out.dsShare.local, 1, '<theme.Icon/> - своя композиция');
+  assert.equal(out.dsShare.denominator, 2);
+});
+
+test('★ ОДИН разбор на файл: непрочитанный файл называется РОВНО ОДИН раз', (t) => {
+  // Ради этого и заведён кеш `astOf`: классы (1c/1d) и доля (1e) читают одно
+  // дерево. Два разбора - два списка `parseFailures`, и гард 2o напечатал бы
+  // «не разобрано 2 файла» там, где файл один - то есть соврал бы в том самом
+  // отчёте, которым блокирует PR.
+  const out = run(fixture(t, { 'pages/S.jsx': 'export const C = () => <div className={;;;}/>;' }));
+  assert.equal(out.parseFailures.length, 1, out.parseFailures.join('\n'));
+  assert.equal(out.dsShareBp, null, 'из нечитаемого файла элементов не взято ни одного');
+});
+
+test('шим узнаётся и у дефолтного экспорта ДС (`export default Icon`)', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/icons.jsx': 'const Icon = () => null;\nexport default Icon;',
+      'pages/S.jsx': 'const Icon = () => (<i />);\nexport default () => (<div><Icon /></div>);',
+    }),
+  );
+  assert.deepEqual(
+    out.dsShare.shims.map((s) => s.name),
+    ['Icon'],
+    'иначе список шимов молчит про компоненты без имени в `export {…}`',
+  );
+});
+
+test('ГРАНИЦА C: ре-экспорт через свой модуль выпадает из ОБЕИХ частей дроби', (t) => {
+  // Заявлено в шапке §1e как ошибка в безопасную сторону; пиньется тестом,
+  // чтобы «заявлено» и «так и работает» не разъезжались молча.
+  const out = run(
+    fixture(t, {
+      'design/index.jsx': 'export const Btn = () => null;',
+      'lib/kit.js': "export { Btn } from '@/design';",
+      'pages/S.jsx': "import { Btn } from '@/lib/kit.js';\nexport default () => (<div><Btn /></div>);",
+    }),
+  );
+  assert.equal(out.dsShare.ds, 0, 'через посредника ДС не опознаётся');
+  assert.equal(out.dsShare.app, 1, 'и в знаменатель тоже НЕ попадает');
+  assert.equal(out.dsShare.denominator, 1, 'в знаменателе только div');
+});
