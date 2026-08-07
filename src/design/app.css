@@ -3004,7 +3004,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    строки перевод контейнера БЕЗ зазора на примитив молча раздвинул бы детей на
    10px. Таких контейнеров в зоне 1 одиннадцать, по периметру 78.
    раскладка уехала: chat-msgs__in -> col */
-.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; gap: 0; align-items: stretch; }
+.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; gap: 0; }
 /* раскладка уехала: chat-hist -> row */
 .chat-hist { padding-bottom: 20px; gap: 0; align-items: stretch; }
 /* Rule-and-label, not a pill: the divider spans the column so a day break reads
@@ -5239,7 +5239,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv-card{padding:16px 17px;}
 /* visual-diff-move: tv-eyebrows -> row row--wrap row--g3 */
-.tv-eyebrows { margin-bottom: 15px; }
+.tv-eyebrows { margin-bottom: 15px; align-items: stretch; }
 /* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8), размер иконки - .badge svg;
    здесь остаются только тона. */
 .tv-chip--type{background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);}
@@ -6381,7 +6381,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═══ TRIP-342 зона 2: восстановленный неявный stretch ═══════════════════════
-   Шесть правил не объявляли `align-items` вовсе, то есть работали на флексовом
+   Шесть правил не объявляли `align-items` вовсе (седьмой кандидат, `.chat-msgs__in`,
+   сидит на `.col`, а у колонки выравнивания нет вовсе - там дефолт не менялся), то есть работали на флексовом
    дефолте `stretch`, а `.row` центрирует. Строка возвращает ПРЕЖНЕЕ вычисленное
    значение под своим именем - как `gap: 0` возвращает прежний нулевой зазор.
    Это не перенос: на `.row` такого объявления нет и быть не должно.
@@ -6389,7 +6390,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    схлопнулась с 33px до 18px. 2p сверяет ОБЪЯВЛЕНИЯ и по построению не видит
    смены УНАСЛЕДОВАННОГО дефолта - граница, названная в его же шапке.
    visual-diff-exempt: .chat-hist align-items — вернул дефолт stretch, .row навязывал center
-   visual-diff-exempt: .chat-msgs__in align-items — то же
+   visual-diff-exempt: .tv-eyebrows align-items — то же (пропущен в первом заходе, нашёл code-simplifier)
    visual-diff-exempt: .eed-drange-tz align-items — то же
    visual-diff-exempt: .te-seam align-items — то же
    visual-diff-exempt: .tv-conncell align-items — то же, поймано замером (линия рейса 33px → 18px)

@@ -59,11 +59,13 @@
 .eed-finance .seg { margin-top: 10px; }
 /* Overnight — standalone card below the transfer date-range (design). TRIP-186:
    порядок свитч · иконка · текст, всё прижато влево (flex:1 убран). */
-/* `justify-content: flex-start` - ДЕФОЛТ флекса, ничего не делал и снят, а не перенесён. Зазор 10px = собственный зазор `.row`, модификатор не нужен.
+/* ★ОСТАТОК: `justify-content: flex-start` УДЕРЖАН приватным. Это дефолт флекса,
+     он ничего не делает, но снять его значило бы заявить перенос на `.row`, где
+     такого объявления нет - маркер стал бы неправдой. Снос дохлой строки - отдельная
+     чистка, не часть переноса раскладки. Зазор 10px = собственный зазор `.row`, модификатор не нужен.
      visual-diff-move: eed-nightrow -> row */
 .eed-nightrow { justify-content: flex-start; padding: 12px 14px; margin-top: 12px; }
 /* visual-diff-move: eed-nightrow__l -> row row--g4 */
 .eed-nightrow__l { min-width: 0; color: var(--ink); }
 /* Second stacked row inside an accordion body — spacing between rows. */
 .eed-accrow { margin-top: 10px; }
-
