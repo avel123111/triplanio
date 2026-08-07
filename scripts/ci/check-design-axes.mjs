@@ -57,6 +57,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { inScope } from './perimeter.mjs';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 const CATALOG = 'src/design/catalog.json';
@@ -149,6 +150,17 @@ for (const [fam, spec] of Object.entries(axes)) {
   }
   for (const tail of Object.keys(apart[fam] || {})) {
     if (seen.has(tail)) structural.push(`${fam}: хвост "${tail}" числится и значением оси "${seen.get(tail)}", и в apart`);
+    /** ★ ДЕФОЛТ В apart = НЕУДОВЛЕТВОРИМЫЙ КАТАЛОГ, а не вердикт по коду:
+     *  apart требует, чтобы правило СУЩЕСТВОВАЛО, дефолт - чтобы его НЕ было.
+     *  Раньше такой каталог принимался, A при нём МОЛЧАЛА (`known` истинно
+     *  через apart), и держал вердикт только цикл дефолтов в B - тот самый,
+     *  который в остальном лишь дублировал A. Проверка обязана стоять ДО его
+     *  удаления, иначе на месте дубля открывается дыра. */
+    for (const [axis, a] of Object.entries(spec)) {
+      if (a.дефолт !== undefined && String(a.дефолт) === tail) {
+        structural.push(`${fam}: хвост "${tail}" - и ДЕФОЛТ оси "${axis}", и запись в apart; apart требует правило, дефолт запрещает его`);
+      }
+    }
   }
 }
 for (const fam of Object.keys(apart)) {
@@ -235,7 +247,16 @@ for (const path of cssFiles) {
  *  назвал бы шесть чужих классов обличьями ряда. Проверено: именно так и вышло
  *  на первом прогоне. */
 const markupUse = new Map();
+let outOfPerimeter = 0;
 for (const path of markupFiles) {
+  /** ★ ПЕРИМЕТР ЭПИКА (§10) - ТОТ ЖЕ предикат, что у `audit-design.mjs`. Без
+   *  него 2q судил разметку, которую эпик из периметра ИСКЛЮЧИЛ, и печатал про
+   *  неё заведомо ложное «класс не существует»: у `btn--lg`/`btn--white`
+   *  (LandingPage, PublicTrip) и `card--wide` правило есть - в
+   *  `public/landing.css`, инжектируемом рантаймом. Цена симметрична и названа
+   *  в `perimeter.mjs`: законные употребления на лендинге тоже перестают
+   *  проверяться, до фазы 10. */
+  if (!inScope(path)) { outOfPerimeter += 1; continue; }
   const src = blankComments(readFileSync(path, 'utf8'), true);
   const lines = src.split('\n');
   lines.forEach((text, i) => {
@@ -249,6 +270,7 @@ const problems = [];
 let checkedValues = 0;
 let checkedClasses = 0;
 let checkedUses = 0;
+let stubs = 0;
 
 for (const fam of Object.keys(axes)) {
   const { byTail, defaults } = declaredOf(fam);
@@ -276,12 +298,15 @@ for (const fam of Object.keys(axes)) {
       problems.push(`B · ось «${axis}» объявляет ${fam}--${tail}, а правила .${prefix}${tail} нет — каталог обещает то, чего в CSS не существует`);
     }
   }
-  for (const [tail, axis] of defaults) {
-    if (cssClasses.has(prefix + tail)) {
-      problems.push(`B · ${cssClasses.get(prefix + tail)}  .${prefix}${tail} объявлен, хотя это ДЕФОЛТ оси «${axis}» — класс-no-op читается как «здесь особый случай»`);
-    }
-  }
-
+  /** ★ ЦИКЛА ПО ДЕФОЛТАМ ЗДЕСЬ БОЛЬШЕ НЕТ. Он печатал ВТОРУЮ строку про тот же
+   *  класс, что и ветка `defaults.has(tail)` в A, - один дефект, два голоса и
+   *  вдвое раздутый счётчик расхождений. Обе читали одну `cssClasses`, поэтому
+   *  A поглощала B всегда, КРОМЕ одного случая: дефолт, объявленный ещё и в
+   *  `apart`, делал `known(tail)` истинным, A замолкала, и держал вердикт
+   *  только этот цикл. Случай закрыт структурной проверкой выше (код 2) - он и
+   *  был неудовлетворимым каталогом: apart требует, чтобы правило
+   *  СУЩЕСТВОВАЛО, дефолт - чтобы его НЕ было. Проверено прогоном: без
+   *  структурной проверки удаление цикла делало такой каталог ЗЕЛЁНЫМ. */
   for (const tail of held) {
     // apart обещает существующее ровно так же, как ось: иначе число «ждут
     // разбора», про которое сказано «обязано пустеть», становится фикцией.
@@ -293,8 +318,19 @@ for (const fam of Object.keys(axes)) {
   // C. разметка → каталог
   for (const [name, at] of markupUse) {
     if (!name.startsWith(prefix)) continue;
-    checkedUses += 1;
     const tail = name.slice(prefix.length);
+    /** ★★ ОБРУБОК - ШАБЛОН, А НЕ ИМЯ. `` `btn btn--${variant}` `` оставляет в
+     *  разметке токен `btn--` с пустым хвостом (пробег тянет дефис), и C
+     *  печатала про него «значения нет ни на одной оси … элемент МОЛЧА получит
+     *  дефолт». Сообщение ЗАВЕДОМО ЛОЖНО: класса `btn--` в DOM нет и быть не
+     *  может. Ложь тут хуже пропуска - она посылает следующего чинить не то, и
+     *  именно она блокировала ВСЕ шесть семей с рантайм-именами
+     *  (btn/badge/tile/sev/avatar/dlg), то есть все оставшиеся после раскладки.
+     *  Обрубок не молчит, а СЧИТАЕТСЯ и печатается: «нечего проверять» и
+     *  «проверено, чисто» не должны давать один вердикт, а список значений для
+     *  таких семей берётся из карты компонента - это 07. */
+    if (tail === '') { stubs += 1; continue; }
+    checkedUses += 1;
     if (known(tail)) continue;
     problems.push(
       defaults.has(tail)
@@ -310,6 +346,11 @@ console.log('check-design-axes (2q): оси канон-объектов');
 console.log(`  семей с осями: ${Object.keys(axes).length} · осей: ${nAxes} · значений: ${checkedValues}`);
 console.log(`  сверено: классов ${checkedClasses} · имён в разметке ${checkedUses}`);
 console.log(`  обличий вне осей (apart, ждут разбора): ${nApart}`);
+/** Оба числа - НАЗВАННАЯ СЛЕПОТА, а не статистика: они печатаются всегда,
+ *  потому что «сверять нечего» и «сверено, чисто» не должны выглядеть одинаково.
+ *  Первое = сколько составных имён C не увидит по построению (закрывает 07),
+ *  второе = сколько файлов эпик вынес из периметра до фазы 10. */
+console.log(`  составных имён (C не видит): ${stubs} · вне периметра эпика: ${outOfPerimeter}`);
 
 if (problems.length) {
   console.log('');
