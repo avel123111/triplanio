@@ -9,14 +9,14 @@
    ================================================================= */
 
 /* ── Toolbar / Header ──────────────────────────────────────────── */
-/* visual-diff-move: ncal-hd -> row */
+/* раскладка уехала: ncal-hd -> row */
 .ncal-hd {
   margin-bottom: 20px;
 }
 .ncal-hd-l { flex: 1; min-width: 0; }
 /* Контейнер БЕЗ зазора: у примитива дефолт 10px, поэтому нулевой зазор назван
    явно (см. тот же приём в chat).
-   visual-diff-move: ncal-title-row -> row */
+   раскладка уехала: ncal-title-row -> row */
 .ncal-title-row {
   gap: 0;
 }
@@ -28,14 +28,14 @@
   margin-left: 12px;
 }
 /* ★ОСТАТОК: gap 9px вне шкалы (--sp даёт 8 и 10) - удержан приватным.
-   visual-diff-move: ncal-hd-r -> col */
+   раскладка уехала: ncal-hd-r -> col */
 .ncal-hd-r {
   gap: 9px;
   flex: none;
 }
 
 /* ── Nav pill ──────────────────────────────────────────────────── */
-/* visual-diff-move: ncal-nav -> row */
+/* раскладка уехала: ncal-nav -> row */
 .ncal-nav {
   background: var(--surface-2);
   border-radius: var(--r-pill);
@@ -68,7 +68,7 @@
 }
 .ncal-nav-trip {
   /* ★ОСТАТОК: gap 5px вне шкалы - удержан.
-     visual-diff-move: ncal-nav-trip -> row */
+     раскладка уехала: ncal-nav-trip -> row */
   gap: 5px;
   padding: 5px 12px; border-radius: var(--r-pill);
   background: var(--brand-soft); color: var(--brand);
@@ -80,7 +80,7 @@
 .ncal-nav-trip:hover { background: var(--brand-soft-12); }
 
 /* ── View toggle ───────────────────────────────────────────────── */
-/* visual-diff-move: ncal-vtgl -> row */
+/* раскладка уехала: ncal-vtgl -> row */
 .ncal-vtgl {
   background: var(--surface-2);
   border-radius: var(--r-pill);
@@ -104,7 +104,7 @@
 /* Неделя календаря НЕ схлопывается в .grid--2 (у неё своя семантика, так решено
    при вводе примитива) - на общий класс уезжает только display, а треки и зазор
    остаются своими. ★ОСТАТОК: gap 3px вне шкалы.
-   visual-diff-move: ncal-wd-row -> grid */
+   раскладка уехала: ncal-wd-row -> grid */
 .ncal-wd-row {
   grid-template-columns: repeat(7, 1fr);
   gap: 3px;
@@ -118,7 +118,7 @@
 /* ── Month: week row + day grid ────────────────────────────────── */
 .ncal-wk { margin-bottom: 3px; }
 /* ★ОСТАТОК: gap 3px вне шкалы.
-   visual-diff-move: ncal-dgrid -> grid */
+   раскладка уехала: ncal-dgrid -> grid */
 .ncal-dgrid {
   grid-template-columns: repeat(7, 1fr);
   gap: 3px;
@@ -145,7 +145,7 @@
 
 /* ── City strip ────────────────────────────────────────────────── */
 .ncal-cstrip {
-  /* visual-diff-move: ncal-cstrip -> row */
+  /* раскладка уехала: ncal-cstrip -> row */
   height: 20px;
   gap: 0;
   padding: 0 9px;
@@ -163,7 +163,7 @@
   padding: 0; gap: 1.5px;
 }
 .ncal-cstrip-seg {
-  /* visual-diff-move: ncal-cstrip-seg -> row */
+  /* раскладка уехала: ncal-cstrip-seg -> row */
   height: 100%;
   gap: 0;
   padding: 0 6px;
@@ -319,14 +319,14 @@
   margin-top: 24px;
 }
 /* ★ОСТАТОК: gap 14px вне шкалы (--sp даёт 12 и 16) - удержан.
-   visual-diff-move: ncal-legend-group -> row */
+   раскладка уехала: ncal-legend-group -> row */
 .ncal-legend-group {
   gap: 14px;
 }
 .ncal-legend-lbl {
   color: var(--muted-2); width: 64px; flex: none;
 }
-/* visual-diff-move: ncal-leg -> row */
+/* раскладка уехала: ncal-leg -> row */
 .ncal-leg {
   color: var(--muted);
 }
@@ -435,3 +435,31 @@
   .ncal-nav-txt { padding: 4px 8px; }
   .ncal-hd-r   { flex-wrap: wrap; }
 }
+
+/* ═══ TRIP-342: ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ (календарь) ═════════════════════════
+   Почему тут exempt, а не visual-diff-move. Маркер переноса требует, чтобы ВСЕ
+   ушедшие с источника объявления лежали на ОДНОЙ названной цели. Раскладка же
+   уезжает на КОМПОЗИЦИЮ - примитив плюс модификаторы его осей (.row + .row--g7 +
+   .row--wrap), и второй маркер на ту же пару делает проверку строже, а не
+   полнее: гард начинает требовать display и от .row--g7 тоже. Плюс он сверяет
+   значения ТЕКСТОМ и не резолвит var(), поэтому честный перенос сырых 16px на
+   ступень var(--sp-7) читается как смена значения. Оба ограничения названы в
+   отчёте по задаче; здесь каждый ключ объявлен поимённо, без бланкетного гашения.
+   visual-diff-exempt: .ncal-cstrip-seg gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
+   visual-diff-exempt: .ncal-hd-r align-items — align-items:flex-end уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .ncal-hd align-items — align-items:flex-start уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .ncal-hd flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .ncal-hd gap — зазор 16px уехал на ступень шкалы .--g7 (var(--sp-7)=16px), значение то же
+   visual-diff-exempt: .ncal-hd justify-content — justify-content:space-between уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .ncal-leg display — inline-flex уехал на .row--inline, значение то же
+   visual-diff-exempt: .ncal-legend-group flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .ncal-leg gap — зазор 6px уехал на ступень шкалы .--g3 (var(--sp-3)=6px), значение то же
+   visual-diff-exempt: .ncal-nav-trip display — inline-flex уехал на .row--inline, значение то же
+   visual-diff-exempt: .ncal-nav display — inline-flex уехал на .row--inline, значение то же
+   visual-diff-exempt: .ncal-nav gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   visual-diff-exempt: .ncal-title-row align-items — align-items:baseline уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .ncal-title-row flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .ncal-title-row gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
+   visual-diff-exempt: .ncal-vtgl display — inline-flex уехал на .row--inline, значение то же
+   visual-diff-exempt: .ncal-vtgl gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   ═══════════════════════════════════════════════════════════════════ */

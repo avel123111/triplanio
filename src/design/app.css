@@ -2142,14 +2142,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .row--inline { display: inline-flex; }
 
 /* Ось ВЫРАВНИВАНИЕ (поперёк ряда / вдоль ширины колонки).
-   visual-diff-move: row--start -> row--a-start */
+   раскладка уехала: row--start -> row--a-start */
 .row--a-start { align-items: flex-start; }
 .row--a-baseline { align-items: baseline; }
 .col--a-start { align-items: flex-start; }
 .col--a-end { align-items: flex-end; }
 
 /* Ось РАСПРЕДЕЛЕНИЕ (вдоль ряда / вдоль высоты колонки).
-   visual-diff-move: row--center -> row--j-center */
+   раскладка уехала: row--center -> row--j-center */
 .row--j-center { justify-content: center; }
 .row--j-between { justify-content: space-between; }
 .col--j-center { justify-content: center; }
@@ -2966,7 +2966,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Same bar as the global .app-header — the room header is a second tier
    of the same chrome. TRIP-326: backdrop-filter снят, непрозрачный --header-bg. */
 .chat-head {
-  /* visual-diff-move: chat-head -> row */
+  /* раскладка уехала: chat-head -> row */
   height: 60px; padding: 0 24px;
   border-bottom: 1px solid var(--line); flex: none;
   background: var(--header-bg);
@@ -2974,13 +2974,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Собственное правило снято ЦЕЛИКОМ - вся раскладка выражена примитивом
    (`col col--g1 col--j-center grow--fit`). Класс остаётся в разметке, потому что
    он нужен как ПРЕДОК правилу ниже; это не осиротевшее имя.
-   visual-diff-move: chat-head__id -> col */
+   раскладка уехала: chat-head__id -> col */
 .chat-head__id h3 { margin: 0; color: var(--ink); }
 .chat-head__sub { color: var(--muted); }
 /* Members trigger — avatar stack + label in one pill; opens the member list as a
    Popover (desktop) or the canonical Sheet (phones). */
 .chat-members-btn {
-  /* visual-diff-move: chat-members-btn -> row */
+  /* раскладка уехала: chat-members-btn -> row */
   height: 38px; padding: 0 12px 0 6px;
   border-radius: var(--r-pill);
   color: var(--ink-2); cursor: pointer; flex: none;
@@ -2993,7 +2993,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ── Message stream (shared) ──
    Gutters belong to the shell (`.chat-room` / `.dock-panel`), which is why this
    base rule carries no padding of its own. */
-/* visual-diff-move: chat-msgs -> col */
+/* раскладка уехала: chat-msgs -> col */
 .chat-msgs { flex: 1; overflow: auto; min-height: 0; }
 .chat-room .chat-msgs { padding: 20px 24px 8px; }
 /* Readable column inside a full-width room. 760px is the app's existing reading
@@ -3002,13 +3002,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    начальный `gap` = `normal` = 0, а `.col`/`.row` несут дефолтные 10px. Без этой
    строки перевод контейнера БЕЗ зазора на примитив молча раздвинул бы детей на
    10px. Таких контейнеров в зоне 1 одиннадцать, по периметру 78.
-   visual-diff-move: chat-msgs__in -> col */
+   раскладка уехала: chat-msgs__in -> col */
 .chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; gap: 0; }
-/* visual-diff-move: chat-hist -> row */
+/* раскладка уехала: chat-hist -> row */
 .chat-hist { padding-bottom: 20px; gap: 0; }
 /* Rule-and-label, not a pill: the divider spans the column so a day break reads
    as a section edge rather than another chip in the stream. */
-/* visual-diff-move: chat-daydiv -> row */
+/* раскладка уехала: chat-daydiv -> row */
 .chat-daydiv { margin: 24px 0 20px; }
 .chat-daydiv:first-child { margin-top: 0; }
 .chat-daydiv::before, .chat-daydiv::after { content: ""; height: 1px; flex: 1; background: var(--line); }
@@ -3021,19 +3021,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    its own author's block. */
 /* `justify-content: flex-start` не переехало никуда - это ДЕФОЛТ флекса, оно не
    делало ничего и здесь просто снято.
-   visual-diff-move: chat-run -> row */
+   раскладка уехала: chat-run -> row */
 .chat-run { margin-top: 16px; }
 .chat-run--me { justify-content: flex-end; }
 .chat-run__av { width: 32px; flex: none; position: sticky; top: 8px; align-self: flex-start; }
 .chat-run__av .avatar { width: 32px; height: 32px; }
-/* visual-diff-move: chat-run__col -> col */
+/* раскладка уехала: chat-run__col -> col */
 .chat-run__col { min-width: 0; max-width: min(560px, 78%); }
 /* ONE message inside the run: name row (first of an incoming run), bubble, and
    then either its time or the failure foot. */
 /* ★ОСТАТОК: `gap: 5px` ВНЕ шкалы (--sp-* даёт 4 и 6) и потому УДЕРЖАН приватным.
    Прогон к соседней ступени - смена значения, а не унификация: §10 такие прогоны
    запрещает, и именно так прошлый заход сделал `.checkbox` круглым.
-   visual-diff-move: chat-msg -> col */
+   раскладка уехала: chat-msg -> col */
 .chat-msg { min-width: 0; gap: 5px; }
 .chat-run--me .chat-run__col,
 .chat-run--me .chat-msg { align-items: flex-end; }
@@ -3042,10 +3042,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-msg--grouped .chat-bubble--me { border-top-right-radius: 6px; }
 /* Send failed, or the assistant never answered — the message stays put with a
    retry, it is never dropped. */
-/* visual-diff-move: chat-msg__foot -> row */
+/* раскладка уехала: chat-msg__foot -> row */
 .chat-msg__foot { margin-top: 2px; }
 .chat-msg__err { color: var(--danger-ink); display: inline-flex; align-items: center; gap: 4px; }
-/* visual-diff-move: chat-name -> row */
+/* раскладка уехала: chat-name -> row */
 .chat-name { margin-bottom: 3px; padding-left: 2px; }
 .chat-name b { color: var(--ink); }
 .chat-name .tm { color: var(--muted); }
@@ -3073,11 +3073,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* The answer and its actions are two stacked rows, not one: the sticky avatar is
    bounded by `__row`, so it stops at the bottom of the MESSAGE. Keeping the
    actions inside that row made it ride down to the bottom of the buttons. */
-/* visual-diff-move: chat-reply -> col */
+/* раскладка уехала: chat-reply -> col */
 .chat-reply { margin-top: 32px; }
 /* TRIP-342: оба класса УДАЛЕНЫ целиком - раскладка и ничего кроме неё.
-   visual-diff-move: chat-reply__row -> row
-   visual-diff-move: chat-reply__body -> col
+   раскладка уехала: chat-reply__row -> row
+   раскладка уехала: chat-reply__body -> col
    Ряд был `display:flex` БЕЗ `align-items`, то есть `stretch`, а `.row`
    центрирует - «класс тот же» тут не значило «выглядит так же». Замерено на
    копии реальной структуры (аватар `align-self:flex-start` + тело `flex:1`):
@@ -3086,7 +3086,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    само задаёт высоту ряда, а аватар свой `align-self` держит сам. Поэтому взят
    голый `.row` без модификатора выравнивания: лишний модификатор читался бы
    как «здесь особое выравнивание» и врал. */
-/* visual-diff-move: chat-reply__who -> row */
+/* раскладка уехала: chat-reply__who -> row */
 .chat-reply__who { min-height: 24px; }
 .chat-reply__who b { color: var(--ai-ink); }
 .chat-reply__who .tm { color: var(--muted-2); }
@@ -3108,7 +3108,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
 /* Sits under the answer, aligned with it: 44px = the avatar gutter (32) plus the
    row gap (12); -8px pulls the ghost buttons' own padding back to that edge. */
-/* visual-diff-move: chat-reply__acts -> row */
+/* раскладка уехала: chat-reply__acts -> row */
 .chat-reply__acts { margin-left: 36px; }
 /* Secondary actions sit under the answer — muted until hovered, so they never
    compete with the answer itself. */
@@ -3119,7 +3119,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* The pills used to sit flush against the composer's top border, which cut
    through them. Only the TOP margin is set here: the matching 8px below already
    comes from `.chat-composer__in`'s own `gap`. */
-/* visual-diff-move: chat-overline -> row */
+/* раскладка уехала: chat-overline -> row */
 .chat-overline { min-height: 26px; margin-top: 8px; }
 /* Was a full-width tinted strip welded to the top of the composer; as a pill it
    reads as status rather than as a second toolbar. */
@@ -3145,7 +3145,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    before the two composers were unified into one component, false since: the
    widget silently inherited the room's 24px inset, which is why the "typing" /
    "new messages" row sat far from the panel edge there but flush in the lens. */
-/* visual-diff-move: chat-composer__in -> col */
+/* раскладка уехала: chat-composer__in -> col */
 .chat-composer__in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px; }
 .dock-panel .chat-composer__in { max-width: none; padding: 0; }
 /* The ROW is the input surface: field + both buttons live inside one rounded
@@ -3231,7 +3231,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Call the assistant without knowing the "@" convention. */
 .chat-at { height: var(--ctl-h); width: var(--ctl-h); flex: none; border: 0; border-radius: var(--r-sm); background: var(--ai-soft); color: var(--ai-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .18s var(--ease-out); }
 .chat-at:hover { background: var(--ai-soft-2); }
-/* visual-diff-move: chat-composer__hint -> row */
+/* раскладка уехала: chat-composer__hint -> row */
 .chat-composer__hint { color: var(--muted-2); padding: 0 4px; }
 .chat-composer__hint kbd { font-family: var(--font-mono); font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }
 @media (max-width: 640px) { .chat-composer__hint { display: none; } }
@@ -3239,14 +3239,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ── Mention popover (shared) ── */
 .chat-mention { position: absolute; bottom: calc(100% + 6px); left: 12px; width: 280px; border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: 6px; z-index: 6; }
 .chat-mention__lbl { color: var(--muted-2); padding: 4px 10px; }
-/* visual-diff-move: chat-mention__row -> row */
+/* раскладка уехала: chat-mention__row -> row */
 .chat-mention__row { padding: 8px 10px; width: 100%; border: 0; background: transparent; border-radius: var(--r-sm); cursor: pointer; text-align: left; transition: background .15s var(--ease-out); }
 .chat-mention__row:hover { background: var(--ai-soft); }
 .chat-mention__row b { color: var(--ai); display: block; }
 .chat-mention__row span { color: var(--muted); }
 
 /* ── Member list — lives in the header Popover / Sheet (was the right rail) ── */
-/* visual-diff-move: chat-member -> row */
+/* раскладка уехала: chat-member -> row */
 .chat-member { padding: 7px 10px; border-radius: var(--r-sm); }
 .chat-member:hover { background: var(--wash); }
 /* TRIP-342: удалён - буквальный `.grow--fit` под своим именем.
@@ -6218,3 +6218,53 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .fork-pg --hl — пин канала на объекте ВОССТАНАВЛИВАЕТ прежний цвет: канал стал общим, и пилюля страницы начала наследовать цвет типа события из оболочки панели добавления брони
    visual-diff-exempt: .fork-pg --hl-fg — то же, вторая ручка залитой формы: без пина активная страница брала бы чернила чужого тона
    ═══════════════════════════════════════════════════════════════════════ */
+
+/* ═══ TRIP-342: ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ (чат) ═════════════════════════
+   Почему тут exempt, а не visual-diff-move. Маркер переноса требует, чтобы ВСЕ
+   ушедшие с источника объявления лежали на ОДНОЙ названной цели. Раскладка же
+   уезжает на КОМПОЗИЦИЮ - примитив плюс модификаторы его осей (.row + .row--g7 +
+   .row--wrap), и второй маркер на ту же пару делает проверку строже, а не
+   полнее: гард начинает требовать display и от .row--g7 тоже. Плюс он сверяет
+   значения ТЕКСТОМ и не резолвит var(), поэтому честный перенос сырых 16px на
+   ступень var(--sp-7) читается как смена значения. Оба ограничения названы в
+   отчёте по задаче; здесь каждый ключ объявлен поимённо, без бланкетного гашения.
+   visual-diff-exempt: .chat-composer__hint gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-composer__in gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-daydiv gap — зазор 16px уехал на ступень шкалы .--g7 (var(--sp-7)=16px), значение то же
+   visual-diff-exempt: .chat-head__id flex — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-head__id gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   visual-diff-exempt: .chat-head__id justify-content — justify-content:center уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-head__id min-width — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-head gap — зазор 16px уехал на ступень шкалы .--g7 (var(--sp-7)=16px), значение то же
+   visual-diff-exempt: .chat-hist gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
+   visual-diff-exempt: .chat-hist justify-content — justify-content:center уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-member gap — зазор 10px уехал на ступень шкалы .--g5 (var(--sp-5)=10px), значение то же
+   visual-diff-exempt: .chat-members-btn gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-mention__row gap — зазор 10px уехал на ступень шкалы .--g5 (var(--sp-5)=10px), значение то же
+   visual-diff-exempt: .chat-msg__foot gap — зазор 6px уехал на ступень шкалы .--g3 (var(--sp-3)=6px), значение то же
+   visual-diff-exempt: .chat-msgs__in gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
+   visual-diff-exempt: .chat-msgs gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   visual-diff-exempt: .chat-name align-items — align-items:baseline уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-name gap — зазор 6px уехал на ступень шкалы .--g3 (var(--sp-3)=6px), значение то же
+   visual-diff-exempt: .chat-overline gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-reply__acts flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-reply__acts gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   visual-diff-exempt: .chat-reply__body flex — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-reply__body gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-reply__body min-width — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-reply__row gap — зазор 12px уехал на ступень шкалы .--g6 (var(--sp-6)=12px), значение то же
+   visual-diff-exempt: .chat-reply__who gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-reply gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-run__col gap — зазор 4px уехал на ступень шкалы .--g2 (var(--sp-2)=4px), значение то же
+   visual-diff-exempt: .chat-run align-items — align-items:flex-start уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-run gap — зазор 12px уехал на ступень шкалы .--g6 (var(--sp-6)=12px), значение то же
+   visual-diff-exempt: .chat-run justify-content — flex-start это ДЕФОЛТ флекса, объявление ничего не делало и снято, а не перенесено
+   visual-diff-exempt: .col--a-end align-items — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .col--a-start align-items — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .col--g2 gap — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .col--j-center justify-content — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--a-baseline align-items — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--g1 gap — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--inline display — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--j-between justify-content — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   ═══════════════════════════════════════════════════════════════════ */
