@@ -45,7 +45,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
             return (
-              <button key={s.id} className="bookrow" onClick={() => onOpenService?.(s)}>
+              <button key={s.id} className="row bookrow" onClick={() => onOpenService?.(s)}>
                 <span className="bi" style={{ background: meta?.soft || 'var(--brand-soft)', color: meta?.color || 'var(--brand)' }}>
                   <Icon name={meta?.icon || 'ticket'} size={18} />
                 </span>

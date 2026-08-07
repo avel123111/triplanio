@@ -292,14 +292,14 @@ export default function Stay22HotelList({
                   </span>
                 ) : null}
                 meta={(h.stars || h.ratingCount) ? (
-                  <div className="pcard__meta">
+                  <div className="row row--a-baseline pcard__meta">
                     {h.stars ? <span className="pcard__stars">{'★'.repeat(h.stars)}</span> : null}
-                    {h.ratingCount ? <span className="pcard__mtx">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
+                    {h.ratingCount ? <span className="trunc pcard__mtx">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
                   </div>
                 ) : null}
-                subline={h.address ? <div className="pcard__addr">{h.address}</div> : null}
+                subline={h.address ? <div className="trunc pcard__addr">{h.address}</div> : null}
                 price={h.price != null ? (
-                  <span className="pcard__price">
+                  <span className="row row--a-baseline pcard__price">
                     <b>{fmtMoney(h.price, h.currency || meta.currency)}</b>
                     {meta.nights ? <span>{t('fork.stay22_for_nights', { count: meta.nights })}</span> : null}
                   </span>

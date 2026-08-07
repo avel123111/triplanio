@@ -34,13 +34,13 @@ export function ForkListSkeleton({ count = 4 }) {
   return (
     <div className="fork-list" aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
-        <div className="pcard pcard--sk" key={i}>
+        <div className="grid pcard pcard--sk" key={i}>
           <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={'var(--r-sm)'} /></div>
-          <div className="pcard__body">
+          <div className="col col--j-center pcard__body">
             <Skeleton w="70%" h={14} />
             <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
           </div>
-          <div className="pcard__bar">
+          <div className="row pcard__bar">
             <Skeleton w={80} h={14} />
             <span className="pcard__spacer" />
             <Skeleton w={70} h={30} r={'var(--r-sm)'} />

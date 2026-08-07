@@ -3712,7 +3712,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .addmini { width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
 .addmini:hover { background: var(--accent); color: var(--accent-ink); }
 
-.bookrow { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
+/* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан приватным.
+   visual-diff-move: bookrow -> row */
+.bookrow { gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
 .bookrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
 .bookrow:active { transform: translateY(0) scale(.99); }
 .bi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
@@ -5476,7 +5478,11 @@ a.doc-row__n:hover{ color: var(--brand); }
    so price ↔ Book stays one row at any container width. The thumb scales with the
    container (26cqw) — the lists set container-type: inline-size. Shared by the
    Stay22 hotel and Viator activity fork lists via PartnerResultCard. */
-.pcard { position: relative; display: grid; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+/* ★`row-gap: 0` - прежнее значение под своим именем: у сетки начальный зазор 0, а
+   `.grid` несёт дефолтные 10px по обеим осям, тогда как правило задаёт только
+   `column-gap`. Между строкой карточки и её нижней планкой появились бы 10px.
+   visual-diff-move: pcard -> grid */
+.pcard { position: relative; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; row-gap: 0; }
 .pcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); }
@@ -5496,7 +5502,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
    Booking navy token. Activities: glass star pill (.pcard__score--star). */
 .pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px /* design-token-exempt: асимметричный уголок бейджа рейтинга, форма а не шкала */; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
-.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
+/* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
+   visual-diff-move: pcard__score--star -> row row--inline */
+.pcard__score--star { gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
 /* Supplier badge — bottom-left on the photo (logo, letter fallback). */
@@ -5505,27 +5513,38 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* Body — grid cell (col 2), vertically centred against the photo. Name wraps to
    a 2nd line then ellipsis. */
-.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+/* ★ОСТАТОК: зазор 3px вне шкалы - удержан. Выравнивания у правила нет, и у `.col`
+   его тоже нет - дефолт `stretch` сохраняется сам.
+   visual-diff-move: pcard__body -> col col--j-center */
+.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; gap: 3px; }
 .pcard__name { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 
 /* Meta line (stars · reviews / duration · reviews): one row, ellipsis on the
    text, separators/numbers never squeeze. */
 /* align-items: baseline — stars (16px) and the review text (meta) share one
    baseline so the bigger star glyphs never sit lower than the digits. */
-.pcard__meta { display: flex; align-items: baseline; column-gap: 5px; min-width: 0; color: var(--muted); }
+/* ★ОСТАТОК: зазор 5px вне шкалы - удержан.
+   visual-diff-move: pcard__meta -> row row--a-baseline */
+.pcard__meta { column-gap: 5px; min-width: 0; color: var(--muted); }
 .pcard__meta > * { flex: none; }
 .pcard__stars { color: var(--rating); font-size: 16px; line-height: 1; letter-spacing: 1px; /* design-token-exempt: размер/разрядка глифов ★ (декоративные звёзды отеля), не текст */ }
-.pcard__mtx { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* visual-diff-move: pcard__mtx -> trunc */
+.pcard__mtx { flex: 0 1 auto; min-width: 0; }
 
 /* Subline (address / free cancellation) — one muted line, ellipsis. */
-.pcard__addr { color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* visual-diff-move: pcard__addr -> trunc */
+.pcard__addr { color: var(--muted-2); min-width: 0; }
 .pcard__addr--ok { color: var(--success); }
 
 /* Footer — full-width row (spans both columns), price ↔ Book on one line at any
    container width; the price sub-note shrinks first, price + Book never do. */
-.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* Зазор 10px - собственный зазор `.row`, модификатор не нужен и был бы no-op.
+   visual-diff-move: pcard__bar -> row */
+.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; min-width: 0; }
 .pcard__spacer { flex: 1; min-width: 8px; }
-.pcard__price { flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+/* ★ОСТАТОК: зазор 5px вне шкалы - удержан.
+   visual-diff-move: pcard__price -> row row--a-baseline */
+.pcard__price { flex: 0 1 auto; min-width: 0; gap: 5px; white-space: nowrap; }
 .pcard__price b { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
 .pcard__price span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .pcard__go { flex: none; border-radius: var(--r-pill); }
