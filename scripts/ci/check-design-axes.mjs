@@ -206,8 +206,16 @@ for (const path of cssFiles) {
      *  правдоподобно. */
     for (const one of sel.split(',')) {
       const parts = one.trim().split(/\s*[>+~]\s*|\s+/).filter(Boolean);
-      if (parts.length !== 1) continue;
-      for (const c of parts[0].matchAll(/\.([A-Za-z][\w-]*)/g)) cssStandalone.add(c[1]);
+      /** ★★★ ВЕДУЩАЯ составная часть, а не «селектор из одной части». Уточнено
+       *  разбором следующих семей: `.toast--error .tic {}` и `.card--danger >
+       *  .sev {}` объявлены ВЕДУЩИМ классом - они работают везде, где этот класс
+       *  стоит, и обличье существует по-настоящему. Требование «одна часть»
+       *  красило их несуществующими: 5 ложных краснот, замерено пробным
+       *  каталогом ДО объявления осей. При этом `.te-x .row--g1` остаётся
+       *  красным - там класс НЕ ведущий, то есть работает только внутри `.te-x`,
+       *  а снаружи молча даёт дефолт. Разница ровно в том, обусловлено ли
+       *  объявление предком. */
+      for (const c of (parts[0] || '').matchAll(/\.([A-Za-z][\w-]*)/g)) cssStandalone.add(c[1]);
     }
     for (const c of head.matchAll(/\.([A-Za-z][\w-]*)/g)) {
       if (cssClasses.has(c[1])) continue;
