@@ -61,12 +61,9 @@
    порядок свитч · иконка · текст, всё прижато влево (flex:1 убран). */
 /* `justify-content: flex-start` - ДЕФОЛТ флекса, ничего не делал и снят, а не перенесён. Зазор 10px = собственный зазор `.row`, модификатор не нужен.
      visual-diff-move: eed-nightrow -> row */
-.eed-nightrow { padding: 12px 14px; margin-top: 12px; }
+.eed-nightrow { justify-content: flex-start; padding: 12px 14px; margin-top: 12px; }
 /* visual-diff-move: eed-nightrow__l -> row row--g4 */
 .eed-nightrow__l { min-width: 0; color: var(--ink); }
 /* Second stacked row inside an accordion body — spacing between rows. */
 .eed-accrow { margin-top: 10px; }
 
-/* TRIP-342 зона 2.
-   visual-diff-exempt: .eed-nightrow justify-content — flex-start это ДЕФОЛТ флекса: объявление ничего не делало и СНЯТО, а не перенесено, поэтому маркером переноса его удостоверить нельзя
-   */

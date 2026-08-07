@@ -3528,7 +3528,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        («на .grid этого объявления нет»), а не глаз.
        ★`row-gap: 0` - прежнее значение под своим именем: правило задаёт только
        `column-gap`, а `.grid` несёт дефолтные 10px по обеим осям.
-       visual-diff-move: te-row -> grid */
+       ★Маркера переноса у этого правила НЕТ намеренно: ключ `.te-row` по display
+       и gap принадлежал СОСТАВНОМУ правилу планировщика (оно специфичнее), и его
+       перенос удостоверен своим маркером на полный селектор. Заявить их переносом
+       на `.grid` было бы неправдой. Объявлены исключением в конце файла. */
     .te-row { position: relative; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--surface); border-color: var(--brand); box-shadow: var(--sh-2); }
     .te-row:hover .te-cityname { color: var(--brand); }
