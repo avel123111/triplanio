@@ -6415,3 +6415,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .tv-conncell align-items — то же, поймано замером (линия рейса 33px → 18px)
    visual-diff-exempt: .tv-nodecell align-items — то же
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* TRIP-342 зона 3.
+   visual-diff-exempt: .pcard row-gap — прежний нулевой зазор под своим именем: карточка задаёт только column-gap, а .grid несёт дефолтные 10px по обеим осям
+   */
