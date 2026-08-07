@@ -83,7 +83,7 @@ export default function PanelAi({ ctx }) {
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
               <div className="t-meta" style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
+                <div className="trunc te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
               </div>
               <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
             </div>

@@ -540,7 +540,7 @@ function ReviewRow({ num, name, sub, icon, muted }) {
         {icon ? <Icon name={icon} size={12} /> : num}
       </span>
       <div className="grow--fit">
-        <div className="te-cityname">{name || '-'}</div>
+        <div className="trunc te-cityname">{name || '-'}</div>
         <div className="muted t-meta">{sub}</div>
       </div>
     </div>

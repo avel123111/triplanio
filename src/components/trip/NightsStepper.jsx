@@ -14,7 +14,7 @@ export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = 
   const t = useT();
   const stop = (e) => e.stopPropagation();
   return (
-    <span className="te-stepper" onPointerDown={stop} onClick={stop} title={title || t('tse.col_nights')}>
+    <span className="row row--inline te-stepper" onPointerDown={stop} onClick={stop} title={title || t('tse.col_nights')}>
       <button className="te-step" onClick={onMinus} disabled={minusDisabled} aria-label={t('planner.fewer_nights')}>
         <Icon name="minus" size={12} />
       </button>
