@@ -752,13 +752,13 @@ export default function Trips() {
               // Active tab with no upcoming/active trips (past ones exist) → invite,
               // not a generic empty. A real search miss still shows empty_search.
               (filterMode === 'active' && !search.trim()) ? (
-                <div className="invite">
+                <div className="row invite">
                   <span className="invite__ic"><Icon name="sparkles" size={28} /></span>
                   <div className="invite__tx">
                     <h3>{t('trips.invite_title')}</h3>
                     <p>{t('trips.invite_desc')}</p>
                   </div>
-                  <div className="invite__act">
+                  <div className="row row--wrap invite__act">
                     <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
                     <Btn variant="ghost" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
                   </div>

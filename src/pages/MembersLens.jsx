@@ -454,7 +454,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
       {/* Invite banner */}
       {canManage && (
-        <div className="invite-banner">
+        <div className="row row--wrap invite-banner">
           <div className="invite-banner__ic">
             <Icon name="users" size={20} />
           </div>

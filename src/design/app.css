@@ -2495,12 +2495,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Active-tab empty · "только прошлые" — past trips exist but none active.
    New element (approved 2026-06-20). Distinct from members' .invite-banner. */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
-.invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; }
+/* ★ОСТАТОК: зазор 22px вне шкалы - удержан. Мобильное правило ниже разворачивает
+   этот ряд в колонку - оно идёт позже и выигрывает у примитива.
+   visual-diff-move: invite -> row */
+.invite { position: relative; overflow: hidden; gap: 22px; padding: 26px 30px; }
 .invite__ic { width: 58px; height: 58px; border-radius: var(--r-md); flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
 .invite__tx h3 { color: var(--ink); }
 .invite__tx p { margin: 6px 0 0; color: var(--muted); max-width: 52ch; }
-.invite__act { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
+/* ★`align-items: stretch` возвращён явно: своего выравнивания у правила не было,
+   то есть работал флексовый дефолт, а `.row` центрирует. Зазор 10px - собственный
+   зазор `.row`, модификатор был бы no-op.
+   visual-diff-move: invite__act -> row row--wrap */
+.invite__act { gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; align-items: stretch; }
 @media (max-width: 640px) {
   .invite { flex-direction: column; align-items: center; text-align: center; padding: 22px 18px; gap: 16px; }
   .invite__tx p { margin: 6px auto 0; }
@@ -3489,10 +3496,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .m-status--declined { color: var(--danger); }
 
 /* Invite banner */
-.invite-banner {
-  margin-top: 24px; padding: 18px; background: var(--brand-soft); border-radius: var(--r-btn);
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-}
+/* ★ОСТАТОК: зазор 14px вне шкалы (--sp даёт 12 и 16) - удержан.
+   visual-diff-move: invite-banner -> row row--wrap */
+.invite-banner { margin-top: 24px; padding: 18px; background: var(--brand-soft); border-radius: var(--r-btn); gap: 14px; }
 .invite-banner__ic { width: 44px; height: 44px; border-radius: var(--r-sm); background: var(--brand); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
 .invite-banner__txt { flex: 1; min-width: 200px; }
 .invite-banner__title { margin-bottom: 2px; }
@@ -4157,7 +4163,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    left 720px column, leaving the right half of wide displays empty. This
    container centers and a 2-col grid uses the space, collapsing to a single
    column on tablet/mobile. */
-.settings-lens { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+/* visual-diff-move: settings-lens -> col col--g7 */
+.settings-lens { max-width: 1040px; margin: 0 auto; }
 /* TRIP-225: единый readonly-баннер наблюдателя (ReadOnlyBanner). На settings отступ
    даёт `.settings-lens` gap; docs/budget не раскладывают детей через gap → задаём
    отступ снизу здесь, чтобы баннер не прилипал к тулбару/контенту (как на settings). */
@@ -4165,15 +4172,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bgt > .readonly-banner { margin-bottom: 16px; }
 
 /* Identity card: live cover preview + name/description/currency/notes. */
-.settings-identity { display: grid; grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
+/* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
+   выравнивания нет вовсе.
+   visual-diff-move: settings-identity -> grid */
+.settings-identity { grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
 .settings-identity__cover { position: static; }
-.settings-identity__fields { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* visual-diff-move: settings-identity__fields -> col col--g7 */
+.settings-identity__fields { min-width: 0; }
 /* Field names in the identity card match the "Leave trip" row title style. */
 .settings-identity .field__label { color: var(--ink); }
 
 /* Two-column zone for features / integrations / warnings. */
-.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-.settings-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* ★Настоящая унификация, а не переименование: `1fr 1fr` - это ровно значение оси
+   «колонки» (`.grid--2`), ради которого примитив и заводился. Мобильное правило
+   ниже схлопывает в одну колонку и выигрывает у модификатора по порядку строк.
+   `align-items: start` удержан - у `.grid` этой оси нет.
+   visual-diff-move: settings-grid -> grid grid--2 grid--g7 */
+.settings-grid { align-items: start; }
+/* visual-diff-move: settings-col -> col col--g7 */
+.settings-col { min-width: 0; }
 /* Ряд на серой подложке. Раскладку даёт .row, здесь ТОЛЬКО скин. Подложка была
    написана инлайном дважды на одном экране и с РАЗНЫМИ числами (gap 14 и 12);
    всего этот шаблон в репозитории 36 раз (26 правил в CSS + 10 инлайнов). */
@@ -4187,33 +4204,39 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Addon / feature widget cards (Lumo DS §D1). Each card carries an accent
    colour via the inline --ac custom property. */
-.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-.addon-card {
-  --ac: var(--brand);
-  position: relative; border-radius: var(--r-md);
-  padding: 16px; display: flex; flex-direction: column; min-height: 150px;
-  box-shadow: var(--sh-1);
-  transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s;
-}
+/* ★ОСТАТОК: зазор 14px вне шкалы; треки `auto-fill minmax(240px,1fr)` - своя
+   форма галереи, осью «колонки» не описывается (порог переноса у каждой свой).
+   visual-diff-move: addon-grid -> grid */
+.addon-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+/* ★`gap: 0` - прежнее значение под своим именем: у флекса начальный зазор 0, а
+   `.col` несёт дефолтные 10px, и карточка аддона разъехалась бы.
+   visual-diff-move: addon-card -> col */
+.addon-card { --ac: var(--brand); position: relative; border-radius: var(--r-md); padding: 16px; min-height: 150px; box-shadow: var(--sh-1); transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s; gap: 0; }
 @media (hover:hover) { .addon-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); } }
-.addon-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+/* Зазор 10px - собственный зазор `.row`.
+   visual-diff-move: addon-card__top -> row row--a-start row--j-between */
+.addon-card__top { margin-bottom: 12px; }
 .addon-card__ic {
   width: 40px; height: 40px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none;
   background: color-mix(in srgb, var(--ac) 13%, transparent); color: var(--ac); transition: background .2s;
 }
-.addon-card__title {
- color: var(--ink);
- display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 5px;
-}
+/* ★ОСТАТОК: зазор 7px вне шкалы - удержан.
+   visual-diff-move: addon-card__title -> row row--wrap */
+.addon-card__title { color: var(--ink); gap: 7px; margin-bottom: 5px; }
 .addon-card__desc { color: var(--muted); flex: 1; }
-.addon-card__foot { margin-top: 13px; display: flex; align-items: center; gap: 8px; }
+/* visual-diff-move: addon-card__foot -> row row--g4 */
+.addon-card__foot { margin-top: 13px; }
 .addon-card--on { border-color: color-mix(in srgb, var(--ac) 42%, var(--line)); background: color-mix(in srgb, var(--ac) 5%, var(--surface)); }
 .addon-card--on .addon-card__ic { background: color-mix(in srgb, var(--ac) 22%, transparent); }
 .addon-card--locked { opacity: .74; }
 .addon-card--locked .addon-card__ic { filter: grayscale(.35); opacity: .55; }
 /* Status cluster (toggle + "available" badge) in the card top-right, so the
    availability state never wraps inside the title line. */
-.addon-card__status { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+/* ★ОСТАТОК: зазор 7px вне шкалы, и `justify-content: flex-end` - значения `j-end`
+   у оси «вдоль» ряда в каталоге НЕТ, а каталог правится параллельной 03f. Правило
+   всё равно выбывает из счётчика: `display` уехал.
+   visual-diff-move: addon-card__status -> row row--wrap */
+.addon-card__status { gap: 7px; justify-content: flex-end; }
 /* Phones: one column, drop the fixed min-height so cards size to content. */
 @media (max-width: 640px) {
   .addon-grid { grid-template-columns: 1fr; }
@@ -4230,17 +4253,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* minmax(0,1fr): the content track is sized by the viewport, NOT by its widest
    child — without this the wide subscription "plan face" widens the column once
    it loads, causing a load-time reflow (content jumps from narrow to wide). */
-.acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
+/* ★ОСТАТОК: зазор 30px вне шкалы; `align-items: start` удержан (у `.grid` оси нет).
+   visual-diff-move: acct-shell -> grid */
+.acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
 /* Base text matches the Lumo body exactly so nothing inherits a lighter/smaller
    default (15px / 500 / display-headings). */
 .acct-nav { position: sticky; top: 78px; }
-.acct-nav a { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
+/* ★ОСТАТОК: зазор 11px вне шкалы - удержан.
+   visual-diff-move: .acct-nav a -> row */
+.acct-nav a { gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
 .acct-nav a:hover { background: var(--surface-2); color: var(--ink); }
 .acct-nav a.active { background: var(--brand-soft); color: var(--brand); }
 .acct-nav a.active::before { content: ""; position: absolute; left: -1px; top: 9px; bottom: 9px; width: 3px; border-radius: var(--r-pill); background: var(--brand); }
-.acct-content { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+/* ★ОСТАТОК: зазор 22px вне шкалы - удержан.
+   visual-diff-move: acct-content -> col */
+.acct-content { gap: 22px; min-width: 0; }
 .acct-content section { scroll-margin-top: 78px; }
-.acct-sectitle { display: flex; align-items: center; gap: 9px; margin: 0 0 13px; color: var(--ink); }
+/* ★ОСТАТОК: зазор 9px вне шкалы - удержан.
+   visual-diff-move: acct-sectitle -> row */
+.acct-sectitle { gap: 9px; margin: 0 0 13px; color: var(--ink); }
 .acct-sectitle small { color: var(--muted); }
 
 /* ═══ СТРОКА СПИСКА: значок + (заголовок · описание) + действие ═══════════════
@@ -4290,21 +4321,30 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-hero__band .b1 { width: 170px; height: 170px; top: -70px; right: -30px; }
 .acct-hero__band .b2 { width: 90px; height: 90px; top: 30px; right: 120px; background: rgba(255,255,255,.10); }
 .acct-hero__plan { position: absolute; top: 14px; right: 16px; z-index: 3; }
-.acct-hero__row { display: flex; align-items: center; gap: 16px; padding: 18px 22px; }
+/* visual-diff-move: acct-hero__row -> row row--g7 */
+.acct-hero__row { padding: 18px 22px; }
 .acct-hero__av { flex: none; width: 80px; height: 80px; border-radius: 50%; color: #fff; display: grid; place-items: center; overflow: hidden; cursor: pointer; box-shadow: var(--sh-1); position: relative; background-size: cover; background-position: center; }
 .acct-hero__av .ov { position: absolute; inset: 0; background: rgba(15,18,34,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; opacity: 0; transition: opacity .2s; }
 .acct-hero__av:hover .ov { opacity: 1; } .acct-hero__av .ov svg { width: 18px; height: 18px; }
 .acct-hero__id { flex: 1; min-width: 0; }
 .acct-hero__name { color: var(--ink); }
 .acct-hero__mail { color: var(--muted); margin-top: 2px; }
-.acct-hero__actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
-.acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
+/* ★`align-items: stretch` возвращён явно - своего выравнивания не было, `.row` центрирует.
+   visual-diff-move: acct-hero__actions -> row row--wrap row--g3 */
+.acct-hero__actions { margin-top: 9px; align-items: stretch; }
+/* ★ОСТАТОК: зазор 14px вне шкалы; `align-items: end` удержан (у `.grid` оси нет).
+   visual-diff-move: acct-hero__edit -> grid */
+.acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line); grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
 .acct-hero__edit .btn { align-self: end; }
 .acct-flabel { display: block; color: var(--ink-2); margin-bottom: 6px; }
 
 /* subscription module */
-.acct-plan { display: grid; grid-template-columns: 228px 1fr; gap: 20px; align-items: center; }
-.acct-plan__face { border-radius: var(--r-md); padding: 18px; min-height: 120px; display: flex; flex-direction: column; justify-content: center; gap: 3px; position: relative; overflow: hidden; }
+/* ★`align-items: center` удержан - у `.grid` оси выравнивания нет.
+   visual-diff-move: acct-plan -> grid grid--g8 */
+.acct-plan { grid-template-columns: 228px 1fr; align-items: center; }
+/* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
+   visual-diff-move: acct-plan__face -> col col--j-center */
+.acct-plan__face { border-radius: var(--r-md); padding: 18px; min-height: 120px; gap: 3px; position: relative; overflow: hidden; }
 .acct-plan__face .blob { position: absolute; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.14); top: -44px; right: -30px; }
 .acct-plan__k { opacity: .85; position: relative; }
 .acct-plan__v { position: relative; }
@@ -4313,11 +4353,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-plan__face--mo { background: var(--brand-grad); color: #fff; }
 .acct-plan__face--yr { background: var(--success); color: #fff; }
 .acct-plan__face--ca { background: var(--warning); color: #fff; }
-.acct-plan__side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.acct-plan__line { color: var(--ink-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* visual-diff-move: acct-plan__side -> col col--g6 */
+.acct-plan__side { min-width: 0; }
+/* visual-diff-move: acct-plan__line -> row row--wrap row--g4 */
+.acct-plan__line { color: var(--ink-2); }
 .acct-plan__line b { color: var(--ink); }
-.acct-plan__acts { display: flex; gap: 9px; flex-wrap: wrap; }
-.acct-note { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
+/* ★ОСТАТОК: зазор 9px вне шкалы. `align-items: stretch` возвращён явно.
+   visual-diff-move: acct-plan__acts -> row row--wrap */
+.acct-plan__acts { gap: 9px; align-items: stretch; }
+/* ★ОСТАТОК: зазор 9px вне шкалы - удержан.
+   visual-diff-move: acct-note -> row row--a-start */
+.acct-note { gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
 .acct-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
 .acct-linktext { background: none; border: none; color: var(--brand); cursor: pointer; font: inherit; padding: 0; text-align: left; }
 
@@ -4386,7 +4432,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
    и тинт --primary-soft (имя удалено в 04 PR3) -> --brand-soft у .tile--brand
    (тогда в тёмной теме это был сдвиг .16 -> .14, см. блок .tile--*). */
-.acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
+/* visual-diff-move: acct-tghint -> row row--g4 */
+.acct-tghint { margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
 
 /* responsive: collapse to single column; nav becomes a horizontal scroller */

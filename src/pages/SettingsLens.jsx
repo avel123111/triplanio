@@ -81,25 +81,25 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
     + (feat.locked ? ' addon-card--locked' : '');
   return (
     <div className={cls} style={{ '--ac': feat.color || 'var(--brand)' }}>
-      <div className="addon-card__top">
+      <div className="row row--a-start row--j-between addon-card__top">
         <div className="addon-card__ic"><Icon name={feat.icon} size={20} /></div>
         {feat.locked
           ? <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
           : proLocked
             ? <Badge variant="pro" icon="pro">PRO</Badge>
             : (
-              <div className="addon-card__status">
+              <div className="row row--wrap addon-card__status">
                 {feat.pro && hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
                 <Toggle on={on} busy={busy} onChange={onChange} />
               </div>
             )}
       </div>
-      <div className="addon-card__title">
+      <div className="row row--wrap addon-card__title">
         {t(feat.labelKey)}
       </div>
       <div className="addon-card__desc">{t(feat.descKey)}</div>
       {proLocked && !feat.locked && (
-        <div className="addon-card__foot">
+        <div className="row row--g4 addon-card__foot">
           <Btn variant="soft" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
         </div>
       )}
@@ -723,7 +723,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
 
   return (
-    <div className="settings-lens">
+    <div className="col col--g7 settings-lens">
       {/* Viewer read-only notice — only this banner + the Leave button are
           interactive for a viewer (TRIP-137). */}
       {readOnly && (
@@ -745,7 +745,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
-        <div className="settings-identity">
+        <div className="grid settings-identity">
           <div className="settings-identity__cover">
             <Field label={t('trip.form_cover')}>
               <TripCoverPicker
@@ -759,7 +759,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               />
             </Field>
           </div>
-          <div className="settings-identity__fields">
+          <div className="col col--g7 settings-identity__fields">
             <Field label={t('trip.title_label')}>
               <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
             </Field>
@@ -820,7 +820,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         <div className="card-h">
           <div className="grow"><h3>{t('settings.optional_features')}</h3></div>
         </div>
-        <div className="addon-grid">
+        <div className="grid addon-grid">
           {FEATURES
             .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')
             .map(f => (
@@ -832,8 +832,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       </Card>
 
       {/* ── Integrations · warnings (2-col → 1-col on mobile) ── */}
-      <div className="settings-grid">
-        <div className="settings-col">
+      <div className="grid grid--2 grid--g7 settings-grid">
+        <div className="col col--g7 settings-col">
           {/* Chat widget - trip-level toggle for the floating dock button.
               Only shown when the Group Chat addon is on. */}
           {features.chat && (
@@ -878,7 +878,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           </Card>
         </div>
 
-        <div className="settings-col">
+        <div className="col col--g7 settings-col">
           {/* Telegram - only when the Telegram addon is enabled. */}
           {features.tg && (
             <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')}>

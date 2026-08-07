@@ -85,14 +85,14 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'no-sub') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--free">
+        <div className="grid grid--g8 acct-plan">
+          <div className="col col--j-center acct-plan__face acct-plan__face--free">
             <div className="acct-plan__k">{t('account.plan_current')}</div>
             <div className="acct-plan__v">Free</div>
           </div>
-          <div className="acct-plan__side">
-            <div className="acct-plan__line">{t('account.free_desc')}</div>
-            <div className="acct-plan__acts">
+          <div className="col col--g6 acct-plan__side">
+            <div className="row row--wrap row--g4 acct-plan__line">{t('account.free_desc')}</div>
+            <div className="row row--wrap acct-plan__acts">
               <Btn variant="pro" icon="pro" disabled={awaitingWebhook} onClick={onUpgrade}>
                 {t('account.go_to_pro')}
               </Btn>
@@ -109,17 +109,17 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'pro-pending') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--mo">
+        <div className="grid grid--g8 acct-plan">
+          <div className="col col--j-center acct-plan__face acct-plan__face--mo">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.plan_current')}</div>
             <div className="acct-plan__v">Pro</div>
           </div>
-          <div className="acct-plan__side">
+          <div className="col col--g6 acct-plan__side">
             {detailsError ? (
               <>
-                <div className="acct-plan__line">{t('account.details_unavailable')}</div>
-                <div className="acct-plan__acts">
+                <div className="row row--wrap row--g4 acct-plan__line">{t('account.details_unavailable')}</div>
+                <div className="row row--wrap acct-plan__acts">
                   <Btn variant="soft" icon="refresh" disabled={detailsLoading} onClick={onRetryDetails}>
                     {t('account.details_retry')}
                   </Btn>
@@ -139,18 +139,18 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'with-sub') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--mo">
+        <div className="grid grid--g8 acct-plan">
+          <div className="col col--j-center acct-plan__face acct-plan__face--mo">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.pro_monthly_sub')}</div>
             <div className="acct-plan__v num">{actualMoney || monthlyPrice || 'Pro'}{(actualMoney || monthlyPrice) && <span className="t-body">{t('account.per_month_short')}</span>}</div>
             <div className="acct-plan__p">{t('account.active')}</div>
           </div>
-          <div className="acct-plan__side">
+          <div className="col col--g6 acct-plan__side">
             {plan?.subscriptionEnd && (
-              <div className="acct-plan__line num">{t('account.next_charge')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></div>
+              <div className="row row--wrap row--g4 acct-plan__line num">{t('account.next_charge')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></div>
             )}
-            <div className="acct-plan__acts">
+            <div className="row row--wrap acct-plan__acts">
               {yearlyPrice && (
                 <Btn variant="soft" icon="arrow" disabled={portalLoading} onClick={onManage}>
                   {t('account.switch_yearly', { price: yearlyPrice })}
@@ -160,7 +160,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
                 {portalLoading ? t('account.opening') : t('account.billing_portal')}
               </Btn>
             </div>
-            <div className="acct-note"><Icon name="info" size={14} /><span>{t('account.after_cancel_access')}</span></div>
+            <div className="row row--a-start acct-note"><Icon name="info" size={14} /><span>{t('account.after_cancel_access')}</span></div>
           </div>
         </div>
       </div>
@@ -170,22 +170,22 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'annual') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--yr">
+        <div className="grid grid--g8 acct-plan">
+          <div className="col col--j-center acct-plan__face acct-plan__face--yr">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.pro_yearly_sub')}</div>
             <div className="acct-plan__v num">{actualMoney || yearlyPrice || 'Pro'}{(actualMoney || yearlyPrice) && <span className="t-body">{t('account.per_year_short')}</span>}</div>
             {(actualMonthlyEq || yearlyMonthlyEq()) && <div className="acct-plan__p num">{t('account.equivalent')} {actualMonthlyEq || yearlyMonthlyEq()}{t('account.per_month_short')}</div>}
           </div>
-          <div className="acct-plan__side">
-            <div className="acct-plan__line"><Badge variant="success" icon="check">{t('account.active')}</Badge>{plan?.subscriptionEnd && <span className="num">{t('account.renews')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></span>}</div>
-            <div className="acct-plan__acts">
+          <div className="col col--g6 acct-plan__side">
+            <div className="row row--wrap row--g4 acct-plan__line"><Badge variant="success" icon="check">{t('account.active')}</Badge>{plan?.subscriptionEnd && <span className="num">{t('account.renews')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></span>}</div>
+            <div className="row row--wrap acct-plan__acts">
               <Btn variant="ghost" icon="external" disabled={portalLoading} onClick={onManage}>
                 {portalLoading ? t('account.opening') : t('account.billing_portal')}
               </Btn>
               <button className="acct-linktext" onClick={onManage}>{t('account.cancel_until_year_end')}</button>
             </div>
-            <div className="acct-note"><Icon name="info" size={14} /><span>{t('account.yearly_note')}</span></div>
+            <div className="row row--a-start acct-note"><Icon name="info" size={14} /><span>{t('account.yearly_note')}</span></div>
           </div>
         </div>
       </div>
@@ -195,21 +195,21 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   // cancelled
   return (
     <div className="card">
-      <div className="acct-plan">
-        <div className="acct-plan__face acct-plan__face--ca">
+      <div className="grid grid--g8 acct-plan">
+        <div className="col col--j-center acct-plan__face acct-plan__face--ca">
           <span className="blob" aria-hidden="true" />
           <div className="acct-plan__k">{t('account.cancelled_sub')}</div>
           <div className="acct-plan__v t-subheading">{t('account.pro_cancelled')}</div>
           {plan?.subscriptionEnd && <div className="acct-plan__p">{fmtDate(plan.subscriptionEnd, locale)}</div>}
         </div>
-        <div className="acct-plan__side">
-          <div className="acct-plan__line">{t('account.cancelled_desc')}</div>
-          <div className="acct-plan__acts">
+        <div className="col col--g6 acct-plan__side">
+          <div className="row row--wrap row--g4 acct-plan__line">{t('account.cancelled_desc')}</div>
+          <div className="row row--wrap acct-plan__acts">
             <Btn variant="primary" icon="refresh" disabled={portalLoading} onClick={onManage}>
               {portalLoading ? t('account.opening') : t('account.resume')}
             </Btn>
           </div>
-          <div className="acct-note"><Icon name="info" size={14} /><span>{t('account.cancelled_note')}</span></div>
+          <div className="row row--a-start acct-note"><Icon name="info" size={14} /><span>{t('account.cancelled_note')}</span></div>
         </div>
       </div>
     </div>
@@ -306,7 +306,7 @@ function ReminderChannels() {
                     <Btn variant="ghost" icon="unlink" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
                   </div>
                 ))}
-                <div className="acct-tghint"><Icon name="info" size={13} /><span>{t('telegram.account_hint')}</span></div>
+                <div className="row row--g4 acct-tghint"><Icon name="info" size={13} /><span>{t('telegram.account_hint')}</span></div>
               </div>
             )}
           </div>
@@ -646,7 +646,7 @@ export default function ScreenAccount() {
       )}
 
       {/* ── TWO-PANE WORKSPACE ── */}
-      <div className="acct-shell">
+      <div className="grid acct-shell">
         <h1 className="sr-only">{t('account.title')}</h1>
 
         {/* LEFT NAV (sticky, scroll-spy) */}
@@ -659,15 +659,15 @@ export default function ScreenAccount() {
         </nav>
 
         {/* CONTENT */}
-        <div className="acct-content">
+        <div className="col acct-content">
 
           {/* ░░ PROFILE ░░ */}
           <section id="acct-profile">
-            <h2 className="acct-sectitle">{t('account.identity')}</h2>
+            <h2 className="row acct-sectitle">{t('account.identity')}</h2>
             <div className="acct-hero">
               <div className="acct-hero__band" aria-hidden="true"><span className="blob b1" /><span className="blob b2" /></div>
               {planBadge && <div className="acct-hero__plan">{planBadge}</div>}
-              <div className="acct-hero__row">
+              <div className="row row--g7 acct-hero__row">
                 <div
                   className="acct-hero__av"
                   role="button" tabIndex={0}
@@ -690,7 +690,7 @@ export default function ScreenAccount() {
                 <div className="acct-hero__id">
                   <div className="acct-hero__name trunc">{displayName(user.email, user.full_name)}</div>
                   <div className="acct-hero__mail">{user.email}</div>
-                  <div className="acct-hero__actions">
+                  <div className="row row--wrap row--g3 acct-hero__actions">
                     <Btn variant="secondary" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
                     {avatarUrl && (
                       <Btn variant="danger" icon="trash" onClick={handleRemoveAvatar}>{t('account.remove_avatar')}</Btn>
@@ -698,7 +698,7 @@ export default function ScreenAccount() {
                   </div>
                 </div>
               </div>
-              <div className="acct-hero__edit">
+              <div className="grid acct-hero__edit">
                 <div>
                   <label className="acct-flabel" htmlFor="acct-dispname">{t('account.display_name')}</label>
                   <input id="acct-dispname" className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
@@ -716,7 +716,7 @@ export default function ScreenAccount() {
 
           {/* ░░ SUBSCRIPTION ░░ */}
           <section id="acct-plan">
-            <h2 className="acct-sectitle">{t('account.subscription')} <small>{t('account.pro_monthly_sub')}</small></h2>
+            <h2 className="row acct-sectitle">{t('account.subscription')} <small>{t('account.pro_monthly_sub')}</small></h2>
             <SubscriptionModule
               planState={planState}
               plan={plan}
@@ -734,7 +734,7 @@ export default function ScreenAccount() {
 
           {/* ░░ PREFERENCES (variant C — single-card list) ░░ */}
           <section id="acct-appearance">
-            <h2 className="acct-sectitle">{t('account.preferences')}</h2>
+            <h2 className="row acct-sectitle">{t('account.preferences')}</h2>
             <div className="card">
 
               {/* Language */}
@@ -807,7 +807,7 @@ export default function ScreenAccount() {
 
           {/* ░░ NOTIFICATIONS + CHANNELS ░░ */}
           <section id="acct-notify">
-            <h2 className="acct-sectitle">{t('account.email_notifs')}</h2>
+            <h2 className="row acct-sectitle">{t('account.email_notifs')}</h2>
 
             {/* In-app notifications — quick link to the inbox with unread count.
                 Same row grammar as every other navigational row on this screen
@@ -836,7 +836,7 @@ export default function ScreenAccount() {
 
           {/* ░░ HELP & LEGAL ░░ */}
           <section id="acct-help">
-            <h2 className="acct-sectitle">{t('account.nav_help')}</h2>
+            <h2 className="row acct-sectitle">{t('account.nav_help')}</h2>
             <div className="card">
               <div className="row--div row row--g7">
                 <span className="tile tile--lg tile--brand"><Icon name="chat" size={18} /></span>
@@ -882,7 +882,7 @@ export default function ScreenAccount() {
 
           {/* ░░ SESSION & DANGER ░░ */}
           <section id="acct-session">
-            <h2 className="acct-sectitle">{t('account.nav_session')}</h2>
+            <h2 className="row acct-sectitle">{t('account.nav_session')}</h2>
 
             <div className="card card--danger" style={{ marginBottom: 16 }}>
               {/* Рамку целиком задаёт карточка, поэтому строка своей отбивки не
