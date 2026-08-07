@@ -585,7 +585,7 @@ export default function ScreenAccount() {
   // ── Guard ──────────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div className="row row--center" style={{ paddingTop: 60 }}>
+      <div className="row row--j-center" style={{ paddingTop: 60 }}>
         <div className="spin spin--ring spin--lg" />
       </div>
     );

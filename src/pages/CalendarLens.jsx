@@ -85,7 +85,7 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
   return (
     <div className="ncal-month">
       {/* Weekday header */}
-      <div className="ncal-wd-row" role="row">
+      <div className="grid ncal-wd-row" role="row">
         {WD_NAMES.map(w => (
           <div key={w} className="ncal-wd" role="columnheader">{w}</div>
         ))}
@@ -94,7 +94,7 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
       {/* Week rows */}
       {weeks.map((week, wi) => (
         <div key={wi} className="ncal-wk">
-          <div className="ncal-dgrid" role="row">
+          <div className="grid ncal-dgrid" role="row">
             {week.map((d, ci) => {
               const inTrip = d != null && inTripDays.has(d);
               const isToday = d === todayDay;
@@ -114,14 +114,14 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
               // ── City strip at top of cell ─────────────────────
               let cityStrip;
               if (!cities.length) {
-                cityStrip = <div className="ncal-cstrip cs-empty" />;
+                cityStrip = <div className="row ncal-cstrip cs-empty" />;
               } else if (cities.length === 1) {
                 const c = cities[0];
                 // Show city name only on the first day of this visit in the month
                 const showLabel = d === c.startDay;
                 cityStrip = (
                   <div
-                    className="ncal-cstrip"
+                    className="row ncal-cstrip"
                     style={{ background: cityBg(c.colorIdx) }}
                   >
                     {showLabel ? c.label : ''}
@@ -130,11 +130,11 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
               } else {
                 // Transit day: split strip — always show all city names
                 cityStrip = (
-                  <div className="ncal-cstrip is-split">
+                  <div className="row ncal-cstrip is-split">
                     {cities.map((c, si) => (
                       <span
                         key={si}
-                        className="ncal-cstrip-seg"
+                        className="row grow ncal-cstrip-seg"
                         style={{ background: cityBg(c.colorIdx), flex: 1 }}
                       >
                         {c.label}
@@ -217,7 +217,7 @@ function WeekView({ days, eventsByDayArr, onOpenEvent }) {
                 {cities.map((c, ci) => (
                   <span
                     key={ci}
-                    className="ncal-cstrip-seg"
+                    className="row grow ncal-cstrip-seg"
                     style={{ background: cityBg(c.colorIdx), flex: 1 }}
                   />
                 ))}
@@ -288,11 +288,11 @@ function Legend({ visits }) {
   if (!uniqueCities.length) return null;
 
   return (
-    <div className="ncal-legend">
-      <div className="ncal-legend-group">
+    <div className="col ncal-legend">
+      <div className="row row--wrap ncal-legend-group">
         <span className="ncal-legend-lbl">{t('calendar.legend_group_cities')}</span>
         {uniqueCities.map((c, i) => (
-          <span key={i} className="ncal-leg">
+          <span key={i} className="row row--inline row--g3 ncal-leg">
             <span className="ncal-leg-sw" style={{ background: cityBg(c.colorIdx) }} />
             {c.name}
           </span>
@@ -491,9 +491,9 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
   return (
     <div className="ov-anim--cal">
       {/* ── Toolbar ────────────────────────────────────────────── */}
-      <div className="ncal-hd">
-        <div className="ncal-hd-l">
-          <div className="ncal-title-row">
+      <div className="row row--a-start row--j-between row--g7 row--wrap ncal-hd">
+        <div className="grow--fit ncal-hd-l">
+          <div className="row row--a-baseline row--wrap ncal-title-row">
             <span className="ncal-month-lbl">{MONTH_NAMES[
               view === 'month' ? currentMonth.month : (baseDate.startOf('week').plus({ weeks: weekOffset }).month)
             ]}</span>
@@ -511,15 +511,15 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
           </div>
         </div>
 
-        <div className="ncal-hd-r">
+        <div className="col col--a-end ncal-hd-r">
           {/* Nav pill */}
-          <div className="ncal-nav">
+          <div className="row row--inline row--g1 ncal-nav">
             <button className="ncal-nav-ico" aria-label={t('calendar.prev')} onClick={goBack}>
               <IcoBack />
             </button>
             <button className="ncal-nav-txt" onClick={goToday}>{t('calendar.today')}</button>
             <span className="ncal-nav-div" aria-hidden="true" />
-            <button className="ncal-nav-trip" onClick={goHome}>
+            <button className="row row--inline ncal-nav-trip" onClick={goHome}>
               <IcoPin />
               <span className="ncal-trip-label">{t('calendar.to_trip_start')}</span>
             </button>
@@ -529,7 +529,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
           </div>
 
           {/* View toggle */}
-          <div className="ncal-vtgl" role="group" aria-label={`${t('calendar.month')} / ${t('calendar.week')}`}>
+          <div className="row row--inline row--g1 ncal-vtgl" role="group" aria-label={`${t('calendar.month')} / ${t('calendar.week')}`}>
             <button
               className={`ncal-vtgl-btn${view === 'month' ? ' is-on' : ''}`}
               aria-pressed={view === 'month'}

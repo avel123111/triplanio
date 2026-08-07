@@ -85,9 +85,9 @@ const ChatComposer = forwardRef(function ChatComposer(
 
   return (
     <div className="chat-composer">
-      <div className="chat-composer__in">
+      <div className="col col--g4 chat-composer__in">
         {(isThinking || jump) && (
-          <div className="chat-overline">
+          <div className="row row--g4 chat-overline">
             {isThinking && (
               <div className="chat-thinking">
                 <TriplanioAvatar size="xs" />
@@ -105,7 +105,7 @@ const ChatComposer = forwardRef(function ChatComposer(
                 popup lists just the assistant. */}
             <button
               onMouseDown={(e) => { e.preventDefault(); insertMention(); }}
-              className="chat-mention__row"
+              className="row chat-mention__row"
             >
               <TriplanioAvatar />
               <span className="grow">
@@ -207,7 +207,7 @@ const ChatComposer = forwardRef(function ChatComposer(
 
         {withHint && (
           /* Keys render as <kbd> pills; "Enter"/"Shift" are key names, not copy. */
-          <div className="chat-composer__hint">
+          <div className="row row--g4 chat-composer__hint">
             <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_send')}</span> {/* i18n-ignore: key names */}
             <span>·</span>
             <span><kbd>Enter</kbd> {t('chat.hint_newline')}</span> {/* i18n-ignore: key name */}
