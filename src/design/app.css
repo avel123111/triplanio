@@ -6379,3 +6379,19 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .tv-durcell gap — то же
    visual-diff-exempt: .tv-carrier__av gap — то же
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ TRIP-342 зона 2: восстановленный неявный stretch ═══════════════════════
+   Шесть правил не объявляли `align-items` вовсе, то есть работали на флексовом
+   дефолте `stretch`, а `.row` центрирует. Строка возвращает ПРЕЖНЕЕ вычисленное
+   значение под своим именем - как `gap: 0` возвращает прежний нулевой зазор.
+   Это не перенос: на `.row` такого объявления нет и быть не должно.
+   ★Найдено ЗАМЕРОМ, не гардом: у `.tv-conncell` соединительная линия рейса
+   схлопнулась с 33px до 18px. 2p сверяет ОБЪЯВЛЕНИЯ и по построению не видит
+   смены УНАСЛЕДОВАННОГО дефолта - граница, названная в его же шапке.
+   visual-diff-exempt: .chat-hist align-items — вернул дефолт stretch, .row навязывал center
+   visual-diff-exempt: .chat-msgs__in align-items — то же
+   visual-diff-exempt: .eed-drange-tz align-items — то же
+   visual-diff-exempt: .te-seam align-items — то же
+   visual-diff-exempt: .tv-conncell align-items — то же, поймано замером (линия рейса 33px → 18px)
+   visual-diff-exempt: .tv-nodecell align-items — то же
+   ═══════════════════════════════════════════════════════════════════════════ */
