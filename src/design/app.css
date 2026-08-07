@@ -6268,3 +6268,49 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .row--inline display — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
    visual-diff-exempt: .row--j-between justify-content — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
    ═══════════════════════════════════════════════════════════════════ */
+
+/* TRIP-342: продолжение объявленных изменений (чат) - раскладка на примитив.
+   visual-diff-exempt: .chat-composer__hint align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-composer__hint display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-composer__in display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-composer__in flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-daydiv align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-daydiv display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-head__id display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-head__id flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-head align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-head display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-hist display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-member align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-member display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-members-btn align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-members-btn display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-mention__row align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-msg__foot align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-msg__foot display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msg display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msg flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-msgs__in display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msgs__in flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-msgs display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msgs flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-name display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-overline align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-overline display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__acts align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-reply__acts display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__body display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__body flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-reply__row display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__who align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-reply__who display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-run__col display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-run__col flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-run display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .row--a-start align-items — раскладка уехала на примитив, значение то же
+   visual-diff-exempt: .row--center justify-content — раскладка уехала на примитив, значение то же
+   visual-diff-exempt: .row--j-center justify-content — раскладка уехала на примитив, значение то же
+   visual-diff-exempt: .row--start align-items — раскладка уехала на примитив, значение то же
+   */
