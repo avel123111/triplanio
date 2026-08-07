@@ -360,7 +360,7 @@ test('★ перенос на несуществующую цель — крас
   });
   const { code, out } = run(f);
   assert.equal(code, 1, out);
-  assert.match(out, /у цели на HEAD нет ни одного объявления/);
+  assert.match(out, /у цели \.grow--ftt на HEAD нет ни одного объявления/);
 });
 
 test('★ цель есть, но НУЖНОГО объявления на ней нет — красный', (t) => {
@@ -511,7 +511,7 @@ test('★ перенос из составного на несуществующ
   });
   const { code, out } = run(f);
   assert.equal(code, 1, out);
-  assert.match(out, /у цели на HEAD нет ни одного объявления/);
+  assert.match(out, /у цели \.grow--ftt на HEAD нет ни одного объявления/);
 });
 
 test('★ `.a.b` — обе половины закрывает один маркер (подлежащего у него нет)', (t) => {
@@ -849,4 +849,257 @@ test('★ гард видит НЕЗАСТЕЙДЖЕННУЮ правку — ч
   const { code, out } = run(f);
   assert.equal(code, 1, out);
   assert.match(out, /gap: 9px → 17px/);
+});
+
+/* ──────────── сторона ЦЕЛИ: набор целей и разворачивание токенов ────────────
+ * Зеркало TRIP-363. Там маркер, названный не целиком, вынуждал ЛГАТЬ про
+ * источник; здесь цель нельзя назвать целиком по двум независимым причинам —
+ * раскладка уезжает на КОМПОЗИЦИЮ классов, а значения сверяются текстом, из-за
+ * чего перенос сырого `16px` на `var(--sp-7)` читался как смена значения.     */
+
+test('★ перенос сырого значения на ТОКЕН той же величины — ЗЕЛЁНЫЙ', (t) => {
+  // Ровно то, ради чего шкала и заведена: `16px` уезжает на `var(--sp-7)`.
+  // Текстовое сравнение читало это как «перенос СО СМЕНОЙ значения», и цена
+  // была 117 непроверяемых исключений на одну зону.
+  const f = fixture(t, {
+    base: {
+      'src/design/app.css': ':root { --sp-7: 16px; }\n.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n',
+    },
+    head: {
+      'src/design/app.css':
+        ':root { --sp-7: 16px; }\n.grow--fit { flex: 1; gap: var(--sp-7); }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /сошлись через токен/);
+});
+
+test('★★ перенос на токен ДРУГОЙ величины — КРАСНЫЙ (резолв не ослабляет сверку значений)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/design/app.css': ':root { --sp-6: 12px; }\n.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n',
+    },
+    head: {
+      'src/design/app.css':
+        ':root { --sp-6: 12px; }\n.grow--fit { flex: 1; gap: var(--sp-6); }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ резолв НЕ глобальный: правка самого токена по-прежнему блокирует', (t) => {
+  // Разверни `var()` во всём сравнении — и правка одного токена зажгла бы всех
+  // его потребителей, у которых в тексте не изменилось ничего. Потребитель
+  // молчит, токен краснеет.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --sp-7: 16px; }\n.pad { gap: var(--sp-7); }\n' },
+    head: { 'src/a.css': ':root { --sp-7: 20px; }\n.pad { gap: var(--sp-7); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --sp-7: 16px → 20px/);
+  assert.doesNotMatch(out, /\.pad/);
+});
+
+test('★ неизвестный токен оставляет var() в тексте — сверка остаётся строгой', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        '.grow--fit { flex: 1; gap: var(--nope); }\n/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ фолбэк var(--нет, 16px) берётся, когда имени нет в :root', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        '.grow--fit { flex: 1; gap: var(--nope, 16px); }\n/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★ тёмный :root в словарь резолва НЕ входит (тема — второй словарь)', (t) => {
+  // Сверять перенос по двум словарям сразу значило бы выбирать, какой из них
+  // «настоящий». Берётся ровно `:root` в базовом контексте.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { color: red; }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        ':root[data-theme=dark] { --c: red; }\n.grow--fit { flex: 1; color: var(--c); }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ ОДИН маркер называет НАБОР целей — раскладка уезжает на композицию', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/design/app.css':
+        '.brow__body { flex: 1; gap: 12px; }\n.row { flex: 1; }\n.row--g3 { gap: 12px; }\n',
+    },
+    head: {
+      'src/design/app.css':
+        '.row { flex: 1; }\n.row--g3 { gap: 12px; }\n' +
+        '/* visual-diff-move: brow__body -> row row--g3 */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /перенос \.brow__body → \.row \.row--g3: объявлений 2/);
+});
+
+test('★★ покрывает ПОБЕДИТЕЛЬ ПО ВЕСУ среди целей, а не «есть хоть у одной»', (t) => {
+  // Дыра ровно того класса, что нашла мутация в TRIP-363: значение совпало у
+  // ПРОИГРАВШЕЙ цели, а элементу достаётся значение победителя.
+  // ★ Фикстура специально разводит цели по РАЗНЫМ единицам и разным правилам.
+  // Первая проба писала `.row` + `.row.row--g3`, и она была зелёной при
+  // сломанном гарде: составное правило заводит ключ и на `.row` тоже, поэтому
+  // «первая попавшаяся цель» тоже давала 99px. Мутация «есть хоть у одной» её не
+  // ловила — тест проходил по неверной причине. Здесь `.hit` объявлен ПЕРВЫМ и
+  // совпадает с ушедшим значением, `.win` стоит ниже при той же специфичности,
+  // поэтому каскад отдаёт элементу именно его 99px.
+  const f = fixture(t, {
+    base: { 'src/design/app.css': '.brow__body { gap: 12px; }\n.hit { gap: 12px; }\n.win { gap: 99px; }\n' },
+    head: {
+      'src/design/app.css':
+        '.hit { gap: 12px; }\n.win { gap: 99px; }\n/* visual-diff-move: brow__body -> hit win */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ пустая цель в наборе называется поимённо, а не «одна из»', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { flex: 1; }\n.row { flex: 1; }\n' },
+    head: { 'src/a.css': '.row { flex: 1; }\n/* visual-diff-move: brow__body -> row nosuch */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /у цели \.nosuch на HEAD нет ни одного объявления/);
+});
+
+/* ───────── TRIP-366: бесклассовая единица из нескольких лексем ───────── */
+
+test('★ visual-diff-exempt адресует единицу из НЕСКОЛЬКИХ лексем (h1 em color)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': 'h1 em { color: blue; }\n' },
+    head: {
+      'src/a.css': 'h1 em { color: red; }\n/* visual-diff-exempt: h1 em color — снят второй канон */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /h1 em color — изменение объявлено намеренным/);
+});
+
+test('★ маркер БЕЗ причины — код 2 с подсказкой, а не разбор не туда', (t) => {
+  // Причиной кончается КЛЮЧ: без неё «последняя лексема» не определена, и
+  // `h1 em color` разобрался бы как единица `h1` + свойство `em`.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'src/a.css': '.checkbox { gap: 17px; }\n/* visual-diff-exempt: .checkbox gap */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 2, out);
+  assert.match(out, /не разобран/);
+});
+
+test('★ ASCII-дефис в пробелах годится разделителем причины', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: {
+      'src/a.css': '.checkbox { gap: 17px; }\n/* visual-diff-exempt: .checkbox gap - ступень шкалы */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★ маркер БЕЗ единицы (одно свойство) — код 2, а не маркер-пустышка', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'src/a.css': '.checkbox { gap: 17px; }\n/* visual-diff-exempt: gap — причина */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 2, out);
+  assert.match(out, /не разобран/);
+});
+
+test('★ media остаётся частью ключа при разборе справа налево', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '@media (max-width: 640px) { h1 em { color: blue; } }\n' },
+    head: {
+      'src/a.css':
+        '@media (max-width: 640px) { h1 em { color: red; } }\n' +
+        '/* visual-diff-exempt: h1 em {@media (max-width: 640px)} color — мобильная правка */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ каждая сторона разворачивается по СВОЕМУ :root — правку токена перенос не маскирует', (t) => {
+  // Источник на базе — `var(--x)` при `--x: 16px`; цель на HEAD — сырые 20px, и
+  // `--x` в этом же PR стал 20px. Разверни обе стороны по словарю HEAD — и
+  // перенос сойдётся, спрятав смену величины под маркером переноса.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --x: 16px; }\n.brow__body { gap: var(--x); }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        ':root { --x: 20px; }\n.grow--fit { flex: 1; gap: 20px; }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n' +
+        '/* visual-diff-exempt: :root --x — правка токена объявлена отдельно */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★★ составная единица С КЛАССОМ в exempt — код 2, а не гашение предка', (t) => {
+  // Дыру открыл разбор справа налево, нашёл её `code-simplifier` прогоном:
+  // `unitOf` берёт ПЕРВЫЙ класс, поэтому маркер «про .pu-body» молча гасил бы
+  // правку на ПРЕДКЕ — общем классе. Тот же класс дефекта, от которого лечит
+  // TRIP-363: маркер гасит не то, что удостоверяет. Правило: единица = то, что
+  // гард НАПЕЧАТАЛ, а у правила с классами он печатает по одному классу.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up--inline { color: blue; }\n.pro-up--inline .pu-body { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        '.pro-up--inline { color: red; }\n.pro-up--inline .pu-body { flex: 1; }\n' +
+        '/* visual-diff-exempt: .pro-up--inline .pu-body color — я думал это про .pu-body */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 2, out);
+  assert.match(out, /не разобран/);
+});
+
+test('★ бесклассовая единица из лексем по-прежнему законна (границу не перекрыли)', (t) => {
+  // Проверка предиката с другой стороны: запрет обязан бить по «пробел + класс»,
+  // а не по «пробел» — иначе он отменил бы ровно то, ради чего TRIP-366 делался.
+  const f = fixture(t, {
+    base: { 'src/a.css': 'h1 em { color: blue; }\n' },
+    head: { 'src/a.css': 'h1 em { color: red; }\n/* visual-diff-exempt: h1 em color — граница жива */\n' },
+  });
+  const { code } = run(f);
+  assert.equal(code, 0);
 });
