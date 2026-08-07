@@ -103,11 +103,11 @@ const StatusTag = ({ cls }) => {
 /** Один образец: имя класса, статус из каталога, сам объект. */
 const Specimen = ({ cls, children }) => (
   <div className="col col--g3">
-    <div className="row row--g3 row--center">
+    <div className="row row--g3 row--j-center">
       <span className="t-mono trunc">{cls}</span>
       <StatusTag cls={cls} />
     </div>
-    <div className="row row--g4 row--wrap row--center">{children}</div>
+    <div className="row row--g4 row--wrap row--j-center">{children}</div>
   </div>
 );
 
@@ -212,7 +212,7 @@ export default function Kit() {
       <div className="col col--g3">
         <h1 className="t-display">{TX.title}</h1>
         <p className="t-body">{TX.lead}</p>
-        <div className="row row--g3 row--center">
+        <div className="row row--g3 row--j-center">
           <span className="t-meta">{TX.theme}</span>
           <Btn variant={theme === 'light' ? 'primary' : 'quiet'} onClick={() => setTheme('light')}>{TX.themeLight}</Btn>
           <Btn variant={theme === 'dark' ? 'primary' : 'quiet'} onClick={() => setTheme('dark')}>{TX.themeDark}</Btn>
@@ -333,7 +333,7 @@ export default function Kit() {
       <Section title={TX.sections.layout}>
         {LAYOUT.map(({ base, cls, steps: wanted }) => (
           <div key={base} className="col col--g4">
-            <div className="row row--g3 row--center">
+            <div className="row row--g3 row--j-center">
               <span className="t-mono trunc">{`.${cls}`}</span>
               <StatusTag cls={cls} />
             </div>
@@ -360,7 +360,7 @@ export default function Kit() {
       <Section title={TX.sections.scale}>
         <div className="col col--g3">
           {SP_SCALE.map((name) => (
-            <div key={name} className="row row--g4 row--center">
+            <div key={name} className="row row--g4 row--j-center">
               <span className="col col--g1">
                 <span className="t-mono trunc">{name}</span>
                 <span className="t-micro trunc">{cs?.getPropertyValue(name).trim()}</span>
@@ -378,7 +378,7 @@ export default function Kit() {
         <div className="col col--g6">
           {TYPE_CANONS.map((cls) => (
             <div key={cls} className="col col--g2">
-              <div className="row row--g3 row--center">
+              <div className="row row--g3 row--j-center">
                 <span className="t-mono trunc">{`.${cls}`}</span>
                 <StatusTag cls={cls} />
               </div>
@@ -395,7 +395,7 @@ export default function Kit() {
             ДС нет, и нового имени тут не заводится - это находка для 05. */}
         <div className="grid grid--2 grid--g4">
           {tokens.map(({ name, value }) => (
-            <div key={name} className="row row--g3 row--center">
+            <div key={name} className="row row--g3 row--j-center">
               <span className="tile" style={{ background: /color|#|rgb|hsl/i.test(value) ? `var(${name})` : undefined }} />
               {/* inline-style-exempt: образец ПОКАЗЫВАЕТ значение токена - оно и
                   есть содержимое, класс тут невозможен по построению */}

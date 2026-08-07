@@ -1138,7 +1138,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   if (!isPro && checkingLimit && !savedOk) {
     return (
       // Оболочка маршрута - та же .flow-page, что у самого планировщика ниже.
-      <div className="flow-page row row--center">
+      <div className="flow-page row row--j-center">
         <div className="spin spin--ring spin--xl" />
       </div>
     );
@@ -1155,7 +1155,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           onBack={() => nav('/trips')}
           backTitle={t('notif.to_collection')}
         />
-        <div className="grow row row--center">
+        <div className="grow row row--j-center">
           <EmptyState
             icon="lock"
             kind="warning"

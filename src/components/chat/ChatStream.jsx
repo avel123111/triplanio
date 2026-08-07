@@ -70,9 +70,9 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErr
   const footKey = failed ? 'chat.not_sent' : aiErrorKey;
 
   return (
-    <div className={'chat-msg' + (grouped ? ' chat-msg--grouped' : '')}>
+    <div className={'col col--a-start chat-msg' + (grouped ? ' chat-msg--grouped' : '')}>
       {!grouped && !isMe && (
-        <div className="chat-name">
+        <div className="row row--a-baseline row--g3 chat-name">
           <b>{who}</b>
           <span className="tm">{time}</span>
         </div>
@@ -88,7 +88,7 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErr
         />
       </div>
       {footKey ? (
-        <div className="chat-msg__foot">
+        <div className="row row--g3 chat-msg__foot">
           <span className="chat-msg__err">
             <Icon name="warning" size={12} />
             {t(footKey)}
@@ -117,7 +117,7 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
     const first = messages[i];
 
     if (withDateDividers && !isSameDay(first.created_at, messages[i - 1]?.created_at)) {
-      rows.push(<div key={'div-' + first.id} className="chat-daydiv"><span>{fmtDate(first.created_at)}</span></div>);
+      rows.push(<div key={'div-' + first.id} className="row row--g7 chat-daydiv"><span>{fmtDate(first.created_at)}</span></div>);
     }
 
     // The assistant answers as a document, not a bubble.
@@ -144,13 +144,13 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
     });
 
     rows.push(
-      <div key={'run-' + first.id} className={'chat-run' + (isMe ? ' chat-run--me' : '')}>
+      <div key={'run-' + first.id} className={'row row--a-start row--g6 chat-run' + (isMe ? ' chat-run--me' : '')}>
         {!isMe && (
           <div className="chat-run__av">
             <Avatar name={author.name} photo={author.photo || ''} deleted={author.deleted} />
           </div>
         )}
-        <div className="chat-run__col">
+        <div className="col col--g2 chat-run__col">
           {run.map((m, k) => (
             <Msg
               key={m.id}

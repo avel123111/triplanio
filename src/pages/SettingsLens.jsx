@@ -255,11 +255,11 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               .t-meta (mono numerals) because an element's own rule beats
               inheritance. One class instead of two. */}
           <div className="t-meta t-sans col" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
-            <div className="row row--start">
+            <div className="row row--a-start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
             </div>
-            <div className="row row--start">
+            <div className="row row--a-start">
               <span className="badge badge--count">2</span>
               <div>{t('settings.tg_step2')}</div>
             </div>

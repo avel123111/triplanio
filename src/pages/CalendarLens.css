@@ -9,19 +9,16 @@
    ================================================================= */
 
 /* ── Toolbar / Header ──────────────────────────────────────────── */
+/* visual-diff-move: ncal-hd -> row */
 .ncal-hd {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
 }
 .ncal-hd-l { flex: 1; min-width: 0; }
+/* Контейнер БЕЗ зазора: у примитива дефолт 10px, поэтому нулевой зазор назван
+   явно (см. тот же приём в chat).
+   visual-diff-move: ncal-title-row -> row */
 .ncal-title-row {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
+  gap: 0;
 }
 .ncal-month-lbl {
   color: var(--ink);
@@ -30,19 +27,16 @@
   color: var(--muted);
   margin-left: 12px;
 }
+/* ★ОСТАТОК: gap 9px вне шкалы (--sp даёт 8 и 10) - удержан приватным.
+   visual-diff-move: ncal-hd-r -> col */
 .ncal-hd-r {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
   gap: 9px;
   flex: none;
 }
 
 /* ── Nav pill ──────────────────────────────────────────────────── */
+/* visual-diff-move: ncal-nav -> row */
 .ncal-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
   background: var(--surface-2);
   border-radius: var(--r-pill);
   padding: 4px;
@@ -73,7 +67,9 @@
   margin: 0 2px; flex: none; align-self: center;
 }
 .ncal-nav-trip {
-  display: inline-flex; align-items: center; gap: 5px;
+  /* ★ОСТАТОК: gap 5px вне шкалы - удержан.
+     visual-diff-move: ncal-nav-trip -> row */
+  gap: 5px;
   padding: 5px 12px; border-radius: var(--r-pill);
   background: var(--brand-soft); color: var(--brand);
   border: none;
@@ -84,11 +80,11 @@
 .ncal-nav-trip:hover { background: var(--brand-soft-12); }
 
 /* ── View toggle ───────────────────────────────────────────────── */
+/* visual-diff-move: ncal-vtgl -> row */
 .ncal-vtgl {
-  display: inline-flex;
   background: var(--surface-2);
   border-radius: var(--r-pill);
-  padding: 4px; gap: 2px;
+  padding: 4px;
 }
 .ncal-vtgl-btn {
   color: var(--muted);
@@ -105,8 +101,11 @@
 }
 
 /* ── Month: weekday header ─────────────────────────────────────── */
+/* Неделя календаря НЕ схлопывается в .grid--2 (у неё своя семантика, так решено
+   при вводе примитива) - на общий класс уезжает только display, а треки и зазор
+   остаются своими. ★ОСТАТОК: gap 3px вне шкалы.
+   visual-diff-move: ncal-wd-row -> grid */
 .ncal-wd-row {
-  display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 3px;
   margin-bottom: 7px;
@@ -118,8 +117,9 @@
 
 /* ── Month: week row + day grid ────────────────────────────────── */
 .ncal-wk { margin-bottom: 3px; }
+/* ★ОСТАТОК: gap 3px вне шкалы.
+   visual-diff-move: ncal-dgrid -> grid */
 .ncal-dgrid {
-  display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 3px;
 }
@@ -145,8 +145,9 @@
 
 /* ── City strip ────────────────────────────────────────────────── */
 .ncal-cstrip {
+  /* visual-diff-move: ncal-cstrip -> row */
   height: 20px;
-  display: flex; align-items: center;
+  gap: 0;
   padding: 0 9px;
   color: rgba(255,255,255,.92);
   white-space: nowrap; overflow: hidden;
@@ -162,8 +163,9 @@
   padding: 0; gap: 1.5px;
 }
 .ncal-cstrip-seg {
-  flex: 1; height: 100%;
-  display: flex; align-items: center;
+  /* visual-diff-move: ncal-cstrip-seg -> row */
+  height: 100%;
+  gap: 0;
   padding: 0 6px;
   color: rgba(255,255,255,.9);
   overflow: hidden; white-space: nowrap; min-width: 0;
@@ -316,14 +318,16 @@
   display: flex; flex-direction: column; gap: 10px;
   margin-top: 24px;
 }
+/* ★ОСТАТОК: gap 14px вне шкалы (--sp даёт 12 и 16) - удержан.
+   visual-diff-move: ncal-legend-group -> row */
 .ncal-legend-group {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  gap: 14px;
 }
 .ncal-legend-lbl {
   color: var(--muted-2); width: 64px; flex: none;
 }
+/* visual-diff-move: ncal-leg -> row */
 .ncal-leg {
-  display: inline-flex; align-items: center; gap: 6px;
   color: var(--muted);
 }
 .ncal-leg-sw {

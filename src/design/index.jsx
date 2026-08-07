@@ -107,7 +107,7 @@ const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "c
 //   .grow           текстовый блок
 //   .row__t         заголовок - тот же канон, что у карточек-близнецов
 export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align, dashed, loading }) => (
-  <div className={`sev row row--wrap${align === "mid" ? "" : " row--start"} sev--${level}${dashed ? " sev--dashed" : ""}`}>
+  <div className={`sev row row--wrap${align === "mid" ? "" : " row--a-start"} sev--${level}${dashed ? " sev--dashed" : ""}`}>
     <span className="tile sev__icon" style={iconStyle}>
       {loading ? <span className="spin spin--ring" /> : <Icon name={icon || SEV_ICON[level] || "info"} size={16} />}
     </span>
