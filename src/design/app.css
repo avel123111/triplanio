@@ -3004,9 +3004,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    строки перевод контейнера БЕЗ зазора на примитив молча раздвинул бы детей на
    10px. Таких контейнеров в зоне 1 одиннадцать, по периметру 78.
    раскладка уехала: chat-msgs__in -> col */
-.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; gap: 0; }
+.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; gap: 0; align-items: stretch; }
 /* раскладка уехала: chat-hist -> row */
-.chat-hist { padding-bottom: 20px; gap: 0; }
+.chat-hist { padding-bottom: 20px; gap: 0; align-items: stretch; }
 /* Rule-and-label, not a pill: the divider spans the column so a day break reads
    as a section edge rather than another chip in the stream. */
 /* раскладка уехала: chat-daydiv -> row */
@@ -3639,7 +3639,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        away (fade+shrink) when a drag starts and eases back in on drop. No keyframe
        animation: a filled animation pins opacity and breaks the fade-out. */
     /* visual-diff-move: te-seam -> row row--j-center */
-    .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; }
+    .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; align-items: stretch; }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
@@ -5184,7 +5184,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    §5): у активности была СВОЯ пара голых `<input type="time">` в ячейке-«не
    кнопке», теперь она на общем `DateRangeBlock`, как отель и переезд. */
 /* visual-diff-move: eed-drange-tz -> row row--g6 */
-.eed-drange-tz { margin-top: 8px; }
+.eed-drange-tz { margin-top: 8px; align-items: stretch; }
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
@@ -5254,12 +5254,17 @@ a.doc-row__n:hover{ color: var(--brand); }
 .tv-arr { justify-content: flex-end; }
 .tv-plus1{color:var(--night-ink);}
 /* visual-diff-move: tv-nodecell -> row row--j-center */
-.tv-nodecell { padding-top: 5px; gap: 0; }
+.tv-nodecell { padding-top: 5px; gap: 0; align-items: stretch; }
 .tv-node{width:9px;height:9px;flex:none;border-radius:var(--r-pill);}
 .tv-node--from{border:2.5px solid var(--ev-transfer);background:var(--bg);}
 .tv-node--to{background:var(--ev-transfer);}
 /* visual-diff-move: tv-conncell -> row row--j-center */
-.tv-conncell { gap: 0; }
+/* ★`align-items: stretch` ВОССТАНОВЛЕН явно: у правила своего выравнивания не
+   было, то есть действовал флексовый дефолт `stretch`, а `.row` центрирует. Без
+   этой строки ребёнок перестаёт растягиваться по высоте. Поймано ЗАМЕРОМ (у
+   .tv-conncell соединительная линия рейса схлопнулась с 33px до 18px), гарду
+   такое не видно: 2p сверяет объявления, а тут менялся УНАСЛЕДОВАННЫЙ дефолт. */
+.tv-conncell { gap: 0; align-items: stretch; }
 .tv-conn{width:0;border-left:2px dashed color-mix(in srgb,var(--ev-transfer) 45%,transparent);min-height:34px;}
 .tv-loc{min-width:0;}
 .tv-loc--from{padding-bottom:4px;}
