@@ -61,7 +61,7 @@ export default function ChatReply({ text, time, onAsk }) {
         <div className="chat-run__av">
           <TriplanioAvatar />
         </div>
-        <div className="grow--fit col col--g4">
+        <div className="col col--g4 grow--fit">
           <div className="row row--g4 chat-reply__who">
             <b>{TRIPLANIO_BOT_NAME}</b>
             <span className="chat-reply__tag">{t('chat.assistant_tag')}</span>

@@ -288,7 +288,7 @@ function Legend({ visits }) {
   if (!uniqueCities.length) return null;
 
   return (
-    <div className="ncal-legend">
+    <div className="col ncal-legend">
       <div className="row row--wrap ncal-legend-group">
         <span className="ncal-legend-lbl">{t('calendar.legend_group_cities')}</span>
         {uniqueCities.map((c, i) => (
@@ -492,7 +492,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
     <div className="ov-anim--cal">
       {/* ── Toolbar ────────────────────────────────────────────── */}
       <div className="row row--a-start row--j-between row--g7 row--wrap ncal-hd">
-        <div className="ncal-hd-l">
+        <div className="grow--fit ncal-hd-l">
           <div className="row row--a-baseline row--wrap ncal-title-row">
             <span className="ncal-month-lbl">{MONTH_NAMES[
               view === 'month' ? currentMonth.month : (baseDate.startOf('week').plus({ weeks: weekOffset }).month)

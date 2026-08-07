@@ -3118,7 +3118,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ── Overline above the composer: thinking pill + "jump to newest" ── */
 /* The pills used to sit flush against the composer's top border, which cut
    through them. Only the TOP margin is set here: the matching 8px below already
-   comes from `.chat-composer__in`'s own `gap`. */
+   comes from `.chat-composer__in`'s gap step (`.col--g4`). */
 /* раскладка уехала: chat-overline -> row */
 .chat-overline { min-height: 26px; margin-top: 8px; }
 /* Was a full-width tinted strip welded to the top of the composer; as a pill it

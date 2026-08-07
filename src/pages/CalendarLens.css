@@ -13,7 +13,9 @@
 .ncal-hd {
   margin-bottom: 20px;
 }
-.ncal-hd-l { flex: 1; min-width: 0; }
+/* Базовое правило снято - буквальный .grow--fit. Класс остаётся: у него есть
+   своё мобильное правило ниже.
+   visual-diff-move: ncal-hd-l -> grow--fit */
 /* Контейнер БЕЗ зазора: у примитива дефолт 10px, поэтому нулевой зазор назван
    явно (см. тот же приём в chat).
    раскладка уехала: ncal-title-row -> row */
@@ -314,8 +316,9 @@
 .ncal-aev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
 
 /* ── Legend ────────────────────────────────────────────────────── */
+/* gap 10px = дефолт .col (var(--sp-5)), поэтому модификатор не нужен.
+   раскладка уехала: ncal-legend -> col */
 .ncal-legend {
-  display: flex; flex-direction: column; gap: 10px;
   margin-top: 24px;
 }
 /* ★ОСТАТОК: gap 14px вне шкалы (--sp даёт 12 и 16) - удержан.
