@@ -58,13 +58,12 @@ import { join } from 'node:path';
 import { Parser as AcornParser } from 'acorn';
 import acornJsx from 'acorn-jsx';
 import postcss from 'postcss';
+/** Периметр эпика вынесен в общий модуль: тот же предикат нужен гарду 2q, а два
+ *  гарда по одному дереву с РАЗНЫМ периметром молча выдают разные вердикты - это
+ *  и случилось (см. шапку `perimeter.mjs`). */
+import { OUT_OF_SCOPE } from './perimeter.mjs';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
-
-/** Files the TRIP-321 unification does not touch (landing / auth / public perimeter).
- *  They are still SCANNED for alias definitions — a token island there is exactly
- *  what makes a global rename unsafe — but excluded from the family/class counts. */
-const OUT_OF_SCOPE = /(^|\/)(login\.css|PublicTrip|JoinTrip|SiteChrome|Landing|Privacy|Terms)/;
 
 const walk = (dir, out = []) => {
   for (const name of readdirSync(dir)) {
