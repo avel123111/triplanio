@@ -55,6 +55,7 @@ const MARKERS = [
   { name: 'prefix-exempt', life: 'perPr' },
   { name: 'visual-diff-exempt', life: 'perPr' },
   { name: 'visual-diff-move', life: 'perPr' },
+  { name: 'door-exempt', life: 'perPr' }, // 2r (TRIP-376) — табло эпика «единая дверь»
   { name: 'inline-style-exempt', life: 'inFile' },
   { name: 'design-token-exempt', life: 'inFile' },
   { name: 'orphan-exempt', life: 'inFile' },
