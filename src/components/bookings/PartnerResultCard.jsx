@@ -53,7 +53,7 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
   return (
     <div
       ref={ref}
-      className={`pcard${selected ? ' is-sel' : ''}${hovered ? ' is-hover' : ''}`}
+      className={`grid pcard${selected ? ' is-sel' : ''}${hovered ? ' is-hover' : ''}`}
       role="button"
       tabIndex={0}
       onClick={handleCardClick}

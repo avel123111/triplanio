@@ -124,7 +124,7 @@ export default function DocumentsField({
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
+          className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}
         >
           <input
             ref={inputRef}

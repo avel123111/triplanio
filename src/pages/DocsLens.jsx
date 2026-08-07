@@ -190,7 +190,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 <button
                   key={opt.value}
                   type="button"
-                  className={`dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
+                  className={`row dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
                   onClick={() => setVisibility(opt.value)}>
                   <span className="dl-visopt__ic">
                     <Icon name={opt.icon} size={17} />
@@ -284,7 +284,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
             {/* Drop zone */}
             <div
-              className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
+              className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}>
@@ -488,7 +488,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
             {doc.link_url && t('doc.has_link')}
           </div>
         </div>
-        <span className={`dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
+        <span className={`row row--inline row--g2 dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
           <Icon name={isShared ? 'users' : 'lock'} size={11} />
         </span>
       </div>
@@ -573,7 +573,7 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
       ))}
       {canAdd && (
         <button
-          className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
+          className={`col col--g4 col--j-center dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
           onClick={() => onOpenAdd?.()}>
           <span className="dl-addcard__ic">
             <Icon name="plus" size={22} />
@@ -636,7 +636,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   const personalTotal = docs.filter(d => d.visibility === 'private' && d.created_by === user?.id).length;
 
   // The "add document" affordance lives in the screen body itself — each section
-  // shows a DocEmpty CTA (when empty) or a DocsGrid add-card (`col col--g4 col--j-center dl-addcard`), so
+  // shows a DocEmpty CTA (when empty) or a DocsGrid add-card (`dl-addcard`), so
   // the removed per-screen bar didn't need a replacement button.
 
   if (isLoading || parentLoading) {

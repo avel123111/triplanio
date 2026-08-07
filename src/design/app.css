@@ -5502,9 +5502,15 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
    Booking navy token. Activities: glass star pill (.pcard__score--star). */
 .pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px /* design-token-exempt: асимметричный уголок бейджа рейтинга, форма а не шкала */; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
-/* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
-   visual-diff-move: pcard__score--star -> row row--inline */
-.pcard__score--star { gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
+/* ★ЭТОТ ПЕРЕНОС ОТМЕНЁН, и причину надо знать: базовый `.pcard__score` объявляет
+   `display: inline-grid` СТРОКОЙ ВЫШЕ, при той же специфичности (0,1,0) и ПОЗЖЕ
+   примитива в файле - то есть он выигрывает у `.row--inline`. Отдать display
+   примитиву значило бы отдать его проигравшему: пилюля рейтинга становится
+   inline-grid, и звезда встаёт НАД числом внутри 18px. Гард 2p такого не видит по
+   построению - он проверяет, что объявление есть на цели, а не что цель ПОБЕЖДАЕТ.
+   Перенос станет возможен, когда на примитив уедет сам `.pcard__score` - это плитка
+   (объект 06), а не раскладка. ★ОСТАТОК: зазор 3px вне шкалы. */
+.pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
 /* Supplier badge — bottom-left on the photo (logo, letter fallback). */

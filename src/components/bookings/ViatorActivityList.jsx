@@ -192,7 +192,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
                 icon={<Ticket size={22} />}
                 image={a.image}
                 score={a.rating != null ? (
-                  <span className="row row--inline pcard__score pcard__score--star"><Star size={10} />{Number(a.rating).toFixed(1)}</span>
+                  <span className="pcard__score pcard__score--star"><Star size={10} />{Number(a.rating).toFixed(1)}</span>
                 ) : null}
                 meta={a.reviewCount ? (
                   <div className="row row--a-baseline pcard__meta"><span className="trunc pcard__mtx">{t('fork.activities_reviews', { n: a.reviewCount })}</span></div>

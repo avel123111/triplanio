@@ -16,7 +16,8 @@
 .docfield__title { min-width: 0; color: var(--ink); }
 .docfield__title .ico { flex: none; }
 /* visual-diff-move: docfield__name -> trunc */
-.docfield__name { ; }   /* was truncate */
+/* `.docfield__name` (was: truncate) has no declarations of its own left — the
+   ellipsis lives on the shared `.trunc` primitive. */
 /* count — was: text-xs text-muted-foreground font-normal.
    Typography now on the .t-meta canon (co-selector in app.css); weight collapses to the canon 600. */
 .docfield__count { color: var(--muted); }
