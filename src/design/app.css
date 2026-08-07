@@ -636,7 +636,6 @@ h4,
 .deep__highlights li,
 .trust__item,
 .langdd__item,
-.ts-in,
 .brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
 .nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
 /* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
@@ -2738,10 +2737,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
    rendered them UNSTYLED (the broken/cramped calendar). Now global → one source. */
-.ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
-.ts-step:hover { background: var(--wash); }
-.ts-step:active:not(:disabled) { transform: scale(0.9); }
-.ts-step:disabled { opacity: .3; cursor: default; }
 .ts-startctl { display: inline-flex; align-items: center; gap: 2px; border-radius: var(--r-sm); padding: 2px; }
 .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
 .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
@@ -4056,23 +4051,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    .tp-caption. */
 .ts-routehead__sub { color: var(--muted); }
 .ts-routehead__sp { flex: 1; }
-.ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
-.ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
-.ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
-.ts-startctl__date:hover { background: var(--wash); }
-/* Поповер календаря даты старта. */
-.ts-cal { width: 248px; }
-.ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.ts-cal__title { color: var(--ink); text-transform: capitalize; }
-.ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.ts-cal__wd { margin-bottom: 4px; }
-.ts-cal__wdc { text-align: center; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
-.ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: var(--r-sm); cursor: pointer; color: var(--ink); display: grid; place-items: center; }
-.ts-cal__day:hover { background: var(--wash); }
-.ts-cal__day.on { background: var(--brand); color: #fff; }
-/* В телефонном шите календарь занимает ширину шита. */
-.sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; }
-@media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
 .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
 @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
 /* TRIP-176: боковая панель-ящик. Заливает абсолютом ТОЛЬКО левую колонку — ниже
@@ -4091,6 +4069,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
 }
 
+/* Две колонки секции: маршрут слева, карта справа.
+   `height: 100%` — тот же приём, каким берут высоту остальные flush-секции
+   (`.chat-room`, `.trip-map-shell`): тело `.trip-screen-body--flush` это БЛОК с
+   определённой высотой, а не флекс-контейнер, поэтому `flex: 1` тут пустое
+   слово. Раньше он работал — `.ts-grid` висел во флекс-колонке собственной
+   оболочки редактора и уехал вместе с ней. Без этого правила секция сайзится по
+   содержимому и на ≤1080 не скроллится вовсе. */
+.ts-grid {
+  height: 100%; min-width: 0; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0; overflow: hidden;
+}
+
 /* ≤1080: одна колонка. Раньше тут стояло `.ts-screen { height:auto; overflow:
    visible }` — редактор ВЫХОДИЛ из фиксированной оболочки в документный скролл,
    один на весь экран трипа. Внутри `.trip-shell` документного скролла нет
@@ -4098,7 +4089,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    другой секции. Это же снимает причину, по которой на редакторе нельзя было
    показать плавающий док (TRIP-349 п.2 — отдельной задачей). */
 @media (max-width: 1080px) {
-  .ts-grid { grid-template-columns: 1fr !important; grid-auto-rows: min-content; overflow-y: auto !important; }
+  .ts-grid { grid-template-columns: 1fr; grid-auto-rows: min-content; overflow-y: auto; }
   .ts-leftscroll { overflow: visible !important; }
   .ts-leftbox { margin: 0 !important; }
   /* Карта — полоса под списком. Высоту задаём КОНТЕЙНЕРУ: сама `.ts-map` лежит

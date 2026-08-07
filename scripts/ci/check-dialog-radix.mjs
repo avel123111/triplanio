@@ -41,7 +41,6 @@ const ALLOW = new Set([
   'src/components/ui/alert-dialog.jsx',  // AlertDialog primitive (confirm)
   'src/components/common/EventDrawerHost.jsx', // event/city drawer + sheet
   'src/components/stats/VisitPanel.jsx', // stats visit side-panel
-  'src/pages/TripStructureEdit.jsx',     // editor left-panel sheet
 ]);
 
 function walk(dir, out = []) {

@@ -780,8 +780,7 @@ export default function TripView() {
     // Дефолтная секция в адрес не пишется; всё остальное — пишется.
     if (id === DEFAULT_SECTION) sp.delete('lens'); else sp.set('lens', id);
     setSearchParams(sp, { replace: false });
-    const sectionEvent = sectionById(id)?.event;
-    if (sectionEvent) track(sectionEvent, { trip_id: tripId });
+    // Событие открытия секции шлёт НЕ этот обработчик, а эффект ниже — см. там.
   };
 
   // Opening a service from the services widget — one distinct event per type.
@@ -805,7 +804,10 @@ export default function TripView() {
   });
 
   // Fetch content (hotels, activities, transfers) - only after shell resolves
-  const { data: contentData, isLoading: loadingContent } = useQuery({
+  const {
+    data: contentData, isLoading: loadingContent,
+    error: contentError, isPending: contentPending, fetchStatus: contentFetchStatus,
+  } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
     // Same self-healing path — without it a 401 here silently rendered an empty
     // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
@@ -904,6 +906,21 @@ export default function TripView() {
   // живёт в реестре секций — тут только его применение.
   const shownLens = resolveSection(lens, trip, myRole);
 
+  // Событие открытия секции — на СМЕНУ ПОКАЗАННОЙ секции, а не на клик по меню.
+  //
+  // Клик был неполным источником: заход по прямой ссылке `?lens=budget`, по
+  // закладке и по редиректу со старого адреса редактора события не давал вовсе.
+  // На редакторе это вылезло сразу: `trip_editor_opened` раньше слался из
+  // `screenOpenEvent` по РОУТУ, роут стал редиректом — и событие пропало бы
+  // совсем. Ключ на `shownLens` (разрешённой, а не сырой из адреса): недоступная
+  // секция подменяется дефолтной, и считать надо то, что человек УВИДЕЛ.
+  //
+  // ⚠ Объёмы секционных событий вырастут: теперь считаются и прямые заходы.
+  useEffect(() => {
+    const sectionEvent = sectionById(shownLens)?.event;
+    if (sectionEvent) track(sectionEvent, { trip_id: tripId });
+  }, [shownLens, tripId]);
+
   // Тело — постоянный скролл-контейнер; сброс наверх при смене секции держит
   // TripShell (ref прокидываем, он же нужен рейлу городов в ленте).
   const screenBodyRef = useRef(null);
@@ -919,6 +936,16 @@ export default function TripView() {
   // emptyIsOk:false — single-resource fetch: a settled-empty shell means "you
   // can't see this trip", a defensive belt over the thrown-403/404 path (TRIP-220).
   const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shellData?.trip, false);
+
+  // Гейт CONTENT'а. Экрану в целом он не нужен — секции переживают пустой
+  // content и дозаполняются, — но секция «Структура» СТРОИТ ИЗ НЕГО ДРАФТ:
+  // без content'а ей нечего показать, а если запрос упадёт уже после успешного
+  // shell (офлайн, 500), пустота останется навсегда. Раньше эту роль выполнял
+  // собственный contentGate снесённого роута (TRIP-220: «gate to retry rather
+  // than render an empty editor»). emptyIsOk:false по той же причине, что и у
+  // shell: осевший пустым content для редактора неотличим от несостоявшегося.
+  const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!contentData, false);
+  const editGate = contentGate === 'ok' ? 'ok' : (contentGate === 'loading' || contentGate === 'auth') ? 'loading' : 'error';
 
   // 'auth' shows the same loading placeholder while useQueryGate's effect redirects to /login.
   // Секция берётся СЫРОЙ из адреса, а не через resolveSection: аддоны приезжают
@@ -1290,8 +1317,21 @@ export default function TripView() {
               те же shell/content, что уже загружены здесь (ключи и include у его
               прежних запросов совпадали с этими — общий кэш, но ВТОРОЙ набор
               гейтов). Роль не передаём: право в реестре секций. */}
+          {/* Гейт CONTENT'а нужен ТОЛЬКО здесь. Остальные секции переживают
+              отсутствие content: рисуют пусто и дозаполняются. Редактор из него
+              СТРОИТ ДРАФТ — без content'а показывать нечего, а если запрос
+              упадёт после успешного shell (офлайн, 500), пустота останется
+              навсегда. Формулировка из TRIP-220: «gate to retry rather than
+              render an empty editor». */}
           {shownLens === 'edit' && (
-            <EditLens tripId={tripId} shell={shellData} content={contentData} />
+            editGate === 'loading'
+              // Скелетон в геометрии самой секции (`.ts-grid` — левая колонка
+              // маршрута, правая под карту), а не общий: тело секции flush, и
+              // padded-заглушка прыгнула бы при резолве.
+              ? <div className="ts-grid"><div className="ts-leftscroll"><SkeletonTimeline /></div></div>
+              : editGate === 'ok'
+                ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
+                : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
           )}
           {shownLens === 'settings' && (
             <SettingsLens

@@ -241,12 +241,19 @@ export default function EditLens({ tripId, shell, content }) {
   //
   // Зависимостей нет намеренно: эффект обязан сработать РОВНО один раз, на
   // размонтировании, и прочитать refs в их последнем состоянии.
+  // ...и ОБЯЗАТЕЛЬНО перезапрашиваем трип после досылки. Обычный путь делает это
+  // через runAction; здесь его нет, а TripView остаётся смонтированным со своим
+  // кэшем — то есть без рефетча Хронология нарисует СТАРЫЕ даты, а возврат в
+  // «Структуру» пересоберёт драфт из того же протухшего кэша, и правка исчезнет
+  // с экрана, оставшись в БД. Это ровно тот симптом «сервер молча откатил»,
+  // ради которого досылка и писалась, — без рефетча она лечит половину.
   useEffect(() => () => {
+    const pending = [];
     const nights = nightsCommit.current;
     for (const [id, handle] of nights) {
       clearTimeout(handle);
       const finalN = nightsTarget.current.get(id);
-      if (finalN != null) rpcSetCityNights(id, finalN).catch(() => {});
+      if (finalN != null) pending.push(rpcSetCityNights(id, finalN));
     }
     nights.clear();
     nightsTarget.current.clear();
@@ -255,10 +262,16 @@ export default function EditLens({ tripId, shell, content }) {
       startCommit.current = null;
       const finalBase = startTarget.current;
       startTarget.current = null;
-      if (finalBase) rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()).catch(() => {});
+      if (finalBase) pending.push(rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tripId]);
+    if (!pending.length) return;
+    // Рефетч ПОСЛЕ того, как RPC доехали: пущенный сразу, он успел бы вернуть
+    // ещё дореформенное состояние и записать в кэш именно его — то есть сам
+    // стал бы причиной того отката, который лечит. allSettled, а не all:
+    // упавшая RPC не должна отменять перезапрос остальных.
+    // qc жив после размонтирования (это клиент приложения, а не наш стейт).
+    Promise.allSettled(pending).then(() => refetchTrip(qc, tripId, { content: false })).catch(() => {});
+  }, [tripId, qc]);
 
   // Запросов тут больше НЕТ: shell и content приезжают пропами от TripView.
   // Свои useQuery были не «второй загрузкой» (ключи и include те же, кэш общий),
@@ -762,7 +775,7 @@ export default function EditLens({ tripId, shell, content }) {
   // ящика. Телефонного шита меню у неё не было вовсе, поэтому на ≤640 меню
   // редактора вело себя не так, как на всех остальных экранах трипа.
   return (
-      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 0, overflow: 'hidden' }}>
+      <div className="ts-grid">
         {/* LEFT - bordered container (same 14px inset / radius as the map box on
             the right). The "Маршрут" header is the container's header; an open
             side panel fills the same box. */}
