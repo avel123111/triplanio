@@ -53,7 +53,7 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
   return (
     <div
       ref={ref}
-      className={`pcard${selected ? ' is-sel' : ''}${hovered ? ' is-hover' : ''}`}
+      className={`grid pcard${selected ? ' is-sel' : ''}${hovered ? ' is-hover' : ''}`}
       role="button"
       tabIndex={0}
       onClick={handleCardClick}
@@ -67,7 +67,7 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
         {score}
         {supplier}
       </div>
-      <div className="pcard__body">
+      <div className="col col--j-center pcard__body">
         <div className="pcard__name">{name}</div>
         {meta}
         {subline}
@@ -75,7 +75,7 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
       {/* Footer spans both columns: price ↔ Book on one line at any width. Book
           always opens the link; stopPropagation so it never doubles as a card
           select/open. */}
-      <div className="pcard__bar">
+      <div className="row pcard__bar">
         {price}
         <span className="pcard__spacer" />
         <a

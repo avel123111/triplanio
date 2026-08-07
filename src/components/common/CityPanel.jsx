@@ -46,7 +46,7 @@ function BookRow({ tone = 'hotel', icon, title, sub, warn, onClick }) {
   const bg = warn ? 'var(--warning-soft)' : `var(--ev-${tone}-soft)`;
   const fg = warn ? 'var(--warning-ink)' : `var(--ev-${tone}-ink)`;
   return (
-    <button className="bookrow" onClick={onClick}>
+    <button className="row bookrow" onClick={onClick}>
       <span className="bi" style={{ background: bg, color: fg }}><Icon name={icon} size={18} /></span>
       <div className="bt">
         <b>{title}</b>
