@@ -66,3 +66,7 @@
 .eed-nightrow__l { min-width: 0; color: var(--ink); }
 /* Second stacked row inside an accordion body — spacing between rows. */
 .eed-accrow { margin-top: 10px; }
+
+/* TRIP-342 зона 2.
+   visual-diff-exempt: .eed-nightrow justify-content — flex-start это ДЕФОЛТ флекса: объявление ничего не делало и СНЯТО, а не перенесено, поэтому маркером переноса его удостоверить нельзя
+   */

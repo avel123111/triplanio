@@ -6350,3 +6350,26 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .row--j-center justify-content — раскладка уехала на примитив, значение то же
    visual-diff-exempt: .row--start align-items — раскладка уехала на примитив, значение то же
    */
+
+/* ═══ TRIP-342 зона 2: объявленные изменения ════════════════════════════════
+   ★Про два ключа `.te-row`. Гард заводит ключи на ВСЕ классы селектора, поэтому
+   правило `.te-row.te-row--plan .te-row__pacts` (специфичнее и ниже по файлу)
+   было победителем и для ключа `.te-row`. Его объявления уехали на
+   `row row--inline row--g4` и удостоверены СВОИМ маркером на полный селектор
+   (гард печатает: «объявлений 8, из них 3 сошлись через токен»). Строки ниже
+   закрывают тень того же переноса на классовом ключе - объявить их переносом
+   на `.grid` было бы неправдой: туда они не ехали.
+   visual-diff-exempt: .te-row display — тень переноса .te-row.te-row--plan .te-row__pacts, победитель ключа приходил из составного правила
+   visual-diff-exempt: .te-row gap — то же: 8px принадлежали составному правилу планировщика, а не сетке редактора
+
+   ★Нулевые зазоры названы явно: у сетки и у флекса начальный зазор 0, а
+   `.grid`/`.row` несут дефолтные 10px. Это прежнее значение под своим именем.
+   visual-diff-exempt: .te-row row-gap — сетка задаёт только column-gap, .grid дал бы 10px между строками
+   visual-diff-exempt: .te-thead row-gap — то же
+   visual-diff-exempt: .tv-route row-gap — то же
+   visual-diff-exempt: .te-seam gap — контейнер без зазора, .row дал бы 10px
+   visual-diff-exempt: .tv-nodecell gap — то же
+   visual-diff-exempt: .tv-conncell gap — то же
+   visual-diff-exempt: .tv-durcell gap — то же
+   visual-diff-exempt: .tv-carrier__av gap — то же
+   ═══════════════════════════════════════════════════════════════════════════ */
