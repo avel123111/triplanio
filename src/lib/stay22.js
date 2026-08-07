@@ -9,7 +9,6 @@
 
 import { useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useForkList } from '@/lib/useForkList';
@@ -30,20 +29,21 @@ const POOL_STALE_MS = 5 * 60 * 1000;
 const POOL_GC_MS = 30 * 60 * 1000;
 const POOL_PAGE_SIZE = 100;
 
-// Lazily resolve + persist the city's English name (city_name_en) the first time
-// the hotel panel opens for a city. New cities get the column filled on demand;
-// existing cities are covered by the one-off backfill script. Cached per visit id.
+// Resolve the city's English name for the Stay22 address, preferring what the
+// payload already carries: the visit's own column (written by every creation path
+// — add_city / add_layover_transfer / ManualPlanner / copyTrip), then the cities
+// directory row getTripDetails attaches by geonameid. Same ladder as
+// activityPlatforms (buildBookingPlatforms.jsx:70). Only a row that has neither
+// reaches the gazetteer. Cached per visit id for the page session — rendering
+// must not write to the database, so the result is NOT persisted back.
 const enCache = new Map();
 async function ensureCityNameEn(visit) {
   if (!visit) return '';
   if (visit.city_name_en) return visit.city_name_en;
+  if (visit.cities?.name_en) return visit.cities.name_en;
   if (visit.id && enCache.has(visit.id)) return enCache.get(visit.id);
   const en = await cityNameEn(visit.city_name, visit.country_code);
   if (visit.id) enCache.set(visit.id, en);
-  if (en && visit.id) {
-    // Benign metadata write; RLS gates city_visits writes to trip participants.
-    supabase.from('city_visits').update({ city_name_en: en }).eq('id', visit.id).then(() => {}, () => {});
-  }
   return en;
 }
 
