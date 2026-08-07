@@ -1,3 +1,165 @@
+/*
+ * TRIP-349 — объявление изменений для гарда 2p (визуальный дифф CSS).
+ *
+ * Маркеры лежат ЗДЕСЬ, а не в app.css, намеренно: внутри CSS они попадают под
+ * собственное гашение комментариев гарда, и многострочный блок с {@media …} он
+ * начинает разбирать как правила — получил 20 ложных ключей и единицу «.css»,
+ * вытащенную из слова app.css. Гард читает маркеры из ДОБАВЛЕННЫХ строк диффа,
+ * поэтому файл значения не имеет.
+ *
+ * Почему их так много: правила редактора жили в теге <style> ВНУТРИ рендера
+ * этого компонента, а 2p читает только .css — поэтому перенос выглядит для него
+ * массовым появлением и сносом объявлений.
+ *
+ * Бланкетного маркера у 2p нет намеренно, и это правильно: один общий пропустил
+ * бы вместе с переносом любую правку общего класса.
+ *
+ * visual-diff-exempt: .app-side {@media (max-width: 880px)} background — меню редактора перестало быть своей копией и поехало на общее .trip-shell
+ * visual-diff-exempt: .app-side {@media (max-width: 880px)} box-shadow — меню редактора перестало быть своей копией и поехало на общее .trip-shell
+ * visual-diff-exempt: .app-side {@media (max-width: 880px)} max-width — меню редактора перестало быть своей копией и поехало на общее .trip-shell
+ * visual-diff-exempt: .app-side {@media (max-width: 880px)} transform — меню редактора перестало быть своей копией и поехало на общее .trip-shell
+ * visual-diff-exempt: .app-side {@media (max-width: 880px)} transition — меню редактора перестало быть своей копией и поехало на общее .trip-shell
+ * visual-diff-exempt: .is-open {@media (max-width: 880px)} opacity — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .is-open {@media (max-width: 880px)} pointer-events — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .is-open {@media (max-width: 880px)} transform — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .lp margin — артефакт одного победителя на ключ: .flow-editcol и .ts-leftbox в DOM не пересекаются
+ * visual-diff-exempt: .te-panefade animation — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .te-panefade {@media (prefers-reduced-motion: reduce)} animation — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-col-right {@media (max-width: 1080px)} height — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-drawer display — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} background — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} bottom — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} box-shadow — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} display — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} inset — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} left — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} max-width — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} opacity — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} pointer-events — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} position — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} top — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} transform — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} transition — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} width — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer {@media (max-width: 880px)} z-index — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} background — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} inset — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} opacity — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} position — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} transition — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-fab transition — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-fab:active transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-fab:active {@media (prefers-reduced-motion: reduce)} transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-fab:hover transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-fab:hover {@media (prefers-reduced-motion: reduce)} transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-grid display — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid gap — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid grid-template-columns — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid height — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid min-height — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid min-width — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid overflow — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 1080px)} grid-auto-rows — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 1080px)} grid-template-columns — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 1080px)} overflow-y — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} background — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} border — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} box-shadow — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} column-gap — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} display — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} grid-template-columns — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} margin — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-grid {@media (max-width: 760px)} padding — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-in font-family — мёртвый класс, правило снято по требованию гарда 2n
+ * visual-diff-exempt: .ts-in font-size — мёртвый класс, правило снято по требованию гарда 2n
+ * visual-diff-exempt: .ts-in font-weight — мёртвый класс, правило снято по требованию гарда 2n
+ * visual-diff-exempt: .ts-in letter-spacing — мёртвый класс, правило снято по требованию гарда 2n
+ * visual-diff-exempt: .ts-in line-height — мёртвый класс, правило снято по требованию гарда 2n
+ * visual-diff-exempt: .ts-leftbox background — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox flex-direction — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox margin — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox min-height — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox min-width — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox overflow — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftbox {@media (max-width: 1080px)} margin — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftscroll margin — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-leftscroll {@media (max-width: 1080px)} overflow — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-map {@media (max-width: 1080px)} left — новая раскладка секции: колонка скроллит себя вместо документного скролла
+ * visual-diff-exempt: .ts-pdrawer animation — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer background — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer border — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer border-radius — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer border-right — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer box-shadow — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer flex-direction — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer inset — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer min-height — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer position — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer z-index — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-pdrawer {@media (prefers-reduced-motion: reduce)} animation — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead align-items — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead gap — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead margin — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead padding — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead__sp flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead__sub color — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead__tt display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead__tt flex-direction — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead__tt gap — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-routehead__tt min-width — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} background — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} border — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} box-shadow — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} column-gap — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} display — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} grid-template-columns — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} margin — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} padding — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} background — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} bottom — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} box-shadow — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} display — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} inset — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} left — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} max-width — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} opacity — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} pointer-events — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} position — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} top — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} transform — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} transition — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} width — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-screen {@media (max-width: 880px)} z-index — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-sidecol flex — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-sidecol height — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-sidecol min-height — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-sidecol min-width — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-sidecol position — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-sidecol {@media (max-width: 880px)} display — вторая оболочка редактора снесена, off-canvas держит .trip-shell
+ * visual-diff-exempt: .ts-step:active {@media (prefers-reduced-motion: reduce)} transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: from {@keyframes tePaneIn} opacity — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: from {@keyframes tePaneIn} transform — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: to {@keyframes tePaneIn} opacity — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: to {@keyframes tePaneIn} transform — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: from {@keyframes tsDrawerIn} opacity — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: from {@keyframes tsDrawerIn} transform — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: to {@keyframes tsDrawerIn} opacity — кейфрейм перенесён из тега style внутри рендера в app.css
+ * visual-diff-exempt: to {@keyframes tsDrawerIn} transform — кейфрейм перенесён из тега style внутри рендера в app.css
+ *
+ * Шаги кейфреймов — тоже единицы 2p (имя анимации ЧАСТЬ ключа: from/to
+ * повторяются у 19 анимаций, и без имени один маркер гасил бы чужую).
+ *
+ * Перенос скоупа мобильной компактной таблицы: .ts-screen (снесённая оболочка)
+ * -> .ts-grid, живой класс и тоже только редакторский, значения те же.
+ * visual-diff-move: .ts-screen .te-row -> ts-grid
+ * visual-diff-move: .ts-screen .te-cell--act -> ts-grid
+ */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
