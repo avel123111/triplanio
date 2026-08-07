@@ -5,33 +5,18 @@
 // persisted: the panel fetches on open and React Query caches the result.
 //
 // The Viator destinationId lives on the cities table (cities.viator_dest_id),
-// resolved by the visit's GeoNames identity (city_visits.geonameid → cities.geonameid,
-// TRIP-146 v2). Late-binding by value: cities is a sparse affiliate directory, so a
-// city added to it later is picked up by existing visits with no backfill. Resolved
-// client-side with a cheap cities lookup (RLS: cities is world-readable) and cached
-// per geonameid — so getTripDetails doesn't need a join change here.
+// bound to the visit by its GeoNames identity (city_visits.geonameid →
+// cities.geonameid, TRIP-146 v2). It travels ON THE VISIT: getTripDetails looks the
+// directory rows up by geonameid and attaches them as `v.cities` (index.ts:146-153),
+// so the panel reads a field it already has instead of asking the database again.
+// Late binding is unchanged — cities is a sparse affiliate directory and the lookup
+// still happens per trip load, so a city added to it later is picked up with no
+// backfill; `cities: null` (city not in the directory) is a legitimate value.
 
 import { useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { mergeById } from '@/lib/forkPool';
-
-// geonameid -> viator_dest_id (or null). Resolved once per city per session.
-const destCache = new Map();
-async function resolveViatorDestId(visit) {
-  const gid = visit?.geonameid;
-  if (!gid) return null;
-  if (destCache.has(gid)) return destCache.get(gid);
-  const { data } = await supabase
-    .from('cities')
-    .select('viator_dest_id')
-    .eq('geonameid', gid)
-    .maybeSingle();
-  const id = data?.viator_dest_id || null;
-  destCache.set(gid, id);
-  return id;
-}
 
 export const VIATOR_KEY = (visit, currency, lang) => [
   'viator',
@@ -97,7 +82,7 @@ export function useViatorActivities({ visit, currency, lang, enabled = true }) {
     placeholderData: keepPreviousData,
     staleTime: POOL_STALE_MS,
     queryFn: async () => {
-      const destinationId = await resolveViatorDestId(visit);
+      const destinationId = visit?.cities?.viator_dest_id || null;
       // City not on Viator yet (no viator_dest_id) → empty, no upstream call.
       if (!destinationId) return { activities: [], meta: { total: 0, hasMore: false, destinationId: null } };
       const res = await fetchViatorPage({ ...base, destinationId }, 1);
