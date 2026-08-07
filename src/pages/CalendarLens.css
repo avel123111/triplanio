@@ -484,3 +484,9 @@
    visual-diff-exempt: .ncal-title-row display — display:flex уехал на примитив .row/.col, значение то же
    visual-diff-exempt: .ncal-wd-row display — display:grid уехал на .grid, значение то же
    */
+
+/* TRIP-342: легенда - раскладка на .col.
+   visual-diff-exempt: .ncal-legend display — display:flex уехал на .col, значение то же
+   visual-diff-exempt: .ncal-legend flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .ncal-legend gap — 10px это ДЕФОЛТ .col (var(--sp-5)=10px), модификатор не нужен
+   */
