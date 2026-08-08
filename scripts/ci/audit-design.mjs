@@ -54,7 +54,7 @@
  *      three trap shapes without depending on the live stylesheet.
  */
 import { readFileSync, readdirSync, statSync, writeSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { Parser as AcornParser } from 'acorn';
 import acornJsx from 'acorn-jsx';
 import postcss from 'postcss';
@@ -212,18 +212,30 @@ const singletons = singletonsStandalone + singletonsAttached;
 const JsxParser = AcornParser.extend(acornJsx());
 const parseFailures = [];
 
-const classNameTokens = (f) => {
-  const out = new Set();
-  const add = (s) => { for (const tok of s.split(/\s+/)) if (tok) out.add(tok); };
-  let ast;
+/** ОДИН разбор на файл на весь скрипт. Классы (1c/1d) и доля «собрано из
+ *  системы» (1e) читают одно и то же дерево: два разбора одного файла - это два
+ *  списка `parseFailures`, которые расходятся ровно в тот день, когда один из
+ *  них поменяет опции. */
+const astCache = new Map();
+const astOf = (f) => {
+  if (astCache.has(f)) return astCache.get(f);
+  let ast = null;
   try {
     ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' });
   } catch (e) {
     // Молча пропустить нельзя: непрочитанный файл выглядит как файл без классов,
     // а это ровно «нечего проверять» и «проверено, чисто» с одинаковым вердиктом.
     parseFailures.push(`${f}: ${e.message}`);
-    return out;
   }
+  astCache.set(f, ast);
+  return ast;
+};
+
+const classNameTokens = (f) => {
+  const out = new Set();
+  const add = (s) => { for (const tok of s.split(/\s+/)) if (tok) out.add(tok); };
+  const ast = astOf(f);
+  if (!ast) return out;
   const strings = (n) => {
     if (!n || typeof n !== 'object') return;
     if (Array.isArray(n)) { n.forEach(strings); return; }
@@ -378,6 +390,226 @@ const catalogInvalid = catalogStatuses
  *  classes the same move reads `-1` immediately. */
 const triageClasses = catalogStatuses
   ? [...families].reduce((n, [fam, list]) => n + (catalogStatuses[fam] === 'triage' ? list.length : 0), 0)
+  : null;
+
+// ── 1e. Приложение собрано из системы (TRIP-337 §1 · ГЛАВНОЕ ЧИСЛО ЭПИКА) ───
+/** ★ «Классов ≤500» снято решением Pavel 2026-08-07: 500 было взято как
+ *  «примерно столько в нормальных приложениях» и здоровья системы не мерило -
+ *  прийти к 500 и остаться с зоопарком можно. Здоровье - это ЭКРАНЫ, СОБРАННЫЕ
+ *  ИЗ СИСТЕМЫ и почти ничего не рисующие сами. Вот это число.
+ *
+ *  ── ТРИ ОСИ, И ОНИ ДАЮТ РАЗБРОС 16-23% НА ОДНОМ ДЕРЕВЕ ──
+ *  Замеры на `dev @ 2a753a2`, все шесть воспроизводятся:
+ *
+ *    периметр \ знаменатель        листья разметки     + композиция и вендор
+ *    всё src (внутренности ДС)      811/4177 = 19.4%     811/5016 = 16.2%
+ *    без внутренностей ДС           808/3977 = 20.3%     808/4746 = 17.0%
+ *    ещё минус лендинг/вход         806/3492 = 23.1%     806/4201 = 19.2%
+ *
+ *  Ручная ревизия эпика дала 17% (правая колонка средней строки, 4328
+ *  элементов против моих 4746), прежний диагноз TRIP-321 - 5.7% по третьему
+ *  предикату. Никто не ошибался: «элемент интерфейса» не был определён. Ниже -
+ *  определение, и число печатает оно.
+ *
+ *  Таблица - сверка ОСЕЙ и снята до того, как предикат дописали; шипнутое число
+ *  берётся из нижней правой ячейки МИНУС восемь элементов: 5 нерендерящих тегов
+ *  (`style`/`script`/`noscript`) и 3 составных имени (`<theme.Icon/>` и родня,
+ *  см. `elementKind`). На том же `2a753a2` код печатает 806/3484 = 23.13%.
+ *
+ *  ── ЧИСЛИТЕЛЬ ──
+ *  Элемент, чьё имя импортировано из `<ROOT>/design/**`.
+ *
+ *  ── ЗНАМЕНАТЕЛЬ = ЛИСТЬЯ РАЗМЕТКИ ──
+ *  Числитель + сырые host-теги + элементы из `<ROOT>/components/ui/**`.
+ *  Легаси-слой шадсн стоит в ЗНАМЕНАТЕЛЕ намеренно: DoD (a) требует его нуля,
+ *  значит переезд `ui → design` обязан долю ПОДНИМАТЬ, а не оставлять на месте.
+ *
+ *  ── ЧТО НЕ СЧИТАЕТСЯ ВООБЩЕ, И ПОЧЕМУ ИМЕННО ТАК ──
+ *  · СВОЯ КОМПОЗИЦИЯ (`<MembersLens/>`, компонент, объявленный в этом же файле)
+ *    и ВЕНДОР (`lucide`, `Route`, провайдеры). Иначе метрика краснеет на
+ *    ПРАВИЛЬНОМ ходе: разбиение экрана на подкомпоненты - это фаза 09, а каждый
+ *    новый `<CityRow/>` в разметке опускал бы долю. Красный на правильном ходе
+ *    = выключенный гард (урок 2p). Внутренности такого компонента считаются
+ *    ТАМ, ГДЕ ОБЪЯВЛЕНЫ, поэтому спрятать разметку за своим именем нельзя.
+ *  · ПОТРОХА `<svg>` - графика, заменить примитивом нечего.
+ *  · Нерендерящие теги (`style`, `script`, `noscript`) и фрагменты.
+ *
+ *  ── ПЕРИМЕТР ──
+ *  `inScope` - тот же, что у классов и семейств, - ПЛЮС исключены внутренности
+ *  самой ДС (`design/**`, `components/ui/**`).
+ *
+ *  ★★ ВТОРОЕ ИСКЛЮЧЕНИЕ И ЕСТЬ ГЛАВНАЯ ЛОВУШКА ПРЕДИКАТА: `Btn` внутри собран
+ *  из `<button>`, `Card` из `<div>` - это система, а не долг. С потрохами ДС в
+ *  знаменателе 100% недостижимы ПО ПОСТРОЕНИЮ, а каждый новый примитив
+ *  УХУДШАЕТ число, то есть метрика штрафует ровно ту работу, ради которой
+ *  заведена. Тот же класс ошибки, что «канон = 82 синглтона» (§1d), только на
+ *  другой оси.
+ *
+ *  ── ГРАНИЦЫ, НАЗВАННЫЕ ВСЛУХ (то, чего это число НЕ видит) ──
+ *  1. ЛОКАЛЬНЫЙ ШИМ. Рукописный `<Label>` с 41 вызовом виден как ОДИН сырой
+ *     `<label>` в месте объявления. Это прямая цена границы «своя композиция не
+ *     считается», поэтому шимы с именем, которое ДС уже экспортирует,
+ *     ПЕЧАТАЮТСЯ отдельным списком - дыра названа, а не выведена из числа.
+ *  2. СВАЛИТЬ РАЗМЕТКУ ЭКРАНА В `design/**` = поднять долю без работы. Это
+ *     стоит строки диффа и ломается о каталог (2o напечатает переклейку), но
+ *     дополнительно печатается `implHost` - сырые теги внутри самой ДС.
+ *  3. Динамический `import()` и ре-экспорт через промежуточный модуль читаются
+ *     как своя композиция, а не как ДС: ошибка в БЕЗОПАСНУЮ сторону (доля
+ *     занижена, ход всё равно засчитается через прямой импорт).
+ *  4. РАЗМЕТКА ЭКРАНА ВХОДА В ЧИСЛЕ ЕСТЬ, хотя §10 держит его вне периметра до
+ *     подзадачи 10: `OUT_OF_SCOPE` называет `login.css`, а компонент - это
+ *     `Login.jsx`, и он под предикат не подпадает. Правится это НЕ здесь:
+ *     трогать общий предиката периметра ради одной метрики - завести вторую
+ *     линейку. Цена названа: 203 сырых тега заморожены до 10, то есть число
+ *     ПЕССИМИСТИЧНО ровно на них. */
+const DS_MODULE = /(^|\/)design(\/|$)/;
+const UI_MODULE = /(^|\/)components\/ui(\/|$)/;
+const NON_RENDERING = new Set(['style', 'script', 'noscript']);
+
+/** `@/x` - алиас на корень скана (в репозитории это `src/`), относительный путь
+ *  - от каталога файла, голый спецификатор - вендор (`null`). Резолвится ПУТЬ, а
+ *  не имя пакета: предикат «строка содержит design» ловил бы `@/lib/design-tokens`. */
+const importTarget = (file, spec) => {
+  if (spec.startsWith('@/')) return join(ROOT, spec.slice(2));
+  if (spec.startsWith('.')) return join(dirname(file), spec);
+  return null;
+};
+
+/** Имена, которые ДС экспортирует. Нужны ровно для одного - назвать локальный
+ *  шим (`const Input = …` при живом `Input` из ДС). Дефолтный экспорт читается
+ *  ТОЖЕ: `export default Icon` - единственная форма в `design/icons.jsx`, и без
+ *  неё список шимов молчал бы ровно про те компоненты, у которых имени в
+ *  `export {…}` нет, то есть называл бы дыру неполно. Анонимный
+ *  (`export default () => …`) имени не даёт и не добавляется. */
+const dsExports = new Set();
+for (const f of jsxFiles) {
+  if (!DS_MODULE.test(f)) continue;
+  const ast = astOf(f);
+  if (!ast) continue;
+  for (const n of ast.body) {
+    if (n.type === 'ExportDefaultDeclaration') {
+      const d = n.declaration;
+      if (d.type === 'Identifier') dsExports.add(d.name);
+      else if (d.id?.name) dsExports.add(d.id.name);
+      continue;
+    }
+    if (n.type !== 'ExportNamedDeclaration') continue;
+    if (n.declaration?.type === 'VariableDeclaration') {
+      for (const d of n.declaration.declarations) if (d.id?.name) dsExports.add(d.id.name);
+    } else if (n.declaration?.id?.name) dsExports.add(n.declaration.id.name);
+    for (const s of n.specifiers ?? []) if (s.exported?.name) dsExports.add(s.exported.name);
+  }
+}
+
+const dsShare = {
+  ds: 0, ui: 0, host: 0, app: 0, local: 0, vendor: 0, svg: 0, nonRendering: 0, implHost: 0,
+  denominator: 0, byFile: [], shims: [], byTag: [], byComponent: [],
+};
+
+/** ★ РАЗБИВКА ПО ТЕГУ - ЭТО НЕ УКРАШЕНИЕ ОТЧЁТА, А ТО, ЧЕМ РЕШАЕТСЯ ПОРЯДОК ФАЗ.
+ *  Доля двигается ровно одним способом: сырой тег стал компонентом ДС. Тогда
+ *  элемент уезжает из `host` в `ds`, знаменатель НЕ меняется, и вклад тега
+ *  считается арифметикой: `Δ п.п. = 100 * n / знаменатель`. Отсюда видно, что
+ *  фаза, переносящая ПРАВИЛА между классами (05, 06), это число не двигает
+ *  вообще - `div` с новым классом остаётся `div`, - а фаза компонентов (07)
+ *  двигает сразу и много. Печатается, чтобы такой довод предъявлялся числом. */
+const byTag = new Map();
+const byComponent = new Map();
+const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
+const top = (m, n) => [...m].sort((a, b) => b[1] - a[1]).slice(0, n);
+
+/** `<div/>` → `{base:'div'}`; `<Dialog.Title/>` → `{base:'Dialog', member:true}`
+ *  (импортом связан КОРЕНЬ, `Title` - его поле); `<svg:path/>` → `{base:'path'}`. */
+const elementName = (node) => {
+  const n = node.openingElement.name;
+  if (n.type === 'JSXMemberExpression') {
+    let o = n.object;
+    while (o.type === 'JSXMemberExpression') o = o.object;
+    return { base: o.name ?? '', member: true };
+  }
+  // JSXIdentifier - имя целиком; JSXNamespacedName (`<svg:path/>`) - его local-часть.
+  return { base: (n.type === 'JSXIdentifier' ? n.name : n.name?.name) ?? '', member: false };
+};
+
+/** Элемент → куча.
+ *
+ *  ★ РЕГИСТР РЕШАЕТ ТОЛЬКО У ОДНОСЛОВНОГО ИМЕНИ. По грамматике JSX составное имя
+ *  - ВСЕГДА компонент, каким бы ни был регистр корня: `<motion.div/>`,
+ *  `<theme.Icon/>`, `<d.Icon/>` (все три живые в src) - это не сырые теги. Без
+ *  `member` они падали в `host`, то есть в ЗНАМЕНАТЕЛЬ, и метрика утверждала
+ *  «экран нарисовал это сам». Хуже направление ошибки: при
+ *  `import * as ds from '@/design'` вызов `<ds.Btn/>` тоже читался как сырой тег
+ *  - метрика штрафовала бы ровно ту работу, ради которой заведена (тот же класс
+ *  ошибки, что «внутренности ДС в знаменателе», только на оси имени). */
+const elementKind = ({ base, member }, imports) => {
+  if (!member && !/^[A-Z]/.test(base)) return NON_RENDERING.has(base) ? 'nonRendering' : 'host';
+  if (!imports.has(base)) return 'local';
+  const target = imports.get(base);
+  if (target === null) return 'vendor';
+  if (DS_MODULE.test(target)) return 'ds';
+  if (UI_MODULE.test(target)) return 'ui';
+  return 'app';
+};
+
+for (const f of jsxFiles) {
+  const impl = DESIGN_SOURCE.test(f);
+  if (!impl && !inScope(f)) continue;
+  const ast = astOf(f);
+  if (!ast) continue;
+
+  const imports = new Map();
+  for (const n of ast.body) {
+    if (n.type !== 'ImportDeclaration') continue;
+    for (const s of n.specifiers) imports.set(s.local.name, importTarget(f, n.source.value));
+  }
+
+  const localUses = new Map();
+  let raw = 0;
+  const visit = (n, inSvg) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach((x) => visit(x, inSvg)); return; }
+    let svg = inSvg;
+    if (n.type === 'JSXElement') {
+      const el = elementName(n);
+      if (el.base === 'svg') svg = true;
+      const kind = svg ? 'svg' : elementKind(el, imports);
+      if (impl) {
+        // Внутренности ДС в знаменатель не идут - но сырые теги там СЧИТАЮТСЯ
+        // отдельно, иначе «свалить разметку экрана в design/» поднимает долю молча.
+        if (kind === 'host') dsShare.implHost += 1;
+      } else {
+        dsShare[kind] += 1;
+        if (kind === 'host') { raw += 1; bump(byTag, el.base); }
+        if (kind === 'ds') bump(byComponent, el.member ? `${el.base}.${el.member}` : el.base);
+        if (kind === 'local') bump(localUses, el.base);
+      }
+    }
+    for (const k of Object.keys(n)) if (k !== 'type') visit(n[k], svg);
+  };
+  visit(ast.body, false);
+
+  // Избыточно по построению - в ветке `impl` выше не трогаются ни `raw`, ни
+  // `localUses`, - и оставлено намеренно, а не по недосмотру: оба списка ниже про
+  // ЭКРАНЫ, и дописанный когда-нибудь счётчик в ту ветку не должен начать молча
+  // наполнять их разметкой самой ДС.
+  if (impl) continue;
+  if (raw) dsShare.byFile.push([f, raw]);
+  for (const [name, uses] of localUses) {
+    if (dsExports.has(name)) dsShare.shims.push({ name, file: f, uses });
+  }
+}
+dsShare.byFile.sort((a, b) => b[1] - a[1]);
+dsShare.shims.sort((a, b) => b.uses - a.uses);
+dsShare.byTag = top(byTag, 15);
+dsShare.byComponent = top(byComponent, 15);
+dsShare.denominator = dsShare.ds + dsShare.ui + dsShare.host;
+
+/** Сотые доли процента, а не проценты: при знаменателе 3492 один элемент - это
+ *  2.9 bp, и в целых процентах правка на три десятка элементов невидима.
+ *  ПУСТОЕ ДЕРЕВО - `null`, а не 0: «мерить нечего» и «померили, чисто» не
+ *  должны печатать один вердикт (то же правило, что у каталога в §1d). */
+const dsShareBp = dsShare.denominator
+  ? Math.round((10000 * dsShare.ds) / dsShare.denominator)
   : null;
 
 // ── 2. Inline styles ────────────────────────────────────────────────────────
@@ -1012,6 +1244,11 @@ if (process.argv.includes('--json')) {
         // count go DOWN while the vocabulary is unchanged — the name merely hid.
         rootTokenNames: [...rootTokenNames].sort(),
         privateTokens,
+        // ГЛАВНОЕ ЧИСЛО ЭПИКА (TRIP-337 §1): доля элементов интерфейса, взятых
+        // из ДС. Плоское `dsShareBp` храповит 2o (в сотых долях процента и
+        // ТОЛЬКО ВВЕРХ), `dsShare` держит обе кучи и обе названные границы.
+        dsShareBp,
+        dsShare: { ...dsShare, byFile: dsShare.byFile.slice(0, 15) },
         // Объекты (TRIP-341 PR 0). `byFamily` - то, по чему режутся 05 и 06.
         objects,
         cssParseFailures,
@@ -1096,6 +1333,31 @@ if (catalogError) {
   if (drift.length) {
     console.log(`   ─ предикат зовёт каноном, а в каталоге разбор (${drift.length}): ${drift.join(' · ')}`);
     console.log('     Это не ошибка: машина не видит экранных имён, зашитых ВНУТРЬ компонента ДС.');
+  }
+}
+console.log();
+
+console.log('1e. ПРИЛОЖЕНИЕ СОБРАНО ИЗ СИСТЕМЫ (главное число эпика, храповит 2o ВВЕРХ)');
+if (dsShareBp === null) {
+  console.log('   элементов интерфейса ноль - мерить нечего (это НЕ 0%)');
+} else {
+  console.log(`   ДОЛЯ ИЗ ДС:          ${(dsShareBp / 100).toFixed(2)}%  ← ${dsShare.ds} из ${dsShare.denominator} листьев разметки`);
+  console.log(`   сырых тегов:         ${num(dsShare.host, 5)}  ← это и есть «экран рисует сам»`);
+  console.log(`   легаси components/ui:${num(dsShare.ui, 5)}  ← в знаменателе: переезд в design/ обязан поднимать долю`);
+  console.log(`   не в счёте:          композиция ${dsShare.app} · локальные ${dsShare.local} · вендор ${dsShare.vendor} · svg ${dsShare.svg} · нерендерящие ${dsShare.nonRendering}`);
+  console.log(`   сырые теги ВНУТРИ ДС:${num(dsShare.implHost, 5)}  ← репорт: свалить разметку экрана в design/ подняло бы долю`);
+  console.log(`   топ файлов по сырым тегам: ${dsShare.byFile.slice(0, 8).map(([f, n]) => `${f.replace(/^.*\//, '')}(${n})`).join(' · ')}`);
+  console.log(`   взято из ДС: ${dsShare.byComponent.slice(0, 10).map(([c, n]) => `${c}(${n})`).join(' · ')}`);
+  // Вклад тега = что будет с долей, когда он станет компонентом ДС: элемент
+  // уезжает из знаменателя в числитель, знаменатель тот же. Это и есть довод о
+  // порядке фаз - число, а не мнение.
+  console.log('   ─ сырые теги и вклад каждого в долю, если он станет компонентом ДС:');
+  for (const [tag, n] of dsShare.byTag.slice(0, 8)) {
+    console.log(`      <${tag}>`.padEnd(15) + `${String(n).padStart(5)}   +${((100 * n) / dsShare.denominator).toFixed(1)} п.п.`);
+  }
+  if (dsShare.shims.length) {
+    console.log(`   ─ локальный компонент повторяет имя из ДС (${dsShare.shims.length}) - цена границы «своя композиция не считается»:`);
+    for (const s of dsShare.shims) console.log(`      ${s.name} ×${s.uses} в ${s.file}`);
   }
 }
 console.log();

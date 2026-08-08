@@ -690,3 +690,109 @@ test('★★ ПЕРЕКЛЕЙКА triage → canon шестую метрику �
   assert.equal(code, 0, out);
   assert.match(out, /экран дотянулся в примитив\s+1 →\s+1/);
 });
+
+/* ── девятое число: доля «собрано из системы», храповик ВВЕРХ (TRIP-337 §1) ── */
+/** Вторая метрика «только вверх» (первая - `axes`, TRIP-364 PR-I) и главное
+ *  число эпика. Проверяется не «считает ли она» (это `audit-design.test.mjs`), а
+ *  что пол не принимает её падение за норму и что ФОРМА МАРКЕРА одна на все
+ *  метрики: `+N` = величина разрешённого НАРУШЕНИЯ, всё остальное - выход 2. */
+const DS = { 'src/design/index.jsx': 'export const Btn = () => null;\n' };
+const screen = (extra) => `import { Btn } from '@/design';\nconst a = <div>${extra}<Btn /></div>;\n`;
+
+test('★ доля «собрано из ДС» УПАЛА → красный, хотя все остальные числа не выросли', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { ...DS, 'src/S.jsx': screen('<span />') },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  // Именно строка НАРУШЕНИЯ, и вместе с ВЕЛИЧИНОЙ: само название метрики
+  // печатается в таблице всегда, поэтому совпадение по нему прошло бы и при
+  // красноте от любого другого числа. У растущей метрики нарушение называется
+  // словом («упало на»), а не знаком — знак остаётся формой МАРКЕРА, не отчёта.
+  assert.match(r.out, /✗ собрано из ДС \(bp\): 5000 → 3333 \(упало на 1667\)/);
+  // И подсказка обязана быть той, которую можно скопировать: форма маркера одна
+  // на все метрики, `+N` = величина разрешённого нарушения.
+  assert.match(r.out, /floor-exempt: dsshare \+1667 —/);
+});
+
+test('доля выросла → зелёный (храповик именно ВВЕРХ, а не «не меняйся»)', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('<span />') },
+    head: { ...DS, 'src/S.jsx': screen('') },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('маркер +N покрывает согласованное ПАДЕНИЕ доли: форма одна на все метрики', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { ...DS, 'src/S.jsx': `/* floor-exempt: dsshare +1700 — новый экран, апрув Pavel */\n${screen('<span />')}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('★ маркер -N на РАСТУЩЕЙ метрике - ошибка, а не тихий ноль', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { ...DS, 'src/S.jsx': `/* floor-exempt: dsshare -1700 — знак не тот */\n${screen('<span />')}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /знак/i);
+});
+
+test('маркер  на УБЫВАЮЩЕЙ метрике - такая же ошибка (симметрия)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2) },
+    head: { 'src/a.css': `/* floor-exempt: classes -1 — знак не тот */\n${family(3)}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /знак/i);
+});
+
+test('элементов интерфейса нет ни на одной стороне → строка «мерить нечего», зелёный', (t) => {
+  const f = fixture(t, { base: { 'src/a.css': family(2) } });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /мерить нечего/);
+});
+
+test('★ элементы были, а на HEAD их нет → выход 2: метрику нельзя выключить', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { 'src/S.jsx': null, 'src/design/index.jsx': null },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /не измеряется|мерить нечего/);
+});
+
+test('★ маркер БЕЗ знака - тоже ошибка, а не тихий ноль бюджета', (t) => {
+  // Дыра на шаг РАНЬШЕ сверки знака: требуй регулярка `[+-]`, такой маркер не
+  // нашёлся бы вовсе, и автор получил бы ноль бюджета молча.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2) },
+    head: { 'src/a.css': `/* floor-exempt: classes 1 — знак не назван */\n${family(3)}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /НЕ НАЗВАН ЗНАК/);
+});
+
+test('★ скачок сырых тегов ВНУТРИ ДС печатается: доля выросла бы без работы', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('<span />') },
+    head: {
+      // разметка экрана уехала в design/: из знаменателя ушёл <span>, доля выросла
+      'src/design/index.jsx': 'export const Btn = () => (<i><span /></i>);\n',
+      'src/S.jsx': screen(''),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /сырых тегов внутри ДС.*0 → 2/);
+});
