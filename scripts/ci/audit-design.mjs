@@ -544,6 +544,20 @@ const layoutPrimitiveNames = jsxFiles.includes(LAYOUT_PRIMITIVES_FILE)
     })()
   : null;
 
+/** ★★ ДВЕ ДВЕРИ, ПОТОМУ ЧТО ИХ РЕАЛЬНО ДВЕ. Через баррель (`from '@/design'`)
+ *  файл-источник неизвестен, и спросить можно только ИМЯ; напрямую
+ *  (`from '@/design/Layout'`) имя не нужно вовсе — примитив тот, кто приехал ИЗ
+ *  ЭТОГО ФАЙЛА, как бы его ни назвали на месте.
+ *
+ *  Именная дверь дала ТРИ тихих пропуска подряд (все три - ревью Codex, P2, и
+ *  все три воспроизведены прогоном): алиас `Row as Stack`, форма экспорта
+ *  `export {…}`, переименованный ДЕФОЛТНЫЙ импорт `import Stack from
+ *  '…/Layout'`. Общее у них одно - измеритель отвечал «чисто» над
+ *  непроверенным местом, ничего не печатая. Файловая дверь закрывает весь этот
+ *  класс разом: она не про то, как имя написано. */
+const noExt = (p) => p.replace(/\.(jsx|tsx|js|ts)$/, '');
+const LAYOUT_PRIMITIVES_SPEC = noExt(LAYOUT_PRIMITIVES_FILE);
+
 /** Узлы-примитивы, которым экран передал СВОЙ класс. Пересечение с приватными
  *  классами раскладки считается ниже — там, где те уже собраны из CSS. */
 const layoutPrimitiveUses = [];
@@ -610,11 +624,19 @@ for (const f of jsxFiles) {
    *  (`import { Btn as Row }`) даёт ЛОЖНОЕ срабатывание. `imports` хранит
    *  только путь модуля и на этот вопрос не отвечает (ревью Codex, P2). */
   const importedAs = new Map();
+  /** Локальные имена, приехавшие ПРЯМО из модуля примитивов — вторая дверь §1f
+   *  (см. «ДВЕ ДВЕРИ»). Имя тут не спрашивается вообще. */
+  const fromLayoutModule = new Set();
   for (const n of ast.body) {
     if (n.type !== 'ImportDeclaration') continue;
+    const target = importTarget(f, n.source.value);
+    const isLayoutModule = target !== null && noExt(target) === LAYOUT_PRIMITIVES_SPEC;
     for (const s of n.specifiers) {
-      imports.set(s.local.name, importTarget(f, n.source.value));
+      imports.set(s.local.name, target);
       if (s.type === 'ImportSpecifier' && s.imported?.name) importedAs.set(s.local.name, s.imported.name);
+      // Пространство имён (`import * as L`) сюда НЕ идёт: обращение к нему -
+      // `<L.Row>`, то есть `member`, и оно отсекается ниже вместе с `<ds.Row>`.
+      if (isLayoutModule && s.type !== 'ImportNamespaceSpecifier') fromLayoutModule.add(s.local.name);
     }
   }
 
@@ -643,7 +665,9 @@ for (const f of jsxFiles) {
         // ⚠️ Граница: `import * as ds` + `<ds.Row>` сюда не попадает (`member`),
         // и в `src` таких обращений к примитивам нет ни одного - но появятся,
         // и это будет ТИХИЙ пропуск, а не ошибка.
-        if (kind === 'ds' && !el.member && layoutPrimitiveNames?.has(importedAs.get(el.base) ?? el.base)) {
+        const isLayoutPrimitive =
+          fromLayoutModule.has(el.base) || layoutPrimitiveNames?.has(importedAs.get(el.base) ?? el.base);
+        if (kind === 'ds' && !el.member && isLayoutPrimitive) {
           const v = classNameValueOf(n);
           if (v) {
             const cs = new Set();

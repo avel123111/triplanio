@@ -1608,3 +1608,33 @@ test('§1f: примитивы, экспортированные через `exp
   assert.equal(out.dualLayout.measured, true, 'модуль есть — «не измерено» тут враньё');
   assert.equal(out.dualLayout.nodes, 2);
 });
+
+test('§1f: переименованный ДЕФОЛТНЫЙ импорт примитива виден (файловая дверь)', (t) => {
+  // Третий тихий пропуск подряд у ИМЕННОЙ двери (ревью Codex, P2 на PR #737):
+  // `exportedNames` пишет `Row` из `export default function Row`, а на месте
+  // стоит `Stack` — сравнение имён давало 0 узлов при живом долге, без единого
+  // слова в выводе. Файловая дверь имя не спрашивает вовсе.
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': 'export default function Row() { return null; }\n',
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import Stack from "@/design/Layout";\nexport const S = () => <Stack className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 1);
+});
+
+/** ⚠️ Этот случай ловят ОБЕ двери (имя `Row` разрешается и через `importedAs`),
+ *  поэтому снятие файловой двери его НЕ роняет — доказательство второй двери
+ *  несёт тест выше, а этот пинит поведение, не механизм. Сказано вслух, чтобы
+ *  следующий не принял его зелёный за проверку файловой двери. */
+test('§1f: прямой импорт из модуля примитивов виден под алиасом', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Row as Whatever } from "@/design/Layout";\nexport const S = () => <Whatever className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 1);
+});
