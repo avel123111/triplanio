@@ -503,8 +503,20 @@ for (const f of jsxFiles) {
 
 const dsShare = {
   ds: 0, ui: 0, host: 0, app: 0, local: 0, vendor: 0, svg: 0, nonRendering: 0, implHost: 0,
-  denominator: 0, byFile: [], shims: [],
+  denominator: 0, byFile: [], shims: [], byTag: [], byComponent: [],
 };
+
+/** ★ РАЗБИВКА ПО ТЕГУ - ЭТО НЕ УКРАШЕНИЕ ОТЧЁТА, А ТО, ЧЕМ РЕШАЕТСЯ ПОРЯДОК ФАЗ.
+ *  Доля двигается ровно одним способом: сырой тег стал компонентом ДС. Тогда
+ *  элемент уезжает из `host` в `ds`, знаменатель НЕ меняется, и вклад тега
+ *  считается арифметикой: `Δ п.п. = 100 * n / знаменатель`. Отсюда видно, что
+ *  фаза, переносящая ПРАВИЛА между классами (05, 06), это число не двигает
+ *  вообще - `div` с новым классом остаётся `div`, - а фаза компонентов (07)
+ *  двигает сразу и много. Печатается, чтобы такой довод предъявлялся числом. */
+const byTag = new Map();
+const byComponent = new Map();
+const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
+const top = (m, n) => [...m].sort((a, b) => b[1] - a[1]).slice(0, n);
 
 /** `<div/>` → `{base:'div'}`; `<Dialog.Title/>` → `{base:'Dialog', member:true}`
  *  (импортом связан КОРЕНЬ, `Title` - его поле); `<svg:path/>` → `{base:'path'}`. */
@@ -567,8 +579,9 @@ for (const f of jsxFiles) {
         if (kind === 'host') dsShare.implHost += 1;
       } else {
         dsShare[kind] += 1;
-        if (kind === 'host') raw += 1;
-        if (kind === 'local') localUses.set(el.base, (localUses.get(el.base) ?? 0) + 1);
+        if (kind === 'host') { raw += 1; bump(byTag, el.base); }
+        if (kind === 'ds') bump(byComponent, el.member ? `${el.base}.${el.member}` : el.base);
+        if (kind === 'local') bump(localUses, el.base);
       }
     }
     for (const k of Object.keys(n)) if (k !== 'type') visit(n[k], svg);
@@ -587,6 +600,8 @@ for (const f of jsxFiles) {
 }
 dsShare.byFile.sort((a, b) => b[1] - a[1]);
 dsShare.shims.sort((a, b) => b.uses - a.uses);
+dsShare.byTag = top(byTag, 15);
+dsShare.byComponent = top(byComponent, 15);
 dsShare.denominator = dsShare.ds + dsShare.ui + dsShare.host;
 
 /** Сотые доли процента, а не проценты: при знаменателе 3492 один элемент - это
@@ -1331,7 +1346,15 @@ if (dsShareBp === null) {
   console.log(`   легаси components/ui:${num(dsShare.ui, 5)}  ← в знаменателе: переезд в design/ обязан поднимать долю`);
   console.log(`   не в счёте:          композиция ${dsShare.app} · локальные ${dsShare.local} · вендор ${dsShare.vendor} · svg ${dsShare.svg} · нерендерящие ${dsShare.nonRendering}`);
   console.log(`   сырые теги ВНУТРИ ДС:${num(dsShare.implHost, 5)}  ← репорт: свалить разметку экрана в design/ подняло бы долю`);
-  console.log(`   топ по сырым тегам: ${dsShare.byFile.slice(0, 8).map(([f, n]) => `${f.replace(/^.*\//, '')}(${n})`).join(' · ')}`);
+  console.log(`   топ файлов по сырым тегам: ${dsShare.byFile.slice(0, 8).map(([f, n]) => `${f.replace(/^.*\//, '')}(${n})`).join(' · ')}`);
+  console.log(`   взято из ДС: ${dsShare.byComponent.slice(0, 10).map(([c, n]) => `${c}(${n})`).join(' · ')}`);
+  // Вклад тега = что будет с долей, когда он станет компонентом ДС: элемент
+  // уезжает из знаменателя в числитель, знаменатель тот же. Это и есть довод о
+  // порядке фаз - число, а не мнение.
+  console.log('   ─ сырые теги и вклад каждого в долю, если он станет компонентом ДС:');
+  for (const [tag, n] of dsShare.byTag.slice(0, 8)) {
+    console.log(`      <${tag}>`.padEnd(15) + `${String(n).padStart(5)}   +${((100 * n) / dsShare.denominator).toFixed(1)} п.п.`);
+  }
   if (dsShare.shims.length) {
     console.log(`   ─ локальный компонент повторяет имя из ДС (${dsShare.shims.length}) - цена границы «своя композиция не считается»:`);
     for (const s of dsShare.shims) console.log(`      ${s.name} ×${s.uses} в ${s.file}`);

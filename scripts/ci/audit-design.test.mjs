@@ -1197,3 +1197,28 @@ test('ГРАНИЦА C: ре-экспорт через свой модуль в�
   assert.equal(out.dsShare.app, 1, 'и в знаменатель тоже НЕ попадает');
   assert.equal(out.dsShare.denominator, 1, 'в знаменателе только div');
 });
+
+test('★ РАЗБИВКА ПО ТЕГУ: ею решается порядок фаз, поэтому она число, а не мнение', (t) => {
+  // Доля двигается ровно одним способом - сырой тег стал компонентом ДС, -
+  // поэтому вклад каждого тега считается из этой разбивки арифметикой.
+  const out = run(
+    fixture(t, {
+      'design/index.jsx': 'export const Btn = () => null;',
+      'pages/S.jsx':
+        "import { Btn } from '@/design';\n" +
+        'export default () => (<div><button /><button /><Btn /><Btn /><Btn /></div>);',
+    }),
+  );
+  assert.deepEqual(out.dsShare.byTag, [['button', 2], ['div', 1]], 'по убыванию, только сырые теги');
+  assert.deepEqual(out.dsShare.byComponent, [['Btn', 3]]);
+});
+
+test('РАЗБИВКА: теги внутри ДС и внутри svg в неё не попадают', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Btn.jsx': 'export const Btn = () => (<button />);',
+      'pages/S.jsx': "import { Btn } from '@/design/Btn.jsx';\nexport default () => (<div><svg><path /></svg><Btn /></div>);",
+    }),
+  );
+  assert.deepEqual(out.dsShare.byTag, [['div', 1]], 'ни button из примитива, ни path из svg');
+});
