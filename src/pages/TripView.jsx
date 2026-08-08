@@ -857,8 +857,6 @@ export default function TripView() {
     [t, hotels, activities, transfers, visits, services],
   );
 
-  // Unified engine: same validateTrip that powers Edit Mode, collapsed to <=1
-  // issue per entity so the timeline panel never piles up duplicates.
   const isOwner = myRole === 'owner';
 
   // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
@@ -916,10 +914,27 @@ export default function TripView() {
   // секция подменяется дефолтной, и считать надо то, что человек УВИДЕЛ.
   //
   // ⚠ Объёмы секционных событий вырастут: теперь считаются и прямые заходы.
+  //
+  // Ждём ОБЕ половины данных: аддоны приезжают shell'ом, роль — content'ом,
+  // одного shell мало. Пока их нет, `trip` пуст, а `resolveMyRole` по умолчанию
+  // отдаёт 'viewer' — то есть `resolveSection` честно не знает ни про аддон, ни
+  // про право и подменяет гейтованную секцию дефолтной. Эффект стоит ВЫШЕ
+  // раннего возврата по shellGate, поэтому без этой проверки он отрабатывал уже
+  // на первом кадре и слал `overview_opened` на КАЖДОМ холодном заходе в
+  // Бюджет/Чат/Участников/Структуру (прямая ссылка, закладка, F5, редирект со
+  // старого адреса редактора), а верное событие уезжало вторым — врал ровно про
+  // те заходы, ради которых событие сюда и переехало. Цена: событие уходит на
+  // долю секунды позже, а если content не доедет вовсе (офлайн, 500), секция
+  // останется БЕЗ события — недосчёт вместо вранья.
+  //
+  // Гейт — БУЛЕВ флаг, а не сами `trip`/`contentData` в зависимостях: рефетч
+  // отдаёт новые объекты, и событие ушло бы повторно на той же секции.
+  const sectionKnown = !!trip && !!contentData;
   useEffect(() => {
+    if (!sectionKnown) return;
     const sectionEvent = sectionById(shownLens)?.event;
     if (sectionEvent) track(sectionEvent, { trip_id: tripId });
-  }, [shownLens, tripId]);
+  }, [sectionKnown, shownLens, tripId]);
 
   // Тело — постоянный скролл-контейнер; сброс наверх при смене секции держит
   // TripShell (ref прокидываем, он же нужен рейлу городов в ленте).
