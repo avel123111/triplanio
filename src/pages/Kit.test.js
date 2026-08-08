@@ -80,9 +80,49 @@ function declaredClasses() {
   return out;
 }
 
-/** Обличья под наблюдением: `--`-модификаторы канон-семей, без элементов. */
+/** ⚠️⚠️ ТРЕТЬЯ ФОРМА, И ОНА ВЫВОДИТ ОБЛИЧЬЕ ИЗ-ПОД СУДА, А НЕ В ДОЛГ.
+ *  Имя класса попадает на витрину ТРЕМЯ путями, и первая редакция этого файла
+ *  знала два: литерал в разметке и достраивание из массива. Третий — компонент
+ *  ДС склеивает модификатор ВНУТРИ СЕБЯ по значению пропа:
+ *  `<Avatar kind="ai" />` рисует `avatar--ai`, и в `Kit.jsx` этой строки нет
+ *  нигде. Такие обличья на витрине ЕСТЬ, а предикат записывал их в долг —
+ *  то есть база храповика лгала, и проверка «долг может только сокращаться»
+ *  этого не ловила по построению (нашёл ревьюер, не тест).
+ *
+ *  ★ ЛЕЧЕНИЕ — НЕ «СЧИТАТЬ ИХ ПОКАЗАННЫМИ». Определить, сработала ли ветка
+ *  `if (kind === 'ai')`, можно только РЕНДЕРОМ, а рендер `.jsx` в тесте требует
+ *  сборки. Записать их «показанными» на глаз — значит завести ещё один
+ *  рукописный список, то есть ту самую болезнь, против которой файл написан.
+ *  Поэтому обличья, которые компонент эмитит САМ, выводятся ИЗ-ПОД НАБЛЮДЕНИЯ:
+ *  тест судит ровно то, что умеет определить, и говорит об этом вслух.
+ *
+ *  Набор ВЫЧИСЛЯЕТСЯ, а не перечисляется: тела компонентов из
+ *  `src/design/index.jsx`, отобраны те, что витрина реально рендерит.
+ *  ⚠️ Строка ищется БЕЗ требования кавычки перед ней: у `Avatar` модификатор
+ *  лежит внутри шаблонной строки (`` `avatar ${…} avatar--deleted` ``), и
+ *  предикат «кавычка, потом имя» терял ровно те три класса, ради которых
+ *  правка и делается. Форма записи опять решала ответ — на этом же файле,
+ *  в третий раз. */
+function emittedByComponents() {
+  const idx = read('../design/index.jsx');
+  const out = new Set();
+  const parts = idx.split(/export const ([A-Z][A-Za-z0-9]*) *=/).slice(1);
+  for (let i = 0; i < parts.length; i += 2) {
+    const [name, body] = [parts[i], parts[i + 1] ?? ''];
+    if (!new RegExp(`<${name}[ >/\\n]`).test(KIT)) continue; // компонент не на витрине
+    for (const m of body.matchAll(/\b([a-z][\w-]*--[\w-]+)\b/g)) {
+      if (CANON.has(familyOf(m[1]))) out.add(m[1]);
+    }
+  }
+  return out;
+}
+
+const EMITTED = emittedByComponents();
+
+/** Обличья под наблюдением: `--`-модификаторы канон-семей, без элементов и без
+ *  тех, что компонент склеивает сам (см. выше). */
 const VARIANTS = [...declaredClasses()]
-  .filter((c) => c.includes('--') && !c.includes('__') && CANON.has(familyOf(c)))
+  .filter((c) => c.includes('--') && !c.includes('__') && CANON.has(familyOf(c)) && !EMITTED.has(c))
   .sort();
 
 /** Массив → семья, чьи обличья он достраивает. Разбор ОБЯЗАН падать громко:
@@ -126,21 +166,19 @@ function shownOnKit() {
  *  что гасит, а не «выключить проверку». */
 const NOT_SHOWN = new Set([
   // раскладка: выравнивание и поток — показаны только ступени зазора
-  'row--a-baseline', 'row--a-start', 'row--div', 'row--flush', 'row--inline', 'row--j-between',
-  'col--a-end', 'col--a-start', 'col--j-center', 'grow--fit',
-  // плитка-иконка: четырнадцать обличий, ни одного образца
-  'tile--2xl', 'tile--ai', 'tile--danger', 'tile--info', 'tile--lg', 'tile--quiet',
+  'row--a-baseline', 'row--div', 'row--flush', 'row--inline', 'row--j-between',
+  'col--a-end', 'col--a-start', 'col--j-center',
+  // плитка-иконка: одиннадцать обличий, ни одного образца
+  'tile--ai', 'tile--danger', 'tile--info', 'tile--lg', 'tile--quiet',
   'tile--round', 'tile--sm', 'tile--solid', 'tile--success', 'tile--warm', 'tile--warning',
-  'tile--xl',
   // спиннер и тост: живут внутри других компонентов, отдельного образца нет
-  'spin--ink', 'spin--lg', 'spin--onscrim', 'spin--ring', 'spin--xl',
+  'spin--ink', 'spin--lg', 'spin--onscrim', 'spin--xl',
   'toast--error', 'toast--info', 'toast--success', 'toast--warning',
   // поверхности и диалог
   'card--danger', 'card--flush', 'dlg--sm', 'dlg--wide',
   // прочее, поштучно
-  'ai-blk--pill', 'avatar--ai', 'avatar--deleted', 'avatar--placeholder', 'avatar-stack--white',
-  'btn--brand', 'doc-row--ai', 'empty-state--boxed', 'field-row--aside',
-  'input-affix--end', 'input-affix--ic', 'input-unit--lead', 'sev--dashed',
+  'ai-blk--pill', 'avatar-stack--white', 'btn--brand', 'field-row--aside',
+  'input-affix--end', 'input-affix--ic', 'input-unit--lead',
   'sheet-row--danger', 'time--tr',
 ]);
 
@@ -178,11 +216,16 @@ test('★★ НАПРАВЛЕНИЕ 2: витрина не показывает 
 test('★★★ ХРАПОВИК: долг может только сокращаться', () => {
   const shown = shownOnKit();
   const declared = declaredClasses();
-  const stale = [...NOT_SHOWN].filter((c) => !declared.has(c) || shown.has(c));
+  // ⚠️ ТРИ причины протухания, а не одна. Третью («ушло из-под наблюдения»)
+  // первая редакция не проверяла, и именно поэтому список продолжал числить
+  // долгом обличья, которые компонент эмитит сам: они не показаны в смысле
+  // `shown`, из CSS не исчезли — и запись выглядела живой, будучи ложной.
+  const stale = [...NOT_SHOWN].filter((c) => !declared.has(c) || shown.has(c) || EMITTED.has(c));
   assert.deepEqual(
     stale,
     [],
-    `эти записи долга больше не нужны — класс показан на витрине или удалён из CSS; ` +
-      `убери их из NOT_SHOWN, иначе список перестанет быть правдой:\n  ${stale.join(' · ')}`,
+    `эти записи долга больше не нужны — класс показан на витрине, удалён из CSS ` +
+      `или вышел из-под наблюдения (его эмитит сам компонент); убери их из ` +
+      `NOT_SHOWN, иначе список перестанет быть правдой:\n  ${stale.join(' · ')}`,
   );
 });
