@@ -47,6 +47,13 @@ export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {
   }));
 }
 
+/** ⚠️ Аннотация обязательна: без неё TS выводит форму из ДЕСТРУКТУРИЗАЦИИ и
+ *  делает каждое поле без дефолта ОБЯЗАТЕЛЬНЫМ, поэтому законный вызов без
+ *  `member` (его передают только поверхности, у которых есть строка членства)
+ *  краснел TS2345 на экране под `// @ts-check`. Тот же запечатанный набор, что
+ *  у компонентов ДС, только у функции.
+ *  @param {{ userId?: any, nameSnapshot?: any, member?: any, profiles?: any,
+ *            members?: any, selfUser?: any, deletedLabel?: any, fallback?: string }} a */
 export function resolveAuthor({
   userId,
   nameSnapshot,
