@@ -34,19 +34,22 @@
  * добавили. Поэтому PR пересадки обязан ставить `// @ts-check` в экран, который
  * трогает (храповик TRIP-93 растёт файл за файлом ровно так).
  *
- * ⚠️⚠️ И ЗДЕСЬ БЫЛА ЦЕНА, КОТОРУЮ ПРИШЛОСЬ СНЯТЬ ДО ПЕРВОГО ЖЕ ЭКРАНА. Форма
- * `@param {object} props` + `@param {…} [props.<имя>]` даёт TS объект РОВНО из
- * перечисленных ключей, то есть ЗАПЕЧАТЫВАЕТ набор: под `// @ts-check` проезжали
- * только оси, `as`, `className` и дефисные атрибуты, а `id`, `onClick`, `role`,
- * `style` давали TS2322 — хотя рантайм их пробрасывает через `...rest`. Первый же
- * интерактивный ряд ронял БЛОКИРУЮЩИЙ typecheck, а шапка при этом требует ставить
- * прагму в пересаживаемый экран: правило и инструмент противоречили друг другу.
- * Поэтому собственные пропы объявлены `@typedef` и пересечены с атрибутами
- * носителя (`HostProps` ниже) — оси остаются закрытым набором, атрибуты проезжают.
- * ⚠️ Первая починка пересекала с пропами ОДНОГО `div` и была половинчатой: `as`
- * меняет тег, поэтому `<Row as="a" href>` продолжал падать. Проверено прогоном на
- * трёх случаях: `as="a" href target` чист · `as="button" type disabled onClick`
- * чист · `gap="g9"` по-прежнему TS2322.
+ * ⚠️⚠️ ЗАПЕЧАТАННЫЙ НАБОР — ГЛАВНАЯ ЛОВУШКА ЭТОГО ФАЙЛА, И ОНА СРАБОТАЛА ДВАЖДЫ
+ * ПОДРЯД, каждый раз ломая ровно тот ход, ради которого заведён инструмент.
+ * Сначала запечатался набор ПРОПОВ (`@param {object}` → `id`/`onClick`/`role`
+ * давали TS2322 при живом пробросе), потом — набор НОСИТЕЛЕЙ (пересечение с
+ * `ComponentPropsWithoutRef<'div'>` → `<Row as="a" href>` и `<Row as="button"
+ * type disabled>` давали TS2322, хотя `as="button"` объявлен законным ходом,
+ * снимающим часть сырых `<button>`). Оба раза правило требовало ставить
+ * `// @ts-check` в пересаживаемый экран, а инструмент этот экран ронял.
+ * Разбор формы — у `Poly` ниже. Проверено прогоном `tsc`, а не рассуждением:
+ * `as="a" href`, `as="button" type disabled onClick`, `as="ul" role`, `ref` —
+ * чисто; `gap="g9"`, `gap="g5"`, `align="a-end"` у ряда, `align="a-baseline"` у
+ * колонки, `Grid gap="g1"`, `cols="3"`, `fit="yes"` — TS2322 каждый.
+ *
+ * ⚠️ ОБЩЕЕ ПРАВИЛО, КОТОРОЕ ИЗ ЭТОГО СЛЕДУЕТ: тип, закрывающий НАШУ ось, не
+ * должен заодно закрывать чужой набор. Ось конечна по решению (значения
+ * объявлены в каталоге), носитель и DOM-атрибуты — нет.
  *
  * ★ `ref` СТОИТ ОСОБНЯКОМ и поэтому все пять одеты в `forwardRef`: у обычной
  * функции React 18 его ПРОГЛАТЫВАЕТ — в dev с варнингом, в проде молча, — то есть
@@ -81,28 +84,56 @@ import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Атрибуты НОСИТЕЛЯ. `as` меняет тег, поэтому пересечение с пропами одного
- * `div` типизировало не то, ради чего проп заведён: под `// @ts-check`
- * `<Row as="a" href>` и `<Row as="button" type disabled>` давали TS2322 —
- * то есть законный ход «ряд-кнопка вместо сырого `<button>`» упирался в
- * блокирующий typecheck (нашёл Codex на ревью PR 1). `AllHTMLAttributes`
- * покрывает атрибуты всех тегов, поэтому носитель может быть любым.
+ * ⚠️⚠️⚠️ ФОРМА ТИПА — ЗДЕСЬ ЖИВУТ ДВА ДЕФЕКТА ПОДРЯД, ОБА ПРО «ЗАПЕЧАТАННЫЙ НАБОР».
  *
- * ⚠️ ГРАНИЦА, НАЗВАННАЯ ВСЛУХ: тип не сверяет атрибут С ТЕГОМ — `href` на
- * `as="div"` он пропустит. Настоящая полиморфная типизация по `as` требует
- * дженерика на каждый примитив; цена — форма объявления, которую читает
- * `Layout.test.js`, и заметно более тяжёлый тип ради ошибки, которую ловит
- * ревью. ОСИ при этом остаются строгими: `gap="g9"` — по-прежнему TS2322.
+ * 1. `@param {object} props` + перечисление ключей давало TS объект РОВНО из
+ *    перечисленных: `id`, `onClick`, `role`, `style` ловили TS2322, хотя рантайм
+ *    их пробрасывает. Лечение — пересечение с пропами носителя.
+ * 2. Пересечение с `ComponentPropsWithoutRef<'div'>` запечатало САМ НОСИТЕЛЬ:
+ *    `as` менял тег в рантайме, а тип продолжал знать только `div`, поэтому
+ *    `<Row as="a" href>` и `<Row as="button" type disabled>` давали TS2322 —
+ *    ровно на том ходе (`as="button"` снимает часть сырых `<button>`), ради
+ *    которого `as` и заведён. Правило и инструмент опять противоречили друг другу,
+ *    только на шаг дальше.
  *
- * @typedef {import('react').AllHTMLAttributes<HTMLElement>} HostProps
+ * ПОЭТОМУ НОСИТЕЛЬ — ПАРАМЕТР ТИПА: `Poly<T, O>` берёт пропы РЕАЛЬНОГО тега
+ * (`ComponentPropsWithoutRef<T>`), а `Omit<…, keyof O>` отдаёт имена НАШЕЙ оси нам.
+ *
+ * `Omit` несущий, а не косметика: `align` — легальный HTML-атрибут у `td`/`th`/`img`,
+ * и без `Omit` пересечение двух разных union'ов схлопывает НАШУ ось в `never`.
+ * Замерено мутацией: снять `Omit` → `<Row as="td" align="a-start">` даёт TS2322
+ * «not assignable to type never». Строка стоит в прогоне `tsc` в `Layout.test.js`.
+ *
+ * ⚠️ И ОТДЕЛЬНО — ПРО ЦЕНУ СЛОМАННОГО ИНСТРУМЕНТА. Этот абзац один раз уже был
+ * переписан в обратную сторону («мутация краснеет не на `td`, а на `gap`») — и то
+ * «измерение» было сделано СЛЕПОЙ пробой, где React-типы вырождались в `any`
+ * (разбор у теста). Вывод не про JSDoc: замер, сделанный непроверенным
+ * инструментом, опаснее отсутствия замера — он звучит как факт и правит верный
+ * текст на неверный. Инструмент проверяется мутацией РАНЬШЕ, чем на него ссылаются.
+ *
+ * ГРАНИЦА, НАЗВАННАЯ ВСЛУХ: `ref` типизирован как `Ref<any>`, а не
+ * `Ref<ElementRef<T>>` — носитель проверяется, конкретный DOM-класс узла нет.
+ * Рантайм не затронут (`forwardRef` на месте), цена — `ref` не поймает
+ * «повесил `HTMLInputElement` на `<Row as="a">`».
+ *
+ * @template {import('react').ElementType} T носитель: `'div'`, `'button'`, `'ul'`, компонент
+ * @template O собственные оси примитива
+ * @typedef {O & { as?: T, ref?: import('react').Ref<any> }
+ *   & Omit<import('react').ComponentPropsWithoutRef<T>, keyof O | 'as' | 'ref'>} Poly
  */
 
 /**
- * Собственные пропы ряда. ⚠️ ОНИ ИДУТ ЧЕРЕЗ `@typedef`, А НЕ ЧЕРЕЗ `@param {object}`:
- * форма с перечислением ключей у одного объекта ЗАПЕЧАТЫВАЕТ набор, и экран под
- * `// @ts-check` получал TS2322 на `id`, `onClick`, `role`, `style` — то есть
- * первый же интерактивный ряд ронял блокирующий typecheck, а шапка при этом
- * ТРЕБУЕТ ставить прагму в пересаживаемый экран. Замерено прогоном, не выведено.
+ * Пропы РЕАЛИЗАЦИИ — не то же самое, что пропы вызова. Снаружи носитель проверяется
+ * (`Poly<T, O>`), внутри тело обязано принять ЛЮБОЙ носитель, поэтому остаток
+ * открыт. Своя ось при этом остаётся строгой и здесь: опечатка `row--${gap}`
+ * ловится тем же union'ом, что и на вызове.
+ *
+ * @template O
+ * @typedef {O & { as?: any, className?: string } & Record<string, any>} Impl
+ */
+
+/**
+ * Собственные оси ряда. Только они — носитель приезжает через `Poly`.
  *
  * @typedef {object} RowOwn
  * @property {'g1'|'g2'|'g3'|'g4'|'g6'|'g7'|'g8'} [gap] зазор; дефолт g5 = сам `.row`
@@ -110,26 +141,27 @@ import { cn } from '@/lib/utils';
  * @property {'j-between'|'j-center'} [justify] вдоль; дефолт j-start
  * @property {boolean} [wrap] перенос; дефолт nowrap
  * @property {boolean} [inline] поток inline-flex; дефолт block
- * @property {any} [as] тег-носитель: раскладка не диктует семантику
  */
 
-/** Ряд. Эмитит `.row` (`display:flex`, `gap:--sp-5`, `align-items:center`). */
-/** @type {import('react').ForwardRefExoticComponent<RowOwn & HostProps & import('react').RefAttributes<any>>} */
-export const Row = forwardRef(({ gap, align, justify, wrap, inline, as: T = 'div', className, ...rest }, ref) => (
-  <T
-    ref={ref}
-    className={cn(
-      'row',
-      gap && `row--${gap}`,
-      align && `row--${align}`,
-      justify && `row--${justify}`,
-      wrap && 'row--wrap',
-      inline && 'row--inline',
-      className,
-    )}
-    {...rest}
-  />
-));
+/** Ряд. Эмитит `.row` (`display:flex`, `gap:--sp-5`, `align-items:center`).
+ *  @type {<T extends import('react').ElementType = 'div'>(props: Poly<T, RowOwn>) => import('react').ReactElement | null} */
+export const Row = /** @type {any} */ (
+  forwardRef((/** @type {Impl<RowOwn>} */ { gap, align, justify, wrap, inline, as: T = 'div', className, ...rest }, ref) => (
+    <T
+      ref={ref}
+      className={cn(
+        'row',
+        gap && `row--${gap}`,
+        align && `row--${align}`,
+        justify && `row--${justify}`,
+        wrap && 'row--wrap',
+        inline && 'row--inline',
+        className,
+      )}
+      {...rest}
+    />
+  ))
+);
 
 /**
  * Колонка. Эмитит `.col`. ⚠️ Дефолты у колонки ДРУГИЕ, чем у ряда: `align-items`
@@ -142,17 +174,18 @@ export const Row = forwardRef(({ gap, align, justify, wrap, inline, as: T = 'div
  * @property {'g1'|'g2'|'g3'|'g4'|'g6'|'g7'|'g8'} [gap] зазор; дефолт g5
  * @property {'a-start'|'a-end'} [align] поперёк; дефолт stretch
  * @property {'j-center'} [justify] вдоль; дефолт j-start
- * @property {any} [as] тег-носитель
  */
 
-/** @type {import('react').ForwardRefExoticComponent<ColOwn & HostProps & import('react').RefAttributes<any>>} */
-export const Col = forwardRef(({ gap, align, justify, as: T = 'div', className, ...rest }, ref) => (
-  <T
-    ref={ref}
-    className={cn('col', gap && `col--${gap}`, align && `col--${align}`, justify && `col--${justify}`, className)}
-    {...rest}
-  />
-));
+/** @type {<T extends import('react').ElementType = 'div'>(props: Poly<T, ColOwn>) => import('react').ReactElement | null} */
+export const Col = /** @type {any} */ (
+  forwardRef((/** @type {Impl<ColOwn>} */ { gap, align, justify, as: T = 'div', className, ...rest }, ref) => (
+    <T
+      ref={ref}
+      className={cn('col', gap && `col--${gap}`, align && `col--${align}`, justify && `col--${justify}`, className)}
+      {...rest}
+    />
+  ))
+);
 
 /**
  * Сетка. Эмитит `.grid`. ⚠️ Ступени `g1` у сетки НЕТ — она не объявлена в CSS и
@@ -162,13 +195,14 @@ export const Col = forwardRef(({ gap, align, justify, as: T = 'div', className, 
  * @typedef {object} GridOwn
  * @property {'g2'|'g3'|'g4'|'g6'|'g7'|'g8'} [gap] зазор; дефолт g5
  * @property {'2'} [cols] колонки; дефолт 1
- * @property {any} [as] тег-носитель
  */
 
-/** @type {import('react').ForwardRefExoticComponent<GridOwn & HostProps & import('react').RefAttributes<any>>} */
-export const Grid = forwardRef(({ gap, cols, as: T = 'div', className, ...rest }, ref) => (
-  <T ref={ref} className={cn('grid', gap && `grid--${gap}`, cols && `grid--${cols}`, className)} {...rest} />
-));
+/** @type {<T extends import('react').ElementType = 'div'>(props: Poly<T, GridOwn>) => import('react').ReactElement | null} */
+export const Grid = /** @type {any} */ (
+  forwardRef((/** @type {Impl<GridOwn>} */ { gap, cols, as: T = 'div', className, ...rest }, ref) => (
+    <T ref={ref} className={cn('grid', gap && `grid--${gap}`, cols && `grid--${cols}`, className)} {...rest} />
+  ))
+);
 
 /**
  * Обрезка в одну строку. Эмитит `.trunc` (`overflow` + `text-overflow` +
@@ -176,17 +210,23 @@ export const Grid = forwardRef(({ gap, cols, as: T = 'div', className, ...rest }
  * свойство, чем «обрезать хвост».
  *
  */
-/** @type {import('react').ForwardRefExoticComponent<{ as?: any } & HostProps & import('react').RefAttributes<any>>} */
-export const Trunc = forwardRef(({ as: T = 'div', className, ...rest }, ref) => (
-  <T ref={ref} className={cn('trunc', className)} {...rest} />
-));
+/** @type {<T extends import('react').ElementType = 'div'>(props: Poly<T, {}>) => import('react').ReactElement | null} */
+export const Trunc = /** @type {any} */ (
+  forwardRef((/** @type {Impl<{}>} */ { as: T = 'div', className, ...rest }, ref) => (
+    <T ref={ref} className={cn('trunc', className)} {...rest} />
+  ))
+);
 
 /**
  * Растяжка. Эмитит `.grow` (`flex:1`), с `fit` — `.grow--fit` (`flex:1` +
  * `min-width:0`), тот самый набор, который написан руками десятки раз.
  *
  */
-/** @type {import('react').ForwardRefExoticComponent<{ fit?: boolean, as?: any } & HostProps & import('react').RefAttributes<any>>} */
-export const Grow = forwardRef(({ fit, as: T = 'div', className, ...rest }, ref) => (
-  <T ref={ref} className={cn(fit ? 'grow--fit' : 'grow', className)} {...rest} />
-));
+/** @typedef {{ fit?: boolean }} GrowOwn */
+
+/** @type {<T extends import('react').ElementType = 'div'>(props: Poly<T, GrowOwn>) => import('react').ReactElement | null} */
+export const Grow = /** @type {any} */ (
+  forwardRef((/** @type {Impl<GrowOwn>} */ { fit, as: T = 'div', className, ...rest }, ref) => (
+    <T ref={ref} className={cn(fit ? 'grow--fit' : 'grow', className)} {...rest} />
+  ))
+);

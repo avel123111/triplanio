@@ -20,7 +20,10 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const SRC = readFileSync(fileURLToPath(new URL('./Layout.jsx', import.meta.url)), 'utf8');
@@ -139,7 +142,7 @@ test('примитивы эмитят СВОЙ класс и пробрасыв�
   }
   // Остальные пропы уезжают на носитель через `...rest` (`onClick`, `id`, роль,
   // `data-*`): без этого примитив годится только под неинтерактивную обёртку.
-  // Тип их тоже пропускает: собственные пропы пересечены с атрибутами носителя.
+  // Тип их тоже пропускает — это пиньет прогон `tsc` в конце файла.
   for (const comp of ['Row', 'Col', 'Grid', 'Trunc', 'Grow']) {
     assert.match(bodyOf(comp), /\.\.\.rest[\s\S]*\{\.\.\.rest\}/, `${comp} не пробрасывает остальные пропы на носитель`);
   }
@@ -149,28 +152,115 @@ test('★ все пять одеты в forwardRef: иначе ref молча п
   // React 18 у обычной функции ref ПРОГЛАТЫВАЕТ — в dev варнинг, в проде тишина,
   // и у пересаженного узла тихо умирают измерение, автоскролл, фокус и DnD. Ни
   // один гард этого не видит, поэтому дверь проверяется тестом.
+  // ⚠️ Между `=` и `forwardRef(` стоит каст носителя (`/** @type {any} */ (`),
+  // поэтому окно, а не стык: пиньется НАЛИЧИЕ обёртки, а не её орфография.
   for (const comp of ['Row', 'Col', 'Grid', 'Trunc', 'Grow']) {
-    assert.match(SRC, new RegExp(`export const ${comp} = forwardRef\\(`), `${comp} не обёрнут в forwardRef`);
+    assert.match(SRC, new RegExp(`export const ${comp} =[^;]{0,80}?forwardRef\\(`), `${comp} не обёрнут в forwardRef`);
     assert.match(bodyOf(comp), /ref=\{ref\}/, `${comp} не отдаёт ref носителю`);
   }
 });
 
-test('★ тип НЕ запечатывает набор пропов и НЕ привязан к одному тегу', () => {
-  // Форма `@param {object} props` давала TS2322 на `id`/`onClick`/`role`, то есть
-  // первый же интерактивный ряд ронял блокирующий typecheck. Пересечение с
-  // ComponentPropsWithoutRef — это и есть починка; её снятие должно краснеть.
+test('★ тип НЕ запечатывает НИ набор пропов, НИ набор носителей', () => {
+  // Ловушка сработала дважды подряд. Сперва запечатался набор ПРОПОВ
+  // (`@param {object}` → TS2322 на `id`/`onClick`/`role`), потом набор
+  // НОСИТЕЛЕЙ: пересечение с `ComponentPropsWithoutRef<'div'>` знало только
+  // `div`, поэтому `<Row as="a" href>` и `<Row as="button" type disabled>`
+  // краснели — ровно на ходе, ради которого `as` заведён. Отсюда ОБА условия:
+  // носитель обязан быть ПАРАМЕТРОМ типа, и он не смеет вернуться литералом.
+  // ⚠️ Берётся именно `docOf` — JSDoc-блок ПЕРЕД объявлением. Ad-hoc разрез по
+  // `/** @type` тут инертен наполовину: у блока есть текст до тега, разрез не
+  // срабатывает, `decl` становится всем файлом до компонента, и проверка ловит
+  // ПРОЗУ шапки (там `ComponentPropsWithoutRef<'div'>` упомянут как история).
   for (const comp of ['Row', 'Col', 'Grid', 'Trunc', 'Grow']) {
-    const decl = SRC.split(`export const ${comp} =`)[0].split('/** @type').at(-1) ?? '';
-    assert.match(decl, /HostProps/, `${comp} объявлен без атрибутов носителя — экран под @ts-check упрётся в TS2322`);
+    const decl = docOf(comp);
+    assert.match(decl, /@type \{<T extends import\('react'\)\.ElementType/, `${comp}: носитель не параметр типа — as снова врёт`);
+    assert.match(decl, /Poly<T,/, `${comp} объявлен мимо Poly — DOM-атрибуты носителя не проедут`);
+    assert.doesNotMatch(decl, /ComponentPropsWithoutRef<'[a-z]/, `${comp}: носитель снова запечатан литеральным тегом`);
   }
+  // `Poly` обязан отдавать спорные имена НАШЕЙ оси: `align` — легальный
+  // HTML-атрибут у `td`/`th`/`img`, и без `Omit` пересечение двух разных
+  // union'ов схлопывает ось в `never`.
+  assert.match(SRC, /Omit<import\('react'\)\.ComponentPropsWithoutRef<T>, keyof O \| 'as' \| 'ref'>/);
 });
 
-test('★ атрибуты носителя берутся у ЛЮБОГО тега, а не у одного div', () => {
-  // `as` меняет носитель, поэтому пересечение с пропами одного `div` типизировало
-  // не то, ради чего проп заведён: `<Row as="a" href>` и `<Row as="button" type>`
-  // давали TS2322, то есть законный ход «ряд-кнопка вместо сырого <button>»
-  // упирался в блокирующий typecheck. Прогон tsc на трёх случаях — в теле PR;
-  // здесь пиньется сама форма, чтобы возврат к `<'div'>` краснел.
-  assert.match(SRC, /@typedef \{import\('react'\)\.AllHTMLAttributes<HTMLElement>\} HostProps/);
-  assert.doesNotMatch(SRC, /ComponentPropsWithoutRef<'div'>/, 'носитель снова привязан к одному тегу');
+/** ★★★ ТЕКСТОВЫЙ ПИН НЕ ДОКАЗЫВАЕТ, ЧТО ТИП РАБОТАЕТ. Проверки выше сверяют
+ *  ОРФОГРАФИЮ объявления, а вопрос стоит про ПОВЕДЕНИЕ: «`as="button"` пропускает
+ *  `type` и `disabled`» и «`gap="g9"` по-прежнему ошибка» — на это отвечает только
+ *  прогон `tsc`. Оба дефекта этого файла (запечатанный набор пропов, потом
+ *  запечатанный носитель) были НЕВИДИМЫ тексту и видны прогону, причём второй
+ *  проехал мимо теста, написанного специально про первый. Поэтому прогон здесь
+ *  СТОЯЧИЙ, а не разовый в теле PR: одноразовое доказательство защищает ровно тот
+ *  день, когда его провели.
+ *
+ *  Проба живёт в ВРЕМЕННОМ КАТАЛОГЕ ВНЕ репозитория намеренно: файл `.jsx` с
+ *  `<Row>`, забытый внутри `src/`, попадёт в периметр `audit-design.mjs` и
+ *  ПОДНИМЕТ `dsshare` — главное число эпика — не написав ни одного экрана.
+ *
+ *  ⚠️⚠️ КОНФИГ ПРОБЫ — `extends` НАСТОЯЩЕГО `jsconfig.json`, И ЭТО НЕСУЩЕЕ.
+ *  Первая редакция выписывала опции руками и вела `react` через `paths` прямо в
+ *  `node_modules/react` — то есть в НЕТИПИЗИРОВАННЫЙ JS: `@types/react` в
+ *  программу не попадал (`--listFiles`: 0 совпадений), все React-типы вырождались
+ *  в `any`, `Omit<any, …>` — в индекс-сигнатуру, и проба зеленела на ЧЁМ УГОДНО,
+ *  включая `<Row as="div" href>`. Замер, который это вскрыл: возвращаю сам дефект
+ *  P1-2 (`ComponentPropsWithoutRef<T>` → `<'div'>`) — вывод `tsc` БАЙТ В БАЙТ ТОТ
+ *  ЖЕ, тест зелёный. То есть стоячий гейт, написанный против конкретной регрессии,
+ *  не видел ровно её. Классический «зелёный тест над пустой комнатой», и нашёл его
+ *  прогон `code-simplifier`, а не чтение. `extends` заодно чинит второе: проба
+ *  судит ТЕМ ЖЕ конфигом, что настоящий гейт `npm run typecheck`, поэтому разойтись
+ *  с ним она больше не может. */
+test('★★★ ПРОГОН tsc: носитель пропускает свои атрибуты, ось остаётся закрытой', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'layout-types-'));
+  try {
+    const repo = fileURLToPath(new URL('../..', import.meta.url));
+    writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
+      extends: join(repo, 'jsconfig.json'),
+      compilerOptions: { noEmit: true, checkJs: true, baseUrl: dir, paths: { '@/*': [join(repo, 'src', '*')] } },
+      include: ['probe.jsx'],
+    }));
+
+    // Слева от `//` — что проверяем. ЧИСТЫЕ и КРАСНЫЕ случаи в ОДНОМ файле:
+    // так «ошибок нет» не может сойти за успех — половина строк обязана краснеть.
+    const LINES = [
+      ['clean', '<Row as="a" href="/x" target="_blank">a</Row>'],
+      ['clean', '<Row as="button" type="button" disabled onClick={() => {}}>b</Row>'],
+      ['clean', '<Col as="ul" role="list" id="q">c</Col>'],
+      ['clean', '<Grid as="section" aria-label="g">d</Grid>'],
+      ['clean', '<Trunc as="span" title="t">e</Trunc>'],
+      ['clean', '<Grow as="li" fit>f</Grow>'],
+      ['clean', '<Row gap="g4" align="a-start" justify="j-between" wrap inline className="x">g</Row>'],
+      // Столкновение имён: `align` — легальный HTML-атрибут у `td`, и НАША ось
+      // обязана победить. Ровно эта строка пиньет `Omit` в `Poly`: мутация «снять
+      // Omit» роняет её с TS2322 «not assignable to type never».
+      ['clean', '<Row as="td" align="a-start" colSpan={2}>h</Row>'],
+      ['error', '<Row gap="g9">1</Row>'],
+      ['error', '<Row gap="g5">2</Row>'],   // дефолт невыразим по построению
+      ['error', '<Row align="a-end">3</Row>'],       // ось ряда, не колонки
+      ['error', '<Col align="a-baseline">4</Col>'],  // ось колонки, не ряда
+      ['error', '<Grid gap="g1">5</Grid>'],          // ступени нет в CSS
+      ['error', '<Grid cols="3">6</Grid>'],
+      ['error', '<Grow fit="yes">7</Grow>'],
+      // ⚠️ ЭТА СТРОКА — ДАТЧИК СЛЕПОТЫ САМОЙ ПРОБЫ. `href` не бывает у `div`,
+      // поэтому она обязана краснеть; на сломанном конфиге (React-типы = `any`)
+      // она проезжала, и ровно по ней слепота и была поймана.
+      ['error', '<Row as="div" href="/x">8</Row>'],
+    ];
+    const head = ["// @ts-check", "import { Row, Col, Grid, Trunc, Grow } from '@/design/Layout';", 'export const P = () => (<>'];
+    const src = [...head, ...LINES.map(([, jsx]) => jsx), '</>);'].join('\n');
+    writeFileSync(join(dir, 'probe.jsx'), src);
+
+    const r = spawnSync('npx', ['tsc', '-p', join(dir, 'tsconfig.json')], { cwd: repo, encoding: 'utf8' });
+    const out = r.stdout + r.stderr;
+    const bad = new Set([...out.matchAll(/probe\.jsx\((\d+),/g)].map((m) => Number(m[1])));
+
+    LINES.forEach(([kind, jsx], i) => {
+      const line = head.length + i + 1;
+      if (kind === 'clean') assert.equal(bad.has(line), false, `должно быть ЧИСТО, а tsc ругается: ${jsx}\n${out}`);
+      else assert.equal(bad.has(line), true, `ось не закрыта — tsc МОЛЧИТ на: ${jsx}\n${out}`);
+    });
+    // Защита от инертности: если tsc не запустился, «ошибок нет» = все clean
+    // прошли, а все error провалились. Но пусть скажет прямо.
+    assert.ok(bad.size > 0, `tsc не выдал НИ ОДНОЙ ошибки — прогон не состоялся:\n${out}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
