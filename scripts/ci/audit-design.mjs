@@ -487,24 +487,37 @@ const importTarget = (file, spec) => {
  *  неё список шимов молчал бы ровно про те компоненты, у которых имени в
  *  `export {…}` нет, то есть называл бы дыру неполно. Анонимный
  *  (`export default () => …`) имени не даёт и не добавляется. */
+/** Имена, экспортированные ОДНИМ модулем. Вынесено из сборщика `dsExports`,
+ *  потому что тот же вопрос задаёт §1f про `Layout.jsx`, а свой урезанный
+ *  сборщик рядом с полным - это дыра, которая уже случилась: первая редакция
+ *  §1f читала только `export const X`, и рефактор примитивов в
+ *  `const Row = …; export { Row }` МОЛЧА выключал измерение (ревью Codex,
+ *  P2). Формы: объявление в `export`, `export function/class`, `export {…}`
+ *  и именованный `export default`. */
+const exportedNames = (ast) => {
+  const out = new Set();
+  for (const n of ast.body) {
+    if (n.type === 'ExportDefaultDeclaration') {
+      const d = n.declaration;
+      if (d.type === 'Identifier') out.add(d.name);
+      else if (d.id?.name) out.add(d.id.name);
+      continue;
+    }
+    if (n.type !== 'ExportNamedDeclaration') continue;
+    if (n.declaration?.type === 'VariableDeclaration') {
+      for (const d of n.declaration.declarations) if (d.id?.name) out.add(d.id.name);
+    } else if (n.declaration?.id?.name) out.add(n.declaration.id.name);
+    for (const s of n.specifiers ?? []) if (s.exported?.name) out.add(s.exported.name);
+  }
+  return out;
+};
+
 const dsExports = new Set();
 for (const f of jsxFiles) {
   if (!DS_MODULE.test(f)) continue;
   const ast = astOf(f);
   if (!ast) continue;
-  for (const n of ast.body) {
-    if (n.type === 'ExportDefaultDeclaration') {
-      const d = n.declaration;
-      if (d.type === 'Identifier') dsExports.add(d.name);
-      else if (d.id?.name) dsExports.add(d.id.name);
-      continue;
-    }
-    if (n.type !== 'ExportNamedDeclaration') continue;
-    if (n.declaration?.type === 'VariableDeclaration') {
-      for (const d of n.declaration.declarations) if (d.id?.name) dsExports.add(d.id.name);
-    } else if (n.declaration?.id?.name) dsExports.add(n.declaration.id.name);
-    for (const s of n.specifiers ?? []) if (s.exported?.name) dsExports.add(s.exported.name);
-  }
+  for (const name of exportedNames(ast)) dsExports.add(name);
 }
 
 const dsShare = {
@@ -526,11 +539,7 @@ const layoutPrimitiveNames = jsxFiles.includes(LAYOUT_PRIMITIVES_FILE)
   ? (() => {
       const ast = astOf(LAYOUT_PRIMITIVES_FILE);
       if (!ast) return null;
-      const out = new Set();
-      for (const n of ast.body) {
-        if (n.type !== 'ExportNamedDeclaration') continue;
-        for (const d of n.declaration?.declarations ?? []) if (d.id?.name) out.add(d.id.name);
-      }
+      const out = exportedNames(ast);
       return out.size ? out : null;
     })()
   : null;
@@ -595,9 +604,18 @@ for (const f of jsxFiles) {
   if (!ast) continue;
 
   const imports = new Map();
+  /** ЛОКАЛЬНОЕ имя → ЭКСПОРТИРОВАННОЕ. Нужно §1f: под алиасом
+   *  (`import { Row as Stack }`) в разметке стоит `Stack`, и проверка по имени
+   *  тега пропускает узел, который рисует `Row`; обратный алиас
+   *  (`import { Btn as Row }`) даёт ЛОЖНОЕ срабатывание. `imports` хранит
+   *  только путь модуля и на этот вопрос не отвечает (ревью Codex, P2). */
+  const importedAs = new Map();
   for (const n of ast.body) {
     if (n.type !== 'ImportDeclaration') continue;
-    for (const s of n.specifiers) imports.set(s.local.name, importTarget(f, n.source.value));
+    for (const s of n.specifiers) {
+      imports.set(s.local.name, importTarget(f, n.source.value));
+      if (s.type === 'ImportSpecifier' && s.imported?.name) importedAs.set(s.local.name, s.imported.name);
+    }
   }
 
   const localUses = new Map();
@@ -622,7 +640,10 @@ for (const f of jsxFiles) {
         // §1f. Условие `kind === 'ds'` несущее: одноимённый локальный `Row`
         // чужого файла - не примитив системы, и считать его двойным владением
         // значит вписать в долг работу, которой там нет.
-        if (kind === 'ds' && !el.member && layoutPrimitiveNames?.has(el.base)) {
+        // ⚠️ Граница: `import * as ds` + `<ds.Row>` сюда не попадает (`member`),
+        // и в `src` таких обращений к примитивам нет ни одного - но появятся,
+        // и это будет ТИХИЙ пропуск, а не ошибка.
+        if (kind === 'ds' && !el.member && layoutPrimitiveNames?.has(importedAs.get(el.base) ?? el.base)) {
           const v = classNameValueOf(n);
           if (v) {
             const cs = new Set();
