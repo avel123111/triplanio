@@ -3543,9 +3543,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* visual-diff-move: te-cityname -> trunc */
     .te-cityname { min-width: 0; transition: color .12s; }
     .te-citycell { min-width: 0; }
-    /* ★ОСТАТОК: зазор 7px вне шкалы (--sp даёт 6 и 8) - удержан приватным.
-     visual-diff-move: te-cityline -> row */
-    .te-cityline { gap: 7px; min-width: 0; }
+    /* ★Зазор 7px СНЯТ: узел берёт ступень `row--g3` (--sp-3 = 6px). Это правка
+       ПИКСЕЛЕЙ, а не перенос (7 ≠ 6), поэтому объявлена строкой
+       `visual-diff-exempt` в конце файла, а маркер переноса снят - он бы утверждал
+       неправду. Апрув Pavel в TRIP-388 (комментарий к PR #735).
+       ⚠️Носителей у класса ТРИ: `EditLens.GridEndpoint`, `anchors.jsx`,
+       `CityRow.jsx` - ступень проставлена на КАЖДОМ, иначе оставшиеся молча взяли
+       бы дефолтные 10px у `.row` (было 7px).
+       `min-width: 0` остаётся приватным: у `.row` такой ручки нет. */
+    .te-cityline { min-width: 0; }
     .te-country { color: var(--muted); white-space: nowrap; flex: none; }
     /* visual-diff-move: te-dts -> row row--g3 */
     .te-dts { color: var(--muted); margin-top: 1px; min-width: 0; }
@@ -3634,9 +3640,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-seam__pill.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
     .te-table .te-row { border-radius: var(--r-btn); box-shadow: var(--sh-1); }
     .te-table .te-row:hover { box-shadow: var(--sh-2); border-color: var(--brand); }
-    /* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан.
-     visual-diff-move: te-end -> row */
-    .te-end { gap: 11px; padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
+    /* ★Зазор 11px СНЯТ: узел берёт ступень `row--g6` (--sp-6 = 12px). Правка
+       ПИКСЕЛЕЙ, а не перенос (11 ≠ 12) - объявлена `visual-diff-exempt` в конце
+       файла, маркер переноса снят. Апрув Pavel в TRIP-388 (комментарий к PR #735).
+       ⚠️Носителей ТРИ: `EditLens.GridEndpoint` и ДВЕ плашки `anchors.jsx`
+       (обычная и `--add`) - ступень проставлена на каждом. */
+    .te-end { padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
     .te-row__node { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { display: block; margin-bottom: 1px; }
     .te-wptag { color: var(--ev-transfer-ink); padding: 2px 7px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
@@ -6543,4 +6552,21 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .acct-hero__actions align-items — то же
    visual-diff-exempt: .acct-plan__acts align-items — то же
    visual-diff-exempt: .addon-card gap — вернул нулевой зазор, .col навязывал 10px
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ TRIP-388 PR 6: два зазора вне шкалы уехали на ступень оси ══════════════
+   Это ЕДИНСТВЕННОЕ место эпика, где меняется ПИКСЕЛЬ, а не имя. Оба зазора
+   стояли ВНЕ шкалы `--sp` (11 при ступенях 10 и 12; 7 при ступенях 6 и 8),
+   поэтому «перенести без изменения значения» тут невозможно по построению:
+   маркер `visual-diff-move` требует совпадения значений и покраснел бы честно.
+   Апрув Pavel в TRIP-388 (комментарий к PR #735) называет обе цели поимённо.
+   ★Почему это не подгонка числа: класс, продолжающий объявлять зазор поверх
+   примитива, - второй источник раскладки под своим именем (§1f), и снять его
+   можно только сняв объявление. Приватных классов раскладки 440 → 438.
+   ⚠️Носителей у обоих классов по ТРИ, и два из трёх - вне EditLens
+   (`anchors.jsx`, `CityRow.jsx`). Ступень проставлена на каждом: без неё
+   оставшиеся молча получили бы дефолтные 10px у `.row`, то есть правка вышла бы
+   не «11 → 12», а «11 → 12 здесь и 11 → 10 там».
+   visual-diff-exempt: .te-end gap — 11px вне шкалы → ступень row--g6 (--sp-6 = 12px), апрув Pavel в TRIP-388
+   visual-diff-exempt: .te-cityline gap — 7px вне шкалы → ступень row--g3 (--sp-3 = 6px), апрув Pavel в TRIP-388
    ═══════════════════════════════════════════════════════════════════════════ */

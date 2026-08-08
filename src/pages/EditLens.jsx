@@ -1279,11 +1279,11 @@ function GridEndpoint({ node, date, onRemove }) {
   const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
   const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <Row className="te-end">
+    <Row gap="g6" className="te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
       <Grow className="te-citycell">
         <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-        <Row className="te-cityline">
+        <Row gap="g3" className="te-cityline">
           <Trunc as="span" className="te-cityname">{node.city_name}</Trunc>
         </Row>
         <Row gap="g3" className="te-dts">

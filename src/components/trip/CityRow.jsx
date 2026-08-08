@@ -95,7 +95,7 @@ export default function CityRow({
       <div className="te-citycell" onPointerDown={stopCellPointer ? (e) => e.stopPropagation() : undefined}>
         {editingSlot || (
           <>
-            <div className="row te-cityline">
+            <div className="row row--g3 te-cityline">
               <span className="trunc te-cityname">{name}</span>
               {country ? <span className="te-country">{country}</span> : null}
               {conf || null}
