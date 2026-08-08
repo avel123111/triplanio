@@ -30,6 +30,17 @@ import { useT } from '@/lib/i18n/I18nContext';
  *   title     — optional trip title (enables the trip block)
  *   meta      — optional trip meta node (e.g. dates · days · cities)
  */
+/**
+ * ⚠️ Аннотация обязательна: без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ и делает
+ * КАЖДЫЙ проп без дефолта ОБЯЗАТЕЛЬНЫМ, поэтому законный вызов без `onBrand` /
+ * `onMenu` / `meta` (все три опциональны — у `onBrand` даже есть фолбэк
+ * `nav('/trips')` строкой ниже) краснел TS2739 у экрана под `// @ts-check`.
+ * Тот же запечатанный набор, что у компонентов `src/design/**`.
+ *
+ * @param {{ user?: any, isPro?: boolean, isDark?: boolean, onToggleTheme?: () => void,
+ *           onBrand?: () => void, onBack?: () => void, backTitle?: string,
+ *           onMenu?: () => void, title?: any, meta?: any, isTrip?: boolean }} p
+ */
 export default function AppHeader({
   user,
   isPro,
