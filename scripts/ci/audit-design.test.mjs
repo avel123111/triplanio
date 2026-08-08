@@ -1314,3 +1314,30 @@ test('список печатается, а не только счёт - им PR
   const out = run(fixture(t, { 'design/app.css': '.z-x { display: grid; } .a-x { display: flex; }' }));
   assert.deepEqual(out.layoutClasses.names, ['a-x', 'z-x'], 'по алфавиту, чтобы дифф двух прогонов читался');
 });
+
+test('★★ ПОРЯДОК КЛАССОВ В СЕЛЕКТОРЕ ЧИСЛО НЕ МЕНЯЕТ (нашёл Codex на ревью PR 1)', (t) => {
+  // Предикат, чувствительный к ФОРМЕ ЗАПИСИ, — дыра по построению: приватное
+  // объявление раскладки проходило гейт от перестановки классов местами, а
+  // «удержанное правило экрана, приколотое к примитиву» пишется примитивом
+  // вперёд естественно.
+  const canonFirst = run(fixture(t, { 'design/app.css': '.row.bgt-head { display: flex; }' }));
+  const ownFirst = run(fixture(t, { 'design/app.css': '.bgt-head.row { display: flex; }' }));
+  assert.deepEqual(canonFirst.layoutClasses.names, ['bgt-head']);
+  assert.deepEqual(ownFirst.layoutClasses.names, ['bgt-head']);
+  assert.equal(canonFirst.layoutPrivateClasses, ownFirst.layoutPrivateClasses);
+});
+
+test('состояние `is-*` не подлежащее: одно имя носят разные объекты', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-cbar.is-split { display: flex; } .is-split.b-cbar { display: grid; }' }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-cbar', 'b-cbar'], 'is-split не должен собирать разные объекты в одну запись');
+});
+
+test('ступень из ОДНИХ канон-классов записывается на канон, а не теряется', (t) => {
+  // Терять правило из наблюдения хуже, чем записать его на канон: число, которое
+  // «не видит» живое объявление, храповит пустоту.
+  const out = run(fixture(t, { 'design/app.css': '.row.grow { display: flex; }' }));
+  assert.equal(out.layoutClasses.total, 1);
+  assert.deepEqual(out.layoutClasses.names, [], 'канон в приватные не попадает');
+});

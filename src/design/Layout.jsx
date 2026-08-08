@@ -41,10 +41,12 @@
  * `style` давали TS2322 — хотя рантайм их пробрасывает через `...rest`. Первый же
  * интерактивный ряд ронял БЛОКИРУЮЩИЙ typecheck, а шапка при этом требует ставить
  * прагму в пересаживаемый экран: правило и инструмент противоречили друг другу.
- * Поэтому собственные пропы объявлены `@typedef` и пересечены с
- * `ComponentPropsWithoutRef<'div'>` — оси остаются закрытым набором, DOM-атрибуты
- * проезжают. Проверено прогоном: `<Row id onClick role ref as>` чист, `gap="g9"`
- * по-прежнему TS2322.
+ * Поэтому собственные пропы объявлены `@typedef` и пересечены с атрибутами
+ * носителя (`HostProps` ниже) — оси остаются закрытым набором, атрибуты проезжают.
+ * ⚠️ Первая починка пересекала с пропами ОДНОГО `div` и была половинчатой: `as`
+ * меняет тег, поэтому `<Row as="a" href>` продолжал падать. Проверено прогоном на
+ * трёх случаях: `as="a" href target` чист · `as="button" type disabled onClick`
+ * чист · `gap="g9"` по-прежнему TS2322.
  *
  * ★ `ref` СТОИТ ОСОБНЯКОМ и поэтому все пять одеты в `forwardRef`: у обычной
  * функции React 18 его ПРОГЛАТЫВАЕТ — в dev с варнингом, в проде молча, — то есть
@@ -79,6 +81,23 @@ import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
+ * Атрибуты НОСИТЕЛЯ. `as` меняет тег, поэтому пересечение с пропами одного
+ * `div` типизировало не то, ради чего проп заведён: под `// @ts-check`
+ * `<Row as="a" href>` и `<Row as="button" type disabled>` давали TS2322 —
+ * то есть законный ход «ряд-кнопка вместо сырого `<button>`» упирался в
+ * блокирующий typecheck (нашёл Codex на ревью PR 1). `AllHTMLAttributes`
+ * покрывает атрибуты всех тегов, поэтому носитель может быть любым.
+ *
+ * ⚠️ ГРАНИЦА, НАЗВАННАЯ ВСЛУХ: тип не сверяет атрибут С ТЕГОМ — `href` на
+ * `as="div"` он пропустит. Настоящая полиморфная типизация по `as` требует
+ * дженерика на каждый примитив; цена — форма объявления, которую читает
+ * `Layout.test.js`, и заметно более тяжёлый тип ради ошибки, которую ловит
+ * ревью. ОСИ при этом остаются строгими: `gap="g9"` — по-прежнему TS2322.
+ *
+ * @typedef {import('react').AllHTMLAttributes<HTMLElement>} HostProps
+ */
+
+/**
  * Собственные пропы ряда. ⚠️ ОНИ ИДУТ ЧЕРЕЗ `@typedef`, А НЕ ЧЕРЕЗ `@param {object}`:
  * форма с перечислением ключей у одного объекта ЗАПЕЧАТЫВАЕТ набор, и экран под
  * `// @ts-check` получал TS2322 на `id`, `onClick`, `role`, `style` — то есть
@@ -95,7 +114,7 @@ import { cn } from '@/lib/utils';
  */
 
 /** Ряд. Эмитит `.row` (`display:flex`, `gap:--sp-5`, `align-items:center`). */
-/** @type {import('react').ForwardRefExoticComponent<RowOwn & import('react').ComponentPropsWithoutRef<'div'> & import('react').RefAttributes<any>>} */
+/** @type {import('react').ForwardRefExoticComponent<RowOwn & HostProps & import('react').RefAttributes<any>>} */
 export const Row = forwardRef(({ gap, align, justify, wrap, inline, as: T = 'div', className, ...rest }, ref) => (
   <T
     ref={ref}
@@ -126,7 +145,7 @@ export const Row = forwardRef(({ gap, align, justify, wrap, inline, as: T = 'div
  * @property {any} [as] тег-носитель
  */
 
-/** @type {import('react').ForwardRefExoticComponent<ColOwn & import('react').ComponentPropsWithoutRef<'div'> & import('react').RefAttributes<any>>} */
+/** @type {import('react').ForwardRefExoticComponent<ColOwn & HostProps & import('react').RefAttributes<any>>} */
 export const Col = forwardRef(({ gap, align, justify, as: T = 'div', className, ...rest }, ref) => (
   <T
     ref={ref}
@@ -146,7 +165,7 @@ export const Col = forwardRef(({ gap, align, justify, as: T = 'div', className, 
  * @property {any} [as] тег-носитель
  */
 
-/** @type {import('react').ForwardRefExoticComponent<GridOwn & import('react').ComponentPropsWithoutRef<'div'> & import('react').RefAttributes<any>>} */
+/** @type {import('react').ForwardRefExoticComponent<GridOwn & HostProps & import('react').RefAttributes<any>>} */
 export const Grid = forwardRef(({ gap, cols, as: T = 'div', className, ...rest }, ref) => (
   <T ref={ref} className={cn('grid', gap && `grid--${gap}`, cols && `grid--${cols}`, className)} {...rest} />
 ));
@@ -157,7 +176,7 @@ export const Grid = forwardRef(({ gap, cols, as: T = 'div', className, ...rest }
  * свойство, чем «обрезать хвост».
  *
  */
-/** @type {import('react').ForwardRefExoticComponent<{ as?: any } & import('react').ComponentPropsWithoutRef<'div'> & import('react').RefAttributes<any>>} */
+/** @type {import('react').ForwardRefExoticComponent<{ as?: any } & HostProps & import('react').RefAttributes<any>>} */
 export const Trunc = forwardRef(({ as: T = 'div', className, ...rest }, ref) => (
   <T ref={ref} className={cn('trunc', className)} {...rest} />
 ));
@@ -167,7 +186,7 @@ export const Trunc = forwardRef(({ as: T = 'div', className, ...rest }, ref) => 
  * `min-width:0`), тот самый набор, который написан руками десятки раз.
  *
  */
-/** @type {import('react').ForwardRefExoticComponent<{ fit?: boolean, as?: any } & import('react').ComponentPropsWithoutRef<'div'> & import('react').RefAttributes<any>>} */
+/** @type {import('react').ForwardRefExoticComponent<{ fit?: boolean, as?: any } & HostProps & import('react').RefAttributes<any>>} */
 export const Grow = forwardRef(({ fit, as: T = 'div', className, ...rest }, ref) => (
   <T ref={ref} className={cn(fit ? 'grow--fit' : 'grow', className)} {...rest} />
 ));

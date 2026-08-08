@@ -931,18 +931,38 @@ const SPACE_PROP = /^(margin|padding|gap|row-gap|column-gap)(-(top|right|bottom|
  *  раскладкой - выросло, добавил примитив - не шелохнулось. */
 const LAYOUT_CANON = /^(row|col|grid|grow|trunc)(--|$)/;
 const isLayoutDisplay = (b) => /^(inline-)?(flex|grid)$/.test(val(b, 'display'));
-/** Объект, которому принадлежит объявление раскладки. См. ★★★ и ⚠️ выше. */
-const layoutSubject = (sel) => {
+/** Объекты последней ступени, которым принадлежит объявление раскладки.
+ *
+ *  ★★★ ПРЕДИКАТ НЕ ИМЕЕТ ПРАВА ЗАВИСЕТЬ ОТ ФОРМЫ ЗАПИСИ, А ПОРЯДОК КЛАССОВ В
+ *  СЕЛЕКТОРЕ - ЭТО ФОРМА. Первая редакция брала ПЕРВЫЙ класс ступени, и два
+ *  эквивалентных правила давали РАЗНЫЕ числа:
+ *
+ *      .row.bgt-head { display:flex }   → подлежащее row → канон → не видно
+ *      .bgt-head.row { display:flex }   → подлежащее bgt-head → считается
+ *
+ *  То есть приватное объявление раскладки проходило гейт от одной перестановки
+ *  классов местами - а «удержанное правило экрана, приколотое к примитиву»
+ *  естественно пишется примитивом вперёд (нашёл Codex на ревью PR 1).
+ *
+ *  ⚠️ И ПОЧИНКА «БРАТЬ ВСЕ КЛАССЫ СТУПЕНИ» ВЕРНУЛА БЫ ДРУГОЙ ДЕФЕКТ, который
+ *  `[0]` как раз и лечил: `.ncal-cbar.is-split` записывался бы на СОСТОЯНИЕ
+ *  `is-split`, а одно имя состояния носят разные объекты - схлопнул один, число
+ *  не упало. Поэтому из ступени выбрасываются канон-примитивы и состояния
+ *  `is-*`, а объявление пишется на ВСЕ оставшиеся классы (их обычно один).
+ *  Не осталось ничего - пишем на первый: правило существует, и потерять его из
+ *  наблюдения хуже, чем записать на канон. */
+const IS_STATE = /^is-/;
+const layoutSubjects = (sel) => {
   const tail = sel.trim().split(/[\s>+~]+/).at(-1) ?? '';
-  return classesIn(tail)[0] ?? styledClass(sel);
+  const cls = classesIn(tail);
+  if (!cls.length) return [styledClass(sel)].filter(Boolean);
+  const own = cls.filter((c) => !LAYOUT_CANON.test(c) && !IS_STATE.test(c));
+  return own.length ? own : [cls[0]];
 };
 const layoutAll = new Set();
 for (const b of blocks) {
   if (!isLayoutDisplay(b)) continue;
-  for (const sel of b.sels) {
-    const c = layoutSubject(sel);
-    if (c) layoutAll.add(c);
-  }
+  for (const sel of b.sels) for (const c of layoutSubjects(sel)) layoutAll.add(c);
 }
 const layoutPrivateNames = [...layoutAll].filter((c) => !LAYOUT_CANON.test(c)).sort();
 const layoutClasses = { total: layoutAll.size, names: layoutPrivateNames };
