@@ -144,7 +144,7 @@ test('★★ объявленные оси сходятся с ЖИВЫМ реп
   const repo = fileURLToPath(new URL('../..', import.meta.url));
   const { code, out } = run(repo);
   assert.equal(code, 0, out);
-  assert.match(out, /семей с осями: 4 · осей: 11 · значений: 34/, 'состав осей разошёлся с каталогом');
+  assert.match(out, /семей с осями: 5 · осей: 12 · значений: 39/, 'состав осей разошёлся с каталогом');
   assert.match(out, /оси, CSS и разметка сходятся/);
 });
 
@@ -336,6 +336,19 @@ test('хвост и в apart, и в оси — код 2', (t) => {
   const { code, out } = run(dir);
   assert.equal(code, 2, out);
   assert.match(out, /и значением оси .*, и в apart/);
+});
+
+test('★★ apart у семьи = null — не падение, и счёт СХОДИТСЯ с аудитом', (t) => {
+  // Число записей apart с TRIP-364 PR-I храповит пол 2o, а печатает его 2q, то
+  // есть считают ДВОЕ. На этой форме они уже разошлись: аудит молча возвращал 0,
+  // 2q падал необработанным TypeError. Тихий ноль - небезопасная сторона: семья
+  // с null выключала бы свои записи из храповика, и число ПАДАЛО бы, читаясь как
+  // прогресс. Свёрнуто в общую `countApart` (scripts/ci/catalog.mjs) - тот же
+  // приём и та же причина, что у `perimeter.mjs`.
+  const dir = fixture(t, { 'src/a.css': LADDER }, { ...CATALOG, apart: { row: null } });
+  const { code, out } = run(dir);
+  assert.equal(code, 0, out);
+  assert.match(out, /apart, ждут разбора\): 0/);
 });
 
 test('apart без axes — код 2 (исключения без правил, из которых исключают)', (t) => {

@@ -278,7 +278,6 @@ export default function Kit() {
             {SEV_LEVELS.map((l) => (
               <Severity key={l} level={l} title={TX.sevTitle}>{TX.sevBody}</Severity>
             ))}
-            <Severity level="info" title={TX.sevTitle} dashed>{TX.sevBody}</Severity>
           </div>
         </Specimen>
 
