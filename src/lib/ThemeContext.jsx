@@ -1,6 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-const ThemeContext = createContext({ theme: 'light', setTheme: () => {}, isDark: false, toggle: () => {} });
+// ⚠️ ТИП БЕРЁТСЯ С ДЕФОЛТНОГО ЗНАЧЕНИЯ, А НЕ С РЕАЛИЗАЦИИ - `createContext`
+// выводит форму отсюда. Голая заглушка `setTheme: () => {}` объявляла функцию
+// БЕЗ параметров, а провайдер кладёт сюда `setThemeState(value)`, поэтому живой
+// `setTheme('light')` давал TS2554 у каждого вызывателя под `// @ts-check`.
+// ТРЕТИЙ случай одного корня в этом эпике: до него так же разъехались заглушки
+// `t()` (I18nContext) и `startCopy()` (CreateTripProvider) - заглушка и
+// реализация расходятся молча, потому что их никто не сверяет.
+const ThemeContext = createContext({
+  theme: 'light',
+  /** @type {(next: string) => void} */
+  setTheme: () => {},
+  isDark: false,
+  toggle: () => {},
+});
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
