@@ -58,15 +58,24 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 // swipe-to-dismiss) and vaul lifts it above the keyboard. className + style are
 // forwarded to the inner .dlg card so callers can pass .dlg--wide / .dlg--sm.
 // No built-in close button — each dialog has its own in the header.
-/** ⚠️ Аннотация тут по той же причине, что у компонентов `src/design/**`:
- *  `forwardRef` без типа пропов запечатывает набор в `RefAttributes<any>`, и
- *  законные `className` / `children` / `aria-describedby` краснели у ВЫЗЫВАЮЩЕГО
- *  под `// @ts-check`. Это третье место одного корня (первые два - ДС и
- *  заглушка `t()`); шадсн под выпил, но до него экраны пересадки упираются сюда.
+/** ⚠️⚠️ БАЗА АННОТАЦИИ = ТО, КУДА КОМПОНЕНТ РЕАЛЬНО ОТДАЁТ `...props`, А НЕ
+ *  «`div` по привычке». Здесь остаток уезжает в `DialogPrimitive.Content`
+ *  (и в `Drawer.Content` в режиме шита) - у него есть `onEscapeKeyDown`,
+ *  `onPointerDownOutside`, `onOpenAutoFocus`, `onCloseAutoFocus`, которых у
+ *  `div` НЕ СУЩЕСТВУЕТ; пересечение с `ComponentPropsWithoutRef<'div'>`
+ *  запечатывало их и роняло законный вызов.
+ *
+ *  ★ Это ЧЕТВЁРТЫЙ виток одной ошибки, и виток ровно потому, что правило
+ *  копировалось ФОРМОЙ: `@param {object}` запечатал набор ПРОПОВ → пересечение
+ *  с `<'div'>` запечатало НОСИТЕЛЬ у примитивов → то же пересечение запечатало
+ *  ЦЕЛЬ ПРОБРОСА здесь. Вопрос, который снимает весь класс: КУДА ЭТОТ КОМПОНЕНТ
+ *  ОТДАЁТ ОСТАТОК? У `Layout.jsx` это DOM-тег, поэтому там носитель параметром;
+ *  тут это чужой компонент, значит и база берётся у него.
+ *
  *  ⚠️ Аннотация стоит НА ПАРАМЕТРЕ, а не перед `const`: функция здесь -
  *  АРГУМЕНТ `forwardRef`, и `@param` над объявлением к ней не относится (первая
  *  редакция так и сделала, ошибки остались - поймано прогоном, не чтением). */
-const DialogContent = React.forwardRef((/** @type {{ className?: string, style?: any, children?: any } & import('react').ComponentPropsWithoutRef<'div'>} */ { className, style, children, ...props }, ref) => {
+const DialogContent = React.forwardRef((/** @type {{ className?: string, style?: any, children?: any } & import('react').ComponentPropsWithoutRef<typeof DialogPrimitive.Content>} */ { className, style, children, ...props }, ref) => {
   const isSheet = React.useContext(ResponsiveSheetCtx)
 
   if (isSheet) {
@@ -115,7 +124,10 @@ const DialogFooter = ({ className, ...props }) => (
 DialogFooter.displayName = "DialogFooter"
 
 // Title — h2 inside .dlg__head; style comes from .dlg__head h2 CSS
-const DialogTitle = React.forwardRef((/** @type {{ className?: string, children?: any, asChild?: boolean }} */ { className, ...props }, ref) => (
+/** База - `DialogPrimitive.Title`, куда уезжает остаток. Закрытый объект из
+ *  трёх ключей (первая редакция) был здесь худшим вариантом класса: он не просто
+ *  брал не ту базу, а не пересекался НИ С ЧЕМ, и `id` у заголовка краснел. */
+const DialogTitle = React.forwardRef((/** @type {import('react').ComponentPropsWithoutRef<typeof DialogPrimitive.Title>} */ { className, ...props }, ref) => (
   <DialogPrimitive.Title ref={ref} className={cn("", className)} {...props} />
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
