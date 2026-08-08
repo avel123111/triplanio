@@ -2507,7 +2507,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    то есть работал флексовый дефолт, а `.row` центрирует. Зазор 10px - собственный
    зазор `.row`, модификатор был бы no-op.
    visual-diff-move: invite__act -> row row--wrap */
-.invite__act { gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; align-items: stretch; }
+.invite__act { position: relative; z-index: 1; align-items: stretch; }
 @media (max-width: 640px) {
   .invite { flex-direction: column; align-items: center; text-align: center; padding: 22px 18px; gap: 16px; }
   .invite__tx p { margin: 6px auto 0; }
