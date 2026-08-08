@@ -100,7 +100,17 @@ function drawRouteLines(map, legs, opts) {
       const coords = await roadGeometry(task.from, task.to, task.kind);
       // Bail if the effect was cleaned up or this screen's layer is already gone
       // (e.g. the map was parked and the source removed on unmount).
-      if (cancelled || !map.getSource(solidId)) return;
+      //
+      // ⚠ Здесь ЖДАЛИ сеть, и за это время общий синглтон карты могли снести
+      // целиком — тогда `map.style` уже нет, а `map.getSource()` внутри делает
+      // `this.style.getOwnSource(…)`, то есть САМА проверка и падает
+      // (TRIPLANIO-A: «Cannot read properties of undefined (reading
+      // 'getOwnSource')», необработанный reject). Форма взята один в один с
+      // `setCountryFillVisible` в countryFill.js, где тот же дефект уже был
+      // диагностирован в TRIP-195 — там он звучал как `getOwnLayer`.
+      // Единый предикат «карта жива» на все 9 таких мест — отдельной задачей.
+      if (cancelled || !map || !map.style) return;
+      try { if (!map.getSource(solidId)) return; } catch { return; }
       if (coords) {
         solid[task.idx] = lineFeature(coords);
         setLineLayer(map, solidId, solid, { color: solidColor, width: solidWidth });

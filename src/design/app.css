@@ -636,7 +636,6 @@ h4,
 .deep__highlights li,
 .trust__item,
 .langdd__item,
-.ts-in,
 .brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
 .nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
 /* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
@@ -1202,8 +1201,8 @@ h4,
 
 
 /* Trip side nav. The grid host that used to wrap it (.app-body) is gone — the
-   live shells are .trip-shell/.trip-body (trip screens) and .ts-screen/.ts-sidecol
-   (editor), which own their own column + drawer behaviour. */
+   живая оболочка ОДНА - .trip-shell/.trip-body (TripShell); она же владеет
+   колонкой меню и его off-canvas-поведением на всех экранах трипа. */
 .app-side {
   border-right: 1px solid var(--line);
   background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
@@ -1216,16 +1215,22 @@ h4,
 .app-side__group-label {
  color: var(--muted-2); padding: 10px 10px 6px;
 }
+/* Ряд бокового меню. Геометрия - у КЛАССА (это то, чем ряд ЯВЛЯЕТСЯ), интерактив
+   - у ЭЛЕМЕНТА (это то, что делает КНОПКА): под тем же классом живёт скелетон
+   меню на время загрузки, и он не кликается. Правило по элементу вместо руки в
+   вызывателе - узор из шапки гарда 2l. Все живые пункты меню это <button>,
+   поэтому набор объявлений на классе не меняется, только его специфичность. */
 .app-side__item {
  display: flex; align-items: center; gap: 10px;
  padding: 8px 10px; border-radius: var(--r-sm);
  color: var(--ink-2);
- cursor: pointer; border: none; background: transparent; width: 100%; text-align: left;
+ border: none; background: transparent; width: 100%; text-align: left;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
 }
+button.app-side__item { cursor: pointer; }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
-.app-side__item:active { transform: scale(.985); }
-.app-side__item:hover { background: var(--wash); }
+button.app-side__item:active { transform: scale(.985); }
+button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
 .app-side__item-badge {
  margin-left: auto;
@@ -1234,12 +1239,6 @@ h4,
  display: grid; place-items: center;
 }
 
-/* Editor screen (>880px): the left trip menu is the full sidebar — identical to
-   every other screen — rendered in a static 220px column (.ts-sidecol). Neutralise
-   the base sticky/viewport-height so it just fills the editor's flex row. At ≤880
-   .ts-sidecol is hidden and the burger opens the .ts-drawer variant. */
-.ts-sidecol { flex: 0 0 220px; min-width: 0; min-height: 0; }
-.ts-sidecol .app-side { position: static; height: 100%; }
 
 .app-main {
   padding: 22px 24px 80px;
@@ -2316,7 +2315,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
   /* NB: the trip / editor sidebars go off-canvas via their OWN shells
-     (.trip-shell .app-side @ ≤880 and .ts-screen .ts-drawer @ ≤880) — not here.
+     (.trip-shell .app-side @ ≤880) — not here.
      The dead .app-body host and its .app-side drawer copy were removed. */
   .app-main { padding: 16px 14px 100px; }
   .app-header [data-mobile-toggle] { display: grid !important; }
@@ -2739,10 +2738,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
    rendered them UNSTYLED (the broken/cramped calendar). Now global → one source. */
-.ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
-.ts-step:hover { background: var(--wash); }
-.ts-step:active:not(:disabled) { transform: scale(0.9); }
-.ts-step:disabled { opacity: .3; cursor: default; }
 .ts-startctl { display: inline-flex; align-items: center; gap: 2px; border-radius: var(--r-sm); padding: 2px; }
 .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
 .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
@@ -4053,44 +4048,104 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 /* ============================================================
-   EDITOR (TripStructureEdit) — mobile adaptation
-   ============================================================ */
-/* Mobile menu drawer is hidden entirely on desktop (the static icon-rail is used
-   there). Without this base rule it would render the full sidebar inline. */
-.ts-drawer { display: none; }
+   СЕКЦИЯ «СТРУКТУРА» (EditLens)
+   ============================================================
+   TRIP-349: у редактора больше нет своей оболочки. `.ts-screen` / `.ts-sidecol`
+   / `.ts-drawer` / `.ts-drawer__scrim` удалены вместе с ней - меню, шапку и
+   off-canvas на ≤880 держит общая `.trip-shell`, ровно как на всех остальных
+   экранах трипа (а на ≤640 - канон-шит, которого у редактора не было вовсе).
 
-/* Editor sidebar → off-canvas drawer at ≤880 — the SAME breakpoint as the trip
-   screens (.trip-shell), so the two shells leave the icon-rail for a drawer at
-   the same width. (The table-compaction below stays at ≤760: that's a content
-   concern, independent of the sidebar.) */
-@media (max-width: 880px) {
-  /* hide the static sidebar column; the burger opens a real drawer instead */
-  .ts-screen .ts-sidecol { display: none; }
-  /* editor sidebar drawer (reuses app-side drawer pattern) */
-  .ts-screen .ts-drawer { display: block; position: fixed; inset: 0; z-index: var(--z-modal); pointer-events: none; }
-  .ts-screen .ts-drawer.is-open { pointer-events: auto; }
-  .ts-screen .ts-drawer__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s var(--ease-out); }
-  .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
-  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--header-bg); } /* TRIP-326 */
-  .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
+   Правила ниже раньше жили в теге <style> ВНУТРИ рендера компонента и
+   объявлялись глобально при каждом монтировании. Ни один гард их не видел:
+   2n ищет осиротевшие правила в `.css`, 2p сравнивает объявления в `.css`.
+   Поэтому и мёртвые `.ts-confirm-backdrop` / `.ts-confirm-card` / `.ts-warn` /
+   `.ts-in` (ни одного вхождения в разметке) прожили тут незамеченными - при
+   переносе они удалены, а не скопированы. */
+.ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
+.ts-step:hover { background: var(--wash); }
+.ts-step:active:not(:disabled) { transform: scale(0.9); }
+.ts-step:disabled { opacity: .3; cursor: default; }
+/* TRIP-186: левая колонка «оголена» — контейнерная рамка/радиус/фон и маржины
+   убраны, рейл и заголовок «Маршрут» лежат прямо на канвасе, а список
+   растягивается. Карта справа рамку сохраняет. */
+.ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 0; overflow: hidden; background: transparent; }
+/* Открытая боковая панель сама себе рамка (карточка на канвасе), с тем же
+   инсетом, что и карта. */
+.ts-leftbox .lp { margin: 14px 7px 14px 14px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+/* Заголовок «Маршрут» скроллится со списком, выровнен с колонками. */
+.ts-leftscroll > .ts-routehead { margin: 0 0 8px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+.ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 4px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+.ts-routehead__tt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+/* TRIP-188: «Маршрут» = класс "t-mono tp-caption" (моно + caption-модификатор).
+   Своего правила на .ts-routehead__title нет намеренно — иначе оно перебило бы
+   .tp-caption. */
+.ts-routehead__sub { color: var(--muted); }
+.ts-routehead__sp { flex: 1; }
+.te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
+@keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+/* TRIP-176: боковая панель-ящик. Заливает абсолютом ТОЛЬКО левую колонку — ниже
+   шапки и правее меню, — поэтому никогда не накрывает ни шапку, ни меню.
+   Обрывается на шве колонок, оставляя естественный зазор до карты. Скрима нет:
+   карта (правая половина) остаётся кликабельной. Только двухколоночный десктоп. */
+.ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+.ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
+@keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+/* FAB предупреждений: подъём на ховере, нажатие по клику. */
+.ts-fab { transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
+.ts-fab:hover { transform: scale(1.06); }
+.ts-fab:active { transform: scale(0.96); }
+@media (prefers-reduced-motion: reduce) {
+  .te-panefade, .ts-pdrawer { animation: none; }
+  .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
+}
+
+/* Две колонки секции: маршрут слева, карта справа.
+   `height: 100%` — тот же приём, каким берут высоту остальные flush-секции
+   (`.chat-room`, `.trip-map-shell`): тело `.trip-screen-body--flush` это БЛОК с
+   определённой высотой, а не флекс-контейнер, поэтому `flex: 1` тут пустое
+   слово. Раньше он работал — `.ts-grid` висел во флекс-колонке собственной
+   оболочки редактора и уехал вместе с ней. Без этого правила секция сайзится по
+   содержимому и на ≤1080 не скроллится вовсе. */
+.ts-grid {
+  height: 100%; min-width: 0; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0; overflow: hidden;
+}
+
+/* ≤1080: одна колонка. Раньше тут стояло `.ts-screen { height:auto; overflow:
+   visible }` — редактор ВЫХОДИЛ из фиксированной оболочки в документный скролл,
+   один на весь экран трипа. Внутри `.trip-shell` документного скролла нет
+   (оболочка `overflow:hidden`), поэтому колонка скроллит СЕБЯ, как и на любой
+   другой секции. Это же снимает причину, по которой на редакторе нельзя было
+   показать плавающий док (TRIP-349 п.2 — отдельной задачей). */
+@media (max-width: 1080px) /* design-token-exempt: 1080px — брейкпоинт не новый: он жил в теге style внутри рендера редактора, куда гард не смотрит, и переехал сюда как есть; это ширина схлопывания ДВУХ КОЛОНОК секции (маршрут+карта), а не ярус навигации, поэтому к шкале 640/880 не сводится */ {
+  .ts-grid { grid-template-columns: 1fr; grid-auto-rows: min-content; overflow-y: auto; }
+  .ts-leftscroll { overflow: visible !important; }
+  .ts-leftbox { margin: 0 !important; }
+  /* Карта — полоса под списком. Высоту задаём КОНТЕЙНЕРУ: сама `.ts-map` лежит
+     абсолютом, и прежнее `flex: 0 0 340px` на ней было no-op — у абсолютного
+     элемента flex-строки нет, то есть в полосе 881–1080 полоса карты не имела
+     высоты вовсе. */
+  .ts-col-right { height: 340px; }
+  .ts-map { left: 14px !important; }
 }
 
 @media (max-width: 760px) {
   /* drop the table header row */
-  .ts-screen .te-thead { display: none !important; }
+  .ts-grid .te-thead { display: none !important; }
   /* drop the drag grip — on touch the whole row drags via long-press.
-     Scoped to .ts-screen so it does NOT leak onto the planner's .te-row--plan
+     Scoped to .ts-grid (editor-only host) so it does NOT leak onto the planner's .te-row--plan
      (the create flow keeps its grip affordance on touch). */
-  .ts-screen .te-grip { display: none !important; }
+  .ts-grid .te-grip { display: none !important; }
   /* empty hotel/activity placeholders take no space on mobile */
-  .ts-screen .te-cellbtn--ghost { display: none !important; }
+  .ts-grid .te-cellbtn--ghost { display: none !important; }
   /* compact row: number + name(+dates) + nights (hotel/activity icons hidden).
      Scoped to the editor so the planner's flex .te-row--plan is untouched (no
      leaked grid-template / margins). */
-  .ts-screen .te-row { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
-  .ts-screen .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
+  .ts-grid .te-row { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
+  .ts-grid .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
   /* hide hotel/activity presence icons in city rows on mobile */
-  .ts-screen .te-cell--hotel, .ts-screen .te-cell--act { display: none !important; }
+  .ts-grid .te-cell--hotel, .ts-grid .te-cell--act { display: none !important; }
 }
 
 /* ===== Trip Settings lens ====================================================
