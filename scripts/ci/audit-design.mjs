@@ -304,6 +304,16 @@ const CATALOG_PATH = join(ROOT, 'design', 'catalog.json');
 const STATUSES = new Set(['canon', 'triage']);
 let catalogStatuses = null;
 let catalogError = null;
+/** ★ 7-е число (TRIP-364 PR-I): записи `apart` — обличья, объявленные вне осей.
+ *  До этого apart НЕ ХРАПОВИЛСЯ НИЧЕМ: он живёт внутри гарда 2q, а пол про него
+ *  не знал. То есть любое уникальное исполнение клалось туда с красивой
+ *  причиной, и ни одно число не краснело — дверь ровно того класса, ради
+ *  закрытия которого написан пол. Своя шапка каталога обещает про этот список
+ *  «видим в диффе, печатается числом и ОБЯЗАН ПУСТЕТЬ» — обещание без храповика
+ *  и есть та самая непроверяемая строка.
+ *  `null`, а не 0, когда каталога нет: иначе «файла нет» и «список пуст» дают
+ *  одно число, а 2o обязан их различать (та же дисциплина, что у пятой). */
+let apartEntries = null;
 try {
   const parsed = JSON.parse(readFileSync(CATALOG_PATH, 'utf8'));
   // `families: null` passes `typeof … === 'object'` and would otherwise read as
@@ -313,6 +323,13 @@ try {
     catalogError = `${CATALOG_PATH}: expected an object under "families"`;
   } else {
     catalogStatuses = parsed.families;
+    // Отсутствующий `apart` — законный ноль (семьи есть, исключений нет), а вот
+    // ЧИТАЕМЫЙ каталог с кривым `apart` — ошибка, а не «ноль исключений»:
+    // иначе список гасится опечаткой ровно так же, как пятая метрика скобкой.
+    const ap = parsed.apart;
+    if (ap === undefined || ap === null) apartEntries = 0;
+    else if (typeof ap !== 'object' || Array.isArray(ap)) catalogError = `${CATALOG_PATH}: expected an object under "apart"`;
+    else apartEntries = Object.values(ap).reduce((n, o) => n + Object.keys(o || {}).length, 0);
   }
 } catch (e) {
   if (e.code !== 'ENOENT') catalogError = `${CATALOG_PATH}: ${e.message}`;
@@ -963,6 +980,11 @@ if (process.argv.includes('--json')) {
         // The catalog (TRIP-340). `triageClasses` is the fifth number guard 2o
         // ratchets; `catalogStatuses` is what lets it name the promotions.
         triageClasses,
+        // The seventh (TRIP-364 PR-I): entries in `apart`. The catalog's own
+        // header promises this list "must empty out" — until now nothing held
+        // it to that, and apart was the one place an appearance could be filed
+        // with a reason while every number stayed green.
+        apartEntries,
         catalogStatuses,
         catalogMissing,
         catalogStale,

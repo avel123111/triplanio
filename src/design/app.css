@@ -1918,7 +1918,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    .te-end--add): «здесь пока пусто, можно заполнить».
    ★СТОИТ ПОСЛЕ ВСЕХ ТОНОВ: тон задаёт и фон, и цвет рамки; при равной
    специфичности выигрывает объявленный ниже. Поставь выше - и пунктир молча
-   не появится (грабля Ф14.9 со ступенями сетки). */
+   не появится (грабля Ф14.9 со ступенями сетки).
+   floor-exempt: apart +1 — TRIP-364 PR-I: обличье объявлено ВНЕ осей sev, и
+   причина ровно та, что выше - это не тон, а приглашение к действию, а ось с
+   одним значением не ось. Живой вызыватель один (ManualPlanner:289); дрейф на
+   :302 и показ в витрине сняты этим же PR. Апрув Pavel. */
 .sev--dashed { background: var(--surface); border-style: dashed; border-color: var(--line-strong); }
 /* Detach a severity plate from the row above it when nested in a danger card
    (e.g. account deletion: cancel-subscription / confirm-delete warnings). */

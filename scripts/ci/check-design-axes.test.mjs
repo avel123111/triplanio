@@ -144,7 +144,7 @@ test('★★ объявленные оси сходятся с ЖИВЫМ реп
   const repo = fileURLToPath(new URL('../..', import.meta.url));
   const { code, out } = run(repo);
   assert.equal(code, 0, out);
-  assert.match(out, /семей с осями: 4 · осей: 11 · значений: 34/, 'состав осей разошёлся с каталогом');
+  assert.match(out, /семей с осями: 5 · осей: 12 · значений: 39/, 'состав осей разошёлся с каталогом');
   assert.match(out, /оси, CSS и разметка сходятся/);
 });
 

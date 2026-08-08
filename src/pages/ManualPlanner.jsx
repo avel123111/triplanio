@@ -299,7 +299,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'loading' && (
-        <Severity level="info" dashed loading align="mid">
+        <Severity level="info" loading align="mid">
           <span className="t-body muted">{t('planner.detecting')}</span>
         </Severity>
       )}

@@ -257,6 +257,52 @@ test('a name also defined in the dark :root cannot be demoted by touching the li
   assert.match(r.out, /токенов в :root.*1\s*→\s*1/);
 });
 
+/* ────────── 7-е число: apart (обличья вне осей) — TRIP-364 PR-I ────────── */
+
+/** Каталог с `apart`. До TRIP-364 PR-I это поле не храповилось НИЧЕМ: оно живёт
+ *  внутри 2q, а 2o про него не знал. Значит любое уникальное исполнение можно
+ *  было положить в apart с красивой причиной, и ни одно число не краснело -
+ *  дверь ровно того класса, который эпик и закрывает. Показательно, что первый
+ *  же кандидат в apart (`sev--dashed`) оказался наполовину кандидатом на снос. */
+const catAp = (families, apart) => JSON.stringify({ families, apart }, null, 2);
+
+test('★★ 7 · apart ВЫРОС — красный: список исключений обязан пустеть', (t) => {
+  // CSS на обеих сторонах ОДИНАКОВ намеренно: растёт ровно одно число. Первая
+  // редакция дописывала класс и поднимала заодно `classes`, из-за чего тест про
+  // apart падал по чужой причине - фикстура обязана двигать то, что называет.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина' } }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина', y: 'ещё одна' } }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /обличий вне осей \(apart\): 1 → 2/);
+});
+
+test('★ 7 · apart УПАЛ — зелёный (храповик крутится вниз)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина', y: 'ещё одна' } }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина' } }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /обличий вне осей \(apart\)\s+2 →\s+1\s+-1/);
+});
+
+test('★ 7 · рост apart проходит по floor-exempt с причиной', (t) => {
+  // Маркер читается из ДОБАВЛЕННЫХ строк диффа, поэтому живёт в CSS-комментарии,
+  // а само число растёт в каталоге: JSON комментариев не носит.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина' } }) },
+    head: {
+      'src/a.css': `/* floor-exempt: apart +1 — разбор обличья отложен, апрув Pavel */\n${family(2)}`,
+      'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина', y: 'ещё одна' } }),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
 /* ───────────────────────────── the escape ───────────────────────────────── */
 
 test('an exemption on an ADDED line grants exactly its budget', (t) => {
