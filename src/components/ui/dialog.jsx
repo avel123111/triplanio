@@ -58,7 +58,15 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 // swipe-to-dismiss) and vaul lifts it above the keyboard. className + style are
 // forwarded to the inner .dlg card so callers can pass .dlg--wide / .dlg--sm.
 // No built-in close button — each dialog has its own in the header.
-const DialogContent = React.forwardRef(({ className, style, children, ...props }, ref) => {
+/** ⚠️ Аннотация тут по той же причине, что у компонентов `src/design/**`:
+ *  `forwardRef` без типа пропов запечатывает набор в `RefAttributes<any>`, и
+ *  законные `className` / `children` / `aria-describedby` краснели у ВЫЗЫВАЮЩЕГО
+ *  под `// @ts-check`. Это третье место одного корня (первые два - ДС и
+ *  заглушка `t()`); шадсн под выпил, но до него экраны пересадки упираются сюда.
+ *  ⚠️ Аннотация стоит НА ПАРАМЕТРЕ, а не перед `const`: функция здесь -
+ *  АРГУМЕНТ `forwardRef`, и `@param` над объявлением к ней не относится (первая
+ *  редакция так и сделала, ошибки остались - поймано прогоном, не чтением). */
+const DialogContent = React.forwardRef((/** @type {{ className?: string, style?: any, children?: any } & import('react').ComponentPropsWithoutRef<'div'>} */ { className, style, children, ...props }, ref) => {
   const isSheet = React.useContext(ResponsiveSheetCtx)
 
   if (isSheet) {
@@ -107,7 +115,7 @@ const DialogFooter = ({ className, ...props }) => (
 DialogFooter.displayName = "DialogFooter"
 
 // Title — h2 inside .dlg__head; style comes from .dlg__head h2 CSS
-const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
+const DialogTitle = React.forwardRef((/** @type {{ className?: string, children?: any, asChild?: boolean }} */ { className, ...props }, ref) => (
   <DialogPrimitive.Title ref={ref} className={cn("", className)} {...props} />
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName

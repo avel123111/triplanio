@@ -85,6 +85,13 @@ export function FieldError({ issues, field, className = '' }) {
 // то есть «как выглядит ошибка» было объявлено в ДВУХ местах. На контейнере
 // `aria-invalid` - общий словарь и зацепка для CSS, но НЕ объявление для
 // скринридера: тот читает признак на контроле, а не на `<div>`.
+/** ⚠️ Возврат аннотирован НАРОЧНО. Без аннотации TS расширяет литерал `'true'`
+ *  до `string`, а React у `aria-invalid` ждёт `Booleanish | 'grammar' |
+ *  'spelling'` - и spread `{...fieldState(...)}` на поле краснел TS2322 на
+ *  экране под `// @ts-check`. Значение при этом ВЕРНОЕ, ломалось только его
+ *  расширение: тот же класс, что запечатанный набор пропов - молча выведенный
+ *  тип расходится с тем, что здесь на самом деле возвращается.
+ *  @returns {{ 'aria-invalid'?: 'true', 'data-warning'?: '' }} */
 export function fieldState(issues, field) {
   const issue = pickFieldIssue(issues || [], field);
   const invalid = issue?.level === 'error';

@@ -20,6 +20,14 @@ const I18nContext = createContext({
   setLang: () => {},
   units: 'metric',
   setUnits: () => {},
+  // ⚠️ ТИП `t` БЕРЁТСЯ ОТСЮДА, А НЕ С РЕАЛИЗАЦИИ. `createContext` выводит форму
+  // из ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ, поэтому голая заглушка `(key) => key` объявляла
+  // функцию ОДНОГО аргумента, и живой вызов с подстановкой
+  // (`t('doc.upload_formats', { mb })`, реализация ниже принимает `vars`)
+  // давал TS2554 «Expected 0-1 arguments, but got 2» на каждом экране под
+  // `// @ts-check`. Заглушка и реализация разъехались молча — annotation
+  // приводит заглушку к реальной сигнатуре.
+  /** @type {(key: string, vars?: Record<string, any>) => string} */
   t: (key) => key,
 });
 
