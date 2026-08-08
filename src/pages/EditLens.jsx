@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * TRIP-349 — объявление изменений для гарда 2p (визуальный дифф CSS).
  *
@@ -181,6 +182,7 @@ import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Btn, useToast } from '../design/index';
+import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import LpSheet from '@/components/ui/LpSheet';
@@ -976,12 +978,12 @@ export default function EditLens({ tripId, shell, content }) {
             <span className="ts-routehead__sp" />
             {startDateControl}
           </div>
-          <div className="grid te-thead" style={{ padding: '0 4px 6px' }}>
-            <span className="trunc te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
-            <span className="trunc te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
-            <span className="trunc te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
-            <span className="trunc te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
-          </div>
+          <Grid className="te-thead" style={{ padding: '0 4px 6px' }}>
+            <Trunc as="span" className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</Trunc>
+          </Grid>
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
               const next = displayNodes[displayNodes.indexOf(n) + 1];
@@ -1130,7 +1132,7 @@ export default function EditLens({ tripId, shell, content }) {
 function Conf({ n }) {
   const t = useT();
   if (!n) return null;
-  return <span className="row row--inline row--g1 te-warnbadge" title={t('tse.conflicts_n', { n })}><Icon name="warning" size={10} /> {n}</span>;
+  return <Row as="span" inline gap="g1" className="te-warnbadge" title={t('tse.conflicts_n', { n })}><Icon name="warning" size={10} /> {n}</Row>;
 }
 
 // inline hotel / activity cells (design mockup HotelCell / ActCell)
@@ -1221,23 +1223,23 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   const click = disabled ? undefined : onOpen; // a seam next to a pending city is inert
   if (!t) {
     return (
-      <div className="row row--j-center te-seam">
+      <Row justify="j-center" className="te-seam">
         <button className={'row row--inline te-seam__pill te-seam__pill--add' + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
           <Icon name="plus" size={11} /> {tx('tse.add_transfer')}
         </button>
-      </div>
+      </Row>
     );
   }
   const meta = transferKind(t.transport_type);
   return (
-    <div className="row row--j-center te-seam">
+    <Row justify="j-center" className="te-seam">
       <button className={'row row--inline te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
         <span className="t-meta" style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
       </button>
-    </div>
+    </Row>
   );
 }
 
@@ -1250,19 +1252,19 @@ function GridEndpoint({ node, date, onRemove }) {
   const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
   const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <div className="row te-end">
+    <Row className="te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
-      <div className="te-citycell grow">
+      <Grow className="te-citycell">
         <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-        <div className="row te-cityline">
-          <span className="trunc te-cityname">{node.city_name}</span>
-        </div>
-        <div className="row row--g3 te-dts">
+        <Row className="te-cityline">
+          <Trunc as="span" className="te-cityname">{node.city_name}</Trunc>
+        </Row>
+        <Row gap="g3" className="te-dts">
           {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}
-        </div>
-      </div>
+        </Row>
+      </Grow>
       <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>
-    </div>
+    </Row>
   );
 }
 
