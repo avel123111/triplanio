@@ -1084,7 +1084,11 @@ export default function EditLens({ tripId, shell, content }) {
             warnings live in a collapsible overlay widget */}
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
           <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 'var(--r-md)', border: '1px solid var(--line)' }}>
-            <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
+            {/* `visitsById` тут не было смысла: MapView его не объявляет и остаток
+                пропов не собирает, а во всём репо это было единственное вхождение -
+                то есть карта его никогда не читала, а Object.fromEntries считался
+                на каждый рендер редактора. Нашла прагма. */}
+            <MapView visits={draft.nodes} transfers={mapTransfers} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
@@ -1167,6 +1171,19 @@ function ActCell({ count, warn, onClick }) {
   );
 }
 
+/**
+ * ⚠️ Тот же запечатанный набор, что у чужих компонентов: без аннотации TS выводит
+ * тип из ДЕСТРУКТУРИЗАЦИИ и делает обязательным каждый проп без дефолта.
+ *
+ * Четыре `?` проверены УСТРОЙСТВОМ КОДА, а не намерением: у ветки `waypoint`
+ * гостиницы нет по определению, она рисует ПУСТУЮ ячейку `.te-cell--hotel` и
+ * `hotel`/`stayNum`/`hotelWarn`/`onHotel` не передаёт вовсе. Остальные уходят в
+ * безусловно отрендеренные узлы и обязательны.
+ *
+ * @param {{ seg: any, stayNum?: any, cityConf: any, hotel?: any, hotelWarn?: any,
+ *           acts?: any[], actWarn: any, onOpenCity: any, onHotel?: any, onAct: any,
+ *           onNightsMinus: any, onNightsPlus: any, drag: any }} p
+ */
 function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
   const t = useT();
   const { lang } = useI18n();
@@ -1236,7 +1253,17 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
       <button className={'row row--inline te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
         <span className="t-meta" style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
-        {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
+        {/* Тултип овернайта был МЁРТВ: `Icon` деструктурирует свои пропы без
+            остатка, `title` до DOM не доезжал вовсе, а под ключ `tse.overnight_title`
+            написаны переводы на en/es/ru и он больше нигде не используется.
+            Носителем сделан span, а не проп `Icon`: у всех трёх веток `Icon`
+            корень - тег svg, а тултип в SVG это ДОЧЕРНИЙ элемент title, не
+            атрибут, то есть «пробросить title» в ДС - не одна строка и требует
+            апрува.
+            ⚠️ Угловые скобки тут писать НЕЛЬЗЯ: гард 2d читает НАПИСАНИЕ, включая
+            комментарии, и пара `<svg>` … `<title>` с текстом между ними читается
+            им как сырая JSX-строка - первая редакция этого абзаца роняла CI. */}
+        {t.day_change && <span title={tx('tse.overnight_title')}><Icon name="moon" size={11} style={{ color: 'var(--brand)' }} /></span>}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
       </button>
     </Row>

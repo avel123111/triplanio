@@ -68,6 +68,42 @@ function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
 // singleton lifecycle (acquire/release/ready/resize/theme/projection) lives in
 // useMapSurface; markers + route lines are drawn with the shared map modules so
 // every map screen renders them identically.
+/**
+ * ⚠️ АННОТАЦИЯ ОБЯЗАТЕЛЬНА (TRIP-388). Без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ,
+ * и «необязательным» оказывается ровно то, у чего в сигнатуре есть ДЕФОЛТ, - то
+ * есть форма записи, а не устройство кода. Колбэки дефолта не имеют, поэтому
+ * молча становились обязательными, хотя каждый из них вызывается через гард.
+ * При `checkJs: false` это невидимо и вскрывается только у вызывателя под прагмой.
+ *
+ * Набор ЗАКРЫТЫЙ: остаток пропов никуда не уезжает (`...rest` тут нет), поэтому
+ * лишний проп - молчаливый no-op. Ровно так сюда и приезжал мёртвый `visitsById`.
+ *
+ * Каждый `?` проверен УСТРОЙСТВОМ КОДА:
+ *   дефолт в сигнатуре   showStartEnd · colorScheme · selectedVisitId · hoveredVisitId
+ *                        selectedLegKey · focus · revealActiveId · active · mapControls
+ *                        basemapTheme · hideRoute · hotelPins · selectedHotelId
+ *                        hoveredHotelId · cityBadge · focusZoom · cooperativeGestures
+ *   вызов под гардом     onMapClick `if (cb) cb(e)` · onCityHover `if (cb) cb(…)`
+ *                        onCityClick `if (cb) cb(g.data)` · onHotelClick /
+ *                        onHotelHover через `?.()`
+ *   children             оверлейный хром родителя; `{children}` от `undefined`
+ *                        рендерит пустоту, и ровно так карту зовёт редактор в проде
+ * Обязательны только `visits` и `transfers` - их читают без фолбэка
+ * (`sortVisits(visits)`, `transfers.forEach`), рисовать нечего.
+ * ⚠️ `onCityClick` стоит РЯДОМ с `onCityHover` под одним и тем же `if (cb)`, и
+ * ДВА живых вызывателя его не передают вовсе (`PublicTrip`, `RouteMapCard`):
+ * пометить его обязательным значило бы уронить их в тот момент, когда они
+ * получат `// @ts-check` (замерено прогоном с прагмой: TS2741 в обоих).
+ *
+ * @param {{ visits: any, transfers: any, showStartEnd?: boolean, colorScheme?: string,
+ *           onCityClick?: any, selectedVisitId?: any, hoveredVisitId?: any,
+ *           selectedLegKey?: any, focus?: any, revealActiveId?: any, active?: boolean,
+ *           mapControls?: boolean, basemapTheme?: string, hideRoute?: boolean,
+ *           hotelPins?: any, selectedHotelId?: any, hoveredHotelId?: any,
+ *           onHotelClick?: any, onHotelHover?: any, cityBadge?: any, onCityHover?: any,
+ *           focusZoom?: number, onMapClick?: any, cooperativeGestures?: boolean,
+ *           children?: any }} p
+ */
 export default function MapView({
   visits,
   transfers,

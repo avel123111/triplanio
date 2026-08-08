@@ -10,6 +10,17 @@ import { useT } from '@/lib/i18n/I18nContext';
 // draggable / clickable row never arms a drag or opens the city panel.
 //
 // Props: value, onMinus, onPlus, minusDisabled, plusDisabled, title.
+//
+// ⚠️ АННОТАЦИЯ ОБЯЗАТЕЛЬНА (TRIP-388): без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ
+// и делает `title` ОБЯЗАТЕЛЬНЫМ только потому, что у него нет дефолта в сигнатуре.
+// Набор ЗАКРЫТЫЙ: остаток пропов никуда не уезжает, `...rest` тут нет.
+// `title?` проверен УСТРОЙСТВОМ КОДА - у него есть фолбэк `title || t('tse.col_nights')`,
+// то есть без него контрол действительно работает. Остальные три обязательны:
+// `value` рендерится безусловно, `onMinus`/`onPlus` - единственное действие кнопок.
+/**
+ * @param {{ value: any, onMinus: any, onPlus: any,
+ *           minusDisabled?: boolean, plusDisabled?: boolean, title?: string }} p
+ */
 export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = false, plusDisabled = false, title }) {
   const t = useT();
   const stop = (e) => e.stopPropagation();

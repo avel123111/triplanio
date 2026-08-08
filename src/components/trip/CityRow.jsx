@@ -34,6 +34,33 @@ import React from 'react';
 //   children      trailing action cells (planner: stepper + delete, wrapped in
 //                 `.te-row__pacts`; editor: stepper + hotel + activity cells,
 //                 rendered as direct grid cells to fill the 96px columns).
+/**
+ * ⚠️ АННОТАЦИЯ ОБЯЗАТЕЛЬНА (TRIP-388). Без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ
+ * и делает ОБЯЗАТЕЛЬНЫМ каждый проп без дефолта - при `checkJs: false` невидимо,
+ * вскрывается только у вызывателя под `// @ts-check`.
+ *
+ * Набор ЗАКРЫТЫЙ намеренно: остаток пропов никуда не уезжает (`...rest` тут нет),
+ * поэтому лишний проп был бы молчаливым no-op, а не «прокинулся на носитель».
+ *
+ * Каждый `?` - заявление «без этого компонент работает», и каждый проверен
+ * УСТРОЙСТВОМ КОДА, а не намерением:
+ *   дефолт в сигнатуре   variant · dragging · pressing · invalid · stopCellPointer · className
+ *   стоит под условием   country `{country ? … : null}` · conf `{conf || null}`
+ *                        dates `{dates ? … : null}` · editingSlot `{editingSlot || (…)}`
+ *                        name - НЕ безусловное содержимое: он живёт в ветке
+ *                        `{editingSlot || (…)}`, и планировщик в режиме выбора
+ *                        города передаёт `undefined` явно (`ManualPlanner:185`)
+ *   не передаётся вовсе  onClick - у ряда планировщика клика нет (см. список
+ *                        пропов выше); замерено прогоном с `// @ts-check` в
+ *                        `ManualPlanner`: обязательный `onClick` = TS2741
+ * Остальные обязательны: `onArm` уходит обработчиком на БЕЗУСЛОВНО отрендеренный
+ * корень, `grip`/`lead`/`children` - его безусловное содержимое.
+ *
+ * @param {{ variant?: 'planner'|'editor', dragging?: boolean, pressing?: boolean,
+ *           invalid?: boolean, onArm: any, onClick?: any, grip: any, lead: any,
+ *           name?: any, country?: any, conf?: any, dates?: any, editingSlot?: any,
+ *           stopCellPointer?: boolean, className?: string, children: any }} p
+ */
 export default function CityRow({
   variant = 'planner',
   dragging = false,
