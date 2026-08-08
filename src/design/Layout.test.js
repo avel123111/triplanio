@@ -214,7 +214,20 @@ test('★★★ ПРОГОН tsc: носитель пропускает свои
     const repo = fileURLToPath(new URL('../..', import.meta.url));
     writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
       extends: join(repo, 'jsconfig.json'),
-      compilerOptions: { noEmit: true, checkJs: true, baseUrl: dir, paths: { '@/*': [join(repo, 'src', '*')] } },
+      compilerOptions: {
+        noEmit: true, checkJs: true, baseUrl: dir,
+        paths: {
+          '@/*': [join(repo, 'src', '*')],
+          // ⚠️ Без этого маппинга tsc печатает TS2875 «нет модуля
+          // react/jsx-runtime» на ПЕРВОМ JSX-теге пробы. Проверку пропов это не
+          // ломает (@types/react загружены, датчик слепоты краснеет), но чужая
+          // ошибка садится на строку файла: здесь она попадала на фрагмент в
+          // шапке, которую не покрывает ни один ассерт, - то есть тест проходил
+          // ПО СЧАСТЛИВОЙ СЛУЧАЙНОСТИ. Маппинг ведёт в @types, а НЕ в untyped
+          // JS: именно последнее сделало пробу слепой в первой редакции.
+          'react/jsx-runtime': [join(repo, 'node_modules', '@types', 'react', 'jsx-runtime')],
+        },
+      },
       include: ['probe.jsx'],
     }));
 
