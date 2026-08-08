@@ -145,6 +145,15 @@ const METRICS = [
    *  TRIP-340) - флаг покупает вторую половину: удаление каталога на HEAD
    *  краснеет своими словами, а не чужими. */
   { key: 'apart', field: 'apartEntries', label: 'обличий вне осей (apart)', bootstrap: true }, // 2
+  /** TRIP-364 PR-I. Семьи, объявившие оси. ★ЕДИНСТВЕННАЯ МЕТРИКА «ТОЛЬКО ВВЕРХ»,
+   *  и заведена она против дыры в СЕДЬМОЙ. `apart` понижается ДЕ-ДЕКЛАРАЦИЕЙ:
+   *  убери семью из `axes` вместе с её записями в `apart` - apart упадёт, а оба
+   *  гарда останутся зелёными (2q семью без ключа в `axes` не проверяет вовсе,
+   *  2o увидит честный минус). Число понижалось бы изменением того, ЧТО ОНО
+   *  СЧИТАЕТ - тот же провал, что «снизили классы, вырастили пространства имён»,
+   *  только с третьей стороны. Печатать его мало: печатное число никто не
+   *  смотрит, а храповик краснеет. */
+  { key: 'axes', field: 'axesFamilies', label: 'семей под осями', bootstrap: true, up: true }, // 5
 ];
 
 /* ★ WHAT `bootstrap: true` ABOVE BUYS, AND ONLY FOR THE SIDE THAT NEEDS IT.
@@ -326,7 +335,11 @@ const rows = METRICS.map((m) => {
   const now = head[m.field];
   const allowed = exempt[m.key] ?? 0;
   // `was === null` = this PR establishes the ceiling; there is nothing to be over.
-  return { ...m, was, now, allowed, over: was === null ? 0 : now - was - allowed };
+  // ★ `up: true` меняет ЗНАК нарушения, а не смысл маркера: у метрики «только
+  // вверх» проступок - ПАДЕНИЕ, а `floor-exempt: <key> +N` по-прежнему выдаёт
+  // бюджет в N единиц движения В ЗАПРЕЩЁННУЮ сторону, какая бы она ни была.
+  const moved = m.up ? was - now : now - was;
+  return { ...m, was, now, allowed, over: was === null ? 0 : moved - allowed };
 });
 
 const width = Math.max(...rows.map((r) => r.label.length));
@@ -445,8 +458,11 @@ const broken = rows.filter((r) => r.over > 0);
 if (broken.length) {
   console.error('::error::check-design-floor: пол пробит — см. TRIP-337 §4 и правило #6 в CLAUDE.md');
   for (const r of broken) {
+    // У метрики «только вверх» проступок - падение, и печатать его как «+N»
+    // значило бы соврать в единственной строке, которую читают.
+    const moved = r.up ? r.was - r.now : r.now - r.was;
     console.error(
-      `  ✗ ${r.label}: ${r.was} → ${r.now} (+${r.now - r.was}${r.allowed ? `, разрешено +${r.allowed}` : ''})`,
+      `  ✗ ${r.label}: ${r.was} → ${r.now} (${r.up ? `упало на ${moved}` : `+${moved}`}${r.allowed ? `, разрешено +${r.allowed}` : ''})`,
     );
   }
   console.error('');
@@ -455,7 +471,7 @@ if (broken.length) {
   console.error('  другого нельзя — это не размен, это тот самый провал прошлого захода.');
   console.error('');
   console.error('  Если рост согласован — пометь строку в этом же PR, причина и апрув в тексте:');
-  console.error(`      /* ${EXEMPT}: ${broken[0].key} +${broken[0].now - broken[0].was - broken[0].allowed} — причина + апрув Pavel */`);
+  console.error(`      /* ${EXEMPT}: ${broken[0].key} +${broken[0].over} — причина + апрув Pavel */`);
   process.exit(1);
 }
 

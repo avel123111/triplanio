@@ -64,7 +64,7 @@ import postcss from 'postcss';
 import { OUT_OF_SCOPE, inScope } from './perimeter.mjs';
 /** Счёт `apart` — ОДНОЙ функцией на двоих с 2q: два счётчика одного числа уже
  *  разошлись на `apart: { sev: null }` (см. шапку catalog.mjs). */
-import { countApart } from './catalog.mjs';
+import { countApart, countAxesFamilies } from './catalog.mjs';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 
@@ -317,6 +317,12 @@ let catalogError = null;
  *  `null`, а не 0, когда каталога нет: иначе «файла нет» и «список пуст» дают
  *  одно число, а 2o обязан их различать (та же дисциплина, что у пятой). */
 let apartEntries = null;
+/** ★ 8-е число (TRIP-364 PR-I): семьи, объявившие оси. ТОЛЬКО ВВЕРХ - против
+ *  дыры в седьмом: apart понижается ДЕ-ДЕКЛАРАЦИЕЙ. Убери семью из axes вместе с
+ *  её записями в apart - apart упадёт, а оба гарда останутся зелёными, потому
+ *  что семья без ключа в axes не проверяется 2q вовсе. Число понижалось бы
+ *  изменением того, ЧТО ОНО СЧИТАЕТ. */
+let axesFamilies = null;
 try {
   const parsed = JSON.parse(readFileSync(CATALOG_PATH, 'utf8'));
   // `families: null` passes `typeof … === 'object'` and would otherwise read as
@@ -333,6 +339,7 @@ try {
     if (ap === undefined || ap === null) apartEntries = 0;
     else if (typeof ap !== 'object' || Array.isArray(ap)) catalogError = `${CATALOG_PATH}: expected an object under "apart"`;
     else apartEntries = countApart(ap);
+    axesFamilies = countAxesFamilies(parsed.axes);
   }
 } catch (e) {
   if (e.code !== 'ENOENT') catalogError = `${CATALOG_PATH}: ${e.message}`;
@@ -988,6 +995,8 @@ if (process.argv.includes('--json')) {
         // it to that, and apart was the one place an appearance could be filed
         // with a reason while every number stayed green.
         apartEntries,
+        // Восьмое (TRIP-364 PR-I): только ВВЕРХ, см. объявление выше.
+        axesFamilies,
         catalogStatuses,
         catalogMissing,
         catalogStale,

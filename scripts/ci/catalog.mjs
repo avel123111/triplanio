@@ -22,6 +22,13 @@
  *  0 СВОИХ записей и не роняет счёт — форму каталога проверяет тот, кто его
  *  читает (аудит поднимает `catalogError`, 2q — структурную ошибку), а дело
  *  этой функции одно: посчитать одинаково у обоих. */
+/** Семьи, объявившие оси. Считается тут по той же причине, что и `apart`: число
+ *  печатает 2q («семей с осями») и храповит 2o, то есть у него ДВА читателя. */
+export function countAxesFamilies(axes) {
+  if (!axes || typeof axes !== 'object' || Array.isArray(axes)) return 0;
+  return Object.keys(axes).length;
+}
+
 export function countApart(apart) {
   if (!apart || typeof apart !== 'object' || Array.isArray(apart)) return 0;
   let n = 0;

@@ -307,6 +307,63 @@ test('★ 7 · рост apart проходит по floor-exempt с причин
   assert.match(r.out, /обличий вне осей \(apart\)\s+1 →\s+2\s+\+1\s+\(floor-exempt \+1\)/);
 });
 
+/* ───── 8-е число: семей под осями — ТОЛЬКО ВВЕРХ (TRIP-364 PR-I) ───── */
+
+/** Каталог с осями. Восьмое число — ПЕРВОЕ, которое храповит В ДРУГУЮ СТОРОНУ,
+ *  и заведено оно против конкретной дыры: седьмое число (`apart`) понижается
+ *  ДЕ-ДЕКЛАРАЦИЕЙ. Убери семью из `axes` вместе с её записями в `apart` — и
+ *  apart упадёт, а оба гарда останутся зелёными: 2q скажет «сходятся» (семья
+ *  без ключа в axes не проверяется вовсе), 2o скажет «пол держится». То есть
+ *  число понижается изменением того, ЧТО ОНО СЧИТАЕТ, — ровно тот провал, ради
+ *  которого пол и написан, только с третьей стороны. */
+const catAx = (families, axes, apart) => JSON.stringify({ families, axes, apart }, null, 2);
+const AX = { о: { значения: ['x'] } };
+
+test('★★ 8 · семья УШЛА из axes — красный, даже когда apart от этого упал', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, { a: AX }, { a: { y: 'причина' } }),
+    },
+    head: {
+      'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, {}, {}),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /семей под осями: 1 → 0/);
+  // ★ И apart при этом ДЕЙСТВИТЕЛЬНО упал - то есть без восьмого числа этот
+  // прогон был бы зелёным с «минусом», читающимся как прогресс.
+  assert.match(r.out, /обличий вне осей \(apart\)\s+1 →\s+0\s+-1/);
+});
+
+test('★ 8 · семья ДОБАВЛЕНА в axes — зелёный (храповик крутится вверх)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`, 'src/design/catalog.json': catAx({ a: 'canon' }, {}, {}) },
+    head: { 'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`, 'src/design/catalog.json': catAx({ a: 'canon' }, { a: AX }, {}) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /семей под осями\s+0 →\s+1\s+\+1/);
+});
+
+test('★ 8 · снятие семьи проходит по floor-exempt с причиной', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, { a: AX }, {}),
+    },
+    head: {
+      'src/a.css': `/* floor-exempt: axes +1 — объект уехал в компонент, апрув Pavel */\n${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, {}, {}),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /семей под осями\s+1 →\s+0\s+-1\s+\(floor-exempt \+1\)/);
+});
+
 /* ───────────────────────────── the escape ───────────────────────────────── */
 
 test('an exemption on an ADDED line grants exactly its budget', (t) => {
