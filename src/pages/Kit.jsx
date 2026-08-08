@@ -172,7 +172,12 @@ function declaredSteps(base) {
 
 /* ──────────────────────────── описания образцов ──────────────────────────── */
 const BTN_VARIANTS = ['primary', 'secondary', 'soft', 'ghost', 'quiet', 'danger', 'danger-solid', 'ai', 'pro'];
-const BADGE_VARIANTS = ['', 'sm', 'xs', 'pro', 'success', 'warning', 'quiet', 'brand', 'count', 'outline', 'paid', 'partial', 'on-arrival'];
+// `on-arrival` снят: класса `.badge--on-arrival` в CSS нет с тинта #706 (он был
+// побайтовой копией `.badge--brand`), а витрина рисовала бейдж с несуществующим
+// классом — то есть посылала следующего применять пустышку. Экран, где смотрят
+// «что есть в системе», врать не имеет права; ступени раскладки ниже показывают,
+// как это выглядит честно: отсутствующая ступень ПОМЕЧЕНА, а не выкинута.
+const BADGE_VARIANTS = ['', 'sm', 'xs', 'pro', 'success', 'warning', 'quiet', 'brand', 'count', 'outline', 'paid', 'partial'];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
 const AVATAR_SIZES = [undefined, 'sm', 'lg'];
 const LAYOUT = [

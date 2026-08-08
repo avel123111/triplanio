@@ -1222,3 +1222,95 @@ test('РАЗБИВКА: теги внутри ДС и внутри svg в неё
   );
   assert.deepEqual(out.dsShare.byTag, [['div', 1]], 'ни button из примитива, ни path из svg');
 });
+
+// ── 7. Классы, объявляющие раскладку (TRIP-388 · десятое число пола) ────────
+/** Число, которым PR пересадки доказывает, что работа СДЕЛАНА, а не замаскирована
+ *  пробросом `className`. Каждая граница предиката пиньется отдельно: подлежащее,
+ *  фиксированный канон (а не каталог), периметр. */
+
+test('★ ПОДЛЕЖАЩЕЕ: раскладку объявляет последняя ступень селектора, а не предок', (t) => {
+  // Иначе `.te-x .row {display:flex}` двигал бы число у НЕТРОНУТОГО `.te-x`,
+  // и «упало на те классы, которые тронул» перестало бы что-либо значить.
+  const out = run(fixture(t, { 'design/app.css': '.te-x .bgt-head { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['bgt-head']);
+  assert.equal(out.layoutPrivateClasses, 1);
+});
+
+test('★★ СОСТАВНАЯ СТУПЕНЬ: объект, а не состояние - иначе два объекта схлопываются в одно имя', (t) => {
+  // `.a-x.is-split` записывается на `a-x`. Общий `styledClass` (последний класс
+  // ВСЕГО селектора) дал бы `is-split` - имя, которое носят РАЗНЫЕ объекты:
+  // множество схлопнуло бы их в одну запись, и тогда схлопывание одного число
+  // не роняет, а появление второго - не поднимает. Мутация проходит насквозь.
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-x.is-split { display: flex; } .b-x.is-split { display: flex; }' }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'b-x'], 'два объекта - две записи, а не одна на состоянии');
+  assert.equal(out.layoutPrivateClasses, 2);
+});
+
+test('⚠️ ступень БЕЗ класса: раскладку объявляет голый тег, запись идёт на класс-предок', (t) => {
+  // Граница названа в §3a: снять `display` у `.checkbox input` можно только
+  // правкой набора правил `.checkbox`, поэтому объявление наблюдается на нём.
+  // «Не считать вовсе» опускало бы число БЕЗ работы - в ту сторону, куда его
+  // храповит пол.
+  const out = run(fixture(t, { 'design/app.css': '.checkbox input { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['checkbox']);
+});
+
+test('селектор без единого класса в число не попадает вовсе', (t) => {
+  // `:root`, `div > *`, шаг кейфрейма - подлежащего-класса нет, приписать
+  // объявление некому. Считать их «нулевым классом» значило бы завести запись,
+  // которую ни один PR не может убрать.
+  const out = run(
+    fixture(t, {
+      'design/app.css':
+        ':root { display: flex; } div > * { display: flex; } @keyframes k { from { display: flex; } } .a-x { display: flex; }',
+    }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x']);
+  assert.equal(out.layoutClasses.total, 1);
+});
+
+test('@media НЕ удваивает: единица счёта - ИМЯ класса, а не правило', (t) => {
+  // Иначе перенос правила в мобильную ветку (или из неё) двигал бы число без
+  // единого схлопнутого класса - краснота на ходе, который ничего не ухудшает.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.a-x { display: flex; } @media (max-width: 640px) { .a-x { display: grid; } }',
+    }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x']);
+});
+
+test('канон раскладки в приватные НЕ попадает - и это ФИКСИРОВАННЫЙ список, не каталог', (t) => {
+  // У `primitiveReach` зависимость от каталога означает, что переклейка
+  // triage → canon двигает число без строки CSS. Здесь список зашит, поэтому
+  // добавление примитива число не двигает, а новый приватный класс - двигает.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.row { display: flex; } .col { display: flex; } .grid--2 { display: grid; } .bgt-head { display: flex; }',
+      'design/catalog.json': '{"families":{"row":"triage","col":"triage","grid":"triage","bgt":"triage"}}',
+    }),
+  );
+  assert.equal(out.layoutClasses.total, 4);
+  assert.deepEqual(out.layoutClasses.names, ['bgt-head'], 'канон row/col/grid не приватный даже со статусом triage');
+});
+
+test('inline-flex и inline-grid - тоже раскладка', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-x { display: inline-flex; } .b-x { display: inline-grid; } .c-x { display: block; }' }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'b-x']);
+});
+
+test('периметр тот же: лендинг и вход в число не попадают', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-x { display: flex; }', 'pages/login.css': '.auth-row { display: flex; }' }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x']);
+});
+
+test('список печатается, а не только счёт - им PR доказывает, ЧТО именно упало', (t) => {
+  const out = run(fixture(t, { 'design/app.css': '.z-x { display: grid; } .a-x { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'z-x'], 'по алфавиту, чтобы дифф двух прогонов читался');
+});
