@@ -1563,3 +1563,48 @@ test('§1f: шестой примитив подхватывается из мо
   );
   assert.equal(out.dualLayout.nodes, 1);
 });
+
+/** ★★ ТРИ СЛУЧАЯ НИЖЕ НАШЁЛ РЕВЬЮЕР (Codex, P2 на PR #736), а не эти тесты, и
+ *  каждый воспроизведён прогоном до починки. Общее у них одно: измеритель
+ *  МОЛЧАЛ - не падал, не предупреждал, просто отвечал «чисто» над непроверенным
+ *  местом. Худший - второй: при живом модуле он объявлял число НЕИЗМЕРЕННЫМ,
+ *  то есть рефактор формы экспорта выключал бы гейт целиком. */
+
+test('§1f: примитив под АЛИАСОМ импорта виден (import { Row as Stack })', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Row as Stack } from "@/design";\nexport const S = () => <Stack className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 1);
+});
+
+test('§1f: ОБРАТНЫЙ алиас не даёт ложного срабатывания (import { Btn as Row })', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/index.jsx': 'export const Btn = () => null;\n',
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Btn as Row } from "@/design";\nexport const S = () => <Row className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 0, 'имя тега совпало с примитивом, но рисует его НЕ примитив');
+});
+
+test('§1f: примитивы, экспортированные через `export {…}` и `export function`, ИЗМЕРЯЮТСЯ', (t) => {
+  // Первая редакция читала только `export const X` и на этом модуле печатала
+  // «НЕ ИЗМЕРЕНО» - то есть рефактор формы экспорта молча выключал гейт.
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': 'const Row = () => null;\nexport function Col() { return null; }\nexport { Row };\n',
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx':
+        'import { Row, Col } from "@/design";\n' +
+        'export const S = () => <><Row className="acct-plan" /><Col className="acct-plan" /></>;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.measured, true, 'модуль есть — «не измерено» тут враньё');
+  assert.equal(out.dualLayout.nodes, 2);
+});
