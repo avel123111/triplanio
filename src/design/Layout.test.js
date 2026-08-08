@@ -244,9 +244,22 @@ test('★★★ ПРОГОН tsc: носитель пропускает свои
       // она проезжала, и ровно по ней слепота и была поймана.
       ['error', '<Row as="div" href="/x">8</Row>'],
     ];
-    const head = ["// @ts-check", "import { Row, Col, Grid, Trunc, Grow } from '@/design/Layout';", 'export const P = () => (<>'];
-    const src = [...head, ...LINES.map(([, jsx]) => jsx), '</>);'].join('\n');
-    writeFileSync(join(dir, 'probe.jsx'), src);
+    // ⚠️ ФРАГМЕНТ СОБИРАЕТСЯ ПОСТРОЧНО, А НЕ ОДНИМ ВЫРАЖЕНИЕМ, И ЭТО НЕ СТИЛЬ.
+    // Гард 2d ищет захардкоженный UI-текст построчно: буквы между угловыми
+    // скобками. Если стрелочная функция и закрывающий фрагмент стоят в ОДНОЙ
+    // строке, между скобкой стрелки и скобкой фрагмента оказывается кусок кода —
+    // гард читает его как текст интерфейса и роняет прогон. Подавлять маркером
+    // i18n-ignore нельзя: он переживёт свою причину и будет гасить НАСТОЯЩИЕ
+    // строки. Дешевле не давать гарду эту форму — отсюда `OPEN`/`CLOSE`.
+    // ★ И ровно поэтому здесь НЕ ВОСПРОИЗВЕДЕНА сама форма: первая редакция
+    // этого комментария её процитировала, и гард покраснел НА ОБЪЯСНЕНИИ — он
+    // читает комментарии наравне с кодом. Родня — номер PR с решёткой, который
+    // ярус COLOUR принял за HEX. Оба раза прогон ронял не смысл, а НАПИСАНИЕ.
+    const OPEN = 'export const P = () => (';
+    const CLOSE = ');';
+    const head = ['// @ts-check', "import { Row, Col, Grid, Trunc, Grow } from '@/design/Layout';", `${OPEN}<>`];
+    const body = LINES.map((pair) => pair[1]);
+    writeFileSync(join(dir, 'probe.jsx'), [...head, ...body, `</>${CLOSE}`].join('\n'));
 
     const r = spawnSync('npx', ['tsc', '-p', join(dir, 'tsconfig.json')], { cwd: repo, encoding: 'utf8' });
     const out = r.stdout + r.stderr;
