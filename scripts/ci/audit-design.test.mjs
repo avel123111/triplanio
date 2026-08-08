@@ -1387,3 +1387,70 @@ test('список печатается, а не только счёт - им PR
   const out = run(fixture(t, { 'design/app.css': '.z-x { display: grid; } .a-x { display: flex; }' }));
   assert.deepEqual(out.layoutClasses.names, ['a-x', 'z-x'], 'по алфавиту, чтобы дифф двух прогонов читался');
 });
+
+// ── 7b. Пять свойств, а не одно (TRIP-388 · починка предиката) ──────────────
+/** Первая редакция смотрела ТОЛЬКО `display`, то есть проверяла пятую часть
+ *  правила «примитив владеет display/gap/align-items/justify-content/
+ *  flex-direction». Класс, приехавший через `className` к `.row` и оставивший
+ *  себе зазор с выравниванием, получал `display` от примитива и в число не
+ *  попадал - гейт «число упало» зеленел на несделанной работе. Замер по живому
+ *  дереву: таких классов 92 из 440. */
+
+test('★ класс БЕЗ display, объявляющий только зазор, - это раскладка', (t) => {
+  // Ровно случай пересадки: `<Row className="bgt-head">`, `display` приезжает
+  // от примитива, а зазор остался у экранного класса. Под старым предикатом
+  // такой класс был невидим, и это была не редкость, а типовой остаток фазы 05.
+  const out = run(fixture(t, { 'design/app.css': '.bgt-head { gap: 8px; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['bgt-head']);
+});
+
+test('★ остальные три свойства считаются сами по себе, без display', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/app.css':
+        '.a-x { align-items: center; } .b-x { justify-content: space-between; } .c-x { flex-direction: column; }',
+    }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'b-x', 'c-x']);
+});
+
+test('★★ ФОРМА ЗАПИСИ ОТВЕТ НЕ МЕНЯЕТ: сокращённая запись считается наравне с длинной', (t) => {
+  // Проверочный вопрос к любому числу: можно ли, ничего не меняя по существу,
+  // переписать место так, чтобы число стало другим? Для пяти длинных имён ответ
+  // был «да» четырьмя способами. `place-items` в репозитории ЖИВОЙ (§3, девять
+  // семейств), поэтому это не гипотеза.
+  const long = run(
+    fixture(t, {
+      'design/app.css':
+        '.a-x { gap: 8px; } .b-x { align-items: center; } .c-x { justify-content: center; } .d-x { flex-direction: column; }',
+    }),
+  );
+  const short = run(
+    fixture(t, {
+      'design/app.css':
+        '.a-x { row-gap: 8px; column-gap: 8px; } .b-x { place-items: center; } .c-x { place-content: center; } .d-x { flex-flow: column wrap; }',
+    }),
+  );
+  assert.deepEqual(long.layoutClasses.names, ['a-x', 'b-x', 'c-x', 'd-x']);
+  assert.deepEqual(short.layoutClasses.names, long.layoutClasses.names, 'сокращение прячет класс от числа');
+});
+
+test('⚠️ ГРАНИЦА: display:none и display:block - это видимость и поток, а не раскладка', (t) => {
+  // Считать их значило бы набить захраповленное число классами, которых ни один
+  // PR пересадки не тронет, и сделать его подвижным от посторонней правки.
+  // Граница названа вслух, потому что она НЕ бесплатна: `.x{display:block}`,
+  // приехавший через className, примитив ломает, а число этого не покажет.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.a-x { display: none; } .b-x { display: block; } .c-x { display: flex; }',
+    }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['c-x']);
+});
+
+test('свойство раскладки внутри @media считается так же, как в базовом контексте', (t) => {
+  // Мобильная ветка - самое узкое место вёрстки; предикат, слепой к ней, уводил
+  // бы из наблюдения ровно те правила, которые труднее всего заметить глазами.
+  const out = run(fixture(t, { 'design/app.css': '@media (max-width: 640px) { .a-x { gap: 4px; } }' }));
+  assert.deepEqual(out.layoutClasses.names, ['a-x']);
+});
