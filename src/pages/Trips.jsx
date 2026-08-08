@@ -465,24 +465,11 @@ export default function Trips() {
     staleTime: 30_000,
   });
   const statsLoaded    = travelStats !== undefined;
-  const rpcTripVisits  = travelStats?.trip_visits || null; // null only on a pre-0044 RPC build
+  const rpcTripVisits  = travelStats?.trip_visits || null; // set once the stats RPC resolves
   const statsPoints    = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
   const transfersTotal = travelStats?.transfers_total || 0;
   const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
   const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
-
-  // Backward-compatible fallback: only fetch city_visits separately when the RPC
-  // build in this environment hasn't shipped `trip_visits` yet (pre-0044). Once
-  // 0044 is deployed this query is permanently disabled — no extra round-trip.
-  const { data: allVisits = [], isLoading: loadingVisits } = useQuery({
-    queryKey: ['all-city-visits', tripIds.join(',')],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('city_visits').select('*').in('trip_id', tripIds);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: hasTrips && statsLoaded && !rpcTripVisits,
-  });
 
   // ── Single RPC: all participants (owner + active members) with avatar_url ──
   const { data: allParticipants = [] } = useQuery({
@@ -512,16 +499,16 @@ export default function Trips() {
     return m;
   }, [allParticipants, t]);
 
-  // Cards read per-trip visits from the RPC's trip_visits when present, else from
-  // the fallback query. Either way the shape is { trip_id: [visit rows] } and the
-  // downstream helpers (isTripInPast / scopeLabel / computeTripRange) are unchanged.
+  // Cards read per-trip visits from the RPC's trip_visits — shape { trip_id: [visit
+  // rows] }; empty until the stats RPC resolves. The downstream helpers
+  // (isTripInPast / scopeLabel / computeTripRange) are unchanged.
   const visitsByTrip = useMemo(() => {
-    const base = rpcTripVisits || allVisits.reduce((m, v) => { (m[v.trip_id] ||= []).push(v); return m; }, {});
+    const base = rpcTripVisits || {};
     // Localize each trip's city names from the per-visit snapshot (TRIP-146).
     const out = {};
     for (const k in base) out[k] = localizeVisits(base[k], lang);
     return out;
-  }, [rpcTripVisits, allVisits, lang]);
+  }, [rpcTripVisits, lang]);
 
   // Derive current user's role from the participant profiles RPC result
   const getRoleFor = (trip) => {
@@ -619,8 +606,12 @@ export default function Trips() {
   }, [allTrips, visitsByTrip, t]);
 
 
-  // Visits come from the RPC (ready once stats load) or the fallback query.
-  const isLoadingData = isLoading || (hasTrips && !rpcTripVisits && (!statsLoaded || loadingVisits));
+  // Visits come from the RPC, so "stats resolved" IS "visits ready" — no separate
+  // check on trip_visits. That rests on the RPC always returning the key (it
+  // coalesces to '{}', see get_user_travel_stats): were it ever to come back
+  // missing, the cards would paint from an empty map — no dates, nothing past —
+  // instead of holding the skeleton.
+  const isLoadingData = isLoading || (hasTrips && !statsLoaded);
   // TRIP-188: склоняем каждое существительное отдельно (Intl.PluralRules) — «1 путешествие»,
   // «2 страны», «5 городов» вместо застывшего множественного числа.
   const subText = hasTrips
