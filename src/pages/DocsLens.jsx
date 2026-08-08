@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * DocsLens - documents tab inside TripView.
  *
