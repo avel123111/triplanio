@@ -76,7 +76,7 @@ function featuresFromTrip(trip) {
 function FeatureCard({ feat, on, onChange, hasPro, busy }) {
   const { t } = useI18n();
   const proLocked = feat.pro && !hasPro;
-  const cls = 'addon-card'
+  const cls = 'col addon-card'
     + (on ? ' addon-card--on' : '')
     + (feat.locked ? ' addon-card--locked' : '');
   return (

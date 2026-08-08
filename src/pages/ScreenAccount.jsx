@@ -652,7 +652,7 @@ export default function ScreenAccount() {
         {/* LEFT NAV (sticky, scroll-spy) */}
         <nav className="acct-nav" aria-label={t('account.title')}>
           {NAV.map(item => (
-            <a key={item.id} className={activeSec === item.id ? 'active' : ''} onClick={() => go(item.id)}>
+            <a key={item.id} className={`row${activeSec === item.id ? ' active' : ''}`} onClick={() => go(item.id)}>
               <Icon name={item.icon} size={17} /> {item.label}
             </a>
           ))}
