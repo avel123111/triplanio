@@ -34,6 +34,10 @@ export { default as AiField, AiBadge } from '@/components/ui/AiField';
 // напрямую и не замыкать зависимость на этот барраль (TRIP-333).
 export { Input, Textarea, InputGroup } from './Input';
 import { FieldRequired } from './Input';
+// Раскладка — своим модулем по той же причине, что и поле: барраль тянет
+// `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
+// (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
+export { Row, Col, Grid, Trunc, Grow } from './Layout';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules

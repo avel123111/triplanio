@@ -1222,3 +1222,168 @@ test('РАЗБИВКА: теги внутри ДС и внутри svg в неё
   );
   assert.deepEqual(out.dsShare.byTag, [['div', 1]], 'ни button из примитива, ни path из svg');
 });
+
+// ── 7. Классы, объявляющие раскладку (TRIP-388 · десятое число пола) ────────
+/** Число, которым PR пересадки доказывает, что работа СДЕЛАНА, а не замаскирована
+ *  пробросом `className`. Каждая граница предиката пиньется отдельно: подлежащее,
+ *  фиксированный канон (а не каталог), периметр. */
+
+test('★ ПОДЛЕЖАЩЕЕ: раскладку объявляет последняя ступень селектора, а не предок', (t) => {
+  // Иначе `.te-x .row {display:flex}` двигал бы число у НЕТРОНУТОГО `.te-x`,
+  // и «упало на те классы, которые тронул» перестало бы что-либо значить.
+  const out = run(fixture(t, { 'design/app.css': '.te-x .bgt-head { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['bgt-head']);
+  assert.equal(out.layoutPrivateClasses, 1);
+});
+
+test('★★ СОСТАВНАЯ СТУПЕНЬ: объект, а не состояние - иначе два объекта схлопываются в одно имя', (t) => {
+  // `.a-x.is-split` записывается на `a-x`. Запись на состояние дала бы одно имя
+  // `is-split` на РАЗНЫЕ объекты: множество схлопнуло бы их в одну запись, и
+  // тогда схлопывание одного число не роняет, а появление второго - не
+  // поднимает. Мутация проходит насквозь.
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-x.is-split { display: flex; } .b-x.is-split { display: flex; }' }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'b-x'], 'два объекта - две записи, а не одна на состоянии');
+  assert.equal(out.layoutPrivateClasses, 2);
+});
+
+/** ★★★ ПОРЯДОК КЛАССОВ В СЕЛЕКТОРЕ - ЭТО ФОРМА ЗАПИСИ, А НЕ СОДЕРЖАНИЕ.
+ *  Предикат, чувствительный к ней, снимается переписыванием места, а не работой:
+ *  удержанное объявление раскладки, приколотое к примитиву, проезжает гейт.
+ *  Пара тестов ниже пиньет ОБА этажа - саму ступень и ступень-предок; каждый
+ *  красен на первой редакции (`classesIn(tail)[0]` / `styledClass`). */
+test('★★★ ПОРЯДОК НЕ РЕШАЕТ: .row.bgt-head и .bgt-head.row дают одно и то же', (t) => {
+  const primitiveFirst = run(fixture(t, { 'design/app.css': '.row.bgt-head { display: flex; }' }));
+  const privateFirst = run(fixture(t, { 'design/app.css': '.bgt-head.row { display: flex; }' }));
+  // Первая редакция брала ПЕРВЫЙ класс: примитивом вперёд отдавала канон `row`,
+  // и приватный `bgt-head` пропадал из наблюдения совсем (0 против 1).
+  assert.deepEqual(primitiveFirst.layoutClasses.names, ['bgt-head'], 'канон не заслоняет объект, стоя перед ним');
+  assert.deepEqual(privateFirst.layoutClasses.names, primitiveFirst.layoutClasses.names);
+  assert.equal(privateFirst.layoutPrivateClasses, primitiveFirst.layoutPrivateClasses);
+});
+
+test('★★★ ПОРЯДОК НЕ РЕШАЕТ и этажом выше: та же ступень в роли предка', (t) => {
+  // `styledClass` (последний класс ВСЕГО селектора) отдал бы `bgt-head` в одном
+  // написании и канон `row` в другом - та же дыра, просто в предке.
+  const a = run(fixture(t, { 'design/app.css': '.row.bgt-head input { display: flex; }' }));
+  const b = run(fixture(t, { 'design/app.css': '.bgt-head.row input { display: flex; }' }));
+  assert.deepEqual(a.layoutClasses.names, ['bgt-head']);
+  assert.deepEqual(b.layoutClasses.names, a.layoutClasses.names);
+});
+
+test('ступень из ДВУХ объектов записывается на оба - иначе ответ снова зависит от порядка', (t) => {
+  // Ни один из двух не канон и не состояние, «первый» тут ничем не лучше
+  // «второго»: выбрать одного значит вернуть чувствительность к написанию.
+  // Цена - лишнее имя, и она в БЕЗОПАСНУЮ сторону: пол храповит число вниз,
+  // поэтому лишнее имя краснеет, а не занижает молча.
+  const out = run(fixture(t, { 'design/app.css': '.a-x.b-x { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'b-x']);
+});
+
+test('★★★ ПОРЯДОК НЕ РЕШАЕТ и в ФОЛБЭКЕ: .row.is-open против .is-open.row', (t) => {
+  // Самая узкая версия дыры и потому самая живучая: у ступени НЕ ОСТАЁТСЯ ни
+  // одного объекта (канон + состояние), работает запасная ветка «на первый».
+  // Пока канон отсеивался вместе с состоянием, она давала `row` (0 приватных) в
+  // одном написании и `is-open` (1 приватный) в другом — то есть порядок решал,
+  // а в ЗАХРАПОВЛЕННОЕ число попадало имя СОСТОЯНИЯ, которого PR не трогал.
+  const canonFirst = run(fixture(t, { 'design/app.css': '.row.is-open { display: flex; }' }));
+  const stateFirst = run(fixture(t, { 'design/app.css': '.is-open.row { display: flex; }' }));
+  assert.deepEqual(canonFirst.layoutClasses.names, [], 'у примитива с состоянием приватного объекта нет');
+  assert.deepEqual(stateFirst.layoutClasses.names, canonFirst.layoutClasses.names);
+  assert.equal(stateFirst.layoutPrivateClasses, canonFirst.layoutPrivateClasses);
+});
+
+test('ступень из ОДНИХ канон-классов записывается на канон, а не теряется', (t) => {
+  // Композиция примитивов (`.row.grow`) — законная разметка, и объявление
+  // раскладки на ней принадлежит канону. Потерять её нельзя: `total` — это то,
+  // с чем сверяется снятие приватных, и дыра в нём тихо занижает базу.
+  const out = run(fixture(t, { 'design/app.css': '.row.grow { display: flex; }' }));
+  assert.equal(out.layoutClasses.total, 2);
+  assert.deepEqual(out.layoutClasses.names, [], 'канон в приватные не попадает');
+});
+
+test('канон СЧИТАЕТСЯ в total даже рядом с приватным - иначе его снятие не с чем сверить', (t) => {
+  // `.row.bgt-head` — это ДВА объявляющих имени на одном элементе. Приватный
+  // едет в список, канон в общий счёт; если канон выкинуть ещё на подлежащем,
+  // фолбэк перестаёт быть симметричным (тест выше).
+  const out = run(fixture(t, { 'design/app.css': '.row.bgt-head { display: flex; }' }));
+  assert.equal(out.layoutClasses.total, 2);
+  assert.deepEqual(out.layoutClasses.names, ['bgt-head']);
+});
+
+test('состояние БЕЗ приставки is- остаётся объектом - граница названа, и она краснит, а не занижает', (t) => {
+  // `on`/`active` предикат состоянием не считает (замер: правил раскладки с
+  // составной ступенью в периметре одно, бесприставочных среди них ноль).
+  // Важно, что объект `a-x` записан РЯДОМ, а не вместо: схлопнуть его гард
+  // по-прежнему видит.
+  const out = run(fixture(t, { 'design/app.css': '.a-x.on { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'on']);
+});
+
+test('⚠️ ступень БЕЗ класса: раскладку объявляет голый тег, запись идёт на класс-предок', (t) => {
+  // Граница названа в §3a: снять `display` у `.checkbox input` можно только
+  // правкой набора правил `.checkbox`, поэтому объявление наблюдается на нём.
+  // «Не считать вовсе» опускало бы число БЕЗ работы - в ту сторону, куда его
+  // храповит пол.
+  const out = run(fixture(t, { 'design/app.css': '.checkbox input { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['checkbox']);
+});
+
+test('селектор без единого класса в число не попадает вовсе', (t) => {
+  // `:root`, `div > *`, шаг кейфрейма - подлежащего-класса нет, приписать
+  // объявление некому. Считать их «нулевым классом» значило бы завести запись,
+  // которую ни один PR не может убрать.
+  const out = run(
+    fixture(t, {
+      'design/app.css':
+        ':root { display: flex; } div > * { display: flex; } @keyframes k { from { display: flex; } } .a-x { display: flex; }',
+    }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x']);
+  assert.equal(out.layoutClasses.total, 1);
+});
+
+test('@media НЕ удваивает: единица счёта - ИМЯ класса, а не правило', (t) => {
+  // Иначе перенос правила в мобильную ветку (или из неё) двигал бы число без
+  // единого схлопнутого класса - краснота на ходе, который ничего не ухудшает.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.a-x { display: flex; } @media (max-width: 640px) { .a-x { display: grid; } }',
+    }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x']);
+});
+
+test('канон раскладки в приватные НЕ попадает - и это ФИКСИРОВАННЫЙ список, не каталог', (t) => {
+  // У `primitiveReach` зависимость от каталога означает, что переклейка
+  // triage → canon двигает число без строки CSS. Здесь список зашит, поэтому
+  // добавление примитива число не двигает, а новый приватный класс - двигает.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.row { display: flex; } .col { display: flex; } .grid--2 { display: grid; } .bgt-head { display: flex; }',
+      'design/catalog.json': '{"families":{"row":"triage","col":"triage","grid":"triage","bgt":"triage"}}',
+    }),
+  );
+  assert.equal(out.layoutClasses.total, 4);
+  assert.deepEqual(out.layoutClasses.names, ['bgt-head'], 'канон row/col/grid не приватный даже со статусом triage');
+});
+
+test('inline-flex и inline-grid - тоже раскладка', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-x { display: inline-flex; } .b-x { display: inline-grid; } .c-x { display: block; }' }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'b-x']);
+});
+
+test('периметр тот же: лендинг и вход в число не попадают', (t) => {
+  const out = run(
+    fixture(t, { 'design/app.css': '.a-x { display: flex; }', 'pages/login.css': '.auth-row { display: flex; }' }),
+  );
+  assert.deepEqual(out.layoutClasses.names, ['a-x']);
+});
+
+test('список печатается, а не только счёт - им PR доказывает, ЧТО именно упало', (t) => {
+  const out = run(fixture(t, { 'design/app.css': '.z-x { display: grid; } .a-x { display: flex; }' }));
+  assert.deepEqual(out.layoutClasses.names, ['a-x', 'z-x'], 'по алфавиту, чтобы дифф двух прогонов читался');
+});
