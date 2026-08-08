@@ -62,6 +62,9 @@ import postcss from 'postcss';
  *  гарда по одному дереву с РАЗНЫМ периметром молча выдают разные вердикты - это
  *  и случилось (см. шапку `perimeter.mjs`). */
 import { OUT_OF_SCOPE, inScope } from './perimeter.mjs';
+/** Счёт `apart` — ОДНОЙ функцией на двоих с 2q: два счётчика одного числа уже
+ *  разошлись на `apart: { sev: null }` (см. шапку catalog.mjs). */
+import { countApart } from './catalog.mjs';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 
@@ -329,7 +332,7 @@ try {
     const ap = parsed.apart;
     if (ap === undefined || ap === null) apartEntries = 0;
     else if (typeof ap !== 'object' || Array.isArray(ap)) catalogError = `${CATALOG_PATH}: expected an object under "apart"`;
-    else apartEntries = Object.values(ap).reduce((n, o) => n + Object.keys(o || {}).length, 0);
+    else apartEntries = countApart(ap);
   }
 } catch (e) {
   if (e.code !== 'ENOENT') catalogError = `${CATALOG_PATH}: ${e.message}`;
