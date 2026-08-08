@@ -58,6 +58,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { inScope } from './perimeter.mjs';
+import { countApart } from './catalog.mjs';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
 const CATALOG = 'src/design/catalog.json';
@@ -352,7 +353,7 @@ for (const fam of Object.keys(axes)) {
 }
 
 const nAxes = Object.values(axes).reduce((n, spec) => n + Object.keys(spec).length, 0);
-const nApart = Object.values(apart).reduce((n, o) => n + Object.keys(o).length, 0);
+const nApart = countApart(apart);
 console.log('check-design-axes (2q): оси канон-объектов');
 console.log(`  семей с осями: ${Object.keys(axes).length} · осей: ${nAxes} · значений: ${checkedValues}`);
 console.log(`  сверено: классов ${checkedClasses} · имён в разметке ${checkedUses}`);
