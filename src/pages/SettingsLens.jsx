@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * SettingsLens - trip settings tab inside TripView.
  *
@@ -11,6 +12,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Row, Col, Grid, Grow } from '../design/Layout';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
@@ -81,27 +83,27 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
     + (feat.locked ? ' addon-card--locked' : '');
   return (
     <div className={cls} style={{ '--ac': feat.color || 'var(--brand)' }}>
-      <div className="row row--a-start row--j-between addon-card__top">
+      <Row align="a-start" justify="j-between" className="addon-card__top">
         <div className="addon-card__ic"><Icon name={feat.icon} size={20} /></div>
         {feat.locked
           ? <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
           : proLocked
             ? <Badge variant="pro" icon="pro">PRO</Badge>
             : (
-              <div className="row row--wrap addon-card__status">
+              <Row wrap className="addon-card__status">
                 {feat.pro && hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
                 <Toggle on={on} busy={busy} onChange={onChange} />
-              </div>
+              </Row>
             )}
-      </div>
-      <div className="row row--wrap addon-card__title">
+      </Row>
+      <Row wrap className="addon-card__title">
         {t(feat.labelKey)}
-      </div>
+      </Row>
       <div className="addon-card__desc">{t(feat.descKey)}</div>
       {proLocked && !feat.locked && (
-        <div className="row row--g4 addon-card__foot">
+        <Row gap="g4" className="addon-card__foot">
           <Btn variant="soft" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
-        </div>
+        </Row>
       )}
     </div>
   );
@@ -180,7 +182,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
       {/* Ритм окна - ступень шкалы у колонки, а не marginBottom у каждого соседа
           (тот же ход, что у диалогов Бюджета). Отступы были 16/16/16/14/14/14 -
           три разных мнения об одном ритме в одном окне. */}
-      <div className="col col--g7">
+      <Col gap="g7">
       <div className="muted t-body">
         {t('settings.tg_connect_desc')}
       </div>
@@ -212,26 +214,26 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             <div className="muted t-meta">{t('settings.tg_for_trip')}</div>
           </Severity>
 
-          <div className="col col--g4">
+          <Col gap="g4">
             <div className="field__label">{t('telegram.link_label')}</div>
-            <div className="row row--g3">
+            <Row gap="g3">
               <input className="input mono grow--fit" value={url} readOnly />
               <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
-            </div>
-          </div>
+            </Row>
+          </Col>
 
           <div className="t-body">
             {t('settings.tg_press_below')}
           </div>
 
-          <div className="col col--g4">
+          <Col gap="g4">
             <Btn variant="primary" icon="telegram" block onClick={openBot}>
               {t('telegram.open_bot')}
             </Btn>
             <div className="muted t-meta" style={{ textAlign: 'center' }}>
               {t('settings.tg_after_start')}
             </div>
-          </div>
+          </Col>
         </>
       )}
 
@@ -254,22 +256,22 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               divs that inherit it, while the numbered pills keep their own
               .t-meta (mono numerals) because an element's own rule beats
               inheritance. One class instead of two. */}
-          <div className="t-meta t-sans col" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
-            <div className="row row--a-start">
+          <Col className="t-meta t-sans" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
+            <Row align="a-start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
-            </div>
-            <div className="row row--a-start">
+            </Row>
+            <Row align="a-start">
               <span className="badge badge--count">2</span>
               <div>{t('settings.tg_step2')}</div>
-            </div>
-          </div>
+            </Row>
+          </Col>
 
-          <div className="row row--g4">
+          <Row gap="g4">
             <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
-            <div className="grow" />
+            <Grow />
             <Btn variant="primary" icon="check" onClick={checkNow}>{t('settings.tg_pressed_start')}</Btn>
-          </div>
+          </Row>
         </>
       )}
 
@@ -288,7 +290,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           <Btn variant="primary" icon="check" block onClick={closeConnect}>{t('view.edit_mode_done')}</Btn>
         </>
       )}
-      </div>
+      </Col>
     </Dialog>
   );
 }
@@ -370,17 +372,17 @@ function TelegramSection({ tripId }) {
   }
 
   return (
-    <div className="col col--g6">
+    <Col gap="g6">
       {accounts.map(a => (
         <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
           {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
           <div className="tile" style={TG_TILE}>
             <Icon name="telegram" size={17} />
           </div>
-          <div className="grow--fit">
+          <Grow fit>
             <div className="t-ui">{tgName(a)}</div>
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
-          </div>
+          </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
           <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
         </div>
@@ -397,7 +399,7 @@ function TelegramSection({ tripId }) {
           onConfirm={() => doRemove(unlinkState.account)}
         />
       )}
-    </div>
+    </Col>
   );
 }
 
@@ -419,16 +421,16 @@ function ApproverRow({ member, profiles, locked }) {
   const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
-    <div className="row">
+    <Row>
       <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
-      <div className="grow">
+      <Grow>
         <div className="t-ui">{who.name}</div>
         <div className="muted t-meta">{roleLabel}</div>
-      </div>
+      </Grow>
       {locked
         ? <span className="muted t-meta">{t('settings.approver_by_role')}</span>
         : <Toggle on={on} onChange={() => setOn(v => !v)} />}
-    </div>
+    </Row>
   );
 }
 
@@ -723,7 +725,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
 
   return (
-    <div className="col col--g7 settings-lens">
+    <Col gap="g7" className="settings-lens">
       {/* Viewer read-only notice — only this banner + the Leave button are
           interactive for a viewer (TRIP-137). */}
       {readOnly && (
@@ -735,17 +737,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       <Card
         title={t('settings.section_basic')}
         action={readOnly ? null : (
-          <div className="row">
+          <Row>
             <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
               {t('trip.form_save')}
             </Btn>
-          </div>
+          </Row>
         )}
       >
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
-        <div className="grid settings-identity">
+        <Grid className="settings-identity">
           <div className="settings-identity__cover">
             <Field label={t('trip.form_cover')}>
               <TripCoverPicker
@@ -759,7 +761,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               />
             </Field>
           </div>
-          <div className="col col--g7 settings-identity__fields">
+          <Col gap="g7" className="settings-identity__fields">
             <Field label={t('trip.title_label')}>
               <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
             </Field>
@@ -772,8 +774,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Field label={t('trip.form_notes')}>
               <Textarea rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />
             </Field>
-          </div>
-        </div>
+          </Col>
+        </Grid>
         </fieldset>
       </Card>
 
@@ -787,7 +789,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           dead end. Only "Leave trip" (Danger zone, OUTSIDE this fieldset) stays
           interactive. flex+gap mirrors the .settings-lens spacing so wrapping the
           cards doesn't collapse the 16px gaps. */}
-      <fieldset className="col col--g7" disabled={readOnly}>
+      <Col as="fieldset" gap="g7" disabled={readOnly}>
       {/* ── Features: addon widget cards (Lumo DS §D1), full width ──
           The Pro upgrade banner lives INSIDE this panel, above the heading
           (matches the approved prototype). Shown on the same condition as the
@@ -818,9 +820,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           </div>
         )}
         <div className="card-h">
-          <div className="grow"><h3>{t('settings.optional_features')}</h3></div>
+          <Grow><h3>{t('settings.optional_features')}</h3></Grow>
         </div>
-        <div className="grid addon-grid">
+        <Grid className="addon-grid">
           {FEATURES
             .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')
             .map(f => (
@@ -828,27 +830,27 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 busy={busyToggle === f.id}
                 onChange={() => toggleFeature(f.id, f.pro)} />
             ))}
-        </div>
+        </Grid>
       </Card>
 
       {/* ── Integrations · warnings (2-col → 1-col on mobile) ── */}
-      <div className="grid grid--2 grid--g7 settings-grid">
-        <div className="col col--g7 settings-col">
+      <Grid cols="2" gap="g7" className="settings-grid">
+        <Col gap="g7" className="settings-col">
           {/* Chat widget - trip-level toggle for the floating dock button.
               Only shown when the Group Chat addon is on. */}
           {features.chat && (
             <Card title={t('settings.chat_widget_title')}>
-              <div className="row row--g7">
-                <div className="grow--fit">
+              <Row gap="g7">
+                <Grow fit>
                   <div className="t-ui">{t('settings.chat_widget_label')}</div>
                   <div className="muted t-meta">
                     {t('settings.chat_widget_desc')}
                   </div>
-                </div>
+                </Grow>
                 <Toggle on={chatWidget} busy={busyToggle === 'chat_widget'} onChange={toggleChatWidget} />
-              </div>
+              </Row>
 
-              <div className="row row--g6 settings-plate" style={{ marginTop: 12 }}>
+              <Row gap="g6" className="settings-plate" style={{ marginTop: 12 }}>
                 {/* inline-style-exempt: градиент и гашение - состояние виджета (данные), не скин */}
                 <div className="tile tile--xl" style={{
                   background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)',
@@ -862,23 +864,23 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                     ? t('settings.chat_widget_on')
                     : t('settings.chat_widget_off')}
                 </div>
-              </div>
+              </Row>
             </Card>
           )}
 
           {/* Warnings / display - extensible bag of trip-level display toggles. */}
           <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
-            <div className="row row--g6 settings-plate">
-              <div className="grow--fit">
+            <Row gap="g6" className="settings-plate">
+              <Grow fit>
                 <div className="t-label">{t('settings.warn_bookings_title')}</div>   {/* TRIP-175 инсп.: UI→Label */}
                 <div className="muted t-meta">{t('settings.warn_bookings_desc')}</div>
-              </div>
+              </Grow>
               <Toggle on={bookingWarnings} busy={busyToggle === 'booking_warnings'} onChange={toggleBookingWarnings} />
-            </div>
+            </Row>
           </Card>
-        </div>
+        </Col>
 
-        <div className="col col--g7 settings-col">
+        <Col gap="g7" className="settings-col">
           {/* Telegram - only when the Telegram addon is enabled. */}
           {features.tg && (
             <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')}>
@@ -889,18 +891,18 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
           {SHOW_HOTEL_VOTING && (
             <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
-              <div className="col col--g4">
+              <Col gap="g4">
                 {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked />)}
                 {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked={false} />)}
                 {members.length === 0 && (
                   <div className="muted t-body">{t('settings.members_loading')}</div>
                 )}
-              </div>
+              </Col>
             </Card>
           )}
-        </div>
-      </div>
-      </fieldset>
+        </Col>
+      </Grid>
+      </Col>
 
       {/* ── Copy trip (full width) ────────────────────────────────────────────
           Moved here from the old header "…" menu. Copy creates a NEW trip owned
@@ -915,53 +917,53 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           тело - поэтому она уезжала ПОД текст и ярус заголовка был крупнее
           соседних. Одна деталь - одна раскладка. */}
       <Card>
-        <div className="row row--g7 row--flush">
+        <Row gap="g7" className="row--flush">
           <span className="tile tile--lg tile--brand"><Icon name="copy" size={18} /></span>
-          <div className="grow">
+          <Grow>
             <div className="row__t">{t('settings.copy_trip_title')}</div>
             <div className="row__s">{t('settings.copy_trip_desc')}</div>
-          </div>
+          </Grow>
           <Btn variant="soft" icon="copy" loading={copying} onClick={() => void startCopy(tripId)}>
             {t('settings.copy_trip_btn')}
           </Btn>
-        </div>
+        </Row>
       </Card>
 
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
         {myRole !== 'owner' && (
-          <div className="row row--g7 row--flush">
+          <Row gap="g7" className="row--flush">
             <span className="tile tile--lg tile--danger"><Icon name="arrow" size={18} /></span>
-            <div className="grow">
+            <Grow>
               <div className="row__t">{t('settings.leave_trip')}</div>
               <div className="row__s">{t('settings.leave_desc')}</div>
-            </div>
+            </Grow>
             <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
-          </div>
+          </Row>
         )}
         {myRole === 'owner' && (
           <>
             {/* Линейку между строками несёт сама строка (.row--div), поэтому
                 отдельный <hr> больше не нужен - его сброс был ещё одним инлайном. */}
-            <div className="row row--g7 row--div">
+            <Row gap="g7" className="row--div">
               <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
-              <div className="grow">
+              <Grow>
                 <div className="row__t">{t('settings.leave_trip')}</div>
                 <div className="row__s">{t('settings.leave_owner_blocked')}</div>
-              </div>
+              </Grow>
               <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
-            </div>
-            <div className="row row--g7 row--div">
+            </Row>
+            <Row gap="g7" className="row--div">
               <span className="tile tile--lg tile--danger"><Icon name="trash" size={18} /></span>
-              <div className="grow">
+              <Grow>
                 <div className="row__t">{t('settings.delete_trip')}</div>
                 <div className="row__s">{t('settings.delete_desc')}</div>
-              </div>
+              </Grow>
               <Btn variant="danger-solid" onClick={deleteTrip}>{t('settings.delete_trip')}</Btn>
-            </div>
+            </Row>
           </>
         )}
       </Card>
-    </div>
+    </Col>
   );
 }
