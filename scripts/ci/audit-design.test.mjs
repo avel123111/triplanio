@@ -1454,3 +1454,187 @@ test('свойство раскладки внутри @media считается
   const out = run(fixture(t, { 'design/app.css': '@media (max-width: 640px) { .a-x { gap: 4px; } }' }));
   assert.deepEqual(out.layoutClasses.names, ['a-x']);
 });
+
+// ── §1f · Двойное владение раскладкой (TRIP-388) ────────────────────────────
+/** ★ ЗАЧЕМ ЭТИ ТЕСТЫ СУЩЕСТВУЮТ. Пересадка четырёх экранов на примитивы
+ *  сдвинула ровно одно из десяти чисел пола (долю из ДС) и не тронула ни одно
+ *  из остальных: примитив встал ПОВЕРХ класса, который продолжает владеть
+ *  раскладкой. Ни один гард этого не видит - у 2o все числа «только вниз», а
+ *  PR, который только добавляет, ни одного не двигает.
+ *
+ *  ★★ И ЧИСЛО ЗДЕСЬ УЖЕ РАСХОДИЛОСЬ ТРИЖДЫ: 38, 56 и 55 в трёх прогонах по
+ *  одному дереву. Никто не ошибался - предиката не было ни у одного. Последний
+ *  (55) считал регуляркой `<(Row|Col)\b[^>]*>` и терял узлы, у которых `>`
+ *  встречается ВНУТРИ атрибутов (`onClick={() => …}`). Поэтому предикат пинится
+ *  фикстурами, а не сверкой с числом на живом репозитории. */
+
+const LAYOUT_MODULE = 'export const Row = () => null;\nexport const Col = () => null;\n';
+
+test('§1f: примитив + приватный класс, объявляющий раскладку = двойное владение', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Row } from "@/design";\nexport const S = () => <Row className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.measured, true);
+  assert.equal(out.dualLayout.nodes, 1);
+  assert.deepEqual(out.dualLayout.classes, ['acct-plan']);
+});
+
+test('§1f: класс БЕЗ раскладки через className - это НЕ долг (граница правила)', (t) => {
+  // Апрув п.3 разрешает через className ровно это: цвет, фон, крючок экрана.
+  // Считать их долгом значило бы объявить проброс класса вне закона, а на нём
+  // держится вся пересадка.
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.acct-plan { color: red; background: blue; }',
+      'Screen.jsx': 'import { Row } from "@/design";\nexport const S = () => <Row className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 0);
+});
+
+test('§1f: канон-класс на примитиве не долг - долг только ПРИВАТНЫЙ', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.row { display: flex; gap: 12px; } .row--g4 { gap: 4px; }',
+      'Screen.jsx': 'import { Row } from "@/design";\nexport const S = () => <Row className="row--g4" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 0);
+});
+
+test('§1f: одноимённый ЛОКАЛЬНЫЙ Row - не примитив системы', (t) => {
+  // Иначе в долг попадёт работа, которой там нет: шим чужого файла системе не
+  // принадлежит и её раскладкой не владеет.
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'const Row = () => null;\nexport const S = () => <Row className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 0);
+});
+
+test('§1f: класс виден в шаблоне, конкатенации и cn() - иначе слепое пятно', (t) => {
+  // Ровно та форма, на которой уже терялся `.pcard` в зоне 3 фазы 05.
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.a-row { display: flex; } .b-row { gap: 4px; } .c-row { align-items: center; }',
+      'Screen.jsx':
+        'import { Row, Col } from "@/design";\n' +
+        'export const S = ({ on }) => <>\n' +
+        '  <Row className={`a-row${on ? " is-on" : ""}`} onClick={() => go()} />\n' +
+        '  <Col className={"b-row" + (on ? " x" : "")} />\n' +
+        '  <Row className={cn("c-row", on && "y")} />\n' +
+        '</>;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 3);
+  assert.deepEqual(out.dualLayout.classes, ['a-row', 'b-row', 'c-row']);
+});
+
+test('§1f: без Layout.jsx число НЕ ИЗМЕРЕНО, а не ноль', (t) => {
+  // «Нечего мерить» и «померено, чисто» не должны печатать одинаковый вердикт -
+  // правило, которым уже поймана дыра в 2l.
+  const out = run(
+    fixture(t, {
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Row } from "@/design";\nexport const S = () => <Row className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.measured, false);
+  assert.equal(out.dualLayout.nodes, 0);
+});
+
+test('§1f: шестой примитив подхватывается из модуля, а не из списка в скрипте', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE + 'export const Deck = () => null;\n',
+      'design/app.css': '.acct-plan { display: grid; }',
+      'Screen.jsx': 'import { Deck } from "@/design";\nexport const S = () => <Deck className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 1);
+});
+
+/** ★★ ТРИ СЛУЧАЯ НИЖЕ НАШЁЛ РЕВЬЮЕР (Codex, P2 на PR #736), а не эти тесты, и
+ *  каждый воспроизведён прогоном до починки. Общее у них одно: измеритель
+ *  МОЛЧАЛ - не падал, не предупреждал, просто отвечал «чисто» над непроверенным
+ *  местом. Худший - второй: при живом модуле он объявлял число НЕИЗМЕРЕННЫМ,
+ *  то есть рефактор формы экспорта выключал бы гейт целиком. */
+
+test('§1f: примитив под АЛИАСОМ импорта виден (import { Row as Stack })', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Row as Stack } from "@/design";\nexport const S = () => <Stack className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 1);
+});
+
+test('§1f: ОБРАТНЫЙ алиас не даёт ложного срабатывания (import { Btn as Row })', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/index.jsx': 'export const Btn = () => null;\n',
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Btn as Row } from "@/design";\nexport const S = () => <Row className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 0, 'имя тега совпало с примитивом, но рисует его НЕ примитив');
+});
+
+test('§1f: примитивы, экспортированные через `export {…}` и `export function`, ИЗМЕРЯЮТСЯ', (t) => {
+  // Первая редакция читала только `export const X` и на этом модуле печатала
+  // «НЕ ИЗМЕРЕНО» - то есть рефактор формы экспорта молча выключал гейт.
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': 'const Row = () => null;\nexport function Col() { return null; }\nexport { Row };\n',
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx':
+        'import { Row, Col } from "@/design";\n' +
+        'export const S = () => <><Row className="acct-plan" /><Col className="acct-plan" /></>;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.measured, true, 'модуль есть — «не измерено» тут враньё');
+  assert.equal(out.dualLayout.nodes, 2);
+});
+
+test('§1f: переименованный ДЕФОЛТНЫЙ импорт примитива виден (файловая дверь)', (t) => {
+  // Третий тихий пропуск подряд у ИМЕННОЙ двери (ревью Codex, P2 на PR #737):
+  // `exportedNames` пишет `Row` из `export default function Row`, а на месте
+  // стоит `Stack` — сравнение имён давало 0 узлов при живом долге, без единого
+  // слова в выводе. Файловая дверь имя не спрашивает вовсе.
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': 'export default function Row() { return null; }\n',
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import Stack from "@/design/Layout";\nexport const S = () => <Stack className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 1);
+});
+
+/** ⚠️ Этот случай ловят ОБЕ двери (имя `Row` разрешается и через `importedAs`),
+ *  поэтому снятие файловой двери его НЕ роняет — доказательство второй двери
+ *  несёт тест выше, а этот пинит поведение, не механизм. Сказано вслух, чтобы
+ *  следующий не принял его зелёный за проверку файловой двери. */
+test('§1f: прямой импорт из модуля примитивов виден под алиасом', (t) => {
+  const out = run(
+    fixture(t, {
+      'design/Layout.jsx': LAYOUT_MODULE,
+      'design/app.css': '.acct-plan { display: flex; gap: 9px; }',
+      'Screen.jsx': 'import { Row as Whatever } from "@/design/Layout";\nexport const S = () => <Whatever className="acct-plan" />;\n',
+    }),
+  );
+  assert.equal(out.dualLayout.nodes, 1);
+});

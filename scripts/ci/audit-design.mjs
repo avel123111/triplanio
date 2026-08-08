@@ -231,22 +231,28 @@ const astOf = (f) => {
   return ast;
 };
 
+/** Строковые классы из ЗНАЧЕНИЯ `className`, на любой глубине. Вынесено из
+ *  `classNameTokens`, потому что тот же разбор нужен §1f (двойное владение
+ *  раскладкой): два сборщика одного значения расходятся ровно в тот день,
+ *  когда один научится читать новую форму, а второй нет — а §1f и §1c обязаны
+ *  отвечать про ОДИН и тот же класс. */
+const classStringsInto = (n, add) => {
+  if (!n || typeof n !== 'object') return;
+  if (Array.isArray(n)) { n.forEach((x) => classStringsInto(x, add)); return; }
+  if (n.type === 'Literal' && typeof n.value === 'string') add(n.value);
+  if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => add(q.value.cooked ?? q.value.raw));
+  for (const k of Object.keys(n)) if (k !== 'type') classStringsInto(n[k], add);
+};
+
 const classNameTokens = (f) => {
   const out = new Set();
   const add = (s) => { for (const tok of s.split(/\s+/)) if (tok) out.add(tok); };
   const ast = astOf(f);
   if (!ast) return out;
-  const strings = (n) => {
-    if (!n || typeof n !== 'object') return;
-    if (Array.isArray(n)) { n.forEach(strings); return; }
-    if (n.type === 'Literal' && typeof n.value === 'string') add(n.value);
-    if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => add(q.value.cooked ?? q.value.raw));
-    for (const k of Object.keys(n)) if (k !== 'type') strings(n[k]);
-  };
   const walk = (n) => {
     if (!n || typeof n !== 'object') return;
     if (Array.isArray(n)) { n.forEach(walk); return; }
-    if (n.type === 'JSXAttribute' && n.name?.name === 'className') { strings(n.value); return; }
+    if (n.type === 'JSXAttribute' && n.name?.name === 'className') { classStringsInto(n.value, add); return; }
     for (const k of Object.keys(n)) if (k !== 'type') walk(n[k]);
   };
   walk(ast);
@@ -481,30 +487,84 @@ const importTarget = (file, spec) => {
  *  неё список шимов молчал бы ровно про те компоненты, у которых имени в
  *  `export {…}` нет, то есть называл бы дыру неполно. Анонимный
  *  (`export default () => …`) имени не даёт и не добавляется. */
+/** Имена, экспортированные ОДНИМ модулем. Вынесено из сборщика `dsExports`,
+ *  потому что тот же вопрос задаёт §1f про `Layout.jsx`, а свой урезанный
+ *  сборщик рядом с полным - это дыра, которая уже случилась: первая редакция
+ *  §1f читала только `export const X`, и рефактор примитивов в
+ *  `const Row = …; export { Row }` МОЛЧА выключал измерение (ревью Codex,
+ *  P2). Формы: объявление в `export`, `export function/class`, `export {…}`
+ *  и именованный `export default`. */
+const exportedNames = (ast) => {
+  const out = new Set();
+  for (const n of ast.body) {
+    if (n.type === 'ExportDefaultDeclaration') {
+      const d = n.declaration;
+      if (d.type === 'Identifier') out.add(d.name);
+      else if (d.id?.name) out.add(d.id.name);
+      continue;
+    }
+    if (n.type !== 'ExportNamedDeclaration') continue;
+    if (n.declaration?.type === 'VariableDeclaration') {
+      for (const d of n.declaration.declarations) if (d.id?.name) out.add(d.id.name);
+    } else if (n.declaration?.id?.name) out.add(n.declaration.id.name);
+    for (const s of n.specifiers ?? []) if (s.exported?.name) out.add(s.exported.name);
+  }
+  return out;
+};
+
 const dsExports = new Set();
 for (const f of jsxFiles) {
   if (!DS_MODULE.test(f)) continue;
   const ast = astOf(f);
   if (!ast) continue;
-  for (const n of ast.body) {
-    if (n.type === 'ExportDefaultDeclaration') {
-      const d = n.declaration;
-      if (d.type === 'Identifier') dsExports.add(d.name);
-      else if (d.id?.name) dsExports.add(d.id.name);
-      continue;
-    }
-    if (n.type !== 'ExportNamedDeclaration') continue;
-    if (n.declaration?.type === 'VariableDeclaration') {
-      for (const d of n.declaration.declarations) if (d.id?.name) dsExports.add(d.id.name);
-    } else if (n.declaration?.id?.name) dsExports.add(n.declaration.id.name);
-    for (const s of n.specifiers ?? []) if (s.exported?.name) dsExports.add(s.exported.name);
-  }
+  for (const name of exportedNames(ast)) dsExports.add(name);
 }
 
 const dsShare = {
   ds: 0, ui: 0, host: 0, app: 0, local: 0, vendor: 0, svg: 0, nonRendering: 0, implHost: 0,
   denominator: 0, byFile: [], shims: [], byTag: [], byComponent: [],
 };
+
+/** ★ §1f · ИМЕНА ПРИМИТИВОВ РАСКЛАДКИ ЧИТАЮТСЯ ИЗ САМОГО МОДУЛЯ, а не
+ *  переписываются сюда списком: шестой примитив, заведённый когда-нибудь в
+ *  `Layout.jsx`, обязан попасть под замер в тот же день, а не в день, когда
+ *  кто-то вспомнит про эту строку. Ровно поэтому оси берутся из каталога, а не
+ *  из головы (TRIP-388, апрув 1).
+ *
+ *  `null` = модуля нет (так выглядит база ДО TRIP-388 и фикстура без него).
+ *  Это НЕ ноль: «нечего мерить» и «померено, чисто» не должны печатать
+ *  одинаковый вердикт — правило, которым уже поймана дыра в 2l. */
+const LAYOUT_PRIMITIVES_FILE = join(ROOT, 'design', 'Layout.jsx');
+const layoutPrimitiveNames = jsxFiles.includes(LAYOUT_PRIMITIVES_FILE)
+  ? (() => {
+      const ast = astOf(LAYOUT_PRIMITIVES_FILE);
+      if (!ast) return null;
+      const out = exportedNames(ast);
+      return out.size ? out : null;
+    })()
+  : null;
+
+/** ★★ ДВЕ ДВЕРИ, ПОТОМУ ЧТО ИХ РЕАЛЬНО ДВЕ. Через баррель (`from '@/design'`)
+ *  файл-источник неизвестен, и спросить можно только ИМЯ; напрямую
+ *  (`from '@/design/Layout'`) имя не нужно вовсе — примитив тот, кто приехал ИЗ
+ *  ЭТОГО ФАЙЛА, как бы его ни назвали на месте.
+ *
+ *  Именная дверь дала ТРИ тихих пропуска подряд (все три - ревью Codex, P2, и
+ *  все три воспроизведены прогоном): алиас `Row as Stack`, форма экспорта
+ *  `export {…}`, переименованный ДЕФОЛТНЫЙ импорт `import Stack from
+ *  '…/Layout'`. Общее у них одно - измеритель отвечал «чисто» над
+ *  непроверенным местом, ничего не печатая. Файловая дверь закрывает весь этот
+ *  класс разом: она не про то, как имя написано. */
+const noExt = (p) => p.replace(/\.(jsx|tsx|js|ts)$/, '');
+const LAYOUT_PRIMITIVES_SPEC = noExt(LAYOUT_PRIMITIVES_FILE);
+
+/** Узлы-примитивы, которым экран передал СВОЙ класс. Пересечение с приватными
+ *  классами раскладки считается ниже — там, где те уже собраны из CSS. */
+const layoutPrimitiveUses = [];
+const classNameValueOf = (node) =>
+  node.openingElement.attributes.find(
+    (a) => a.type === 'JSXAttribute' && a.name?.name === 'className',
+  )?.value ?? null;
 
 /** ★ РАЗБИВКА ПО ТЕГУ - ЭТО НЕ УКРАШЕНИЕ ОТЧЁТА, А ТО, ЧЕМ РЕШАЕТСЯ ПОРЯДОК ФАЗ.
  *  Доля двигается ровно одним способом: сырой тег стал компонентом ДС. Тогда
@@ -558,9 +618,26 @@ for (const f of jsxFiles) {
   if (!ast) continue;
 
   const imports = new Map();
+  /** ЛОКАЛЬНОЕ имя → ЭКСПОРТИРОВАННОЕ. Нужно §1f: под алиасом
+   *  (`import { Row as Stack }`) в разметке стоит `Stack`, и проверка по имени
+   *  тега пропускает узел, который рисует `Row`; обратный алиас
+   *  (`import { Btn as Row }`) даёт ЛОЖНОЕ срабатывание. `imports` хранит
+   *  только путь модуля и на этот вопрос не отвечает (ревью Codex, P2). */
+  const importedAs = new Map();
+  /** Локальные имена, приехавшие ПРЯМО из модуля примитивов — вторая дверь §1f
+   *  (см. «ДВЕ ДВЕРИ»). Имя тут не спрашивается вообще. */
+  const fromLayoutModule = new Set();
   for (const n of ast.body) {
     if (n.type !== 'ImportDeclaration') continue;
-    for (const s of n.specifiers) imports.set(s.local.name, importTarget(f, n.source.value));
+    const target = importTarget(f, n.source.value);
+    const isLayoutModule = target !== null && noExt(target) === LAYOUT_PRIMITIVES_SPEC;
+    for (const s of n.specifiers) {
+      imports.set(s.local.name, target);
+      if (s.type === 'ImportSpecifier' && s.imported?.name) importedAs.set(s.local.name, s.imported.name);
+      // Пространство имён (`import * as L`) сюда НЕ идёт: обращение к нему -
+      // `<L.Row>`, то есть `member`, и оно отсекается ниже вместе с `<ds.Row>`.
+      if (isLayoutModule && s.type !== 'ImportNamespaceSpecifier') fromLayoutModule.add(s.local.name);
+    }
   }
 
   const localUses = new Map();
@@ -582,6 +659,22 @@ for (const f of jsxFiles) {
         if (kind === 'host') { raw += 1; bump(byTag, el.base); }
         if (kind === 'ds') bump(byComponent, el.member ? `${el.base}.${el.member}` : el.base);
         if (kind === 'local') bump(localUses, el.base);
+        // §1f. Условие `kind === 'ds'` несущее: одноимённый локальный `Row`
+        // чужого файла - не примитив системы, и считать его двойным владением
+        // значит вписать в долг работу, которой там нет.
+        // ⚠️ Граница: `import * as ds` + `<ds.Row>` сюда не попадает (`member`),
+        // и в `src` таких обращений к примитивам нет ни одного - но появятся,
+        // и это будет ТИХИЙ пропуск, а не ошибка.
+        const isLayoutPrimitive =
+          fromLayoutModule.has(el.base) || layoutPrimitiveNames?.has(importedAs.get(el.base) ?? el.base);
+        if (kind === 'ds' && !el.member && isLayoutPrimitive) {
+          const v = classNameValueOf(n);
+          if (v) {
+            const cs = new Set();
+            classStringsInto(v, (s) => { for (const t of s.split(/\s+/)) if (t) cs.add(t); });
+            if (cs.size) layoutPrimitiveUses.push({ file: f, classes: [...cs] });
+          }
+        }
       }
     }
     for (const k of Object.keys(n)) if (k !== 'type') visit(n[k], svg);
@@ -1029,6 +1122,53 @@ const layoutPrivateNames = [...layoutAll].filter((c) => !LAYOUT_CANON.test(c)).s
 const layoutClasses = { total: layoutAll.size, names: layoutPrivateNames };
 const layoutPrivateClasses = layoutPrivateNames.length;
 
+/** ── §1f · ДВОЙНОЕ ВЛАДЕНИЕ РАСКЛАДКОЙ (TRIP-388) ──────────────────────────
+ *  Узел, который несёт примитив раскладки И приватный класс, ВСЁ ЕЩЁ
+ *  объявляющий раскладку. Дословно то, что запрещает апрув Pavel п.3: «класс,
+ *  прошедший через `className` и всё ещё объявляющий хоть одно из них — это не
+ *  пересадка, а второй источник раскладки под новым именем».
+ *
+ *  ★ ЗАЧЕМ ЧИСЛО ВООБЩЕ ЗАВЕДЕНО. Пересадка четырёх экранов (152 узла) сдвинула
+ *  РОВНО ОДНО из десяти чисел пола - долю из ДС, +440 bp, - а классы,
+ *  пространства имён, инлайны и приватные классы раскладки остались как были.
+ *  Примитив встал ПОВЕРХ класса, который продолжает владеть раскладкой; довести
+ *  это до конца всех экранов значит получить долю у цели при нетронутом зоопарке.
+ *  Ни один гард такого не видит: у 2o все числа «только вниз», а PR, который
+ *  только ДОБАВЛЯЕТ, ни одного из них не двигает - и пол честно печатает
+ *  «держится».
+ *
+ *  ★★ РЕПОРТ, А НЕ ХРАПОВИК, И ЭТО НЕ МЯГКОСТЬ. Число РАСТЁТ на каждом честном
+ *  PR пересадки нового экрана (узлы появляются раньше, чем схлопывается CSS), а
+ *  падает на разгребании долга. Храповик «только вниз» блокировал бы ровно то
+ *  движение, ради которого заведён, - тот же дефект, что и предикат «все `--x:`»
+ *  на токенах. Ратчет уже стоит СОСЕДНИМ числом: приватные классы раскладки
+ *  (десятая строка пола) - именно они обязаны падать.
+ *
+ *  ⚠️ ЭТО НИЖНЯЯ ОЦЕНКА, и граница названа: класс, приезжающий в примитив
+ *  ПРОПОМ (`<Row className={props.cls}>`), из литералов не виден. Читать как
+ *  «не меньше», а не как «ровно столько».
+ *
+ *  ⚠️⚠️ ЧИСЛО РАНЬШЕ ПРЕДИКАТА - ЗАКОН ЭПИКА, И ОН УЖЕ НАРУШЕН ИМЕННО ЗДЕСЬ.
+ *  Один и тот же долг был назван 38 и 56 в двух прогонах, третий (мой) дал 55.
+ *  Никто не ошибался: 38 считало столкновение по ТОМУ ЖЕ свойству, 56/55 - любую
+ *  раскладку, и предиката не было ни у одного. Здесь он ЗАФИКСИРОВАН кодом, и
+ *  выбран второй: апрув говорит «хоть одно из них», а не «то же самое». */
+const dualLayout = { measured: layoutPrimitiveNames !== null, nodes: 0, byFile: [], classes: [] };
+if (dualLayout.measured) {
+  const priv = new Set(layoutPrivateNames);
+  const perFile = new Map();
+  const hit = new Set();
+  for (const u of layoutPrimitiveUses) {
+    const bad = u.classes.filter((c) => priv.has(c));
+    if (!bad.length) continue;
+    dualLayout.nodes += 1;
+    perFile.set(u.file, (perFile.get(u.file) ?? 0) + 1);
+    for (const c of bad) hit.add(c);
+  }
+  dualLayout.byFile = [...perFile].sort((a, b) => b[1] - a[1]);
+  dualLayout.classes = [...hit].sort();
+}
+
 /** ТАБЛИЦА, А НЕ ДЕСЯТЬ БЛОКОВ КОДА: добавить объект = добавить строку, и его
  *  определение читается рядом с его именем. `why` - не украшение: без него
  *  следующий заход «уточнит» предикат и число снова перестанет быть сравнимым
@@ -1398,6 +1538,7 @@ if (process.argv.includes('--json')) {
         // проверяется (тот же довод, что у `rootTokenNames` строкой выше).
         layoutClasses,
         layoutPrivateClasses,
+        dualLayout,
         // Объекты (TRIP-341 PR 0). `byFamily` - то, по чему режутся 05 и 06.
         objects,
         cssParseFailures,
@@ -1514,6 +1655,19 @@ if (dsShareBp === null) {
 // рядом намеренно: у PR пересадки одно число идёт вверх, другое вниз.
 console.log(`   классов с РАСКЛАДКОЙ: ${layoutClasses.total}, из них ПРИВАТНЫХ ${layoutPrivateClasses}  ← десятая строка пола 2o (только вниз)`);
 console.log(`      первые 10 по алфавиту: ${layoutPrivateNames.slice(0, 10).join(' · ')}  (весь список - в --json; что именно ушло, печатает 2o)`);
+// §1f. Печатается СРАЗУ ПОД приватными классами: это две половины одного
+// вопроса - сколько имён ещё владеет раскладкой и сколько узлов держат ДВУХ
+// владельцев сразу. Репорт, не гейт (разбор - в шапке `dualLayout`).
+if (!dualLayout.measured) {
+  console.log('   двойное владение раскладкой: НЕ ИЗМЕРЕНО - нет src/design/Layout.jsx  ← это не ноль');
+} else {
+  console.log(`   ДВОЙНОЕ ВЛАДЕНИЕ раскладкой: ${dualLayout.nodes} узлов · ${dualLayout.classes.length} классов  ← примитив ДС + приватный класс, всё ещё объявляющий раскладку`);
+  if (dualLayout.nodes) {
+    console.log(`      по экранам: ${dualLayout.byFile.slice(0, 8).map(([f, n]) => `${f.replace(/^.*\//, '')}(${n})`).join(' · ')}`);
+    console.log(`      классы: ${dualLayout.classes.slice(0, 10).join(' · ')}${dualLayout.classes.length > 10 ? ' …' : ''}  (весь список - в --json)`);
+    console.log('      ⚠ нижняя оценка: класс, приезжающий в примитив ПРОПОМ, из литералов не виден');
+  }
+}
 console.log();
 
 console.log('2. ИНЛАЙНОВЫЕ СТИЛИ');
