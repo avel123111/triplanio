@@ -4139,6 +4139,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .s22f-val color — гости: значение → канон .stepper .n
    visual-diff-exempt: .s22f-val font-variant-numeric — гости: значение → канон .stepper .n
  */
+/* floor-exempt: namespaces +1 — .stepper становится канон-семьёй с вариантами block/bare (схлопывает te-stepper/ts-startctl/s22f-step в один примитив); апрув Pavel в доке TRIP-344 */
 /* ─── <Stepper>: ОБЛИЧЬЯ КОНТРОЛА «− N +» (TRIP-344 PR 5) ──────────────────────
    Нового префикса тут НЕТ: `.stepper` уже канон-семья. `pill` — дефолт (панель
    города). Кнопки ± — `.stepper button`; центр — `.n` (число ЛИБО кнопка-дата в
