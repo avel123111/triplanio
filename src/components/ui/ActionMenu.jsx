@@ -20,7 +20,7 @@ import { Sheet } from '@/components/ui/Sheet';
  *
  *   <ActionMenu
  *     title="Actions"
- *     trigger={<IconBtn icon="more" size="sm" className="menu-trig" ariaLabel="Actions" />}
+ *     trigger={<IconBtn icon="more" size="sm" ariaLabel="Actions" />}
  *     items={[
  *       { icon: 'send', label: 'Resend', onSelect: resend },
  *       { separator: true },

@@ -438,7 +438,6 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                       <IconBtn
                         icon="more"
                         size="sm"
-                        className="menu-trig"
                         title={t('member.actions')}
                         ariaLabel={t('member.actions')}
                       />
