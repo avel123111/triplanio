@@ -73,7 +73,9 @@
 .bgt-glist__r { text-align: right; flex: none; }
 .bgt-glist__v { color: var(--ink); }
 .bgt-glist__v.muted { color: var(--muted-2); }
-.bgt-glist__add { justify-content: center; width: 100%; padding: var(--sp-6); border-radius: var(--r-btn); border: 1px dashed var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; margin-top: var(--sp-2); transition: border-color .16s, color .16s, background .16s; }
+/* `.bgt-glist__add` удалён: «добавить категорию» — `<Btn variant="dashed" block>`
+   (TRIP-344 PR 3). Список раскладывается своим зазором, отдельного отступа у
+   кнопки больше нет. */
 
 /* detail pane */
 .bgt-detail { padding: var(--sp-8); min-height: 280px; }

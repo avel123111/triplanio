@@ -74,22 +74,26 @@ export default function ChatReply({ text, time, onAsk }) {
             <div ref={textRef} className="chat-reply__text" style={clamped ? { maxHeight: CLAMP_H } : undefined}>
               <ChatMarkdown text={text} linkClassName="cm-a cm-a--brand" />
             </div>
+            {/* Тон НЕ задаётся здесь: `--a` объявлен на `.chat-reply__card`,
+                поэтому кнопка внутри AI-карточки остаётся фиолетовой, а тот же
+                примитив в аккаунте — брендовым. Класс остался носителем
+                раскладки (в свёрнутом состоянии кнопка позиционируется). */}
             {overflows && (
-              <button type="button" className="chat-reply__more" onClick={() => setExpanded((v) => !v)}>
+              <Btn variant="link" className="chat-reply__more" onClick={() => setExpanded((v) => !v)}>
                 <span>{expanded ? t('chat.reply_less') : t('chat.reply_more')}</span>
                 <Icon name="chev" size={13} style={{ transform: expanded ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
-              </button>
+              </Btn>
             )}
           </div>
         </div>
       </div>
 
       <div className="row row--g1 row--wrap chat-reply__acts">
-        <Btn variant="ghost" icon={copied ? 'check' : 'copy'} onClick={copy}>
+        <Btn variant="secondary" icon={copied ? 'check' : 'copy'} onClick={copy}>
           {copied ? t('common.copied') : t('common.copy')}
         </Btn>
         {onAsk && (
-          <Btn variant="ghost" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
+          <Btn variant="secondary" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
         )}
       </div>
     </div>

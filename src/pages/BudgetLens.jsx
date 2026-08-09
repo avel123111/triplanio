@@ -213,7 +213,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting || saving}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
         )}
         <div className="grow" />
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>
           {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
         </Btn>
@@ -296,7 +296,7 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
     <Dialog title={t('trip.delete')} icon="trash" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <div className="grow" />
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
       </>}>
       <div className="col col--g7">
@@ -377,7 +377,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   return (
     <Dialog title={t('budget.fx_button')} icon="arrowSwap" size="" open={open} onOpenChange={onOpenChange} foot={<>
       <div className="grow" />
-      <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+      <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
       <div className="col col--g4">
@@ -479,7 +479,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
     <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="grid" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <div className="grow" />
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
       <div className="col col--g7">
@@ -728,7 +728,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         <span className="grow" />
         {!readOnly && (
           <>
-            <Btn variant="ghost" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+            <Btn variant="secondary" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
             <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
           </>
         )}
@@ -876,10 +876,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </button>
               );
             })}
+            {/* Тот же плейсхолдер «добавить», что в планировщике: пунктир и
+                ховер держит `btn--dashed`, свой класс экрану больше не нужен. */}
             {!readOnly && (
-              <button type="button" className="bgt-glist__add row row--g4" onClick={openAddCategory}>
-                <Icon name="plus" size={15} /> {t('budget.add_category')}
-              </button>
+              <Btn variant="dashed" block icon="plus" onClick={openAddCategory}>
+                {t('budget.add_category')}
+              </Btn>
             )}
           </div>
 
@@ -904,7 +906,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               </div>
               {activeCat.kind === 'custom' && !readOnly && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
-                  <Btn variant="ghost" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
+                  <Btn variant="secondary" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
                 </div>
               )}
               {activeCat.items.length === 0 ? (

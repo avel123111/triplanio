@@ -143,7 +143,7 @@ export default function EventModal(props) {
         <div className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}>
           {confirmDel ? (
             <>
-              <Btn variant="ghost" onClick={() => setConfirmDel(false)} disabled={deleting}>
+              <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>
                 {t('trip.form_cancel')}
               </Btn>
               <Btn

@@ -724,7 +724,6 @@ h4,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
 .bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
 .visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
-.bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
 .chat-name b,         /* TRIP-296 инсп.: Meta→UI (автор сообщения) */
@@ -732,7 +731,6 @@ h4,
 .chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
 .chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
 .dock-panel__id b,    /* TRIP-296: заголовок виджета */
-.chat-reply__more,    /* TRIP-296: «Показать целиком» под ответом ассистента */
 .chat-jump,           /* TRIP-296: «Новые сообщения ↓» */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
@@ -765,7 +763,6 @@ h4,
 .chat-member__rl,
 .dock__count,
 .dock-panel__head .nm,
-.bell-dd__mark,
 .fpill,
 .fpill__c,
 .nrow__meta,
@@ -800,7 +797,6 @@ h4,
 .acct-flabel,
 .acct-plan__p,
 .acct-note,
-.acct-linktext,
 .acct-lang__flag,
 .acct-chan__s,
 .acct-tghint,
@@ -856,7 +852,6 @@ h4,
 .bgt-dleg__p,
 .bgt-stat__s,
 .bgt-glist__c,
-.bgt-glist__add,
 .bgt-detail__s,
 .bgt-detail__amt .l,
 .bgt-exrow__s,
@@ -927,8 +922,8 @@ h4,
 .langdd__item .code,
 .fork-pg,
 .s22f-val,
-.s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
-.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
+.s22-count,
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
@@ -1034,7 +1029,7 @@ h4,
 .field__match.is-bad::before,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
 .fork-partner__mid span,
-.fork-or span, .s22f-resetall,
+.fork-or span,
 .fork-pg, .s22f-val, .s22-count, .pcard__score,
 .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
@@ -1336,10 +1331,28 @@ button.app-side__item:hover { background: var(--wash); }
    совпадал побайтово. Сведено в один селектор, второе имя удалено. */
 .btn--soft, .btn.is-on { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
 .btn--soft:hover, .btn.is-on:hover { --bg: var(--brand-soft-12); }
-.btn--ghost { --bg: transparent; --fg: var(--ink-2); --bd: transparent; }
-.btn--ghost:hover { --bg: var(--surface-2); --fg: var(--ink); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
 .btn--quiet:hover { --fg: var(--ink); }
+/* Тон `ghost` (прозрачный фон, прозрачная рамка) удалён вместе с 50 вызовами:
+   до наведения он ничем не отличался от текста, то есть кнопка не выглядела
+   кнопкой. Все его места уехали на `secondary` — разбор облика кнопок, апрув
+   Pavel (TRIP-344 PR 3). */
+/* Текстовая кнопка. Тон НЕ зашит в brand, а приходит от контекста через `--a`:
+   «Показать целиком» внутри AI-карточки обязана быть фиолетовой, «Сначала
+   дешёвые» в списке отелей — серой. Умолчание `--a` (brand) стоит фолбэком
+   `var()`, поэтому контексту достаточно объявить одну переменную, а не свой
+   класс. Общая высота контрола снята: это текст в потоке, а не кнопка в ряду.
+   ⚠️ Вертикальный паддинг НЕ ноль, хотя разбор рисует текст без него: при нуле
+   мишень получается ~18px, а SC 2.5.8 требует 24. Ступень `--sp-2` даёт ~26 и
+   текст с места не двигает (бокс растёт симметрично). Горизонтального паддинга
+   нет — иначе текстовая кнопка не встаёт вровень с соседним текстом. */
+.btn--link { --bg: transparent; --fg: var(--a, var(--brand)); --bd: transparent; min-height: 0; padding: var(--sp-2) 0; }
+.btn--link:hover { text-decoration: underline; }
+/* Плейсхолдер «добавить»: в покое серый пунктир, на ховере рамка, текст и фон
+   красятся в акцент контекста (`--a` — тип брони, тип сервиса), с тем же
+   умолчанием brand, что у `link`. */
+.btn--dashed { --bg: transparent; --fg: var(--muted); --bd: var(--line-strong); border-style: dashed; }
+.btn--dashed:hover { --bg: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); --bd: var(--a, var(--brand)); --fg: var(--a, var(--brand)); }
 .btn--danger { --bg: var(--danger-soft); --fg: var(--danger-ink); --bd: transparent; }
 .btn--danger:hover { --bg: color-mix(in srgb, var(--danger) 22%, transparent); }
 .btn--danger-solid { --bg: var(--danger); --fg: #fff; --bd: transparent; }
@@ -1385,6 +1398,15 @@ button.app-side__item:hover { background: var(--wash); }
 /* DS: buttons lift on hover, then confirm the press with a scale-down. */
 @media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
+/* Подпрыгивание — язык ЗАЛИТОЙ кнопки: у текстовой и у пунктирного плейсхолдера
+   оно читалось как дёрганье строки, и разбор его снимает. Цепочка `:not()`
+   повторена не для красоты — без неё вес правила (0,2,0) ниже вставшего выше
+   `.btn:hover:not([disabled]):not(.is-disabled)` (0,4,0), и отмена молча не
+   срабатывает. Нажатие текстовой кнопки не масштабируется по той же причине;
+   у пунктирной (это полноценная плашка) `scale` на нажатии остаётся. */
+.btn--link:hover:not([disabled]):not(.is-disabled),
+.btn--dashed:hover:not([disabled]):not(.is-disabled) { transform: none; }
+.btn--link:active:not([disabled]):not(.is-disabled) { transform: none; }
 
 /* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
    карточек. Одна плоская роль, без blur, без теней. Имя роли для разметки одно
@@ -3323,7 +3345,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-reply__who b { color: var(--ai-ink); }
 .chat-reply__who .tm { color: var(--muted-2); }
 .chat-reply__tag { padding: 3px 7px; border-radius: 6px; background: var(--ai-soft); color: var(--ai-ink); }
-.chat-reply__card { position: relative; padding: 16px 20px; border-radius: var(--r-md); overflow: hidden; }
+/* `--a` — тон текстовой кнопки внутри карточки ответа ассистента: «Показать
+   целиком» обязана быть фиолетовой, потому что она внутри AI-карточки, а не
+   потому что у неё свой класс (TRIP-344 PR 3). */
+.chat-reply__card { position: relative; padding: 16px 20px; border-radius: var(--r-md); overflow: hidden; --a: var(--ai-ink); }
 .chat-reply__card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ai-gradient); }
 .chat-reply__card.is-clamped { padding-bottom: 46px; }
 /* Height comes from ChatReply (CLAMP_H) via an inline max-height: the same
@@ -3335,8 +3360,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   content: ""; position: absolute; left: 3px; right: 0; bottom: 0; height: 100px; pointer-events: none;
   background: linear-gradient(180deg, transparent, var(--surface) 62%);
 }
-.chat-reply__more { color: var(--ai-ink); background: none; border: 0; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
-.chat-reply__more:hover { text-decoration: underline; }
+/* От класса остался ОДИН смысл — место кнопки под текстом; вид у `btn--link`.
+   Тон приходит каналом `--a` с самой карточки (строка выше), а не зашит здесь:
+   ровно это и значит «тон от контекста». */
+.chat-reply__more { margin-top: 10px; }
 .chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
 /* Sits under the answer, aligned with it: 44px = the avatar gutter (32) plus the
    row gap (12); -8px pulls the ghost buttons' own padding back to that edge. */
@@ -3634,10 +3661,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
 .bell-dd__foot { padding: 9px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
 /* Compact soft pill — single line, never wraps, reads as a clean secondary action. */
-.bell-dd__mark { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--brand-soft); border: none; color: var(--brand); cursor: pointer; padding: 6px 11px; border-radius: var(--r-pill); transition: background .14s, color .14s; }
-.bell-dd__mark:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); }
-.bell-dd__more { display: flex; align-items: center; justify-content: center; width: 100%; background: transparent; border: none; color: var(--brand); cursor: pointer; padding: 9px; border-radius: var(--r-sm); transition: background .14s; }
-.bell-dd__more:hover { background: var(--brand-soft); }
+/* `.bell-dd__mark` и `.bell-dd__more` удалены: обе кнопки поповера уехали на
+   текстовую кнопку системы (`<Btn variant="link">`, TRIP-344 PR 3). */
 .bell-dd__loading { display: flex; justify-content: center; padding: 28px 0; color: var(--muted); }
 
 /* Per-type icon tile — colour passed in via inline `--ic` (the notifMeta accent) */
@@ -3990,10 +4015,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* inside a ghost-add the icon is a DASHED placeholder (design-system .gadd .gi) */
 .gadd .gi { width: 34px; height: 34px; border: 1px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
 .gadd:hover .gi { border-color: var(--a, var(--brand)); color: var(--a, var(--brand)); }
-/* Без плитки слева содержимое встаёт по центру: так выглядит «добавить ещё
-   город» в планировщике - там нечему стоять слева, кнопка замыкает список. */
-.gadd--center { justify-content: center; gap: 8px; color: var(--muted); }
-.gadd--center:hover { color: var(--a, var(--brand)); }
+/* `.gadd--center` (плейсхолдер БЕЗ плитки слева) удалён: «добавить ещё город» и
+   «добавить категорию» — это `<Btn variant="dashed" block>`. У `.gadd` остались
+   ровно те места, где слева стоит плитка-иконка (панель города, сервисы); их
+   переезд ждёт своей строки разбора — см. отчёт PR 3. */
 .gt { flex: 1; min-width: 0; }
 .gt b { color: var(--muted); display: block; }
 .gt span { color: var(--muted-2); }
@@ -4616,7 +4641,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-move: acct-note -> row row--a-start */
 .acct-note { gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
 .acct-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
-.acct-linktext { background: none; border: none; color: var(--brand); cursor: pointer; font: inherit; padding: 0; text-align: left; }
+/* `.acct-linktext` удалён: «Отменить до конца года» — текстовая кнопка системы
+   (`<Btn variant="link">`, TRIP-344 PR 3). */
 
 /* language flag chip (reused by the language SearchSelect trigger + options) */
 .acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
@@ -6184,7 +6210,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    экземпляром нарисован ИНЛАЙНАМИ в Бюджете («нет трат») - та же структура и
    то же поведение, отличалась только шкура (пунктирная рамка на прозрачном
    против залитой плашки). Схлопнуто в один блок; вид - залитая плашка, потому
-   что пунктир в системе уже занят под «добавить» (.bgt-glist__add).
+   что пунктир в системе уже занят под «добавить» (тон `btn--dashed`).
    Раскладка и плитка - примитивы, здесь остаётся только шкура. */
 /* Пустое состояние. Раскладка жила ИНЛАЙНАМИ внутри самого компонента
    EmptyState - то есть примитив системы был собран тем же способом, от которого
@@ -6339,20 +6365,26 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-step button:disabled { color: var(--muted-2); cursor: default; }
 .s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
 
-.s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* `--a` = тон текстовой кнопки внутри ряда: «Сбросить всё» здесь серая, а не
+   брендовая. Канал объявлен на контейнере, поэтому у кнопки своего класса под
+   тон нет (TRIP-344 PR 3). */
+.s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; --a: var(--muted); }
 .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
 .s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
-.s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-.s22f-resetall:hover { color: var(--ink); }
+/* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
+   рамка, тон, подчёркивание) уехал в `btn--link`; подчёркивание при этом
+   перестало быть постоянным и приходит на ховере. */
+.s22f-resetall { margin-left: auto; }
 
 /* Count + sort row — SHARED by BOTH fork lists (hotels + activities), so it lives
    here, not in a component <style> (TRIP-224: the activity panel doesn't mount the
    hotel component, so a component-local rule left the activity sort unstyled). */
+/* Блок ряда объявлен явно (раньше существовал только его элемент `__ln`) и
+   держит ровно одно — `--a`, тон текстовой кнопки сортировки: она тут серая.
+   Сама кнопка — `<Btn variant="link">`, класса `.s22-sort` больше нет. */
+.s22-countrow { --a: var(--muted); }
 .s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
 .s22-count { color: var(--muted); white-space: nowrap; }
-.s22-sort { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; white-space: nowrap; transition: color .15s; }
-.s22-sort:hover { color: var(--ink); }
-.s22-sort svg { color: var(--muted-2); }
 @media (prefers-reduced-motion: reduce) {
   .s22f-fbtn, .s22f-step button { transition: none; }
   .s22f-fbtn:active { transform: none; }
@@ -6464,7 +6496,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и var(--primary-fg)).
    Теперь синий один и белый один. */
 .tc-add:hover,
-.bgt-glist__add:hover,
 .bgt-iconpick button.on,
 /* ★TRIP-344: подсветка «меню открыто» переехала с приватного .menu-trig на
    САМ примитив. Приватный класс существовал ровно ради этой строки и был

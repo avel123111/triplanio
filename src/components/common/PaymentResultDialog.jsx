@@ -88,7 +88,7 @@ export default function PaymentResultDialog({
                 </Btn>
               ) : (
                 <>
-                  <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+                  <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
                   <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>
                     {t('sub.fail_retry')}
                   </Btn>

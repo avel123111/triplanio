@@ -225,8 +225,31 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
 // `loading` renders the canonical Lumo in-button spinner (.btn .spin) in place
 // of the leading icon, disables the button and flags aria-busy — the single
 // source of truth for "operation in flight" feedback across the app.
-/** @param {{ variant?: string, icon?: string, iconRight?: string, block?: boolean, disabled?: boolean, loading?: boolean, children?: any, onClick?: any, className?: string, ariaLabel?: string, title?: string, ariaPressed?: boolean, style?: any }} p */
-export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+//
+// ★ НАБОР ТОНОВ ЗАКРЫТ ТИПОМ (TRIP-344 PR 3, разбор облика кнопок — апрув
+// Pavel). Тон был `string`, то есть опечатка (`variant="secundary"`) рисовала
+// класс, которого нет, и кнопка молча получала базовый вид — ровно тот класс
+// тихо неверного ответа, против которого заведена витрина `/kit`.
+/**
+ * @typedef {'primary'|'secondary'|'soft'|'quiet'|'link'|'dashed'|'danger'
+ *   |'danger-solid'|'pro'|'ai'} BtnVariant
+ */
+// ★★ ТОН ТЕПЕРЬ НАЗЫВАЕТСЯ ЯВНО, И ЭТО РЕШЕНИЕ, А НЕ ПОБОЧНЫЙ ЭФФЕКТ. Дефолтом
+// был `ghost` — тон, который разбор УДАЛЯЕТ. Оставить дефолтом что угодно молча
+// значило бы перекрасить каждый вызов без пропа, ничего не написав в дифф.
+// Поэтому:
+//   · в ТИПЕ `variant` обязателен — пропущенный проп краснеет у вызывающего под
+//     `// @ts-check` и в пробе `props.test.js` (закрытый юнион ловит НЕВЕРНОЕ
+//     значение, но НЕ ловит ОТСУТСТВИЕ: замерено на PR 2, где снятие `size`/
+//     `tone` прошло lint, tsc и все тесты зелёными);
+//   · в РАНТАЙМЕ остаётся `secondary` — файлов без прагмы в репозитории
+//     большинство, и там пропущенный проп обязан дать рабочую кнопку, а не
+//     `btn--undefined`. Значение выбрано не наугад: `secondary` — это ровно то,
+//     куда разбор увёл `ghost`, и его объявления побайтово совпадают с базовым
+//     `.btn`, то есть «кнопка без тона» и «кнопка secondary» — одна и та же
+//     кнопка.
+/** @param {{ variant: BtnVariant, icon?: string, iconRight?: string, block?: boolean, disabled?: boolean, loading?: boolean, children?: any, onClick?: any, className?: string, ariaLabel?: string, title?: string, ariaPressed?: boolean, style?: any }} p */
+export const Btn = ({ variant = "secondary", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
     // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
     // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle

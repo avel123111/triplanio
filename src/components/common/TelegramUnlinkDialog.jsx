@@ -23,7 +23,7 @@ export default function TelegramUnlinkDialog({ handle, onConfirm, open, onOpenCh
       open={open}
       onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={close}>{t('common.cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('common.cancel')}</Btn>
         <Btn variant="danger-solid" onClick={() => { onConfirm?.(); close(); }}>
           {t('telegram.unlink_confirm')}
         </Btn>

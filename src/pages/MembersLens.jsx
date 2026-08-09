@@ -142,7 +142,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   return (
     <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
         {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
         {tab === 'offline' && <Btn variant="primary" icon="user" loading={saving} onClick={() => v.attemptSubmit(addOffline)} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
       </>}>
@@ -252,7 +252,7 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
   return (
     <Dialog title={t('members.change_role')} icon="edit" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" loading={saving} onClick={save}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
       <div className="t-body" style={{ marginBottom: 14, color: 'var(--muted)' }}>
@@ -417,7 +417,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
               {/* Actions */}
               <div className="mbrow__acts">
                 {m.status === 'offline' && canManage && (
-                  <Btn variant="ghost" icon="send"
+                  <Btn variant="secondary" icon="send"
                     onClick={() => setPromoteState({ member: m })}>
                     {t('members.invite')}
                   </Btn>

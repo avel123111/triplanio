@@ -89,9 +89,9 @@ export default function NotificationsBell() {
           <Icon name="bell" size={16} />
           <div className="t-ui grow">{t('notif.title')}</div>
           {unread > 0 && (
-            <button className="bell-dd__mark" onClick={() => markAllRead.mutate()}>
+            <Btn variant="link" onClick={() => markAllRead.mutate()}>
               {t('notif.mark_all_read')}
-            </button>
+            </Btn>
           )}
         </div>
 
@@ -122,9 +122,12 @@ export default function NotificationsBell() {
         </div>
 
         <div className="bell-dd__foot">
-          <button className="bell-dd__more" onClick={() => { setOpen(false); nav('/inbox'); }}>
+          {/* «Открыть все» и «Прочитать все» были двумя частными кнопками
+              (пилюля с брендовой заливкой и полоса во всю ширину) — обе стали
+              текстовой кнопкой системы: тон брендовый, подчёркивание на ховере. */}
+          <Btn variant="link" block onClick={() => { setOpen(false); nav('/inbox'); }}>
             {t('notif.open_full_inbox')}
-          </button>
+          </Btn>
         </div>
       </PopoverContent>
     </Popover>
@@ -181,7 +184,7 @@ function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTri
         {showPending && (
           <div className="brow__acts">
             <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="ghost" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+            <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </div>
         )}
         {isInvite && member?.status === 'active' && (

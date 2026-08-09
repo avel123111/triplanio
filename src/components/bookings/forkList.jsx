@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
-import { Input, Skeleton } from '@/design/index';
+import { Btn, Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -189,7 +189,9 @@ export function ForkToolbar({
       {!filtersOpen && pills.length > 0 && (
         <div className="s22f-pills">
           {pills.map((p) => <ForkPill key={p.key} label={p.label} onRemove={p.onRemove} removeLabel={t('fork.f_reset')} />)}
-          <button type="button" className="s22f-resetall" onClick={onReset}>{t('fork.f_reset_all')}</button>
+          {/* «Сбросить всё» — текстовая кнопка системы; класс остался только
+              носителем `margin-left: auto` (вид целиком у `btn--link`). */}
+          <Btn variant="link" className="s22f-resetall" onClick={onReset}>{t('fork.f_reset_all')}</Btn>
         </div>
       )}
     </div>
@@ -200,12 +202,15 @@ export function ForkToolbar({
 // per-list; the cycle handler is the list's own sort stepper.
 export function ForkCountRow({ countLabel, sortLabel, onCycleSort }) {
   return (
-    <div className="row row--g6">
+    // `.s22-countrow` объявлен блоком, к которому уже относился `__ln`: он
+    // держит `--a` (серый тон текстовой кнопки в этом ряду), а не вид кнопки.
+    <div className="row row--g6 s22-countrow">
       {countLabel ? <span className="s22-count">{countLabel}</span> : null}
       <span className="s22-countrow__ln" />
-      <button type="button" className="s22-sort" onClick={onCycleSort}>
-        <ArrowUpDown size={14} />{sortLabel}
-      </button>
+      {/* Значок остаётся lucide-детищем, а не пропом `icon`: в карте значков ДС
+          двусторонней стрелки сортировки нет, а заводить её ради одного места —
+          новое имя в системе без нужды. */}
+      <Btn variant="link" onClick={onCycleSort}><ArrowUpDown size={14} />{sortLabel}</Btn>
     </div>
   );
 }
