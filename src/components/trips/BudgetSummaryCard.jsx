@@ -56,7 +56,7 @@ export default function BudgetSummaryCard({
   return (
     <div className="wdg ov-wdg">
       <div className="wdg-h">
-        <span className="wi wi--primary"><Icon name="wallet" size={17} /></span>
+        <span className="wi"><Icon name="wallet" size={17} /></span>
         <h4>{t('trip.sidebar_budget')}</h4>
         {canManage && (
           <button

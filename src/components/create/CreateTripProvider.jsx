@@ -33,6 +33,14 @@ import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 const CreateTripContext = createContext({
   openChoice: () => {},
   startCreate: () => {},
+  // ⚠️ ТИП БЕРЁТСЯ ОТСЮДА, А НЕ С РЕАЛИЗАЦИИ: `createContext` выводит форму из
+  // ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ. Заглушка совпадала с реализацией по асинхронности (об
+  // этом и говорил прежний комментарий), но НЕ ПО АРИТЕТУ - ноль параметров
+  // против `tripId`, - поэтому живой вызов `startCopy(tripId)` давал TS2554 у
+  // вызывателя под `// @ts-check`. Ровно тот же дефект, что был у заглушки `t()`
+  // в I18nContext: заглушка и реализация разъезжаются молча, потому что их
+  // никто не сверяет.
+  /** @type {(tripId: string) => Promise<void>} */
   startCopy: async () => {}, // async: matches the real implementation's contract
   copying: false,
 });
@@ -48,7 +56,7 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
       onClick={onClick}
       className={`choice-card${isAi ? ' choice-card--ai' : ''}`}
     >
-      <div className={`choice-card__ic choice-card__ic--${isAi ? 'ai' : 'man'}`}>
+      <div className={`choice-card__ic${isAi ? ' choice-card__ic--ai' : ''}`}>
         <Icon name={icon} size={23} />
       </div>
       <div className="choice-card__tx">

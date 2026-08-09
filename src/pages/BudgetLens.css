@@ -46,7 +46,7 @@
 .bgt-stat__v { color: var(--ink); margin-top: var(--sp-1); }
 .bgt-stat__s { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-stat__s b { color: var(--ink-2); }
-.bgt-stat--total .bgt-stat__ic { background: var(--primary-soft); color: var(--brand); }
+.bgt-stat--total .bgt-stat__ic { background: var(--brand-soft); color: var(--brand); }
 .bgt-stat--ppl .bgt-stat__ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .bgt-stat--fx .bgt-stat__ic { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 .bgt-stat--fx { cursor: pointer; transition: border-color .18s, box-shadow .2s; width: 100%; text-align: left; }
@@ -66,7 +66,7 @@
 .bgt-glist { padding: var(--sp-5); }
 .bgt-glist__row { width: 100%; text-align: left; padding: var(--sp-6); border-radius: var(--r-btn); border: 1px solid transparent; background: transparent; cursor: pointer; font: inherit; transition: background .15s, border-color .15s; }
 .bgt-glist__row:hover { background: var(--wash); }
-.bgt-glist__row.on { background: var(--primary-soft); border-color: var(--primary-soft-2); }
+.bgt-glist__row.on { background: var(--brand-soft); border-color: var(--brand-soft-12); }
 .bgt-glist__n { color: var(--ink); min-width: 0; }
 .bgt-glist__c { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-glist__c .miss { color: var(--danger); }

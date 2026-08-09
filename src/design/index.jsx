@@ -34,12 +34,17 @@ export { default as AiField, AiBadge } from '@/components/ui/AiField';
 // напрямую и не замыкать зависимость на этот барраль (TRIP-333).
 export { Input, Textarea, InputGroup } from './Input';
 import { FieldRequired } from './Input';
+// Раскладка — своим модулем по той же причине, что и поле: барраль тянет
+// `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
+// (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
+export { Row, Col, Grid, Trunc, Grow } from './Layout';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
+/** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, className?: string, style?: any }} p */
 export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
   const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
@@ -66,6 +71,7 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
 // `people` rows carry the same fields as <Avatar>: name + optional photo/deleted/kind.
 // Photos matter — the chat header stacks real member avatars, and without them the
 // stack fell back to initials while the same people showed photos two lines below.
+/** @param {{ people?: any[], max?: number, size?: string, className?: string }} p */
 export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
   <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
     {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
@@ -106,8 +112,9 @@ const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "c
 //   .tile           плитка значка
 //   .grow           текстовый блок
 //   .row__t         заголовок - тот же канон, что у карточек-близнецов
+/** @param {{ level?: string, title?: any, children?: any, action?: any, icon?: string, iconStyle?: any, align?: string, dashed?: boolean, loading?: boolean }} p */
 export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align, dashed, loading }) => (
-  <div className={`sev row row--wrap${align === "mid" ? "" : " row--start"} sev--${level}${dashed ? " sev--dashed" : ""}`}>
+  <div className={`sev row row--wrap${align === "mid" ? "" : " row--a-start"} sev--${level}${dashed ? " sev--dashed" : ""}`}>
     <span className="tile sev__icon" style={iconStyle}>
       {loading ? <span className="spin spin--ring" /> : <Icon name={icon || SEV_ICON[level] || "info"} size={16} />}
     </span>
@@ -140,6 +147,7 @@ export const Severity = ({ level = "info", title, children, action, icon, iconSt
 // шире кликабельного - на телефоне это просто «не нажимается». Ссылкой строка
 // становится только когда действия справа нет: <button> внутри <a> невалиден,
 // поэтому у строки с крестиком ссылка остаётся на имени.
+/** @param {{ name: string, href?: string, size?: string, tone?: string, action?: any, fallback?: string }} p */
 export const FileRow = ({ name, href, size, tone, action, fallback }) => {
   const label = name || fallback || '';
   const cls = `doc-row row${tone === 'ai' ? ' doc-row--ai' : ''}`;
@@ -164,6 +172,7 @@ export const FileRow = ({ name, href, size, tone, action, fallback }) => {
 // Заголовок — канонический (settings.readonly_banner_title); описание — per-lens
 // через children. Обёртка `.readonly-banner` несёт консистентный отступ там, где
 // контейнер не раскладывает детей через gap (см. app.css).
+/** @param {{ children?: any, title?: any }} p */
 export const ReadOnlyBanner = ({ children, title }) => {
   const t = useT();
   return (
@@ -189,6 +198,7 @@ export const ReadOnlyBanner = ({ children, title }) => {
 // раньше это была ТОЛЬКО звёздочка, то есть признак для зрячих - нативный
 // `required` стоял лишь на сырых полях экрана входа, а `aria-required` не стоял
 // нигде. Провайдер объявлен рядом с полем (`./Input`), которое его и читает.
+/** @param {{ label?: any, hint?: any, sub?: any, children?: any, required?: boolean }} p */
 export const Field = ({ label, hint, sub, children, required = false }) => (
   <div className="field">
     {label && (
@@ -209,8 +219,17 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
 // `loading` renders the canonical Lumo in-button spinner (.btn .spin) in place
 // of the leading icon, disables the button and flags aria-busy — the single
 // source of truth for "operation in flight" feedback across the app.
+/** @param {{ variant?: string, icon?: string, iconRight?: string, block?: boolean, disabled?: boolean, loading?: boolean, children?: any, onClick?: any, className?: string, ariaLabel?: string, title?: string, ariaPressed?: boolean, style?: any }} p */
 export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
+    // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
+    // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
+    // type="button" ставит и объясняет зачем — то есть про грабли знали, а на
+    // самой кнопке системы их не закрыли (TRIP-344 PR 1).
+    // ⚠️ Правка ПРОФИЛАКТИЧЕСКАЯ, живого дефекта не чинит и поведение сегодня не
+    // меняет: <form> в репозитории ровно четыре (все в Login.jsx), и отправляют
+    // их сырые <button type="submit">, а не Btn. Проверено грепом по всему src.
+    type="button"
     className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled || loading}
@@ -227,6 +246,7 @@ export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loadi
 );
 
 // ----- Badge -----
+/** @param {{ variant?: string, icon?: string, children?: any, style?: any }} p */
 export const Badge = ({ variant = "", icon, children, style }) => (
   <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
     {icon && <Icon name={icon} size={11} />}
@@ -235,6 +255,7 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 );
 
 // ----- Card -----
+/** @param {{ title?: any, subtitle?: any, action?: any, children?: any, className?: string, style?: any }} p */
 export const Card = ({ title, subtitle, action, children, className = "", style }) => (
   <div className={`card ${className}`} style={style}>
     {(title || subtitle || action) && (
@@ -267,6 +288,7 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 // примитива. Новый тон = новая строка, как у SEV_ICON выше.
 const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warning: "warning" };
 
+/** @param {{ icon?: string, title?: any, body?: any, action?: any, kind?: string, boxed?: boolean, iconStyle?: any }} p */
 export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
   <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
     <div
@@ -282,14 +304,9 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
 );
 
 // ----- Skeleton -----
+/** @param {{ w?: number|string, h?: number|string, r?: number|string, style?: any }} p */
 export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
-  <div style={{
-    width: w, height: h, borderRadius: r,
-    background: "linear-gradient(90deg, var(--line) 0%, var(--wash) 50%, var(--line) 100%)",
-    backgroundSize: "200% 100%",
-    animation: "shimmer 1.5s linear infinite",
-    ...style,
-  }} />
+  <div className="skeleton" style={{ width: w, height: h, borderRadius: r, ...style }} />
 );
 
 // ----- Checkbox -----
@@ -299,6 +316,7 @@ export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
 // Checkbox vs Toggle: a checkbox is a value you pick and then submit (a form
 // field, a filter applied by a button); a Toggle is a setting that takes effect
 // the moment you flip it. Don't swap one for the other to look tidier.
+/** @param {{ checked?: boolean, onChange?: any, label?: any, disabled?: boolean, className?: string }} p */
 export const Checkbox = ({ checked, onChange, label, disabled, className = "" }) => (
   <label className={`checkbox ${className}`}>
     <input
@@ -318,35 +336,25 @@ export const Checkbox = ({ checked, onChange, label, disabled, className = "" })
 // Rendered as a real switch: `type="button"` keeps a Toggle inside a <form>
 // from submitting it, and `aria-checked` is what carries the on/off state to a
 // screen reader (`aria-label` on its own only supplies the name).
+/** @param {{ on?: boolean, onChange?: any, locked?: boolean, busy?: boolean, label?: any }} p */
 export const Toggle = ({ on, onChange, locked, busy, label }) => (
   <button
     type="button"
     role="switch"
+    className="switch"
     aria-checked={!!on}
     aria-label={label}
     aria-busy={busy || undefined}
+    data-locked={locked || undefined}
     onClick={() => !locked && !busy && onChange && onChange(!on)}
     disabled={busy || undefined}
-    style={{
-      width: 36, height: 21, padding: 0, border: "none",
-      borderRadius: 'var(--r-pill)',
-      background: locked ? "var(--wash)" : on ? "var(--brand)" : "var(--line)",
-      position: "relative", flexShrink: 0,
-      opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
-      transition: "background .15s ease",
-    }}
   >
-    {/* Bleeds the hit area from the painted 36×21 track out to the 44px minimum
-        touch target. Sits before the knob so the knob still paints on top. */}
-    <span aria-hidden="true" style={{ position: "absolute", inset: "-12px -4px" }} />
-    <span style={{
-      position: "absolute", top: 2, left: on ? 17 : 2,
-      width: 17, height: 17, borderRadius: "50%",
-      background: "white", boxShadow: "0 1px 2px rgba(0,0,0,.2)",
-      transition: "left .15s ease",
-      display: "grid", placeItems: "center", color: on ? "var(--brand)" : "var(--muted)",
-    }}>
-      {busy && <span className="spin" style={{ width: 11, height: 11, border: "2px solid currentColor", borderRightColor: "transparent", borderRadius: "50%" }} />}
+    {/* Дорожка, бегунок и растянутый до 44px тач-таргет живут в `.switch`
+        (app.css). Состояние сюда не передаётся классом: его уже несут
+        `aria-checked` и `disabled` из контракта role="switch", а «выключен по
+        праву» — `data-locked`. */}
+    <span className="switch__knob">
+      {busy && <span className="spin" />}
     </span>
   </button>
 );
@@ -355,27 +363,21 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
 // Canonical money formatter (locale-aware, decimals only when present).
 export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 
-// ----- RoleBadge with icon -----
-export const RoleBadge = ({ role, size = "md", status }) => {
-  const t = useT();
-  const ROLE_META = {
-    owner:  { icon: "crown",  color: "var(--warm)", soft: "var(--warm-tint)" },
-    admin:  { icon: "shield", color: "var(--brand)", soft: "var(--brand-soft)" },
-    viewer: { icon: "eye",    color: "var(--muted)", soft: "var(--wash)" },
-  };
-  const key = ROLE_META[role] ? role : "viewer";
-  const m = ROLE_META[key];
-  return (
-    <span className="t-micro" style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: size === "sm" ? "2px 7px 2px 5px" : "3px 9px 3px 6px",
-      borderRadius: 'var(--r-pill)', background: m.soft, color: m.color,
-    }}>
-      <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
-      {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
-    </span>
-  );
-};
+// ----- RoleBadge: УДАЛЁН (TRIP-344 PR 1) -----
+// Роль участника — это `<Badge>` с тоном, и приложение уже выражало её так во
+// ВСЕХ трёх местах, где она видна: `MembersLens` (своя локальная функция с тем
+// же именем), `MembersSummaryCard` и карточка трипа в `Trips.jsx`. Первые два
+// независимо сошлись на owner=warning · admin=brand · viewer=outline; третье
+// рисует только зрителя и берёт `quiet` — расхождение реальное, но это долг
+// экранов, а не повод держать четвёртый способ здесь.
+// `RoleBadge` и был этим четвёртым — собственной пилюлей на инлайнах (свои тона
+// warm/brand-soft/wash, свой радиус, свои отступы), мимо `.badge`, объявленного
+// строкой выше. За пределы витрины `/kit` он не вышел ни разу, так что
+// схлопывание не тронуло ни одного экрана.
+// ⚠️ Вместе с ним осиротели ключи `members.badge_owner/_admin/_viewer` и
+// `members.pending` — других вызывателей у них нет. Не удалены здесь: ключи
+// живут ещё и в Tolgee (он авторитет при `pull`), а зачистка i18n — свой проход
+// по всем шести источникам ссылок, см. memory/feedback-dead-i18n-key-sweep-must-scan-backend.
 
 // ---- Dialog: title/icon/foot/size convenience wrapper over the ONE canonical
 //      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +
@@ -386,6 +388,7 @@ export const RoleBadge = ({ role, size = "md", status }) => {
 const DLG_ICON_TONES = {
   activity: { bg: 'var(--ev-activity-soft)', fg: 'var(--ev-activity-ink)' },
 };
+/** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
   const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
@@ -427,6 +430,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
 // Бренд-цвета партнёров живут в lib/externalBrands (единственный дом внешних
 // брендов), а не рядом с компонентом, который их рисует.
 
+/** @param {{ url?: string, size?: number }} p */
 export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);
   // Real favicon of the booking site (same source as the event view/edit dialogs)
@@ -552,7 +556,9 @@ function _evMeta(e) {
   return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", labelKey: "" };
 }
 
-// Event-type → Lumo tile colour tokens (--evs soft bg / --evi ink).
+// Event-type → значения общего канала тинта --hl-soft / --hl-ink (04 PR3).
+// Своих имён (--evs / --evi) у плитки ленты больше нет: канал один на всё
+// приложение, а вызыватель подставляет в него ЗНАЧЕНИЕ — вот это.
 const _EV_TOK = {
   hotel:    { s: "var(--ev-hotel-soft)",    i: "var(--ev-hotel-ink)" },
   transfer: { s: "var(--ev-transfer-soft)", i: "var(--ev-transfer-ink)" },
@@ -578,6 +584,7 @@ function _evTok(e) {
 // Timeline event plate — Lumo "Таймлайн поездки" (.tl3-ev): time on the left
 // (mono), .tl3-card with a coloured .tile + title/sub. Transfers render as the
 // column .tl3-card--tr (from → mode → to).
+/** @param {{ e: any, onClick?: any }} p */
 export function StreamEventRow({ e, onClick }) {
   const t = useT();
 
@@ -621,7 +628,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <button className="tl3-card" style={{ "--evs": tok.s, "--evi": tok.i }} onClick={onClick}>
+      <button className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>

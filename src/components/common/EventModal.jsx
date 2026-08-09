@@ -94,9 +94,9 @@ export default function EventModal(props) {
         className={kind === 'service' ? 'dlg--sm' : 'dlg--wide'}
         aria-describedby={undefined}
         style={{
-          '--ev-color': theme.color,
-          '--ev-soft': theme.soft,
-          '--ev-ink': theme.ink || theme.color,
+          '--hl': theme.color,
+          '--hl-soft': theme.soft,
+          '--hl-ink': theme.ink || theme.color,
           padding: 0,
         }}
       >

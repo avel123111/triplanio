@@ -37,6 +37,7 @@ const requiredAttrs = (on) => (on
  * декорации позиционируются от обёртки, и её отступ уводит иконку - `.ss-search`
  * со своим `padding: 6px` ставил её на 6px вместо 12.
  */
+/** @param {{ icon?: string, loading?: boolean, num?: boolean, className?: string, boxRef?: any } & import('react').ComponentPropsWithoutRef<'input'>} p */
 export const Input = ({ icon, loading, num, className = '', boxRef, ...rest }) => {
   const required = React.useContext(RequiredCtx);
   // Кольцо загрузки ЗАМЕЩАЕТ стартовую иконку: у поля один индикатор и одно
@@ -73,6 +74,7 @@ export const Input = ({ icon, loading, num, className = '', boxRef, ...rest }) =
 // Пара к <Input> для многострочного поля: тот же канон `.textarea`, декораций
 // у него нет, поэтому и обёртки-позиционера нет - внешний класс идёт на само
 // поле.
+/** @param {{ className?: string } & import('react').ComponentPropsWithoutRef<'textarea'>} p */
 export const Textarea = ({ className = '', ...rest }) => {
   const required = React.useContext(RequiredCtx);
   return (
@@ -92,6 +94,7 @@ export const Textarea = ({ className = '', ...rest }) => {
  * Состояние валидации приходит теми же атрибутами, что и полю, но красит
  * контейнер: у детей рамки нет, красить нечего.
  */
+/** @param {{ className?: string, children?: any } & import('react').ComponentPropsWithoutRef<'div'>} p */
 export const InputGroup = ({ className = '', children, ...rest }) => (
   <div className={className ? `input-group ${className}` : 'input-group'} {...rest}>
     {children}

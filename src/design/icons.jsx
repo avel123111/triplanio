@@ -141,6 +141,19 @@ const ICONS = {
 };
 
 // ── Единый компонент Icon ────────────────────────────────────────────────────
+/**
+ * ⚠️ АННОТАЦИЯ ПРОПОВ ОБЯЗАТЕЛЬНА, И ВОТ ПОЧЕМУ (TRIP-388).
+ * Без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ, и каждый проп БЕЗ ДЕФОЛТА
+ * становится ОБЯЗАТЕЛЬНЫМ: `<Icon name="file" size={20} />` даёт TS2739
+ * «missing style, className, color». При `checkJs: false` это невидимо, но
+ * ЛЮБОЙ экран под `// @ts-check` упирается в это сразу — на `DocsLens` вышло
+ * 50 ошибок, все чужие. Тот же запечатанный набор чинил PR 1 у примитивов
+ * раскладки, и он же блокировал их собственное правило «ставь прагму в
+ * пересаживаемый экран».
+ *
+ * @param {{ name: string, size?: number, style?: any, className?: string,
+ *           color?: string, strokeWidth?: number }} p
+ */
 export const Icon = ({ name, size = 18, style, className, color, strokeWidth = 2 }) => {
   const Brand = BRAND[name];
   if (Brand) return <Brand size={size} style={style} className={className} color={color} />;

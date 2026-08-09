@@ -257,6 +257,113 @@ test('a name also defined in the dark :root cannot be demoted by touching the li
   assert.match(r.out, /токенов в :root.*1\s*→\s*1/);
 });
 
+/* ────────── 7-е число: apart (обличья вне осей) — TRIP-364 PR-I ────────── */
+
+/** Каталог с `apart`. До TRIP-364 PR-I это поле не храповилось НИЧЕМ: оно живёт
+ *  внутри 2q, а 2o про него не знал. Значит любое уникальное исполнение можно
+ *  было положить в apart с красивой причиной, и ни одно число не краснело -
+ *  дверь ровно того класса, который эпик и закрывает. Показательно, что первый
+ *  же кандидат в apart (`sev--dashed`) оказался наполовину кандидатом на снос. */
+const catAp = (families, apart) => JSON.stringify({ families, apart }, null, 2);
+
+test('★★ 7 · apart ВЫРОС — красный: список исключений обязан пустеть', (t) => {
+  // CSS на обеих сторонах ОДИНАКОВ намеренно: растёт ровно одно число. Первая
+  // редакция дописывала класс и поднимала заодно `classes`, из-за чего тест про
+  // apart падал по чужой причине - фикстура обязана двигать то, что называет.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина' } }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина', y: 'ещё одна' } }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /обличий вне осей \(apart\): 1 → 2/);
+});
+
+test('★ 7 · apart УПАЛ — зелёный (храповик крутится вниз)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина', y: 'ещё одна' } }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина' } }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /обличий вне осей \(apart\)\s+2 →\s+1\s+-1/);
+});
+
+test('★ 7 · рост apart проходит по floor-exempt с причиной', (t) => {
+  // Маркер читается из ДОБАВЛЕННЫХ строк диффа, поэтому живёт в CSS-комментарии,
+  // а само число растёт в каталоге: JSON комментариев не носит.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина' } }) },
+    head: {
+      'src/a.css': `/* floor-exempt: apart +1 — разбор обличья отложен, апрув Pavel */\n${family(2)}`,
+      'src/design/catalog.json': catAp({ a: 'canon' }, { a: { x: 'причина', y: 'ещё одна' } }),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  // ★ И маркер обязан быть ПРИМЕНЁН к нужному числу: без этой строки тест зелен
+  // и при разводке метрики на чужое поле (тогда ничего не растёт и разрешать
+  // нечего) - то есть проверял бы 'не покраснело', а не 'исключение сработало'.
+  assert.match(r.out, /обличий вне осей \(apart\)\s+1 →\s+2\s+\+1\s+\(floor-exempt \+1\)/);
+});
+
+/* ───── 8-е число: семей под осями — ТОЛЬКО ВВЕРХ (TRIP-364 PR-I) ───── */
+
+/** Каталог с осями. Восьмое число — ПЕРВОЕ, которое храповит В ДРУГУЮ СТОРОНУ,
+ *  и заведено оно против конкретной дыры: седьмое число (`apart`) понижается
+ *  ДЕ-ДЕКЛАРАЦИЕЙ. Убери семью из `axes` вместе с её записями в `apart` — и
+ *  apart упадёт, а оба гарда останутся зелёными: 2q скажет «сходятся» (семья
+ *  без ключа в axes не проверяется вовсе), 2o скажет «пол держится». То есть
+ *  число понижается изменением того, ЧТО ОНО СЧИТАЕТ, — ровно тот провал, ради
+ *  которого пол и написан, только с третьей стороны. */
+const catAx = (families, axes, apart) => JSON.stringify({ families, axes, apart }, null, 2);
+const AX = { о: { значения: ['x'] } };
+
+test('★★ 8 · семья УШЛА из axes — красный, даже когда apart от этого упал', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, { a: AX }, { a: { y: 'причина' } }),
+    },
+    head: {
+      'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, {}, {}),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /семей под осями: 1 → 0/);
+  // ★ И apart при этом ДЕЙСТВИТЕЛЬНО упал - то есть без восьмого числа этот
+  // прогон был бы зелёным с «минусом», читающимся как прогресс.
+  assert.match(r.out, /обличий вне осей \(apart\)\s+1 →\s+0\s+-1/);
+});
+
+test('★ 8 · семья ДОБАВЛЕНА в axes — зелёный (храповик крутится вверх)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`, 'src/design/catalog.json': catAx({ a: 'canon' }, {}, {}) },
+    head: { 'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`, 'src/design/catalog.json': catAx({ a: 'canon' }, { a: AX }, {}) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /семей под осями\s+0 →\s+1\s+\+1/);
+});
+
+test('★ 8 · снятие семьи проходит по floor-exempt с причиной', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/a.css': `${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, { a: AX }, {}),
+    },
+    head: {
+      'src/a.css': `/* floor-exempt: axes +1 — объект уехал в компонент, апрув Pavel */\n${family(2)}.a--x { gap: 1px; }\n`,
+      'src/design/catalog.json': catAx({ a: 'canon' }, {}, {}),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /семей под осями\s+1 →\s+0\s+-1\s+\(floor-exempt \+1\)/);
+});
+
 /* ───────────────────────────── the escape ───────────────────────────────── */
 
 test('an exemption on an ADDED line grants exactly its budget', (t) => {
@@ -531,4 +638,204 @@ test('сломанный каталог - «не смог измерить» (2)
   const r = run(f);
   assert.equal(r.code, 2, r.out);
   assert.match(r.out, /не читается/);
+});
+
+test('★★ ЧИТАЕМЫЙ каталог с кривым `apart` — код 2, а не тихий ноль', (t) => {
+  // Половина той же дисциплины, что и у пятой метрики, и до этого теста она была
+  // ЗАЯВЛЕНА В КОММИТЕ, НО НЕ ЗАПИНЕНА: мутация «кривой apart → apartEntries = 0»
+  // оставляла 41/41 зелёными. Последствие ровно то, против чего написана шапка
+  // гарда, - число ПАДАЕТ и читается как прогресс, а на деле список исключений
+  // погашен опечаткой. Нашёл `code-simplifier`, не мой мутационный проход:
+  // я мутировал СЧЁТ и ни разу РАЗБОР.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2), 'src/design/catalog.json': JSON.stringify({ families: { a: 'canon' }, apart: { a: { x: 'причина' } } }) },
+    head: { 'src/a.css': family(2), 'src/design/catalog.json': JSON.stringify({ families: { a: 'canon' }, apart: 'опечатка' }) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /apart/);
+});
+
+/* ────────── шестая метрика: экран дотянулся в примитив (TRIP-364) ────────── */
+
+test('★ шестая метрика ловит НОВОЕ потомковое правило на примитиве', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/a.css': '.btn { color: red; }',
+      [CATALOG]: '{"families":{"btn":"canon","scr":"triage"}}',
+    },
+    head: {
+      'src/a.css': '.btn { color: red; }\n.scr-x .btn { flex: 1; }',
+      [CATALOG]: '{"families":{"btn":"canon","scr":"triage"}}',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /экран дотянулся в примитив: 0 → 1/);
+});
+
+test('★★ ПЕРЕКЛЕЙКА triage → canon шестую метрику НЕ двигает', (t) => {
+  // Число зависит от каталога по построению: расширение языка меняет его без
+  // единой строки CSS, причём в ОБЕ стороны (на живом репо `bgt` triage→canon
+  // дал 53 → 47, то есть молча забанковал бы прогресс). Переклейка объявлена
+  // легальной, бесплатной и никогда не блокируемой, поэтому храповик по «своему»
+  // каталогу краснел бы на правильном ходе - а такой гард выключают. Лечение:
+  // HEAD меряется канон-набором БАЗЫ.
+  const css = '.btn { color: red; }\n.scr-x .btn { flex: 1; }\n.scr-x .card { gap: 2px; }';
+  const f = fixture(t, {
+    base: { 'src/a.css': css, [CATALOG]: '{"families":{"btn":"canon","card":"triage","scr":"triage"}}' },
+    head: { 'src/a.css': css, [CATALOG]: '{"families":{"btn":"canon","card":"canon","scr":"triage"}}' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /экран дотянулся в примитив\s+1 →\s+1/);
+});
+
+/* ── девятое число: доля «собрано из системы», храповик ВВЕРХ (TRIP-337 §1) ── */
+/** Вторая метрика «только вверх» (первая - `axes`, TRIP-364 PR-I) и главное
+ *  число эпика. Проверяется не «считает ли она» (это `audit-design.test.mjs`), а
+ *  что пол не принимает её падение за норму и что ФОРМА МАРКЕРА одна на все
+ *  метрики: `+N` = величина разрешённого НАРУШЕНИЯ, всё остальное - выход 2. */
+const DS = { 'src/design/index.jsx': 'export const Btn = () => null;\n' };
+const screen = (extra) => `import { Btn } from '@/design';\nconst a = <div>${extra}<Btn /></div>;\n`;
+
+test('★ доля «собрано из ДС» УПАЛА → красный, хотя все остальные числа не выросли', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { ...DS, 'src/S.jsx': screen('<span />') },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  // Именно строка НАРУШЕНИЯ, и вместе с ВЕЛИЧИНОЙ: само название метрики
+  // печатается в таблице всегда, поэтому совпадение по нему прошло бы и при
+  // красноте от любого другого числа. У растущей метрики нарушение называется
+  // словом («упало на»), а не знаком — знак остаётся формой МАРКЕРА, не отчёта.
+  assert.match(r.out, /✗ собрано из ДС \(bp\): 5000 → 3333 \(упало на 1667\)/);
+  // И подсказка обязана быть той, которую можно скопировать: форма маркера одна
+  // на все метрики, `+N` = величина разрешённого нарушения.
+  assert.match(r.out, /floor-exempt: dsshare \+1667 —/);
+});
+
+test('доля выросла → зелёный (храповик именно ВВЕРХ, а не «не меняйся»)', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('<span />') },
+    head: { ...DS, 'src/S.jsx': screen('') },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('маркер +N покрывает согласованное ПАДЕНИЕ доли: форма одна на все метрики', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { ...DS, 'src/S.jsx': `/* floor-exempt: dsshare +1700 — новый экран, апрув Pavel */\n${screen('<span />')}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('★ маркер -N на РАСТУЩЕЙ метрике - ошибка, а не тихий ноль', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { ...DS, 'src/S.jsx': `/* floor-exempt: dsshare -1700 — знак не тот */\n${screen('<span />')}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /знак/i);
+});
+
+test('маркер  на УБЫВАЮЩЕЙ метрике - такая же ошибка (симметрия)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2) },
+    head: { 'src/a.css': `/* floor-exempt: classes -1 — знак не тот */\n${family(3)}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /знак/i);
+});
+
+test('элементов интерфейса нет ни на одной стороне → строка «мерить нечего», зелёный', (t) => {
+  const f = fixture(t, { base: { 'src/a.css': family(2) } });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /мерить нечего/);
+});
+
+test('★ элементы были, а на HEAD их нет → выход 2: метрику нельзя выключить', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('') },
+    head: { 'src/S.jsx': null, 'src/design/index.jsx': null },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /не измеряется|мерить нечего/);
+});
+
+test('★ маркер БЕЗ знака - тоже ошибка, а не тихий ноль бюджета', (t) => {
+  // Дыра на шаг РАНЬШЕ сверки знака: требуй регулярка `[+-]`, такой маркер не
+  // нашёлся бы вовсе, и автор получил бы ноль бюджета молча.
+  const f = fixture(t, {
+    base: { 'src/a.css': family(2) },
+    head: { 'src/a.css': `/* floor-exempt: classes 1 — знак не назван */\n${family(3)}` },
+  });
+  const r = run(f);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /НЕ НАЗВАН ЗНАК/);
+});
+
+test('★ скачок сырых тегов ВНУТРИ ДС печатается: доля выросла бы без работы', (t) => {
+  const f = fixture(t, {
+    base: { ...DS, 'src/S.jsx': screen('<span />') },
+    head: {
+      // разметка экрана уехала в design/: из знаменателя ушёл <span>, доля выросла
+      'src/design/index.jsx': 'export const Btn = () => (<i><span /></i>);\n',
+      'src/S.jsx': screen(''),
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /сырых тегов внутри ДС.*0 → 2/);
+});
+
+/* ── десятое число: приватные классы раскладки (TRIP-388) ─────────────────── */
+
+test('★ новый ПРИВАТНЫЙ класс раскладки → красный (проброс className не спрячет работу)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.a-head { display: flex; }' },
+    head: { 'src/a.css': '.a-head { display: flex; }\n.a-foot { display: flex; }' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /✗ приватных классов раскладки: 1 → 2 \(\+1\)/);
+});
+
+test('канон-раскладка число не двигает (расширить примитив - бесплатно)', (t) => {
+  // Класс есть на ОБЕИХ сторонах и на HEAD начинает объявлять раскладку: `classes`
+  // и `namespaces` неподвижны, поэтому прогон обязан быть ЗЕЛЁНЫМ ЦЕЛИКОМ. Первая
+  // редакция дописывала `.row--g9` НОВОЙ строкой - гард краснел от `classes`, а
+  // тест этого не замечал, потому что кода выхода не спрашивал: зелёное
+  // утверждение поверх красного прогона.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.a-head { display: flex; }\n.row--g8 { color: red; }' },
+    head: { 'src/a.css': '.a-head { display: flex; }\n.row--g8 { display: flex; }' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /приватных классов раскладки\s+1 →\s+1/, r.out);
+});
+
+test('★ ПЕРЕИМЕНОВАНИЕ приватной раскладки: счёт тот же, а имена печатаются', (t) => {
+  // Ровно тот случай, ради которого 2o печатает имена: `.a-head` схлопнут,
+  // `.b-head` заведён, счёт 1 → 1, и по одному числу это неотличимо от «CSS не
+  // трогали». Ратчет тут молчит законно (пол не пробит), а вот молчать ЦЕЛИКОМ
+  // прогон не имеет права - иначе «упало на N» выдаётся за «упало на тех
+  // классах, которые PR тронул».
+  const f = fixture(t, {
+    base: { 'src/a.css': '.a-head { display: flex; }' },
+    head: { 'src/a.css': '.b-head { display: flex; }' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /ушли \(1\) a-head/, r.out);
+  assert.match(r.out, /пришли \(1\) b-head/, r.out);
 });

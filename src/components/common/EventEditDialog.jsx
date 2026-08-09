@@ -6,7 +6,7 @@
  *
  * One shared chrome — the `.lp-*` canon (tinted header + body + footer), themed
  * per kind/subtype via `meta` (TYPE_META / SERVICE_META →
- * --ev-color/--ev-soft/--ev-ink). TRIP-333 §4: the chrome is literally the same
+ * --hl/--hl-soft/--hl-ink). TRIP-333 §4: the chrome is literally the same
  * in both shells; before that the dialog branch drew its own `.ev-dlg-*` family.
  * Each kind renders its own field group; service dispatches on form.service_kind.
  *
@@ -75,7 +75,7 @@ function SwitchRow({ on, onChange, title, hint, children }) {
   const flip = () => onChange(!on);
   return (
     <div className="eed-fcbox">
-      <div className="eed-fclabel">
+      <div className="row row--a-start row--g4 eed-fclabel">
         <Toggle on={on} onChange={onChange} label={title} />
         <div className="eed-fcbody">
           <div className="eed-fctitle" onClick={flip}>{title}</div>
@@ -197,12 +197,12 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
         </div>
       </AiField>
       {value && (
-        <div className="eed-bkmeta">
-          <span className="eed-bkpill">
+        <div className="row row--g4 eed-bkmeta">
+          <span className="row row--inline row--g3 eed-bkpill">
             {logo && <img src={logo} alt="" className="eed-bkpill__logo" />}
             {label}
           </span>
-          <a href={normalizeExternalUrl(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
+          <a href={normalizeExternalUrl(value)} target="_blank" rel="noreferrer" className="row row--inline row--g2 eed-bkopen">
             <ExternalLink size={12} />{t('common.open')}
           </a>
         </div>
@@ -1375,7 +1375,7 @@ export default function EventEditDialog({
     </>
   );
 
-  const evVars = { '--ev-color': meta.color, '--ev-soft': meta.soft, '--ev-ink': meta.ink || meta.color };
+  const evVars = { '--hl': meta.color, '--hl-soft': meta.soft, '--hl-ink': meta.ink || meta.color };
 
   // TRIP-176: embedded — body + footer only (no .lp shell / header). The
   // AddBookingPanel wrapper provides the .lp shell + shared header + tabs.
@@ -1637,7 +1637,7 @@ function buildServicePayload(form, tripId, t) {
 
 function SectionHeader({ children }) {
   // Lumo form section header: coloured uppercase label + trailing rule.
-  // Colour comes from the --ev-color set on the shell root — `.ev-dlg` in the
+  // Colour comes from the --hl set on the shell root — `.ev-dlg` in the
   // dialog branch, `.lp` in the panel branch (both get it from `evVars`).
   return <div className="f-sec">{children}</div>;
 }
@@ -1698,7 +1698,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
       {/* Price + currency + payment pills (design: "Стоимость за всё") */}
       <div className="eed-finance">
         <div className="hv-lbl">{t('event.price_total')}</div>
-        <div className="eed-pricerow">
+        <div className="grid grid--g4 eed-pricerow">
           <AiField active={aiFields.has('price')}>
             <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
           </AiField>
@@ -1974,8 +1974,8 @@ function TransferLegCard({
             reads to add the +1 arrival-day gap, so it must always equal the actual
             dates. Shown as a passive badge the moment the arrival date is a later day. */}
         {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <div className="eed-nightrow">
-            <span className="eed-nightrow__l">
+          <div className="row eed-nightrow">
+            <span className="row row--g4 eed-nightrow__l">
               <Moon size={16} />
               <span className="t-ui">{t('event.overnight_label')}</span>
             </span>
@@ -2113,7 +2113,7 @@ function DateRangeBlock({
         </div>
       </div>
       {(startTz || endTz) && (
-        <div className="eed-drange-tz">
+        <div className="row row--g6 eed-drange-tz">
           <TimezoneHint tz={startTz} />
           <TimezoneHint tz={endTz} />
         </div>
@@ -2127,7 +2127,7 @@ function DateRangeBlock({
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
-    <div className="eed-typegrid">
+    <div className="grid grid--g4 eed-typegrid">
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
         return (

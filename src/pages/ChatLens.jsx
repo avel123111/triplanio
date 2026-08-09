@@ -34,11 +34,11 @@ import { chatParticipants, pluralPeople, useChatId, useChatRows, useChatMessages
 
 function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
   return (
-    <div className="chat-member">
+    <div className="row chat-member">
       {ai
         ? <TriplanioAvatar />
         : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} />}
-      <div className="chat-member__b">
+      <div className="grow--fit">
         <div className="chat-member__nm trunc">{name}</div>
         <div className="chat-member__rl">{role}</div>
       </div>
@@ -60,16 +60,16 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
 export function ChatLensSkeleton() {
   return (
     <div className="chat-room">
-      <div className="chat-head">
-        <div className="chat-head__id">
+      <div className="row row--g7 chat-head">
+        <div className="col col--g1 col--j-center grow--fit chat-head__id">
           <Skeleton w={150} h={15} r={5} />
           <Skeleton w={92} h={11} r={4} />
         </div>
         <Skeleton w={128} h={38} r={'var(--r-pill)'} style={{ flexShrink: 0 }} />
       </div>
-      <div className="chat-msgs scrollbar-thin"><ChatSkeleton /></div>
+      <div className="col col--g1 chat-msgs scrollbar-thin"><ChatSkeleton /></div>
       <div className="chat-composer">
-        <div className="chat-composer__in">
+        <div className="col col--g4 chat-composer__in">
           <Skeleton h={56} r={'var(--r-xl)'} />
         </div>
       </div>
@@ -79,9 +79,9 @@ export function ChatLensSkeleton() {
 
 function ChatSkeleton() {
   return (
-    <div className="chat-msgs__in" aria-hidden>
+    <div className="col chat-msgs__in" aria-hidden>
       {[{ w: '58%' }, { w: '42%', me: true }, { w: '72%' }, { w: '38%', me: true }].map(({ w, me }, i) => (
-        <div key={i} className={'chat-run' + (me ? ' chat-run--me' : '')}>
+        <div key={i} className={'row row--a-start row--g6 chat-run' + (me ? ' chat-run--me' : '')}>
           {!me && <Skeleton w={32} h={32} r={'var(--r-pill)'} style={{ flexShrink: 0 }} />}
           <Skeleton w={w} h={me ? 40 : 56} r={'var(--r-md)'} />
         </div>
@@ -259,7 +259,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // On phones the button opens the Sheet itself; on desktop PopoverTrigger
   // (asChild) supplies the handler, so it takes `onClick` rather than owning it.
   const renderMembersBtn = (onClick) => (
-    <button type="button" className="chat-members-btn" onClick={onClick} aria-label={t('chat.members_title')}>
+    <button type="button" className="row row--g4 chat-members-btn" onClick={onClick} aria-label={t('chat.members_title')}>
       <AvatarStack people={people} />
       <span className="chat-members-btn__lbl t-ui">{t('trip.sidebar_members')}</span>
     </button>
@@ -268,8 +268,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   return (
     <div className="chat-room ov-anim">
       {/* Tier 1 · room header */}
-      <div className="chat-head">
-        <div className="chat-head__id">
+      <div className="row row--g7 chat-head">
+        <div className="col col--g1 col--j-center grow--fit chat-head__id">
           <h3>{t('chat.group_title')}</h3>
           {activeMembers.length > 0 && (
             <div className="chat-head__sub trunc">{pluralPeople(activeMembers.length, t, lang)}</div>
@@ -284,7 +284,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       </div>
 
       {/* Tier 2 · stream */}
-      <div ref={scrollRef} className="chat-msgs scrollbar-thin" onScroll={onStreamScroll}>
+      <div ref={scrollRef} className="col col--g1 chat-msgs scrollbar-thin" onScroll={onStreamScroll}>
         {streamLoading ? (
           <ChatSkeleton />
         ) : (msgsError && msgs.length === 0) ? (
@@ -303,9 +303,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <EmptyState icon="chat" title={t('chat.empty_title')} body={t('chat.empty_desc')} />
           </div>
         ) : (
-          <div className="chat-msgs__in">
+          <div className="col chat-msgs__in">
             {!historyDone && msgs.length >= CHAT_PAGE && (
-              <div className="chat-hist">
+              <div className="row row--j-center chat-hist">
                 <Btn variant="secondary" icon="chevU" loading={loadingOlder} onClick={loadOlder}>
                   {t('chat.load_older')}
                 </Btn>

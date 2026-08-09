@@ -1,4 +1,6 @@
+// @ts-check
 import React, { useState, useEffect, useRef } from 'react';
+import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
@@ -85,20 +87,20 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'no-sub') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--free">
+        <Grid gap="g8" className="acct-plan">
+          <Col justify="j-center" className="acct-plan__face acct-plan__face--free">
             <div className="acct-plan__k">{t('account.plan_current')}</div>
             <div className="acct-plan__v">Free</div>
-          </div>
-          <div className="acct-plan__side">
-            <div className="acct-plan__line">{t('account.free_desc')}</div>
-            <div className="acct-plan__acts">
+          </Col>
+          <Col gap="g6" className="acct-plan__side">
+            <Row wrap gap="g4" className="acct-plan__line">{t('account.free_desc')}</Row>
+            <Row wrap className="acct-plan__acts">
               <Btn variant="pro" icon="pro" disabled={awaitingWebhook} onClick={onUpgrade}>
                 {t('account.go_to_pro')}
               </Btn>
-            </div>
-          </div>
-        </div>
+            </Row>
+          </Col>
+        </Grid>
       </div>
     );
   }
@@ -109,29 +111,29 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'pro-pending') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--mo">
+        <Grid gap="g8" className="acct-plan">
+          <Col justify="j-center" className="acct-plan__face acct-plan__face--mo">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.plan_current')}</div>
             <div className="acct-plan__v">Pro</div>
-          </div>
-          <div className="acct-plan__side">
+          </Col>
+          <Col gap="g6" className="acct-plan__side">
             {detailsError ? (
               <>
-                <div className="acct-plan__line">{t('account.details_unavailable')}</div>
-                <div className="acct-plan__acts">
+                <Row wrap gap="g4" className="acct-plan__line">{t('account.details_unavailable')}</Row>
+                <Row wrap className="acct-plan__acts">
                   <Btn variant="soft" icon="refresh" disabled={detailsLoading} onClick={onRetryDetails}>
                     {t('account.details_retry')}
                   </Btn>
-                </div>
+                </Row>
               </>
             ) : (
-              <div className="row" style={{ height: 40 }}>
+              <Row style={{ height: 40 }}>
                 <div className="spin spin--ring" />
-              </div>
+              </Row>
             )}
-          </div>
-        </div>
+          </Col>
+        </Grid>
       </div>
     );
   }
@@ -139,18 +141,18 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'with-sub') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--mo">
+        <Grid gap="g8" className="acct-plan">
+          <Col justify="j-center" className="acct-plan__face acct-plan__face--mo">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.pro_monthly_sub')}</div>
             <div className="acct-plan__v num">{actualMoney || monthlyPrice || 'Pro'}{(actualMoney || monthlyPrice) && <span className="t-body">{t('account.per_month_short')}</span>}</div>
             <div className="acct-plan__p">{t('account.active')}</div>
-          </div>
-          <div className="acct-plan__side">
+          </Col>
+          <Col gap="g6" className="acct-plan__side">
             {plan?.subscriptionEnd && (
-              <div className="acct-plan__line num">{t('account.next_charge')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></div>
+              <Row wrap gap="g4" className="acct-plan__line num">{t('account.next_charge')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></Row>
             )}
-            <div className="acct-plan__acts">
+            <Row wrap className="acct-plan__acts">
               {yearlyPrice && (
                 <Btn variant="soft" icon="arrow" disabled={portalLoading} onClick={onManage}>
                   {t('account.switch_yearly', { price: yearlyPrice })}
@@ -159,10 +161,10 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
               <Btn variant="ghost" icon="external" disabled={portalLoading} onClick={onManage}>
                 {portalLoading ? t('account.opening') : t('account.billing_portal')}
               </Btn>
-            </div>
-            <div className="acct-note"><Icon name="info" size={14} /><span>{t('account.after_cancel_access')}</span></div>
-          </div>
-        </div>
+            </Row>
+            <Row align="a-start" className="acct-note"><Icon name="info" size={14} /><span>{t('account.after_cancel_access')}</span></Row>
+          </Col>
+        </Grid>
       </div>
     );
   }
@@ -170,24 +172,24 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   if (planState === 'annual') {
     return (
       <div className="card">
-        <div className="acct-plan">
-          <div className="acct-plan__face acct-plan__face--yr">
+        <Grid gap="g8" className="acct-plan">
+          <Col justify="j-center" className="acct-plan__face acct-plan__face--yr">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.pro_yearly_sub')}</div>
             <div className="acct-plan__v num">{actualMoney || yearlyPrice || 'Pro'}{(actualMoney || yearlyPrice) && <span className="t-body">{t('account.per_year_short')}</span>}</div>
             {(actualMonthlyEq || yearlyMonthlyEq()) && <div className="acct-plan__p num">{t('account.equivalent')} {actualMonthlyEq || yearlyMonthlyEq()}{t('account.per_month_short')}</div>}
-          </div>
-          <div className="acct-plan__side">
-            <div className="acct-plan__line"><Badge variant="success" icon="check">{t('account.active')}</Badge>{plan?.subscriptionEnd && <span className="num">{t('account.renews')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></span>}</div>
-            <div className="acct-plan__acts">
+          </Col>
+          <Col gap="g6" className="acct-plan__side">
+            <Row wrap gap="g4" className="acct-plan__line"><Badge variant="success" icon="check">{t('account.active')}</Badge>{plan?.subscriptionEnd && <span className="num">{t('account.renews')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></span>}</Row>
+            <Row wrap className="acct-plan__acts">
               <Btn variant="ghost" icon="external" disabled={portalLoading} onClick={onManage}>
                 {portalLoading ? t('account.opening') : t('account.billing_portal')}
               </Btn>
               <button className="acct-linktext" onClick={onManage}>{t('account.cancel_until_year_end')}</button>
-            </div>
-            <div className="acct-note"><Icon name="info" size={14} /><span>{t('account.yearly_note')}</span></div>
-          </div>
-        </div>
+            </Row>
+            <Row align="a-start" className="acct-note"><Icon name="info" size={14} /><span>{t('account.yearly_note')}</span></Row>
+          </Col>
+        </Grid>
       </div>
     );
   }
@@ -195,23 +197,23 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   // cancelled
   return (
     <div className="card">
-      <div className="acct-plan">
-        <div className="acct-plan__face acct-plan__face--ca">
+      <Grid gap="g8" className="acct-plan">
+        <Col justify="j-center" className="acct-plan__face acct-plan__face--ca">
           <span className="blob" aria-hidden="true" />
           <div className="acct-plan__k">{t('account.cancelled_sub')}</div>
           <div className="acct-plan__v t-subheading">{t('account.pro_cancelled')}</div>
           {plan?.subscriptionEnd && <div className="acct-plan__p">{fmtDate(plan.subscriptionEnd, locale)}</div>}
-        </div>
-        <div className="acct-plan__side">
-          <div className="acct-plan__line">{t('account.cancelled_desc')}</div>
-          <div className="acct-plan__acts">
+        </Col>
+        <Col gap="g6" className="acct-plan__side">
+          <Row wrap gap="g4" className="acct-plan__line">{t('account.cancelled_desc')}</Row>
+          <Row wrap className="acct-plan__acts">
             <Btn variant="primary" icon="refresh" disabled={portalLoading} onClick={onManage}>
               {portalLoading ? t('account.opening') : t('account.resume')}
             </Btn>
-          </div>
-          <div className="acct-note"><Icon name="info" size={14} /><span>{t('account.cancelled_note')}</span></div>
-        </div>
-      </div>
+          </Row>
+          <Row align="a-start" className="acct-note"><Icon name="info" size={14} /><span>{t('account.cancelled_note')}</span></Row>
+        </Col>
+      </Grid>
     </div>
   );
 }
@@ -251,22 +253,22 @@ function ReminderChannels() {
   // future, non-functional channels (visual placeholders)
   const soon = (
     <>
-      <div className="acct-chan acct-chan--soon row row--g6">
+      <Row gap="g6" className="acct-chan acct-chan--soon">
         <span className="tile tile--lg tile--success"><Icon name="whatsapp" size={20} /></span>
-        <div className="acct-chan__main grow--fit">
-          <div className="row__t row row--g4 row--wrap">WhatsApp</div>{/* i18n-ignore: имя бренда, не переводится */}
+        <Grow fit className="acct-chan__main">
+          <Row gap="g4" wrap className="row__t">WhatsApp</Row>{/* i18n-ignore: имя бренда, не переводится */}
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
-        </div>
-      </div>
-      <div className="acct-chan acct-chan--soon row row--g6">
+        </Grow>
+      </Row>
+      <Row gap="g6" className="acct-chan acct-chan--soon">
         <span className="tile tile--lg tile--ai"><Icon name="bell" size={20} /></span>
-        <div className="acct-chan__main grow--fit">
-          <div className="row__t row row--g4 row--wrap">{t('account.channel_push')}</div>
+        <Grow fit className="acct-chan__main">
+          <Row gap="g4" wrap className="row__t">{t('account.channel_push')}</Row>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
-        </div>
-      </div>
+        </Grow>
+      </Row>
     </>
   );
 
@@ -275,50 +277,50 @@ function ReminderChannels() {
       <div className="acct-subhead">{t('account.channels_title')}</div>
       <div className="muted t-meta" style={{ margin: '3px 0 16px' }}>{t('account.channels_desc')}</div>
 
-      <div className="col">
+      <Col>
         {items === null ? (
           <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>
         ) : connected ? (
           <div>
             <button className="acct-chan acct-chan--btn row row--g6" aria-expanded={open} onClick={() => setOpen(v => !v)}>
               <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
-              <span className="acct-chan__main grow--fit">
-                <span className="row__t row row--g4 row--wrap">Telegram</span>{/* i18n-ignore: имя бренда, не переводится */}
+              <Grow as="span" fit className="acct-chan__main">
+                <Row as="span" gap="g4" wrap className="row__t">Telegram</Row>{/* i18n-ignore: имя бренда, не переводится */}
                 <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
                 <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
-              </span>
+              </Grow>
               <Icon name="chev" size={16} className="acct-chan__chev" />
             </button>
             {open && (
               <div className="acct-tgtrips">
                 <div className="acct-tgtrips__lbl">{t('telegram.linked_trips')}</div>
                 {items.map((a) => (
-                  <div key={a.id} className="acct-tgrow row row--g6">
+                  <Row gap="g6" className="acct-tgrow" key={a.id}>
                     <span className="tile tile--brand"><Icon name="map" size={15} /></span>
-                    <div className="grow--fit">
-                      <div className="row__t row row--g4 row--wrap">
-                        <span className="trunc">{a.trip_title}</span>
+                    <Grow fit>
+                      <Row gap="g4" wrap className="row__t">
+                        <Trunc as="span">{a.trip_title}</Trunc>
                         <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
-                      </div>
+                      </Row>
                       <div className="muted t-mono" style={{ marginTop: 1 }}>{nick(a)}</div>
-                    </div>
+                    </Grow>
                     <Btn variant="ghost" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
                     <Btn variant="ghost" icon="unlink" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
-                  </div>
+                  </Row>
                 ))}
-                <div className="acct-tghint"><Icon name="info" size={13} /><span>{t('telegram.account_hint')}</span></div>
+                <Row gap="g4" className="acct-tghint"><Icon name="info" size={13} /><span>{t('telegram.account_hint')}</span></Row>
               </div>
             )}
           </div>
         ) : (
-          <div className="acct-chan row row--g6">
+          <Row gap="g6" className="acct-chan">
             <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
-            <div className="acct-chan__main grow--fit">
-              <div className="row__t row row--g4 row--wrap">Telegram</div>{/* i18n-ignore: имя бренда, не переводится */}
+            <Grow fit className="acct-chan__main">
+              <Row gap="g4" wrap className="row__t">Telegram</Row>{/* i18n-ignore: имя бренда, не переводится */}
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
-            </div>
+            </Grow>
             <Btn variant="soft" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
-          </div>
+          </Row>
         )}
         {soon}
         {unlinkState && (
@@ -329,7 +331,7 @@ function ReminderChannels() {
             onConfirm={() => doUnlink(unlinkState.account)}
           />
         )}
-      </div>
+      </Col>
     </div>
   );
 }
@@ -585,9 +587,9 @@ export default function ScreenAccount() {
   // ── Guard ──────────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div className="row row--center" style={{ paddingTop: 60 }}>
+      <Row justify="j-center" style={{ paddingTop: 60 }}>
         <div className="spin spin--ring spin--lg" />
-      </div>
+      </Row>
     );
   }
 
@@ -646,28 +648,28 @@ export default function ScreenAccount() {
       )}
 
       {/* ── TWO-PANE WORKSPACE ── */}
-      <div className="acct-shell">
+      <Grid className="acct-shell">
         <h1 className="sr-only">{t('account.title')}</h1>
 
         {/* LEFT NAV (sticky, scroll-spy) */}
         <nav className="acct-nav" aria-label={t('account.title')}>
           {NAV.map(item => (
-            <a key={item.id} className={activeSec === item.id ? 'active' : ''} onClick={() => go(item.id)}>
+            <a key={item.id} className={`row${activeSec === item.id ? ' active' : ''}`} onClick={() => go(item.id)}>
               <Icon name={item.icon} size={17} /> {item.label}
             </a>
           ))}
         </nav>
 
         {/* CONTENT */}
-        <div className="acct-content">
+        <Col className="acct-content">
 
           {/* ░░ PROFILE ░░ */}
           <section id="acct-profile">
-            <h2 className="acct-sectitle">{t('account.identity')}</h2>
+            <Row as="h2" className="acct-sectitle">{t('account.identity')}</Row>
             <div className="acct-hero">
               <div className="acct-hero__band" aria-hidden="true"><span className="blob b1" /><span className="blob b2" /></div>
               {planBadge && <div className="acct-hero__plan">{planBadge}</div>}
-              <div className="acct-hero__row">
+              <Row gap="g7" className="acct-hero__row">
                 <div
                   className="acct-hero__av"
                   role="button" tabIndex={0}
@@ -688,17 +690,17 @@ export default function ScreenAccount() {
                   onChange={e => handleAvatarUpload(e.target.files?.[0])}
                 />
                 <div className="acct-hero__id">
-                  <div className="acct-hero__name trunc">{displayName(user.email, user.full_name)}</div>
+                  <Trunc className="acct-hero__name">{displayName(user.email, user.full_name)}</Trunc>
                   <div className="acct-hero__mail">{user.email}</div>
-                  <div className="acct-hero__actions">
+                  <Row wrap gap="g3" className="acct-hero__actions">
                     <Btn variant="secondary" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
                     {avatarUrl && (
                       <Btn variant="danger" icon="trash" onClick={handleRemoveAvatar}>{t('account.remove_avatar')}</Btn>
                     )}
-                  </div>
+                  </Row>
                 </div>
-              </div>
-              <div className="acct-hero__edit">
+              </Row>
+              <Grid className="acct-hero__edit">
                 <div>
                   <label className="acct-flabel" htmlFor="acct-dispname">{t('account.display_name')}</label>
                   <input id="acct-dispname" className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
@@ -710,13 +712,13 @@ export default function ScreenAccount() {
                 <Btn variant="primary" icon="check" loading={saving} disabled={!profileDirty} onClick={handleSave}>
                   {saving ? t('auth.saving') : t('common.save')}
                 </Btn>
-              </div>
+              </Grid>
             </div>
           </section>
 
           {/* ░░ SUBSCRIPTION ░░ */}
           <section id="acct-plan">
-            <h2 className="acct-sectitle">{t('account.subscription')} <small>{t('account.pro_monthly_sub')}</small></h2>
+            <Row as="h2" className="acct-sectitle">{t('account.subscription')} <small>{t('account.pro_monthly_sub')}</small></Row>
             <SubscriptionModule
               planState={planState}
               plan={plan}
@@ -734,16 +736,16 @@ export default function ScreenAccount() {
 
           {/* ░░ PREFERENCES (variant C — single-card list) ░░ */}
           <section id="acct-appearance">
-            <h2 className="acct-sectitle">{t('account.preferences')}</h2>
+            <Row as="h2" className="acct-sectitle">{t('account.preferences')}</Row>
             <div className="card">
 
               {/* Language */}
-              <div className="row--div row row--g7">
+              <Row gap="g7" className="row--div">
                 <span className="tile tile--lg tile--brand"><Icon name="globe" size={16} /></span>
-                <div className="grow--fit">
+                <Grow fit>
                   <div className="row__t">{t('account.pref_language')}</div>
                   <div className="row__s">{t('account.pref_language_sub')}</div>
-                </div>
+                </Grow>
                 <div className="acct-prefctl">
                   <SearchSelect
                     value={lang}
@@ -770,15 +772,15 @@ export default function ScreenAccount() {
                     width={240}
                   />
                 </div>
-              </div>
+              </Row>
 
               {/* Theme */}
-              <div className="row--div row row--g7">
+              <Row gap="g7" className="row--div">
                 <span className="tile tile--lg tile--ai"><Icon name="sun" size={16} /></span>
-                <div className="grow--fit">
+                <Grow fit>
                   <div className="row__t">{t('settings.theme')}</div>
                   <div className="row__s">{t('account.pref_theme_sub')}</div>
-                </div>
+                </Grow>
                 <div className="acct-prefctl">
                   <div className="seg" role="group" aria-label={t('settings.theme')}>
                     <button aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
@@ -786,28 +788,28 @@ export default function ScreenAccount() {
                     <button aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>{t('settings.theme_system')}</button>
                   </div>
                 </div>
-              </div>
+              </Row>
 
               {/* Unit system */}
-              <div className="row--div row row--g7">
+              <Row gap="g7" className="row--div">
                 <span className="tile tile--lg tile--brand"><Icon name="route" size={16} /></span>
-                <div className="grow--fit">
+                <Grow fit>
                   <div className="row__t">{t('account.units')}</div>
                   <div className="row__s">{t('account.units_sub')}</div>
-                </div>
+                </Grow>
                 <div className="acct-prefctl">
                   <div className="seg" role="group" aria-label={t('account.units')}>
                     <button aria-pressed={units === 'metric'} onClick={() => setUnits('metric')}>{t('units.km')}</button>
                     <button aria-pressed={units === 'imperial'} onClick={() => setUnits('imperial')}>{t('units.mi')}</button>
                   </div>
                 </div>
-              </div>
+              </Row>
             </div>
           </section>
 
           {/* ░░ NOTIFICATIONS + CHANNELS ░░ */}
           <section id="acct-notify">
-            <h2 className="acct-sectitle">{t('account.email_notifs')}</h2>
+            <Row as="h2" className="acct-sectitle">{t('account.email_notifs')}</Row>
 
             {/* In-app notifications — quick link to the inbox with unread count.
                 Same row grammar as every other navigational row on this screen
@@ -816,10 +818,10 @@ export default function ScreenAccount() {
             <div className="card" style={{ marginBottom: 16 }}>
               <button type="button" className="row--div row row--g7" onClick={() => nav('/inbox')}>
                 <span className="tile tile--lg tile--brand"><Icon name="bell" size={18} /></span>
-                <div className="grow">
+                <Grow>
                   <div className="row__t">{t('account.inbox_title')}</div>
                   <div className="row__s">{t('account.inbox_sub')}</div>
-                </div>
+                </Grow>
                 {/* The button's accessible name comes from its subtree, so the
                     count is spoken as part of the row. (The old markup carried an
                     aria-label on a bare <span> — a generic role takes no
@@ -836,32 +838,32 @@ export default function ScreenAccount() {
 
           {/* ░░ HELP & LEGAL ░░ */}
           <section id="acct-help">
-            <h2 className="acct-sectitle">{t('account.nav_help')}</h2>
+            <Row as="h2" className="acct-sectitle">{t('account.nav_help')}</Row>
             <div className="card">
-              <div className="row--div row row--g7">
+              <Row gap="g7" className="row--div">
                 <span className="tile tile--lg tile--brand"><Icon name="chat" size={18} /></span>
-                <div className="grow">
+                <Grow>
                   <div className="row__t">{t('account.contact_us')}</div>
                   <div className="row__s">
                     <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a> · {t('account.support_reply')}
                   </div>
-                </div>
+                </Grow>
                 <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
-              </div>
+              </Row>
               <a className="row--div row row--g7" href="/privacy" target="_blank" rel="noreferrer noopener">
                 <span className="tile tile--lg tile--quiet"><Icon name="shield" size={18} /></span>
-                <div className="grow">
+                <Grow>
                   <div className="row__t">{t('account.privacy_title')}</div>
                   <div className="row__s">{t('account.privacy_desc')}</div>
-                </div>
+                </Grow>
                 <Icon name="external" size={13} className="muted-2" />
               </a>
               <a className="row--div row row--g7" href="/terms" target="_blank" rel="noreferrer noopener">
                 <span className="tile tile--lg tile--quiet"><Icon name="file" size={18} /></span>
-                <div className="grow">
+                <Grow>
                   <div className="row__t">{t('account.terms_title')}</div>
                   <div className="row__s">{t('account.terms_desc')}</div>
-                </div>
+                </Grow>
                 <Icon name="external" size={13} className="muted-2" />
               </a>
               {/* Same entry for signed-in people. Reopens the panel rather than acting:
@@ -872,31 +874,31 @@ export default function ScreenAccount() {
                 onClick={openConsentBanner}
               >
                 <span className="tile tile--lg tile--quiet"><Icon name="settings" size={18} /></span>
-                <div className="grow">
+                <Grow>
                   <div className="row__t">{t('consent.settings')}</div>
                   <div className="row__s">{t('consent.state')}</div>
-                </div>
+                </Grow>
               </button>
             </div>
           </section>
 
           {/* ░░ SESSION & DANGER ░░ */}
           <section id="acct-session">
-            <h2 className="acct-sectitle">{t('account.nav_session')}</h2>
+            <Row as="h2" className="acct-sectitle">{t('account.nav_session')}</Row>
 
             <div className="card card--danger" style={{ marginBottom: 16 }}>
               {/* Рамку целиком задаёт карточка, поэтому строка своей отбивки не
                   добавляет. Раньше это делало правило по ПОЗИЦИИ в дереве, и оно
                   разваливалось, как только под строкой раскрывалась плашка
                   подтверждения - отбивку приходилось гасить инлайном. */}
-              <div className="row row--g7 row--flush">
+              <Row gap="g7" className="row--flush">
                 <span className="tile tile--lg tile--danger"><Icon name="trash" size={18} /></span>
-                <div className="grow">
+                <Grow>
                   <div className="row__t">{t('settings.delete_account')}</div>
                   <div className="row__s">{t('account.delete_desc')}</div>
-                </div>
+                </Grow>
                 <Btn variant="danger" disabled={deletingAccount} onClick={handleDeleteAccount}>{t('settings.delete_account')}</Btn>
-              </div>
+              </Row>
 
               {deleteState === 'blocked' && (
                 <Severity level="warning" title={t('account.cancel_sub_first')}>
@@ -924,19 +926,19 @@ export default function ScreenAccount() {
             </div>
 
             <div className="card">
-              <div className="row--div row row--g7">
+              <Row gap="g7" className="row--div">
                 <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
-                <div className="grow">
+                <Grow>
                   <div className="row__t">{t('account.logout_title')}</div>
                   <div className="row__s">{t('account.logout_desc')}</div>
-                </div>
+                </Grow>
                 <Btn variant="secondary" icon="arrow" onClick={logout}>{t('auth.logout')}</Btn>
-              </div>
+              </Row>
             </div>
           </section>
 
-        </div>
-      </div>
+        </Col>
+      </Grid>
     </div>
   );
 }

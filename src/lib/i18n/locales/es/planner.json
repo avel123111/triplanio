@@ -22,6 +22,7 @@
   "detecting": "Detectando tu ubicación…",
   "drag": "Arrastrar",
   "duration": "Duración",
+  "err_cover_not_saved": "Viaje creado, pero no se pudo guardar la portada. Puedes cambiarla en los ajustes.",
   "err_no_cities": "Añade al menos una ciudad a la ruta",
   "err_no_date": "Indica la fecha de inicio del viaje, sin ella no se puede guardar",
   "err_no_session": "Tu sesión ha expirado. Vuelve a iniciar sesión.",

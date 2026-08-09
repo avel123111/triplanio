@@ -125,7 +125,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         </button>
       </div>
 
-      <div ref={scrollRef} className="chat-msgs scrollbar-thin">
+      <div ref={scrollRef} className="col col--g1 chat-msgs scrollbar-thin">
         {msgs.length === 0 ? (
           <div style={{ margin: 'auto' }}>
             <EmptyState icon="chat" title={t('chat.write_first')} />

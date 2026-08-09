@@ -158,7 +158,7 @@ export function stayNights(checkInIso, checkOutIso) {
 
 export function Section({ title, accent, count, children }) {
   return (
-    <div className="ev-sec" style={accent ? { '--ev-color': accent } : undefined}>
+    <div className="ev-sec" style={accent ? { '--hl': accent } : undefined}>
       {/* Канон тот же, что у заголовка раздела в форме (`.acc__title`) — раздел
           один объект, и подпись на нём одна. Тип события несёт планка-акцент. */}
       <div className="ev-sec-lbl t-ui">
@@ -186,13 +186,15 @@ function paymentLabel(t, status) {
   return status || null;
 }
 
-// Payment status as a Lumo badge (design: badge--paid / --partial / --on-arrival).
+// Payment status as a Lumo badge (design: badge--paid / --partial / --brand).
+// «На месте» = синий бейдж, то есть ровно .badge--brand: своего класса у него
+// больше нет — .badge--on-arrival был вторым именем того же тона (04 PR3).
 function PaymentBadge({ t, status }) {
   const label = paymentLabel(t, status);
   if (!label) return null;
   const cls = status === 'paid' ? 'badge--paid'
     : status === 'partial' ? 'badge--partial'
-    : status === 'pay_on_arrival' ? 'badge--on-arrival' : 'badge--quiet';
+    : status === 'pay_on_arrival' ? 'badge--brand' : 'badge--quiet';
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 
@@ -364,40 +366,40 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
     <div className="col col--g7">
       {/* Route rail */}
       <div className="tv-card">
-        <div className="tv-eyebrows">
+        <div className="row row--wrap row--g3 tv-eyebrows">
           <span className="badge badge--sm tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
           {night && <span className="badge badge--sm tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
         </div>
-        <div className="tv-route">
+        <div className="grid tv-route">
           <div className="tv-when">
             <div className="tv-when__t t-strong">{fmtTime(entity.start_datetime)}</div>
             <div className="tv-when__d t-meta">{fmtDate(entity.start_datetime)}</div>
           </div>
-          <div className="tv-nodecell"><span className="tv-node tv-node--from" /></div>
+          <div className="row row--j-center tv-nodecell"><span className="tv-node tv-node--from" /></div>
           <div className="tv-loc tv-loc--from">
             {fromCity && <div className="tv-loc__c t-strong">{fromCity}</div>}
             {entity.from_address && <div className="tv-loc__a t-meta">{entity.from_address}</div>}
           </div>
 
-          <div className="tv-durcell">{dur && <span className="tv-dur t-meta">{dur}</span>}</div>
-          <div className="tv-conncell"><span className="tv-conn" /></div>
-          <div className="tv-carrier">
+          <div className="row tv-durcell">{dur && <span className="tv-dur t-meta">{dur}</span>}</div>
+          <div className="row row--j-center tv-conncell"><span className="tv-conn" /></div>
+          <div className="row row--g4 tv-carrier">
             {carrier && (
               <>
-                <span className="tv-carrier__av t-micro">{carrier[0].toUpperCase()}</span>
+                <span className="row row--j-center tv-carrier__av t-micro">{carrier[0].toUpperCase()}</span>
                 <span className="tv-carrier__nm t-body trunc">{carrier}</span>
               </>
             )}
           </div>
 
           <div className="tv-when">
-            <div className="tv-arr">
+            <div className="row row--a-baseline row--g2 tv-arr">
               <span className="tv-when__t t-strong">{fmtTime(entity.end_datetime)}</span>
               {night && <span className="tv-plus1 t-meta">+1</span>}
             </div>
             <div className="tv-when__d t-meta">{fmtDate(entity.end_datetime)}</div>
           </div>
-          <div className="tv-nodecell"><span className="tv-node tv-node--to" /></div>
+          <div className="row row--j-center tv-nodecell"><span className="tv-node tv-node--to" /></div>
           <div className="tv-loc tv-loc--to">
             {toCity && <div className="tv-loc__c t-strong">{toCity}</div>}
             {entity.to_address && <div className="tv-loc__a t-meta">{entity.to_address}</div>}

@@ -3,37 +3,45 @@
    All visual values come from app.css tokens. No raw colours/px.
    ================================================================ */
 
+/* ─── Тон «общее / личное» ────────────────────────────────────────
+   Экран различает ровно ДВА тона: общий документ - брендовый, личный - тёплый.
+   Раньше это было написано ЧЕТЫРЬМЯ парами классов (`--shared`/`--mine` у
+   заголовка секции, карточки, чипа видимости и пустого экрана) - восемь имён на
+   одну мысль. Теперь тон едет по общему каналу --hl* (04 PR3, Р7):
+     • «общее» СВОЕГО класса не имеет - брендовый тон и есть дефолт канала в :root;
+     • «личное» остаётся вариантом, но ПОДСТАВЛЯЕТ ЗНАЧЕНИЕ в канал, а не
+       объявляет свою пару фон+текст.
+   Ровно так же уже собран `.dl-addcard--mine` в app.css - это его продолжение,
+   а не новая идея. */
+
 /* ─── Section header icon tile ────────────────────────────────── */
 .dl-sec-ic {
   width: 34px; height: 34px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: none;
+  background: var(--hl-soft); color: var(--hl-ink);
 }
 .dl-sec-ic svg { width: 17px; height: 17px; }
-.dl-sec-ic--shared { background: var(--brand-soft); color: var(--brand); }
-.dl-sec-ic--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
+.dl-sec-ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── Doc card ────────────────────────────────────────────────── */
 /* Layout + base — lift is handled by compound .dz-lift-card */
-.dl-card {
-  font: inherit;
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 16px;
-  background: var(--surface);
-  border-radius: var(--r-md);
-  box-shadow: var(--sh-1);
-  cursor: pointer; text-align: left; width: 100%;
-}
+/* Зазор 10px = собственный зазор `.col`. Выравнивания у правила нет, у `.col` тоже -
+   дефолт `stretch` сохраняется сам, ничего восстанавливать не нужно.
+   visual-diff-move: dl-card -> col */
+.dl-card { font: inherit; padding: 16px; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: pointer; text-align: left; width: 100%; }
 .dl-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 
-.dl-card__top  { display: flex; align-items: flex-start; gap: 11px; }
+/* ★ОСТАТОК: зазор 11px вне шкалы - удержан.
+   visual-diff-move: dl-card__top -> row row--a-start */
+.dl-card__top { gap: 11px; }
 
 .dl-card__ic {
   width: 42px; height: 42px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: none;
+  background: var(--hl-soft); color: var(--hl-ink);
 }
 .dl-card__ic svg { width: 20px; height: 20px; }
-.dl-card__ic--shared { background: var(--brand-soft); color: var(--brand); }
-.dl-card__ic--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
+.dl-card__ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 .dl-card__h     { flex: 1; min-width: 0; }
 .dl-card__title { color: var(--ink); }
@@ -44,23 +52,18 @@
   color: var(--ink-2);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.dl-card__foot {
-  display: flex; align-items: center; gap: 7px;
-  margin-top: auto; padding-top: 10px;
-  border-top: 1px solid var(--line);
-}
-.dl-card__foot-who  { color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ★ОСТАТОК: зазор 7px вне шкалы - удержан.
+   visual-diff-move: dl-card__foot -> row */
+.dl-card__foot { gap: 7px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+/* visual-diff-move: dl-card__foot-who -> grow--fit trunc */
+.dl-card__foot-who { color: var(--muted); }
 .dl-card__foot-date { color: var(--muted-2); margin-left: auto; white-space: nowrap; }
 
 /* ─── Visibility chip ─────────────────────────────────────────── */
-.dl-vischip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 8px;
-  border-radius: var(--r-pill); flex: none;
-}
+/* visual-diff-move: dl-vischip -> row row--inline row--g2 */
+.dl-vischip { padding: 3px 8px; border-radius: var(--r-pill); flex: none; background: var(--hl-soft); color: var(--hl-ink); }
 .dl-vischip svg { width: 11px; height: 11px; }
-.dl-vischip--shared { background: var(--brand-soft); color: var(--brand); }
-.dl-vischip--mine   { background: var(--warm-soft);  color: var(--warm-ink); }
+.dl-vischip--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── File chips ──────────────────────────────────────────────── */
 /* `.dl-ftag*` (the format badge) is app-wide, not page-scoped — it lives in
@@ -75,11 +78,9 @@
    ссылка произвольная и к отелю отношения не имеет: смысл токена к объекту не
    относится. Тон нейтральный. Цвета обеих иконок стояли инлайнами тем же чужим
    токеном - переехали сюда. */
-.dl-linkrow {
-  display: flex; align-items: center; gap: 9px;
-  padding: 9px 11px; border-radius: var(--r-sm);
-  background: var(--wash); text-decoration: none;
-}
+/* ★ОСТАТОК: зазор 9px вне шкалы - удержан.
+   visual-diff-move: dl-linkrow -> row */
+.dl-linkrow { gap: 9px; padding: 9px 11px; border-radius: var(--r-sm); background: var(--wash); text-decoration: none; }
 .dl-linkrow b {
   color: var(--ink-2); flex: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -87,15 +88,11 @@
 .dl-linkrow svg { color: var(--muted); flex-shrink: 0; }
 
 /* ─── Add-card ghost placeholder in grid ─────────────────────── */
-.dl-addcard {
-  font: inherit;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; min-height: 160px;
-  border: 1px dashed var(--line-strong); border-radius: var(--r-md);
-  background: transparent; color: var(--muted);
-  cursor: pointer; text-align: center; padding: 18px;
-  transition: border-color .18s, background .18s, color .18s, transform .16s var(--ease-spring);
-}
+/* ★ОСТАТОК: `align-items: center` удержан приватным - значения `a-center` у оси
+   «поперёк» КОЛОНКИ в каталоге нет (у колонки дефолт `stretch`, а объявлены
+   только a-start и a-end), а каталог правится параллельной задачей 03f.
+   visual-diff-move: dl-addcard -> col col--g4 col--j-center */
+.dl-addcard { font: inherit; align-items: center; min-height: 160px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: transparent; color: var(--muted); cursor: pointer; text-align: center; padding: 18px; transition: border-color .18s, background .18s, color .18s, transform .16s var(--ease-spring); }
 @media (hover: hover) {
   .dl-addcard:hover {
     border-color: var(--brand); background: var(--brand-soft); color: var(--brand);
@@ -129,29 +126,24 @@
 .dl-empty__ic {
   width: 62px; height: 62px; border-radius: var(--r-md);
   display: grid; place-items: center; margin: 0 auto 14px;
+  background: var(--hl-soft); color: var(--hl-ink);
 }
 .dl-empty__ic svg { width: 28px; height: 28px; }
-.dl-empty__ic--shared { background: var(--brand-soft);  color: var(--brand); }
-.dl-empty__ic--mine   { background: var(--warm-soft-2); color: var(--warm-ink); }
+/* Личный пустой экран берёт --warm-soft-2, а не --warm-soft: пятно тут крупнее
+   (62px), и это расхождение осознанное, а не забытая копия соседа. */
+.dl-empty__ic--mine { --hl-soft: var(--warm-soft-2); --hl-ink: var(--warm-ink); }
 .dl-empty b    { display: block; color: var(--ink); }
 .dl-empty span { color: var(--muted); display: block; margin: 5px 0 16px; }
 
 /* ─── Dialog: section label ───────────────────────────────────── */
-.dl-label {
-  color: var(--ink-2);
-  display: flex; align-items: center; gap: 6px;
-  margin-bottom: 8px;
-}
+/* visual-diff-move: dl-label -> row row--g3 */
+.dl-label { color: var(--ink-2); margin-bottom: 8px; }
 .dl-label svg { width: 13px; height: 13px; }
 
 /* ─── Dialog: visibility toggle ───────────────────────────────── */
-.dl-visopt {
-  font: inherit;
-  display: flex; align-items: center; gap: 10px; padding: 12px;
-  border: 1px solid var(--line-strong); border-radius: var(--r-btn);
-  cursor: pointer; background: var(--surface-3); text-align: left;
-  transition: border-color .16s, background .16s;
-}
+/* Зазор 10px - собственный зазор `.row`.
+   visual-diff-move: dl-visopt -> row */
+.dl-visopt { font: inherit; padding: 12px; border: 1px solid var(--line-strong); border-radius: var(--r-btn); cursor: pointer; background: var(--surface-3); text-align: left; transition: border-color .16s, background .16s; }
 .dl-visopt__ic {
   width: 34px; height: 34px; border-radius: var(--r-sm);
   background: var(--surface-2); color: var(--muted);
@@ -168,13 +160,9 @@
 .dl-visopt.is-on.dl-visopt--mine .dl-visopt__ic { background: var(--warm-ink); color: #fff; }
 
 /* ─── Dialog: dropzone ────────────────────────────────────────── */
-.dl-dropzone {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 22px; border-radius: var(--r-sm);
-  border: 1.6px dashed var(--line-strong); background: var(--surface-3);
-  cursor: pointer; text-align: center;
-  transition: border-color .16s, background .16s;
-}
+/* ★ОСТАТОК: `align-items: center` удержан - см. .dl-addcard.
+   visual-diff-move: dl-dropzone -> col col--g3 */
+.dl-dropzone { align-items: center; padding: 22px; border-radius: var(--r-sm); border: 1.6px dashed var(--line-strong); background: var(--surface-3); cursor: pointer; text-align: center; transition: border-color .16s, background .16s; }
 .dl-dropzone b     { color: var(--ink-2); }
 .dl-dropzone span  { color: var(--muted); }
 .dl-dropzone svg   { color: var(--muted-2); transition: color .16s; }
@@ -192,29 +180,20 @@
   color: var(--ink-2);
   margin-bottom: 14px;
 }
-.dl-dview-link {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 13px; border-radius: var(--r-sm);
-  background: var(--ev-hotel-soft); text-decoration: none;
-  margin-bottom: 12px;
-}
+/* visual-diff-move: dl-dview-link -> row */
+.dl-dview-link { padding: 11px 13px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); text-decoration: none; margin-bottom: 12px; }
 .dl-dview-link svg { width: 16px; height: 16px; color: var(--ev-hotel-ink); flex: none; }
 .dl-dview-link b {
   flex: 1; color: var(--ev-hotel-ink);
   word-break: break-all;
 }
-.dl-dview-meta {
-  display: flex; align-items: center; gap: 8px;
-  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
-  color: var(--muted);
-}
+/* visual-diff-move: dl-dview-meta -> row row--g4 */
+.dl-dview-meta { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); }
 .dl-dview-meta svg { width: 13px; height: 13px; }
 
 /* ─── Toolbar: search + filter ───────────────────────────────── */
-.dl-toolbar {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin-bottom: 20px;
-}
+/* visual-diff-move: dl-toolbar -> row row--wrap row--g6 */
+.dl-toolbar { margin-bottom: 20px; }
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .dl-search {
   flex: 1; min-width: 200px; max-width: 380px;

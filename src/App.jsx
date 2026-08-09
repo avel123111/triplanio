@@ -1,11 +1,12 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from "@/design/index"
 import { track } from '@/lib/analytics'
+import { isProdHost } from '@/lib/consent'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
@@ -15,7 +16,6 @@ import { I18nProvider } from '@/lib/i18n/I18nContext';
 import Trips from '@/pages/Trips';
 import Statistics from '@/pages/Statistics';
 import TripView from '@/pages/TripView';
-import TripStructureEdit from '@/pages/TripStructureEdit';
 import ScreenAccount from '@/pages/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
 import JoinTrip from '@/pages/JoinTrip';
@@ -31,6 +31,14 @@ import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 
+// Витрина дизайн-системы (TRIP-340). Вне прода и БЕЗ логина: геометрия - чистый
+// CSS, поэтому визуальный гейт снимает именно её, а не рукописный стенд.
+// `lazy` тут несущий, а не украшение: без него витрина уехала бы в прод-бандл
+// мёртвым весом, хотя роута там нет. Провайдеры (тема, i18n, Toaster) уже стоят
+// выше в App - ветка возвращается изнутри AuthenticatedApp, как /public/trip и
+// /join, то есть до аут-гейта, но внутри провайдеров.
+const Kit = lazy(() => import('@/pages/Kit'));
+
 // Per-screen open events (TRIP-213 Ф2b). There is NO generic page_view — native
 // $pageview is off (main.jsx) and the routes that already have a dedicated event
 // (/trip/:id → trip_opened, /pro → pricing_viewed, /public/trip → public_trip_viewed,
@@ -44,9 +52,15 @@ function screenOpenEvent(pathname) {
   if (pathname === '/stats') return { event: 'stats_opened' };
   if (pathname === '/settings') return { event: 'account_opened' };
   if (pathname === '/inbox') return { event: 'inbox_opened' };
-  const edit = pathname.match(/^\/trip\/([^/]+)\/edit$/);
-  if (edit) return { event: 'trip_editor_opened', props: { trip_id: edit[1] } };
   return null;
+}
+
+// Старый адрес редактора → секция того же трипа. Событие `trip_editor_opened`
+// отсюда УБРАНО намеренно: оно переехало на саму секцию (реестр секций), то есть
+// теперь считается и при переходе из меню, а не только при заходе по адресу.
+function RedirectToEditSection() {
+  const { tripId } = useParams();
+  return <Navigate to={`/trip/${tripId}?lens=edit`} replace />;
 }
 
 const AuthenticatedApp = () => {
@@ -60,8 +74,19 @@ const AuthenticatedApp = () => {
     if (s) track(s.event, s.props);
   }, [location.pathname]);
 
-  // Public read-only trip page - no auth needed
   const path = location.pathname;
+
+  // Витрина: только вне прода. На проде роута нет вовсе - путь провалится в
+  // общую маршрутизацию ниже и отдаст лендинг/404, как любой чужой адрес.
+  if (!isProdHost && path === '/kit') {
+    return (
+      <Suspense fallback={null}>
+        <Kit />
+      </Suspense>
+    );
+  }
+
+  // Public read-only trip page - no auth needed
   if (path.startsWith('/public/trip/')) {
     return (
       <Routes>
@@ -144,7 +169,10 @@ const AuthenticatedApp = () => {
       <Route path="/stats" element={<Statistics />} />
       <Route path="/new-trip" element={<ManualPlanner />} />
       <Route path="/trip/:tripId" element={<TripView />} />
-      <Route path="/trip/:tripId/edit" element={<TripStructureEdit />} />
+      {/* TRIP-349: редактор стал секцией (?lens=edit). Роут оставлен РЕДИРЕКТОМ -
+          по нему живут закладки, история браузера и ссылки в уже отправленных
+          письмах; replace, чтобы «назад» не возвращало в редирект. */}
+      <Route path="/trip/:tripId/edit" element={<RedirectToEditSection />} />
       <Route path="/settings" element={<ScreenAccount />} />
       <Route path="/inbox" element={<Inbox />} />
       <Route path="/pro" element={<Pro />} />

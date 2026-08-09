@@ -959,7 +959,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
           return (
             <button key={g.id} type="button" role="tab" aria-selected={active}
               className={`bgt-glist__row row row--g6 ${active ? 'on' : ''}`} onClick={() => setActiveCityId(g.id)}>
-              <span className="tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+              <span className="tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
                 <Icon name="pin" size={17} />
               </span>
               <span className="grow--fit">
@@ -973,7 +973,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
       </div>
       <div className="card bgt-detail">
         <div className="bgt-detail__h row row--g6">
-          <div className="tile tile--xl" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+          <div className="tile tile--xl" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
             <Icon name="pin" size={22} />
           </div>
           <div className="grow--fit">

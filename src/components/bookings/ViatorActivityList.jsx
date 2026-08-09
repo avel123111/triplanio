@@ -195,13 +195,13 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
                   <span className="pcard__score pcard__score--star"><Star size={10} />{Number(a.rating).toFixed(1)}</span>
                 ) : null}
                 meta={a.reviewCount ? (
-                  <div className="pcard__meta"><span className="pcard__mtx">{t('fork.activities_reviews', { n: a.reviewCount })}</span></div>
+                  <div className="row row--a-baseline pcard__meta"><span className="trunc pcard__mtx">{t('fork.activities_reviews', { n: a.reviewCount })}</span></div>
                 ) : null}
                 subline={a.freeCancellation ? (
-                  <div className="pcard__addr pcard__addr--ok">{t('fork.activities_free_cancel')}</div>
+                  <div className="trunc pcard__addr pcard__addr--ok">{t('fork.activities_free_cancel')}</div>
                 ) : null}
                 price={a.fromPrice != null ? (
-                  <span className="pcard__price">
+                  <span className="row row--a-baseline pcard__price">
                     <span>{t('fork.activities_from')}</span>
                     <b>{fmtMoney(a.fromPrice, a.currency || currency)}</b>
                   </span>

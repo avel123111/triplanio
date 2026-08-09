@@ -22,6 +22,7 @@
   "detecting": "Detecting your location…",
   "drag": "Drag",
   "duration": "Duration",
+  "err_cover_not_saved": "Trip created, but the cover could not be saved. You can change it in settings.",
   "err_no_cities": "Add at least one city to the route",
   "err_no_date": "Set the trip start date, it cannot be saved without it",
   "err_no_session": "Your session expired. Sign in again.",

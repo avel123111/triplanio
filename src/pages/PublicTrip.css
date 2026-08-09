@@ -22,7 +22,7 @@
      с приложением по фону и границам. Меняешь нейтрали в app.css — правь и тут. */
   --bg:#f7f9fa; --surface:#FFFFFF; --surface-2:#EEF1F4; --surface-3:#F5F8FA;
   --line:#E6EAEE; --line-strong:#D5DAE0; --line-hover:#C8CED6;
-  --primary-hover:#1C66B4; --primary-ring:rgba(33,115,200,.28); --primary-soft:rgba(33,115,200,.10);
+  --primary-hover:#1C66B4; --primary-ring:rgba(33,115,200,.28); --brand-soft:rgba(33,115,200,.10);
 
   font-family:var(--font-ui);
   color:var(--ink-2);

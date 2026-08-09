@@ -299,7 +299,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'loading' && (
-        <Severity level="info" dashed loading align="mid">
+        <Severity level="info" loading align="mid">
           <span className="t-body muted">{t('planner.detecting')}</span>
         </Severity>
       )}
@@ -540,7 +540,7 @@ function ReviewRow({ num, name, sub, icon, muted }) {
         {icon ? <Icon name={icon} size={12} /> : num}
       </span>
       <div className="grow--fit">
-        <div className="te-cityname">{name || '-'}</div>
+        <div className="trunc te-cityname">{name || '-'}</div>
         <div className="muted t-meta">{sub}</div>
       </div>
     </div>
@@ -1027,7 +1027,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             },
           },
         });
-        if (coverErr) console.error('Failed to set cover:', coverErr);
+        // Обложка не критична: трип уже создан, а обложку можно поменять в
+        // настройках, - поэтому отказ НЕ роняет создание. Но и молчать нельзя:
+        // раньше отказ уходил только в консоль, и человек оставался с трипом без
+        // выбранной им обложки, не зная, что её не сохранили. Ветка `!data?.ok`
+        // тут не нужна: после TRIP-378 отказ - настоящий не-2xx, то есть `coverErr`.
+        if (coverErr) {
+          console.error('Failed to set cover:', coverErr);
+          toast({ description: t('planner.err_cover_not_saved'), variant: 'warning' });
+        }
       }
 
       // 2. Build city_visits list with full data
@@ -1138,7 +1146,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   if (!isPro && checkingLimit && !savedOk) {
     return (
       // Оболочка маршрута - та же .flow-page, что у самого планировщика ниже.
-      <div className="flow-page row row--center">
+      <div className="flow-page row row--j-center">
         <div className="spin spin--ring spin--xl" />
       </div>
     );
@@ -1155,7 +1163,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           onBack={() => nav('/trips')}
           backTitle={t('notif.to_collection')}
         />
-        <div className="grow row row--center">
+        <div className="grow row row--j-center">
           <EmptyState
             icon="lock"
             kind="warning"

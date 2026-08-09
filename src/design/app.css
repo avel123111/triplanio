@@ -31,8 +31,11 @@
   --brand-soft-12:rgba(33,115,200,.16);
   --map-route:    #2173C8;   /* concrete hex for Mapbox line paint (CSS vars can't be used in paint); mirrors --brand */
   --map-route-ring: rgba(33,115,200,.30);   /* translucent casing under a selected route segment */
-  --primary-soft:   rgba(33,115,200,.10);   /* Lumo soft-primary tint (was referenced but undefined) */
-  --primary-soft-2: rgba(33,115,200,.16);
+  /* Имена --primary-soft и --primary-soft-2 УДАЛЕНЫ (TRIP-352 шаг 2). Это было
+     ВТОРОЕ имя того же тона, заведённое заплаткой («was referenced but
+     undefined»), а не второй тон: тон общий, расходилась только альфа тёмной
+     темы, и её выровнял #699. Все читатели переехали на --brand-soft /
+     --brand-soft-12. Словарь :root: 163 -> 161. */
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
@@ -145,8 +148,17 @@
      14 раз в 10 пространствах имён, и каждый раз это была одна и та же тройка
      фон+рамка+текст. Цвет вынесен в ручки, правил стало два (мягкое и залитое).
      Ручки, а не классы, потому что триггер - :hover / .is-active: класс в
-     разметку на состояние не поставишь. Узор взят у существующего --st-accent
-     (состояния fork-панели), а не выдуман. */
+     разметку на состояние не поставишь. Узор взят у состояний fork-панели
+     (тогда они держали свою тройку --st-accent*), а не выдуман.
+     ★ЕДИНСТВЕННЫЙ КАНАЛ МЯГКОГО ТОНА (04 PR3, Р7). Тех же трёх ручек было
+     ЧЕТЫРЕ комплекта под разными именами: --st-accent* (fork), --evs/--evi
+     (плитка ленты) и --hl/--hl-soft/--hl-ink (категория события, ставился
+     из 8 JSX-файлов). Сведены сюда ВСЕ. Категории при этом не исчезли: канал
+     один, ЗНАЧЕНИЕ подставляет вызыватель - драйвером-классом (ниже по файлу)
+     или инлайном на корне оболочки, как это делают панели и диалоги события.
+     ⚠ Читатели пишут var(--hl-soft) БЕЗ фолбэка и это не небрежность: имя
+     объявлено здесь, в :root, поэтому второй аргумент var() не сработал бы
+     НИКОГДА - он был бы мёртвым кодом, которого не видит ни один гард. */
   --hl: var(--brand); --hl-soft: var(--brand-soft); --hl-ink: var(--brand); --hl-fg: var(--primary-fg);
   --sp-1:2px; --sp-2:4px; --sp-3:6px; --sp-4:8px; --sp-5:10px;
   --sp-6:12px; --sp-7:16px; --sp-8:20px;
@@ -243,12 +255,13 @@
   --primary-ring:  rgba(111,178,255,.36);
   --brand:        #6FB2FF;
   --primary-fg:   #08182B;               /* ink ON a --brand surface — dark */
-  --brand-soft:   rgba(111,178,255,.14);
-  --brand-soft-12:rgba(111,178,255,.22);
+  /* --brand-soft и удалённый --primary-soft были ОДНИМ семейством, а не двумя
+     тонами: тон общий, расходилась только альфа тёмной темы (след двух портов).
+     #699 выровнял значения, 04 PR3 удалил второе имя - см. светлый :root. */
+  --brand-soft:   rgba(111,178,255,.16);
+  --brand-soft-12:rgba(111,178,255,.24);
   --map-route:    #6FB2FF;   /* concrete hex for Mapbox line paint — dark; mirrors --brand */
   --map-route-ring: rgba(111,178,255,.42);   /* selected-route casing — dark */
-  --primary-soft:   rgba(111,178,255,.16);
-  --primary-soft-2: rgba(111,178,255,.24);
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
   --bk:           #1A66D9;  /* Booking navy — dark theme */
@@ -623,7 +636,6 @@ h4,
 .deep__highlights li,
 .trust__item,
 .langdd__item,
-.ts-in,
 .brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
 .nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
 /* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
@@ -927,7 +939,6 @@ h4,
 .te-endlabel,
 .te-wptag,
 .tl3-dh .datechip .m,
-.tl3-today,
 .cityrail .cr-h,
 .acct-plan__k,
 .acct-tgtrips__lbl,
@@ -1190,8 +1201,8 @@ h4,
 
 
 /* Trip side nav. The grid host that used to wrap it (.app-body) is gone — the
-   live shells are .trip-shell/.trip-body (trip screens) and .ts-screen/.ts-sidecol
-   (editor), which own their own column + drawer behaviour. */
+   живая оболочка ОДНА - .trip-shell/.trip-body (TripShell); она же владеет
+   колонкой меню и его off-canvas-поведением на всех экранах трипа. */
 .app-side {
   border-right: 1px solid var(--line);
   background: var(--header-bg); /* TRIP-326: dark=--bg, light=--surface */
@@ -1204,16 +1215,22 @@ h4,
 .app-side__group-label {
  color: var(--muted-2); padding: 10px 10px 6px;
 }
+/* Ряд бокового меню. Геометрия - у КЛАССА (это то, чем ряд ЯВЛЯЕТСЯ), интерактив
+   - у ЭЛЕМЕНТА (это то, что делает КНОПКА): под тем же классом живёт скелетон
+   меню на время загрузки, и он не кликается. Правило по элементу вместо руки в
+   вызывателе - узор из шапки гарда 2l. Все живые пункты меню это <button>,
+   поэтому набор объявлений на классе не меняется, только его специфичность. */
 .app-side__item {
  display: flex; align-items: center; gap: 10px;
  padding: 8px 10px; border-radius: var(--r-sm);
  color: var(--ink-2);
- cursor: pointer; border: none; background: transparent; width: 100%; text-align: left;
+ border: none; background: transparent; width: 100%; text-align: left;
  transition: background .22s var(--ease-out), color .22s var(--ease-out);
 }
+button.app-side__item { cursor: pointer; }
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
-.app-side__item:active { transform: scale(.985); }
-.app-side__item:hover { background: var(--wash); }
+button.app-side__item:active { transform: scale(.985); }
+button.app-side__item:hover { background: var(--wash); }
 .app-side__item.active { background: var(--brand-soft); color: var(--brand); }
 .app-side__item-badge {
  margin-left: auto;
@@ -1222,12 +1239,6 @@ h4,
  display: grid; place-items: center;
 }
 
-/* Editor screen (>880px): the left trip menu is the full sidebar — identical to
-   every other screen — rendered in a static 220px column (.ts-sidecol). Neutralise
-   the base sticky/viewport-height so it just fills the editor's flex row. At ≤880
-   .ts-sidecol is hidden and the burger opens the .ts-drawer variant. */
-.ts-sidecol { flex: 0 0 220px; min-width: 0; min-height: 0; }
-.ts-sidecol .app-side { position: static; height: 100%; }
 
 .app-main {
   padding: 22px 24px 80px;
@@ -1269,8 +1280,8 @@ h4,
 .btn--secondary:hover { --bd: var(--brand); --fg: var(--brand); box-shadow: var(--sh-1); }
 /* `.btn.is-on` было ВТОРЫМ именем для этого же состояния - набор объявлений
    совпадал побайтово. Сведено в один селектор, второе имя удалено. */
-.btn--soft, .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
-.btn--soft:hover, .btn.is-on:hover { --bg: var(--primary-soft-2); }
+.btn--soft, .btn.is-on { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
+.btn--soft:hover, .btn.is-on:hover { --bg: var(--brand-soft-12); }
 .btn--ghost { --bg: transparent; --fg: var(--ink-2); --bd: transparent; }
 .btn--ghost:hover { --bg: var(--surface-2); --fg: var(--ink); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
@@ -1760,6 +1771,104 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .checkbox input:disabled,
 .checkbox input:disabled ~ span { opacity: .5; cursor: not-allowed; }
 
+/* Переключатель <Toggle> (TRIP-344 PR 1).
+   prefix-exempt: switch — апрув Pavel, компонент ДС жил целиком на инлайнах и был
+   невидим каталогу и гардам 2m/2n/2o. Имя не выдумано: `.switch` уже назван
+   словарём самой системы строкой «(.card/.btn/.badge/.input/.switch/.sev via
+   <Btn>/<Badge>/<Toggle>/<Severity>)» в шапке экрана аккаунта — правило под это
+   имя просто никогда не было написано.
+
+   Состояние читается из АТРИБУТОВ, а не из классов-модификаторов: `aria-checked`
+   и `disabled` уже несут его в DOM (это контракт role="switch"), поэтому вводить
+   `.switch--on` значило бы объявить то же самое второй раз и добавить обличье,
+   которое пришлось бы держать на витрине. Ровно поэтому у семьи НЕТ осей в
+   catalog.json - объявлять нечего.
+
+   ⚠️ Порядок правил несущий: у выключенного-по-праву переключателя фон СЕРЫЙ
+   независимо от `on` (в инлайнах это была тернарная лесенка, где `locked`
+   проверялся первым). Специфичность у обеих строк одинаковая (0,2,0), поэтому
+   решает исходный порядок - `[data-locked]` обязан стоять НИЖЕ `[aria-checked]`.
+
+   ★ ЦЕНА ПО ГАРДАМ, И ОНА ВСЯ — «НЕВИДИМОЕ СТАЛО СЧИТАЕМЫМ», А НЕ НОВЫЙ ДОЛГ.
+   Те же объявления жили инлайнами и не попадали ни в одно число (инлайнов стало
+   686 → 681: ЧЕТЫРЕ атрибута сняты тут, пятый — на удалённом RoleBadge; у
+   Skeleton атрибут остался, из него уехало только облик). Переезд в CSS делает
+   их видимыми сразу четырём метрикам пола:
+   floor-exempt: classes +3 — .skeleton · .switch · .switch__knob: три компонента ДС жили без единого класса и были невидимы каталогу и гардам 2m/2n/2o; апрув Pavel (TRIP-344 PR 1)
+   floor-exempt: namespaces +1 — семья switch владеет одним потомком (.switch__knob); апрув Pavel (TRIP-344 PR 1)
+   floor-exempt: layout +1 — .switch__knob объявляет display:grid, чтобы отцентровать кольцо; LAYOUT_CANON знает только row|col|grid|grow|trunc, поэтому внутренний узел примитива ДС читается как приватная раскладка. Раскладка не новая: тот же display:grid стоял инлайном; апрув Pavel (TRIP-344 PR 1)
+   floor-exempt: reach +1 — .switch__knob .spin: канон внутри канона, и сам аудит его так и классифицирует (canonIntoCanon 16 → 17, reachViolations 53 → 53). Пол считает его нарушением только потому, что меряет HEAD КАНОН-НАБОРОМ БАЗЫ, а семьи switch на базе ещё нет — то есть срабатывает защита от переклейки triage→canon, а не реальный дефект; апрув Pavel (TRIP-344 PR 1)
+
+   Ярус 2 (2p): источник переноса — инлайны JSX, а 2p читает только CSS, поэтому
+   `visual-diff-move` неприменим (ему нужен селектор-источник). Каждое объявление
+   названо отдельно; значения сверены с удалёнными инлайнами построчно.
+   visual-diff-exempt: .switch background — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch border — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch border-radius — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch color — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch cursor — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch flex-shrink — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch height — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch left — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch opacity — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch padding — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch position — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch transition — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch width — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch::before content — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch::before inset — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch::before position — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch:disabled cursor — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob background — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob border — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob border-radius — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob border-right-color — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob box-shadow — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob color — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob display — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob height — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob left — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob place-items — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob position — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob top — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob transition — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob width — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1) */
+.switch {
+  width: 36px; height: 21px; padding: 0; border: none;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  position: relative; flex-shrink: 0;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+/* Растягивает область попадания с нарисованных 36×21 до минимальных 44px тач-таргета.
+   Псевдоэлемент, а не <span aria-hidden>: узел был пустым и существовал ровно ради
+   этой площади, а ::before красится первым - то есть кнопка-бегунок по-прежнему
+   рисуется поверх него. */
+.switch::before { content: ''; position: absolute; inset: -12px -4px; }
+.switch[aria-checked="true"] { background: var(--brand); }
+.switch[data-locked] { background: var(--wash); opacity: .5; cursor: not-allowed; }
+.switch:disabled { cursor: not-allowed; }
+.switch__knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+  transition: left .15s ease;
+  display: grid; place-items: center;
+  color: var(--muted);
+}
+.switch[aria-checked="true"] .switch__knob { left: 17px; color: var(--brand); }
+/* Кольцо внутри бегунка - тем же приёмом, что `.btn .spin` строкой ниже по файлу:
+   «спиннер внутри контрола» уже выражен в системе так, и заводить под него ступень
+   `.spin--*` не надо (та шкала про размер под экран, а не про место внутри). */
+.switch__knob .spin {
+  width: 11px; height: 11px;
+  border: 2px solid currentColor; border-right-color: transparent;
+  border-radius: 50%;
+}
+
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
@@ -1863,7 +1972,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
-.badge--brand { background: var(--primary-soft); color: var(--brand); }
+.badge--brand { background: var(--brand-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 
@@ -1900,14 +2009,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .sev--quiet .sev__icon { background: var(--surface); color: var(--ink-2); }
 /* Ось выравнивания больше НЕ своя: `align="mid"` даёт ряду его дефолт (значок по
    центру пары «заголовок + подпись», как в рядах каналов аккаунта), а проза в
-   несколько строк - `.row--start`. Свой `.sev--mid` был вторым именем для того,
+   несколько строк - `.row--a-start`. Свой `.sev--mid` был вторым именем для того,
    что примитив умеет из коробки, и удалён. */
 /* «Предложение», а не состояние: плашка ещё ничего не сообщает, она зовёт нажать
    (разрешить геолокацию). Пунктир - тот же язык, что у кнопок добавления (.gadd,
    .te-end--add): «здесь пока пусто, можно заполнить».
    ★СТОИТ ПОСЛЕ ВСЕХ ТОНОВ: тон задаёт и фон, и цвет рамки; при равной
    специфичности выигрывает объявленный ниже. Поставь выше - и пунктир молча
-   не появится (грабля Ф14.9 со ступенями сетки). */
+   не появится (грабля Ф14.9 со ступенями сетки).
+   floor-exempt: apart +1 — TRIP-364 PR-I: обличье объявлено ВНЕ осей sev, и
+   причина ровно та, что выше - это не тон, а приглашение к действию, а ось с
+   одним значением не ось. Живой вызыватель один (ManualPlanner:289); дрейф на
+   :302 и показ в витрине сняты этим же PR. Апрув Pavel. */
 .sev--dashed { background: var(--surface); border-style: dashed; border-color: var(--line-strong); }
 /* Detach a severity plate from the row above it when nested in a danger card
    (e.g. account deletion: cancel-subscription / confirm-delete warnings). */
@@ -1978,12 +2091,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
  transition: color .2s, background .2s, box-shadow .2s, transform .16s var(--ease-spring);
 }
 .seg button[aria-pressed="true"] {
-  /* TRIP-176: активный сегмент = мягкая заливка. В драйверах корни задают
-     --ev-soft/--ev-ink (цвет эвента) → таб окрашивается в цвет типа события;
-     вне драйверов переменные не заданы → откат на brand (--primary-soft/--brand).
-     Тот же fallback-паттерн, что у шапки .lp-h--ev. */
-  color: var(--ev-ink, var(--brand));
-  background: var(--ev-soft, var(--primary-soft));
+  /* TRIP-176: активный сегмент = мягкая заливка общего канала --hl* — тот же
+     механизм, что у шапки .lp-h--ev. Внутри оболочки события корень ставит в
+     канал цвет типа (отель/переезд/…) и таб окрашивается им; вне оболочки
+     значение приходит из :root, то есть бренд. 04 PR3: фолбэки `var(--ev-soft,
+     var(--primary-soft))` сняты — имя канала объявлено в :root, второй аргумент
+     var() не сработал бы никогда и был бы мёртвым кодом. */
+  color: var(--hl-ink);
+  background: var(--hl-soft);
   box-shadow: none;
 }
 .seg button:active { transform: scale(.95); }
@@ -2057,34 +2172,93 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    не видит. Поймано ЗАМЕРОМ в браузере, а не чтением диффа. Лечение применено
    прописанное: парность возвращена вместе с первыми вызовами. Вывод для
    следующего: у половинчатой шкалы нет ошибки, есть тишина - поэтому ступень
-   проверяется рендером, а не тем, что она «логично называется». */
-.col--g1 { gap: var(--sp-1); }
-.row--g2, .grid--g2 { gap: var(--sp-2); }
+   проверяется рендером, а не тем, что она «логично называется».
+   ★★★TRIP-342: выстрелило ВТОРОЙ раз, и снова ровно как написано. Замер на
+   собранном CSS перед этой правкой: `.row--g1` → 10px вместо 2, `.col--g2` →
+   10px вместо 4, `.grid--g1` → 10px вместо 2. Парность возвращена там, где её
+   зовёт зона 1. Это НЕ новые имена - это дыры в уже объявленной оси, и лечение
+   предписано абзацем выше.
+   ⚠️ ОСТАВШАЯСЯ ДЫРА, названная вслух, чтобы перестать быть тихой: `.grid--g1`
+   по-прежнему не объявлен. Зона 1 его не зовёт (у сеток `ncal` зазор 3px, вне
+   шкалы, и он остаётся приватным), поэтому он не куплен в этом PR; закроет его
+   та зона, которой он понадобится. Написано здесь, чтобы следующий не искал
+   причину молчания в браузере, как искал я. */
+/* orphan-exempt: grid--g2 — ступень объявленной оси, а не осиротевшее правило.
+   Гард прав механически и промахивается по смыслу: `.grid--g2` не имел вызовов и
+   НА БАЗЕ (как и g3/g6/g7/g8 у сетки - у неё живёт только g4), он попал в
+   кандидаты лишь потому, что этот PR тронул его строку, добавив рядом `.col--g2`.
+   Снести его - это ровно то, что сделала Ф13 с `.row--g1`/`.col--g2`, после чего
+   ступени молча отдавали 10px и лечились этим же PR. Полнота лестницы дороже
+   пустой ступени: она либо есть целиком, либо снова начинает врать. */
+.row--g1, .col--g1 { gap: var(--sp-1); }
+.row--g2, .col--g2, .grid--g2 { gap: var(--sp-2); }
 .row--g3, .col--g3, .grid--g3 { gap: var(--sp-3); }
 .row--g4, .col--g4, .grid--g4 { gap: var(--sp-4); }
 .row--g6, .col--g6, .grid--g6 { gap: var(--sp-6); }
 .row--g7, .col--g7, .grid--g7 { gap: var(--sp-7); }
 .row--g8, .col--g8, .grid--g8 { gap: var(--sp-8); }
 
-/* Перенос строки - вторая ось раскладки ряда после gap: `flex-wrap: wrap` стоит
-   на 47 флекс-контейнерах. Только у .row: колонка и так течёт вниз, у неё wrap
-   осмыслен лишь при фиксированной высоте, а такого случая в проекте нет -
-   парный .col--wrap был бы модификатором без вызова. */
+/* floor-exempt: classes +5 — словарь осей покупается ОДИН раз (+8 имён: 6 новых
+   + 2 возвращённые ступени), а отдаётся шестью зонами: строго удаляемых классов
+   по периметру 37, из них 3 сняты уже здесь, итог фазы -29. Отрицательным в
+   ПЕРВОМ же PR он быть не может: бюджет удалений зоны 1 - ТРИ класса, потому что
+   05 забирает у класса одно свойство из семи, а умирает класс на последнем
+   (медиана 6 объявлений на класс). Апрув Pavel 2026-08-07, там же переформулирован
+   гейт: на PR - падение правил объекта + именованный остаток, счёт классов -
+   метрика фазы целиком.
+
+   ═══ ЧЕТЫРЕ ОСИ РАСКЛАДКИ (TRIP-342, решение Р14, апрув Pavel 2026-08-07) ═══
+   Поток `block|inline` · выравнивание `center|start|end|baseline|stretch` ·
+   распределение `start|between|end` · зазор `g1…g8`. Объявлена ОСЬ, перечислены
+   только РЕАЛЬНО ВЫЗЫВАЕМЫЕ значения - иначе словарь растёт под гипотезы.
+
+   ★ПОЧЕМУ ПРЕФИКС ОСИ `--a-` / `--j-`, а не короткие имена. До этого PR было
+   `.row--start` = `align-items` и `.row--center` = `justify-content`: ДВЕ РАЗНЫЕ
+   ОСИ под похожими именами. Пока значений было два, это сходило с рук; в замере
+   же `end` встречается на ОБЕИХ осях (align-items:flex-end 1, justify-content:
+   flex-end 7), то есть `.row--end` неразрешимо двусмыслен - имя не сказало бы,
+   какую ось трогает. Поэтому ось стоит В ИМЕНИ: `--a-` = поперёк (align-items),
+   `--j-` = вдоль (justify-content). Переименование сделано СЕЙЧАС, на 14 точках
+   вызова, а не после пяти зон, когда их было бы под сотню.
+
+   ★ЗНАЧЕНИЯ ПО ЗАМЕРУ, не по вкусу (весь периметр аудита, 250 рядов / 96
+   колонок): у ряда align center:183 (ДЕФОЛТ .row, модификатора не нужно) ·
+   flex-start:12 · baseline:7 · stretch:2 · flex-end:1; justify center:28 ·
+   space-between:7 · flex-end:7 · flex-start:2 (дефолт). У колонки align
+   center:16 · flex-start:3 · flex-end:2 · stretch:1 (дефолт .col); justify
+   center:13 · space-between:2 · flex-end:1. Здесь объявлено ровно то, что зовёт
+   зона 1; остальные значения тех же осей купят свои зоны.
+
+   ★ГРАБЛЯ ПОРЯДКА, та же, что убила `.grid--g4`: у `.row--inline` и `.row`
+   одинаковая специфичность (0,1,0), поэтому побеждает ПОСЛЕДНИЙ. Дефолт `.row`
+   объявлен выше (строка ~2021) - модификаторы обязаны идти ПОСЛЕ него и идут. */
+
+/* Ось ПОТОК. `.row` даёт `display:flex` (блочный), и для 58 правил это неверно:
+   элемент обязан ужиматься по содержимому. ★ЗАМЕРЕНО, а не выведено: свап
+   inline-flex→flex на `<button>` - НОП (33px→33px, у кнопки своя внутренняя
+   ширина), а на `<span>/<div>/<a>/<label>` элемент раздувается 17px→400px.
+   Из 57 inline-flex классов 12 живут только на `<button>` (им ось не нужна),
+   40 на прочих тегах (им нужна). Рассуждение давало неверный ответ в обе
+   стороны - поэтому мерить, а не думать. */
+.row--inline { display: inline-flex; }
+
+/* Ось ВЫРАВНИВАНИЕ (поперёк ряда / вдоль ширины колонки).
+   раскладка уехала: row--start -> row--a-start */
+.row--a-start { align-items: flex-start; }
+.row--a-baseline { align-items: baseline; }
+.col--a-start { align-items: flex-start; }
+.col--a-end { align-items: flex-end; }
+
+/* Ось РАСПРЕДЕЛЕНИЕ (вдоль ряда / вдоль высоты колонки).
+   раскладка уехала: row--center -> row--j-center */
+.row--j-center { justify-content: center; }
+.row--j-between { justify-content: space-between; }
+.col--j-center { justify-content: center; }
+
+/* Ось ПЕРЕНОС. Только у .row: колонка и так течёт вниз, у неё wrap осмыслен лишь
+   при фиксированной высоте, а такого случая в проекте нет - парный .col--wrap
+   был бы модификатором без вызова. */
 .row--wrap { flex-wrap: wrap; }
-
-/* Выравнивание по верху - третья ось ряда, и такая же недостающая, как был wrap.
-   .row центрирует по умолчанию, а это неверно везде, где рядом с многострочным
-   текстом стоит элемент фиксированной высоты (значок, номер шага, аватар): номер
-   обязан стоять у ПЕРВОЙ строки, а не посередине абзаца. В репозитории таких
-   рядов 34 (26 правил в CSS + 8 инлайнов) - против 47 у wrap, тот же порядок.
-   Это достройка существующего примитива недостающей осью, а не новый элемент. */
-.row--start { align-items: flex-start; }
-
-/* Центровка ПО ГОРИЗОНТАЛИ - четвёртая ось ряда, и самая частая из недостающих:
-   в репозитории 70 мест (51 правило в CSS + 19 инлайновых рядов) против 47 у
-   wrap и 34 у start. .row центрирует поперёк, а вдоль прижимает к началу, и
-   каждый «спиннер по центру» / «пустой экран по центру» дописывал это руками. */
-.row--center { justify-content: center; }
 
 /* Гибкая ячейка, которой РАЗРЕШЕНО ужаться уже своего содержимого. Без
    min-width:0 флекс-элемент упирается в min-content и вытесняет соседей за край
@@ -2176,9 +2350,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ЖИВЫЕ (третий, розовый Pro, за всю историю не был вызван ни разу и удалён
    вместе с веткой kind="locked"). Тон без потребителя - это не система, а ещё
    один мёртвый класс, поэтому новый заводится вместе со своим первым вызовом.
-   --brand-soft и --primary-soft НЕ синонимы (в тёмной теме .14 против .16),
-   поэтому плитки на --primary-soft переезжают сюда только вместе со своим
-   экраном, а не механической заменой. */
+   --brand-soft и --primary-soft расходились в тёмной теме (.14 против .16),
+   поэтому плитки на --primary-soft переезжали сюда только вместе со своим
+   экраном. TRIP-352 шаг 1 значения выровнял, 04 PR3 удалил второе имя целиком -
+   тон один во всех темах, и перевод оставшихся плиток стал правкой без
+   визуального эффекта. */
 .tile--brand  { background: var(--brand-soft);  color: var(--brand); }
 .tile--danger { background: var(--danger-soft); color: var(--danger); }
 /* TRIP-321 Ф12.2a, апрув Pavel. Заведены ВМЕСТЕ со своими первыми вызовами (аккаунт)
@@ -2241,7 +2417,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
   /* NB: the trip / editor sidebars go off-canvas via their OWN shells
-     (.trip-shell .app-side @ ≤880 and .ts-screen .ts-drawer @ ≤880) — not here.
+     (.trip-shell .app-side @ ≤880) — not here.
      The dead .app-body host and its .app-side drawer copy were removed. */
   .app-main { padding: 16px 14px 100px; }
   .app-header [data-mobile-toggle] { display: grid !important; }
@@ -2320,7 +2496,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__ico { position: relative; display: grid; place-items: center; width: 30px; height: 26px; }
   .mbnav__ico > * { position: relative; z-index: 1; }
   .mbnav__item.is-active .mbnav__ico::before {
-    content: ''; position: absolute; inset: -3px -7px; border-radius: var(--r-sm); background: var(--primary-soft); z-index: 0;
+    content: ''; position: absolute; inset: -3px -7px; border-radius: var(--r-sm); background: var(--brand-soft); z-index: 0;
   }
   .mbnav__lbl { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mbnav__avatar { width: 24px !important; height: 24px !important; }
@@ -2361,8 +2537,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .choice-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--brand); }
 .choice-card:active { transform: translateY(0); }
 .choice-card--ai:hover { border-color: var(--ai); }
-.choice-card__ic { width: 46px; height: 46px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; }
-.choice-card__ic--man { background: var(--primary-soft); color: var(--brand); }
+/* Тон плитки - канал --hl* с дефолтом из :root, поэтому «ручной» вариант
+   отдельным классом больше не описан: он ЗАПИСЫВАЛ дефолт (04 PR3). Своё имя
+   осталось только у того варианта, у которого тон действительно свой - ИИ. */
+.choice-card__ic { width: 46px; height: 46px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--hl-soft); color: var(--hl-ink); }
 .choice-card__ic--ai  { background: var(--ai-gradient); color: #fff; }
 .choice-card__tx { min-width: 0; }
 .choice-card__ttl { color: var(--ink); }
@@ -2415,12 +2593,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Active-tab empty · "только прошлые" — past trips exist but none active.
    New element (approved 2026-06-20). Distinct from members' .invite-banner. */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
-.invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; }
+/* ★ОСТАТОК: зазор 22px вне шкалы - удержан. Мобильное правило ниже разворачивает
+   этот ряд в колонку - оно идёт позже и выигрывает у примитива.
+   visual-diff-move: invite -> row */
+.invite { position: relative; overflow: hidden; gap: 22px; padding: 26px 30px; }
 .invite__ic { width: 58px; height: 58px; border-radius: var(--r-md); flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
 .invite__tx h3 { color: var(--ink); }
 .invite__tx p { margin: 6px 0 0; color: var(--muted); max-width: 52ch; }
-.invite__act { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
+/* ★`align-items: stretch` возвращён явно: своего выравнивания у правила не было,
+   то есть работал флексовый дефолт, а `.row` центрирует. Зазор 10px - собственный
+   зазор `.row`, модификатор был бы no-op.
+   visual-diff-move: invite__act -> row row--wrap */
+.invite__act { position: relative; z-index: 1; align-items: stretch; }
 @media (max-width: 640px) {
   .invite { flex-direction: column; align-items: center; text-align: center; padding: 22px 18px; gap: 16px; }
   .invite__tx p { margin: 6px auto 0; }
@@ -2613,7 +2798,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    blue endpoint look across the flow (no warm/orange divergence). */
 .te-row.te-row--plan.te-row--fin { background: var(--brand-soft); border-color: var(--brand); }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
-.te-row.te-row--plan .te-row__pacts { display: inline-flex; align-items: center; gap: 8px; justify-self: end; }
+/* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
+.te-row.te-row--plan .te-row__pacts { justify-self: end; }
 /* Planner has no reliable row-hover (esp. touch) → nights +/- and delete are
    ALWAYS visible (the editor reveals them on hover for table density). */
 .te-row.te-row--plan .te-step { opacity: 1; }
@@ -2661,10 +2847,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
    rendered them UNSTYLED (the broken/cramped calendar). Now global → one source. */
-.ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
-.ts-step:hover { background: var(--wash); }
-.ts-step:active:not(:disabled) { transform: scale(0.9); }
-.ts-step:disabled { opacity: .3; cursor: default; }
 .ts-startctl { display: inline-flex; align-items: center; gap: 2px; border-radius: var(--r-sm); padding: 2px; }
 .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
 .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
@@ -2832,6 +3014,29 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* Плашка загрузки <Skeleton> (TRIP-344 PR 1).
+   prefix-exempt: skeleton — апрув Pavel, компонент ДС жил целиком на инлайнах и был
+   невидим каталогу и гардам 2m/2n/2o (75 вызовов, третий по частоте элемент системы).
+   Правило стоит вплотную к @keyframes shimmer, который оно и запускает.
+
+   ⚠️ ГЕОМЕТРИЯ ОСТАЁТСЯ ПРОПОМ, И ЭТО НЕ НЕДОДЕЛКА. Ширина/высота/радиус у плашки
+   разные на каждом вызове - они описывают ТО, ЧТО ГРУЗИТСЯ (строка на 60%, аватар
+   28×28), то есть данные, а не облик. В класс уехало ровно облик: заливка и её
+   анимация. Ступеней под 75 разных размеров заводить не надо - это был бы тот самый
+   зоопарк имён, против которого эпик и затеян.
+
+   Ярус 2 (2p) видит только CSS, поэтому ИСТОЧНИК переноса — инлайны JSX — ему
+   не виден по построению, и `visual-diff-move` тут неприменим: у него источником
+   обязан быть селектор. Поэтому каждое объявление названо поимённо. Значения
+   сверены с удалёнными инлайнами построчно, ни одно не менялось.
+   visual-diff-exempt: .skeleton animation — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .skeleton background — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .skeleton background-size — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1) */
+.skeleton {
+  background: linear-gradient(90deg, var(--line) 0%, var(--wash) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
 @keyframes blinkdot { 0%, 80%, 100% { opacity: .2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
 .ai-dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--ai); margin: 0 1px; animation: blinkdot 1.2s infinite ease-in-out; }
 .ai-dots span:nth-child(2) { animation-delay: .15s; }
@@ -2889,17 +3094,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Same bar as the global .app-header — the room header is a second tier
    of the same chrome. TRIP-326: backdrop-filter снят, непрозрачный --header-bg. */
 .chat-head {
-  display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 24px;
+  /* раскладка уехала: chat-head -> row */
+  height: 60px; padding: 0 24px;
   border-bottom: 1px solid var(--line); flex: none;
   background: var(--header-bg);
 }
-.chat-head__id { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; flex: 1; }
+/* Собственное правило снято ЦЕЛИКОМ - вся раскладка выражена примитивом
+   (`col col--g1 col--j-center grow--fit`). Класс остаётся в разметке, потому что
+   он нужен как ПРЕДОК правилу ниже; это не осиротевшее имя.
+   раскладка уехала: chat-head__id -> col */
 .chat-head__id h3 { margin: 0; color: var(--ink); }
 .chat-head__sub { color: var(--muted); }
 /* Members trigger — avatar stack + label in one pill; opens the member list as a
    Popover (desktop) or the canonical Sheet (phones). */
 .chat-members-btn {
-  display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px 0 6px;
+  /* раскладка уехала: chat-members-btn -> row */
+  height: 38px; padding: 0 12px 0 6px;
   border-radius: var(--r-pill);
   color: var(--ink-2); cursor: pointer; flex: none;
   transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
@@ -2911,15 +3121,23 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ── Message stream (shared) ──
    Gutters belong to the shell (`.chat-room` / `.dock-panel`), which is why this
    base rule carries no padding of its own. */
-.chat-msgs { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+/* раскладка уехала: chat-msgs -> col */
+.chat-msgs { flex: 1; overflow: auto; min-height: 0; }
 .chat-room .chat-msgs { padding: 20px 24px 8px; }
 /* Readable column inside a full-width room. 760px is the app's existing reading
    width (Inbox), not a new number. */
-.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; }
-.chat-hist { display: flex; justify-content: center; padding-bottom: 20px; }
+/* `gap: 0` тут НЕ новое объявление, а то же значение под своим именем: у флекса
+   начальный `gap` = `normal` = 0, а `.col`/`.row` несут дефолтные 10px. Без этой
+   строки перевод контейнера БЕЗ зазора на примитив молча раздвинул бы детей на
+   10px. Таких контейнеров в зоне 1 одиннадцать, по периметру 78.
+   раскладка уехала: chat-msgs__in -> col */
+.chat-msgs__in { width: 100%; max-width: 760px; margin: 0 auto; gap: 0; }
+/* раскладка уехала: chat-hist -> row */
+.chat-hist { padding-bottom: 20px; gap: 0; align-items: stretch; }
 /* Rule-and-label, not a pill: the divider spans the column so a day break reads
    as a section edge rather than another chip in the stream. */
-.chat-daydiv { display: flex; align-items: center; gap: 16px; margin: 24px 0 20px; }
+/* раскладка уехала: chat-daydiv -> row */
+.chat-daydiv { margin: 24px 0 20px; }
 .chat-daydiv:first-child { margin-top: 0; }
 .chat-daydiv::before, .chat-daydiv::after { content: ""; height: 1px; flex: 1; background: var(--line); }
 .chat-daydiv span { color: var(--muted-2); flex: none; }
@@ -2929,14 +3147,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    sticky — it starts at the author's name and rides the top edge down the whole
    run while you scroll. Sticky is bounded by `.chat-run`, so it can never leave
    its own author's block. */
-.chat-run { display: flex; gap: 12px; margin-top: 16px; justify-content: flex-start; align-items: flex-start; }
+/* `justify-content: flex-start` не переехало никуда - это ДЕФОЛТ флекса, оно не
+   делало ничего и здесь просто снято.
+   раскладка уехала: chat-run -> row */
+.chat-run { margin-top: 16px; }
 .chat-run--me { justify-content: flex-end; }
 .chat-run__av { width: 32px; flex: none; position: sticky; top: 8px; align-self: flex-start; }
 .chat-run__av .avatar { width: 32px; height: 32px; }
-.chat-run__col { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: min(560px, 78%); }
+/* раскладка уехала: chat-run__col -> col */
+.chat-run__col { min-width: 0; max-width: min(560px, 78%); }
 /* ONE message inside the run: name row (first of an incoming run), bubble, and
    then either its time or the failure foot. */
-.chat-msg { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 5px; }
+/* ★ОСТАТОК: `gap: 5px` ВНЕ шкалы (--sp-* даёт 4 и 6) и потому УДЕРЖАН приватным.
+   Прогон к соседней ступени - смена значения, а не унификация: §10 такие прогоны
+   запрещает, и именно так прошлый заход сделал `.checkbox` круглым.
+   раскладка уехала: chat-msg -> col */
+.chat-msg { min-width: 0; gap: 5px; }
 .chat-run--me .chat-run__col,
 .chat-run--me .chat-msg { align-items: flex-end; }
 /* Inner corners of a run tighten; the outer side keeps the full radius. */
@@ -2944,9 +3170,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-msg--grouped .chat-bubble--me { border-top-right-radius: 6px; }
 /* Send failed, or the assistant never answered — the message stays put with a
    retry, it is never dropped. */
-.chat-msg__foot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+/* раскладка уехала: chat-msg__foot -> row */
+.chat-msg__foot { margin-top: 2px; }
 .chat-msg__err { color: var(--danger-ink); display: inline-flex; align-items: center; gap: 4px; }
-.chat-name { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; padding-left: 2px; }
+/* раскладка уехала: chat-name -> row */
+.chat-name { margin-bottom: 3px; padding-left: 2px; }
 .chat-name b { color: var(--ink); }
 .chat-name .tm { color: var(--muted); }
 .chat-bubble { padding: 11px 15px; border-radius: var(--r-md); word-break: break-word; }
@@ -2973,10 +3201,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* The answer and its actions are two stacked rows, not one: the sticky avatar is
    bounded by `__row`, so it stops at the bottom of the MESSAGE. Keeping the
    actions inside that row made it ride down to the bottom of the buttons. */
-.chat-reply { display: flex; flex-direction: column; gap: 8px; margin-top: 32px; }
-.chat-reply__row { display: flex; gap: 12px; }
-.chat-reply__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.chat-reply__who { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+/* раскладка уехала: chat-reply -> col */
+.chat-reply { margin-top: 32px; }
+/* TRIP-342: оба класса УДАЛЕНЫ целиком - раскладка и ничего кроме неё.
+   раскладка уехала: chat-reply__row -> row
+   раскладка уехала: chat-reply__body -> col
+   Ряд был `display:flex` БЕЗ `align-items`, то есть `stretch`, а `.row`
+   центрирует - «класс тот же» тут не значило «выглядит так же». Замерено на
+   копии реальной структуры (аватар `align-self:flex-start` + тело `flex:1`):
+   высота ряда, высота и ширина тела, смещения обоих детей совпадают до пикселя
+   у stretch, center и flex-start, потому что тело - самый высокий ребёнок и
+   само задаёт высоту ряда, а аватар свой `align-self` держит сам. Поэтому взят
+   голый `.row` без модификатора выравнивания: лишний модификатор читался бы
+   как «здесь особое выравнивание» и врал. */
+/* раскладка уехала: chat-reply__who -> row */
+.chat-reply__who { min-height: 24px; }
 .chat-reply__who b { color: var(--ai-ink); }
 .chat-reply__who .tm { color: var(--muted-2); }
 .chat-reply__tag { padding: 3px 7px; border-radius: 6px; background: var(--ai-soft); color: var(--ai-ink); }
@@ -2997,7 +3236,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
 /* Sits under the answer, aligned with it: 44px = the avatar gutter (32) plus the
    row gap (12); -8px pulls the ghost buttons' own padding back to that edge. */
-.chat-reply__acts { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin-left: 36px; }
+/* раскладка уехала: chat-reply__acts -> row */
+.chat-reply__acts { margin-left: 36px; }
 /* Secondary actions sit under the answer — muted until hovered, so they never
    compete with the answer itself. */
 .chat-reply__acts .btn { color: var(--muted); }
@@ -3006,8 +3246,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ── Overline above the composer: thinking pill + "jump to newest" ── */
 /* The pills used to sit flush against the composer's top border, which cut
    through them. Only the TOP margin is set here: the matching 8px below already
-   comes from `.chat-composer__in`'s own `gap`. */
-.chat-overline { display: flex; align-items: center; gap: 8px; min-height: 26px; margin-top: 8px; }
+   comes from `.chat-composer__in`'s gap step (`.col--g4`). */
+/* раскладка уехала: chat-overline -> row */
+.chat-overline { min-height: 26px; margin-top: 8px; }
 /* Was a full-width tinted strip welded to the top of the composer; as a pill it
    reads as status rather than as a second toolbar. */
 .chat-thinking { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px 0 5px; border-radius: var(--r-pill); background: var(--ai-soft); border: 1px solid var(--ai-line); color: var(--ai-ink); flex: none; }
@@ -3032,7 +3273,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    before the two composers were unified into one component, false since: the
    widget silently inherited the room's 24px inset, which is why the "typing" /
    "new messages" row sat far from the panel edge there but flush in the lens. */
-.chat-composer__in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 8px; }
+/* раскладка уехала: chat-composer__in -> col */
+.chat-composer__in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px; }
 .dock-panel .chat-composer__in { max-width: none; padding: 0; }
 /* The ROW is the input surface: field + both buttons live inside one rounded
    container, so the textarea itself carries no border (it is `.chat-ta`, not a
@@ -3117,22 +3359,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Call the assistant without knowing the "@" convention. */
 .chat-at { height: var(--ctl-h); width: var(--ctl-h); flex: none; border: 0; border-radius: var(--r-sm); background: var(--ai-soft); color: var(--ai-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .18s var(--ease-out); }
 .chat-at:hover { background: var(--ai-soft-2); }
-.chat-composer__hint { display: flex; align-items: center; gap: 8px; color: var(--muted-2); padding: 0 4px; }
+/* раскладка уехала: chat-composer__hint -> row */
+.chat-composer__hint { color: var(--muted-2); padding: 0 4px; }
 .chat-composer__hint kbd { font-family: var(--font-mono); font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }
 @media (max-width: 640px) { .chat-composer__hint { display: none; } }
 
 /* ── Mention popover (shared) ── */
 .chat-mention { position: absolute; bottom: calc(100% + 6px); left: 12px; width: 280px; border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: 6px; z-index: 6; }
 .chat-mention__lbl { color: var(--muted-2); padding: 4px 10px; }
-.chat-mention__row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; width: 100%; border: 0; background: transparent; border-radius: var(--r-sm); cursor: pointer; text-align: left; transition: background .15s var(--ease-out); }
+/* раскладка уехала: chat-mention__row -> row */
+.chat-mention__row { padding: 8px 10px; width: 100%; border: 0; background: transparent; border-radius: var(--r-sm); cursor: pointer; text-align: left; transition: background .15s var(--ease-out); }
 .chat-mention__row:hover { background: var(--ai-soft); }
 .chat-mention__row b { color: var(--ai); display: block; }
 .chat-mention__row span { color: var(--muted); }
 
 /* ── Member list — lives in the header Popover / Sheet (was the right rail) ── */
-.chat-member { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--r-sm); }
+/* раскладка уехала: chat-member -> row */
+.chat-member { padding: 7px 10px; border-radius: var(--r-sm); }
 .chat-member:hover { background: var(--wash); }
-.chat-member__b { flex: 1; min-width: 0; }
+/* TRIP-342: удалён - буквальный `.grow--fit` под своим именем.
+   visual-diff-move: chat-member__b -> grow--fit */
 .chat-member__nm { color: var(--ink); }
 .chat-member__rl { color: var(--muted); }
 .chat-member-sep { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
@@ -3258,10 +3504,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
 .bell-dd__foot { padding: 9px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
 /* Compact soft pill — single line, never wraps, reads as a clean secondary action. */
-.bell-dd__mark { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--primary-soft); border: none; color: var(--brand); cursor: pointer; padding: 6px 11px; border-radius: var(--r-pill); transition: background .14s, color .14s; }
+.bell-dd__mark { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--brand-soft); border: none; color: var(--brand); cursor: pointer; padding: 6px 11px; border-radius: var(--r-pill); transition: background .14s, color .14s; }
 .bell-dd__mark:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); }
 .bell-dd__more { display: flex; align-items: center; justify-content: center; width: 100%; background: transparent; border: none; color: var(--brand); cursor: pointer; padding: 9px; border-radius: var(--r-sm); transition: background .14s; }
-.bell-dd__more:hover { background: var(--primary-soft); }
+.bell-dd__more:hover { background: var(--brand-soft); }
 .bell-dd__loading { display: flex; justify-content: center; padding: 28px 0; color: var(--muted); }
 
 /* Per-type icon tile — colour passed in via inline `--ic` (the notifMeta accent) */
@@ -3298,7 +3544,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   transition: border-color .16s, box-shadow .2s, transform .16s var(--ease-out);
 }
 @media (hover: hover) { .nrow:hover { border-color: var(--line-hover); transform: translateY(-1px); } }
-.nrow--unread { background: var(--primary-soft); border-color: transparent; box-shadow: inset 3px 0 0 var(--brand), var(--sh-1); }
+.nrow--unread { background: var(--brand-soft); border-color: transparent; box-shadow: inset 3px 0 0 var(--brand), var(--sh-1); }
 .nrow__body { min-width: 0; }
 .nrow__title { color: var(--ink); }
 .nrow__title em { font-style: normal; color: var(--brand); }
@@ -3316,8 +3562,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   position: relative; display: flex; gap: 11px; padding: 11px 11px 11px 13px;
   border-radius: var(--r-btn); align-items: flex-start; transition: background .14s;
 }
-.brow--unread { background: var(--primary-soft); cursor: pointer; }
-@media (hover: hover) { .brow:hover { background: var(--surface-2); } .brow--unread:hover { background: var(--primary-soft-2); } }
+.brow--unread { background: var(--brand-soft); cursor: pointer; }
+@media (hover: hover) { .brow:hover { background: var(--surface-2); } .brow--unread:hover { background: var(--brand-soft-12); } }
 .brow--unread::before { content: ""; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
 .brow__body { flex: 1; min-width: 0; }
 .brow__title { color: var(--ink); }
@@ -3371,10 +3617,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .m-status--declined { color: var(--danger); }
 
 /* Invite banner */
-.invite-banner {
-  margin-top: 24px; padding: 18px; background: var(--brand-soft); border-radius: var(--r-btn);
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-}
+/* ★ОСТАТОК: зазор 14px вне шкалы (--sp даёт 12 и 16) - удержан.
+   visual-diff-move: invite-banner -> row row--wrap */
+.invite-banner { margin-top: 24px; padding: 18px; background: var(--brand-soft); border-radius: var(--r-btn); gap: 14px; }
 .invite-banner__ic { width: 44px; height: 44px; border-radius: var(--r-sm); background: var(--brand); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
 .invite-banner__txt { flex: 1; min-width: 200px; }
 .invite-banner__title { margin-bottom: 2px; }
@@ -3395,19 +3640,42 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Used by the in-place left panels (EventPanels / CityPanel).
    ==================================================================== */
     /* ---- table header ---- */
-    .te-thead { display: grid; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
-    .te-th { color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    /* ★`row-gap: 0` - не новое значение, а прежнее под своим именем: у сетки начальный зазор 0, а `.grid` несёт дефолтные 10px по ОБЕИМ осям, тогда как правило задаёт только `column-gap`. Без этой строки между строками появились бы 10px, которых не было. Тот же приём, что `gap: 0` у флекса в зоне 1.
+     visual-diff-move: te-thead -> grid */
+    .te-thead { grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
+    /* visual-diff-move: te-th -> trunc */
+    .te-th { color: var(--muted); min-width: 0; }
     .te-th--c { text-align: center; }
 
     /* ---- list rows ---- */
-    .te-row { position: relative; display: grid; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+    /* ★`align-items: center` ОСТАЁТСЯ приватным, и это не недоделка: у `.grid` оси
+       выравнивания нет вовсе, а собственный дефолт сетки - `stretch`. Снять его
+       значило бы растянуть ячейки строки редактора по высоте. Поймал гард 2p
+       («на .grid этого объявления нет»), а не глаз.
+       ★`row-gap: 0` - прежнее значение под своим именем: правило задаёт только
+       `column-gap`, а `.grid` несёт дефолтные 10px по обеим осям.
+       ★Маркера переноса у этого правила НЕТ намеренно: ключ `.te-row` по display
+       и gap принадлежал СОСТАВНОМУ правилу планировщика (оно специфичнее), и его
+       перенос удостоверен своим маркером на полный селектор. Заявить их переносом
+       на `.grid` было бы неправдой. Объявлены исключением в конце файла. */
+    .te-row { position: relative; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--surface); border-color: var(--brand); box-shadow: var(--sh-2); }
     .te-row:hover .te-cityname { color: var(--brand); }
-    .te-cityname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; transition: color .12s; }
+    /* visual-diff-move: te-cityname -> trunc */
+    .te-cityname { min-width: 0; transition: color .12s; }
     .te-citycell { min-width: 0; }
-    .te-cityline { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    /* ★Зазор 7px СНЯТ: узел берёт ступень `row--g3` (--sp-3 = 6px). Это правка
+       ПИКСЕЛЕЙ, а не перенос (7 ≠ 6), поэтому объявлена строкой
+       `visual-diff-exempt` в конце файла, а маркер переноса снят - он бы утверждал
+       неправду. Апрув Pavel в TRIP-388 (комментарий к PR #735).
+       ⚠️Носителей у класса ТРИ: `EditLens.GridEndpoint`, `anchors.jsx`,
+       `CityRow.jsx` - ступень проставлена на КАЖДОМ, иначе оставшиеся молча взяли
+       бы дефолтные 10px у `.row` (было 7px).
+       `min-width: 0` остаётся приватным: у `.row` такой ручки нет. */
+    .te-cityline { min-width: 0; }
     .te-country { color: var(--muted); white-space: nowrap; flex: none; }
-    .te-dts { color: var(--muted); margin-top: 1px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+    /* visual-diff-move: te-dts -> row row--g3 */
+    .te-dts { color: var(--muted); margin-top: 1px; min-width: 0; }
     .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; touch-action: none; -webkit-user-select: none; user-select: none; }
     .te-row:hover .te-grip { opacity: 1; }
     .te-grip:active { cursor: grabbing; }
@@ -3421,7 +3689,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     @media (prefers-reduced-motion: reduce) { .te-row.is-dragging { transform: none; } }
     .te-row__num { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
-    .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning-ink); }
+    /* visual-diff-move: te-warnbadge -> row row--inline row--g1 */
+    .te-warnbadge { color: var(--warning-ink); }
     /* A11y: keyboard-visible focus rings on editor controls. */
     .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
     .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible {
@@ -3439,7 +3708,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        hairline +/− that recede), so a column of these doesn't stripe the table.
        On row hover it lifts into a real segmented control. */
     /* Nights stepper — design .edl-step: always-on surface-2 pill, round primary buttons. */
-    .te-stepper { display: inline-flex; align-items: center; gap: 3px; background: transparent; border: 0; border-radius: var(--r-pill); padding: 3px; justify-self: center; transition: background .14s var(--ease-out); }
+    /* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
+     visual-diff-move: te-stepper -> row row--inline */
+    .te-stepper { gap: 3px; background: transparent; border: 0; border-radius: var(--r-pill); padding: 3px; justify-self: center; transition: background .14s var(--ease-out); }
     .te-row:hover .te-stepper { background: var(--surface-2); }
     .te-row:hover .te-step { opacity: 1; }
     .te-step { width: 26px; height: 26px; border: 0; background: transparent; border-radius: 50%; color: var(--brand); cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .14s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
@@ -3451,7 +3722,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-cell { flex-shrink: 0; }
     .te-cell--hotel { justify-self: center; min-width: 0; }
     .te-cell--act { justify-self: center; }
-    .te-cellbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
+    /* visual-diff-move: te-cellbtn -> row row--inline row--j-center row--g3 */
+    .te-cellbtn { height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
     /* Empty add-cells recede so unfilled rows don't read as a column of dashed
        boxes; they surface on row hover or keyboard focus. */
     .te-cellbtn--ghost { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
@@ -3464,7 +3736,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
     .te-hotelicon.is-warn { background: var(--warning-soft); }
-    .te-actchip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
+    /* visual-diff-move: te-actchip -> row row--inline row--j-center row--g3 */
+    .te-actchip { height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
     .te-actchip:hover { border-color: var(--ev-activity); }
     .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: scale(0.94); }
     .te-actchip.is-warn { background: var(--warning-soft); color: var(--warning-ink); }
@@ -3488,18 +3761,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-seam__pill.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
     .te-table .te-row { border-radius: var(--r-btn); box-shadow: var(--sh-1); }
     .te-table .te-row:hover { box-shadow: var(--sh-2); border-color: var(--brand); }
-    .te-end { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
+    /* ★Зазор 11px СНЯТ: узел берёт ступень `row--g6` (--sp-6 = 12px). Правка
+       ПИКСЕЛЕЙ, а не перенос (11 ≠ 12) - объявлена `visual-diff-exempt` в конце
+       файла, маркер переноса снят. Апрув Pavel в TRIP-388 (комментарий к PR #735).
+       ⚠️Носителей ТРИ: `EditLens.GridEndpoint` и ДВЕ плашки `anchors.jsx`
+       (обычная и `--add`) - ступень проставлена на каждом. */
+    .te-end { padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
     .te-row__node { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { display: block; margin-bottom: 1px; }
     .te-wptag { color: var(--ev-transfer-ink); padding: 2px 7px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
     /* Transfer badge: ONE symmetric transition drives both directions — it melts
        away (fade+shrink) when a drag starts and eases back in on drop. No keyframe
        animation: a filled animation pins opacity and breaks the fade-out. */
-    .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; display: flex; justify-content: center; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }
+    /* visual-diff-move: te-seam -> row row--j-center */
+    .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; align-items: stretch; }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
-    .te-seam__pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
+    /* ★ОСТАТОК: зазор 7px вне шкалы - удержан.
+     visual-diff-move: te-seam__pill -> row row--inline */
+    .te-seam__pill { gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
     .te-seam__pill:hover { box-shadow: var(--sh-3); transform: translateY(-1px) scale(1.02); }
     .te-seam__pill:active { transform: scale(0.96); }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
@@ -3566,7 +3847,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .addmini { width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
 .addmini:hover { background: var(--accent); color: var(--accent-ink); }
 
-.bookrow { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
+/* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан приватным.
+   visual-diff-move: bookrow -> row */
+.bookrow { gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
 .bookrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
 .bookrow:active { transform: translateY(0) scale(.99); }
 .bi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
@@ -3597,7 +3880,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
-.lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+.lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
 .lp-stepper__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .lp-stepper__tx b { color: var(--ink); }
 .lp-stepper__tx span { color: var(--muted); }
@@ -3719,8 +4002,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .wdg-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px 12px; }
 .wdg-h .wi { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .wdg-h .wi svg { width: 17px; height: 17px; }
-.wi--primary { background: var(--primary-soft); color: var(--brand); }
-.wi--activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+/* Значок виджета берёт тон из канала --hl* (04 PR3). `.wi--primary` больше нет:
+   он ЗАПИСЫВАЛ дефолт канала, и его носили три вызова из четырёх - то есть класс
+   существовал ради значения, которое уже приходит из :root. Четвёртый вызов
+   (участники) остаётся вариантом, но теперь он ПОДСТАВЛЯЕТ ЗНАЧЕНИЕ в канал, а
+   не объявляет свою пару фон+текст. */
+.wi { background: var(--hl-soft); color: var(--hl-ink); }
+.wi--activity { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .wdg-h h4 { flex: 1; margin: 0; }
 .wdg-b { padding: 4px 18px 18px; }
 .wdg-act {
@@ -3812,7 +4100,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tl3 { display: flex; flex-direction: column; }
 .tl3-day { padding-bottom: 8px; scroll-margin-top: 12px; overflow-x: clip; }
 .tl3-dh { display: flex; align-items: center; gap: 12px; padding: 16px 0 12px; }
-.tl3-dh .datechip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 54px; border-radius: var(--r-btn); background: var(--primary-soft); flex: none; transition: background .2s var(--ease-out); }
+.tl3-dh .datechip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 54px; border-radius: var(--r-btn); background: var(--brand-soft); flex: none; transition: background .2s var(--ease-out); }
 .tl3-dh .datechip .d { color: var(--brand); }
 .tl3-dh .datechip .m { color: var(--brand); opacity: .85; margin-top: 2px; }
 /* right column: weekday on one line, the day's cities tucked under it */
@@ -3822,8 +4110,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* cities line: subtle and iconic — pin + name(s), no heavy pill (waypoints excluded) */
 .tl3-dh .daycity { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow-wrap: anywhere; color: var(--muted); }
 .tl3-dh .daycity svg { width: 13px; height: 13px; color: var(--brand); flex: none; }
-/* Today — filled date chip + badge next to the weekday */
-.tl3-today { background: var(--primary-soft); color: var(--brand); }
+/* Today — filled date chip + badge next to the weekday.
+   Своего класса у бейджа «Сегодня» больше нет: `.tl3-today` держал ровно те же
+   два объявления, что `.badge--brand`, а типографику и паддинг ему и так давали
+   канон `.t-micro` и ступень `.badge--xs` из той же разметки. Прошлый заход это
+   уже заметил (см. комментарий у `.badge--sm/--xs`), но остановился на замере. */
 .tl3-day.today .datechip { background: var(--brand); }
 .tl3-day.today .datechip .d, .tl3-day.today .datechip .m { color: var(--primary-fg); opacity: 1; }
 
@@ -3837,7 +4128,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    44/20px - ВНЕ ступеней (ближайшая --xl это 46/21); переезд на ступень меняет
    вид ленты, поэтому делается в PR своего экрана (Ф12.7 TripView) со скриншотом.
    Ручка тут и есть маркер этого долга - раньше он был не виден. */
-.tl3-card .tile { --tile: 44px; --tile-ic: 20px; --tile-r: var(--r-btn); background: var(--evs, var(--primary-soft)); color: var(--evi, var(--brand)); }
+/* Тон плитки берётся из общего канала --hl* (04 PR3): раньше он назывался
+   --evs/--evi - ТРЕТЬЕ имя того же канала, с одной точкой вызова. Фолбэки
+   `var(--evs, …)` сняты: значение ставит StreamEventRow на самой .tl3-card, а
+   имя канала объявлено в :root, так что второй аргумент не сработал бы никогда. */
+.tl3-card .tile { --tile: 44px; --tile-ic: 20px; --tile-r: var(--r-btn); background: var(--hl-soft); color: var(--hl-ink); }
 /* body keeps a real min-width so the meta (price + partner pill) wraps to a new
    flex line instead of squeezing the title into a vertical char-stack. */
 .tl3-card .body { flex: 1 1 auto; min-width: 130px; }
@@ -3878,7 +4173,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .cr-item .cr-nm { color: var(--ink-2); transition: color .2s; }
 .cr-item .cr-dt { color: var(--muted); margin-top: 2px; }
 .cr-item:hover .cr-nm { color: var(--ink); }
-.cr-item.on .cr-dot { border-color: var(--brand); background: var(--brand); box-shadow: 0 0 0 5px var(--primary-soft); }
+.cr-item.on .cr-dot { border-color: var(--brand); background: var(--brand); box-shadow: 0 0 0 5px var(--brand-soft); }
 .cr-item.on .cr-nm { color: var(--brand); }
 
 @media (prefers-reduced-motion: reduce) { .tl3-card:hover { transform: none; } }
@@ -3893,44 +4188,104 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 /* ============================================================
-   EDITOR (TripStructureEdit) — mobile adaptation
-   ============================================================ */
-/* Mobile menu drawer is hidden entirely on desktop (the static icon-rail is used
-   there). Without this base rule it would render the full sidebar inline. */
-.ts-drawer { display: none; }
+   СЕКЦИЯ «СТРУКТУРА» (EditLens)
+   ============================================================
+   TRIP-349: у редактора больше нет своей оболочки. `.ts-screen` / `.ts-sidecol`
+   / `.ts-drawer` / `.ts-drawer__scrim` удалены вместе с ней - меню, шапку и
+   off-canvas на ≤880 держит общая `.trip-shell`, ровно как на всех остальных
+   экранах трипа (а на ≤640 - канон-шит, которого у редактора не было вовсе).
 
-/* Editor sidebar → off-canvas drawer at ≤880 — the SAME breakpoint as the trip
-   screens (.trip-shell), so the two shells leave the icon-rail for a drawer at
-   the same width. (The table-compaction below stays at ≤760: that's a content
-   concern, independent of the sidebar.) */
-@media (max-width: 880px) {
-  /* hide the static sidebar column; the burger opens a real drawer instead */
-  .ts-screen .ts-sidecol { display: none; }
-  /* editor sidebar drawer (reuses app-side drawer pattern) */
-  .ts-screen .ts-drawer { display: block; position: fixed; inset: 0; z-index: var(--z-modal); pointer-events: none; }
-  .ts-screen .ts-drawer.is-open { pointer-events: auto; }
-  .ts-screen .ts-drawer__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s var(--ease-out); }
-  .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
-  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--header-bg); } /* TRIP-326 */
-  .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
+   Правила ниже раньше жили в теге <style> ВНУТРИ рендера компонента и
+   объявлялись глобально при каждом монтировании. Ни один гард их не видел:
+   2n ищет осиротевшие правила в `.css`, 2p сравнивает объявления в `.css`.
+   Поэтому и мёртвые `.ts-confirm-backdrop` / `.ts-confirm-card` / `.ts-warn` /
+   `.ts-in` (ни одного вхождения в разметке) прожили тут незамеченными - при
+   переносе они удалены, а не скопированы. */
+.ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
+.ts-step:hover { background: var(--wash); }
+.ts-step:active:not(:disabled) { transform: scale(0.9); }
+.ts-step:disabled { opacity: .3; cursor: default; }
+/* TRIP-186: левая колонка «оголена» — контейнерная рамка/радиус/фон и маржины
+   убраны, рейл и заголовок «Маршрут» лежат прямо на канвасе, а список
+   растягивается. Карта справа рамку сохраняет. */
+.ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 0; overflow: hidden; background: transparent; }
+/* Открытая боковая панель сама себе рамка (карточка на канвасе), с тем же
+   инсетом, что и карта. */
+.ts-leftbox .lp { margin: 14px 7px 14px 14px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+/* Заголовок «Маршрут» скроллится со списком, выровнен с колонками. */
+.ts-leftscroll > .ts-routehead { margin: 0 0 8px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+.ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 4px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+.ts-routehead__tt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
+/* TRIP-188: «Маршрут» = класс "t-mono tp-caption" (моно + caption-модификатор).
+   Своего правила на .ts-routehead__title нет намеренно — иначе оно перебило бы
+   .tp-caption. */
+.ts-routehead__sub { color: var(--muted); }
+.ts-routehead__sp { flex: 1; }
+.te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
+@keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+/* TRIP-176: боковая панель-ящик. Заливает абсолютом ТОЛЬКО левую колонку — ниже
+   шапки и правее меню, — поэтому никогда не накрывает ни шапку, ни меню.
+   Обрывается на шве колонок, оставляя естественный зазор до карты. Скрима нет:
+   карта (правая половина) остаётся кликабельной. Только двухколоночный десктоп. */
+.ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+.ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
+@keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+/* FAB предупреждений: подъём на ховере, нажатие по клику. */
+.ts-fab { transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
+.ts-fab:hover { transform: scale(1.06); }
+.ts-fab:active { transform: scale(0.96); }
+@media (prefers-reduced-motion: reduce) {
+  .te-panefade, .ts-pdrawer { animation: none; }
+  .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
+}
+
+/* Две колонки секции: маршрут слева, карта справа.
+   `height: 100%` — тот же приём, каким берут высоту остальные flush-секции
+   (`.chat-room`, `.trip-map-shell`): тело `.trip-screen-body--flush` это БЛОК с
+   определённой высотой, а не флекс-контейнер, поэтому `flex: 1` тут пустое
+   слово. Раньше он работал — `.ts-grid` висел во флекс-колонке собственной
+   оболочки редактора и уехал вместе с ней. Без этого правила секция сайзится по
+   содержимому и на ≤1080 не скроллится вовсе. */
+.ts-grid {
+  height: 100%; min-width: 0; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0; overflow: hidden;
+}
+
+/* ≤1080: одна колонка. Раньше тут стояло `.ts-screen { height:auto; overflow:
+   visible }` — редактор ВЫХОДИЛ из фиксированной оболочки в документный скролл,
+   один на весь экран трипа. Внутри `.trip-shell` документного скролла нет
+   (оболочка `overflow:hidden`), поэтому колонка скроллит СЕБЯ, как и на любой
+   другой секции. Это же снимает причину, по которой на редакторе нельзя было
+   показать плавающий док (TRIP-349 п.2 — отдельной задачей). */
+@media (max-width: 1080px) /* design-token-exempt: 1080px — брейкпоинт не новый: он жил в теге style внутри рендера редактора, куда гард не смотрит, и переехал сюда как есть; это ширина схлопывания ДВУХ КОЛОНОК секции (маршрут+карта), а не ярус навигации, поэтому к шкале 640/880 не сводится */ {
+  .ts-grid { grid-template-columns: 1fr; grid-auto-rows: min-content; overflow-y: auto; }
+  .ts-leftscroll { overflow: visible !important; }
+  .ts-leftbox { margin: 0 !important; }
+  /* Карта — полоса под списком. Высоту задаём КОНТЕЙНЕРУ: сама `.ts-map` лежит
+     абсолютом, и прежнее `flex: 0 0 340px` на ней было no-op — у абсолютного
+     элемента flex-строки нет, то есть в полосе 881–1080 полоса карты не имела
+     высоты вовсе. */
+  .ts-col-right { height: 340px; }
+  .ts-map { left: 14px !important; }
 }
 
 @media (max-width: 760px) {
   /* drop the table header row */
-  .ts-screen .te-thead { display: none !important; }
+  .ts-grid .te-thead { display: none !important; }
   /* drop the drag grip — on touch the whole row drags via long-press.
-     Scoped to .ts-screen so it does NOT leak onto the planner's .te-row--plan
+     Scoped to .ts-grid (editor-only host) so it does NOT leak onto the planner's .te-row--plan
      (the create flow keeps its grip affordance on touch). */
-  .ts-screen .te-grip { display: none !important; }
+  .ts-grid .te-grip { display: none !important; }
   /* empty hotel/activity placeholders take no space on mobile */
-  .ts-screen .te-cellbtn--ghost { display: none !important; }
+  .ts-grid .te-cellbtn--ghost { display: none !important; }
   /* compact row: number + name(+dates) + nights (hotel/activity icons hidden).
      Scoped to the editor so the planner's flex .te-row--plan is untouched (no
      leaked grid-template / margins). */
-  .ts-screen .te-row { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
-  .ts-screen .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
+  .ts-grid .te-row { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
+  .ts-grid .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
   /* hide hotel/activity presence icons in city rows on mobile */
-  .ts-screen .te-cell--hotel, .ts-screen .te-cell--act { display: none !important; }
+  .ts-grid .te-cell--hotel, .ts-grid .te-cell--act { display: none !important; }
 }
 
 /* ===== Trip Settings lens ====================================================
@@ -3938,7 +4293,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    left 720px column, leaving the right half of wide displays empty. This
    container centers and a 2-col grid uses the space, collapsing to a single
    column on tablet/mobile. */
-.settings-lens { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+/* visual-diff-move: settings-lens -> col col--g7 */
+.settings-lens { max-width: 1040px; margin: 0 auto; }
 /* TRIP-225: единый readonly-баннер наблюдателя (ReadOnlyBanner). На settings отступ
    даёт `.settings-lens` gap; docs/budget не раскладывают детей через gap → задаём
    отступ снизу здесь, чтобы баннер не прилипал к тулбару/контенту (как на settings). */
@@ -3946,15 +4302,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bgt > .readonly-banner { margin-bottom: 16px; }
 
 /* Identity card: live cover preview + name/description/currency/notes. */
-.settings-identity { display: grid; grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
+/* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
+   выравнивания нет вовсе.
+   visual-diff-move: settings-identity -> grid */
+.settings-identity { grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
 .settings-identity__cover { position: static; }
-.settings-identity__fields { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* visual-diff-move: settings-identity__fields -> col col--g7 */
+.settings-identity__fields { min-width: 0; }
 /* Field names in the identity card match the "Leave trip" row title style. */
 .settings-identity .field__label { color: var(--ink); }
 
 /* Two-column zone for features / integrations / warnings. */
-.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-.settings-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* ★Настоящая унификация, а не переименование: `1fr 1fr` - это ровно значение оси
+   «колонки» (`.grid--2`), ради которого примитив и заводился. Мобильное правило
+   ниже схлопывает в одну колонку и выигрывает у модификатора по порядку строк.
+   `align-items: start` удержан - у `.grid` этой оси нет.
+   visual-diff-move: settings-grid -> grid grid--2 grid--g7 */
+.settings-grid { align-items: start; }
+/* visual-diff-move: settings-col -> col col--g7 */
+.settings-col { min-width: 0; }
 /* Ряд на серой подложке. Раскладку даёт .row, здесь ТОЛЬКО скин. Подложка была
    написана инлайном дважды на одном экране и с РАЗНЫМИ числами (gap 14 и 12);
    всего этот шаблон в репозитории 36 раз (26 правил в CSS + 10 инлайнов). */
@@ -3968,33 +4334,39 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Addon / feature widget cards (Lumo DS §D1). Each card carries an accent
    colour via the inline --ac custom property. */
-.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-.addon-card {
-  --ac: var(--brand);
-  position: relative; border-radius: var(--r-md);
-  padding: 16px; display: flex; flex-direction: column; min-height: 150px;
-  box-shadow: var(--sh-1);
-  transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s;
-}
+/* ★ОСТАТОК: зазор 14px вне шкалы; треки `auto-fill minmax(240px,1fr)` - своя
+   форма галереи, осью «колонки» не описывается (порог переноса у каждой свой).
+   visual-diff-move: addon-grid -> grid */
+.addon-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+/* ★`gap: 0` - прежнее значение под своим именем: у флекса начальный зазор 0, а
+   `.col` несёт дефолтные 10px, и карточка аддона разъехалась бы.
+   visual-diff-move: addon-card -> col */
+.addon-card { --ac: var(--brand); position: relative; border-radius: var(--r-md); padding: 16px; min-height: 150px; box-shadow: var(--sh-1); transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s; gap: 0; }
 @media (hover:hover) { .addon-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); } }
-.addon-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+/* Зазор 10px - собственный зазор `.row`.
+   visual-diff-move: addon-card__top -> row row--a-start row--j-between */
+.addon-card__top { margin-bottom: 12px; }
 .addon-card__ic {
   width: 40px; height: 40px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none;
   background: color-mix(in srgb, var(--ac) 13%, transparent); color: var(--ac); transition: background .2s;
 }
-.addon-card__title {
- color: var(--ink);
- display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 5px;
-}
+/* ★ОСТАТОК: зазор 7px вне шкалы - удержан.
+   visual-diff-move: addon-card__title -> row row--wrap */
+.addon-card__title { color: var(--ink); gap: 7px; margin-bottom: 5px; }
 .addon-card__desc { color: var(--muted); flex: 1; }
-.addon-card__foot { margin-top: 13px; display: flex; align-items: center; gap: 8px; }
+/* visual-diff-move: addon-card__foot -> row row--g4 */
+.addon-card__foot { margin-top: 13px; }
 .addon-card--on { border-color: color-mix(in srgb, var(--ac) 42%, var(--line)); background: color-mix(in srgb, var(--ac) 5%, var(--surface)); }
 .addon-card--on .addon-card__ic { background: color-mix(in srgb, var(--ac) 22%, transparent); }
 .addon-card--locked { opacity: .74; }
 .addon-card--locked .addon-card__ic { filter: grayscale(.35); opacity: .55; }
 /* Status cluster (toggle + "available" badge) in the card top-right, so the
    availability state never wraps inside the title line. */
-.addon-card__status { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+/* ★ОСТАТОК: зазор 7px вне шкалы, и `justify-content: flex-end` - значения `j-end`
+   у оси «вдоль» ряда в каталоге НЕТ, а каталог правится параллельной 03f. Правило
+   всё равно выбывает из счётчика: `display` уехал.
+   visual-diff-move: addon-card__status -> row row--wrap */
+.addon-card__status { gap: 7px; justify-content: flex-end; }
 /* Phones: one column, drop the fixed min-height so cards size to content. */
 @media (max-width: 640px) {
   .addon-grid { grid-template-columns: 1fr; }
@@ -4011,17 +4383,25 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* minmax(0,1fr): the content track is sized by the viewport, NOT by its widest
    child — without this the wide subscription "plan face" widens the column once
    it loads, causing a load-time reflow (content jumps from narrow to wide). */
-.acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
+/* ★ОСТАТОК: зазор 30px вне шкалы; `align-items: start` удержан (у `.grid` оси нет).
+   visual-diff-move: acct-shell -> grid */
+.acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
 /* Base text matches the Lumo body exactly so nothing inherits a lighter/smaller
    default (15px / 500 / display-headings). */
 .acct-nav { position: sticky; top: 78px; }
-.acct-nav a { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
+/* ★ОСТАТОК: зазор 11px вне шкалы - удержан.
+   visual-diff-move: .acct-nav a -> row */
+.acct-nav a { gap: 11px; padding: 10px 12px; border-radius: var(--r-btn); color: var(--muted); margin-bottom: 2px; position: relative; cursor: pointer; transition: background .18s var(--ease-out), color .18s; }
 .acct-nav a:hover { background: var(--surface-2); color: var(--ink); }
-.acct-nav a.active { background: var(--primary-soft); color: var(--brand); }
+.acct-nav a.active { background: var(--brand-soft); color: var(--brand); }
 .acct-nav a.active::before { content: ""; position: absolute; left: -1px; top: 9px; bottom: 9px; width: 3px; border-radius: var(--r-pill); background: var(--brand); }
-.acct-content { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+/* ★ОСТАТОК: зазор 22px вне шкалы - удержан.
+   visual-diff-move: acct-content -> col */
+.acct-content { gap: 22px; min-width: 0; }
 .acct-content section { scroll-margin-top: 78px; }
-.acct-sectitle { display: flex; align-items: center; gap: 9px; margin: 0 0 13px; color: var(--ink); }
+/* ★ОСТАТОК: зазор 9px вне шкалы - удержан.
+   visual-diff-move: acct-sectitle -> row */
+.acct-sectitle { gap: 9px; margin: 0 0 13px; color: var(--ink); }
 .acct-sectitle small { color: var(--muted); }
 
 /* ═══ СТРОКА СПИСКА: значок + (заголовок · описание) + действие ═══════════════
@@ -4059,8 +4439,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    внелестничных 38px. Вызовы -> .tile.tile--lg (40px), значок 18 -> 19px.
    Тон: 7 вызовов сели на класс (--brand/--ai/--quiet), 2 (удаление аккаунта,
    выход) намеренно остались инлайном - их цвет не совпадает с модификатором.
-   Дефолтный тинт был --primary-soft, у .tile--brand он --brand-soft: в светлой
-   теме это то же значение, в тёмной .16 против .14 (см. блок .tile--*). */
+   Дефолтный тинт был на --primary-soft, у .tile--brand - на --brand-soft: на
+   момент перевода в тёмной теме это было .16 против .14. TRIP-352 значения
+   выровнял (#699), 04 PR3 удалил второе имя - тон теперь один (см. :root). */
 
 /* profile hero */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
@@ -4070,21 +4451,30 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-hero__band .b1 { width: 170px; height: 170px; top: -70px; right: -30px; }
 .acct-hero__band .b2 { width: 90px; height: 90px; top: 30px; right: 120px; background: rgba(255,255,255,.10); }
 .acct-hero__plan { position: absolute; top: 14px; right: 16px; z-index: 3; }
-.acct-hero__row { display: flex; align-items: center; gap: 16px; padding: 18px 22px; }
+/* visual-diff-move: acct-hero__row -> row row--g7 */
+.acct-hero__row { padding: 18px 22px; }
 .acct-hero__av { flex: none; width: 80px; height: 80px; border-radius: 50%; color: #fff; display: grid; place-items: center; overflow: hidden; cursor: pointer; box-shadow: var(--sh-1); position: relative; background-size: cover; background-position: center; }
 .acct-hero__av .ov { position: absolute; inset: 0; background: rgba(15,18,34,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; opacity: 0; transition: opacity .2s; }
 .acct-hero__av:hover .ov { opacity: 1; } .acct-hero__av .ov svg { width: 18px; height: 18px; }
 .acct-hero__id { flex: 1; min-width: 0; }
 .acct-hero__name { color: var(--ink); }
 .acct-hero__mail { color: var(--muted); margin-top: 2px; }
-.acct-hero__actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
-.acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
+/* ★`align-items: stretch` возвращён явно - своего выравнивания не было, `.row` центрирует.
+   visual-diff-move: acct-hero__actions -> row row--wrap row--g3 */
+.acct-hero__actions { margin-top: 9px; align-items: stretch; }
+/* ★ОСТАТОК: зазор 14px вне шкалы; `align-items: end` удержан (у `.grid` оси нет).
+   visual-diff-move: acct-hero__edit -> grid */
+.acct-hero__edit { padding: 18px 24px 20px; border-top: 1px solid var(--line); grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
 .acct-hero__edit .btn { align-self: end; }
 .acct-flabel { display: block; color: var(--ink-2); margin-bottom: 6px; }
 
 /* subscription module */
-.acct-plan { display: grid; grid-template-columns: 228px 1fr; gap: 20px; align-items: center; }
-.acct-plan__face { border-radius: var(--r-md); padding: 18px; min-height: 120px; display: flex; flex-direction: column; justify-content: center; gap: 3px; position: relative; overflow: hidden; }
+/* ★`align-items: center` удержан - у `.grid` оси выравнивания нет.
+   visual-diff-move: acct-plan -> grid grid--g8 */
+.acct-plan { grid-template-columns: 228px 1fr; align-items: center; }
+/* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
+   visual-diff-move: acct-plan__face -> col col--j-center */
+.acct-plan__face { border-radius: var(--r-md); padding: 18px; min-height: 120px; gap: 3px; position: relative; overflow: hidden; }
 .acct-plan__face .blob { position: absolute; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.14); top: -44px; right: -30px; }
 .acct-plan__k { opacity: .85; position: relative; }
 .acct-plan__v { position: relative; }
@@ -4093,16 +4483,22 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-plan__face--mo { background: var(--brand-grad); color: #fff; }
 .acct-plan__face--yr { background: var(--success); color: #fff; }
 .acct-plan__face--ca { background: var(--warning); color: #fff; }
-.acct-plan__side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.acct-plan__line { color: var(--ink-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* visual-diff-move: acct-plan__side -> col col--g6 */
+.acct-plan__side { min-width: 0; }
+/* visual-diff-move: acct-plan__line -> row row--wrap row--g4 */
+.acct-plan__line { color: var(--ink-2); }
 .acct-plan__line b { color: var(--ink); }
-.acct-plan__acts { display: flex; gap: 9px; flex-wrap: wrap; }
-.acct-note { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
+/* ★ОСТАТОК: зазор 9px вне шкалы. `align-items: stretch` возвращён явно.
+   visual-diff-move: acct-plan__acts -> row row--wrap */
+.acct-plan__acts { gap: 9px; align-items: stretch; }
+/* ★ОСТАТОК: зазор 9px вне шкалы - удержан.
+   visual-diff-move: acct-note -> row row--a-start */
+.acct-note { gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
 .acct-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
 .acct-linktext { background: none; border: none; color: var(--brand); cursor: pointer; font: inherit; padding: 0; text-align: left; }
 
 /* language flag chip (reused by the language SearchSelect trigger + options) */
-.acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+.acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
 
 /* CountryFlag — SVG country flag (from /public/flags/<iso2>.svg), the single
    flag primitive that replaced emoji flags. Height ties to the surrounding
@@ -4164,8 +4560,10 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    сняты скриншотом до и после. */
 /* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
    нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
-   и тинт --primary-soft -> --brand-soft у .tile--brand (в тёмной .16 -> .14). */
-.acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
+   и тинт --primary-soft (имя удалено в 04 PR3) -> --brand-soft у .tile--brand
+   (тогда в тёмной теме это был сдвиг .16 -> .14, см. блок .tile--*). */
+/* visual-diff-move: acct-tghint -> row row--g4 */
+.acct-tghint { margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { color: var(--ink); }
 
 /* responsive: collapse to single column; nav becomes a horizontal scroller */
@@ -4477,11 +4875,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tc-add:active { transform: scale(.99); }
 .tc-add__ic {
   width: 48px; height: 48px; border-radius: var(--r-md);
-  background: var(--primary-soft); color: var(--brand);
+  background: var(--brand-soft); color: var(--brand);
   display: grid; place-items: center;
   transition: background .2s;
 }
-.tc-add:hover .tc-add__ic { background: var(--primary-soft-2); }
+.tc-add:hover .tc-add__ic { background: var(--brand-soft-12); }
 .tc-add b { color: inherit; }
 .tc-add small { text-align: center; max-width: 200px; }
 
@@ -4542,17 +4940,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 }
 .tr--add:hover {
   border-color: var(--brand); color: var(--brand);
-  background: var(--primary-soft);
+  background: var(--brand-soft);
   transform: translateY(-2px); box-shadow: none;
 }
 .tr--add:active { transform: translateY(0) scale(.995); }
 .tr__addic {
   width: 46px; height: 46px; border-radius: var(--r-sm); flex: none;
-  background: var(--primary-soft); color: var(--brand);
+  background: var(--brand-soft); color: var(--brand);
   display: grid; place-items: center;
   transition: background .2s;
 }
-.tr--add:hover .tr__addic { background: var(--primary-soft-2); }
+.tr--add:hover .tr__addic { background: var(--brand-soft-12); }
 .tr--add b { color: inherit; display: block; }
 .tr--add small { color: var(--muted); }
 
@@ -4632,7 +5030,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .pro-hero-eyebrow {
  display: inline-flex; align-items: center; gap: 7px;
  padding: 5px 13px 5px 7px;
- background: var(--primary-soft);
+ background: var(--brand-soft);
  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
  border-radius: var(--r-pill); margin-bottom: 10px;
  color: var(--brand);
@@ -4839,13 +5237,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    лежит в тринадцати файлах - деталь ищется по ВСЕМ, иначе «свёл везде» врёт.
    В CSS в скоупе самодельных колец не осталось. Вне скоупа два (.pt-spin 26px
    в PublicTrip и .jt-spinner 46px в JoinTrip) - это TRIP-38. Остаётся ОДНО
-   в скоупе и намеренно: 11px кольцо, нарисованное ИНЛАЙНОМ на <Toggle busy>
-   в этом же пакете (design/index.jsx). Ступенью оно не лечится - лестница
-   начинается с 18, а кольцо живёт ВНУТРИ 17px костяшки тумблера. Это тот же
-   случай, что .btn .spin: не «ступень под экран», а «внутри контрола», где
-   размер диктует контрол. Переписать его на ручки - обменять пять инлайнов на
-   четыре; лечится переводом всего <Toggle> с инлайнов на классы, а он свёрстан
-   инлайнами целиком - отдельная деталь и отдельный PR.
+   в скоупе и намеренно: 11px кольцо на <Toggle busy>. Ступенью оно не лечится -
+   лестница начинается с 18, а кольцо живёт ВНУТРИ 17px костяшки тумблера. Это
+   тот же случай, что .btn .spin: не «ступень под экран», а «внутри контрола»,
+   где размер диктует контрол. ИНЛАЙНОМ оно больше не нарисовано: TRIP-344 PR 1
+   перевёл весь <Toggle> с инлайнов на классы, и кольцо объявлено правилом
+   `.switch__knob .spin` выше по файлу.
    Ступени сняты с мест вызова: 18 - рядом со строкой текста,
    24 - когда грузится экран целиком. */
 .spin--ring{width:var(--spin,18px);height:var(--spin,18px);flex:none;
@@ -4970,7 +5367,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    панелями - `.lp-h` / `.lp-b` / `.lp-f` (объявлены ниже, в блоке EDITOR SIDE
    PANELS). Здесь остаётся то, что живёт ВНУТРИ оболочки и одинаково в обеих:
    ряд действий, секции, пары ключ-значение, поля формы.
-   Тон берётся из --ev-color/--ev-soft/--ev-ink, которые вызыватель ставит на
+   Тон берётся из --hl/--hl-soft/--hl-ink, которые вызыватель ставит на
    корень оболочки (контейнер диалога у модалки, `.lp` у панели).
    ★Кнопка ухода тоже уехала: `.ev-dlg-close` был вторым именем для `.lp-back`
    и удалён, объект один (см. `.lp-back` в блоке панелей).
@@ -4992,8 +5389,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    тип события несёт ПЛАНКА-АКЦЕНТ ниже - это вариация чтения, как шеврон и
    бейдж - вариация формы. */
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ink);}
-.ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--ev-color,var(--brand));flex:none;}
-.ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
+.ev-sec-lbl::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--hl);flex:none;}
+.ev-sec-lbl::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--hl) 18%,transparent);}
 /* key/value grid */
 /* Форма - .grid .grid--2 в разметке; здесь остаётся ТОЛЬКО двухосевой зазор 9/13:
    он вне шкалы (та одноосевая), и это видимое исключение, а не форма. TRIP-321 Ф14.9 */
@@ -5023,7 +5420,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* `.sd-timeinput` и `.sd-cell--time` удалены вместе со своей сборкой (TRIP-333
    §5): у активности была СВОЯ пара голых `<input type="time">` в ячейке-«не
    кнопке», теперь она на общем `DateRangeBlock`, как отель и переезд. */
-.eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
+/* visual-diff-move: eed-drange-tz -> row row--g6 */
+.eed-drange-tz { margin-top: 8px; align-items: stretch; }
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
@@ -5057,7 +5455,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-notes{padding:12px 14px; color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
-.bk-link:hover{background:var(--primary-soft);color:var(--brand);}
+.bk-link:hover{background:var(--brand-soft);color:var(--brand);}
 .bk-link svg{width:12px;height:12px;color:var(--muted);}
 /* .warn-banner и .del-confirm УДАЛЕНЫ (TRIP-321 Ф14.2): обе плашки были
    переизобретённым <Severity> - тот же флекс по верхнему краю, тот же
@@ -5071,40 +5469,57 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* payment status badges */
 .badge--paid{background:var(--success-soft);color:var(--success-ink);}
 .badge--partial{background:var(--warning-soft);color:var(--warning-ink);}
-.badge--on-arrival{background:var(--primary-soft);color:var(--brand);}
+/* «Оплата на месте» СВОЕГО тона не имеет: её правило было побайтово равно
+   .badge--brand (после схлопывания --primary-soft/--brand-soft это стало видно),
+   и разметка теперь берёт сам .badge--brand. Третьего синего бейджа нет. */
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
 .tv-card{padding:16px 17px;}
-.tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
+/* visual-diff-move: tv-eyebrows -> row row--wrap row--g3 */
+.tv-eyebrows { margin-bottom: 15px; align-items: stretch; }
 /* Форма - .badge .badge--sm в разметке (TRIP-321 Ф14.8), размер иконки - .badge svg;
    здесь остаются только тона. */
 .tv-chip--type{background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);}
 .tv-chip--night{background:var(--night-soft);color:var(--night-ink);}
-.tv-route{display:grid;grid-template-columns:76px 16px 1fr;column-gap:12px;}
+/* visual-diff-move: tv-route -> grid */
+.tv-route { grid-template-columns: 76px 16px 1fr; column-gap: 12px; row-gap: 0; }
 .tv-when{text-align:right;}
 .tv-when__t{color:var(--ink);}
 .tv-when__d{color:var(--muted);margin-top:3px;white-space:nowrap;}
-.tv-arr{display:flex;align-items:baseline;justify-content:flex-end;gap:4px;}
+/* ★ОСТАТОК: `justify-content: flex-end` удержан приватным - значения `j-end` у оси «вдоль» ряда в каталоге НЕТ, а каталог правится параллельной задачей 03f и в границы этого PR не входит.
+     visual-diff-move: tv-arr -> row row--a-baseline row--g2 */
+.tv-arr { justify-content: flex-end; }
 .tv-plus1{color:var(--night-ink);}
-.tv-nodecell{display:flex;justify-content:center;padding-top:5px;}
+/* visual-diff-move: tv-nodecell -> row row--j-center */
+.tv-nodecell { padding-top: 5px; gap: 0; align-items: stretch; }
 .tv-node{width:9px;height:9px;flex:none;border-radius:var(--r-pill);}
 .tv-node--from{border:2.5px solid var(--ev-transfer);background:var(--bg);}
 .tv-node--to{background:var(--ev-transfer);}
-.tv-conncell{display:flex;justify-content:center;}
+/* visual-diff-move: tv-conncell -> row row--j-center */
+/* ★`align-items: stretch` ВОССТАНОВЛЕН явно: у правила своего выравнивания не
+   было, то есть действовал флексовый дефолт `stretch`, а `.row` центрирует. Без
+   этой строки ребёнок перестаёт растягиваться по высоте. Поймано ЗАМЕРОМ (у
+   .tv-conncell соединительная линия рейса схлопнулась с 33px до 18px), гарду
+   такое не видно: 2p сверяет объявления, а тут менялся УНАСЛЕДОВАННЫЙ дефолт. */
+.tv-conncell { gap: 0; align-items: stretch; }
 .tv-conn{width:0;border-left:2px dashed color-mix(in srgb,var(--ev-transfer) 45%,transparent);min-height:34px;}
 .tv-loc{min-width:0;}
 .tv-loc--from{padding-bottom:4px;}
 .tv-loc--to{padding-top:1px;}
 .tv-loc__c{color:var(--ink);}
 .tv-loc__a{color:var(--muted);margin-top:3px;}
-.tv-durcell{display:flex;align-items:center;justify-content:flex-end;}
+/* ★ОСТАТОК: `justify-content: flex-end` удержан - см. .tv-arr.
+     visual-diff-move: tv-durcell -> row */
+.tv-durcell { justify-content: flex-end; gap: 0; }
 .tv-dur{color:var(--ev-transfer-ink);white-space:nowrap;}
-.tv-carrier{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 0;}
-.tv-carrier__av{width:26px;height:26px;flex:none;border-radius:var(--r-sm);background:var(--ev-transfer);color:#fff;display:flex;align-items:center;justify-content:center;}
+/* visual-diff-move: tv-carrier -> row row--g4 */
+.tv-carrier { min-width: 0; padding: 6px 0; }
+/* visual-diff-move: tv-carrier__av -> row row--j-center */
+.tv-carrier__av { width: 26px; height: 26px; flex: none; border-radius: var(--r-sm); background: var(--ev-transfer); color: #fff; gap: 0; }
 .tv-carrier__nm{color:var(--ink-2);}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
-.f-sec{ color:var(--ev-color,var(--brand));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
-.f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--brand)) 18%,transparent);}
+.f-sec{ color:var(--hl);display:flex;align-items:center;gap:8px;margin:6px 0 0;}
+.f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--hl) 18%,transparent);}
 .fld-grid{gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
 
@@ -5163,31 +5578,36 @@ a.doc-row__n:hover{ color: var(--brand); }
 .lp-ti { min-width: 0; flex: 1; }
 .lp-ti b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-ti span { color: var(--muted); }
-/* tinted header (per-kind colour via --ev-soft/--ev-ink on the .lp root).
+/* tinted header (per-kind colour via --hl-soft/--hl-ink on the .lp root).
    TRIP-176: soft vertical gradient — one drawer-header look shared by the
    add-booking panel and the view/edit panels. */
-.lp-h--ev { background: linear-gradient(180deg, var(--ev-soft, var(--primary-soft)), transparent 94%); border-bottom-color: color-mix(in srgb, var(--ev-soft, var(--primary-soft)) 60%, var(--line)); }
+.lp-h--ev { background: linear-gradient(180deg, var(--hl-soft), transparent 94%); border-bottom-color: color-mix(in srgb, var(--hl-soft) 60%, var(--line)); }
 /* Плитка типа события. Цвет брался ИНЛАЙНОМ во всех ЧЕТЫРЁХ шапках события
    (просмотр в диалоге и в панели, редактор, добавление) - одним и тем же
-   выражением, при том что `--ev-color` уже лежит на корне оболочки. Повторённый
+   выражением, при том что `--hl` уже лежит на корне оболочки. Повторённый
    у существующего класса инлайн - ошибка КЛАССА, а не образец для копирования,
-   поэтому значение переехало сюда. Скоуп именно `--ev`: `.lp-ic` носят и
+   поэтому значение переехало сюда. Скоуп именно `.lp-h--ev`: `.lp-ic` носят и
    не-событийные шапки (город, маршрут, партнёр), у них свои тона. */
-.lp-h--ev .lp-ic { background: var(--ev-color, var(--brand)); color: #fff; }
+.lp-h--ev .lp-ic { background: var(--hl); color: #fff; }
 /* Эйбрау шапки события - ровно тот же случай, что плитка выше: тон писался
    инлайном в трёх шапках из четырёх, а четвёртая (просмотр в диалоге) держала
    его правилом удалённого семейства и после схлопывания осталась бы с базовым
-   серым `.eyebrow`. Токен взят `--ev-ink`, а не `--ev-color`: это ТЕКСТ, а
-   `--ev-ink` и заведён как читаемая версия цвета типа события. */
-.lp-h--ev .eyebrow { color: var(--ev-ink, var(--ev-color, var(--brand))); }
+   серым `.eyebrow`. Ручка взята `--hl-ink`, а не `--hl`: это ТЕКСТ, а `--hl-ink`
+   и заведён как читаемая версия цвета.
+   ⚠ Двухступенчатый фолбэк `var(--ev-ink, var(--ev-color, …))` снят (04 PR3) и
+   НЕ заменён на `var(--hl-ink, var(--hl))`: вторая ступень существовала на
+   случай «вызыватель поставил цвет, но не поставил чернила», а такого вызывателя
+   у этой шапки нет ни одного - все семь ставят `--hl-ink` (проверено поимённо).
+   Плюс имя объявлено в :root, поэтому фолбэк не сработал бы в любом случае. */
+.lp-h--ev .eyebrow { color: var(--hl-ink); }
 /* eyebrow (type) + title(city) · meta(dates) row — shared drawer-header title. */
 .lp-tirow { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
 .lp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-tirow span { flex: none; }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
-.sec-lbl .sl { color: var(--ev-ink, var(--brand)); }
-.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
+.sec-lbl .sl { color: var(--hl-ink); }
+.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
 .sec-lbl .addmini svg { width: 12px; height: 12px; }
 /* vertical stack used between rows */
 /* AI parsing progress bar */
@@ -5293,7 +5713,11 @@ a.doc-row__n:hover{ color: var(--brand); }
    so price ↔ Book stays one row at any container width. The thumb scales with the
    container (26cqw) — the lists set container-type: inline-size. Shared by the
    Stay22 hotel and Viator activity fork lists via PartnerResultCard. */
-.pcard { position: relative; display: grid; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+/* ★`row-gap: 0` - прежнее значение под своим именем: у сетки начальный зазор 0, а
+   `.grid` несёт дефолтные 10px по обеим осям, тогда как правило задаёт только
+   `column-gap`. Между строкой карточки и её нижней планкой появились бы 10px.
+   visual-diff-move: pcard -> grid */
+.pcard { position: relative; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; row-gap: 0; }
 .pcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); }
@@ -5313,6 +5737,14 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Score badge — top-left on the photo. Hotels: solid guest-score plaque on the
    Booking navy token. Activities: glass star pill (.pcard__score--star). */
 .pcard__score { position: absolute; left: 6px; top: 6px; z-index: 2; display: inline-grid; place-items: center; min-width: 27px; height: 18px; padding: 0 5px; border-radius: 6px 6px 6px 2px /* design-token-exempt: асимметричный уголок бейджа рейтинга, форма а не шкала */; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; box-shadow: 0 1px 4px rgba(0,0,0,.22); }
+/* ★ЭТОТ ПЕРЕНОС ОТМЕНЁН, и причину надо знать: базовый `.pcard__score` объявляет
+   `display: inline-grid` СТРОКОЙ ВЫШЕ, при той же специфичности (0,1,0) и ПОЗЖЕ
+   примитива в файле - то есть он выигрывает у `.row--inline`. Отдать display
+   примитиву значило бы отдать его проигравшему: пилюля рейтинга становится
+   inline-grid, и звезда встаёт НАД числом внутри 18px. Гард 2p такого не видит по
+   построению - он проверяет, что объявление есть на цели, а не что цель ПОБЕЖДАЕТ.
+   Перенос станет возможен, когда на примитив уедет сам `.pcard__score` - это плитка
+   (объект 06), а не раскладка. ★ОСТАТОК: зазор 3px вне шкалы. */
 .pcard__score--star { display: inline-flex; align-items: center; gap: 3px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); padding: 0 7px; } /* TRIP-326: backdrop-filter снят, фон непрозрачный */
 .pcard__score--star svg { width: 10px; height: 10px; color: var(--rating); fill: var(--rating); }
 
@@ -5322,27 +5754,38 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* Body — grid cell (col 2), vertically centred against the photo. Name wraps to
    a 2nd line then ellipsis. */
-.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+/* ★ОСТАТОК: зазор 3px вне шкалы - удержан. Выравнивания у правила нет, и у `.col`
+   его тоже нет - дефолт `stretch` сохраняется сам.
+   visual-diff-move: pcard__body -> col col--j-center */
+.pcard__body { grid-column: 2; grid-row: 1; min-width: 0; gap: 3px; }
 .pcard__name { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 
 /* Meta line (stars · reviews / duration · reviews): one row, ellipsis on the
    text, separators/numbers never squeeze. */
 /* align-items: baseline — stars (16px) and the review text (meta) share one
    baseline so the bigger star glyphs never sit lower than the digits. */
-.pcard__meta { display: flex; align-items: baseline; column-gap: 5px; min-width: 0; color: var(--muted); }
+/* ★ОСТАТОК: зазор 5px вне шкалы - удержан.
+   visual-diff-move: pcard__meta -> row row--a-baseline */
+.pcard__meta { column-gap: 5px; min-width: 0; color: var(--muted); }
 .pcard__meta > * { flex: none; }
 .pcard__stars { color: var(--rating); font-size: 16px; line-height: 1; letter-spacing: 1px; /* design-token-exempt: размер/разрядка глифов ★ (декоративные звёзды отеля), не текст */ }
-.pcard__mtx { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* visual-diff-move: pcard__mtx -> trunc */
+.pcard__mtx { flex: 0 1 auto; min-width: 0; }
 
 /* Subline (address / free cancellation) — one muted line, ellipsis. */
-.pcard__addr { color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* visual-diff-move: pcard__addr -> trunc */
+.pcard__addr { color: var(--muted-2); min-width: 0; }
 .pcard__addr--ok { color: var(--success); }
 
 /* Footer — full-width row (spans both columns), price ↔ Book on one line at any
    container width; the price sub-note shrinks first, price + Book never do. */
-.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* Зазор 10px - собственный зазор `.row`, модификатор не нужен и был бы no-op.
+   visual-diff-move: pcard__bar -> row */
+.pcard__bar { grid-column: 1 / -1; grid-row: 2; margin-top: 9px; min-width: 0; }
 .pcard__spacer { flex: 1; min-width: 8px; }
-.pcard__price { flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+/* ★ОСТАТОК: зазор 5px вне шкалы - удержан.
+   visual-diff-move: pcard__price -> row row--a-baseline */
+.pcard__price { flex: 0 1 auto; min-width: 0; gap: 5px; white-space: nowrap; }
 .pcard__price b { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
 .pcard__price span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .pcard__go { flex: none; border-radius: var(--r-pill); }
@@ -5392,7 +5835,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    Ячейки тут без плитки-иконки, поэтому шаг плотнее. */
 .statbar--inset { margin-top: 0; border-bottom: 1px solid var(--line); }
 .statbar--inset .s { padding: 12px 16px; }
-.statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--brand); }
+.statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--brand-soft); color: var(--brand); }
 .statbar .ic svg { width: 20px; height: 20px; }
 /* Loading chip borrows the real .ic so it tracks the same size the container
    rules give it — otherwise the row height pops when the data lands. */
@@ -5497,7 +5940,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .cdu span { color: var(--muted); }
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
-.nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; }
+.nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }
 .nonext b { color: var(--ink); }
 .nonext p { color: var(--muted); margin: 0; }
@@ -5517,7 +5960,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
 .sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s, transform .16s var(--ease-spring); }
 @media (hover: hover) { .sfig:hover { background: var(--surface); box-shadow: var(--sh-1); transform: translateY(-2px); } }
-.sfig .ic { width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); }
+.sfig .ic { width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
 .sfig .ic svg { width: 17px; height: 17px; }
 .sfig.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .sfig.c-cont .ic { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
@@ -5557,7 +6000,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vrow { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-btn); text-align: left; font-family: inherit; transition: background .15s, transform .16s var(--ease-spring); }
 @media (hover: hover) { .vrow:hover { background: var(--surface-2); } }
 .vrow:active { transform: scale(.99); }
-.vrow.sel { background: var(--primary-soft); }
+.vrow.sel { background: var(--brand-soft); }
 .vrow .fl { width: 34px; height: 34px; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; flex: none; }
 .vrow .fl img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .vrow .fl svg { width: 16px; height: 16px; }
@@ -5626,7 +6069,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state--boxed .empty-state__t { margin-bottom: 4px; }
 .empty-state--boxed .empty-state__act { margin-top: 12px; }
 
-.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); margin-bottom: var(--sp-8); }
+.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--brand-soft); border: 1px solid var(--brand-soft-12); margin-bottom: var(--sp-8); }
 .empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
 .empty-note .en-tx span { color: var(--ink-2); }
@@ -5681,7 +6124,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vp-grip { display: none; }
 @media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); margin: 10px auto 2px; } }
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
-.vp-h .ic { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); flex: none; }
+.vp-h .ic { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
 .vp-h .ic svg { width: 22px; height: 22px; }
 .vp-h.city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .vp-h h3 { color: var(--ink); margin: 0; }
@@ -5709,7 +6152,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .triplink { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: var(--r-sm); background: var(--surface-2); cursor: pointer; border: 0; font: inherit; color: var(--ink-2); transition: .15s; }
 .triplink .d { width: 16px; height: 16px; border-radius: 5px; flex: none; }
 .triplink svg { width: 14px; height: 14px; color: var(--muted); }
-@media (hover: hover) { .triplink:hover { background: var(--primary-soft); color: var(--brand); } .triplink:hover svg { color: var(--brand); } }
+@media (hover: hover) { .triplink:hover { background: var(--brand-soft); color: var(--brand); } .triplink:hover svg { color: var(--brand); } }
 .vmanual { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 
 /* ===== Fork search + filter toolbar (TRIP-176) — SHARED primitive =====
@@ -5751,8 +6194,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); }
-.s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--primary-soft-2); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
+.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
+.s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
 .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .s22f-resetall:hover { color: var(--ink); }
 
@@ -5775,31 +6218,35 @@ a.doc-row__n:hover{ color: var(--brand); }
 .fork-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
 /* Empty / error / no-match state — shared medal surface (TRIP-287 redesign).
    Accent is per-STATE (identical across hotels + activities): err=red,
-   emp=blue, nomatch=yellow — driven by the --st-accent* trio. */
+   emp=blue, nomatch=yellow — driven by the shared --hl* channel (04 PR3; these
+   three handles used to be a private --st-accent* trio, which was the second of
+   four names for one channel). */
 .fork-state {
-  --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink);
+  --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink);
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
   gap: 6px; padding: 26px 20px 22px; border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
-  background: radial-gradient(120% 92% at 50% -12%, var(--st-accent-soft), transparent 62%), var(--surface);
+  background: radial-gradient(120% 92% at 50% -12%, var(--hl-soft), transparent 62%), var(--surface);
   border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
 }
 [data-theme="dark"] .fork-state { box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--sh-1); }
-.fork-state::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, transparent, var(--st-accent), transparent); opacity: .6; }
-.fork-state--err     { --st-accent: var(--danger);  --st-accent-soft: var(--danger-soft);  --st-accent-ink: var(--danger-ink); }
-.fork-state--emp     { --st-accent: var(--ev-hotel); --st-accent-soft: var(--ev-hotel-soft); --st-accent-ink: var(--ev-hotel-ink); }
-.fork-state--nomatch { --st-accent: var(--warning); --st-accent-soft: var(--warning-soft); --st-accent-ink: var(--warning-ink); }
+.fork-state::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, transparent, var(--hl), transparent); opacity: .6; }
+.fork-state--err     { --hl: var(--danger);  --hl-soft: var(--danger-soft);  --hl-ink: var(--danger-ink); }
+.fork-state--nomatch { --hl: var(--warning); --hl-soft: var(--warning-soft); --hl-ink: var(--warning-ink); }
+/* `.fork-state--emp` СВОЕГО правила не имеет: оно слово в слово повторяло тройку
+   базы выше (синий = дефолт состояния). Класс остаётся в разметке как имя
+   варианта, но второй копии значений у него больше нет. */
 
 .fork-state__art { position: relative; height: 82px; display: grid; place-items: center; }
-.fork-state__glow { position: absolute; inset: 50% auto auto 50%; width: 150px; height: 100px; transform: translate(-50%, -46%); background: radial-gradient(closest-side, var(--st-accent-soft), transparent 72%); }
+.fork-state__glow { position: absolute; inset: 50% auto auto 50%; width: 150px; height: 100px; transform: translate(-50%, -46%); background: radial-gradient(closest-side, var(--hl-soft), transparent 72%); }
 .fork-si {
-  position: relative; width: 66px; height: 66px; border-radius: var(--r-xl); display: grid; place-items: center; color: var(--st-accent-ink);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 86%, var(--st-accent) 14%), var(--surface));
-  border: 1px solid color-mix(in srgb, var(--st-accent) 34%, var(--line));
-  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--st-accent) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.55);
+  position: relative; width: 66px; height: 66px; border-radius: var(--r-xl); display: grid; place-items: center; color: var(--hl-ink);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 86%, var(--hl) 14%), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--hl) 34%, var(--line));
+  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--hl) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.55);
 }
-[data-theme="dark"] .fork-si { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--st-accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
-.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; color: #fff; background: var(--st-accent); border: 2.5px solid var(--surface); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--st-accent) 80%, transparent); }
+[data-theme="dark"] .fork-si { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--hl) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
+.fork-state__spark { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; color: #fff; background: var(--hl); border: 2.5px solid var(--surface); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--hl) 80%, transparent); }
 .fork-state b { color: var(--ink); margin-top: 4px; }
 .fork-state p { margin: 0; color: var(--muted); max-width: 30ch; }
 .fork-state__actions { display: flex; flex-direction: column; gap: 9px; align-items: stretch; width: 100%; max-width: 264px; margin-top: 14px; }
@@ -5860,14 +6307,16 @@ a.doc-row__n:hover{ color: var(--brand); }
    Был написан 14 раз в 10 пространствах имён, каждый раз одной и той же тройкой
    фон + рамка + цвет текста. Здесь он объявлен ДВА раза - мягкий и залитый, -
    а цвет подставляется ручками --hl / --hl-soft / --hl-ink / --hl-fg
-   (значения по умолчанию в :root, узор взят у существующего --st-accent).
+   (значения по умолчанию в :root, узор взят у тройки --st-accent* состояний
+   fork-панели - в 04 PR3 она сведена сюда же, своего имени у неё больше нет).
    Почему co-selector, а не класс в разметке: триггер - :hover / .is-active /
    [data-state=open]; на состояние класс не повесишь. Ровно так же собраны
    каноны типографики в этом файле.
    Побочно выровнено то, ради чего объект и сводился: шесть «синих» мест стояли
    на ДВУХ разных токенах синего (--primary-soft и --brand-soft; в тёмной теме
-   .16 против .14), три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и
-   var(--primary-fg)). Теперь синий один и белый один. */
+   тогда .16 против .14 - TRIP-352 выровнял, 04 PR3 первое имя удалил вовсе),
+   три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и var(--primary-fg)).
+   Теперь синий один и белый один. */
 .tc-add:hover,
 .wdg-act:hover,
 .bgt-glist__add:hover,
@@ -5885,3 +6334,359 @@ a.doc-row__n:hover{ color: var(--brand); }
 .te-cell--act   { --hl: var(--ev-activity); --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .dl-addcard--mine { --hl: var(--warm); --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 .lp-back { --hl: var(--line-hover); --hl-soft: var(--wash); --hl-ink: var(--ink); }
+/* ⚠ Пагинатор пиним ПО ТОЙ ЖЕ причине, что .lp-back выше, и это не украшение.
+   Панель добавления брони встраивает fork-список внутрь оболочки события, а
+   оболочка ставит в канал цвет ТИПА события. Пилюля номера страницы к типу
+   события отношения не имеет и была брендовой всегда: без пина она красилась бы
+   в цвет отеля/активности, причём ТОЛЬКО в панели добавления - в отдельном
+   модале партнёра оболочка цвет не ставит, и один компонент показывал бы два
+   разных цвета в зависимости от того, кто его смонтировал.
+   ★Найдено code-simplifier'ом, и это класс дефекта, которого не видит НИ ОДИН
+   гард: текст правила .fork-pg--on не менялся ни на байт, а 2p сравнивает
+   объявления и про наследование ручки через разметку не знает (это прямо
+   написано в его шапке). Появился он оттого, что канал стал ОБЩИМ: пока имя
+   было приватным (--ev-color), чужой читатель его просто не видел. */
+.fork-pg { --hl: var(--brand); --hl-fg: var(--primary-fg); }
+
+/* ═══ ЖУРНАЛ 2p ДЛЯ ЭТОГО PR (04 PR3, тинт) ═══════════════════════════════════
+   Ярус 2 визуального гейта печатает КАЖДОЕ изменившееся итоговое объявление, а
+   этот PR меняет их 152: замена имени токена у читателей, переезд трёх
+   параллельных наборов ручек на один канал --hl и снятие вариантов, которые
+   записывали дефолт канала. Все изменения НАМЕРЕННЫЕ и объявлены ниже - каждое
+   своей строкой с ПОЛНЫМ ключом (класс · состояние · @media · свойство) и
+   причиной.
+   ★Почему не одним бланкетным маркером: маркер, названный не целиком, гасит всё
+   на классе - и правку, которой автор не заметил, тоже. Так гард уже однажды
+   пропустил изменение общего класса, поэтому escape тут точечный по построению.
+   ★Почему НИ ОДНОГО маркера переноса - переносы разметки в PR есть (.tl3-today и
+   .badge--on-arrival уехали на .badge--brand, .wi--primary на .wi, четыре
+   .dl-…--shared на свои базы), но маркер переноса утверждает «на цели ЗНАЧЕНИЕ
+   то же», а здесь одновременно переименован сам токен внутри значения - текст
+   объявления на цели ДРУГОЙ. Гард такой маркер отверг бы, а подогнанный под него
+   был бы ложным утверждением о разметке. Поэтому эти ключи объявлены точечно.
+   ⚠ Маркеры читаются из ДОБАВЛЕННЫХ строк диффа, то есть действуют РОВНО ОДИН
+   PR. После мерджа блок - мёртвый текст: снести первым же PR, который тронет
+   файл.
+   visual-diff-exempt: :root --primary-soft — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: :root --primary-soft-2 — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: :root[data-theme=dark] --primary-soft — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: :root[data-theme=dark] --primary-soft-2 — два имени удалены из :root (163 -> 161): это было второе имя --brand-soft, значения выровнены в #699
+   visual-diff-exempt: .acct-lang__flag background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .acct-nav background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .active background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .addmini background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .auth --primary-soft — пин удалённого имени снят с острова .auth: читателей под .auth ноль, оставлять - мёртвая строка
+   visual-diff-exempt: .auth --primary-soft-2 — пин удалённого имени снят с острова .auth: читателей под .auth ноль, оставлять - мёртвая строка
+   visual-diff-exempt: .badge--brand background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .badge--on-arrival background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .badge--on-arrival color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .bell-dd__mark background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bell-dd__more:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bgt-glist__row background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bgt-glist__row border-color — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bgt-stat--total background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .bk-link:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .brow--unread:hover {@media (hover: hover)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .brow--unread background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn--soft --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn--soft:hover --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .btn:hover --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .choice-card__ic--man background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .choice-card__ic--man color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .choice-card__ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .choice-card__ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .cr-dot box-shadow — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .cr-item box-shadow — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .dl-card__ic--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-card__ic--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-card__ic--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-card__ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-card__ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-empty__ic--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-empty__ic--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-empty__ic--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-empty__ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-empty__ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-sec-ic--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-sec-ic--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-sec-ic--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-sec-ic background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-sec-ic color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-vischip--mine --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--mine --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--mine background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--mine color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .dl-vischip--shared background — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-vischip--shared color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .dl-vischip background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .dl-vischip color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .empty-note border — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ev-sec-lbl::after background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .ev-sec-lbl::before background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .f-sec::after background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .f-sec color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .fork-si background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-si border — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-si box-shadow — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-si color — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state__glow background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state__spark background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state__spark box-shadow — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--emp --st-accent — правило .fork-state--emp было побайтовым повтором базы .fork-state и удалено; значения приходят с базы
+   visual-diff-exempt: .fork-state--emp --st-accent-ink — правило .fork-state--emp было побайтовым повтором базы .fork-state и удалено; значения приходят с базы
+   visual-diff-exempt: .fork-state--emp --st-accent-soft — правило .fork-state--emp было побайтовым повтором базы .fork-state и удалено; значения приходят с базы
+   visual-diff-exempt: .fork-state--err --hl — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --hl-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --hl-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --st-accent — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --st-accent-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--err --st-accent-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --hl — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --hl-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --hl-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --hl — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --hl-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --hl-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --st-accent — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --st-accent-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state--nomatch --st-accent-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --st-accent — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --st-accent-ink — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state --st-accent-soft — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state::before background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .fork-state background — канал тинта один (Р7): ручка --st-accent переименована в --hl, значение то же
+   visual-diff-exempt: .is-active::before {@media (max-width: 640px)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-on --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-on:hover --bg — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-trip:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .is-trip background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .lp-h--ev background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-h--ev border-bottom-color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-h--ev color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-ic background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .lp-stepper__ic background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .mbnav__ico::before {@media (max-width: 640px)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .mbnav__item::before {@media (max-width: 640px)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-dc:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-more:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-more background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-nav-trip:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ncal-nav-trip background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .nonext background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .nrow--unread background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .pro-hero-eyebrow background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .ptrip --brand-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
+   visual-diff-exempt: .ptrip --primary-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
+   visual-diff-exempt: .s22f-pill background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .sec-lbl background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .seg background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .seg color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .sl color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tc-add__ic:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tc-add__ic background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tc-add:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tile background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tile color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tl3-card background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
+   visual-diff-exempt: .tl3-dh background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tl3-today background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tl3-today color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today font-family — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today font-size — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today font-weight — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today letter-spacing — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today line-height — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tl3-today text-transform — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .tr__addic:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tr__addic background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .tr--add:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .triplink:hover {@media (hover: hover)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .wi--activity --hl-ink — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--activity --hl-soft — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--activity background — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--activity color — вариант перестал объявлять пару фон+текст и ПОДСТАВЛЯЕТ своё значение в канал --hl
+   visual-diff-exempt: .wi--primary background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
+   visual-diff-exempt: .wi--primary color — класс удалён, тон уехал на базу через канал --hl - значение то же
+   visual-diff-exempt: .wi background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .wi color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
+   visual-diff-exempt: .fork-pg --hl — пин канала на объекте ВОССТАНАВЛИВАЕТ прежний цвет: канал стал общим, и пилюля страницы начала наследовать цвет типа события из оболочки панели добавления брони
+   visual-diff-exempt: .fork-pg --hl-fg — то же, вторая ручка залитой формы: без пина активная страница брала бы чернила чужого тона
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ═══ TRIP-342: ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ (чат) ═════════════════════════
+   Почему тут exempt, а не visual-diff-move. Маркер переноса требует, чтобы ВСЕ
+   ушедшие с источника объявления лежали на ОДНОЙ названной цели. Раскладка же
+   уезжает на КОМПОЗИЦИЮ - примитив плюс модификаторы его осей (.row + .row--g7 +
+   .row--wrap), и второй маркер на ту же пару делает проверку строже, а не
+   полнее: гард начинает требовать display и от .row--g7 тоже. Плюс он сверяет
+   значения ТЕКСТОМ и не резолвит var(), поэтому честный перенос сырых 16px на
+   ступень var(--sp-7) читается как смена значения. Оба ограничения названы в
+   отчёте по задаче; здесь каждый ключ объявлен поимённо, без бланкетного гашения.
+   visual-diff-exempt: .chat-composer__hint gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-composer__in gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-daydiv gap — зазор 16px уехал на ступень шкалы .--g7 (var(--sp-7)=16px), значение то же
+   visual-diff-exempt: .chat-head__id flex — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-head__id gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   visual-diff-exempt: .chat-head__id justify-content — justify-content:center уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-head__id min-width — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-head gap — зазор 16px уехал на ступень шкалы .--g7 (var(--sp-7)=16px), значение то же
+   visual-diff-exempt: .chat-hist gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
+   visual-diff-exempt: .chat-hist justify-content — justify-content:center уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-member gap — зазор 10px уехал на ступень шкалы .--g5 (var(--sp-5)=10px), значение то же
+   visual-diff-exempt: .chat-members-btn gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-mention__row gap — зазор 10px уехал на ступень шкалы .--g5 (var(--sp-5)=10px), значение то же
+   visual-diff-exempt: .chat-msg__foot gap — зазор 6px уехал на ступень шкалы .--g3 (var(--sp-3)=6px), значение то же
+   visual-diff-exempt: .chat-msgs__in gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
+   visual-diff-exempt: .chat-msgs gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   visual-diff-exempt: .chat-name align-items — align-items:baseline уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-name gap — зазор 6px уехал на ступень шкалы .--g3 (var(--sp-3)=6px), значение то же
+   visual-diff-exempt: .chat-overline gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-reply__acts flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-reply__acts gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
+   visual-diff-exempt: .chat-reply__body flex — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-reply__body gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-reply__body min-width — пара flex:1+min-width:0 уехала на .grow--fit, значения те же
+   visual-diff-exempt: .chat-reply__row gap — зазор 12px уехал на ступень шкалы .--g6 (var(--sp-6)=12px), значение то же
+   visual-diff-exempt: .chat-reply__who gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-reply gap — зазор 8px уехал на ступень шкалы .--g4 (var(--sp-4)=8px), значение то же
+   visual-diff-exempt: .chat-run__col gap — зазор 4px уехал на ступень шкалы .--g2 (var(--sp-2)=4px), значение то же
+   visual-diff-exempt: .chat-run align-items — align-items:flex-start уехало на модификатор своей оси, значение то же
+   visual-diff-exempt: .chat-run gap — зазор 12px уехал на ступень шкалы .--g6 (var(--sp-6)=12px), значение то же
+   visual-diff-exempt: .chat-run justify-content — flex-start это ДЕФОЛТ флекса, объявление ничего не делало и снято, а не перенесено
+   visual-diff-exempt: .col--a-end align-items — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .col--a-start align-items — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .col--g2 gap — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .col--j-center justify-content — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--a-baseline align-items — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--g1 gap — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--inline display — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   visual-diff-exempt: .row--j-between justify-content — новый модификатор оси раскладки, решение Р14, апрув Pavel 2026-08-07
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* TRIP-342: продолжение объявленных изменений (чат) - раскладка на примитив.
+   visual-diff-exempt: .chat-composer__hint align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-composer__hint display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-composer__in display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-composer__in flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-daydiv align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-daydiv display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-head__id display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-head__id flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-head align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-head display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-hist display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-member align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-member display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-members-btn align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-members-btn display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-mention__row align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-msg__foot align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-msg__foot display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msg display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msg flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-msgs__in display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msgs__in flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-msgs display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-msgs flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-name display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-overline align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-overline display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__acts align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-reply__acts display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__body display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__body flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-reply__row display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply__who align-items — align-items:center - дефолт .row, значение то же
+   visual-diff-exempt: .chat-reply__who display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-reply flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-run__col display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .chat-run__col flex-direction — flex-direction:column уехал на .col, значение то же
+   visual-diff-exempt: .chat-run display — display:flex уехал на примитив .row/.col, значение то же
+   visual-diff-exempt: .row--a-start align-items — раскладка уехала на примитив, значение то же
+   visual-diff-exempt: .row--center justify-content — раскладка уехала на примитив, значение то же
+   visual-diff-exempt: .row--j-center justify-content — раскладка уехала на примитив, значение то же
+   visual-diff-exempt: .row--start align-items — раскладка уехала на примитив, значение то же
+   */
+
+/* ═══ TRIP-342 зона 2: объявленные изменения ════════════════════════════════
+   ★Про два ключа `.te-row`. Гард заводит ключи на ВСЕ классы селектора, поэтому
+   правило `.te-row.te-row--plan .te-row__pacts` (специфичнее и ниже по файлу)
+   было победителем и для ключа `.te-row`. Его объявления уехали на
+   `row row--inline row--g4` и удостоверены СВОИМ маркером на полный селектор
+   (гард печатает: «объявлений 8, из них 3 сошлись через токен»). Строки ниже
+   закрывают тень того же переноса на классовом ключе - объявить их переносом
+   на `.grid` было бы неправдой: туда они не ехали.
+
+   ★Нулевые зазоры названы явно: у сетки и у флекса начальный зазор 0, а
+   `.grid`/`.row` несут дефолтные 10px. Это прежнее значение под своим именем.
+   visual-diff-exempt: .te-row row-gap — сетка задаёт только column-gap, .grid дал бы 10px между строками
+   visual-diff-exempt: .te-thead row-gap — то же
+   visual-diff-exempt: .tv-route row-gap — то же
+   visual-diff-exempt: .te-seam gap — контейнер без зазора, .row дал бы 10px
+   visual-diff-exempt: .tv-nodecell gap — то же
+   visual-diff-exempt: .tv-conncell gap — то же
+   visual-diff-exempt: .tv-durcell gap — то же
+   visual-diff-exempt: .tv-carrier__av gap — то же
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ TRIP-342 зона 2: восстановленный неявный stretch ═══════════════════════
+   Шесть правил не объявляли `align-items` вовсе (седьмой кандидат, `.chat-msgs__in`,
+   сидит на `.col`, а у колонки выравнивания нет вовсе - там дефолт не менялся), то есть работали на флексовом
+   дефолте `stretch`, а `.row` центрирует. Строка возвращает ПРЕЖНЕЕ вычисленное
+   значение под своим именем - как `gap: 0` возвращает прежний нулевой зазор.
+   Это не перенос: на `.row` такого объявления нет и быть не должно.
+   ★Найдено ЗАМЕРОМ, не гардом: у `.tv-conncell` соединительная линия рейса
+   схлопнулась с 33px до 18px. 2p сверяет ОБЪЯВЛЕНИЯ и по построению не видит
+   смены УНАСЛЕДОВАННОГО дефолта - граница, названная в его же шапке.
+   visual-diff-exempt: .chat-hist align-items — вернул дефолт stretch, .row навязывал center
+   visual-diff-exempt: .tv-eyebrows align-items — то же (пропущен в первом заходе, нашёл code-simplifier)
+   visual-diff-exempt: .eed-drange-tz align-items — то же
+   visual-diff-exempt: .te-seam align-items — то же
+   visual-diff-exempt: .tv-conncell align-items — то же, поймано замером (линия рейса 33px → 18px)
+   visual-diff-exempt: .tv-nodecell align-items — то же
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* TRIP-342 зона 3.
+   visual-diff-exempt: .pcard row-gap — прежний нулевой зазор под своим именем: карточка задаёт только column-gap, а .grid несёт дефолтные 10px по обеим осям
+   */
+
+/* ═══ TRIP-342 зона 4: объявленные изменения ════════════════════════════════
+   Три ряда не объявляли `align-items` вовсе (работал флексовый дефолт `stretch`),
+   а `.row` центрирует; карточка аддона не объявляла зазор, а `.col` несёт 10px.
+   Строки возвращают ПРЕЖНЕЕ вычисленное значение под своим именем. Это не
+   перенос: на примитиве таких объявлений нет и быть не должно.
+   ★2p к этому классу дефектов слеп по построению - меняется УНАСЛЕДОВАННЫЙ
+   дефолт, а не объявление; ловится замером и предполётной сверкой.
+   visual-diff-exempt: .invite__act align-items — вернул дефолт stretch, .row навязывал center
+   visual-diff-exempt: .acct-hero__actions align-items — то же
+   visual-diff-exempt: .acct-plan__acts align-items — то же
+   visual-diff-exempt: .addon-card gap — вернул нулевой зазор, .col навязывал 10px
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ TRIP-388 PR 6: два зазора вне шкалы уехали на ступень оси ══════════════
+   Это ЕДИНСТВЕННОЕ место эпика, где меняется ПИКСЕЛЬ, а не имя. Оба зазора
+   стояли ВНЕ шкалы `--sp` (11 при ступенях 10 и 12; 7 при ступенях 6 и 8),
+   поэтому «перенести без изменения значения» тут невозможно по построению:
+   маркер `visual-diff-move` требует совпадения значений и покраснел бы честно.
+   Апрув Pavel в TRIP-388 (комментарий к PR #735) называет обе цели поимённо.
+   ★Почему это не подгонка числа: класс, продолжающий объявлять зазор поверх
+   примитива, - второй источник раскладки под своим именем (§1f), и снять его
+   можно только сняв объявление. Приватных классов раскладки 440 → 438.
+   ⚠️Носителей у обоих классов по ТРИ, и два из трёх - вне EditLens
+   (`anchors.jsx`, `CityRow.jsx`). Ступень проставлена на каждом: без неё
+   оставшиеся молча получили бы дефолтные 10px у `.row`, то есть правка вышла бы
+   не «11 → 12», а «11 → 12 здесь и 11 → 10 там».
+   visual-diff-exempt: .te-end gap — 11px вне шкалы → ступень row--g6 (--sp-6 = 12px), апрув Pavel в TRIP-388
+   visual-diff-exempt: .te-cityline gap — 7px вне шкалы → ступень row--g3 (--sp-3 = 6px), апрув Pavel в TRIP-388
+   ═══════════════════════════════════════════════════════════════════════════ */

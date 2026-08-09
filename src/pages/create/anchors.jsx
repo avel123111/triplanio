@@ -75,23 +75,23 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
       );
     }
     return (
-      <button type="button" className="te-end te-end--add" onClick={() => setAdding(true)}>
+      <button type="button" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
         <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name="plus" size={13} /></span>
         <div className="te-citycell grow">
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
-          <span className="te-cityname muted">{t('planner.add_start')}</span>
+          <span className="trunc te-cityname muted">{t('planner.add_start')}</span>
         </div>
       </button>
     );
   }
 
   return (
-    <div className="te-end">
+    <div className="row row--g6 te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name="flag" size={13} /></span>
       <div className="te-citycell grow">
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
-        <div className="te-cityline">
-          <span className="te-cityname">{city?.city_name || <span className="muted">{t('planner.not_set')}</span>}</span>
+        <div className="row row--g3 te-cityline">
+          <span className="trunc te-cityname">{city?.city_name || <span className="muted">{t('planner.not_set')}</span>}</span>
           {city?.country && <span className="muted t-meta">{city.country}</span>}
         </div>
       </div>

@@ -36,7 +36,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
   return (
     <div className="wdg ov-wdg">
       <div className="wdg-h">
-        <span className="wi wi--primary"><Icon name="folder-bookmark" size={17} /></span>
+        <span className="wi"><Icon name="folder-bookmark" size={17} /></span>
         <h4>{t('trip.sidebar_services')}</h4>
       </div>
       <div className="wdg-b">
@@ -45,8 +45,8 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
             return (
-              <button key={s.id} className="bookrow" onClick={() => onOpenService?.(s)}>
-                <span className="bi" style={{ background: meta?.soft || 'var(--primary-soft)', color: meta?.color || 'var(--brand)' }}>
+              <button key={s.id} className="row bookrow" onClick={() => onOpenService?.(s)}>
+                <span className="bi" style={{ background: meta?.soft || 'var(--brand-soft)', color: meta?.color || 'var(--brand)' }}>
                   <Icon name={meta?.icon || 'ticket'} size={18} />
                 </span>
                 <div className="bt">

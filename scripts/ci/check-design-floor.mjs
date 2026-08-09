@@ -88,6 +88,15 @@
  *
  *     floor-exempt: classes +3 — примитивы раскладки Ф3, апрув Pavel
  *
+ * ★ ФОРМА ОДНА НА ВСЕ ДЕВЯТЬ ЧИСЕЛ, И ЗНАК СВЕРЯЕТСЯ. `+N` — это ВЕЛИЧИНА
+ * РАЗРЕШЁННОГО НАРУШЕНИЯ, а не дельта метрики: у семи убывающих нарушение это
+ * рост, у двух растущих (`axes`, `dsshare`) — падение, и обе пишутся `+N`.
+ * Автор не обязан помнить направление каждого числа. `-N` и маркер БЕЗ знака
+ * роняют гард с кодом 2 одинаково: знак ловится НЕОБЯЗАТЕЛЬНЫМ ровно затем,
+ * чтобы `dsshare 25` не потерялся молча — иначе это тот же отказ «опечатка =
+ * ноль бюджета», ради которого неизвестное ИМЯ метрики роняет гард, только на
+ * шаг раньше.
+ *
  * Read from the ADDED LINES of the diff, not from the file contents. That makes
  * the allowance last exactly one PR: once merged the line is no longer an
  * addition, so it cannot silently grant the same budget again. A marker naming
@@ -125,7 +134,75 @@ const METRICS = [
   { key: 'tokens', field: 'rootTokens', label: 'токенов в :root' }, //           163
   // TRIP-340 PR1. `null` is legal on the BASE side and only there — see `bootstrap`.
   { key: 'triage', field: 'triageClasses', label: 'классов на разборе', bootstrap: true }, // 1127
+  // TRIP-364. Экран дотянулся внутрь примитива и ОБЪЯВИЛ свойство (закон 3).
+  // ТОЛЬКО «не расти»: убывание — работа 06, и фиксировать её объём этим числом
+  // нельзя. Из числа вычтен со-селекторный канон типографики — иначе храповик
+  // считал бы долгом собственный механизм ДС (см. audit-design.mjs, §12 Б).
+  { key: 'reach', field: 'reachViolations', label: 'экран дотянулся в примитив' }, // 53
+  /** TRIP-364 PR-I. Записи `apart` в каталоге — обличья, объявленные ВНЕ осей.
+   *  ЗАЧЕМ СЕДЬМОЕ ЧИСЛО. apart не храповился ничем: он живёт внутри 2q, а пол
+   *  про него не знал. Значит любое уникальное исполнение клалось туда с
+   *  красивой причиной, и ни одно число не краснело - дверь ровно того класса,
+   *  ради закрытия которого пол и написан (тот же провал, что «снизили классы,
+   *  вырастили пространства имён на 8»). Шапка каталога сама обещает про этот
+   *  список «обязан пустеть»; обещание без храповика и есть непроверяемая
+   *  строка.
+   *  ★ `bootstrap` стоит по той же причине, что у пятой: без каталога `apart`
+   *  отдаётся `null`, а `null` без этого флага даёт вердикт «метрика и аудит
+   *  разошлись» - сообщение про совсем другую поломку. Половина «на базе `null`
+   *  законен» сегодня сработать уже НЕ МОЖЕТ (каталог есть на каждой базе с
+   *  TRIP-340) - флаг покупает вторую половину: удаление каталога на HEAD
+   *  краснеет своими словами, а не чужими. */
+  { key: 'apart', field: 'apartEntries', label: 'обличий вне осей (apart)', bootstrap: true }, // 2
+  /** TRIP-364 PR-I. Семьи, объявившие оси. ★ЕДИНСТВЕННАЯ МЕТРИКА «ТОЛЬКО ВВЕРХ»,
+   *  и заведена она против дыры в СЕДЬМОЙ. `apart` понижается ДЕ-ДЕКЛАРАЦИЕЙ:
+   *  убери семью из `axes` вместе с её записями в `apart` - apart упадёт, а оба
+   *  гарда останутся зелёными (2q семью без ключа в `axes` не проверяет вовсе,
+   *  2o увидит честный минус). Число понижалось бы изменением того, ЧТО ОНО
+   *  СЧИТАЕТ - тот же провал, что «снизили классы, вырастили пространства имён»,
+   *  только с третьей стороны. Печатать его мало: печатное число никто не
+   *  смотрит, а храповик краснеет. */
+  { key: 'axes', field: 'axesFamilies', label: 'семей под осями', bootstrap: true, up: true }, // 5
+  /** ★ TRIP-337 §1. ГЛАВНОЕ ЧИСЛО ЭПИКА, ДЕВЯТОЕ по счёту: доля элементов
+   *  интерфейса, взятых из ДС, в сотых долях процента. Предикат — в
+   *  `audit-design.mjs` §1e, там же названы четыре границы, которых он не видит.
+   *  Вторая метрика «только вверх» (первой была `axes`), поэтому направление
+   *  здесь — то же поле `up`, а не второй флаг: два способа сказать одно в одной
+   *  таблице разъезжаются ровно тогда, когда третий автор выберет не тот.
+   *  `nullable` — знаменатель может быть нулём (дерево без единого элемента
+   *  интерфейса); это законно на ОБЕИХ сторонах и проверяется ниже отдельно, а
+   *  не флагом `bootstrap`: «мерить нечего» и «каталога нет» — разные факты. */
+  { key: 'dsshare', field: 'dsShareBp', label: 'собрано из ДС (bp)', up: true, nullable: true }, // 2309
+  /** TRIP-388. Приватные классы, ОБЪЯВЛЯЮЩИЕ раскладку. ЗАЧЕМ ДЕСЯТОЕ ЧИСЛО: у
+   *  пересадки экранов на примитивы есть объявленная дверь - проброс
+   *  `className`, - и через неё же можно «пересадить» экран, оставив приватный
+   *  класс раскладки живым: `dsshare` вырастет, 2p промолчит (CSS не менялся),
+   *  а второй источник раскладки останется под новым именем. Это число падает
+   *  ТОЛЬКО когда приватный класс действительно схлопнут, поэтому у каждого PR
+   *  пересадки оно стоит рядом с `dsshare`: одно вверх, другое вниз.
+   *  ★ Предикат (`audit-design.mjs` §3a) НЕ зависит от каталога: канон здесь -
+   *  фиксированный список пяти семей раскладки. У `reach` такая зависимость
+   *  есть, и ровно поэтому его храповить нельзя; тут её нет by design. */
+  { key: 'layout', field: 'layoutPrivateClasses', label: 'приватных классов раскладки' }, // 440
 ];
+
+/* ★ НАПРАВЛЕНИЕ - ПОЛЕ ТАБЛИЦЫ (`up`), А НЕ ВЕТКА `if`, И ПОЛЕ РОВНО ОДНО.
+ * Семь метрик отвечают на вопрос «не выросло ли», две (`axes`, `dsshare`) - на
+ * обратный. Второй флаг того же смысла был написан и снят при ребейзе:
+ * `direction: 'up'` рядом с `up: true` разъезжается ровно тогда, когда третий
+ * автор выберет не тот, а таблица метрик - место, где этого никто не заметит.
+ *
+ * ★★ ФОРМА МАРКЕРА ОТ НАПРАВЛЕНИЯ НЕ ЗАВИСИТ: `+N` = величина разрешённого
+ * НАРУШЕНИЯ. Обратный вариант («у растущей объявляется падение, значит `-N`»)
+ * был реализован и отвергнут: он заставляет автора помнить направление каждого
+ * числа, а это тот самый класс ошибки, который пол и закрывает. Строгость от
+ * этого не пострадала - см. `allowances()`: и `-N`, и маркер БЕЗ знака роняют
+ * гард с кодом 2, то есть «опечатка = тихий ноль бюджета» закрыта с обеих сторон.
+ *
+ * ★★★ И СЛЕДСТВИЕ, КОТОРОЕ НАДО ЗНАТЬ ЗАРАНЕЕ: `dsshare` - первая метрика,
+ * которая краснеет на ОБЫЧНОЙ продуктовой работе. Новый экран, написанный сырой
+ * разметкой, опускает долю, даже если он безупречен. Для эпика это цель; для
+ * соседнего PR - строка `floor-exempt: dsshare +N` с причиной. */
 
 /* ★ WHAT `bootstrap: true` ABOVE BUYS, AND ONLY FOR THE SIDE THAT NEEDS IT.
  * `null` means "there is no catalog", and that is a different fact from 0.
@@ -158,12 +235,19 @@ const git = (args) =>
  *  cwd moves instead, so both sides see identical relative paths — the audit's
  *  OUT_OF_SCOPE test matches on the path, and an absolute temp path could
  *  otherwise classify files differently on the two sides. */
-function measure(cwd, side, isBase) {
+function measure(cwd, side, isBase, canonFamilies) {
   const r = spawnSync(process.execPath, [AUDIT, '--json'], {
     cwd,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, AUDIT_ROOT: 'src' },
+    // ★ HEAD меряется КАНОН-НАБОРОМ БАЗЫ (TRIP-364). Шестая метрика — «экран
+    // дотянулся внутрь примитива» — зависит от каталога по построению: перевод
+    // семьи `triage → canon` расширяет язык и тем самым ПОДНИМАЕТ число, хотя
+    // не стоит ни строки CSS. Такая переклейка объявлена легальной, бесплатной
+    // и никогда не блокируемой, поэтому храповик по «своему» каталогу краснел
+    // бы на правильном ходе — а красный на правильном ходе гард выключают.
+    // Одна мерка на обе стороны оставляет под наблюдением ровно правки CSS.
+    env: { ...process.env, AUDIT_ROOT: 'src', ...(canonFamilies ? { AUDIT_CANON_FAMILIES: canonFamilies.join(',') } : {}) },
   });
   if (r.error) die(`cannot run audit-design.mjs on ${side}: ${r.error.message}`);
   if (r.status !== 0) die(`audit-design.mjs failed on ${side} (exit ${r.status})`, (r.stderr || '').split('\n'));
@@ -187,6 +271,10 @@ function measure(cwd, side, isBase) {
   for (const m of METRICS) {
     const v = json[m.field];
     if (typeof v === 'number') continue;
+    // `nullable` = «мерить нечего» - законное состояние ОБЕИХ сторон (дерево без
+    // единого элемента интерфейса). Что это не способ метрику ВЫКЛЮЧИТЬ,
+    // проверяется ниже, когда известны обе стороны: живая база + пустой HEAD.
+    if (v === null && m.nullable) continue;
     if (v === null && m.bootstrap) {
       if (isBase) continue; // no ceiling yet — see the note under METRICS
       die(`HEAD: каталога нет (src/design/catalog.json), метрика «${m.label}» не измеряется`, [
@@ -220,19 +308,43 @@ function allowances() {
   } catch (e) {
     die(`cannot diff against ${BASE_REF}: ${e.stderr || e.message}`);
   }
-  const known = new Set(METRICS.map((m) => m.key));
+  const byKey = new Map(METRICS.map((m) => [m.key, m]));
   const out = Object.create(null);
-  const re = new RegExp(`${EXEMPT}:\\s*([a-zA-Z][\\w-]*)\\s*\\+(\\d+)`, 'g');
+  /** ★ ОДНА ФОРМА МАРКЕРА НА ВСЕ ДЕВЯТЬ ЧИСЕЛ: `+N` — это ВЕЛИЧИНА РАЗРЕШЁННОГО
+   *  НАРУШЕНИЯ, а не дельта метрики. У метрики «только вверх» нарушение — падение,
+   *  поэтому `+N` там означает «падение на N согласовано». Автор не обязан
+   *  помнить направление каждого числа — а это ровно тот класс ошибки, который
+   *  пол и закрывает.
+   *
+   *  ★★ ЗНАК НЕОБЯЗАТЕЛЕН ДЛЯ РАЗБОРА И ОБЯЗАТЕЛЕН ДЛЯ ЗАЧЁТА, и разница
+   *  принципиальная: требуй регулярка `\+`, маркеры `dsshare 25` и `dsshare -25`
+   *  не находились бы ВОВСЕ — ноль бюджета МОЛЧА, то есть тот же отказ, ради
+   *  которого неизвестное ИМЯ метрики роняет гард, только на шаг раньше. Поэтому
+   *  знак ловится необязательным, а всё, что не `+`, роняет гард с кодом 2. */
+  const re = new RegExp(`${EXEMPT}:\\s*([a-zA-Z][\\w-]*)\\s*([+-]?)(\\d+)`, 'g');
   for (const line of diff.split('\n')) {
     if (!line.startsWith('+') || line.startsWith('+++')) continue;
     for (const m of line.matchAll(re)) {
-      if (!known.has(m[1])) {
+      const metric = byKey.get(m[1]);
+      if (!metric) {
         die(`exemption names an unknown metric \`${m[1]}\` — a typo must not read as "no exemption".`, [
-          `known metrics: ${[...known].join(', ')}`,
+          `known metrics: ${[...byKey.keys()].join(', ')}`,
           `the marker was: ${line.slice(1).trim()}`,
         ]);
       }
-      out[m[1]] = (out[m[1]] ?? 0) + Number(m[2]);
+      if (m[2] !== '+') {
+        const what = m[2] ? `не тот ЗНАК: ${m[2]}${m[3]}` : `НЕ НАЗВАН ЗНАК: ${m[3]}`;
+        const dir = metric.up
+          ? 'метрика может только РАСТИ, и `+N` тут означает согласованное ПАДЕНИЕ на N'
+          : 'метрика может только УБЫВАТЬ, и `+N` означает согласованный РОСТ на N';
+        die(`у исключения для \`${m[1]}\` ${what}: ${dir}.`, [
+          `нужно: ${EXEMPT}: ${m[1]} +${m[3]} — причина + апрув`,
+          `маркер был: ${line.slice(1).trim()}`,
+          'Форма одна на все метрики: +N = величина разрешённого НАРУШЕНИЯ, а не дельта числа.',
+          'Знак с ошибкой - это опечатка, а опечатка не должна читаться как «исключения не просили».',
+        ]);
+      }
+      out[m[1]] = (out[m[1]] ?? 0) + Number(m[3]);
     }
   }
   return out;
@@ -287,27 +399,58 @@ try {
   die(`cannot check out ${BASE_REF} into a worktree: ${e.stderr || e.message}`);
 }
 const base = measure(basePath, `${BASE_REF} (base)`, true);
-const head = measure(root, 'HEAD', false);
+// Проверка стоит ДО замера HEAD: иначе HEAD успевает измериться СВОИМ каталогом,
+// то есть ровно той меркой, которую этот `die` и объявляет негодной.
+if (!Array.isArray(base.canonFamiliesUsed)) {
+  die('base: audit-design.mjs не отдал `canonFamiliesUsed` — шестую метрику нечем мерить одной меркой');
+}
+const head = measure(root, 'HEAD', false, base.canonFamiliesUsed);
+
+/** «Мерить нечего» законно только тогда, когда мерить нечего ОБЕИМ сторонам.
+ *  Живая база и пустой HEAD - это не пустое дерево, это метрика, выключенная
+ *  правкой: тот же закон, по которому удаление каталога роняет пятое число. */
+for (const m of METRICS.filter((x) => x.nullable)) {
+  if (typeof base[m.field] === 'number' && head[m.field] === null) {
+    die(`HEAD: метрика «${m.label}» больше не измеряется, а на базе была ${base[m.field]}`, [
+      'Пустое дерево - законное состояние, но не тогда, когда на базе элементы были.',
+      'Выключить метрику правкой нельзя: «мерить нечего» и «померили, чисто» - разные вердикты.',
+    ]);
+  }
+}
 
 const rows = METRICS.map((m) => {
   const was = base[m.field];
   const now = head[m.field];
   const allowed = exempt[m.key] ?? 0;
   // `was === null` = this PR establishes the ceiling; there is nothing to be over.
-  return { ...m, was, now, allowed, over: was === null ? 0 : now - was - allowed };
+  // ★ `up: true` меняет ЗНАК нарушения, а не смысл маркера: у метрики «только
+  // вверх» проступок - ПАДЕНИЕ, а `floor-exempt: <key> +N` по-прежнему выдаёт
+  // бюджет в N единиц движения В ЗАПРЕЩЁННУЮ сторону, какая бы она ни была.
+  // `now === null` - «мерить нечего» у `nullable`-метрики. ⚠️ Ветка НЕДОСТИЖИМА
+  // по построению: живая база с пустым HEAD уже убита сверкой выше, а «оба
+  // пустые» ловится первым условием. Мутация это подтвердила - её снятие не
+  // роняет ни одного теста. Оставлена намеренно и с этой оговоркой: снимут
+  // сверку выше - здесь будет NaN, а NaN > 0 это ложный ЗЕЛЁНЫЙ.
+  const moved = m.up ? was - now : now - was;
+  return { ...m, was, now, allowed, over: was === null || now === null ? 0 : moved - allowed };
 });
 
 const width = Math.max(...rows.map((r) => r.label.length));
 console.log(`check-design-floor (2o): HEAD vs ${BASE_REF}`);
 for (const r of rows) {
+  if (r.was === null && r.now === null) {
+    console.log(`  ${r.label.padEnd(width)}  ${'—'.padStart(5)} → ${'—'.padStart(5)}  мерить нечего (это НЕ ноль)`);
+    continue;
+  }
   if (r.was === null) {
     console.log(`  ${r.label.padEnd(width)}  ${'—'.padStart(5)} → ${String(r.now).padStart(5)}  пол установлен этим PR`);
     continue;
   }
   const delta = r.now - r.was;
   const sign = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '=';
+  const arrow = r.up ? '  ↑ может только расти' : '';
   const note = r.allowed ? `  (floor-exempt +${r.allowed})` : '';
-  console.log(`  ${r.label.padEnd(width)}  ${String(r.was).padStart(5)} → ${String(r.now).padStart(5)}  ${sign}${note}`);
+  console.log(`  ${r.label.padEnd(width)}  ${String(r.was).padStart(5)} → ${String(r.now).padStart(5)}  ${sign}${note}${arrow}`);
 }
 
 /** ★ EVERY STATUS CHANGE IS PRINTED, ALWAYS. Re-labelling a family
@@ -334,6 +477,21 @@ if (moved.length) {
   }
 }
 
+/** ★ ЧТО ИМЕННО УШЛО И ПРИШЛО В ДЕСЯТОМ ЧИСЛЕ - ПЕЧАТАЕТСЯ ИМЕНАМИ. Счёт
+ *  отвечает «упало на N», а вопрос у PR пересадки другой: упало ли на ТЕХ
+ *  классах, которые он тронул. Одним числом это не проверяется - ушедший
+ *  `.bgt-head` и заведённый в тот же PR `.foo-head` дают ноль, и ноль выглядит
+ *  как «ничего не трогали». Не блокирует (блокирует счёт выше): здесь нет
+ *  правила, которое можно нарушить, - есть факт, который нельзя не показать. */
+const layoutWas = new Set(base.layoutClasses?.names ?? []);
+const layoutNow = new Set(head.layoutClasses?.names ?? []);
+const layoutGone = [...layoutWas].filter((c) => !layoutNow.has(c));
+const layoutNew = [...layoutNow].filter((c) => !layoutWas.has(c));
+if (layoutGone.length || layoutNew.length) {
+  console.log(`  ─ приватная раскладка: ушли (${layoutGone.length}) ${layoutGone.join(' · ') || '—'}`);
+  console.log(`                         пришли (${layoutNew.length}) ${layoutNew.join(' · ') || '—'}`);
+}
+
 /** The catalog must describe the tree it is measured over. All three ways it can
  *  stop doing that end in a number that measured something else — and one of
  *  them (an invalid status) makes it go DOWN, i.e. look like progress. Fixed by
@@ -350,6 +508,23 @@ if (catalogFaults.length) {
     console.error(`      → ${fix} (src/design/catalog.json)`);
   }
   process.exit(1);
+}
+
+/** ★ ЕДИНСТВЕННЫЙ СПОСОБ ПОДНЯТЬ ДОЛЮ «СОБРАНО ИЗ ДС» БЕЗ РАБОТЫ - СВАЛИТЬ
+ *  РАЗМЕТКУ ЭКРАНА В `design/**`: её теги уходят из знаменателя, доля растёт. Храповить
+ *  это число НЕЛЬЗЯ - система законно растёт, и каждый новый примитив собран из
+ *  сырых тегов; храповик тормозил бы ровно правильный ход. Поэтому оно
+ *  ПЕЧАТАЕТСЯ рядом с долей: рост доли при скачке этого числа виден в одной
+ *  строке. Обещание «2o напечатает переклейку каталога» тут не работает -
+ *  разметка без классов каталогу невидима целиком. */
+const implWas = base.dsShare?.implHost;
+const implNow = head.dsShare?.implHost;
+if (typeof implWas === 'number' && typeof implNow === 'number' && implWas !== implNow) {
+  console.log(`  ─ сырых тегов внутри ДС (репорт, не блокирует): ${implWas} → ${implNow}`);
+  if (implNow > implWas) {
+    console.log('    Рост тут поднимает долю «собрано из ДС» БЕЗ работы над экранами: сверь,');
+    console.log('    что это новый примитив системы, а не разметка экрана, уехавшая в design/.');
+  }
 }
 
 // Non-blocking: names declared outside `:root` that `:root` does not have. Not
@@ -413,9 +588,16 @@ const broken = rows.filter((r) => r.over > 0);
 if (broken.length) {
   console.error('::error::check-design-floor: пол пробит — см. TRIP-337 §4 и правило #6 в CLAUDE.md');
   for (const r of broken) {
+    // У метрики «только вверх» проступок - падение, и печатать его как «+N»
+    // значило бы соврать в единственной строке, которую читают.
+    const moved = r.up ? r.was - r.now : r.now - r.was;
     console.error(
-      `  ✗ ${r.label}: ${r.was} → ${r.now} (+${r.now - r.was}${r.allowed ? `, разрешено +${r.allowed}` : ''})`,
+      `  ✗ ${r.label}: ${r.was} → ${r.now} (${r.up ? `упало на ${moved}` : `+${moved}`}${r.allowed ? `, разрешено +${r.allowed}` : ''})`,
     );
+    if (r.key === 'dsshare') {
+      console.error('      Эта метрика может только РАСТИ: экран, написанный сырой разметкой,');
+      console.error('      опускает долю, даже если он безупречен (TRIP-337 §1, главное число эпика).');
+    }
   }
   console.error('');
   console.error('  Пол храповит ВСЕ числа сразу именно затем, чтобы «классы снизили, пространства');
@@ -423,7 +605,7 @@ if (broken.length) {
   console.error('  другого нельзя — это не размен, это тот самый провал прошлого захода.');
   console.error('');
   console.error('  Если рост согласован — пометь строку в этом же PR, причина и апрув в тексте:');
-  console.error(`      /* ${EXEMPT}: ${broken[0].key} +${broken[0].now - broken[0].was - broken[0].allowed} — причина + апрув Pavel */`);
+  console.error(`      /* ${EXEMPT}: ${broken[0].key} +${broken[0].over} — причина + апрув Pavel */`);
   process.exit(1);
 }
 
