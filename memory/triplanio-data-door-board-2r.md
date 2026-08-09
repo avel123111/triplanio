@@ -1,6 +1,7 @@
 # Triplanio: табло эпика «единая дверь» — гард 2r (TRIP-376)
 
-Ф0.4 эпика [[triplanio-single-data-door-epic]] (TRIP-374). `scripts/ci/check-data-door.mjs`
+Ф0.4 эпика «единая дверь» (TRIP-374; handoff — Linear-документ на эпике:
+https://linear.app/triplanio/document/handoff-epik-edinaya-dver-v-dannye-trip-374-8720de36a6ec). `scripts/ci/check-data-door.mjs`
 + 53 теста, джоба-шаг 2r в `guards` (стандартная библиотека, без `npm ci`),
 `npm run check:door`. Продуктового кода не тронуто ни строки: шаг только меряет.
 
