@@ -111,6 +111,7 @@ jobs:
   #   2q check-design-axes         — обличье канон-объекта вне объявленных осей каталога
   #   2r check-data-door             — табло эпика TRIP-374: ни одно число «единой двери» не растёт
   #   2s check-ts-check              — храповик ВВЕРХ: файл не теряет действующую прагму `// @ts-check`
+  #   2t check-db-types              — типы БД не отстали от миграций (отдельной джобой: нужен Docker)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -262,6 +263,59 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run report:exemptions
+
+  # 2t — ДРЕЙФ ТИПОВ БД (TRIP-383, Ф0.5 эпика TRIP-374). Закоммиченный
+  # `supabase/functions/_shared/database.types.ts` обязан совпадать с типами,
+  # которые генерируются из `supabase/migrations/**`.
+  #
+  # ★ ОГРАНИЧЕНИЕ СПОСОБА, названное вслух (полностью — в шапке гарда):
+  # генерация типов читает ЖИВУЮ базу, а в CI живой базы нет. Звать оттуда
+  # настоящую dev нельзя: миграция из PR к этому моменту ещё НЕ задеплоена, и
+  # сверка была бы красной на каждом ПРАВИЛЬНОМ ходе — такой гард выключают.
+  # Поэтому здесь поднимается свой Postgres, на него накатываются миграции
+  # репо, и сверяются МИГРАЦИИ ↔ ТИПЫ. Предполагается инвариант авто-деплоя
+  # «репо == dev == prod» (`db push` катит те же файлы в оба проекта; сверено
+  # замером на вводе гарда 09.08.2026 — схемы идентичны). Правку схемы МИМО
+  # миграции 2t не видит по построению.
+  #
+  # ЖИВЁТ ОТДЕЛЬНОЙ ДЖОБОЙ, а не шагом в `guards`, по той же причине, что 2o/2p:
+  # производящая половина требует Docker и Supabase CLI, а `guards` намеренно
+  # обходится стандартной библиотекой без `npm ci` и потому стартует мгновенно.
+  #
+  # ТОЛЬКО НА PR В `dev`, как 2o/2p/2q: дрейф заводится правкой, а правка входит
+  # в кодовую базу через PR. Гонять спин-ап базы ещё и на каждом push в dev/main
+  # значило бы удлинять цепочку деплоя (checks.yml — её гейт) ради вопроса, на
+  # который уже ответили на PR.
+  #
+  # CLI ПИНОВАН той же версией, что в supabase-deploy.yml: две разные версии в
+  # репо = два разных генератора, и расхождение читалось бы как дрейф схемы.
+  db-types:
+    name: DB types (2t — типы БД не отстали от миграций)
+    if: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.108.0
+      - name: Поднять локальный Postgres и накатить supabase/migrations/**
+        run: supabase db start
+      - name: Сгенерировать типы из применённых миграций
+        run: supabase gen types typescript --local --schema public > "$RUNNER_TEMP/database.types.gen.ts"
+      - name: 2t — дрейф типов БД
+        run: node scripts/ci/check-db-types.mjs "$RUNNER_TEMP/database.types.gen.ts"
+      # Сгенерированный файл кладётся артефактом ТОЛЬКО когда гард покраснел:
+      # перегенерировать его локально можно лишь с Docker, а он есть не у всех,
+      # и без этого «почини типы» — совет без инструмента.
+      - name: Сгенерированный файл (для перегенерации без локального Docker)
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-types-generated
+          path: ${{ runner.temp }}/database.types.gen.ts
 
   deno:
     name: Deno typecheck (edge functions)
