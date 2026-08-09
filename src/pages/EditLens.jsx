@@ -181,7 +181,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, useToast } from '../design/index';
+import { Btn, IconBtn, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -336,7 +336,7 @@ export default function EditLens({ tripId, shell, content }) {
   const leftPaneRef = useRef(null);
   useEffect(() => {
     if (!leftPanel || !leftPaneRef.current) return;
-    const el = leftPaneRef.current.querySelector('.lp-back, button, [tabindex]') || leftPaneRef.current;
+    const el = leftPaneRef.current.querySelector('button, [tabindex]') || leftPaneRef.current;
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
@@ -1321,7 +1321,7 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
   return (
     <div className="lp lp--wide">
       <div className="lp-h lp-h--ev">
-        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={14} /></button>
+        <IconBtn icon="back" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
         <span className="lp-ic" style={{ background: 'var(--brand)', color: '#fff' }}><Icon name="pin" size={17} /></span>
         <div className="lp-ti">
           <b>{t('tse.add_point')}</b>

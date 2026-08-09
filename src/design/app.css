@@ -457,7 +457,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* Контрол с сильной рамкой — граница несёт кликабельность (фильтр-пилюля,
    «назад», крестик диалога). Композер чата отсюда ушёл: он `InputGroup`, фон и
    рамку держит группа (TRIP-333). */
-.fpill, .lp-back {
+.fpill {
   background: var(--surface);
   border: 1px solid var(--line-strong);
 }
@@ -3869,17 +3869,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `ti` сидит подстрокой в `ai-blk-ti` и `lp-ti` и грепом читается как живой), а
    заголовок панели несёт `.lp-ti` с тем же `<b>` внутри. Вместе с правилами
    ушли ко-селекторы `.ti b` и `.ti span` из списков типографики выше. */
-/* Кнопка «уйти отсюда» в шапке панели/диалога. Была ДВУМЯ классами: этот и
-   `.ev-dlg-close` - в одной и той же шапке `.lp-h`, разной формы (34px пилюля
-   против 30px со скруглением контрола) и разного цвета покоя. Объект один:
-   пять точек вызова из семи носили второй, поэтому его форма и победила, а имя
-   осталось за этим - оно не врёт про объект и живёт в семействе шапки.
-   Вариация - ТОЛЬКО глиф (× или стрелка), его ставит вызыватель; РАЗМЕР держит
-   класс (`.lp-back svg`), иначе одна и та же кнопка ехала бы 14/15/16 в
-   зависимости от того, что за `size` написали в точке вызова.
-   Подсветку несёт ручка `--hl` ниже по файлу, а не своё правило ховера. */
-.lp-back { width: 30px; height: 30px; border-radius: var(--r-sm); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
-.lp-back svg { width: 15px; height: 15px; }
+/* `.lp-back` УДАЛЁН (TRIP-344 PR 2). Кнопка «уйти отсюда» в шапке панели -
+   это иконочная кнопка, и теперь она `<IconBtn tone="soft" round>`: облик
+   приезжает пропом, а не приватным классом. Семь точек вызова пересажены в
+   этом же PR, поэтому осиротевшего правила не остаётся.
+   Ручка `--hl` вместе с ним не нужна: пин на объекте лечил утечку канала тинта
+   (TRIP-341), а у канон-класса свой ховер, чужого `--hl` он не читает. */
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
@@ -6372,8 +6367,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .bgt-glist__add:hover,
 .bgt-iconpick button.on,
 .menu-trig[data-state="open"],
-.tm-cell.is-active,
-.lp-back:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
+.tm-cell.is-active { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
 
 .map-route__item.is-active .map-route__marker,
 .map-ctl button.on,
@@ -6383,8 +6377,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .te-cell--hotel { --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
 .te-cell--act   { --hl: var(--ev-activity); --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .dl-addcard--mine { --hl: var(--warm); --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
-.lp-back { --hl: var(--line-hover); --hl-soft: var(--wash); --hl-ink: var(--ink); }
-/* ⚠ Пагинатор пиним ПО ТОЙ ЖЕ причине, что .lp-back выше, и это не украшение.
+/* ⚠ Пагинатор пиним ПО ТОЙ ЖЕ причине, по которой пиновался `.lp-back` (снят в
+   TRIP-344 PR 2 вместе с классом), и это не украшение.
    Панель добавления брони встраивает fork-список внутрь оболочки события, а
    оболочка ставит в канал цвет ТИПА события. Пилюля номера страницы к типу
    события отношения не имеет и была брендовой всегда: без пина она красилась бы

@@ -19,9 +19,9 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, IconBtn, Severity, useToast } from '@/design/index';
 import {
-  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
+  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
   Plane, Car as CarIcon, Moon, ShieldCheck,
   BedDouble, Ticket,
 } from 'lucide-react';
@@ -1211,14 +1211,14 @@ export default function EventEditDialog({
                   {hdr.sub && <span className="t-meta">{hdr.sub}</span>}
                 </div>
               </div>
-              <button
-                className="lp-back"
+              <IconBtn
+                icon="close"
+                tone="soft"
+                round
                 onClick={() => onOpenChange?.(false)}
                 title={isPanel ? t('common.back') : undefined}
-                aria-label={isPanel ? t('common.back') : t('common.cancel')}
-              >
-                <X style={{ width: 15, height: 15 }} />
-              </button>
+                ariaLabel={isPanel ? t('common.back') : t('common.cancel')}
+              />
             </div>
           )}
 

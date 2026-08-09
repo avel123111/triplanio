@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Search, FileText, BedDouble, Plane, Ticket, X } from 'lucide-react';
+import { Search, FileText, BedDouble, Plane, Ticket } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
+import { IconBtn } from '@/design/index';
 import { eventHeader } from '@/components/common/EventViewBody';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -62,9 +63,7 @@ export default function AddBookingPanel({
             {subtitle && <span className="t-meta">{subtitle}</span>}
           </div>
         </div>
-        <button className="lp-back" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
-          <X size={15} />
-        </button>
+        <IconBtn icon="close" tone="soft" round onClick={close} ariaLabel={t('fork.cancel')} title={t('fork.cancel')} />
       </div>
 
       {/* Segmented tabs (reuses the design-system .seg + shared .seg--fill). */}

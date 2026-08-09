@@ -8,11 +8,10 @@
  * bookings open the same view/create panels as the list.
  */
 import React from 'react';
-import { X } from 'lucide-react';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
-import { Btn } from '@/design/index';
+import { Btn, IconBtn } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -106,7 +105,7 @@ export default function CityPanel({
           <b>{node.city_name}</b>
           {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}
         </div>
-        <button className="lp-back" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
+        <IconBtn icon="close" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
       </div>
 
       <div className="lp-b scrollbar-thin">
