@@ -74,6 +74,15 @@ const TG_TILE = { background: tgBrand.bg, color: tgBrand.fg };
 // Клауза, а не предложение: подставляется в `settings.save_error*` ("Не удалось
 // сохранить: {message}"). Незнакомый код (500, сеть, платформенный отказ) - это
 // «попробуй ещё раз», и НИКОГДА не текст ошибки с сервера.
+//
+// ⚠️ Правило действует В ЭТИХ вызывателях, а не по всему файлу, и это долг, а не
+// умысел: `telegramSetActive` (~:354), `telegramDisconnect` (~:364) и
+// `removeTripMember` (~:708) всё ещё печатают в тост `error?.message`, то есть на
+// не-2xx - ту самую строку SDK. Не тронуто здесь намеренно: TRIP-378 ограничен
+// двумя функциями (§3 ТЗ), а это смена пользовательской копии на чужих путях.
+// ⚠️ Карта НЕ общерепная и общей пока быть не может: `code` при отказе несут
+// ровно эти две функции, а, например, `getTripDetails` отдаёт 404/403 БЕЗ кода.
+// Прежде чем выносить карту в общий модуль - проверить, что источник её заполняет.
 const REFUSAL_CLAUSE = {
   FORBIDDEN: 'settings.err_forbidden',
   NOT_FOUND: 'settings.err_trip_gone',
@@ -530,10 +539,19 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // (`save_error` "Не удалось сохранить: …" / `save_error2` "Ошибка: …") плюс
   // клауза причины по `code`. Одна точка - потому что инвариант тут ровно один:
   // серверный текст пользователю не показывается НИКОГДА (см. REFUSAL_CLAUSE).
-  /** @param {string|null} code @param {string} [wrapKey] @param {Record<string,string>} [clauses] */
+  /**
+   * @param {string|null} code машинный `code` от `invokeFn`, не `data.code`
+   * @param {string} [wrapKey] обёртка: `save_error` | `save_error2`
+   * @param {Record<string,string>} [clauses] карта код → ключ клаузы
+   */
   const refusalToast = (code, wrapKey = 'settings.save_error', clauses = REFUSAL_CLAUSE) =>
     toast({
-      description: t(wrapKey, { message: t((code && clauses[code]) || 'settings.err_temporary') }),
+      // `hasOwn`, а не `clauses[code]`: код приезжает СТРОКОЙ ИЗ ТЕЛА ОТВЕТА, и
+      // `'toString'` достал бы функцию из прототипа, а `t(fn)` отрисовал бы мусор.
+      // Тот же приём и по той же причине, что у `pickSignupMarks`.
+      description: t(wrapKey, {
+        message: t((code && Object.hasOwn(clauses, code) && clauses[code]) || 'settings.err_temporary'),
+      }),
       variant: 'destructive',
     });
 

@@ -15,14 +15,14 @@ import { parseEdgeError, edgeErrorMessage } from './edgeError.js';
 // Формы ошибок - как в loadStateClassify.test.js / query-client.test.js: руками,
 // без импорта `@supabase/functions-js` (он транзитивная зависимость). Тело тут
 // обязано быть НАСТОЯЩИМ Response: `parseEdgeError` читает его через `.json()`.
-const httpErr = (status, body) => Object.assign(new Error(SDK_NON_2XX), {
-  name: 'FunctionsHttpError',
-  context: new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }),
-});
 // Дословное сообщение FunctionsHttpError - замерено в
 // node_modules/@supabase/functions-js/dist/module/types.js:69. Именно оно уходило
 // бы в тост, если бы вызыватель читал `error.message` вместо разобранного тела.
 const SDK_NON_2XX = 'Edge Function returned a non-2xx status code';
+const httpErr = (status, body) => Object.assign(new Error(SDK_NON_2XX), {
+  name: 'FunctionsHttpError',
+  context: new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }),
+});
 
 // ── код переживает не-2xx ─────────────────────────────────────────────────────
 // Ровно те ответы, которые теперь отдают обе функции.

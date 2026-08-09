@@ -28,17 +28,23 @@
  * that reads only the status still tells them apart. The `code`s are unchanged —
  * they are what the client branches on, and renaming one splits Sentry grouping.
  *
- * The remaining bare `Response.json({ error })` answers here (401 / 400 / the
- * write 500) are deliberately NOT converted: they already carry a truthful
- * status, and the raw answers move to `jsonError` in ONE codemod (эпик TRIP-374,
- * Р4 §0(F) — "по касанию" отменено). Converting them here would make that
- * codemod's diff unreviewable for no behaviour change.
+ * The remaining bare `Response.json` answers here — body `{ error }` with no
+ * `code` — (401 / 400 / the write 500) are deliberately NOT converted: they
+ * already carry a truthful status, and the raw answers move to `jsonError` in ONE
+ * codemod (эпик TRIP-374, Р4 §0(F) — "по касанию" отменено). Converting them here
+ * would make that codemod's diff unreviewable for no behaviour change.
  *
  * ⚠️ Два числа про «сырые ответы» ходят рядом и меряют РАЗНОЕ — предикат раньше
- * числа: **167** = однострочные `Response.json({ error })` (счёт §0(F) хендоффа),
- * **193 → 188 после этого PR** = метрика M4 гарда 2r «ответ НЕ ПО КАНОНУ», куда
- * сверх тех 167 входят двухаргументные, `ok:false`, `allow:false` и «только
- * статус ≥400». Ни одно не опечатка; актуальное — `npm run check:door`.
+ * числа: **167** = однострочные `Response.json` с телом `{ error }` (счёт §0(F)
+ * хендоффа), **193 → 188 после этого PR** = метрика M4 гарда 2r «ответ НЕ ПО
+ * КАНОНУ», куда сверх тех 167 входят двухаргументные, `ok:false`, `allow:false` и
+ * «только статус ≥400». Ни одно не опечатка; актуальное — `npm run check:door`.
+ *
+ * ⚠️⚠️ Литерал предиката §0(F) в этой шапке НЕ пишется слитно намеренно: он
+ * ГРЕПАЕТСЯ по тексту, комментарии не гасит, и связка «слово + пример» подняла бы
+ * счёт ровно в том файле, который сырой ответ УБРАЛ (замер: 167 → 166 при
+ * настоящих 164). Гард 2r от этого защищён — он гасит комментарии, — а ручной
+ * греп нет. Родня «2d краснеет на комментарии, цитирующем проблемную форму».
  */
 import { withHandler, jsonError } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';

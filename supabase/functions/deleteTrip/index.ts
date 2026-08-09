@@ -73,6 +73,10 @@ Deno.serve(withHandler('deleteTrip', async (req, corsHeaders) => {
     // `getTripDetails` does: `withHandler`'s catch renders the identical
     // `{ error, code: 'INTERNAL' }` 500, logs it, and hands Sentry the REAL
     // Postgrest error (code/details/hint) instead of a synthetic "responded 500".
+    // ⚠️ Почему рядом ДВЕ политики на один класс сбоя: rethrow стоит только тут, а
+    // отказ телеграм-teardown (шаг 2) и отказ самого DELETE (шаг 4) по-прежнему
+    // собирают 500 руками — они несут СВОЁ сообщение о том, на каком шаге всё
+    // встало, и уезжают вместе с codemod'ом формы (§0(F)), а не поштучно здесь.
     if (tripErr && !isNotFound(tripErr)) throw tripErr;
     if (!trip) return jsonError(404, 'Not found', 'NOT_FOUND', corsHeaders);
     if (trip.created_by !== user.id) return jsonError(403, 'Forbidden', 'FORBIDDEN', corsHeaders);
