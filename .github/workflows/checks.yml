@@ -112,6 +112,7 @@ jobs:
   #   2r check-data-door             — табло эпика TRIP-374: ни одно число «единой двери» не растёт
   #   2s check-ts-check              — храповик ВВЕРХ: файл не теряет действующую прагму `// @ts-check`
   #   2t check-db-types              — типы БД не отстали от миграций (отдельной джобой: нужен Docker)
+  #   2u check-css-comments          — сломанный /*…*/ роняет правило из бандла (осиротевший/незакрытый)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -206,6 +207,14 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-ts-check.mjs
+      # 2u — целостность CSS-комментариев (TRIP-344). HEAD-only, абсолютный
+      # инвариант (не храповик, BASE_REF не нужен), только стандартная библиотека —
+      # инвариант джобы `guards` цел. Ловит осиротевший/лишний терминатор и
+      # незакрытый комментарий (оба молча роняют правило из бандла). «Сцеленную»
+      # форму (правило впитано, файл сбалансирован) НЕ ловит — см. шапку гарда.
+      - name: 2u — целостность CSS-комментариев (сломанный /* */ роняет правило)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-css-comments.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.

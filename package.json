@@ -21,7 +21,8 @@
     "check:axes": "node scripts/ci/check-design-axes.mjs",
     "report:exemptions": "node scripts/ci/report-exemptions.mjs",
     "check:door": "node scripts/ci/check-data-door.mjs",
-    "check:tscheck": "node scripts/ci/check-ts-check.mjs"
+    "check:tscheck": "node scripts/ci/check-ts-check.mjs",
+    "check:css-comments": "node scripts/ci/check-css-comments.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",
