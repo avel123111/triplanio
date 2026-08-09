@@ -82,7 +82,12 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
 
     // Trip-level Pro from the single SQL source (is_trip_pro = is_pro_trip OR owner
     // is_user_pro, migration 0055). Used only to gate enabling PRO addons below.
-    const { data: tripProRpc } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: tripId });
+    const { data: tripProRpc, error: tripProErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: tripId });
+    // A DB failure here is infra, NOT "not Pro": swallowing `error` (as before)
+    // would fall through to `tripIsPro = false` and answer a FALSE 402 on enabling
+    // a Pro addon, hiding the incident. Rethrow → 500 INTERNAL, the same class the
+    // write seam enforces by construction via `rpc()` (TRIP-394 ②).
+    if (tripProErr) throw tripProErr;
     const tripIsPro = tripProRpc === true;
 
     const update: Record<string, unknown> = {};
@@ -121,33 +126,18 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
       update.details = newDetails;
     }
 
-    // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
-    // валюты) → сервер сбрасывает их в ТОЙ ЖЕ операции сохранения, а не второй
-    // клиентской до-записью (единая дверь, TRIP-394). Денорму trip_budgets.currency
-    // держим в синхроне с main_currency до её сноса в блоке 3.
-    const prevCurrency = (trip.details as { main_currency?: string } | null)?.main_currency ?? null;
-    const currencyChanged = typeof main_currency === 'string' && !!main_currency &&
-      main_currency !== prevCurrency;
+    // Смена валюты обесценивает fx_overrides (они заданы против СТАРОЙ валюты), но
+    // это ИНВАРИАНТ ДАННЫХ, а не действие экрана → его держит БД: триггер
+    // `trg_reset_fx_on_currency_change` на `trips` сбрасывает курсы в ТОЙ ЖЕ
+    // транзакции, что этот UPDATE. Edge пишет ТОЛЬКО `trips`; отдельной клиентской
+    // до-записи (которая рвалась между двумя запросами) больше нет (TRIP-394 ③).
     const hasTripUpdate = Object.keys(update).length > 0;
-
-    if (!hasTripUpdate && !currencyChanged) {
+    if (!hasTripUpdate) {
       return Response.json({ ok: true }, { headers: corsHeaders });
     }
 
-    if (hasTripUpdate) {
-      const { error } = await supabaseAdmin.from('trips').update(update).eq('id', tripId);
-      if (error) return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
-    }
-
-    if (currencyChanged) {
-      // 0 строк не ошибка: у трипа может не быть строки бюджета (сбрасывать
-      // нечего). Настоящий сбой запроса → throw → 500 INTERNAL, отчётный.
-      const { error: fxErr } = await supabaseAdmin
-        .from('trip_budgets')
-        .update({ currency: main_currency, fx_overrides: {} })
-        .eq('trip_id', tripId);
-      if (fxErr) throw fxErr;
-    }
+    const { error } = await supabaseAdmin.from('trips').update(update).eq('id', tripId);
+    if (error) return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
 
     return Response.json({ ok: true }, { headers: corsHeaders });
 }));

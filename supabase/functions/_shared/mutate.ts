@@ -23,13 +23,29 @@
  * `service_role`, RLS выключена, поэтому 0 строк у update/delete по
  * `{id, trip_id}` = «строки с таким id в ЭТОМ трипе нет» = **404**, а не
  * «отказано». Это и есть переопределение семантики, о котором просит ревью.
+ *
+ * ★★★ ИНВАРИАНТ DB-ВЫЗОВОВ (TRIP-394 ②). `supabase-js` никогда не бросает —
+ * всегда `{ data, error }`. Поэтому КАЖДЫЙ RPC шва идёт через `rpc()` (ниже),
+ * где `error` = сбой инфраструктуры → throw → 500 INTERNAL. Интерпретировать
+ * ошибку БД как бизнес-ответ (не-Pro / не-найдено) ЗАПРЕЩЕНО по построению:
+ * иначе сбой выродился бы в 402/404, спрятал инцидент под `x-sentry-skip` и
+ * молча сломал монетизацию. Бизнес-«нет» — только настоящее значение `data`.
  */
 
 import { supabaseAdmin, getRequestUser } from './supabaseAdmin.ts';
 import { HttpError, jsonError } from './http.ts';
 import { isCallerEditor } from './tripAccess.ts';
-import { buildPlan, parseAction, REGISTRY, validateInput } from './mutateRules.ts';
+import { buildPlan, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
 import type { ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
+
+/**
+ * Единственная дверь DB-вызовов шва: инвариант `unwrapDbResult` (ошибка БД →
+ * throw, НЕ бизнес-ответ) держится ПО ПОСТРОЕНИЮ, а не по памяти автора на
+ * каждой ветке. Тестируется на чистом `unwrapDbResult` в `mutateRules_test.ts`.
+ */
+async function rpc(name: string, args: Record<string, unknown>): Promise<unknown> {
+  return unwrapDbResult(await supabaseAdmin.rpc(name, args));
+}
 
 /** Ответ шва: успех несёт строку (или null для delete), отказ — статус+код. */
 type MutateOk = { data: Record<string, unknown> | null };
@@ -58,9 +74,12 @@ async function checkRequirement(
         ? null
         : { status: 403, code: 'FORBIDDEN', message: 'Forbidden' };
     case 'pro': {
-      const { data } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: ctx.scopeValue });
+      // Сбой БД брошен внутри `rpc()` → 500 INTERNAL (ретраится), как editor-ветка
+      // (TripAccessError). Сюда доезжает только настоящее `data`, поэтому не-true —
+      // это бизнес-«нет» (не Pro), а не спрятанный под x-sentry-skip инцидент.
+      const isPro = await rpc('is_trip_pro', { p_trip_id: ctx.scopeValue });
       // Бизнес-«нет», не инцидент: помечаем sentrySkip, шов повесит x-sentry-skip.
-      return data === true
+      return isPro === true
         ? null
         : { status: 402, code: 'PRO_REQUIRED', message: 'Pro required', sentrySkip: true };
     }
@@ -185,9 +204,9 @@ export async function mutate(
   if ('status' in validated) return refuse(validated, corsHeaders);
 
   // Self-heal строки перед записью (курсы): RPC исполнима только service_role.
+  // Через ту же дверь `rpc()` — сбой БД бросится, а не проглотится (TRIP-394 ②).
   if (action.prepareRpc) {
-    const { error } = await supabaseAdmin.rpc(action.prepareRpc, { p_trip_id: scope });
-    if (error) throw error;
+    await rpc(action.prepareRpc, { p_trip_id: scope });
   }
 
   const plan = buildPlan(resource, action, {

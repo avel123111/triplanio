@@ -24,11 +24,12 @@
  * Запуск: deno test supabase/functions/_shared/mutateRules_test.ts
  */
 
-import { assert, assertEquals } from 'jsr:@std/assert@^1.0.8';
+import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@^1.0.8';
 import {
   buildPlan,
   parseAction,
   REGISTRY,
+  unwrapDbResult,
   validateInput,
   type ActionSpec,
   type ResourceSpec,
@@ -57,6 +58,30 @@ const SAMPLE: ResourceSpec = {
     'thing/delete': { op: 'delete', table: 'things', requires: ['editor'] },
   },
 };
+
+// ── Инвариант DB-вызова шва (TRIP-394 ②) ─────────────────────────────────────
+
+Deno.test('★ ошибка БД → throw (инфра-сбой, НЕ бизнес-ответ)', () => {
+  // Мутация «убрать `if (result.error) throw`» роняет этот тест: без него сбой БД
+  // вернул бы `data` (тут null) и выродился в 402/404 — ровно то, что ② чинит.
+  const dbError = { code: '57014', message: 'statement timeout' };
+  assertThrows(
+    () => unwrapDbResult({ data: null, error: dbError }),
+    'сбой БД обязан бросить, а не вернуть данные',
+  );
+});
+
+Deno.test('★ бизнес-false — это ДАННЫЕ, а не ошибка (is_trip_pro вернул false)', () => {
+  // Настоящий `data === false` (не Pro) обязан ДОЕХАТЬ до вызывающего, а не
+  // слиться со сбоем: смешение этих двух и есть баг, который закрывает обёртка.
+  assertEquals(unwrapDbResult({ data: false, error: null }), false);
+  assertEquals(unwrapDbResult({ data: true, error: null }), true);
+});
+
+Deno.test('нет ошибки → возвращает data как есть (в т.ч. null от void-RPC)', () => {
+  assertEquals(unwrapDbResult({ data: null, error: null }), null);
+  assertEquals(unwrapDbResult({ data: { ok: 1 }, error: null }), { ok: 1 });
+});
 
 // ── Разбор действия из пути ──────────────────────────────────────────────────
 
