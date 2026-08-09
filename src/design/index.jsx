@@ -222,10 +222,13 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
 /** @param {{ variant?: string, icon?: string, iconRight?: string, block?: boolean, disabled?: boolean, loading?: boolean, children?: any, onClick?: any, className?: string, ariaLabel?: string, title?: string, ariaPressed?: boolean, style?: any }} p */
 export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
-    // Дефолт <button> внутри формы — submit, поэтому все 163 вызова Btn
-    // отправляли бы ближайшую <form> в довесок к своему onClick. Соседний
-    // Toggle type="button" ставит и объясняет зачем — то есть про грабли
-    // знали, а на самой кнопке системы их не закрыли (TRIP-344 PR 1).
+    // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
+    // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
+    // type="button" ставит и объясняет зачем — то есть про грабли знали, а на
+    // самой кнопке системы их не закрыли (TRIP-344 PR 1).
+    // ⚠️ Правка ПРОФИЛАКТИЧЕСКАЯ, живого дефекта не чинит и поведение сегодня не
+    // меняет: <form> в репозитории ровно четыре (все в Login.jsx), и отправляют
+    // их сырые <button type="submit">, а не Btn. Проверено грепом по всему src.
     type="button"
     className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
@@ -361,13 +364,20 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
 export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 
 // ----- RoleBadge: УДАЛЁН (TRIP-344 PR 1) -----
-// Роль участника — это `<Badge>` с тоном, и приложение уже выражало её так в
-// ОБОИХ местах, где она видна: `MembersLens` и `MembersSummaryCard` независимо
-// сошлись на owner=warning · admin=brand · viewer=outline · приглашён=quiet.
-// `RoleBadge` был третьим, ЧЕТВЁРТЫМ по счёту способом сказать то же самое —
-// собственной пилюлей на инлайнах (свои тона warm/brand-soft/wash, свой радиус,
-// свои отступы), мимо `.badge`, объявленного строкой выше. За пределы витрины
-// `/kit` он не вышел ни разу, так что схлопывание не тронуло ни одного экрана.
+// Роль участника — это `<Badge>` с тоном, и приложение уже выражало её так во
+// ВСЕХ трёх местах, где она видна: `MembersLens` (своя локальная функция с тем
+// же именем), `MembersSummaryCard` и карточка трипа в `Trips.jsx`. Первые два
+// независимо сошлись на owner=warning · admin=brand · viewer=outline; третье
+// рисует только зрителя и берёт `quiet` — расхождение реальное, но это долг
+// экранов, а не повод держать четвёртый способ здесь.
+// `RoleBadge` и был этим четвёртым — собственной пилюлей на инлайнах (свои тона
+// warm/brand-soft/wash, свой радиус, свои отступы), мимо `.badge`, объявленного
+// строкой выше. За пределы витрины `/kit` он не вышел ни разу, так что
+// схлопывание не тронуло ни одного экрана.
+// ⚠️ Вместе с ним осиротели ключи `members.badge_owner/_admin/_viewer` и
+// `members.pending` — других вызывателей у них нет. Не удалены здесь: ключи
+// живут ещё и в Tolgee (он авторитет при `pull`), а зачистка i18n — свой проход
+// по всем шести источникам ссылок, см. memory/feedback-dead-i18n-key-sweep-must-scan-backend.
 
 // ---- Dialog: title/icon/foot/size convenience wrapper over the ONE canonical
 //      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +

@@ -61,12 +61,13 @@ const TX = {
   cardBody: 'Тело карточки: обычный текст на поверхности.',
   fieldLabel: 'Название',
   fieldHint: 'Подсказка под полем',
-  // Роль участника в тонах бейджа — подписи взяты с живых экранов
-  // (MembersLens / MembersSummaryCard), а не придуманы здесь.
+  // Роль участника в тонах бейджа — подписи дословно те же, что рисуют живые
+  // экраны: `members.role_owner` · `trips.role_admin` · `trips.role_viewer` ·
+  // `trip.member_pending` (MembersLens / MembersSummaryCard), а не придуманы здесь.
   roleOwner: 'Владелец',
   roleAdmin: 'Админ',
   roleViewer: 'Наблюдатель',
-  rolePending: 'Приглашён',
+  rolePending: 'Ожидает приглашение',
   placeholder: 'Введите значение',
   area: 'Многострочное поле',
   emptyTitle: 'Пока пусто',
@@ -258,8 +259,10 @@ export default function Kit() {
               быть: `.badge--warning` / `--brand` / `--outline` / `--quiet` —
               те же, что строкой выше. Прежний образец назывался `rb`, такого
               класса в системе нет, и витрина честно печатала над ним
-              «неизвестно». Оба живых экрана (MembersLens, MembersSummaryCard)
-              рисуют роль именно так. */}
+              «нет в каталоге». Тона owner/admin/viewer берутся с живых экранов
+              (MembersLens, MembersSummaryCard); `quiet` под «ожидает» — только
+              с MembersSummaryCard: MembersLens показывает состояние приглашения
+              отдельной колонкой `.m-status--pending`, а не бейджем. */}
           <Badge variant="warning">{TX.roleOwner}</Badge>
           <Badge variant="brand">{TX.roleAdmin}</Badge>
           <Badge variant="outline">{TX.roleViewer}</Badge>
