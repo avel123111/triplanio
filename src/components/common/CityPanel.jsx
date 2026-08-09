@@ -11,7 +11,7 @@ import React from 'react';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
-import { Btn, IconBtn } from '@/design/index';
+import { Btn, IconBtn, Stepper } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -115,11 +115,12 @@ export default function CityPanel({
           <b className="t-strong">{t('tse.nights_in_city')}</b>
           <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>
         </div>
-        <div className="stepper" title={t('tse.nights_label')}>
-          <button onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}>−</button>
-          <span className="n">{nights}</span>
-          <button onClick={onNightsPlus} aria-label={t('tse.nights_add')}>+</button>
-        </div>
+        <Stepper
+          title={t('tse.nights_label')}
+          value={nights}
+          onMinus={onNightsMinus} minusDisabled={nights <= 0} minusLabel={t('tse.nights_remove')}
+          onPlus={onNightsPlus} plusLabel={t('tse.nights_add')}
+        />
       </div>
 
       {/* arrival / departure — both cities AND waypoints (a transit stop still

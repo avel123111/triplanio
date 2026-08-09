@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { DateTime } from 'luxon';
-import { Icon } from '../../design/icons';
 import StartCalendar from '@/components/create/StartCalendar';
-import { Popover, PopoverTrigger, PopoverContent, Sheet } from '@/design/index';
+import { Popover, PopoverTrigger, PopoverContent, Sheet, Stepper } from '@/design/index';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 
@@ -37,32 +36,46 @@ export default function TripStartControl({ date, onStep, onPickDate, label, bloc
   const isSheet = useIsPhone();
   const pick = (iso) => { if (iso) onPickDate?.(iso); setCalOpen(false); };
 
+  // Дата — центр степпера. НЕ `<button>` (иначе её задело бы `.stepper button`),
+  // а `<span role=button>` со своей клавиатурой; на десктопе триггер Popover'а,
+  // на телефоне открывает Sheet.
+  const onDateKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } };
+  const dateProps = { className: 'ts-startctl__date', role: 'button', tabIndex: 0, 'aria-label': t('planner.trip_start'), onKeyDown: onDateKey };
+  const dateBtn = isSheet
+    ? <span {...dateProps} onClick={() => setCalOpen(true)}>{fmtDW(date, lang)}</span>
+    : (
+      <Popover open={calOpen} onOpenChange={setCalOpen}>
+        <PopoverTrigger asChild>
+          <span {...dateProps}>{fmtDW(date, lang)}</span>
+        </PopoverTrigger>
+        <PopoverContent align={popoverAlign} className="ts-startcal-pop">
+          <StartCalendar value={date} lang={lang} onPick={pick} />
+        </PopoverContent>
+      </Popover>
+    );
+
+  const stepper = (
+    <Stepper
+      variant={block ? 'block' : 'bare'}
+      title={t('planner.trip_start')}
+      onMinus={() => onStep?.(-1)} minusLabel={t('planner.day_earlier')}
+      onPlus={() => onStep?.(1)} plusLabel={t('planner.day_later')}
+    >{dateBtn}</Stepper>
+  );
+
   return (
-    <div className={'ts-startctl' + (block ? ' ts-startctl--block' : '')} title={t('planner.trip_start')}>
-      {label ? <span className="ts-startctl__lbl">{label}</span> : null}
-      <button type="button" className="ts-step" onClick={() => onStep?.(-1)} title={t('planner.day_earlier')} aria-label={t('planner.day_earlier')}>
-        <Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} />
-      </button>
-      {isSheet ? (
-        <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setCalOpen(true)}>{fmtDW(date, lang)}</button>
-      ) : (
-        <Popover open={calOpen} onOpenChange={setCalOpen}>
-          <PopoverTrigger asChild>
-            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(date, lang)}</button>
-          </PopoverTrigger>
-          <PopoverContent align={popoverAlign} className="ts-startcal-pop">
-            <StartCalendar value={date} lang={lang} onPick={pick} />
-          </PopoverContent>
-        </Popover>
+    <>
+      {block ? stepper : (
+        <span className="ts-startctl">
+          {label ? <span className="ts-startctl__lbl">{label}</span> : null}
+          {stepper}
+        </span>
       )}
-      <button type="button" className="ts-step" onClick={() => onStep?.(1)} title={t('planner.day_later')} aria-label={t('planner.day_later')}>
-        <Icon name="chev" size={13} />
-      </button>
       {isSheet && (
         <Sheet open={calOpen} onOpenChange={setCalOpen} title={t('planner.trip_start')}>
           <StartCalendar value={date} lang={lang} onPick={pick} />
         </Sheet>
       )}
-    </div>
+    </>
   );
 }

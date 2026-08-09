@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ChevronDown,
-  Search, RotateCcw, Minus, Plus, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
+  Search, RotateCcw, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
 } from 'lucide-react';
-import { Input, InputGroup } from '@/design/index';
+import { Input, InputGroup, Stepper } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
@@ -35,13 +35,14 @@ const CLIENT_PAGE_SIZE = 20;
 // Sort cycle over the pool (labels via fork.f_sort_*): pool order / price ↑ / guest score ↓.
 const SORT_ORDER = ['recommended', 'price', 'rating'];
 
-function Stepper({ value, min, onChange, label }) {
+function GuestStepper({ value, min, onChange, label }) {
   return (
-    <div className="s22f-step">
-      <button type="button" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label={`${label} −`}><Minus size={15} /></button>
-      <span className="s22f-val">{value}</span>
-      <button type="button" onClick={() => onChange(value + 1)} aria-label={`${label} +`}><Plus size={15} /></button>
-    </div>
+    <Stepper
+      variant="bare"
+      value={value}
+      onMinus={() => onChange(value - 1)} minusDisabled={value <= min} minusLabel={`${label} −`}
+      onPlus={() => onChange(value + 1)} plusLabel={`${label} +`}
+    />
   );
 }
 
@@ -218,15 +219,15 @@ export default function Stay22HotelList({
           <div className="grid grid--2 grid--g4">
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
-              <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
+              <GuestStepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
             </div>
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_children_t')}</span>
-              <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
+              <GuestStepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
             </div>
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_rooms_t')}</span>
-              <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
+              <GuestStepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
             </div>
           </div>
         </div>

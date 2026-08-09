@@ -70,6 +70,10 @@ const LINES = [
   // это soft И round одновременно, плоский юнион такую пару не выразил бы.
   ['clean', '<IconBtn icon="close" ariaLabel="x" tone="soft" round />'],
   ['clean', '<IconBtn icon="plus" ariaLabel="x" size="sm" tone="danger" onClick={() => {}} />'],
+  // Степпер отдаёт остаток на `<div>`, значит база — носитель: `onPointerDown`/`title`
+  // законны (ими ночи гасят арминг драга). `children` — центр варианта block (дата).
+  ['clean', '<Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel="a" plusLabel="b" title="t" onPointerDown={() => {}} />'],
+  ['clean', '<Stepper variant="block" onMinus={() => {}} onPlus={() => {}}>d</Stepper>'],
   ['clean', '<Avatar name="A" size="sm" />'],
   ['clean', '<Field label="L"><span>x</span></Field>'],
   ['clean', '<FileRow name="a.pdf" />'],
@@ -101,6 +105,8 @@ const LINES = [
   // текста без `aria-label` для скринридера безымянна.
   ['error', '<IconBtn icon="close" ariaLabel="x" tone="compact" />'],
   ['error', '<IconBtn icon="close" />'],
+  // Набор вариантов степпера закрыт ТИПОМ: `compact` не существует.
+  ['error', '<Stepper variant="compact" />'],
   // ★★ ДВЕ РАЗНЫЕ ОШИБКИ, И ВТОРАЯ НУЖНА ИМЕННО ПОТОМУ, ЧТО ПЕРВАЯ ЕЁ НЕ ЛОВИТ.
   // Закрытый юнион ловит НЕВЕРНОЕ значение (тона `ghost` больше нет) - это первая
   // строка. ОТСУТСТВИЕ пропа он не ловит по построению: замерено на PR 2, где
@@ -123,7 +129,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Severity, Skeleton, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",

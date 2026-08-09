@@ -130,8 +130,8 @@ function recomputeDates(list, anchorISO) {
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
 // City row built from the EDITOR's primitives (.te-row / .te-grip / .te-row__num /
-// .te-citycell / .te-cityname / .te-dts / .te-stepper / .te-step) so the planner
-// route looks and behaves identically to the structural editor — same bold city
+// .te-citycell / .te-cityname / .te-dts + <Stepper> nights) so the planner route
+// looks and behaves identically to the structural editor — same bold city
 // names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
 // final-point toggle lives once in StepCities (not per row).
 // Planner route row. Owns its editing state + pick/remove/nights handlers, then
