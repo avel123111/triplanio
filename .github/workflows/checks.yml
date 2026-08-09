@@ -10,15 +10,17 @@
 #   BLOCKING (verified green on dev, 25.06.2026 — Node 22):
 #     - frontend  : npm ci → lint → test → build
 #     - typecheck : tsc — green since TRIP-93 (26.06.2026). The project is JS/JSX,
-#                   so `checkJs` is OFF in jsconfig.json (it produced ~1202 false
-#                   "missing prop" errors on untyped JSX + ~89 in luxon.mjs — noise,
-#                   not bugs). tsc now validates syntax / JSX / imports for the
-#                   whole tree, AND fully type-checks the growing opt-in set of
-#                   files that carry a `// @ts-check` pragma (ratchet — start =
-#                   the entitlement/Pro cluster: src/lib/{limits,subscription,
-#                   tripAddons}.js). Add `// @ts-check` to a file to bring it under
-#                   real type enforcement; breaking its types fails THIS gate. Grow
-#                   coverage file-by-file, no big-bang TS migration.
+#                   so `checkJs` is OFF in jsconfig.json. Its price is a MEASUREMENT
+#                   (pinned tsc 5.9.3, `--checkJs --noEmit`, 09.08.2026): 420 errors
+#                   in 155 files on the jsconfig perimeter, 401 in 147 across all of
+#                   `src/` — both numbers named, because "what checkJs costs" is
+#                   undefined without a perimeter. tsc validates syntax / JSX /
+#                   imports for the whole tree, AND fully type-checks the growing
+#                   opt-in set of files carrying a `// @ts-check` pragma. Add the
+#                   pragma to bring a file under real type enforcement; breaking its
+#                   types fails THIS gate. Grow coverage file-by-file, no big-bang TS
+#                   migration — and guard 2s (below) is what keeps that set from
+#                   shrinking, since removing a pragma makes THIS job greener.
 #     - deno      : deno check on edge functions — green since TRIP-94 (the 14
 #                   pre-existing type errors are fixed; getTripDetails ×10,
 #                   getActiveTrips/getFxRates/checkSubscriptionStatus ×3,
@@ -108,6 +110,7 @@ jobs:
   #   2p check-css-semantics        — итоговые объявления класса: база vs HEAD (ярус 2 виз. гейта)
   #   2q check-design-axes         — обличье канон-объекта вне объявленных осей каталога
   #   2r check-data-door             — табло эпика TRIP-374: ни одно число «единой двери» не растёт
+  #   2s check-ts-check              — храповик ВВЕРХ: файл не теряет действующую прагму `// @ts-check`
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -191,6 +194,17 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-data-door.mjs
+      # 2s — покрытие типами (TRIP-377, Ф0.1 эпика TRIP-374). Единственный
+      # храповик, идущий ВВЕРХ среди гардов этой джобы: `checkJs` выключен, и
+      # прагма `// @ts-check` — поштучный вход в проверку. Снять её стоит одной
+      # строки, а `npm run typecheck` от этого ЗЕЛЕНЕЕТ (ошибок стало ноль), то
+      # есть регресс покрытия выглядит как успех — вот это и блокируется.
+      # Зависимостей нет (git + стандартная библиотека), инвариант джобы «без
+      # `npm ci`» цел.
+      - name: 2s — покрытие типами (прагма @ts-check не пропадает)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-ts-check.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
