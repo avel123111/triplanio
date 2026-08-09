@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * EventAiBlock — "parse a booking with AI" widget (Lumo `.ai-blk`).
  * States: locked / available / idle / uploaded / parsing / parsed.
@@ -18,10 +19,10 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
-import { FileRow, IconBtn, InputGroup, Textarea } from '@/design/index';
+import { Btn, FileRow, IconBtn, InputGroup, Textarea } from '@/design/index';
 import {
-  Sparkles, Lock, Upload, X,
-  RefreshCw, ChevronUp, Check,
+  Sparkles, Lock, X,
+  ChevronUp, Check,
 } from 'lucide-react';
 
 const MAX_FILES = 3;
@@ -256,9 +257,11 @@ export default function EventAiBlock({
             <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</b>
             <span>{t('event.ai_highlighted_hint')}</span>
           </div>
-          <button type="button" className="btn btn--ghost" onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}>
-            <RefreshCw style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_reset')}
-          </button>
+          {/* Была сырая разметка с классами системы; значок ехал своим инлайном
+              на размер и зазор, хотя ровно это <Btn icon> и делает. */}
+          <Btn variant="secondary" icon="refresh" onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}>
+            {t('event.ai_reset')}
+          </Btn>
           <IconBtn
             icon="chevU"
             tone="ai"
@@ -320,9 +323,9 @@ export default function EventAiBlock({
             placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
           />
           <div className="ai-input-row">
-            <button type="button" className="btn btn--ghost" onClick={() => inputRef.current?.click()}>
-              <Upload style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_pdf_screenshot')}
-            </button>
+            <Btn variant="secondary" icon="upload" onClick={() => inputRef.current?.click()}>
+              {t('event.ai_pdf_screenshot')}
+            </Btn>
             <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
             <div className="grow" />
             <button type="button" className="btn btn--ai" onClick={runParse} disabled={!text.trim() && files.length === 0}>

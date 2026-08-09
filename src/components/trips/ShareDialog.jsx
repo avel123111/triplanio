@@ -211,7 +211,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       size="wide"
       open={open}
       onOpenChange={onOpenChange}
-      foot={<Btn variant="ghost" onClick={() => onOpenChange?.(false)}>{t('common.close')}</Btn>}
+      foot={<Btn variant="secondary" onClick={() => onOpenChange?.(false)}>{t('common.close')}</Btn>}
     >
       {/* 1. Public read-only link */}
       <div className="muted t-body" style={{ marginBottom: 12 }}>{t('trip.share_desc')}</div>
@@ -268,8 +268,8 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
               <div className="sc-actions">
                 <Btn className="sc-share" variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl}>{t('share.card_share')}</Btn>
                 <div className="sc-actions-sec">
-                  <Btn variant="ghost" icon="edit" onClick={() => setStage('edit')}>{t('share.card_back')}</Btn>
-                  <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl}>{t('share.card_download')}</Btn>
+                  <Btn variant="secondary" icon="edit" onClick={() => setStage('edit')}>{t('share.card_back')}</Btn>
+                  <Btn variant="secondary" icon="download" onClick={downloadCard} disabled={!cardUrl}>{t('share.card_download')}</Btn>
                 </div>
               </div>
             )}

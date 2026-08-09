@@ -227,8 +227,8 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
         /* List chrome (.fork-*) + card (.pcard*) + toolbar (.s22f-*) + count row
-           (.s22-count / .s22-sort on the shared .row primitive) are all shared —
-           see app.css + forkList.jsx. */
+           (.s22-count on the shared .row primitive; sorting is a <Btn variant="link">)
+           are all shared — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

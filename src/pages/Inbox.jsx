@@ -113,7 +113,7 @@ export default function Inbox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>{t('notif.inbox_title')}</h1>
           {notifications.length > 0 && unreadCount > 0 && (
-            <Btn variant="ghost" onClick={() => markAllRead.mutate()}>{t('notif.mark_all_read')}</Btn>
+            <Btn variant="secondary" onClick={() => markAllRead.mutate()}>{t('notif.mark_all_read')}</Btn>
           )}
         </div>
 
@@ -258,7 +258,7 @@ function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
         {showPending ? (
           <>
             <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="ghost" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+            <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </>
         ) : isInvite && member?.status === 'active' ? (
           <Badge variant="success" icon="check">{t('notif.accepted')}</Badge>

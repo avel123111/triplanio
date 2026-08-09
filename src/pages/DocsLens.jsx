@@ -315,7 +315,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
         {/* ── Footer ── */}
         <div className="dlg__foot">
-          <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+          <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
           <Btn
             variant="primary"
             loading={saving}
@@ -436,7 +436,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
             </Btn>
           )}
           <Grow />
-          <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+          <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
         </div>
       </DialogContent>
     </Dialog>

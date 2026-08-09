@@ -760,7 +760,7 @@ export default function Trips() {
                   </div>
                   <div className="row row--wrap invite__act">
                     <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
-                    <Btn variant="ghost" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
+                    <Btn variant="secondary" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
                   </div>
                 </div>
               ) : (

@@ -207,7 +207,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
   return (
     <Dialog title={t('telegram.connect_title')} icon="telegram" size=""
       open={open} onOpenChange={onOpenChange}
-      foot={<Btn variant="ghost" onClick={closeConnect}>{t('common.close')}</Btn>}>
+      foot={<Btn variant="secondary" onClick={closeConnect}>{t('common.close')}</Btn>}>
       {/* Ритм окна - ступень шкалы у колонки, а не marginBottom у каждого соседа
           (тот же ход, что у диалогов Бюджета). Отступы были 16/16/16/14/14/14 -
           три разных мнения об одном ритме в одном окне. */}
@@ -247,7 +247,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             <div className="field__label">{t('telegram.link_label')}</div>
             <Row gap="g3">
               <input className="input mono grow--fit" value={url} readOnly />
-              <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
+              <Btn variant="secondary" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
             </Row>
           </Col>
 
@@ -297,7 +297,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           </Col>
 
           <Row gap="g4">
-            <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
+            <Btn variant="secondary" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
             <Grow />
             <Btn variant="primary" icon="check" onClick={checkNow}>{t('settings.tg_pressed_start')}</Btn>
           </Row>
@@ -416,7 +416,7 @@ function TelegramSection({ tripId }) {
           <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
         </div>
       ))}
-      <Btn variant="ghost" icon="plus" onClick={openConnect}>
+      <Btn variant="secondary" icon="plus" onClick={openConnect}>
         {t('telegram.connect_another')}
       </Btn>
       <TelegramConnectDialog open={connectOpen} onOpenChange={setConnectOpen} tripId={tripId} onLinked={load} />

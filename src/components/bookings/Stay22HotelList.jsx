@@ -324,9 +324,9 @@ export default function Stay22HotelList({
 
       <style>{`
         .s22 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-count /
-           .s22-sort on the shared .row primitive), list chrome (.fork-*) and the
-           card (.pcard*) are all SHARED fork primitives — see app.css + forkList.jsx. */
+        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-countrow with
+           .s22-count; sorting is a <Btn variant="link">), list chrome (.fork-*) and
+           the card (.pcard*) are all SHARED fork primitives — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

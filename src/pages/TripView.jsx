@@ -1123,7 +1123,7 @@ export default function TripView() {
       open={budgetAddonOff}
       onOpenChange={(o) => { if (!o) setBudgetAddonOff(false); }}
       foot={<>
-        <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>{t('common.close')}</Btn>
+        <Btn variant="secondary" onClick={() => setBudgetAddonOff(false)}>{t('common.close')}</Btn>
         <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
       </>}
     >

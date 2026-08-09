@@ -1143,9 +1143,7 @@ function Conf({ n }) {
 function HotelCell({ hotel, warn, onClick }) {
   const t = useT();
   if (!hotel) return (
-    <button className="row row--inline row--j-center row--g3 te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('hotel.add')}>
-      <Icon name="bed" size={14} /> <Icon name="plus" size={12} />
-    </button>
+    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')} ariaLabel={t('hotel.add')} />
   );
   return (
     <button className={'te-hotelicon' + (warn ? ' is-warn' : '')} onClick={onClick} title={hotel.name}
@@ -1158,9 +1156,7 @@ function HotelCell({ hotel, warn, onClick }) {
 function ActCell({ count, warn, onClick }) {
   const t = useT();
   if (!count) return (
-    <button className="row row--inline row--j-center row--g3 te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('budget.source_activity')}>
-      <Icon name="ticket" size={14} /> <Icon name="plus" size={12} />
-    </button>
+    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')} ariaLabel={t('budget.source_activity')} />
   );
   return (
     <button className={'row row--inline row--j-center row--g3 te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>

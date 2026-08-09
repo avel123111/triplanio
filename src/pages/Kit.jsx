@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Витрина дизайн-системы, роут `/kit` (TRIP-340 PR2).
  *
@@ -55,6 +56,9 @@ const TX = {
     tokens: 'Токены :root',
   },
   btn: 'Кнопка',
+  btnAccent: 'тон из контекста (--a)',
+  btnTile: 'Добавить отель',
+  btnTileSub: 'плитка слева, подпись в две строки',
   save: 'Сохранить',
   cardTitle: 'Заголовок карточки',
   cardSub: 'Подзаголовок',
@@ -85,6 +89,9 @@ const TX = {
   iconBtnMark: 'Кнопка-иконка с меткой непрочитанных',
   readonly: 'Режим только для чтения.',
   file: 'documents-2026.pdf',
+  // Живые вызовы отдают УЖЕ отформатированную строку (formatSize), поэтому и
+  // витрина отдаёт строку: с числом она рисовала сырые «182400» байт.
+  fileSize: '178 КБ',
   gapDefault: 'по умолчанию',
   missing: 'ступени нет - молча даёт значение по умолчанию',
   sample: 'Съешь ещё этих мягких булок · Sphinx of black quartz · 0123456789',
@@ -181,7 +188,17 @@ function declaredSteps(base) {
 }
 
 /* ──────────────────────────── описания образцов ──────────────────────────── */
-const BTN_VARIANTS = ['primary', 'secondary', 'soft', 'ghost', 'quiet', 'danger', 'danger-solid', 'ai', 'pro'];
+/* Тон `ghost` снят вместе с правилом (TRIP-344 PR 3): его 50 мест уехали на
+   `secondary`. `link` и `dashed` заведены той же строкой разбора — текстовая
+   кнопка и плейсхолдер «добавить». Оба берут тон из контекста через `--a`,
+   поэтому ниже стоит отдельный образец: без него витрина показала бы только
+   умолчание (brand) и промолчала бы о главном свойстве этих двух тонов.
+   ⚠️ Аннотация ниже обязана стоять в JSDoc-комментарии (`/**`), а не в обычном:
+   с одной звёздочкой TS её не читает, элемент массива остаётся `string`, и
+   `variant={v}` краснеет «string не BtnVariant» — то есть витрина оказывается
+   единственным местом, где закрытый набор тонов не работает. */
+/** @type {import('@/design/index').BtnVariant[]} */
+const BTN_VARIANTS = ['primary', 'secondary', 'soft', 'quiet', 'link', 'dashed', 'danger', 'danger-solid', 'ai', 'pro'];
 // ⚠️ Номер PR тут пишется БЕЗ решётки намеренно: ярус COLOUR гарда check:design
 // читает решётку с тремя цифрами как HEX-цвет и роняет прогон — поймано этим же
 // PR, комментарий со ссылкой на номер тинта был первой красной строкой.
@@ -200,7 +217,9 @@ const BADGE_VARIANTS = ['', 'sm', 'xs', 'pro', 'success', 'warning', 'quiet', 'b
    ⚠️ Дефолты (`quiet`, `md`) в массивах НЕ перечислены намеренно: класса под
    дефолт не существует (2q сверка B), и строка про него была бы обещанием
    обличья, которого в CSS нет. Базовый вид показан первым образцом. */
+/** @type {Array<'quiet'|'soft'|'outline'|'solid'|'ai'|'danger'>} */
 const ICONBTN_TONES = ['soft', 'outline', 'solid', 'ai', 'danger'];
+/** @type {Array<'md'|'sm'|'fab'>} */
 const ICONBTN_SIZES = ['sm', 'fab'];
 const ICONBTN_SHAPES = ['round'];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
@@ -262,6 +281,30 @@ export default function Kit() {
           <Btn variant="secondary" icon="check">{TX.save}</Btn>
           <Btn variant="secondary" iconRight="chevronRight">{TX.save}</Btn>
           <Btn variant="primary" block>{TX.save}</Btn>
+        </Specimen>
+        {/* Тон из контекста: `--a` объявлен на ОБОЛОЧКЕ, у самих кнопок пропа
+            тона нет — ровно так это работает в приложении (AI-карточка красит
+            «Показать целиком», тип брони красит плейсхолдер «добавить»).
+            Наводить обязательно: у пунктирной вся суть в ховере. */}
+        <div className="col col--g4" style={{ '--a': 'var(--ai-ink)' }}>
+          {/* inline-style-exempt: канал `--a` в приложении ВСЕГДА объявляет владелец
+              контекста (карточка ответа, ряд фильтров, строка сервиса), класса «задать
+              акцент» в системе нет и заводить его тут запрещено правилом 1 этого файла.
+              Без сеттера образец показал бы только умолчание brand — то есть промолчал
+              бы ровно о том свойстве, ради которого тон и заведён. */}
+          <Btn variant="link">{TX.btnAccent}</Btn>
+          <Btn variant="dashed" block icon="plus">{TX.btnAccent}</Btn>
+          {/* Вторая форма пунктирного плейсхолдера: плитка-иконка слева и
+              растущая подпись со второй строкой. Показана рядом с первой
+              нарочно — на витрине должно быть видно, что это ОДИН объект в двух
+              обличьях, а не два разных. */}
+          <Btn variant="dashed" block tile icon="bed" sub={TX.btnTileSub}>{TX.btnTile}</Btn>
+        </div>
+        {/* Малая ступень: единственный её случай — пустая ячейка редактора
+            маршрута, две иконки без подписи. */}
+        <Specimen cls="btn--sm">
+          <Btn variant="secondary" size="sm">{TX.save}</Btn>
+          <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel={TX.btnTile} />
         </Specimen>
 
         {/* Кнопка-иконка: три оси, каждая своим образцом. Первый ряд — база
@@ -374,8 +417,8 @@ export default function Kit() {
 
         <Specimen cls="doc-row">
           <div className="col col--g3 grow">
-            <FileRow name={TX.file} size={182400} />
-            <FileRow name={TX.file} size={182400} tone="ai" />
+            <FileRow name={TX.file} size={TX.fileSize} />
+            <FileRow name={TX.file} size={TX.fileSize} tone="ai" />
           </div>
         </Specimen>
 

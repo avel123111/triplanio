@@ -1,3 +1,4 @@
+// @ts-check
 import React from 'react';
 import { Icon } from '@/design/icons';
 import { Badge, Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
@@ -88,7 +89,7 @@ export default function PaymentResultDialog({
                 </Btn>
               ) : (
                 <>
-                  <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+                  <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
                   <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>
                     {t('sub.fail_retry')}
                   </Btn>

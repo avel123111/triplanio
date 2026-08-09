@@ -293,7 +293,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <Severity
               level="error"
               title={t('sys.load_error_title')}
-              action={<Btn variant="ghost" onClick={() => refetchMsgs()}>{t('sys.retry')}</Btn>}
+              action={<Btn variant="secondary" onClick={() => refetchMsgs()}>{t('sys.retry')}</Btn>}
             >
               {t('sys.load_error_desc')}
             </Severity>

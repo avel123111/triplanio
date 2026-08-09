@@ -1,4 +1,6 @@
+// @ts-check
 import React from 'react';
+import { Btn } from '@/design/index';
 import { Icon } from '@/design/icons';
 import MapView from '@/components/views/MapView';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -20,10 +22,11 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
       <div className="wdg-h">
         <span className="wi"><Icon name="map" size={17} /></span>
         <h4>{t('overview.map_title')}</h4>
-        <button className="btn btn--ghost ov-openbtn" onClick={onOpen}>
+        {/* Была сырая разметка с классами системы (`btn btn--ghost`) — теперь
+            сам примитив: тон `ghost` удалён, а класс кнопки собирает <Btn>. */}
+        <Btn variant="secondary" className="ov-openbtn" iconRight="chev" onClick={onOpen}>
           {t('overview.open')}
-          <Icon name="chev" size={14} />
-        </button>
+        </Btn>
       </div>
 
       <div className="ov-maparea">

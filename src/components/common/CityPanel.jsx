@@ -27,17 +27,16 @@ function SectionLabel({ children, color, action }) {
     </div>
   );
 }
-// Lumo ghost-add row (.gadd): dashed, filled secondary icon, muted text.
+// Пунктирный плейсхолдер «добавить» — форма примитива (`Btn variant="dashed"`
+// с плиткой). Своего класса у него больше нет: `.gadd` был третьим именем для
+// той же кнопки. Акцент ховера приходит контекстной переменной `--a`, поэтому
+// строка стиля тут — объявление ТОНА, а не оформление кнопки.
 function GhostAdd({ icon, label, sub, accent, onClick }) {
   const a = accent || 'var(--brand)';
   return (
-    <button className="gadd" onClick={onClick} style={{ '--a': a }}>
-      <span className="gi"><Icon name={icon || 'plus'} size={17} /></span>
-      <span className="gt">
-        <b>{label}</b>
-        {sub && <span>{sub}</span>}
-      </span>
-    </button>
+    <Btn variant="dashed" block tile icon={icon || 'plus'} sub={sub} onClick={onClick} style={{ '--a': a }}>
+      {label}
+    </Btn>
   );
 }
 // Lumo booking row (.bookrow): tinted icon + bt(title/mono-sub) + chevron.

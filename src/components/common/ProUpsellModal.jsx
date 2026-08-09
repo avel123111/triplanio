@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
 import { Btn, IconBtn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
@@ -100,14 +101,14 @@ export default function ProUpsellModal({
             <div className="dlg__foot">
               {isInfo ? (
                 <>
-                  <Btn variant="ghost" icon={copied ? 'check' : 'copy'} onClick={copyLink}>
+                  <Btn variant="secondary" icon={copied ? 'check' : 'copy'} onClick={copyLink}>
                     {copied ? t('common.copied') : t('trip.copy_link')}
                   </Btn>
                   <Btn variant="primary" onClick={close}>{t('common.got_it')}</Btn>
                 </>
               ) : (
                 <>
-                  <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+                  <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
                   <Btn variant="pro" icon="pro" onClick={() => { close(); onUpgrade?.(); }}>
                     {t('trips.go_pro')}
                   </Btn>
