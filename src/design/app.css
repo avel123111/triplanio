@@ -436,12 +436,11 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .eed-fcbox, .eed-nightrow, .docfield, .choice-card,
 .plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
-/* ★TRIP-344: `.map-ctl button` и `.mapfs-close` ушли отсюда - фон и рамку им
-   даёт тон `outline` примитива. Оставить их тут было бы не просто дублем: у
-   `.map-ctl button` специфичность (0,1,1) против (0,1,0) у `.icon-btn--outline`,
-   то есть ко-селектор МОЛЧА перебивал бы рамку тона своей. */
+/* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
+   несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
+   outline-тоном примитива, и ко-селектор (0,1,0) молча перебивал бы его рамку. */
 .cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
-.pro-up .lockmsg, .map-legend .c,
+.pro-up .lockmsg, .map-legend .c, .map-ctl,
 .chat-bubble--them {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -6303,17 +6302,20 @@ a.doc-row__n:hover{ color: var(--brand); }
 .stats-ghost .is-ghost { opacity: .5; filter: saturate(.45); pointer-events: none; }
 
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
-.map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: 6px; }
-/* TRIP-326: color-mix(transparent) + backdrop-filter сняты — непрозрачный --surface.
-   ★TRIP-344: облик кнопки уехал в `IconBtn tone="outline" size="sm"`. Правило по
-   ГОЛОМУ ТЕГУ (`.map-ctl button`) было тут единственным способом одеть кнопку -
-   своего класса у неё не существовало, поэтому из разметки про неё нельзя было
-   сказать ничего. Сторона 34px не совпадала ни с одной ступенью и стала 32.
-   Остаётся только состояние «включено»: заливку даёт общая подсветка ниже, а
-   рамку гасим - кнопка лежит на карте.
-   visual-diff-move: .map-ctl button -> icon-btn icon-btn--outline icon-btn--sm */
+/* ★TRIP-344: `.map-ctl` — плашка-подложка (фон/рамка из surface-канона выше,
+   радиус+паддинг тут); кнопки внутри quiet. Раскладка тут (левый угол, ряд);
+   MapControls переопределяет угол инлайном. Состояние «включено» держит
+   ко-селектор `.map-ctl button.on` ниже — на состояние класс-проп не повесишь.
+   Подложка = намеренные объявления, не перенос (правило .icon-btn--outline живо):
+   visual-diff-exempt: .map-ctl border — плашка-подложка карты (эталон nx)
+   visual-diff-exempt: .map-ctl border-radius — плашка-подложка карты (эталон nx)
+   visual-diff-exempt: .map-ctl padding — плашка-подложка карты (эталон nx)
+   visual-diff-exempt: .map-ctl gap — зазор кнопок в плашке 4px (эталон nx) */
+.map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); }
+/* Живая обратная связь на нажатие (примитив её не несёт). Мёртвый
+   `.map-ctl button.on { border-color: transparent }` снят: ко-селектор ниже
+   всё равно перебивал рамку на var(--hl). */
 .map-ctl button:active { transform: scale(.92); }
-.map-ctl button.on { border-color: transparent; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
 .map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
 .map-legend .d { width: 11px; height: 11px; border-radius: 4px; }
