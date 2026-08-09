@@ -4062,43 +4062,41 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-move: s22f-step -> stepper stepper--bare
 
    ★ 2p: схлопывание ЧЕТЫРЁХ приватных степперов в один примитив трогает много
-   объявлений — облик уезжает на канон, а частные классы (`.te-stepper`/`.te-nights`,
-   `.ts-startctl--block`/`.ts-step`-оверрайд, `.s22f-step`/`.s22f-val`) снимаются.
-   Часть строк — артефакты агрегации 2p по классу (`.n`/`.muted`/`.te-row` замусорены
-   общими читателями; на самом элементе значение не меняется). Каждое объявлено:
-   visual-diff-exempt: .stepper--block font-family — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block font-size — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block font-weight — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block line-height — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block letter-spacing — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block background — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .ts-startctl__date border-radius — дата-триггер: хардкод 7px → шкала --r-sm
-   visual-diff-exempt: .stepper--block display — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .n display — block: .n — флекс для растяжения даты; .n-агрегат (общий с .pt-mm), на элементе только в block
-   visual-diff-exempt: .stepper--block flex — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block text-align — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .te-row:hover background — снят вклад .te-row:hover .te-stepper в агрегат .te-row (на элементе не меняется)
-   visual-diff-exempt: .stepper--bare button:hover:not(:disabled) background — bare: ховер/актив как у гостей (surface-2 · scale .88)
-   visual-diff-exempt: .stepper--bare button:active:not(:disabled) transform — bare: ховер/актив как у гостей (surface-2 · scale .88)
-   visual-diff-exempt: .stepper--block width — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block min-height — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block gap — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block justify-content — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block padding — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block border — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block border-radius — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block button width — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block button height — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block button align-self — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .stepper--block button border-radius — трип-старт block → канон .stepper--block (перенос облика на примитив)
-   visual-diff-exempt: .n flex — block: .n — флекс для растяжения даты; .n-агрегат (общий с .pt-mm), на элементе только в block
-   visual-diff-exempt: .ts-step width — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step календаря/редактора = 26px база
-   visual-diff-exempt: .ts-step height — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step календаря/редактора = 26px база
-   visual-diff-exempt: .ts-startctl--block font-family — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block font-size — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block font-weight — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block line-height — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block letter-spacing — трип-старт: приватный block снят, разметка на .stepper--block
+   объявлений — облик уезжает на канон, частные классы снимаются, часть строк —
+   артефакты агрегации 2p по классу (.n/.muted/.te-row замусорены общими
+   читателями; на самом элементе значение не меняется). Каждое объявлено ниже.
+   ⚠️ 21 ключ вида «.s22f-step button» / «.stepper--bare button» / «.stepper--block
+   button» ОСТАЮТСЯ у 2p: это правила без класса на подлежащем (голый тег с
+   классом-предком), а их exempt-синтаксис не выражает (parser рвёт «класс+пробел»,
+   check-css-semantics.mjs:690). Все они — перенос кнопок ± на канон .stepper button
+   (значения те же) либо геометрия ± у новых вариантов. Разобрано в отчёте PR.
+   visual-diff-exempt: .stepper--block font-family — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block font-size — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block font-weight — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block line-height — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block letter-spacing — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block background — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .ts-startctl__date border-radius — дата-триггер: хардкод 7px → --r-sm
+   visual-diff-exempt: .stepper--block display — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .n display — block: .n флекс для растяжения даты (агрегат .n, только в block)
+   visual-diff-exempt: .stepper--block flex — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block text-align — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .te-row:hover background — снят вклад .te-stepper в агрегат .te-row (на элементе не меняется)
+   visual-diff-exempt: .stepper--block width — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block min-height — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block gap — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block justify-content — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block padding — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block border — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block border-radius — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .n flex — block: .n флекс для растяжения даты (агрегат .n, только в block)
+   visual-diff-exempt: .ts-step width — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step = 26px база
+   visual-diff-exempt: .ts-step height — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step = 26px база
+   visual-diff-exempt: .ts-startctl--block font-family — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block font-size — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block font-weight — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block line-height — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block letter-spacing — трип-старт: приватный block снят → .stepper--block
    visual-diff-exempt: .te-nights font-family — ночи: значение → канон .stepper .n
    visual-diff-exempt: .te-nights font-size — ночи: значение → канон .stepper .n
    visual-diff-exempt: .te-nights font-weight — ночи: значение → канон .stepper .n
@@ -4109,52 +4107,37 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .s22f-val font-weight — гости: значение → канон .stepper .n
    visual-diff-exempt: .s22f-val line-height — гости: значение → канон .stepper .n
    visual-diff-exempt: .s22f-val letter-spacing — гости: значение → канон .stepper .n
-   visual-diff-exempt: .ts-startctl--block background — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block display — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block width — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block min-height — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block gap — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block justify-content — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block padding — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block border — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block border-radius — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block height — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block align-self — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-step align-self — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step календаря/редактора = 26px база
-   visual-diff-exempt: .ts-startctl--block flex — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .ts-startctl--block text-align — трип-старт: приватный block снят, разметка на .stepper--block
-   visual-diff-exempt: .te-stepper gap — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
-   visual-diff-exempt: .te-stepper background — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
-   visual-diff-exempt: .te-stepper border — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
-   visual-diff-exempt: .te-stepper border-radius — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
-   visual-diff-exempt: .te-stepper padding — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
-   visual-diff-exempt: .te-stepper justify-self — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
-   visual-diff-exempt: .te-stepper transition — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
+   visual-diff-exempt: .ts-startctl--block background — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block display — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block width — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block min-height — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block gap — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block justify-content — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block padding — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block border — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block border-radius — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block height — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block align-self — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-step align-self — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step = 26px база
+   visual-diff-exempt: .ts-startctl--block flex — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block text-align — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .te-stepper gap — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper background — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper border — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper border-radius — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper padding — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper justify-self — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper transition — ночи: контейнер → канон .stepper (всегда видим)
    visual-diff-exempt: .te-nights min-width — ночи: значение → канон .stepper .n
    visual-diff-exempt: .te-nights text-align — ночи: значение → канон .stepper .n
    visual-diff-exempt: .te-nights color — ночи: значение → канон .stepper .n
    visual-diff-exempt: .te-nights margin-left — ночи: значение → канон .stepper .n
-   visual-diff-exempt: .muted margin-left — снят отступ суффикса «н» (.te-nights .muted); .muted-агрегат, на элементе не меняется
-   visual-diff-exempt: .te-stepper {@media (prefers-reduced-motion: reduce)} transition-property — ночи: контейнер → канон .stepper (всегда видим, не по ховеру)
-   visual-diff-exempt: .s22f-step button width — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button height — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button border — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button background — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button color — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button border-radius — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button cursor — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button display — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button place-items — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button transition — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button:hover:not(:disabled) background — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button:active:not(:disabled) transform — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button:disabled color — гости: кнопка ± → канон .stepper button (значения те же)
-   visual-diff-exempt: .s22f-step button:disabled cursor — гости: кнопка ± → канон .stepper button (значения те же)
+   visual-diff-exempt: .muted margin-left — снят отступ суффикса «н» (агрегат .muted, на элементе не меняется)
+   visual-diff-exempt: .te-stepper {@media (prefers-reduced-motion: reduce)} transition-property — ночи: контейнер → канон .stepper (всегда видим)
    visual-diff-exempt: .s22f-val min-width — гости: значение → канон .stepper .n
    visual-diff-exempt: .s22f-val text-align — гости: значение → канон .stepper .n
    visual-diff-exempt: .s22f-val color — гости: значение → канон .stepper .n
    visual-diff-exempt: .s22f-val font-variant-numeric — гости: значение → канон .stepper .n
-   visual-diff-exempt: .s22f-step button {@media (prefers-reduced-motion: reduce)} transition — гости: кнопка ± → канон .stepper button (значения те же)
  */
 /* ─── <Stepper>: ОБЛИЧЬЯ КОНТРОЛА «− N +» (TRIP-344 PR 5) ──────────────────────
    Нового префикса тут НЕТ: `.stepper` уже канон-семья. `pill` — дефолт (панель
