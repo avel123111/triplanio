@@ -163,7 +163,7 @@ Deno.test('вставка: скоуп и серверные колонки ст�
     targetId: null,
     values: { title: 't' },
   });
-  assertEquals(plan.op, 'insert');
+  assert(plan.op === 'insert');
   assertEquals(plan.table, 'things');
   assertEquals(plan.values, {
     title: 't',
