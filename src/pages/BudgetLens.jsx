@@ -33,7 +33,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -831,10 +831,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
       {/* ░ CONTROLS ░ */}
       <div className="bgt-ctl row row--g6 row--wrap">
-        <div className="seg" role="group" aria-label={t('budget.group_by_category')}>
-          <button type="button" aria-pressed={grouping === 'category'} onClick={() => setGrouping('category')}><Icon name="grid" size={14} />{t('budget.group_by_category')}</button>
-          <button type="button" aria-pressed={grouping === 'city'} onClick={() => setGrouping('city')}><Icon name="pin" size={14} />{t('budget.group_by_city')}</button>
-        </div>
+        <Seg
+          ariaLabel={t('budget.group_by_category')}
+          value={grouping}
+          onChange={setGrouping}
+          options={[
+            { value: 'category', label: <><Icon name="grid" size={14} />{t('budget.group_by_category')}</> },
+            { value: 'city', label: <><Icon name="pin" size={14} />{t('budget.group_by_city')}</> },
+          ]}
+        />
         <div className="grow" />
         {grouping === 'category' && !readOnly && (
           <Btn variant="soft" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>

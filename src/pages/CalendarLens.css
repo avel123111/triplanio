@@ -74,26 +74,35 @@
 .ncal-nav-trip svg { width: 13px; height: 13px; flex: none; }
 .ncal-nav-trip:hover { background: var(--brand-soft-12); }
 
-/* ── View toggle ───────────────────────────────────────────────── */
-/* раскладка уехала: ncal-vtgl -> row */
-.ncal-vtgl {
-  background: var(--surface-2);
-  border-radius: var(--r-pill);
-  padding: 4px;
-}
-.ncal-vtgl-btn {
-  color: var(--muted);
-  background: transparent; border: none;
-  padding: 8px 18px; border-radius: var(--r-pill);
-  transition: background .2s, color .15s, box-shadow .2s;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.ncal-vtgl-btn.is-on {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--sh-1);
-}
+/* View toggle: переключатель месяц/неделя сведён на канон `<Seg>` (`.seg`,
+   TRIP-344 PR 6). Приватная копия `.ncal-vtgl`/`.ncal-vtgl-btn` (свой трек и
+   состояние `.is-on`) удалена — трек-подложку и активный тон несёт канон.
+
+   Ниже — объявление УДАЛЕНИЙ для 2p: класс-копия снят, разметка переехала на
+   канон `.seg` с унифицированным обликом (не перенос значения, потому точечный
+   exempt, а не visual-diff-move). Ключи `.ncal-vtgl-btn button`/`.seg button` —
+   блайнд-спот TRIP-366 (`.класс button` немаркируем), их не грайндим.
+   visual-diff-exempt: .ncal-vtgl background — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn background — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn border — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn box-shadow — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn color — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn cursor — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn font-family — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn font-size — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn font-weight — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn letter-spacing — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn line-height — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn transition — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn white-space — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn:focus-visible outline — копия снята, фокус несёт канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn:focus-visible outline-offset — копия снята, фокус несёт канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .ncal-vtgl-btn {@media (max-width: 640px)} padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .is-on box-shadow — состояние .is-on снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
 
 /* ── Month: weekday header ─────────────────────────────────────── */
 /* Неделя календаря НЕ схлопывается в .grid--2 (у неё своя семантика, так решено
@@ -351,8 +360,7 @@
 .ncal-more:focus-visible,
 .ncal-aev:focus-visible,
 .ncal-nav-txt:focus-visible,
-.ncal-nav-trip:focus-visible,
-.ncal-vtgl-btn:focus-visible {
+.ncal-nav-trip:focus-visible {
   outline: 2px solid var(--brand); outline-offset: 1px;
 }
 
@@ -379,7 +387,6 @@
   .ncal-nav-trip { padding: 5px 9px; gap: 0; }
   /* размер не перебиваем: канон .t-mono уже даёт нужный кегль (--fs-micro) */
   .ncal-nav-txt { padding: 5px 10px; }
-  .ncal-vtgl-btn { padding: 7px 13px; }
 
   /* Month cells */
   .ncal-wd-row { gap: 2px; margin-bottom: 5px; }
@@ -455,8 +462,6 @@
    visual-diff-exempt: .ncal-title-row align-items — align-items:baseline уехало на модификатор своей оси, значение то же
    visual-diff-exempt: .ncal-title-row flex-wrap — flex-wrap:wrap уехало на модификатор своей оси, значение то же
    visual-diff-exempt: .ncal-title-row gap — нулевой зазор назван явно: у флекса начальный gap=normal=0, а примитив несёт дефолт 10px
-   visual-diff-exempt: .ncal-vtgl display — inline-flex уехал на .row--inline, значение то же
-   visual-diff-exempt: .ncal-vtgl gap — зазор 2px уехал на ступень шкалы .--g1 (var(--sp-1)=2px), значение то же
    ═══════════════════════════════════════════════════════════════════ */
 
 /* TRIP-342: продолжение объявленных изменений (календарь).

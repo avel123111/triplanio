@@ -74,6 +74,10 @@ const LINES = [
   // законны (ими ночи гасят арминг драга). `children` — центр варианта block (дата).
   ['clean', '<Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel="a" plusLabel="b" title="t" onPointerDown={() => {}} />'],
   ['clean', '<Stepper variant="block" onMinus={() => {}} onPlus={() => {}}>d</Stepper>'],
+  // Seg отдаёт остаток на `<div>` — база носитель: `style`/`title` законны (ими
+  // экраны ставят отступ и подпись группы). `options`/`value`/`onChange` обязательны.
+  ['clean', '<Seg options={[{ value: "a", label: "A" }]} value="a" onChange={() => {}} ariaLabel="x" />'],
+  ['clean', '<Seg variant="fill" options={[]} value="a" onChange={() => {}} title="t" />'],
   ['clean', '<Avatar name="A" size="sm" />'],
   ['clean', '<Field label="L"><span>x</span></Field>'],
   ['clean', '<FileRow name="a.pdf" />'],
@@ -107,6 +111,11 @@ const LINES = [
   ['error', '<IconBtn icon="close" />'],
   // Набор вариантов степпера закрыт ТИПОМ: `compact` не существует.
   ['error', '<Stepper variant="compact" />'],
+  // Набор вариантов Seg закрыт ТИПОМ: `compact` не существует (auto|fill).
+  ['error', '<Seg variant="compact" options={[]} value="a" onChange={() => {}} />'],
+  // Обязательный проп: без `options` сегментам неоткуда взяться — краснеет
+  // ОТДЕЛЬНО от неверного варианта (два разных поведения аннотации, урок TRIP-388).
+  ['error', '<Seg value="a" onChange={() => {}} />'],
   // ★★ ДВЕ РАЗНЫЕ ОШИБКИ, И ВТОРАЯ НУЖНА ИМЕННО ПОТОМУ, ЧТО ПЕРВАЯ ЕЁ НЕ ЛОВИТ.
   // Закрытый юнион ловит НЕВЕРНОЕ значение (тона `ghost` больше нет) - это первая
   // строка. ОТСУТСТВИЕ пропа он не ловит по построению: замерено на PR 2, где
@@ -129,7 +138,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",

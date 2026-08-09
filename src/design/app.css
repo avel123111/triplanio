@@ -748,7 +748,6 @@ h4,
 .sev,
 .avatar,
 .avatar--sm,
-.tweaks__seg button,
 .seg button,
 .choice-card__sub,
 .ts-startctl__lbl,
@@ -985,7 +984,7 @@ h4,
    (Micro→Mono) и чипы событий (off-canon→Mono). Гарнитура — Golos, см. .t-sans ниже.
    Близнецы вида «Неделя» (.ncal-aev .atm/.atl) едут вместе с месячными,
    иначе одно и то же событие рендерится двумя шрифтами. */
-.ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
+.ncal-nav-txt, .ncal-nav-trip, .ncal-more,
 .ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
@@ -1076,8 +1075,6 @@ h4,
 .bgt-stat__s,            /* TRIP-243 инсп.: Meta+Golos (подпись стат-карточки) */
 .bgt-fxrow__hint,        /* TRIP-243 инсп.: Meta+Golos (хинт строки курса в модалке) */
 .sev,                    /* TRIP-275 инсп.: Meta+Golos (проза сообщений severity/баннера наблюдателя) */
-.tweaks__seg button,     /* TRIP-275 инсп.: Meta+Golos (сегмент-табы диалогов: e-mail/ссылка/офлайн + роль) */
-.tweaks__seg .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подписи роль-табов: Только просмотр/Редактирует) */
 .field__label .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подсказка-hint поля «· свободный текст») */
 .dlg__body > .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (прозовые примечания в теле диалога) */
 .dl-root .muted.t-meta,  /* TRIP-275 инсп.: Meta+Golos (подписи секций документов «Видят все участники») */
@@ -1086,7 +1083,7 @@ h4,
 .dl-dropzone span,       /* TRIP-275 инсп.: Meta+Golos (подпись dropzone «PDF · DOC · XLS…») */
 /* TRIP-280 инсп.: экран календаря целиком уходит с JetBrains на Golos.
    Mono-ярус — пилюли навигации/переключателя, плашки городов, чипы событий: */
-.ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
+.ncal-nav-txt, .ncal-nav-trip, .ncal-more,
 .ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
@@ -2170,14 +2167,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Divider */
 .hr { border: none; border-top: 1px solid var(--line); margin: 0; }
 
-.tweaks__seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); background: var(--wash); border-radius: var(--r-sm); }
-.tweaks__seg button {
- flex: 1; padding: 5px 10px; border: none; background: transparent;
- color: var(--muted);
- border-radius: var(--r-sm);
-}
-.tweaks__seg button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15,23,42,.07); }
-
+/* TRIP-344 PR 6: копия `.tweaks__seg` (Участники) удалена, разметка переехала
+   на канон `<Seg>` (`.seg`) с унифицированным обликом и состоянием через
+   `aria-pressed`. Ниже — объявление УДАЛЕНИЙ для 2p (не перенос значения →
+   точечный exempt). Ключи `.tweaks__seg button` — блайнд-спот TRIP-366
+   (`.класс button` немаркируем), не грайндим.
+   visual-diff-exempt: .tweaks__seg background — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg border — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg box-shadow — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg color — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg display — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg font-family — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .active box-shadow — состояние .active снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
 /* ── Lumo segmented control (.seg) — pill shape, aria-pressed active state ── */
 .seg {
   display: inline-flex;
@@ -2216,6 +2219,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   box-shadow: none;
 }
 .seg button:active { transform: scale(.95); }
+/* TRIP-344 PR 6: фокус-кольцо и reduced-motion ВОЗВРАЩЕНЫ на канон при слиянии
+   копий. Вытесненный `.ncal-vtgl-btn` уважал `:focus-visible` (свой контур), а
+   `.seg button` полагался на UA-умолчание — свожу к кольцу ДС (как `.btn`,
+   `.icon-btn`, `.checkbox`), чтобы у всех сегментов был один индикатор фокуса.
+   Reduced-motion гасит нажимной `scale(.95)` и переходы — тем же крылом, что у
+   `.stepper button` (ревью Codex на PR 5). Обе правки — на канон-теге
+   `.seg button`, то есть блайнд-спот TRIP-366: 2p их не выражает. */
+.seg button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+@media (prefers-reduced-motion: reduce) {
+  .seg button { transition: none; }
+  .seg button:active { transform: none; }
+}
 /* Full-width variant — segments split the row evenly (used by the fork tabs and
    the transfer Direct/Layovers switch). Shared so neither call-site re-invents it. */
 .seg--fill { display: flex; width: 100%; }

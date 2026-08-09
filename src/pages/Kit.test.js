@@ -159,6 +159,10 @@ const ARRAYS = [
   // обличья `stepper--block` / `stepper--bare` собираются в рантайме и `emittedByComponents`
   // (читает только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
   { name: 'STEPPER_VARIANTS', family: 'stepper' },
+  // ★TRIP-344 PR 6: сегмент-контрол — свой примитив `src/design/Seg.jsx`, его
+  // обличье `seg--fill` собирается в рантайме, `emittedByComponents` (только
+  // `index.jsx`) его не видит — держит связка «массив на витрине» + направление 2.
+  { name: 'SEG_VARIANTS', family: 'seg' },
 ];
 
 function valuesOf(name) {
@@ -203,6 +207,9 @@ const NOT_SHOWN = new Set([
   'toast--error', 'toast--info', 'toast--success', 'toast--warning',
   // поверхности и диалог
   'card--danger', 'card--flush', 'dlg--sm', 'dlg--wide',
+  // сегмент-контрол: `--fill` показан на витрине; `--filter`/`--view` — экранные
+  // адаптивы Trips (order/flex в `.trips-toolbar`), не обличья примитива
+  'seg--filter', 'seg--view',
   // прочее, поштучно
   'ai-blk--pill', 'avatar-stack--white', 'btn--brand', 'field-row--aside',
   'input-affix--end', 'input-affix--ic', 'input-unit--lead',
