@@ -303,8 +303,27 @@ jobs:
           version: 2.108.0
       - name: Поднять локальный Postgres и накатить supabase/migrations/**
         run: supabase db start
+      # РЕТРАЙ здесь не «на всякий случай», а по ЗАМЕРУ: `gen types --local`
+      # поднимает СВОЙ контейнер `postgres-meta`, и первый же параллельный
+      # прогон двух PR словил `docker: toomanyrequests` от public.ecr.aws —
+      # джоба покраснела по инфраструктурной причине, неотличимо с виду от
+      # настоящего дрейфа. Гард, красный не по делу, выключают, поэтому три
+      # попытки с паузой; если не вышло и с третьей — краснеть ЗАКОННО, и файл
+      # останется пустым, что судья назовёт «не смог измерить» (код 2), а не
+      # «типы устарели».
       - name: Сгенерировать типы из применённых миграций
-        run: supabase gen types typescript --local --schema public > "$RUNNER_TEMP/database.types.gen.ts"
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/database.types.gen.ts"
+          for attempt in 1 2 3; do
+            if supabase gen types typescript --local --schema public > "$out"; then
+              exit 0
+            fi
+            echo "::warning::попытка $attempt/3 сгенерировать типы не удалась (см. вывод выше)"
+            sleep $((attempt * 20))
+          done
+          echo "::error::генерация типов не удалась после 3 попыток"
+          exit 1
       - name: 2t — дрейф типов БД
         run: node scripts/ci/check-db-types.mjs "$RUNNER_TEMP/database.types.gen.ts"
       # Сгенерированный файл кладётся артефактом ТОЛЬКО когда гард покраснел:
