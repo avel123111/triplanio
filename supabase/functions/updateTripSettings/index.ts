@@ -121,10 +121,32 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
       update.details = newDetails;
     }
 
-    if (Object.keys(update).length === 0) return Response.json({ ok: true }, { headers: corsHeaders });
+    // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
+    // валюты) → сервер сбрасывает их в ТОЙ ЖЕ операции сохранения, а не второй
+    // клиентской до-записью (единая дверь, TRIP-394). Денорму trip_budgets.currency
+    // держим в синхроне с main_currency до её сноса в блоке 3.
+    const prevCurrency = (trip.details as { main_currency?: string } | null)?.main_currency ?? null;
+    const currencyChanged = typeof main_currency === 'string' && !!main_currency &&
+      main_currency !== prevCurrency;
 
-    const { error } = await supabaseAdmin.from('trips').update(update).eq('id', tripId);
-    if (error) return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
+    if (Object.keys(update).length === 0 && !currencyChanged) {
+      return Response.json({ ok: true }, { headers: corsHeaders });
+    }
+
+    if (Object.keys(update).length > 0) {
+      const { error } = await supabaseAdmin.from('trips').update(update).eq('id', tripId);
+      if (error) return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
+    }
+
+    if (currencyChanged) {
+      // 0 строк не ошибка: у трипа может не быть строки бюджета (сбрасывать
+      // нечего). Настоящий сбой запроса → throw → 500 INTERNAL, отчётный.
+      const { error: fxErr } = await supabaseAdmin
+        .from('trip_budgets')
+        .update({ currency: main_currency, fx_overrides: {} })
+        .eq('trip_id', tripId);
+      if (fxErr) throw fxErr;
+    }
 
     return Response.json({ ok: true }, { headers: corsHeaders });
 }));

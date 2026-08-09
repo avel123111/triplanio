@@ -21,10 +21,8 @@
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
 import React, { useState, useMemo } from 'react';
-import { supabase } from '@/api/supabaseClient';
-import { writeRows } from '@/lib/trip-data';
+import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
-import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
@@ -39,6 +37,26 @@ import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Skel
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
+
+// ─── запись бюджета: клиентская половина единой двери (TRIP-394) ──────────────
+//
+// Все записи бюджета идут ЧЕРЕЗ ЭТУ ДВЕРЬ, не прямым PostgREST: право (editor),
+// Pro-гейт, скоуп строки и кэпы длины держит сервер (`trip-budget` + шов
+// `_shared/mutate.ts`). Действие — сегмент пути; SDK сохраняет слэш в имени, так
+// что `trip-budget/expense` даёт `/functions/v1/trip-budget/expense`.
+//
+// invokeFn НЕ бросает на не-2xx (functions-js отдаёт {data:null,error}), поэтому
+// проверяем `error`/`code` из НЕГО, а не `data.code` (handoff блок 0). tripId в
+// теле у КАЖДОГО вызова — по нему сервер и проверяет право, и скоупит строку.
+const budgetMutate = (action, body) => invokeFn(`trip-budget/${action}`, { body });
+
+// Отказ → локализованный текст. Из UI достижим только PRO_REQUIRED (аддон
+// бюджета включали на Pro-трипе, трип мог потерять Pro — редактор всё ещё видит
+// экран, но новая запись отбивается 402). FORBIDDEN/NOT_FOUND/*_NOT_MANUAL/
+// *_SYSTEM из гейтованного UI не приходят → общий «не удалось сохранить».
+const BUDGET_REFUSAL = { PRO_REQUIRED: 'sub.locked_desc' };
+const budgetErrText = (t, code) =>
+  t(code && Object.hasOwn(BUDGET_REFUSAL, code) ? BUDGET_REFUSAL[code] : 'common.write_failed');
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
 
@@ -135,7 +153,6 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
-  const { user } = useAuth();
   const isEdit = !!existing;
   const [title, setTitle] = useState(existing?.title || '');
   const [amount, setAmount] = useState(existing?.original_amount != null ? String(existing.original_amount) : '');
@@ -172,15 +189,13 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         ? orphanCity
         : (cities.find((c) => c.id === cityVisitId)?.city_name || null),
     };
-    try {
-      await writeRows(isEdit
-        ? supabase.from('budget_expenses').update(row).eq('id', existing.id)
-        : supabase.from('budget_expenses').insert({
-            ...row, trip_id: tripId, source_kind: 'manual', source_id: null, created_by: user?.id,
-          }));
-    } catch (e) {
+    // source_kind/source_id/created_by ставит сервер (ручная дверь рождает
+    // только ручную трату) — клиент их больше не шлёт.
+    const { error, code } = await budgetMutate('expense',
+      isEdit ? { tripId, id: existing.id, ...row } : { tripId, ...row });
+    if (error) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setSaving(false);
@@ -194,11 +209,10 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   async function remove() {
     if (!isEdit) return;
     setDeleting(true);
-    try {
-      await writeRows(supabase.from('budget_expenses').delete().eq('id', existing.id), { expectRow: false });
-    } catch (e) {
+    const { error, code } = await budgetMutate('expense/delete', { tripId, id: existing.id });
+    if (error) {
       setDeleting(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setDeleting(false);
@@ -281,11 +295,13 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
   const [err, setErr] = useState('');
   async function remove() {
     setDeleting(true);
-    try {
-      await writeRows(supabase.from('budget_expenses').delete().eq('id', expense.id), { expectRow: false });
-    } catch (e) {
+    // tripId — из строки (её FK на трип), сервер по нему скоупит удаление.
+    const { error, code } = await budgetMutate('expense/delete', {
+      tripId: expense.trip_id, id: expense.id,
+    });
+    if (error) {
       setDeleting(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setDeleting(false);
@@ -321,7 +337,6 @@ function liveRateToMain(fx, code) {
 
 function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
-  const { user } = useAuth();
   const close = () => onOpenChange?.(false);
   const others = currencies.filter(c => c && c !== mainCurrency);
   const [values, setValues] = useState(() => {
@@ -350,23 +365,13 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       // actually changed it - otherwise auto rates would get frozen.
       if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
     });
-    try {
-      // expectRow:false so 0 rows doesn't throw — a trip can lack a trip_budgets
-      // row (seed_budget_on_trip swallows its own failures, and ensure_trip_budget
-      // is not client-callable). In that case self-heal by inserting the row so the
-      // overrides actually persist instead of silently vanishing.
-      const rows = await writeRows(
-        supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId),
-        { expectRow: false },
-      );
-      if (!rows.length) {
-        await writeRows(supabase.from('trip_budgets').insert({
-          trip_id: tripId, currency: mainCurrency, fx_overrides: next, created_by: user?.id,
-        }));
-      }
-    } catch (e) {
+    // Self-heal строки бюджета делает СЕРВЕР (settings → ensure_trip_budget,
+    // исполнима только service_role) — клиент больше не вставляет trip_budgets и
+    // не пишет currency (на трипах без main_currency это роняло бы NOT NULL).
+    const { error, code } = await budgetMutate('settings', { tripId, fx_overrides: next });
+    if (error) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setSaving(false);
@@ -430,7 +435,6 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
-  const { user } = useAuth();
   // Edit a seeded category and the field must start from what the user SEES —
   // the localized label, not the English `name` the seeder stored (TRIP-230).
   const [name, setName] = useState(existing ? categoryDisplayName(existing, t) : '');
@@ -444,30 +448,21 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   async function save() {
     setSaving(true);
     setErr('');
-    try {
-      // Renaming a SEEDED category makes it the user's own: dropping system_key
-      // stops us translating over their text on the next language switch
-      // (TRIP-230). Never for kind='system' — sync_budget_expense routes booking
-      // expenses by system_key, so clearing it would orphan that routing.
-      const dropsSeedKey = existing?.kind === 'custom' && !!existing.system_key
-        && name.trim() !== categoryDisplayName(existing, t);
-      await writeRows(existing
-        ? supabase.from('budget_categories')
-            .update({ name: name.trim(), color, icon, ...(dropsSeedKey ? { system_key: null } : {}) })
-            .eq('id', existing.id)
-        : supabase.from('budget_categories').insert({
-            trip_id: tripId,
-            kind: 'custom',
-            name: name.trim(),
-            system_key: null,
-            icon,
-            color,
-            order_index: 99,
-            created_by: user?.id,
-          }));
-    } catch (e) {
+    // Переименование СЕЯНОЙ категории делает её собственной: отвязка system_key
+    // не даёт при следующей смене языка перевести поверх пользовательского
+    // текста (TRIP-230). Считается это от ЛОКАЛИЗОВАННОЙ подписи, поэтому живёт
+    // на клиенте — сервер языка зрителя не знает; он принимает только ОБНУЛЕНИЕ
+    // ключа (clearOnly), присвоить чужой нельзя (по нему роутятся автотраты).
+    // kind/order_index/created_by на вставке ставит сервер.
+    const dropsSeedKey = existing?.kind === 'custom' && !!existing.system_key
+      && name.trim() !== categoryDisplayName(existing, t);
+    const { error, code } = await budgetMutate('category', existing
+      ? { tripId, id: existing.id, name: name.trim(), color, icon,
+          ...(dropsSeedKey ? { system_key: null } : {}) }
+      : { tripId, name: name.trim(), icon, color });
+    if (error) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setSaving(false);
