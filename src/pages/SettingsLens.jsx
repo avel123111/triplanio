@@ -13,12 +13,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Row, Col, Grid, Grow } from '../design/Layout';
-import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
@@ -614,24 +613,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
+    // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
+    // валюты). Сброс делает СЕРВЕР в той же транзакции — второй клиентской
+    // до-записи в trip_budgets больше нет (единая дверь, TRIP-394).
     const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, fields, main_currency: currency },
     });
-    // Main currency changed → existing FX overrides were defined against the OLD
-    // main currency and are now meaningless. Reset them (trip_budgets is participant-RLS).
-    if (!error && data?.ok && currency !== prevCurrency) {
-      try {
-        // Secondary to the edge save above; expectRow:false because a trip may
-        // have no trip_budgets row yet (nothing to reset). Was a bare await that
-        // swallowed both real errors and the silent 0-row case.
-        await writeRows(
-          supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId),
-          { expectRow: false },
-        );
-      } catch {
-        toast({ description: t('common.write_failed'), variant: 'destructive' });
-      }
-    }
     setSaving(false);
     if (error || !data?.ok) { refusalToast(code, 'settings.save_error2'); return; }
     // Cover replaced/cleared → the previously persisted object is now orphaned.
