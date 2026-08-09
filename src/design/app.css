@@ -4160,6 +4160,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .stepper--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
 .stepper--block button { width: 38px; height: auto; align-self: stretch; border-radius: var(--r-sm); }
 .stepper--block .n { flex: 1; }
+/* Слияние в `.stepper button` потеряло reduced-motion: вытесненные `.te-step`/
+   `.ts-step` гасили `transform` на `:active`, `.s22f-step button` — `transition`.
+   Возвращаю оба на примитив, крылом на все варианты сразу (ревью Codex). */
+@media (prefers-reduced-motion: reduce) {
+  .stepper button { transition: none; }
+  .stepper button:active:not(:disabled) { transform: none; }
+}
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
 .lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
