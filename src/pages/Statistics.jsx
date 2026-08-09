@@ -362,16 +362,11 @@ export default function Statistics() {
                 selected={panel ? { kind: panel.kind, key: panel.key } : null}
                 cooperativeGestures={!fs}
               >
-                {/* ★TRIP-344: кнопки над картой рисовались тут ГОЛЫМ тегом —
-                    у них не было даже своего класса, облик приходил селектором
-                    `.map-ctl button`. Тон `outline`, а не `quiet`: кнопка лежит
-                    поверх живой карты, и без фона с рамкой она нечитаема — тот
-                    же выбор, что уже сделан в `MapControls`, чтобы один объект
-                    не имел двух видов на двух экранах. */}
+                {/* ★TRIP-344: фон и рамку несёт плашка `.map-ctl`, кнопки внутри
+                    quiet (прозрачные) — эталон «столбиком в своей плашке». */}
                 <div className="map-ctl">
                   <IconBtn
                     icon="globe"
-                    tone="outline"
                     size="sm"
                     className={globe ? 'on' : ''}
                     ariaPressed={globe}
@@ -380,7 +375,6 @@ export default function Statistics() {
                   />
                   <IconBtn
                     icon="expand"
-                    tone="outline"
                     size="sm"
                     onClick={() => setFs((v) => !v)}
                     ariaLabel={t('stats.map_fullscreen')}
