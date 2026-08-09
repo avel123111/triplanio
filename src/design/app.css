@@ -6179,9 +6179,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vp-h.city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .vp-h h3 { color: var(--ink); margin: 0; }
 .vp-h .s { color: var(--muted); margin-top: 3px; }
-.vp-x { margin-left: auto; width: 34px; height: 34px; border-radius: var(--r-sm); border: 0; background: var(--surface-2); display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
-.vp-x svg { width: 18px; height: 18px; }
-.vp-x:active { transform: scale(.95); }
+/* .vp-x УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft">.
+   `margin-left: auto` не переезжает и не нужен: соседний блок заголовка стоит
+   на `flex: 1`, поэтому крестик и так прижат вправо. */
 .vp-b { flex: 1; min-height: 0; padding: 6px 20px 24px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 /* Mobile bottom-sheet: clear the fixed bottom-nav so the last rows aren't hidden
    under it, and keep the body the scroll container (flex:1 + min-height:0). */
