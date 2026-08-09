@@ -128,12 +128,13 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
     const prevCurrency = (trip.details as { main_currency?: string } | null)?.main_currency ?? null;
     const currencyChanged = typeof main_currency === 'string' && !!main_currency &&
       main_currency !== prevCurrency;
+    const hasTripUpdate = Object.keys(update).length > 0;
 
-    if (Object.keys(update).length === 0 && !currencyChanged) {
+    if (!hasTripUpdate && !currencyChanged) {
       return Response.json({ ok: true }, { headers: corsHeaders });
     }
 
-    if (Object.keys(update).length > 0) {
+    if (hasTripUpdate) {
       const { error } = await supabaseAdmin.from('trips').update(update).eq('id', tripId);
       if (error) return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
     }
