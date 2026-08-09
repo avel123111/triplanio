@@ -1327,10 +1327,13 @@ button.app-side__item:hover { background: var(--wash); }
 .btn--primary:active { --bg: var(--primary-press); }
 .btn--secondary { --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong); }
 .btn--secondary:hover { --bd: var(--brand); --fg: var(--brand); box-shadow: var(--sh-1); }
-/* `.btn.is-on` было ВТОРЫМ именем для этого же состояния - набор объявлений
-   совпадал побайтово. Сведено в один селектор, второе имя удалено. */
-.btn--soft, .btn.is-on { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
-.btn--soft:hover, .btn.is-on:hover { --bg: var(--brand-soft-12); }
+/* `.btn.is-on` было ВТОРЫМ именем для этого же состояния (набор объявлений
+   совпадал побайтово) — и вот теперь оно ДЕЙСТВИТЕЛЬНО удалено. Прежний
+   комментарий обещал именно это, а имя оставалось в селекторе: разбор облика
+   числит его мёртвым модификатором, и замер согласен — `is-on` в разметке живёт
+   на `.ncal-vtgl-btn` и `.dl-visopt`, на `.btn` его не ставит никто. */
+.btn--soft { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
+.btn--soft:hover { --bg: var(--brand-soft-12); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
 .btn--quiet:hover { --fg: var(--ink); }
 /* Тон `ghost` (прозрачный фон, прозрачная рамка) удалён вместе с 50 вызовами:
