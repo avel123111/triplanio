@@ -519,14 +519,14 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
         <Col align="a-end" className="ncal-hd-r">
           {/* Nav pill */}
           <Row inline gap="g1" className="ncal-nav">
-            <IconBtn icon="back" tone="soft" size="sm" ariaLabel={t('calendar.prev')} onClick={goBack} />
+            <IconBtn icon="back" tone="soft" size="sm" round ariaLabel={t('calendar.prev')} onClick={goBack} />
             <button className="ncal-nav-txt" onClick={goToday}>{t('calendar.today')}</button>
             <span className="ncal-nav-div" aria-hidden="true" />
             <button className="row row--inline ncal-nav-trip" onClick={goHome}>
               <IcoPin />
               <span className="ncal-trip-label">{t('calendar.to_trip_start')}</span>
             </button>
-            <IconBtn icon="arrowR" tone="soft" size="sm" ariaLabel={t('calendar.next')} onClick={goFwd} />
+            <IconBtn icon="arrowR" tone="soft" size="sm" round ariaLabel={t('calendar.next')} onClick={goFwd} />
           </Row>
 
           {/* View toggle */}
