@@ -26,7 +26,6 @@
     "src/pages/**/*.jsx",
     "src/design/**/*.jsx",
     "src/design/**/*.js",
-    "src/Layout.jsx",
     "src/types/*.d.ts"
   ],
   "exclude": [
