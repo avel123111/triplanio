@@ -264,18 +264,18 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                     key={i}
                     name={d.file_name}
                     action={(
-                      <button
-                        type="button"
-                        className="doc-row__rm"
-                        aria-label={t('doc.remove_doc_aria')}
+                      <IconBtn
+                        icon="close"
+                        tone="danger"
+                        size="sm"
+                        ariaLabel={t('doc.remove_doc_aria')}
                         onClick={() => {
                           // Staged-but-unsaved upload → the object is already
                           // orphaned, remove it immediately (TRIP-117).
                           removeTripFiles(collectDocPaths([documents[i]]));
                           setDocuments(prev => prev.filter((_, j) => j !== i));
-                        }}>
-                        <Icon name="close" size={13} />
-                      </button>
+                        }}
+                      />
                     )}
                   />
                 ))}

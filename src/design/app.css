@@ -3889,8 +3889,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .btn-label-collapse { display: none; }
 }
 
-.addmini { width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
-.addmini:hover { background: var(--accent); color: var(--accent-ink); }
+/* `.addmini` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft" size="sm">.
+   Обе точки вызова (CityPanel, «добавить отель» / «добавить активность»)
+   пересажены в этом же PR, осиротевшего правила не остаётся. */
 
 /* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан приватным.
    visual-diff-move: bookrow -> row */
@@ -4056,15 +4057,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .wi--activity { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .wdg-h h4 { flex: 1; margin: 0; }
 .wdg-b { padding: 4px 18px 18px; }
-.wdg-act {
-  width: 28px; height: 28px; border-radius: var(--r-sm);
-  border: 1px solid var(--line-strong); background: transparent;
-  color: var(--muted-2); cursor: pointer; display: grid; place-items: center;
-  transition: border-color .16s var(--ease-out), color .16s var(--ease-out),
-              background .16s var(--ease-out), transform .12s var(--ease-out);
-}
-.wdg-act:active { transform: scale(.92); }
-.wdg-act svg { width: 14px; height: 14px; stroke-width: 2.4px; }
+/* `.wdg-act` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="outline"
+   size="sm">. Обе точки вызова (BudgetSummaryCard, MembersSummaryCard)
+   пересажены в этом же PR. Вместе с классом ушёл и его ко-селектор ховера
+   в канале --hl* ниже по файлу: у канон-класса свой ховер. */
 
 /* ---- budget widget ---- */
 .bud-total { color: var(--ink); }
@@ -5224,7 +5220,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .ai-blk-ti b{ color:var(--ai-ink);display:flex;align-items:center;gap:6px;}
 /* direct child only — must NOT leak onto the Pro <Badge> span nested in the title */
 .ai-blk-ti > span{display:block; color:var(--muted); margin-top:1px;}
-/* collapse chevron (idle/uploaded/parsed → available) */
+/* Шеврон свёртки. Носителей было ДВА: кнопка состояния `parsed` и НЕинтерактивный
+   `<span aria-hidden>` в кликабельной шапке idle/uploaded (кликом там заведует вся
+   шапка). На <IconBtn tone="ai" size="sm"> уехала ТОЛЬКО кнопка (TRIP-344 PR 2) -
+   спан кнопкой не является, и подменять его настоящим <button> внутри
+   `role="button"` нельзя: это лишняя точка табуляции, дублирующая действие шапки.
+   Поэтому класс живой, правило НЕ осиротело, и 2n тут не за что зацепиться.
+   Схождение размеров 26 → 32 остаётся за пересадкой шапки на общий ряд. */
 .ai-blk-x{width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:var(--r-sm);flex:none;}
 .ai-blk-x:hover{background:var(--ai-soft);color:var(--ai-ink);}
 .ai-blk-body{padding:0 13px 12px;display:flex;flex-direction:column;gap:8px;}
@@ -5395,11 +5397,13 @@ a.doc-row__n:hover{ color: var(--brand); }
    одинаковая (0,2,0), решает порядок. */
 .doc-row--ai{border:1px solid var(--ai-soft-2);}
 .doc-row--ai:hover{background:var(--ai-soft);}
-/* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),
-   с одинаковым поведением: прозрачная кнопка, при наведении - опасный тон. */
-.doc-row__rm{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted-2);cursor:pointer;display:grid;place-items:center;flex:none;transition:background .14s,color .14s;}
-.doc-row__rm:hover{background:var(--danger-soft);color:var(--danger-ink);}
-.doc-row__rm svg{width:13px;height:13px;}
+/* `.doc-row__rm` УДАЛЁН (TRIP-344 PR 2): иконочная кнопка уехала на
+   <IconBtn tone="danger" size="sm">. Класс уже был схлопыванием двух копий
+   (.dl-upitem__rm 24px и .ai-file-x 26px) - теперь схлопнулся до конца, в
+   канон-семью. Все три точки вызова (DocumentsField, EventAiBlock, DocsLens)
+   пересажены в этом же коммите, осиротевшего правила не остаётся.
+   Облик МЕНЯЕТСЯ по решению разбора: 24×24 и радиус 7px мимо шкалы → 32×32
+   (--ctl-h-sm) и радиус из шкалы; опасный тон ховера несёт tone="danger". */
 
 /* ─── Notes block ───────────────────────────────────────────────────────── */
 .notes-block{ color:var(--ink-2); padding:10px 12px;border-radius:var(--r-sm);}
@@ -5652,8 +5656,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .sec-lbl .sl { color: var(--hl-ink); }
-.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
-.sec-lbl .addmini svg { width: 12px; height: 12px; }
+/* `.sec-lbl .addmini` УДАЛЁН (TRIP-344 PR 2) вместе с базовым `.addmini`: обе
+   точки вызова стоят ИМЕННО в этой шапке, поэтому контекстное правило
+   осиротело ровно вместе с ним. Облик теперь у <IconBtn tone="soft" size="sm">. */
 /* vertical stack used between rows */
 /* AI parsing progress bar */
 .ai-prog { height: 4px; background: var(--ai-soft-2); border-radius: var(--r-pill); overflow: hidden; margin-top: 8px; }
@@ -6363,7 +6368,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и var(--primary-fg)).
    Теперь синий один и белый один. */
 .tc-add:hover,
-.wdg-act:hover,
 .bgt-glist__add:hover,
 .bgt-iconpick button.on,
 .menu-trig[data-state="open"],

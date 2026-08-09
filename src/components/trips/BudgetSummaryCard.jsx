@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
+import { IconBtn } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
@@ -59,14 +60,14 @@ export default function BudgetSummaryCard({
         <span className="wi"><Icon name="wallet" size={17} /></span>
         <h4>{t('trip.sidebar_budget')}</h4>
         {canManage && (
-          <button
-            className="wdg-act"
+          <IconBtn
+            icon="chev"
+            tone="outline"
+            size="sm"
             onClick={openBudget}
             title={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}
-            aria-label={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}
-          >
-            <Icon name="chev" size={14} />
-          </button>
+            ariaLabel={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}
+          />
         )}
       </div>
 

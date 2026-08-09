@@ -18,7 +18,7 @@ import { formatDateRange } from '@/lib/trip-dates';
 const money = (p, c) => fmtPrice(p, c) || '';
 const rangeText = (a, b) => formatDateRange(a, b, fmtDate);
 
-// Lumo section label: coloured uppercase tag (.sl) + optional addmini action.
+// Lumo section label: coloured uppercase tag (.sl) + optional icon-button action.
 function SectionLabel({ children, color, action }) {
   return (
     <div className="sec-lbl" style={{ marginTop: 6 }}>
@@ -138,7 +138,7 @@ export default function CityPanel({
       {/* hotels — cities only (a 0-night waypoint has no overnight stay). */}
       {!isWaypoint && (
       <div className="col col--g4">
-        <SectionLabel color="var(--ev-hotel-ink)" action={hotels.length > 0 ? <button className="addmini" onClick={onAddHotel} aria-label={t('hotel.add')}><Icon name="plus" size={14} /></button> : null}>
+        <SectionLabel color="var(--ev-hotel-ink)" action={hotels.length > 0 ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddHotel} ariaLabel={t('hotel.add')} /> : null}>
           {t('budget.cat_accommodation')}{hotels.length > 0 ? ` · ${hotels.length}` : ''}
         </SectionLabel>
         {hotels.length === 0 ? (
@@ -155,7 +155,7 @@ export default function CityPanel({
 
       {/* activities */}
       <div className="col col--g4">
-        <SectionLabel color="var(--ev-activity-ink)" action={acts.length > 0 ? <button className="addmini" onClick={onAddActivity} aria-label={t('activity.add')}><Icon name="plus" size={14} /></button> : null}>
+        <SectionLabel color="var(--ev-activity-ink)" action={acts.length > 0 ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddActivity} ariaLabel={t('activity.add')} /> : null}>
           {t('budget.source_activity')}{acts.length > 0 ? ` · ${acts.length}` : ''}
         </SectionLabel>
         {acts.map((a) => (
