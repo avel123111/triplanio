@@ -17,7 +17,7 @@
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, eventFamily } from '../design/index';
+import { Skeleton, IconBtn, Seg, eventFamily } from '../design/index';
 import { Row, Col, Grid, Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -531,23 +531,16 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
             <IconBtn icon="chev" tone="soft" size="sm" round ariaLabel={t('calendar.next')} onClick={goFwd} />
           </Row>
 
-          {/* View toggle */}
-          <Row inline gap="g1" className="ncal-vtgl" role="group" aria-label={`${t('calendar.month')} / ${t('calendar.week')}`}>
-            <button
-              className={`ncal-vtgl-btn${view === 'month' ? ' is-on' : ''}`}
-              aria-pressed={view === 'month'}
-              onClick={() => setView('month')}
-            >
-              {t('calendar.month')}
-            </button>
-            <button
-              className={`ncal-vtgl-btn${view === 'week' ? ' is-on' : ''}`}
-              aria-pressed={view === 'week'}
-              onClick={() => setView('week')}
-            >
-              {t('calendar.week')}
-            </button>
-          </Row>
+          {/* View toggle — канон `<Seg>` (было `.ncal-vtgl`, TRIP-344 PR 6) */}
+          <Seg
+            ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'month', label: t('calendar.month') },
+              { value: 'week', label: t('calendar.week') },
+            ]}
+          />
         </Col>
       </Row>
 

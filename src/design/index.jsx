@@ -44,6 +44,7 @@ export { Row, Col, Grid, Trunc, Grow } from './Layout';
 // (TRIP-344). Экраны зовут её отсюда — точка входа в ДС одна.
 export { IconBtn } from './IconBtn';
 export { Stepper } from './Stepper';
+export { Seg } from './Seg';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================

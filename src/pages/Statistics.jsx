@@ -22,7 +22,7 @@ import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
-import { Btn, Skeleton, IconBtn } from '@/design/index';
+import { Btn, Skeleton, IconBtn, Seg } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 
@@ -324,12 +324,15 @@ export default function Statistics() {
             </div>
             <div className="sec-actions">
               {years.length > 0 && (
-                <div className="seg" role="group" aria-label={t('stats.period')}>
-                  <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
-                  {years.map((y) => (
-                    <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
-                  ))}
-                </div>
+                <Seg
+                  ariaLabel={t('stats.period')}
+                  value={String(year)}
+                  onChange={(v) => { setYear(v); setPanel(null); }}
+                  options={[
+                    { value: 'all', label: t('stats.year_all') },
+                    ...years.map((y) => ({ value: String(y), label: String(y) })),
+                  ]}
+                />
               )}
               <Btn variant="soft" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
             </div>

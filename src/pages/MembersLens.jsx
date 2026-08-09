@@ -17,7 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Seg, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -146,29 +146,29 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
         {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
         {tab === 'offline' && <Btn variant="primary" icon="user" loading={saving} onClick={() => v.attemptSubmit(addOffline)} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
       </>}>
-      <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
-        <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="send" size={12} />{t('member.tab_email')}
-        </button>
-        <button className={tab === 'link' ? 'active' : ''} onClick={() => setTab('link')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="link" size={12} />{t('trip.copy_link')}
-        </button>
-        <button className={tab === 'offline' ? 'active' : ''} onClick={() => setTab('offline')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="user" size={12} />{t('trip.member_offline')}
-        </button>
-      </div>
+      <Seg
+        variant="fill"
+        style={{ marginBottom: 14 }}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'email', label: <><Icon name="send" size={12} />{t('member.tab_email')}</> },
+          { value: 'link', label: <><Icon name="link" size={12} />{t('trip.copy_link')}</> },
+          { value: 'offline', label: <><Icon name="user" size={12} />{t('trip.member_offline')}</> },
+        ]}
+      />
 
       {tab !== 'offline' && (
         <Field label={t('member.invitee_role')}>
-          <div className="tweaks__seg" style={{ display: 'flex' }}>
-            {[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) =>
-              <button key={k} className={role === k ? 'active' : ''} onClick={() => setRole(k)}
-                style={{ flex: 1, flexDirection: 'column', gap: 0, padding: '8px 10px' }}>
-                <div className="t-ui">{lab}</div>
-                <div className="muted t-meta">{sub}</div>
-              </button>
-            )}
-          </div>
+          <Seg
+            variant="fill"
+            value={role}
+            onChange={setRole}
+            options={[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) => ({
+              value: k,
+              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-ui">{lab}</span><span className="muted t-meta">{sub}</span></span>,
+            }))}
+          />
         </Field>
       )}
 

@@ -25,7 +25,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -678,16 +678,12 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           placeholder={t('doc.search_ph')}
           aria-label={t('doc.search_ph')}
         />
-        <div className="seg" role="group" aria-label={t('doc.filter_label')}>
-          {filterOpts.map(opt => (
-            <button
-              key={opt.key}
-              aria-pressed={filter === opt.key}
-              onClick={() => setFilter(opt.key)}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <Seg
+          ariaLabel={t('doc.filter_label')}
+          value={filter}
+          onChange={setFilter}
+          options={filterOpts.map(opt => ({ value: opt.key, label: opt.label }))}
+        />
       </Row>
 
       {/* ── Shared section ── */}

@@ -37,7 +37,7 @@ import { useEffect, useMemo, useState } from 'react';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Dialog, EmptyState, Field,
-  FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Severity, Sheet,
+  FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
   Skeleton, Stepper, Textarea, Toggle,
 } from '@/design/index';
 
@@ -89,6 +89,11 @@ const TX = {
   iconBtnMark: 'Кнопка-иконка с меткой непрочитанных',
   stepMinus: 'Меньше',
   stepPlus: 'Больше',
+  segMonth: 'Месяц',
+  segWeek: 'Неделя',
+  segStory: 'Сторис',
+  segPost: 'Пост',
+  segTone: 'тон из контекста (--hl на оболочке)',
   readonly: 'Режим только для чтения.',
   file: 'documents-2026.pdf',
   // Живые вызовы отдают УЖЕ отформатированную строку (formatSize), поэтому и
@@ -226,6 +231,9 @@ const ICONBTN_SIZES = ['sm', 'fab'];
 const ICONBTN_SHAPES = ['round'];
 /** @type {Array<'block'|'bare'>} — pill дефолт (без модификатора). */
 const STEPPER_VARIANTS = ['block', 'bare'];
+/** @type {Array<'fill'>} — auto дефолт (без модификатора); `seg--filter`/`seg--view` —
+ *  экранные адаптивы Trips, не обличья примитива (в NOT_SHOWN у Kit.test). */
+const SEG_VARIANTS = ['fill'];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
 const AVATAR_SIZES = [undefined, 'sm', 'lg'];
 const LAYOUT = [
@@ -242,6 +250,8 @@ export default function Kit() {
   const [checked, setChecked] = useState(true);
   const [toggled, setToggled] = useState(true);
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
+  const [segView, setSegView] = useState('month');
+  const [segTone, setSegTone] = useState('story');
   const [tokens, setTokens] = useState([]);
 
   // Значения токенов зависят от темы - перечитываем при переключении.
@@ -346,6 +356,51 @@ export default function Kit() {
         </Specimen>
         <Specimen cls="stepper--bare">
           <Stepper variant="bare" value={2} onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} />
+        </Specimen>
+
+        {/* Сегмент-контрол: auto (дефолт) + fill (во всю ширину). fill — из
+            SEG_VARIANTS. Тон из контекста — НЕ вариант: активный сегмент читает
+            канал `--hl*`, поставленный на оболочке (панели события) инлайном. */}
+        <Specimen cls="seg">
+          <Seg
+            ariaLabel={TX.sections.components}
+            value={segView}
+            onChange={setSegView}
+            options={[
+              { value: 'month', label: TX.segMonth },
+              { value: 'week', label: TX.segWeek },
+            ]}
+          />
+        </Specimen>
+        <Specimen cls="seg--fill">
+          <Seg
+            variant="fill"
+            ariaLabel={TX.sections.components}
+            value={segTone}
+            onChange={setSegTone}
+            options={[
+              { value: 'story', label: TX.segStory },
+              { value: 'post', label: TX.segPost },
+            ]}
+          />
+        </Specimen>
+        {/* Тон из контекста: та же `<Seg>`, но оболочка ставит канал `--hl*`
+            (как панель события по типу брони) — активный сегмент красится им.
+            inline-style-exempt: демонстрация механизма «оболочка ставит --hl инлайном»
+            — ровно то, что делают EventModal/AddBookingPanel; иного способа показать
+            тон-из-контекста на витрине нет (Pavel: демонстрация уместна). */}
+        <Specimen cls="seg">
+          <div style={{ '--hl-soft': 'var(--ev-hotel-soft)', '--hl-ink': 'var(--ev-hotel-ink)' }}>
+            <Seg
+              ariaLabel={TX.segTone}
+              value={segTone}
+              onChange={setSegTone}
+              options={[
+                { value: 'story', label: TX.segStory },
+                { value: 'post', label: TX.segPost },
+              ]}
+            />
+          </div>
         </Specimen>
 
         <Specimen cls="badge">

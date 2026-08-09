@@ -19,7 +19,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, IconBtn, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, IconBtn, Seg, Severity, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
   Plane, Car as CarIcon, Moon, ShieldCheck,
@@ -1707,19 +1707,17 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
           </AiField>
         </div>
         <AiField active={aiFields.has('payment_status')}>
-          <div className="seg seg--fill" role="group" aria-label={t('event.payment_status')}>
-            {[['paid', 'event.paid'], ['partial', 'event.partial'], ['pay_on_arrival', 'event.on_arrival']].map(([v, k]) => (
-              <button
-                key={v}
-                type="button"
-                className="t-ui"
-                aria-pressed={form.payment_status === v}
-                onClick={() => setField('payment_status', form.payment_status === v ? '' : v)}
-              >
-                {t(k)}
-              </button>
-            ))}
-          </div>
+          <Seg
+            variant="fill"
+            ariaLabel={t('event.payment_status')}
+            value={form.payment_status}
+            onChange={(v) => setField('payment_status', form.payment_status === v ? '' : v)}
+            options={[
+              { value: 'paid', label: t('event.paid') },
+              { value: 'partial', label: t('event.partial') },
+              { value: 'pay_on_arrival', label: t('event.on_arrival') },
+            ]}
+          />
         </AiField>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
@@ -2042,10 +2040,17 @@ function LayoverToggle({ form, setForm }) {
       <SectionHeader>{t('trip.sidebar_route')}</SectionHeader>
       {/* Direct / With-layovers switch — reuses the design-system .seg (+ shared
           .seg--fill), same primitive as the fork tabs. */}
-      <div className="seg seg--fill" role="group" aria-label={t('trip.sidebar_route')} style={{ marginBottom: form.hasLayovers ? 8 : 14 }}>
-        <button type="button" aria-pressed={!form.hasLayovers} onClick={() => { if (form.hasLayovers) disable(); }}>{t('event.route_direct')}</button>
-        <button type="button" aria-pressed={form.hasLayovers} onClick={() => { if (!form.hasLayovers) enable(); }}>{t('event.with_layovers')}</button>
-      </div>
+      <Seg
+        variant="fill"
+        ariaLabel={t('trip.sidebar_route')}
+        style={{ marginBottom: form.hasLayovers ? 8 : 14 }}
+        value={form.hasLayovers ? 'layovers' : 'direct'}
+        onChange={(v) => { if (v === 'layovers' && !form.hasLayovers) enable(); else if (v === 'direct' && form.hasLayovers) disable(); }}
+        options={[
+          { value: 'direct', label: t('event.route_direct') },
+          { value: 'layovers', label: t('event.with_layovers') },
+        ]}
+      />
       {form.hasLayovers && (
         <div className="muted t-meta" style={{ marginBottom: 14 }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</div>
       )}

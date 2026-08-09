@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Severity, SearchSelect, useToast,
+  Badge, Btn, Seg, Severity, SearchSelect, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -782,11 +782,16 @@ export default function ScreenAccount() {
                   <div className="row__s">{t('account.pref_theme_sub')}</div>
                 </Grow>
                 <div className="acct-prefctl">
-                  <div className="seg" role="group" aria-label={t('settings.theme')}>
-                    <button aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
-                    <button aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>
-                    <button aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>{t('settings.theme_system')}</button>
-                  </div>
+                  <Seg
+                    ariaLabel={t('settings.theme')}
+                    value={theme}
+                    onChange={setTheme}
+                    options={[
+                      { value: 'light', label: t('settings.theme_light') },
+                      { value: 'dark', label: t('settings.theme_dark') },
+                      { value: 'system', label: t('settings.theme_system') },
+                    ]}
+                  />
                 </div>
               </Row>
 
@@ -798,10 +803,15 @@ export default function ScreenAccount() {
                   <div className="row__s">{t('account.units_sub')}</div>
                 </Grow>
                 <div className="acct-prefctl">
-                  <div className="seg" role="group" aria-label={t('account.units')}>
-                    <button aria-pressed={units === 'metric'} onClick={() => setUnits('metric')}>{t('units.km')}</button>
-                    <button aria-pressed={units === 'imperial'} onClick={() => setUnits('imperial')}>{t('units.mi')}</button>
-                  </div>
+                  <Seg
+                    ariaLabel={t('account.units')}
+                    value={units}
+                    onChange={setUnits}
+                    options={[
+                      { value: 'metric', label: t('units.km') },
+                      { value: 'imperial', label: t('units.mi') },
+                    ]}
+                  />
                 </div>
               </Row>
             </div>
