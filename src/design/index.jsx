@@ -248,10 +248,27 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
 //     куда разбор увёл `ghost`, и его объявления В ПОКОЕ побайтово совпадают с
 //     базовым `.btn`, то есть до наведения «кнопка без тона» и «кнопка
 //     secondary» неотличимы. ⚠️ Ровно до наведения: `.btn--secondary:hover`
-//     добавляет брендовые рамку и текст плюс тень, у голого `.btn` их нет —
+//     заливается `--wash` и притемняет рамку, у голого `.btn` этого нет —
 //     поэтому «одна и та же кнопка» тут сказать нельзя.
-/** @param {{ variant: BtnVariant, icon?: string, iconRight?: string, block?: boolean, disabled?: boolean, loading?: boolean, children?: any, onClick?: any, className?: string, ariaLabel?: string, title?: string, ariaPressed?: boolean, style?: any }} p */
-export const Btn = ({ variant = "secondary", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+//
+// ★ ФОРМА ПЛЕЙСХОЛДЕРА (`variant="dashed"`) СОБИРАЕТСЯ ЗДЕСЬ, А НЕ НА ЭКРАНЕ.
+// Пунктирная «добавить» бывает ДВУХ обличий, и до разбора каждое было своим
+// классом на своём экране (`.gadd`, `.te-cellbtn--ghost`, `.gadd--center`,
+// `.bgt-glist__add`):
+//   · с ПЛИТКОЙ-иконкой слева и растущей подписью (панель города, сервисы) —
+//     `tile` + при необходимости `sub` со второй строкой;
+//   · без плитки — иконка и подпись по центру («Добавить ещё город», «Трата»)
+//     либо две иконки в размере `sm` (пустая ячейка редактора маршрута).
+// Выравнивание НЕ задаётся `justify-content` (оно сломало бы центрированную
+// форму): подпись в `.gt` растягивается сама, и содержимое встаёт слева ровно
+// тогда, когда подпись есть.
+/**
+ * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
+ *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
+ *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
+ *   title?: string, ariaPressed?: boolean, style?: any }} p
+ */
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
     // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
     // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
@@ -261,7 +278,7 @@ export const Btn = ({ variant = "secondary", icon, iconRight, block, disabled, l
     // меняет: <form> в репозитории ровно четыре (все в Login.jsx), и отправляют
     // их сырые <button type="submit">, а не Btn. Проверено грепом по всему src.
     type="button"
-    className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
+    className={`btn btn--${variant} ${size ? `btn--${size}` : ""} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
@@ -270,8 +287,17 @@ export const Btn = ({ variant = "secondary", icon, iconRight, block, disabled, l
     title={title}
     style={style}
   >
-    {loading ? <span className="spin" /> : (icon && <Icon name={icon} size={16} />)}
-    {children}
+    {loading
+      ? <span className="spin" />
+      : (icon && (tile
+        // Плитка красится вместе с рамкой сама: `.btn--dashed .gi` читает те же
+        // `--bd`/`--fg`, которые ховер тона и меняет.
+        ? <span className="gi"><Icon name={icon} size={17} /></span>
+        : <Icon name={icon} size={16} />))}
+    {/* Подпись растёт (`.gt` = flex:1 + min-width:0) ВСЕГДА, когда слева стоит
+        плитка, а не только когда есть вторая строка: иначе форма с плиткой и
+        однострочной подписью («Добавить активность») схлопнулась бы в центр. */}
+    {(tile || sub) ? <span className="gt"><b>{children}</b>{sub && <span>{sub}</span>}</span> : children}
     {iconRight && !loading && <Icon name={iconRight} size={16} />}
   </button>
 );

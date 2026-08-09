@@ -57,6 +57,8 @@ const TX = {
   },
   btn: 'Кнопка',
   btnAccent: 'тон из контекста (--a)',
+  btnTile: 'Добавить отель',
+  btnTileSub: 'плитка слева, подпись в две строки',
   save: 'Сохранить',
   cardTitle: 'Заголовок карточки',
   cardSub: 'Подзаголовок',
@@ -292,7 +294,18 @@ export default function Kit() {
               бы ровно о том свойстве, ради которого тон и заведён. */}
           <Btn variant="link">{TX.btnAccent}</Btn>
           <Btn variant="dashed" block icon="plus">{TX.btnAccent}</Btn>
+          {/* Вторая форма пунктирного плейсхолдера: плитка-иконка слева и
+              растущая подпись со второй строкой. Показана рядом с первой
+              нарочно — на витрине должно быть видно, что это ОДИН объект в двух
+              обличьях, а не два разных. */}
+          <Btn variant="dashed" block tile icon="bed" sub={TX.btnTileSub}>{TX.btnTile}</Btn>
         </div>
+        {/* Малая ступень: единственный её случай — пустая ячейка редактора
+            маршрута, две иконки без подписи. */}
+        <Specimen cls="btn--sm">
+          <Btn variant="secondary" size="sm">{TX.save}</Btn>
+          <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel={TX.btnTile} />
+        </Specimen>
 
         {/* Кнопка-иконка: три оси, каждая своим образцом. Первый ряд — база
             (`quiet`, `md`), у неё класса-модификатора нет и быть не должно. */}

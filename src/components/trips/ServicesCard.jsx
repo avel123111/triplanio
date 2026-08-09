@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
+import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
 // trip_services rows carry a `kind` (esim | car_rental | insurance). Booked
-// services render as Lumo .bookrow; not-yet-added ones as the dashed .gadd
-// (ghost-add) row. Colours come from the shared SERVICE_KINDS source so the
+// services render as Lumo .bookrow; not-yet-added ones as the dashed
+// placeholder (`Btn variant="dashed" tile`). Colours come from the shared SERVICE_KINDS source so the
 // widget matches the service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
 
-// Dashed "add service" row — Lumo .gadd. `--a` sets the per-service hover accent.
+// Пунктирный ряд «добавить сервис» — та же форма примитива, что у панели города
+// (`Btn variant="dashed"` с плиткой). `--a` объявляет акцент ховера по виду
+// сервиса. Плюс справа больше не красится СВОИМ цветом постоянно: он берёт
+// `--fg` кнопки, то есть в покое серый, а на наведении уезжает в акцент вместе
+// с рамкой и плиткой — один язык на весь плейсхолдер.
 function AddRow({ icon, label, hint, color, onClick }) {
   return (
-    <button className="gadd" style={{ '--a': color }} onClick={onClick}>
-      <span className="gi"><Icon name={icon} size={17} /></span>
-      <span className="gt"><b>{label}</b><span>{hint}</span></span>
-      <Icon name="plus" size={15} style={{ color, flexShrink: 0 }} />
-    </button>
+    <Btn variant="dashed" block tile icon={icon} sub={hint} iconRight="plus" style={{ '--a': color }} onClick={onClick}>
+      {label}
+    </Btn>
   );
 }
 
@@ -58,7 +61,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
             );
           })}
 
-          {/* Not-yet-added eSIM / car rental — dashed .gadd */}
+          {/* Not-yet-added eSIM / car rental — the dashed placeholder */}
           {topAddKinds.map((k) => (
             <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} color={SERVICE_KIND_META[k].color} label={t(SERVICE_KIND_META[k].labelKey)} hint={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
           ))}

@@ -633,7 +633,9 @@ h4,
 .pro-hero__sub,
 .notes-block,
 .dl-dview-note,
-.tcp__upload,
+/* `.tcp__upload` снят из этого списка вместе с классом: кнопка загрузки обложки
+   стала обычной `.btn`, а та берёт типографику канона `.t-ui` строкой ниже —
+   подпись кнопки и не должна была стоять в теле текста. */
 .check,
 .checkbox,
 .auth__switch,
@@ -1053,7 +1055,7 @@ h4,
 .mbrow__email,           /* TRIP-175 инсп.: Meta+Golos (email участника) */
 .invite-banner__desc,    /* TRIP-175 инсп.: Meta+Golos (описание инвайт-баннера) */
 .ov-empty-line,          /* TRIP-175 инсп.: Meta+Golos (пустая строка обзора) */
-.gadd span,              /* TRIP-175 инсп.: Meta+Golos (подпись ghost-add сервиса) */
+.gt span,                /* TRIP-175 инсп.: Meta+Golos (вторая строка пунктирного плейсхолдера; носитель переименован с `.gadd span` вместе со сносом `.gadd`) */
 .acct-hero__mail,        /* TRIP-175 инсп.: Meta+Golos (email в шапке аккаунта) */
 .acct-note span,         /* TRIP-175 инсп.: Meta+Golos (примечание аккаунта) */
 .row__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
@@ -1304,11 +1306,19 @@ button.app-side__item:hover { background: var(--wash); }
    PRIMITIVES — buttons, fields, badges, cards
    ================================================================= */
 /* ===== Buttons — Lumo primitive layer (--bg/--fg/--bd variant model).
-   Single base + one consistent hover (lift) / active (scale) / focus ring;
-   variants only swap the three vars. Translated to app tokens: the Lumo
-   kit's own var(--primary) → --brand; its var(--primary-fg) → the literal
-   #fff — NOT our --primary-fg token, which flips to dark ink in dark theme
-   while the filled button keeps white text in both. ===== */
+   Single base + one consistent hover / focus ring; variants only swap the three
+   vars. Translated to app tokens: the Lumo kit's own var(--primary) → --brand;
+   its var(--primary-fg) → the literal #fff — NOT our --primary-fg token, which
+   flips to dark ink in dark theme while the filled button keeps white text in
+   both.
+
+   ★ ХОВЕР — ЭТО СМЕНА ЗАЛИВКИ, А НЕ ПОДПРЫГИВАНИЕ (разбор облика кнопок,
+   апрув Pavel, TRIP-344 PR 3). У базы больше НЕТ ни `transform` на `:hover`,
+   ни `scale` на `:active`, и `transform` убран из `transition` — иначе
+   свойство продолжало бы анимироваться от чужих правил. Следствие, названное
+   вслух: у каждого тона отклик на наведение обязан быть СВОЙ и видимый, потому
+   что общего «дёрнулась» больше нет — см. `--secondary` и `--danger-solid`
+   ниже, у которых его пришлось завести. ===== */
 .btn {
   --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -1318,15 +1328,18 @@ button.app-side__item:hover { background: var(--wash); }
   min-height: var(--ctl-h); padding: 0 15px; border-radius: var(--r-btn);
   background: var(--bg); color: var(--fg); border: 1px solid var(--bd);
   cursor: pointer; white-space: nowrap;
-  transition: transform .16s var(--ease-spring), background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
+  transition: background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
 }
-.btn:hover { transform: translateY(-2px); }
 .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .btn--primary { --bg: var(--brand); --fg: #fff; --bd: transparent; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--brand) 70%, transparent); }
 .btn--primary:hover { --bg: var(--primary-hover); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent); }
 .btn--primary:active { --bg: var(--primary-press); }
 .btn--secondary { --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong); }
-.btn--secondary:hover { --bd: var(--brand); --fg: var(--brand); box-shadow: var(--sh-1); }
+/* Отклик на наведение — ЗАЛИВКА (и чуть более тёмная рамка), а не перекраска
+   текста в бренд с тенью: снятое подпрыгивание было ЕДИНСТВЕННЫМ, что делало
+   прежний ховер похожим на нажимаемую кнопку, а брендовый текст читался как
+   «это ссылка». Тон вторичной кнопки при наведении не меняется. */
+.btn--secondary:hover { --bg: var(--wash); --bd: var(--line-hover); }
 /* `.btn.is-on` было ВТОРЫМ именем для этого же состояния (набор объявлений
    совпадал побайтово) — и вот теперь оно ДЕЙСТВИТЕЛЬНО удалено. Прежний
    комментарий обещал именно это, а имя оставалось в селекторе: разбор облика
@@ -1349,16 +1362,37 @@ button.app-side__item:hover { background: var(--wash); }
    мишень получается ~18px, а SC 2.5.8 требует 24. Ступень `--sp-2` даёт ~26 и
    текст с места не двигает (бокс растёт симметрично). Горизонтального паддинга
    нет — иначе текстовая кнопка не встаёт вровень с соседним текстом. */
-.btn--link { --bg: transparent; --fg: var(--a, var(--brand)); --bd: transparent; min-height: 0; padding: var(--sp-2) 0; }
-.btn--link:hover { text-decoration: underline; }
+/* ⚠️ `white-space` возвращён в `normal` ТОЛЬКО у текстовой кнопки. База держит
+   `nowrap` осознанно (кнопка в ряду не должна ломаться на две строки), но
+   `link` — это текст В ПОТОКЕ, и `nowrap` на нём выдавливал строку за карточку:
+   «Управлять подпиской» в аккаунте на en/es длиннее русского и упиралась в край
+   (ревью Codex, P2). Перенос разрешён, а не задан — короткие подписи стоят в
+   одну строку, как стояли. */
+.btn--link { --bg: transparent; --fg: var(--a, var(--brand)); --bd: transparent; min-height: 0; padding: var(--sp-2) 0; white-space: normal; }
+.btn--link:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* Плейсхолдер «добавить»: в покое серый пунктир, на ховере рамка, текст и фон
    красятся в акцент контекста (`--a` — тип брони, тип сервиса), с тем же
-   умолчанием brand, что у `link`. */
-.btn--dashed { --bg: transparent; --fg: var(--muted); --bd: var(--line-strong); border-style: dashed; }
+   умолчанием brand, что у `link`.
+   Зазор 11px — тот же, что нёс прежний `.gadd`: он рассчитан на плитку-иконку
+   слева, а не на голую иконку, и остаётся один на обе формы, чтобы у
+   плейсхолдера был ОДИН язык расстояний. */
+.btn--dashed { --bg: transparent; --fg: var(--muted-2); --bd: var(--line-strong); border-style: dashed; gap: 11px; }
 .btn--dashed:hover { --bg: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); --bd: var(--a, var(--brand)); --fg: var(--a, var(--brand)); }
+/* Плитка-иконка плейсхолдера (`tile` у Btn). Красится вместе с рамкой — тем же
+   `--a`, тем же переходом. Класс `.gi` не новый: он и был плиткой ghost-add,
+   просто жил под `.gadd`; здесь он переехал под свой примитив вместе с
+   разметкой. Выравнивание по левому краю НЕ задаётся `justify-content` (это
+   сломало бы центрированный плейсхолдер БЕЗ плитки — «Добавить ещё город»,
+   «Трата»): подпись растягивается сама, `.grow--fit` на ней. */
+.btn--dashed .gi { border: 1px dashed var(--bd); background: transparent; color: var(--fg); }
 .btn--danger { --bg: var(--danger-soft); --fg: var(--danger-ink); --bd: transparent; }
 .btn--danger:hover { --bg: color-mix(in srgb, var(--danger) 22%, transparent); }
 .btn--danger-solid { --bg: var(--danger); --fg: #fff; --bd: transparent; }
+/* Единственный тон, у которого своего ховера НЕ БЫЛО ВООБЩЕ: отклик ему давало
+   общее подпрыгивание базы, и вместе с ним кнопка подтверждения необратимого
+   действия осталась бы полностью немой. Заливка темнеет — тот же язык, что у
+   остальных залитых тонов. */
+.btn--danger-solid:hover { --bg: color-mix(in srgb, var(--danger) 86%, #000); }
 /* AI CTA — design-system: white text in light, dark text in dark (the dark-theme
    ai-gradient is brighter, so dark text reads better there). */
 .btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); box-shadow: 0 8px 20px -7px var(--ai); }
@@ -1374,18 +1408,26 @@ button.app-side__item:hover { background: var(--wash); }
    потому незаметен. */
 .btn--ai, .btn--pro { background-origin: border-box; background-size: 170% 170%; }
 .btn--ai:hover, .btn--pro:hover { background-position: 100% 0; }
-/* У кнопки ОДИН размер, и модификаторов размера нет вообще.
-   Было три: базовый 44px, --sm 38px, --lg 54px. Различие базового и --sm
-   (6px, шрифт тот же) на экране не читается — один и тот же экран настроек
-   держал 4 больших и 3 маленьких, и этого никто не замечал, то есть разделение
-   не делало работы. Прежний --sm стал базой: 38px берёт обязательный порог
-   тач-таргета WCAG 2.2 AA (24x24) с запасом, не берёт рекомендованные 44
-   (AAA / Apple HIG) — осознанный размен, диалоги на мобиле всё равно тянут
-   кнопку на всю ширину.
+/* Ступеней размера ДВЕ и только две — ровно как у `.icon-btn`: дефолт
+   `--ctl-h` (кнопка в ряду с полем) и `--sm` `--ctl-h-sm` (кнопка ВНУТРИ своей
+   плашки — ячейка редактора маршрута). Токен общий с иконочной кнопкой, нового
+   имени размер не заводит.
+   ⚠️ Прежняя редакция этого блока писала «модификаторов размера нет вообще», и
+   это было верно ровно до строки ниже. История, из-за которой третьей ступени
+   быть не должно: было три (44 / --sm 38 / --lg 54), различие базового и --sm
+   в 6px при том же шрифте на экране не читалось — один экран настроек держал 4
+   больших и 3 маленьких, и этого никто не замечал. Сегодняшний --sm вернулся не
+   «поменьше вообще», а под ЕДИНСТВЕННЫЙ случай 32px, у которого своя причина
+   (ячейка таблицы), и берёт обязательный порог тач-таргета WCAG 2.2 AA (24x24).
    --lg была маркетинговой: четыре из шести её мест на лендинге и публичной
    странице, а те берут свою копию из landing.css — там она и осталась.
    --icon (42x42) выпилена как мёртвая: ноль потребителей, реальные иконочные
    кнопки живут на отдельном .icon-btn (34x34). */
+.btn--sm { min-height: var(--ctl-h-sm); padding: 0 11px; }
+.btn--sm svg { width: 14px; height: 14px; }
+/* Плейсхолдер в малом размере — это ДВЕ иконки без подписи (пустая ячейка
+   отеля / активности), поэтому зазор плитки ему велик, а тянуть нечего. */
+.btn--dashed.btn--sm { gap: 6px; }
 .btn--block { width: 100%; }
 
 /* Strong card lift (collection cards): -2px + card shadow. Declarative replacement
@@ -1396,20 +1438,13 @@ button.app-side__item:hover { background: var(--wash); }
 .dz-lift-card:active { transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
 .btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
-/* Every button confirms the press — instant tactile feedback. Placed last so it
-   wins over .btn--primary:hover's translateY on equal specificity. */
-/* DS: buttons lift on hover, then confirm the press with a scale-down. */
-@media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
-.btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
-/* Подпрыгивание — язык ЗАЛИТОЙ кнопки: у текстовой и у пунктирного плейсхолдера
-   оно читалось как дёрганье строки, и разбор его снимает. Цепочка `:not()`
-   повторена не для красоты — без неё вес правила (0,2,0) ниже вставшего выше
-   `.btn:hover:not([disabled]):not(.is-disabled)` (0,4,0), и отмена молча не
-   срабатывает. Нажатие текстовой кнопки не масштабируется по той же причине;
-   у пунктирной (это полноценная плашка) `scale` на нажатии остаётся. */
-.btn--link:hover:not([disabled]):not(.is-disabled),
-.btn--dashed:hover:not([disabled]):not(.is-disabled) { transform: none; }
-.btn--link:active:not([disabled]):not(.is-disabled) { transform: none; }
+/* ★ ЗДЕСЬ СТОЯЛО ПОДПРЫГИВАНИЕ, И ЕГО БОЛЬШЕ НЕТ. Было: `translateY(-2px)` на
+   наведении под `@media (hover:hover)` плюс `scale(0.97)` на нажатии, и следом
+   ТРИ правила, гасившие это у `link` и `dashed` цепочкой `:not()` ради веса.
+   Снят весь узел целиком: как только у базы нет `transform`, отменять его
+   нечем и незачем — четыре правила и их объяснение ушли одной строкой смысла
+   «ховер меняет заливку». Отдельного правила `prefers-reduced-motion` кнопке
+   тоже больше не нужно: анимировать нечего. */
 
 /* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
    карточек. Одна плоская роль, без blur, без теней. Имя роли для разметки одно
@@ -3889,24 +3924,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-cell { flex-shrink: 0; }
     .te-cell--hotel { justify-self: center; min-width: 0; }
     .te-cell--act { justify-self: center; }
-    /* visual-diff-move: te-cellbtn -> row row--inline row--j-center row--g3 */
-    .te-cellbtn { height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
-    /* Empty add-cells recede so unfilled rows don't read as a column of dashed
-       boxes; they surface on row hover or keyboard focus. */
-    .te-cellbtn--ghost { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
-    .te-row:hover .te-cellbtn--ghost { opacity: 1; }
-    .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
-    /* add-cell hover takes the cell's own event colour (design .edl: hotel=blue, activity=pink) */
-    .te-cell--hotel .te-cellbtn--ghost:hover,
-    .te-cell--act .te-cellbtn--ghost:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
-    @media (hover: none) { .te-cellbtn--ghost { opacity: 1; } }
+    /* Пустая ячейка отеля/активности — это `Btn variant="dashed" size="sm"`, и
+       своих правил у неё больше НЕТ. Ушли вместе с классом: собственная высота
+       34px (теперь `--ctl-h-sm` 32), собственный пунктир и `scale` на нажатии.
+       ★ Ушло и `opacity: 0` — кнопка видна ВСЕГДА. Прежде она проявлялась по
+       ховеру СТРОКИ, то есть на тач-экране её не существовало вовсе, и это
+       лечилось отдельным `@media (hover: none)`; правило-костыль снято вместе с
+       причиной, а не оставлено рядом с ней.
+       Ячейка объявляет кнопке ТОН (`--a`) своим же `--hl`, поэтому акцент
+       ховера остаётся прежним (отель — синий, активность — розовый), а знает о
+       нём по-прежнему ячейка, а не кнопка. */
+    .te-cell--hotel .btn--dashed, .te-cell--act .btn--dashed { --a: var(--hl); }
     .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
     .te-hotelicon.is-warn { background: var(--warning-soft); }
     /* visual-diff-move: te-actchip -> row row--inline row--j-center row--g3 */
     .te-actchip { height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
     .te-actchip:hover { border-color: var(--ev-activity); }
-    .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: scale(0.94); }
+    .te-actchip:active, .te-hotelicon:active { transform: scale(0.94); }
     .te-actchip.is-warn { background: var(--warning-soft); color: var(--warning-ink); }
 
     /* ---- redesigned itinerary: NO outer frame — just hairline separators
@@ -3960,8 +3995,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
       .te-seam { animation: none; }
-      .te-row, .te-step, .te-stepper, .te-seam__pill, .te-actchip, .te-hotelicon, .te-cellbtn { transition-property: background, border-color, color, opacity, box-shadow; }
-      .te-step:active, .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: none; }
+      .te-row, .te-step, .te-stepper, .te-seam__pill, .te-actchip, .te-hotelicon { transition-property: background, border-color, color, opacity, box-shadow; }
+      .te-step:active, .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active { transform: none; }
     }
 
 /* =================================================================
@@ -4021,18 +4056,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bt span { color: var(--muted); }
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
-.gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); background: transparent; border: 1px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
-.gadd:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); transform: translateY(-1px); }
-.gi { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--secondary); display: grid; place-items: center; color: var(--muted); flex: none; transition: .16s; }
-/* inside a ghost-add the icon is a DASHED placeholder (design-system .gadd .gi) */
-.gadd .gi { width: 34px; height: 34px; border: 1px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
-.gadd:hover .gi { border-color: var(--a, var(--brand)); color: var(--a, var(--brand)); }
-/* `.gadd--center` (плейсхолдер БЕЗ плитки слева) удалён: «добавить ещё город» и
-   «добавить категорию» — это `<Btn variant="dashed" block>`. У `.gadd` остались
-   ровно те места, где слева стоит плитка-иконка (панель города, сервисы); их
-   переезд ждёт своей строки разбора — см. отчёт PR 3. */
+/* `.gadd` УДАЛЁН — вместе с `.gadd--center` до него это было третье имя для
+   пунктирной кнопки «добавить». Всё, что он держал (пунктир, акцент ховера по
+   `--a`, растущая подпись, плитка-иконка слева), теперь форма примитива:
+   `<Btn variant="dashed" tile sub=… >`. Своей высоты и своего паддинга у
+   плейсхолдера больше нет — он встаёт в общий рост контрола `--ctl-h`.
+   ⚠️ `.gi` (плитка) и `.gt` (подпись) — НЕ остатки: это части того же
+   плейсхолдера, их печатает Btn. Правила оставлены здесь, а не переехали в блок
+   кнопок, чтобы не двигать их через весь файл ради двух строк; пунктирный скин
+   плитки живёт у примитива (`.btn--dashed .gi`), здесь только геометрия. */
+.gi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; transition: border-color .16s, color .16s; }
+/* Подпись растягивается — этим, а не `justify-content`, форма с плиткой встаёт
+   по левому краю. Цвет НЕ задан: обе строки берут `--fg` кнопки, поэтому на
+   ховере подпись уезжает в акцент вместе с рамкой и плиткой. */
 .gt { flex: 1; min-width: 0; }
-.gt b { color: var(--muted); display: block; }
+.gt b { display: block; }
 .gt span { color: var(--muted-2); }
 
 .stepper { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
@@ -4435,8 +4473,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      Scoped to .ts-grid (editor-only host) so it does NOT leak onto the planner's .te-row--plan
      (the create flow keeps its grip affordance on touch). */
   .ts-grid .te-grip { display: none !important; }
-  /* empty hotel/activity placeholders take no space on mobile */
-  .ts-grid .te-cellbtn--ghost { display: none !important; }
+  /* Правило «пустые плейсхолдеры не занимают места на мобиле» снято как
+     ИЗБЫТОЧНОЕ, а не как ненужное: строкой ниже в этом же медиа-блоке целиком
+     прячутся сами ячейки `.te-cell--hotel` / `.te-cell--act`, внутри которых
+     плейсхолдер и живёт, — то есть оно повторяло уже сказанное. */
   /* compact row: number + name(+dates) + nights (hotel/activity icons hidden).
      Scoped to the editor so the planner's flex .te-row--plan is untouched (no
      leaked grid-template / margins). */
