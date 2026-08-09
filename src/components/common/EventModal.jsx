@@ -19,7 +19,7 @@
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   Trash2,
 } from 'lucide-react';
