@@ -89,6 +89,16 @@ export default [
       // ReferenceError — how a booking/map action shipped dead (TRIP-277).
       // Enabling it costs nothing: zero violations across the linted tree.
       "no-undef": "error",
+      // ⚠ `no-undef` above catches a bare identifier (`foo()`, a const) that was
+      // never imported — but NOT an undefined JSX COMPONENT. `<IconBtn>` parses as
+      // a JSXIdentifier, which no-undef's scope analysis does not treat as an
+      // undefined reference; only `react/jsx-no-undef` does. Without it a component
+      // used-but-not-imported lints clean, typechecks clean when the file lacks
+      // `// @ts-check`, builds clean (Vite/esbuild don't resolve identifiers), and
+      // fails only at runtime as `ReferenceError: X is not defined` — exactly how a
+      // migrated <IconBtn> shipped a crash on the event modal (TRIP-344 PR 2). The
+      // two rules cover disjoint halves; both are needed.
+      "react/jsx-no-undef": "error",
       "no-unused-vars": "off",
       "react/jsx-uses-vars": "error",
       "react/jsx-uses-react": "error",
