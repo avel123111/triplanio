@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * MobileBottomNav — custom mobile-only bottom navigation (≤640px).
  *
@@ -20,7 +21,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Icon } from '@/design/icons';
-import { Avatar } from '@/design/index';
+import { Avatar, IconBtn } from '@/design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -30,6 +31,11 @@ import { DOCK_SECTIONS, sectionById } from '@/lib/tripMenu';
 // ─── Context bridge ──────────────────────────────────────────────────────────
 // TripShell регистрирует { current, onNavigate, openMenu, openAdd,
 // hidesDock } пока смонтирован; null = экрана трипа сейчас нет.
+// ⚠️ Тип контекста TS берёт с ДЕФОЛТНОГО ЗНАЧЕНИЯ, а не с реализации: заглушка
+// `() => {}` объявляла сеттер БЕЗ аргументов, и настоящий `setTripNav` из
+// `useState` в него не влезал. Долг был невидим при `checkJs:false` и вскрылся
+// ровно тогда, когда в файл поставили прагму.
+/** @type {React.Context<{ tripNav: any, setTripNav: (v: any) => void }>} */
 const MobileNavContext = createContext({ tripNav: null, setTripNav: () => {} });
 
 export function MobileNavProvider({ children }) {
@@ -41,6 +47,11 @@ export function MobileNavProvider({ children }) {
 export const useMobileNav = () => useContext(MobileNavContext);
 
 // ─── Items ───────────────────────────────────────────────────────────────────
+// Аннотация обязательна не для красоты: без неё TS выводит тип из
+// деструктуризации и делает КАЖДЫЙ проп без дефолта обязательным - вызов
+// «иконка без аватара» и вызов «аватар без иконки» краснели оба, хотя оба
+// законны и оба живые.
+/** @param {{ icon?: string, label: string, active: boolean, onClick: () => any, avatar?: any }} p */
 function NavItem({ icon, label, active, onClick, avatar }) {
   return (
     <button
@@ -121,9 +132,7 @@ export default function MobileBottomNav() {
         <div className="mbnav__dock">
           {sectionItems(DOCK_SECTIONS.left)}
           <span className="mbnav__center">
-            <button type="button" className="mbnav__fab" aria-label={t('common.add')} onClick={() => tripNav.openAdd?.()}>
-              <Icon name="plus" size={26} />
-            </button>
+            <IconBtn icon="plus" size="fab" className="mbnav__fab" ariaLabel={t('common.add')} onClick={() => tripNav.openAdd?.()} />
           </span>
           {sectionItems(DOCK_SECTIONS.right)}
           <NavItem icon="more" label={t('common.more')} active={false} onClick={() => tripNav.openMenu?.()} />
@@ -138,9 +147,7 @@ export default function MobileBottomNav() {
       <div className="mbnav__dock mbnav__dock--app">
         <NavItem icon="grid" label={t('nav.trips')} active={path.startsWith('/trips')} onClick={() => nav('/trips')} />
         <span className="mbnav__center">
-          <button type="button" className="mbnav__fab" aria-label={t('trips.new')} onClick={() => openChoice()}>
-            <Icon name="plus" size={26} />
-          </button>
+          <IconBtn icon="plus" size="fab" className="mbnav__fab" ariaLabel={t('trips.new')} onClick={() => openChoice()} />
         </span>
         <NavItem label={t('nav.account')} active={path.startsWith('/settings')} avatar={avatarEl} onClick={() => nav('/settings')} />
       </div>

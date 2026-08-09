@@ -36,7 +36,7 @@ import { useEffect, useMemo, useState } from 'react';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Dialog, EmptyState, Field,
-  FileRow, Input, InputGroup, ReadOnlyBanner, Severity, Sheet,
+  FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Severity, Sheet,
   Skeleton, Textarea, Toggle,
 } from '@/design/index';
 
@@ -80,6 +80,9 @@ const TX = {
   openDialog: 'Открыть диалог',
   openSheet: 'Открыть шит',
   close: 'Закрыть',
+  iconBtnSize: 'Размер кнопки-иконки',
+  iconBtnShape: 'Форма кнопки-иконки',
+  iconBtnMark: 'Кнопка-иконка с меткой непрочитанных',
   readonly: 'Режим только для чтения.',
   file: 'documents-2026.pdf',
   gapDefault: 'по умолчанию',
@@ -188,6 +191,18 @@ const BTN_VARIANTS = ['primary', 'secondary', 'soft', 'ghost', 'quiet', 'danger'
 // «что есть в системе», врать не имеет права; ступени раскладки ниже показывают,
 // как это выглядит честно: отсутствующая ступень ПОМЕЧЕНА, а не выкинута.
 const BADGE_VARIANTS = ['', 'sm', 'xs', 'pro', 'success', 'warning', 'quiet', 'brand', 'count', 'outline', 'paid', 'partial'];
+/* Кнопка-иконка объявлена ТРЕМЯ массивами, а не одним, потому что у неё три
+   НЕЗАВИСИМЫЕ оси, а не один плоский список обличий: `.lp-back` — это soft И
+   round одновременно, `.mapfs-close` — outline И round. Плоский набор такую
+   пару не выразил бы, и её пришлось бы дописывать классом мимо пропа — ровно
+   то, что TRIP-344 убирает. Размер и форма разведены по той же причине: `fab`
+   — это размер, `round` — форма, и они сочетаются со всеми тонами.
+   ⚠️ Дефолты (`quiet`, `md`) в массивах НЕ перечислены намеренно: класса под
+   дефолт не существует (2q сверка B), и строка про него была бы обещанием
+   обличья, которого в CSS нет. Базовый вид показан первым образцом. */
+const ICONBTN_TONES = ['soft', 'outline', 'solid', 'ai', 'danger'];
+const ICONBTN_SIZES = ['sm', 'fab'];
+const ICONBTN_SHAPES = ['round'];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
 const AVATAR_SIZES = [undefined, 'sm', 'lg'];
 const LAYOUT = [
@@ -247,6 +262,31 @@ export default function Kit() {
           <Btn variant="secondary" icon="check">{TX.save}</Btn>
           <Btn variant="secondary" iconRight="chevronRight">{TX.save}</Btn>
           <Btn variant="primary" block>{TX.save}</Btn>
+        </Specimen>
+
+        {/* Кнопка-иконка: три оси, каждая своим образцом. Первый ряд — база
+            (`quiet`, `md`), у неё класса-модификатора нет и быть не должно. */}
+        <Specimen cls="icon-btn">
+          <IconBtn icon="close" ariaLabel={TX.close} />
+          {ICONBTN_TONES.map((tone) => (
+            <IconBtn key={tone} icon="close" tone={tone} ariaLabel={TX.close} title={tone} />
+          ))}
+        </Specimen>
+        <Specimen cls="icon-btn--sm">
+          {ICONBTN_SIZES.map((size) => (
+            <IconBtn key={size} icon="plus" size={size} ariaLabel={TX.iconBtnSize} title={size} />
+          ))}
+          {ICONBTN_SHAPES.map((shape) => (
+            <IconBtn key={shape} icon="arrow" round tone="soft" ariaLabel={TX.iconBtnShape} title={shape} />
+          ))}
+          {/* Пара «тон + форма» на одном элементе — то, ради чего оси
+              независимы: это ровно `.lp-back` (soft·round) и `.mapfs-close`
+              (outline·round) с живых экранов. */}
+          <IconBtn icon="close" tone="outline" round ariaLabel={TX.close} />
+          <IconBtn icon="bell" ariaLabel={TX.iconBtnMark}>
+            <span aria-hidden className="icon-btn__dot" />
+          </IconBtn>
+          <IconBtn icon="close" disabled ariaLabel={TX.close} />
         </Specimen>
 
         <Specimen cls="badge">

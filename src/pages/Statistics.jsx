@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
@@ -21,7 +22,7 @@ import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
-import { Btn, Skeleton } from '@/design/index';
+import { Btn, Skeleton, IconBtn } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 
@@ -270,7 +271,9 @@ export default function Statistics() {
       name = visits[0]?.city_name || '';
       sub = `${regionName(visits[0]?.country_code)} · ${t('stats.visits_count')}: ${countVisitUnits(visits)}`;
     }
-    visits = visits.slice().sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+    // `.getTime()` не косметика: вычитание двух `Date` работает в рантайме, но
+    // это неявное приведение, и под прагмой оно краснеет честно (TS2362).
+    visits = visits.slice().sort((a, b) => new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime());
     const cc = panel.kind === 'country' ? panel.key : visits[0]?.country_code;
     return { kind: panel.kind, name, sub, visits, cc };
   }, [panel, points, regionName, t]);
@@ -359,11 +362,40 @@ export default function Statistics() {
                 selected={panel ? { kind: panel.kind, key: panel.key } : null}
                 cooperativeGestures={!fs}
               >
+                {/* ★TRIP-344: кнопки над картой рисовались тут ГОЛЫМ тегом —
+                    у них не было даже своего класса, облик приходил селектором
+                    `.map-ctl button`. Тон `outline`, а не `quiet`: кнопка лежит
+                    поверх живой карты, и без фона с рамкой она нечитаема — тот
+                    же выбор, что уже сделан в `MapControls`, чтобы один объект
+                    не имел двух видов на двух экранах. */}
                 <div className="map-ctl">
-                  <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><Icon name="globe" /></button>
-                  <button onClick={() => setFs((v) => !v)} aria-label={t('stats.map_fullscreen')}><Icon name="expand" /></button>
+                  <IconBtn
+                    icon="globe"
+                    tone="outline"
+                    size="sm"
+                    className={globe ? 'on' : ''}
+                    ariaPressed={globe}
+                    onClick={() => setGlobe((g) => !g)}
+                    ariaLabel={t('stats.map_globe')}
+                  />
+                  <IconBtn
+                    icon="expand"
+                    tone="outline"
+                    size="sm"
+                    onClick={() => setFs((v) => !v)}
+                    ariaLabel={t('stats.map_fullscreen')}
+                  />
                 </div>
-                {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>}
+                {fs && (
+                  <IconBtn
+                    icon="close"
+                    tone="outline"
+                    round
+                    className="mapfs-close"
+                    onClick={() => setFs(false)}
+                    ariaLabel={t('common.close')}
+                  />
+                )}
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}>

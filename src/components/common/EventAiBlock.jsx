@@ -18,7 +18,7 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
-import { FileRow, InputGroup, Textarea } from '@/design/index';
+import { FileRow, IconBtn, InputGroup, Textarea } from '@/design/index';
 import {
   Sparkles, Lock, Upload, X,
   RefreshCw, ChevronUp, Check,
@@ -259,9 +259,13 @@ export default function EventAiBlock({
           <button type="button" className="btn btn--ghost" onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}>
             <RefreshCw style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_reset')}
           </button>
-          <button type="button" className="ai-blk-x" onClick={() => setState('available')} aria-label={t('event.collapse')}>
-            <ChevronUp size={14} />
-          </button>
+          <IconBtn
+            icon="chevU"
+            tone="ai"
+            size="sm"
+            onClick={() => setState('available')}
+            ariaLabel={t('event.collapse')}
+          />
         </div>
       </div>
     );
@@ -295,9 +299,13 @@ export default function EventAiBlock({
                 tone="ai"
                 size={f.file?.size ? formatSize(f.file.size) : null}
                 action={(
-                  <button type="button" className="doc-row__rm" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
-                    <X size={13} />
-                  </button>
+                  <IconBtn
+                    icon="close"
+                    tone="danger"
+                    size="sm"
+                    onClick={() => removeFile(i)}
+                    ariaLabel={t('event.ai_remove_file')}
+                  />
                 )}
               />
             ))}

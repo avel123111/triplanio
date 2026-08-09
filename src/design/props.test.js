@@ -46,9 +46,20 @@ const LINES = [
   ['clean', '<Input onFocus={() => {}} maxLength={5} icon="search" />'],
   ['clean', '<Textarea rows={3} placeholder="p" />'],
   ['clean', '<InputGroup role="group"><span>x</span></InputGroup>'],
+  // Остаток `IconBtn` уезжает на `<button>`, значит носитель и есть база. Строка
+  // проверяет ВТОРОЕ направление аннотации: мутация «снять аннотацию» краснеет и
+  // при СЛИШКОМ СТРОГОМ типе, поэтому «обязательное обязательно» ничего про
+  // строгость не доказывает - дефект живёт ровно здесь (урок TRIP-388).
+  // Пропы ниже не декоративны: их вешает Radix через `asChild` на триггер
+  // колокольчика и меню строки, и без них меню не открывается.
+  ['clean', '<IconBtn icon="more" ariaLabel="x" data-state="open" onPointerDown={() => {}} type="button" />'],
   // ── компоненты БЕЗ проброса: законный проп проходит ───────────────────────
   ['clean', '<Icon name="file" size={20} />'],
   ['clean', '<Btn variant="ghost" onClick={() => {}}>b</Btn>'],
+  // Три оси IconBtn независимы, и это ровно то, ради чего они три: `.lp-back` -
+  // это soft И round одновременно, плоский юнион такую пару не выразил бы.
+  ['clean', '<IconBtn icon="close" ariaLabel="x" tone="soft" round />'],
+  ['clean', '<IconBtn icon="plus" ariaLabel="x" size="sm" tone="danger" onClick={() => {}} />'],
   ['clean', '<Avatar name="A" size="sm" />'],
   ['clean', '<Field label="L"><span>x</span></Field>'],
   ['clean', '<FileRow name="a.pdf" />'],
@@ -75,6 +86,11 @@ const LINES = [
   ['error', '<Icon name={5} />'],
   ['error', '<Skeleton w={{}} />'],
   ['error', '<Checkbox checked="yes" />'],
+  // Набор обличий закрыт ТИПОМ, а не гардом: несуществующий тон - ошибка в
+  // редакторе, а не красный CI (ТЗ 07). И подпись обязательна: кнопка без
+  // текста без `aria-label` для скринридера безымянна.
+  ['error', '<IconBtn icon="close" ariaLabel="x" tone="compact" />'],
+  ['error', '<IconBtn icon="close" />'],
   // ⚠️ ДАТЧИК СЛЕПОТЫ САМОЙ ПРОБЫ: `href` не бывает у `div`. Один раз конфиг
   // пробы уже был слепым (React-типы вырождались в `any`) и печатал вывод байт
   // в байт тот же при ВОЗВРАЩЁННОМ дефекте. Эта строка обязана краснеть.
@@ -83,7 +99,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, PartnerLogo, Severity, Skeleton, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Severity, Skeleton, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * BudgetLens - budget tab inside TripView.
  *
@@ -34,7 +35,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Input, InputGroup, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -522,6 +523,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
 
 // `cityName` is resolved by the caller from the expense's visit (falling back to
 // the frozen string), so the row shows the city in the current language.
+/** @param {{ expense: any, catColor?: any, catIcon?: any, mode?: string, catName?: any, cityName?: any, loc?: any, mainCurrency?: any, mainAmount?: any, ok?: boolean, onOpen?: any, onEdit?: any, onDelete?: any, readOnly?: boolean }} p */
 function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete, readOnly }) {
   const { t } = useI18n();
   const src = expense.source_kind || 'manual';
@@ -551,8 +553,11 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
       {isManual ? (
         !readOnly && (
           <div className="bgt-exrow__acts row row--g2">
-            <button className="icon-btn tile--sm" aria-label={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }}><Icon name="edit" size={15} /></button>
-            <button className="icon-btn bgt-exrow__del tile--sm" aria-label={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }}><Icon name="trash" size={15} /></button>
+            {/* ★TRIP-344: `tile--sm` был ТРЕТЬЕЙ стороной (28px) — ступень
+                ПЛИТКИ на контроле, мимо обеих ступеней кнопки. Опасный ховер
+                больше не экранное имя: тон `danger` теперь есть в каноне. */}
+            <IconBtn icon="edit" size="sm" ariaLabel={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }} />
+            <IconBtn icon="trash" size="sm" tone="danger" ariaLabel={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }} />
           </div>
         )
       ) : (

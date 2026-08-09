@@ -10,9 +10,9 @@
  * Used by EventSourcePanel (view shell).
  */
 import React from 'react';
-import { X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
+import { IconBtn } from '@/design/index';
 import { transferKind } from '@/lib/transport';
 
 const EV = {
@@ -42,7 +42,7 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
             {sub && <span className="t-mono">{sub}</span>}
           </div>
         </div>
-        <button className="lp-back" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
+        <IconBtn icon="close" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
       </div>
       <div className="lp-b scrollbar-thin">{children}</div>
       {foot && <div className={'lp-f' + (footClass ? ' ' + footClass : '')}>{foot}</div>}

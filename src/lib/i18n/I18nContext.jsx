@@ -1,3 +1,4 @@
+// @ts-check
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
@@ -35,6 +36,14 @@ const I18nContext = createContext({
   // приводит заглушку к реальной сигнатуре.
   /** @type {(key: string, vars?: Record<string, any>) => string} */
   t: (key) => key,
+  // ⚠️ Третий случай той же болезни, и он не про сигнатуру, а про ОТСУТСТВИЕ:
+  // провайдер отдаёт `locale` и `languages` (см. `value` ниже), а в дефолте их
+  // не было — значит их не было и в ТИПЕ. Живой `const { locale } = useI18n()`
+  // краснел как «свойства не существует», хотя в рантайме оно есть всегда.
+  // Дефолт обязан перечислять ВСЁ, что отдаёт провайдер, иначе он описывает не
+  // тот объект, который приходит потребителю.
+  locale: localeTag('en'),
+  languages: LANGUAGES,
 });
 
 // Active locale falls back to this one (then to the raw key) for missing strings,

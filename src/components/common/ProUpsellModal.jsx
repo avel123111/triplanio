@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -61,9 +61,7 @@ export default function ProUpsellModal({
                   }
                 </h2>
               </DialogTitle>
-              <button className="icon-btn" onClick={close}>
-                <Icon name="close" size={16} />
-              </button>
+              <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
             </div>
 
             {/* ── Body ── */}

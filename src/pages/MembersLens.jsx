@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * MembersLens - members tab inside TripView.
  *
@@ -16,7 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Input, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -54,6 +55,7 @@ const ROLES = [
   { value: 'viewer', labelKey: 'member.role_viewer_desc' },
 ];
 
+/** @param {{ tripId: any, onSaved?: any, promoteMember?: any, open: boolean, onOpenChange?: any }} p */
 export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
@@ -194,7 +196,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
             <input className="input mono" value={linkLoading ? '' : linkUrl}
               placeholder={linkLoading ? t('share.generating') : ''}
               readOnly style={{ flex: 1 }}
-              onClick={(e) => e.target.select()} />
+              onClick={(e) => e.currentTarget.select()} />
             <Btn variant="primary" icon="copy" loading={linkLoading} onClick={copyLink} disabled={!linkUrl}>
               {linkLoading ? t('share.generating') : (copied ? t('common.copied') : t('share.copy'))}
             </Btn>
@@ -425,14 +427,20 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                     align="end"
                     width={220}
                     title={t('member.actions')}
+                    /* ★TRIP-344: инлайн из четырёх объявлений умер целиком —
+                       сторона 30px была третьей мимо обеих ступеней, а `color`
+                       и прозрачная рамка ПОВТОРЯЛИ то, что база `.icon-btn` и
+                       так объявляет. Повторённый рядом с классом инлайн — это
+                       признак сломанного класса, а не образец для копирования.
+                       Кнопка служит триггером Radix, поэтому примитив обязан
+                       пробрасывать ref и остаток пропов (см. IconBtn). */
                     trigger={
-                      <button
-                        className="icon-btn menu-trig"
-                        style={{ width: 30, height: 30, color: 'var(--muted)', border: '1px solid transparent' }}
+                      <IconBtn
+                        icon="more"
+                        size="sm"
                         title={t('member.actions')}
-                      >
-                        <Icon name="more" size={15} />
-                      </button>
+                        ariaLabel={t('member.actions')}
+                      />
                     }
                     items={isSelf
                       // Your own row: the only self-action is leaving the trip.

@@ -38,6 +38,12 @@ import { FieldRequired } from './Input';
 // `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
 // (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
 export { Row, Col, Grid, Trunc, Grow } from './Layout';
+// Кнопка-иконка — своим модулем по той же причине: крестик тоста живёт в
+// `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
+// оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
+// (TRIP-344). Экраны зовут её отсюда — точка входа в ДС одна.
+export { IconBtn } from './IconBtn';
+import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
@@ -390,6 +396,7 @@ const DLG_ICON_TONES = {
 };
 /** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
+  const t = useT();
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
   const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
   return (
@@ -415,9 +422,10 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
             <DialogTitle asChild><h2>{title}</h2></DialogTitle>
             {subtitle && <DialogDescription asChild><div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div></DialogDescription>}
           </div>
-          <button className="icon-btn" onClick={handleClose}>
-            <Icon name="close" size={16} />
-          </button>
+          {/* Крестик диалога — тот самый «канон» из разбора облика: тон quiet,
+              сторона --ctl-h. Он же был безымянным для скринридера, пока
+              `ariaLabel` не стал обязательным пропом примитива. */}
+          <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} />
         </div>
         <div className="dlg__body">{children}</div>
         {foot && <div className="dlg__foot">{foot}</div>}

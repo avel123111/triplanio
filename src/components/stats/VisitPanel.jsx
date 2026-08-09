@@ -5,6 +5,7 @@ import { coverGradientCss } from '@/lib/trip-gradients';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { Icon } from '@/design/icons';
+import { IconBtn } from '@/design/index';
 import { formatDateRange } from '@/lib/trip-dates';
 
 // ≤640px the panel is a bottom sheet — render it through vaul (native swipe +
@@ -173,7 +174,7 @@ export default function VisitPanel({
           <div className="s">{sub}</div>
         </div>
         <Dialog.Close asChild>
-          <button className="vp-x" aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>
+          <IconBtn icon="close" tone="soft" ariaLabel={t('common.close') || 'Close'} />
         </Dialog.Close>
       </div>
       <div className="vp-b">

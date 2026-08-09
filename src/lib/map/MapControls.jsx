@@ -1,11 +1,18 @@
 import React from 'react';
-import { Icon } from '@/design/icons';
+import { IconBtn } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 
 // On-map control buttons shared by every map surface: projection (flat ↔ globe),
 // theme (day ↔ night) and start/finish visibility. Constant surface-coloured
 // buttons (white in light theme, dark in dark theme) — only the icon changes per
 // state. State lives in the parent; this is presentation only.
+//
+// TRIP-344 PR 2: облик кнопки больше не пишется здесь руками (36×36 + рамка +
+// фон + тень девятью объявлениями в `style`) — он приходит из <IconBtn>.
+// `outline` (а не `quiet`) потому, что кнопка лежит ПОВЕРХ живой карты: у quiet
+// фон и рамка прозрачные, и над картой она нечитаема. Тень при пересадке ушла —
+// её нет и у канонического `.map-ctl button`. Инлайн остаётся ровно один и он
+// про РАСКЛАДКУ плашки (позиция + колонка), а не про облик кнопки.
 export default function MapControls({ projection, onToggleProjection, scheme, onToggleScheme, showSE, onToggleSE }) {
   const t = useT();
   const buttons = [
@@ -16,10 +23,8 @@ export default function MapControls({ projection, onToggleProjection, scheme, on
   return (
     <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {buttons.map((b) => (
-        <button key={b.key} type="button" onClick={b.onClick} title={b.title} aria-label={b.title}
-          style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--sh-1)' }}>
-          <Icon name={b.icon} size={17} />
-        </button>
+        <IconBtn key={b.key} icon={b.icon} onClick={b.onClick} title={b.title} ariaLabel={b.title}
+          tone="outline" size="sm" />
       ))}
     </div>
   );

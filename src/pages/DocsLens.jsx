@@ -25,7 +25,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -170,9 +170,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <Icon name="file" size={17} />
           </span>
           <h2>{t('doc.dialog_new')}</h2>
-          <button className="icon-btn" onClick={close}>
-            <Icon name="close" size={16} />
-          </button>
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>
 
         {/* ── Body ── */}
@@ -266,18 +264,18 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                     key={i}
                     name={d.file_name}
                     action={(
-                      <button
-                        type="button"
-                        className="doc-row__rm"
-                        aria-label={t('doc.remove_doc_aria')}
+                      <IconBtn
+                        icon="close"
+                        tone="danger"
+                        size="sm"
+                        ariaLabel={t('doc.remove_doc_aria')}
                         onClick={() => {
                           // Staged-but-unsaved upload → the object is already
                           // orphaned, remove it immediately (TRIP-117).
                           removeTripFiles(collectDocPaths([documents[i]]));
                           setDocuments(prev => prev.filter((_, j) => j !== i));
-                        }}>
-                        <Icon name="close" size={13} />
-                      </button>
+                        }}
+                      />
                     )}
                   />
                 ))}
@@ -384,9 +382,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
             <Icon name="file" size={17} />
           </span>
           <h2>{doc.title}</h2>
-          <button className="icon-btn" onClick={close}>
-            <Icon name="close" size={16} />
-          </button>
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>
 
         {/* ── Body ── */}
