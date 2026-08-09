@@ -93,6 +93,16 @@ export default [
       "react/jsx-no-undef": "error",
     },
   },
+  // The correctness block above is browser-only — right for app code (Vite),
+  // wrong for the src test files, which `package.json` runs with `node --test`
+  // and which legitimately use Node globals (`process`, `Buffer`, …). Without
+  // this a test calling `process.cwd()` fails `no-undef`. Placed after that
+  // block so its Node globals merge on top for test files ONLY; app code keeps
+  // browser-only, so a `process.env` shipped to the browser is still caught.
+  {
+    files: ["src/**/*.test.{js,mjs,cjs,jsx}"],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
   {
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
