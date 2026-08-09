@@ -2167,6 +2167,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Divider */
 .hr { border: none; border-top: 1px solid var(--line); margin: 0; }
 
+/* TRIP-344 PR 6: копия `.tweaks__seg` (Участники) удалена, разметка переехала
+   на канон `<Seg>` (`.seg`) с унифицированным обликом и состоянием через
+   `aria-pressed`. Ниже — объявление УДАЛЕНИЙ для 2p (не перенос значения →
+   точечный exempt). Ключи `.tweaks__seg button` — блайнд-спот TRIP-366
+   (`.класс button` немаркируем), не грайндим.
+   visual-diff-exempt: .tweaks__seg background — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg border — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg box-shadow — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg color — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg display — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg font-family — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .active box-shadow — состояние .active снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
 /* ── Lumo segmented control (.seg) — pill shape, aria-pressed active state ── */
 .seg {
   display: inline-flex;

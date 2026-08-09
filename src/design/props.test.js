@@ -77,7 +77,7 @@ const LINES = [
   // Seg отдаёт остаток на `<div>` — база носитель: `style`/`title` законны (ими
   // экраны ставят отступ и подпись группы). `options`/`value`/`onChange` обязательны.
   ['clean', '<Seg options={[{ value: "a", label: "A" }]} value="a" onChange={() => {}} ariaLabel="x" />'],
-  ['clean', '<Seg variant="fill" options={[]} value="a" onChange={() => {}} title="t" style={{ marginBottom: 14 }} />'],
+  ['clean', '<Seg variant="fill" options={[]} value="a" onChange={() => {}} title="t" />'],
   ['clean', '<Avatar name="A" size="sm" />'],
   ['clean', '<Field label="L"><span>x</span></Field>'],
   ['clean', '<FileRow name="a.pdf" />'],

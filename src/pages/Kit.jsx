@@ -385,12 +385,12 @@ export default function Kit() {
           />
         </Specimen>
         {/* Тон из контекста: та же `<Seg>`, но оболочка ставит канал `--hl*`
-            (как панель события по типу брони) — активный сегмент красится им.
-            inline-style-exempt: демонстрация механизма «оболочка ставит --hl инлайном»
-            — ровно то, что делают EventModal/AddBookingPanel; иного способа показать
-            тон-из-контекста на витрине нет (Pavel: демонстрация уместна). */}
+            (как панель события по типу брони) — активный сегмент красится им. */}
         <Specimen cls="seg">
           <div style={{ '--hl-soft': 'var(--ev-hotel-soft)', '--hl-ink': 'var(--ev-hotel-ink)' }}>
+            {/* inline-style-exempt: демонстрация механизма «оболочка ставит --hl
+                инлайном» — ровно то, что делают EventModal/AddBookingPanel; иного
+                способа показать тон-из-контекста на витрине нет (Pavel: уместно). */}
             <Seg
               ariaLabel={TX.segTone}
               value={segTone}
