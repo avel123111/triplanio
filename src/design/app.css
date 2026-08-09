@@ -4249,8 +4249,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ov-mapcard { padding: 0; overflow: visible; box-shadow: var(--sh-1); }
 .ov-mapcard:hover { box-shadow: var(--sh-2); }
 .ov-mapcard .wdg-h { padding: 15px 18px 11px; }
-.ov-openbtn { margin-left: auto; transition: transform .12s var(--ease-out); }
-.ov-openbtn:active { transform: scale(.97); }
+/* ★TRIP-344: подпрыгивание снято и ЗДЕСЬ. Этот класс висит на `<Btn>` (карточка
+   маршрута в Обзоре), и после снятия анимации у примитива он остался бы
+   ЕДИНСТВЕННОЙ кнопкой приложения, которая ещё сжимается при нажатии — то есть
+   ровно тот случай, ради которого правка делалась системно: экранный класс
+   молча возвращает язык, снятый у канона. За классом остаётся только его
+   раскладочная роль — прижать кнопку к правому краю шапки виджета. */
+.ov-openbtn { margin-left: auto; }
 .ov-maparea { position: relative; height: 280px; background: var(--surface-2); overflow: hidden; border-radius: 0 0 var(--r-xl) var(--r-xl); }
 .ov-map-empty {
  position: absolute; inset: 0; display: flex; flex-direction: column;
