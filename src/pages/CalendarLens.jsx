@@ -42,7 +42,9 @@ const evCls = (type) => `ev-${eventFamily(type)}`;
 
 // ── Inline SVG icons (no extra dependency) ──────────────────────────────────
 // `IcoBack`/`IcoFwd` УДАЛЕНЫ (TRIP-344 PR 2): стрелки навигации уехали на
-// <IconBtn icon="back|arrowR" tone="soft" size="sm">, глиф приходит из реестра.
+// <IconBtn icon="chevL|chev" tone="soft" size="sm" round>, глиф приходит из
+// реестра — именно ШЕВРОН, а не стрелка: рисованные тут пути были chevron-left
+// и chevron-right, и `back`/`arrow` подменили бы глиф.
 const IcoPin = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
