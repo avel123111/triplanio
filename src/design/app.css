@@ -1348,7 +1348,10 @@ button.app-side__item:hover { background: var(--wash); }
 .btn--soft { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
 .btn--soft:hover { --bg: var(--brand-soft-12); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
-.btn--quiet:hover { --fg: var(--ink); }
+/* ★TRIP-344: ховер quiet — ЗАЛИВКА в `--wash`, а не только потемнение текста.
+   Эталон `nx-btn--quiet:hover` даёт `--bg: --wash` + `--fg: --ink`; ровно тот
+   принцип «ховер = смена заливки», ради которого снята анимация. Ревью Pavel. */
+.btn--quiet:hover { --bg: var(--wash); --fg: var(--ink); }
 /* Тон `ghost` (прозрачный фон, прозрачная рамка) удалён вместе с 50 вызовами:
    до наведения он ничем не отличался от текста, то есть кнопка не выглядела
    кнопкой. Все его места уехали на `secondary` — разбор облика кнопок, апрув
