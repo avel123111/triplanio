@@ -3,6 +3,7 @@ import { searchCities } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
 import { localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../../design/icons';
+import { IconBtn } from '@/design/index';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
@@ -96,7 +97,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
         </div>
       </div>
       {editable && hasCity && (
-        <button type="button" className="te-step te-step--del" onClick={() => onPick(null)} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
+        <IconBtn icon="trash" tone="danger" size="sm" round onClick={() => onPick(null)} title={t('common.delete')} ariaLabel={t('common.delete')} />
       )}
     </div>
   );

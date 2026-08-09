@@ -43,6 +43,7 @@ export { Row, Col, Grid, Trunc, Grow } from './Layout';
 // оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
 // (TRIP-344). Экраны зовут её отсюда — точка входа в ДС одна.
 export { IconBtn } from './IconBtn';
+export { Stepper } from './Stepper';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================

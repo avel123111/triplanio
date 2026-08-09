@@ -155,6 +155,10 @@ const ARRAYS = [
   { name: 'ICONBTN_TONES', family: 'icon-btn' },
   { name: 'ICONBTN_SIZES', family: 'icon-btn' },
   { name: 'ICONBTN_SHAPES', family: 'icon-btn' },
+  // ★TRIP-344: степпер — свой примитив в `src/design/Stepper.jsx`, поэтому его
+  // обличья `stepper--block` / `stepper--bare` собираются в рантайме и `emittedByComponents`
+  // (читает только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
+  { name: 'STEPPER_VARIANTS', family: 'stepper' },
 ];
 
 function valuesOf(name) {

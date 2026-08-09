@@ -17,7 +17,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, EmptyState, Severity, Toggle, useToast } from '../design/index';
+import { Btn, EmptyState, IconBtn, Severity, Toggle, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -130,8 +130,8 @@ function recomputeDates(list, anchorISO) {
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
 // City row built from the EDITOR's primitives (.te-row / .te-grip / .te-row__num /
-// .te-citycell / .te-cityname / .te-dts / .te-stepper / .te-step) so the planner
-// route looks and behaves identically to the structural editor — same bold city
+// .te-citycell / .te-cityname / .te-dts + <Stepper> nights) so the planner route
+// looks and behaves identically to the structural editor — same bold city
 // names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
 // final-point toggle lives once in StepCities (not per row).
 // Planner route row. Owns its editing state + pick/remove/nights handlers, then
@@ -198,7 +198,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
           plusDisabled={nights >= 30}
         />
       )}
-      <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
+      <IconBtn icon="trash" tone="danger" size="sm" round onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} ariaLabel={t('common.delete')} />
     </CityRowBase>
   );
 

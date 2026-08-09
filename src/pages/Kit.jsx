@@ -38,7 +38,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Severity, Sheet,
-  Skeleton, Textarea, Toggle,
+  Skeleton, Stepper, Textarea, Toggle,
 } from '@/design/index';
 
 /* ─────────────────────────── текст (см. правило 2) ────────────────────────── */
@@ -87,6 +87,8 @@ const TX = {
   iconBtnSize: 'Размер кнопки-иконки',
   iconBtnShape: 'Форма кнопки-иконки',
   iconBtnMark: 'Кнопка-иконка с меткой непрочитанных',
+  stepMinus: 'Меньше',
+  stepPlus: 'Больше',
   readonly: 'Режим только для чтения.',
   file: 'documents-2026.pdf',
   // Живые вызовы отдают УЖЕ отформатированную строку (formatSize), поэтому и
@@ -222,6 +224,8 @@ const ICONBTN_TONES = ['soft', 'outline', 'solid', 'ai', 'danger'];
 /** @type {Array<'md'|'sm'|'fab'>} */
 const ICONBTN_SIZES = ['sm', 'fab'];
 const ICONBTN_SHAPES = ['round'];
+/** @type {Array<'block'|'bare'>} — pill дефолт (без модификатора). */
+const STEPPER_VARIANTS = ['block', 'bare'];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
 const AVATAR_SIZES = [undefined, 'sm', 'lg'];
 const LAYOUT = [
@@ -330,6 +334,18 @@ export default function Kit() {
             <span aria-hidden className="icon-btn__dot" />
           </IconBtn>
           <IconBtn icon="close" disabled ariaLabel={TX.close} />
+        </Specimen>
+
+        {/* Степпер: pill (дефолт, панель города) + block (дата во всю ячейку) +
+            bare (без подложки, в карточке-инпуте). block/bare — из STEPPER_VARIANTS. */}
+        <Specimen cls="stepper">
+          <Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} />
+        </Specimen>
+        <Specimen cls="stepper--block">
+          <Stepper variant="block" value="14 авг" onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} />
+        </Specimen>
+        <Specimen cls="stepper--bare">
+          <Stepper variant="bare" value={2} onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} />
         </Specimen>
 
         <Specimen cls="badge">

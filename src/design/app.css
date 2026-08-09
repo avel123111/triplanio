@@ -566,7 +566,7 @@ h2,
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
 .invite__tx h3,
-.stepper button,
+.stepper > button,
 .sheet-h h3,
 .head__av,
 .vp-h h3,
@@ -602,7 +602,6 @@ h3,
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
-.te-step,
 /* `.sheet .ss-search .input` снят отсюда: это ПОЛЕ ПОИСКА, человек в него
    набирает, а канон-подзаголовок делал набранное Golos 700/13. Селектор весил
    (0,3,0) и перебивал канон самого поля - после переезда ввода на `.t-body`
@@ -668,7 +667,7 @@ h4,
 .addsheet__tx b,
 .eroute p,
 .invite__tx p,
-.ts-startctl--block .ts-startctl__date,
+.stepper--block .ts-startctl__date,
 .ts-cal__title,
 .chat-mention__row b,
 .te-row__num,
@@ -777,7 +776,6 @@ h4,
 .partner-pill,
 .te-country,
 .te-warnbadge,
-.te-nights,
 .te-seam__pill,
 .gt span,
 .stepper .n,
@@ -923,7 +921,6 @@ h4,
 .langdd__btn,
 .langdd__item .code,
 .fork-pg,
-.s22f-val,
 .s22-count,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
@@ -1032,7 +1029,7 @@ h4,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
 .fork-partner__mid span,
 .fork-or span,
-.fork-pg, .s22f-val, .s22-count, .pcard__score,
+.fork-pg, .s22-count, .pcard__score,
 .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
@@ -1651,7 +1648,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
 [data-theme="dark"] .stay-dates,
-[data-theme="dark"] .ts-startctl--block { background: var(--bg); }
+[data-theme="dark"] .stepper--block { background: var(--bg); }
 /* Тень - светлотемная компенсация слабой рамки, в тёмной она только грязнит. */
 [data-theme="dark"] .input,
 [data-theme="dark"] .select,
@@ -2948,10 +2945,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
-   .te-row__num / .te-cityname / .te-dts / .te-stepper / .te-step). The ONLY
-   difference vs the editor is the trailing action column (nights stepper + delete
-   instead of hotel/activity cells), so we keep .te-row's grid and just swap the
-   column template, dropping the editor's 96px action columns.
+   .te-row__num / .te-cityname / .te-dts). The ONLY difference vs the editor is the
+   trailing action column (<Stepper> nights + <IconBtn> delete instead of
+   hotel/activity cells), so we keep .te-row's grid and just swap the column
+   template, dropping the editor's 96px action columns.
    IMPORTANT: selector is `.te-row.te-row--plan` (specificity 0,2,0). The global
    `.te-row { display:grid; 6 columns }` is defined LATER in this file; at equal
    specificity it would win on source order and force the editor's 6-column grid
@@ -2967,11 +2964,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
 /* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
 .te-row.te-row--plan .te-row__pacts { justify-self: end; }
-/* Planner has no reliable row-hover (esp. touch) → nights +/- and delete are
-   ALWAYS visible (the editor reveals them on hover for table density). */
-.te-row.te-row--plan .te-step { opacity: 1; }
-.te-row.te-row--plan .te-step--del { color: var(--muted); }
-.te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
 /* Mobile: drop the grip column (long-press the row still reorders). */
 @media (max-width: 640px) {
   .te-row.te-row--plan { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
@@ -3014,23 +3006,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
    rendered them UNSTYLED (the broken/cramped calendar). Now global → one source. */
+/* .ts-startctl — тонкая обёртка [эйбрау · <Stepper bare>] для инлайн-варианта
+   (шапка «Маршрут» / ревью). Сам контрол «− дата +» рисует <Stepper>; block-
+   вариант рендерится без обёртки. Кнопка-дата — центр степпера. */
 .ts-startctl { display: inline-flex; align-items: center; gap: 2px; border-radius: var(--r-sm); padding: 2px; }
 .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
-.ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
+.ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: var(--r-sm); color: var(--ink); white-space: nowrap; }
 .ts-startctl__date:hover { background: var(--wash); }
-/* Block variant — занимает ячейку формы и встаёт в один рост с полем города на
-   шаге 1 создания трипа. Тот же элемент .ts-startctl, без отдельного контрола.
-   ★Высота - общий токен: прежние 48px были хардкодом, а комментарий над ним
-   утверждал, что они «matches the .input height», хотя поле было 41.5 (TRIP-333). */
-.ts-startctl--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
-/* `height: 100%` тут больше не работает и работать не может: у контрола теперь
-   `min-height`, то есть высота НЕОПРЕДЕЛЁННАЯ, и процент от неё разрешается в
-   `auto` - кнопка схлопывалась до высоты своей иконки (замер: 40 -> 18px, при
-   том что и базовые 26px у `.ts-step` процент тоже перебивал). Растягивает её
-   выравнивание, а не высота; `height: auto` обязателен - со ступенью 26px от
-   базового правила `stretch` не сработает. */
-.ts-startctl--block .ts-step { width: 38px; height: auto; align-self: stretch; }
-.ts-startctl--block .ts-startctl__date { flex: 1; text-align: center; }
+/* block: дата тянется во всю ячейку (полный клик-таргет). */
+.stepper--block .n { display: flex; }
+.stepper--block .ts-startctl__date { flex: 1; text-align: center; }
 /* Drag-anywhere route rows (editor grid + planner list): a press anywhere arms
    the reorder, so never let it select the city text or pop the iOS long-press
    callout. The grip already had this; the whole row needs it for whole-row drag. */
@@ -3897,7 +3882,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* visual-diff-move: te-warnbadge -> row row--inline row--g1 */
     .te-warnbadge { color: var(--warning-ink); }
     /* A11y: keyboard-visible focus rings on editor controls. */
-    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
+    .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
     .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible {
       outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-sm);
     }
@@ -3905,25 +3890,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        their visual box (transparent centered hit-area). */
     .ts-step, .te-addmini, .te-grip { position: relative; }
     .ts-step::after, .te-addmini::after, .te-grip::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
-    .te-step { position: relative; }
-    .te-step::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
-    /* Always-on variant of the nights stepper (used in CityPanel, where there's no
-       row hover to reveal it). Same control as the grid — one look, two contexts. */
-    /* Custom nights stepper. Quiet by default (no fill — just the number with
-       hairline +/− that recede), so a column of these doesn't stripe the table.
-       On row hover it lifts into a real segmented control. */
-    /* Nights stepper — design .edl-step: always-on surface-2 pill, round primary buttons. */
-    /* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
-     visual-diff-move: te-stepper -> row row--inline */
-    .te-stepper { gap: 3px; background: transparent; border: 0; border-radius: var(--r-pill); padding: 3px; justify-self: center; transition: background .14s var(--ease-out); }
-    .te-row:hover .te-stepper { background: var(--surface-2); }
-    .te-row:hover .te-step { opacity: 1; }
-    .te-step { width: 26px; height: 26px; border: 0; background: transparent; border-radius: 50%; color: var(--brand); cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .14s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
-    .te-step:hover { background: var(--surface); }
-    .te-step:active:not(:disabled) { transform: scale(0.9); }
-    .te-step:disabled { color: var(--muted-2); cursor: default; }
-    .te-nights { min-width: 40px; text-align: center; color: var(--ink); }
-    .te-nights .muted { margin-left: 1px; }
     .te-cell { flex-shrink: 0; }
     .te-cell--hotel { justify-self: center; min-width: 0; }
     .te-cell--act { justify-self: center; }
@@ -3998,8 +3964,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
       .te-seam { animation: none; }
-      .te-row, .te-step, .te-stepper, .te-seam__pill, .te-actchip, .te-hotelicon { transition-property: background, border-color, color, opacity, box-shadow; }
-      .te-step:active, .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active { transform: none; }
+      .te-row, .te-seam__pill, .te-actchip, .te-hotelicon { transition-property: background, border-color, color, opacity, box-shadow; }
+      .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active { transform: none; }
     }
 
 /* =================================================================
@@ -4076,12 +4042,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .gt b { display: block; }
 .gt span { color: var(--muted-2); }
 
+/* ─── <Stepper>: ОБЛИЧЬЯ КОНТРОЛА «− N +» (TRIP-344 PR 5) ──────────────────────
+   Нового префикса тут НЕТ: `.stepper` уже канон-семья. Кнопки скоплены `>`, а не
+   descendant, чтобы кнопка-дата ВНУТРИ `.n` (вариант block) не считалась ±. Для
+   существующей разметки (± — прямые дети, центр — span) `>` эквивалентно, вид не
+   меняется. `pill` — дефолт (панель города). */
 .stepper { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
-.stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.stepper button:hover:not(:disabled) { background: var(--surface); }
-.stepper button:active:not(:disabled) { transform: scale(.9); }
-.stepper button:disabled { color: var(--muted-2); cursor: default; }
+.stepper > button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
+.stepper > button:hover:not(:disabled) { background: var(--surface); }
+.stepper > button:active:not(:disabled) { transform: scale(.9); }
+.stepper > button:disabled { color: var(--muted-2); cursor: default; }
 .stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
+/* bare: без подложки, встроен в карточку-инпут (гости) — ховер кнопки на её фоне. */
+.stepper--bare { background: transparent; padding: 0; }
+.stepper--bare > button:hover:not(:disabled) { background: var(--surface-2); }
+.stepper--bare > button:active:not(:disabled) { transform: scale(.88); }
+/* block: во всю ширину ячейки под `--ctl-h`, встаёт в рост с полем рядом; центр
+   несёт дату (шапка «Маршрут»). Кнопки квадратные и тянутся во всю высоту. */
+.stepper--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
+.stepper--block > button { width: 38px; height: auto; align-self: stretch; border-radius: var(--r-sm); }
+.stepper--block .n { flex: 1; }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
 .lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
@@ -4405,6 +4385,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Поэтому и мёртвые `.ts-confirm-backdrop` / `.ts-confirm-card` / `.ts-warn` /
    `.ts-in` (ни одного вхождения в разметке) прожили тут незамеченными - при
    переносе они удалены, а не скопированы. */
+/* .ts-step — общая мелкая кнопка-иконка: навигация по месяцам в календаре
+   (StartCalendar) и удаление узла в редакторе. НЕ степпер (трип-старт ± уехал
+   на <Stepper>); кандидат в <IconBtn> отдельной задачей. */
 .ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
 .ts-step:hover { background: var(--wash); }
 .ts-step:active:not(:disabled) { transform: scale(0.9); }
@@ -6418,12 +6401,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
 .s22f-panelfoot .btn { flex: 1; }
-.s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: transparent; padding: 0; }  /* TRIP-176: степпер встроен в карточку-инпут (без вложенного фона/пилюли) */
-.s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.s22f-step button:hover:not(:disabled) { background: var(--surface-2); }  /* TRIP-176: hover читается на фоне карточки-инпута (--surface-3) */
-.s22f-step button:active:not(:disabled) { transform: scale(.88); }
-.s22f-step button:disabled { color: var(--muted-2); cursor: default; }
-.s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 /* `--a` = тон текстовой кнопки внутри ряда: «Сбросить всё» здесь серая, а не
    брендовая. Канал объявлен на контейнере, поэтому у кнопки своего класса под
@@ -6449,7 +6426,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
 .s22-count { color: var(--muted); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
-  .s22f-fbtn, .s22f-step button { transition: none; }
+  .s22f-fbtn { transition: none; }
   .s22f-fbtn:active { transform: none; }
 }
 
