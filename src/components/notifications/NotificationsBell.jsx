@@ -71,15 +71,17 @@ export default function NotificationsBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         {/* Метка непрочитанных — РЕБЁНОК кнопки: она позиционируется от неё, а
-            не от строки. Класс `.dot` не новый: правило `.icon-btn .dot` в
-            app.css существовало и было ОСИРОТЕВШИМ — ни один `.dot` в проекте
-            не лежал внутри `.icon-btn`, потому что здесь метка рисовалась
-            шестью инлайновыми объявлениями мимо него. Гард 2n такое не ловит:
-            `dot` — живой литерал на других экранах.
+            не от строки. Имя `icon-btn__dot`, а не приклеенное `dot`, — апрув
+            Pavel: правило вида `.icon-btn .dot` заводит ключ и на ПРЕДКА (2p,
+            решение TRIP-363), поэтому объявления метки становились победителем
+            базового ключа `.icon-btn` и ЛЮБОЙ перенос на примитив читался как
+            «смена значения» — 44 ложных отказа. Односоставное имя снимает это
+            структурно и совпадает с направлением каталога: имя без префикса
+            внутри компонента ДС схлопывается в <владелец>__<имя>.
             Класс `relative` тоже ушёл: правила у него нет НИГДЕ (наследство
             Tailwind), а `position: relative` база `.icon-btn` объявляет сама. */}
         <IconBtn icon="bell" ariaLabel={t('notif.title')}>
-          {unread > 0 && <span aria-hidden className="dot" />}
+          {unread > 0 && <span aria-hidden className="icon-btn__dot" />}
         </IconBtn>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">

@@ -1215,7 +1215,7 @@ h4,
 
 
 
-.icon-btn .dot {
+.icon-btn__dot {
   position: absolute; top: 4px; right: 4px;
   width: 11px; height: 11px; border-radius: var(--r-pill);
   background: var(--danger); border: 2px solid var(--surface);

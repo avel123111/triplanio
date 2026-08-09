@@ -284,7 +284,7 @@ export default function Kit() {
               (outline·round) с живых экранов. */}
           <IconBtn icon="close" tone="outline" round ariaLabel={TX.close} />
           <IconBtn icon="bell" ariaLabel={TX.iconBtnMark}>
-            <span aria-hidden className="dot" />
+            <span aria-hidden className="icon-btn__dot" />
           </IconBtn>
           <IconBtn icon="close" disabled ariaLabel={TX.close} />
         </Specimen>
