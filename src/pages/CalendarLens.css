@@ -43,17 +43,10 @@
   border-radius: var(--r-pill);
   padding: 4px;
 }
-.ncal-nav-ico {
-  width: 32px; height: 32px;
-  border-radius: var(--r-pill);
-  background: transparent; border: none;
-  color: var(--muted);
-  display: grid; place-items: center;
-  transition: background .15s, color .15s;
-  cursor: pointer;
-}
-.ncal-nav-ico svg { width: 14px; height: 14px; }
-.ncal-nav-ico:hover { background: var(--surface); color: var(--ink); }
+/* `.ncal-nav-ico` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft"
+   size="sm">. Обе стрелки пилюли навигации пересажены в этом же PR, поэтому
+   приватного правила в этом файле больше нет - включая строку фокуса ниже
+   (у канон-класса свой :focus-visible). */
 .ncal-nav-txt {
   padding: 5px 12px;
   border-radius: var(--r-pill);
@@ -357,7 +350,6 @@
 .ncal-ev:focus-visible,
 .ncal-more:focus-visible,
 .ncal-aev:focus-visible,
-.ncal-nav-ico:focus-visible,
 .ncal-nav-txt:focus-visible,
 .ncal-nav-trip:focus-visible,
 .ncal-vtgl-btn:focus-visible {
