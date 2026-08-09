@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * EventAiBlock — "parse a booking with AI" widget (Lumo `.ai-blk`).
  * States: locked / available / idle / uploaded / parsing / parsed.

@@ -1,3 +1,4 @@
+// @ts-check
 import React from 'react';
 import { ChevronLeft, ChevronRight, Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
 import { Btn, Input, Skeleton } from '@/design/index';

@@ -1,3 +1,4 @@
+// @ts-check
 import React from 'react';
 import { Icon } from '@/design/icons';
 import { Badge, Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';

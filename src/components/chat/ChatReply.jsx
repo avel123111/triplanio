@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Btn } from '@/design/index';
 import { Icon } from '@/design/icons';

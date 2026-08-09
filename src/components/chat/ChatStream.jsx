@@ -1,3 +1,4 @@
+// @ts-check
 import React, { memo } from 'react';
 import { Avatar, Btn } from '@/design/index';
 import { Icon } from '@/design/icons';

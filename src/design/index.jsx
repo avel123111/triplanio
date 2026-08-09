@@ -504,6 +504,9 @@ export const PartnerLogo = ({ url, size = 18 }) => {
 };
 
 // Not exported: rendered only by StreamEventRow below.
+// Долг «запечатанных деструктуризацией пропов»: без аннотации TS выводит ОБА
+// ключа обязательными, и единственный живой вызов (без `fallback`) краснеет.
+/** @param {{ url?: string, fallback?: string }} p */
 const PartnerPill = ({ url, fallback }) => {
   const t = useT();
   const p = detectPartner(url);
@@ -526,7 +529,7 @@ const _LOCMAP = { ru: 'ru-RU', en: 'en-US', es: 'es-ES' };
 // ru output kept byte-identical (Public + ru callers unchanged); en/es via Intl.
 export function fmtDate(iso, loc) {
   const d = new Date(iso + "T00:00:00");
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   if (loc && loc !== 'ru') {
     try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { day: 'numeric', month: 'short' }).format(d); } catch { /* fallthrough */ }
   }
@@ -535,7 +538,7 @@ export function fmtDate(iso, loc) {
 
 export function weekday(iso, loc) {
   const d = new Date(iso + "T00:00:00");
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   if (loc && loc !== 'ru') {
     try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'short' }).format(d); } catch { /* fallthrough */ }
   }
@@ -546,7 +549,7 @@ const _WEEKDAYS_LONG = ["воскресенье", "понедельник", "в�
 // Full weekday name (Lumo timeline header writes them out in full).
 export function weekdayLong(iso, loc) {
   const d = new Date(iso + "T00:00:00");
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   if (loc && loc !== 'ru') {
     try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'long' }).format(d); } catch { /* fallthrough */ }
   }

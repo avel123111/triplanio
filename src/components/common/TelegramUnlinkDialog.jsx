@@ -1,3 +1,4 @@
+// @ts-check
 import React from 'react';
 import { Dialog, Btn } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';

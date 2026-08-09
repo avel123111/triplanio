@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * EventModal - unified read view for a timeline event (hotel / transfer /
  * activity / car rental / esim / insurance).

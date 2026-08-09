@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Витрина дизайн-системы, роут `/kit` (TRIP-340 PR2).
  *
@@ -86,6 +87,9 @@ const TX = {
   iconBtnMark: 'Кнопка-иконка с меткой непрочитанных',
   readonly: 'Режим только для чтения.',
   file: 'documents-2026.pdf',
+  // Живые вызовы отдают УЖЕ отформатированную строку (formatSize), поэтому и
+  // витрина отдаёт строку: с числом она рисовала сырые «182400» байт.
+  fileSize: '178 КБ',
   gapDefault: 'по умолчанию',
   missing: 'ступени нет - молча даёт значение по умолчанию',
   sample: 'Съешь ещё этих мягких булок · Sphinx of black quartz · 0123456789',
@@ -187,7 +191,11 @@ function declaredSteps(base) {
    кнопка и плейсхолдер «добавить». Оба берут тон из контекста через `--a`,
    поэтому ниже стоит отдельный образец: без него витрина показала бы только
    умолчание (brand) и промолчала бы о главном свойстве этих двух тонов.
-   @type {import('@/design/index').BtnVariant[]} */
+   ⚠️ Аннотация ниже обязана стоять в JSDoc-комментарии (`/**`), а не в обычном:
+   с одной звёздочкой TS её не читает, элемент массива остаётся `string`, и
+   `variant={v}` краснеет «string не BtnVariant» — то есть витрина оказывается
+   единственным местом, где закрытый набор тонов не работает. */
+/** @type {import('@/design/index').BtnVariant[]} */
 const BTN_VARIANTS = ['primary', 'secondary', 'soft', 'quiet', 'link', 'dashed', 'danger', 'danger-solid', 'ai', 'pro'];
 // ⚠️ Номер PR тут пишется БЕЗ решётки намеренно: ярус COLOUR гарда check:design
 // читает решётку с тремя цифрами как HEX-цвет и роняет прогон — поймано этим же
@@ -207,7 +215,9 @@ const BADGE_VARIANTS = ['', 'sm', 'xs', 'pro', 'success', 'warning', 'quiet', 'b
    ⚠️ Дефолты (`quiet`, `md`) в массивах НЕ перечислены намеренно: класса под
    дефолт не существует (2q сверка B), и строка про него была бы обещанием
    обличья, которого в CSS нет. Базовый вид показан первым образцом. */
+/** @type {Array<'quiet'|'soft'|'outline'|'solid'|'ai'|'danger'>} */
 const ICONBTN_TONES = ['soft', 'outline', 'solid', 'ai', 'danger'];
+/** @type {Array<'md'|'sm'|'fab'>} */
 const ICONBTN_SIZES = ['sm', 'fab'];
 const ICONBTN_SHAPES = ['round'];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
@@ -394,8 +404,8 @@ export default function Kit() {
 
         <Specimen cls="doc-row">
           <div className="col col--g3 grow">
-            <FileRow name={TX.file} size={182400} />
-            <FileRow name={TX.file} size={182400} tone="ai" />
+            <FileRow name={TX.file} size={TX.fileSize} />
+            <FileRow name={TX.file} size={TX.fileSize} tone="ai" />
           </div>
         </Specimen>
 
