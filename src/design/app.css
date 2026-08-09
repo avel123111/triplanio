@@ -168,6 +168,12 @@
      паддинге: иначе мобильный анти-зум-гард (16px ниже по файлу) разносит поле
      до 46.39px. Квадратным кнопкам-иконкам тот же токен идёт в `height`. */
   --ctl-h: 40px;
+  /* Компактная ступень того же контрола - только для кнопки-иконки, стоящей не
+     рядом с полем, а внутри своей плашки (зум карты, «+» у заголовка секции,
+     удаление файла). Отдельный токен, а не литерал 32: ступеней ровно ДВЕ, и
+     обе обязаны читаться из одного места - иначе 26/28/30/34 вернутся.
+     floor-exempt: tokens +1 — --ctl-h-sm 32px, апрув Pavel (разбор облика кнопок, TRIP-344) */
+  --ctl-h-sm: 32px;
 
   /* Shadows (Lumo scale) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
@@ -2322,6 +2328,50 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    бьёт -> --tile-ic МОЛЧА выигрывает у пропа size. При переводе экрана ступень
    надо выбирать под фактический size, иначе иконка съедет без единой правки JSX. */
 .tile > svg { width: var(--tile-ic, 17px); height: var(--tile-ic, 17px); }
+
+/* ─── <IconBtn>: ОБЛИЧЬЯ КНОПКИ-ИКОНКИ (TRIP-344 PR 2) ──────────────────────
+   Нового префикса тут НЕТ и не нужно: `.icon-btn` уже канон-семья, разбор облика
+   так её и называет («Канон. Ховер - заливка --wash, есть :focus-visible»).
+   Правится не имя, а то, что девятнадцать приватных копий рисовали то же самое
+   своими сторонами (24·26·28·30·34·38) и своими ховерами.
+
+   ⚠️ ПОРЯДОК НЕСУЩИЙ. Модификаторы стоят ПОСЛЕ `.icon-btn { width }` строкой
+   выше: специфичность у них одинаковая (0,1,0), решает исходный порядок.
+   Поставить их к базе цвета (строка ~1172) значило бы, что `--sm` молча
+   проигрывает стороне по умолчанию.
+
+   Ступеней размера ДВЕ и только две: дефолт `--ctl-h` (рядом с полем) и `--sm`
+   `--ctl-h-sm` (внутри своей плашки). Третьей быть не должно - именно её
+   отсутствие и схлопывает 24/26/28/30/34/38 в два числа. */
+.icon-btn { flex: none; cursor: pointer; transition: background .16s, color .16s, border-color .16s; }
+/* Живой дефект, названный разбором: :focus-visible не было НИ НА ОДНОЙ из
+   девятнадцати иконочных кнопок - то есть с клавиатуры они не видны вовсе.
+   Кольцо то же, что у поля и чекбокса (--primary-ring), а не своё. */
+.icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+.icon-btn[disabled] { opacity: .45; pointer-events: none; }
+.icon-btn--sm { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
+.icon-btn--round { border-radius: var(--r-pill); }
+.icon-btn--soft { background: var(--secondary); border-color: var(--line); color: var(--ink-2); }
+.icon-btn--soft:hover { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.icon-btn--outline { border-color: var(--line-strong); background: var(--surface); color: var(--ink); }
+.icon-btn--outline:hover { background: var(--wash); border-color: var(--line-hover); }
+.icon-btn--solid { background: var(--brand); color: var(--primary-fg); }
+.icon-btn--solid:hover { background: var(--primary-hover); color: var(--primary-fg); }
+.icon-btn--ai:hover { background: var(--ai-soft); color: var(--ai-ink); }
+.icon-btn--danger:hover { background: var(--danger-soft); color: var(--danger-ink); }
+.icon-btn > svg { width: 16px; height: 16px; }
+.icon-btn--sm > svg { width: 14px; height: 14px; }
+/* Плавающая кнопка. Радиальный градиент и тройная тень с внутренним бликом
+   перенесены с `.mbnav__fab` один в один - позиционирование остаётся за экраном,
+   примитив отвечает только за облик. */
+.icon-btn--fab {
+  width: 56px; height: 56px; border-radius: var(--r-pill); border: 0; color: #fff;
+  background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--brand) 82%, #fff) 0%, var(--brand) 46%, var(--brand) 100%);
+  box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--brand) 72%, transparent),
+              0 4px 10px -2px rgba(15, 23, 42, .3), inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+.icon-btn--fab:hover { filter: brightness(1.05); color: #fff; }
+.icon-btn--fab > svg { width: 24px; height: 24px; }
 
 /* Ступени - НЕ ряд «+6», к которому потом подложили замер. Каждая стоит в
    десятых долях пикселя от взвешенного центра своей полосы (замер по всем CSS
