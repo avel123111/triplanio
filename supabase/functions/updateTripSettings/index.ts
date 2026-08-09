@@ -16,10 +16,33 @@
  *                  (e.g. { booking_warnings: false }). Extensible: future display
  *                  flags flow through here without a schema or function change.
  *
- * Returns 200 { ok: true } | { ok: false, code: 'FORBIDDEN' | 'PRO_REQUIRED' }.
+ * Answers: 200 `{ ok: true }` on success; a REFUSAL carries its reason in the
+ * HTTP status, not only in the body (TRIP-378). Both refusals used to be sent as
+ * 200 `{ ok: false, code }` — a 200 means "done", so every layer that reads the
+ * status (Sentry's `withHandler`, `statusOf`/`loadErrorKind`, any future non-JS
+ * client) was told the write had succeeded:
+ *   403 `{ error, code: 'FORBIDDEN' }`    — caller is not owner/admin of the trip
+ *   402 `{ error, code: 'PRO_REQUIRED' }` — enabling a PRO addon on a non-Pro trip
+ * 402 rather than 403 on purpose: "you may not" and "you have not paid" are
+ * DIFFERENT answers, and keeping them apart at the status level means a caller
+ * that reads only the status still tells them apart. The `code`s are unchanged —
+ * they are what the client branches on, and renaming one splits Sentry grouping.
+ *
+ * The remaining bare `Response.json({ error })` answers here (401 / 400 / the
+ * write 500) are deliberately NOT converted: they already carry a truthful
+ * status, and the raw answers move to `jsonError` in ONE codemod (эпик TRIP-374,
+ * Р4 §0(F) — "по касанию" отменено). Converting them here would make that
+ * codemod's diff unreviewable for no behaviour change.
+ *
+ * ⚠️ Два числа про «сырые ответы» ходят рядом и меряют РАЗНОЕ — предикат раньше
+ * числа: **167** = однострочные `Response.json({ error })` (счёт §0(F) хендоффа),
+ * **193 → 188 после этого PR** = метрика M4 гарда 2r «ответ НЕ ПО КАНОНУ», куда
+ * сверх тех 167 входят двухаргументные, `ok:false`, `allow:false` и «только
+ * статус ≥400». Ни одно не опечатка; актуальное — `npm run check:door`.
  */
-import { withHandler } from '../_shared/http.ts';
+import { withHandler, jsonError } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { isNotFound } from '../_shared/classifyDbError.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { PRO_ADDON_SET } from '../_shared/proAddons.ts';
 
@@ -35,13 +58,20 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
     // `details` is the only column this function reads: permission comes from
     // isCallerEditor and trip-level Pro from the is_trip_pro RPC below (which
     // also covers "the owner is Pro" — the `is_pro_trip` column does not).
-    const { data: trip } = await supabaseAdmin
+    const { data: trip, error: tripErr } = await supabaseAdmin
       .from('trips').select('details').eq('id', tripId).single();
-    if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
+    // The lookup error used to be DISCARDED entirely, so a failed query fell
+    // through `!trip` and answered "Trip not found" — the same lie deleteTrip
+    // told, from the same line shape. Split it on the shared taxonomy: genuine
+    // absence / unusable id → 404, a query failure → rethrow, which `withHandler`
+    // renders as a 500 `INTERNAL` (retryable) with the REAL Postgrest error in
+    // Sentry — the same shape `getTripDetails` and `deleteTrip` use.
+    if (tripErr && !isNotFound(tripErr)) throw tripErr;
+    if (!trip) return jsonError(404, 'Trip not found', 'NOT_FOUND', corsHeaders);
 
     // Permission: the `editor` step (_shared/tripAccess.ts).
     if (!(await isCallerEditor(tripId, user.id))) {
-      return Response.json({ ok: false, code: 'FORBIDDEN' }, { headers: corsHeaders });
+      return jsonError(403, 'Forbidden', 'FORBIDDEN', corsHeaders);
     }
 
     // Trip-level Pro from the single SQL source (is_trip_pro = is_pro_trip OR owner
@@ -66,7 +96,16 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
         const prev = (trip.details?.addons) || {};
         for (const key of Object.keys(addons)) {
           if (addons[key] === true && PRO_ADDON_SET.has(key) && prev[key] !== true && !tripIsPro) {
-            return Response.json({ ok: false, code: 'PRO_REQUIRED' }, { headers: corsHeaders });
+            // x-sentry-skip: НОРМАЛЬНЫЙ бизнес-«нет», а не сбой — это штатный вход
+            // в апселл (не-Pro жмёт Pro-тумблер, клиент открывает предложение).
+            // Пока отказ был 200, Sentry о нём не знал ВООБЩЕ; сделать его честным
+            // 402, не пометив, значит завести событие на каждый показ апселла, то
+            // есть зашумить мониторинг ровно по монетизационной дорожке. Тот же
+            // приём и по той же причине, что у `createStripeCheckout`
+            // (`TRIP_ALREADY_PRO`, 409). FORBIDDEN ниже НЕ помечен намеренно:
+            // «залогинен, но нельзя» — сигнал, что интерфейс предложил действие
+            // тому, кому оно недоступно; `_shared/http.ts` называет 403 отчётным.
+            return jsonError(402, 'Pro required', 'PRO_REQUIRED', { ...corsHeaders, 'x-sentry-skip': '1' });
           }
         }
         // Shallow-merge so a partial addons body never wipes unrelated flags

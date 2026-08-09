@@ -61,6 +61,26 @@ const SHOW_HOTEL_VOTING = false;
 // inline-style-exempt: цвет бренда - данные из реестра, не оформление.
 const TG_TILE = { background: tgBrand.bg, color: tgBrand.fg };
 
+// ─── Отказы edge-функций ──────────────────────────────────────────────────────
+// `updateTripSettings` и `deleteTrip` отвечают на отказ НАСТОЯЩИМ статусом
+// (403 / 402 / 404; сбой - 500) и машинным `code` (TRIP-378). Следствие для
+// КЛИЕНТА, а не для сервера: у не-2xx `data` равен null, поэтому ветка по
+// `data.code` молча перестаёт совпадать, а `error.message` - это строка SDK
+// "Edge Function returned a non-2xx status code", то есть сырой английский текст
+// в тосте. Читать надо `code`/`message` от `invokeFn`: он уже снял их с тела ОДИН
+// раз (тело Response читается единожды). Форма - как у `AI_ERROR_KEY` в
+// ChatStream: код → ключ копии.
+//
+// Клауза, а не предложение: подставляется в `settings.save_error*` ("Не удалось
+// сохранить: {message}"). Незнакомый код (500, сеть, платформенный отказ) - это
+// «попробуй ещё раз», и НИКОГДА не текст ошибки с сервера.
+const REFUSAL_CLAUSE = {
+  FORBIDDEN: 'settings.err_forbidden',
+  NOT_FOUND: 'settings.err_trip_gone',
+};
+// У удаления своя клауза отказа: «нет прав менять настройки» про удаление врёт.
+const DELETE_REFUSAL_CLAUSE = { ...REFUSAL_CLAUSE, FORBIDDEN: 'settings.err_delete_forbidden' };
+
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
 // with every optional/pro feature off - they never auto-enable for anyone.
 function featuresFromTrip(trip) {
@@ -506,6 +526,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     coverGradient   !== (trip?.cover_gradient || '') ||
     currency        !== persistedCurrency;
 
+  // ЕДИНСТВЕННОЕ место, где отказ edge-функции превращается в текст: обёртка
+  // (`save_error` "Не удалось сохранить: …" / `save_error2` "Ошибка: …") плюс
+  // клауза причины по `code`. Одна точка - потому что инвариант тут ровно один:
+  // серверный текст пользователю не показывается НИКОГДА (см. REFUSAL_CLAUSE).
+  /** @param {string|null} code @param {string} [wrapKey] @param {Record<string,string>} [clauses] */
+  const refusalToast = (code, wrapKey = 'settings.save_error', clauses = REFUSAL_CLAUSE) =>
+    toast({
+      description: t(wrapKey, { message: t((code && clauses[code]) || 'settings.err_temporary') }),
+      variant: 'destructive',
+    });
+
   // Trip-level display toggle. Persisted under details.display via the edge
   // function (trips RLS is owner-only). Architecture note: `display` is an
   // extensible bag - adding another visibility flag later is just another key.
@@ -513,11 +544,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !bookingWarnings;
     setBusyToggle('booking_warnings');
-    const { data, error } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, display: { booking_warnings: next } },
     });
     if (error || !data?.ok) {
-      toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
+      refusalToast(code);
     } else {
       setBookingWarnings(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -534,11 +565,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !chatWidget;
     setBusyToggle('chat_widget');
-    const { data, error } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, display: { chat_widget: next } },
     });
     if (error || !data?.ok) {
-      toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
+      refusalToast(code);
     } else {
       setChatWidget(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -565,7 +596,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
-    const { data, error } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, fields, main_currency: currency },
     });
     // Main currency changed → existing FX overrides were defined against the OLD
@@ -584,7 +615,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       }
     }
     setSaving(false);
-    if (error || !data?.ok) { toast({ description: t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' }); return; }
+    if (error || !data?.ok) { refusalToast(code, 'settings.save_error2'); return; }
     // Cover replaced/cleared → the previously persisted object is now orphaned.
     // Delete it best-effort, comparing object KEYS (signed-URL tokens differ but
     // the key is stable) so we never delete the key the new cover still uses (TRIP-117).
@@ -633,14 +664,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
-    const { data, error } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, addons: nextAddons },
     });
     if (error || !data?.ok) {
-      if (data?.code === 'PRO_REQUIRED') {
+      // Единственная ветка, ЗАВИСЯЩАЯ от кода: Pro-отказ открывает апселл, а не
+      // тост. Читается `code` от invokeFn, не `data.code` - 402 оставляет `data`
+      // пустым, и прежняя ветка перестала бы совпадать МОЛЧА (см. REFUSAL_CLAUSE).
+      if (code === 'PRO_REQUIRED') {
         openProUpsell({ mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
       } else {
-        toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
+        refusalToast(code);
       }
       setBusyToggle(null);
       return;
@@ -689,12 +723,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // button carries the spinner while deleteTrip (Telegram teardown + Storage
     // purge + DELETE) runs.
     const runDelete = async () => {
-      const { data, error, message } = await invokeFn('deleteTrip', { body: { tripId } });
+      const { data, error, code } = await invokeFn('deleteTrip', { body: { tripId } });
       if (error || !data?.ok) {
-        // invokeFn already parsed the body (read error.context once); use its
-        // message rather than re-reading the already-consumed Response.
-        const msg = message || '';
-        toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
+        // Своя карта клауз: у удаления «нельзя» значит «ты не владелец». Раньше
+        // сюда уходил серверный `message` - сырое английское 'Not found' /
+        // 'Forbidden', а с 500 - ещё и текст ошибки БД.
+        refusalToast(code, 'settings.save_error2', DELETE_REFUSAL_CLAUSE);
         return;
       }
       // Deleting an owned trip lowers the active-trip count — drop the gate cache

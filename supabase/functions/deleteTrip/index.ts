@@ -25,8 +25,9 @@
  * DB-path collector was pure overlap and was removed — TRIP-13.)
  */
 
-import { withHandler } from '../_shared/http.ts';
+import { withHandler, jsonError } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { isNotFound } from '../_shared/classifyDbError.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
 const BUCKET = 'trips';
@@ -62,8 +63,19 @@ Deno.serve(withHandler('deleteTrip', async (req, corsHeaders) => {
     // Step 1 — ownership: OWNER ONLY. There is no RLS behind it; this is the gate.
     const { data: trip, error: tripErr } = await supabaseAdmin
       .from('trips').select('id, created_by').eq('id', tripId).single();
-    if (tripErr || !trip) return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
-    if (trip.created_by !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    // A FAILED lookup is not "there is no such trip". `.single()` reports zero rows
+    // as an ERROR too, so the previous `tripErr || !trip → 404` answered "не найдено"
+    // to a timeout / deadlock / connection blip: the owner saw a dead end (a 404 is
+    // not retryable) and Sentry recorded a 404 for what was our outage. Split on the
+    // shared taxonomy — `isNotFound` is the same predicate `tripAccess` uses, so the
+    // two gates can never drift: genuine absence OR an unusable id → 404, anything
+    // else → rethrow. Rethrow rather than a hand-rolled 500 for the same reason
+    // `getTripDetails` does: `withHandler`'s catch renders the identical
+    // `{ error, code: 'INTERNAL' }` 500, logs it, and hands Sentry the REAL
+    // Postgrest error (code/details/hint) instead of a synthetic "responded 500".
+    if (tripErr && !isNotFound(tripErr)) throw tripErr;
+    if (!trip) return jsonError(404, 'Not found', 'NOT_FOUND', corsHeaders);
+    if (trip.created_by !== user.id) return jsonError(403, 'Forbidden', 'FORBIDDEN', corsHeaders);
 
     // Step 2 — Telegram teardown (critical). Routed through the single teardown
     // source so trip-delete never drifts from manual disconnect / Pro-rollback /
