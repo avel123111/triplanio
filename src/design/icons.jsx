@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Plus, TriangleAlert, X, ChevronRight, ArrowLeft, MapPin, FileText, Check, Info,
+  Plus, TriangleAlert, X, ChevronRight, ChevronLeft, ArrowLeft, MapPin, FileText, Check, Info,
   Sparkles, Lock, Camera, Wallet, Trash2, ExternalLink, Calendar, BedDouble, Users,
   Pencil, ArrowRight, Sparkle, Ellipsis, Map, Link, Flag, MessageCircle, Bell, User,
   Share2, Send, Search, Plane, Paperclip, Moon, List, LayoutGrid, Globe,
@@ -105,7 +105,11 @@ const LUCIDE = {
   paperclip: Paperclip, moon: Moon, list: List, grid: LayoutGrid, globe: Globe,
   drag: GripVertical, crown: Crown, arrowSwap: ArrowRightLeft, arrowRight: ArrowRight,
   upload: Upload, train: TrainFront, sun: Sun, shield: Shield, refresh: RefreshCw,
-  chevron: ChevronRight, chevU: ChevronUp, chevD: ChevronDown, arrow: ArrowRight,
+  // `chevL` заведён в TRIP-344 PR 2 (апрув Pavel). Реестр знал шеврон ВПРАВО,
+  // ВВЕРХ и ВНИЗ, а влево — нет, и навигация календаря из-за этой дыры уехала бы
+  // на СТРЕЛКУ, то есть на другой глиф. Тот же lucide, ноль визуальных
+  // изменений, реестр становится симметричным.
+  chevron: ChevronRight, chevL: ChevronLeft, chevU: ChevronUp, chevD: ChevronDown, arrow: ArrowRight,
   menu: Menu,
   // имена из лендинга (фичи/списки)
   gift: Gift, devices: MonitorSmartphone, timeline: Waypoints, compass: Compass,
