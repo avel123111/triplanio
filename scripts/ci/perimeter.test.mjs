@@ -46,16 +46,33 @@ test('★ обычный экран периметра НЕ исключён —
   ]) assert.equal(inScope(f), true, f);
 });
 
-test('★ исключение привязано к границе сегмента пути, а не к подстроке', () => {
-  // Однокоренное имя - НЕ экран входа. Ошибка в эту сторону не краснеет нигде:
-  // файл просто исчезает из знаменателя, а доля «собрано из ДС» РАСТЁТ, то есть
-  // молчаливый пропуск читается как прогресс.
+test('★ ЛЕВАЯ граница: однокоренное имя в начале сегмента — НЕ экран входа', () => {
+  // Ошибка в эту сторону не краснеет нигде: файл исчезает из знаменателя, а доля
+  // «собрано из ДС» РАСТЁТ, то есть молчаливый пропуск читается как прогресс.
   assert.equal(inScope('src/components/MyLoginBanner.jsx'), true);
   assert.equal(inScope('src/components/TripLanding.jsx'), true);
   assert.equal(inScope('src/components/PaymentTerms.jsx'), true);
   // А тот же файл сегментом пути - исключён.
   assert.equal(inScope('src/pages/Login.jsx'), false);
   assert.equal(inScope('Login.jsx'), false, 'якорь ^ обязан работать без каталога');
+});
+
+test('★ ПРАВАЯ граница у КОНКРЕТНОГО файла: хвост сегмента не исключается (ревью Codex)', () => {
+  // `Login.jsx`/`login.css` названы ЦЕЛИКОМ, значит сегмент обязан кончиться
+  // вместе с ними. Без этого `Login.jsx.test.js` и каталог `Login.jsx/...`
+  // уезжали из наблюдения молча — та же несимметричная цена, что у левой
+  // границы, только с другого конца.
+  assert.equal(inScope('src/pages/Login.jsx.test.js'), true);
+  assert.equal(inScope('src/pages/Login.jsx/snapshot.js'), true);
+  assert.equal(inScope('src/pages/login.css.map'), true);
+});
+
+test('★ у ПРЕФИКСНЫХ записей правой границы НЕТ — иначе они перестанут ловить свой файл', () => {
+  // `Landing`/`PublicTrip`/`Terms` — префиксы имени, а не файлы: хвост им нужен.
+  assert.equal(inScope('src/pages/LandingPage.jsx'), false);
+  assert.equal(inScope('src/pages/PublicTrip.jsx'), false);
+  assert.equal(inScope('src/pages/PublicTrip.css'), false);
+  assert.equal(inScope('src/pages/TermsOfService.jsx'), false);
 });
 
 test('предикат — регулярка без флага g (иначе lastIndex делает ответ зависимым от порядка вызовов)', () => {
