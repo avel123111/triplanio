@@ -107,12 +107,15 @@
    покоя молча съело бы состояние из дизайн-системы.
    cursor не объявляем: `button { cursor: pointer }` стоит глобально. */
 .bgt-exrow__acts .icon-btn { color: var(--muted-2); transition: background .14s, color .14s; }
-.bgt-exrow__acts .icon-btn:hover { color: var(--ink); }
-/* Опасное действие - деталь ЭТОГО экрана, а не модификатор дизайн-системы:
-   имя вида .icon-btn--danger читалось бы как общий модификатор, но работает
-   только внутри .bgt-exrow__acts - следующий экран навесил бы его и получил
-   тишину. Поэтому имя в префиксе экрана. */
-.bgt-exrow__acts .bgt-exrow__del:hover { background: var(--danger-soft); color: var(--danger); }
+/* ★TRIP-344: `:not(.icon-btn--danger)` — не украшение, а единственный способ не
+   съесть канон. Прежнее рассуждение («опасное действие — деталь ЭТОГО экрана, в
+   системе такого модификатора нет») перестало быть верным: тон `danger` теперь
+   канон, и своё имя `.bgt-exrow__del` умерло. Но правило ниже весит (0,2,0) —
+   столько же, сколько `.icon-btn--danger:hover`, — а этот файл лежит НИЖЕ
+   `app.css` по бандлу, поэтому при равном весе выигрывал бы он и красный ховер
+   молча стал бы серым. То есть уточнение ПОКОЯ съело бы СОСТОЯНИЕ из системы —
+   ровно та ловушка, про которую написан комментарий выше. */
+.bgt-exrow__acts .icon-btn:not(.icon-btn--danger):hover { color: var(--ink); }
 
 @media (hover: hover) {
   .bgt-exrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }

@@ -38,6 +38,12 @@ import { FieldRequired } from './Input';
 // `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
 // (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
 export { Row, Col, Grid, Trunc, Grow } from './Layout';
+// Кнопка-иконка — своим модулем по той же причине: крестик тоста живёт в
+// `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
+// оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
+// (TRIP-344). Экраны зовут её отсюда — точка входа в ДС одна.
+export { IconBtn } from './IconBtn';
+import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
@@ -242,63 +248,6 @@ export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loadi
     {loading ? <span className="spin" /> : (icon && <Icon name={icon} size={16} />)}
     {children}
     {iconRight && !loading && <Icon name={iconRight} size={16} />}
-  </button>
-);
-
-// ----- IconBtn ----- (TRIP-344 PR 2, разбор облика кнопок — апрув Pavel)
-// Кнопка БЕЗ подписи: содержимое — одна иконка. Схлопывает частные реализации
-// одного объекта, рисовавшие его своими сторонами (24·26·28·30·34·38) и своими
-// ховерами.
-//
-// ★ Нового имени НЕТ: `.icon-btn` уже канон-семья, и разбор облика называет
-// каноном именно её. Меняется не имя, а то, что у неё появляются ОБЪЯВЛЕННЫЕ
-// обличья, а частные копии умирают.
-//
-// ★ ТРИ ОСИ, А НЕ ОДИН ПЛОСКИЙ СПИСОК. Разбор перечисляет варианты строкой
-// (`quiet · soft · outline · solid · ai · danger · sm · round · fab`), но это
-// значения ТРЁХ независимых осей, а не один набор: `.lp-back` — это soft И
-// round одновременно, `.mapfs-close` — outline И round. Плоский юнион сделал бы
-// такую пару невыразимой, и её пришлось бы дописывать классом мимо пропа —
-// ровно то, что этот PR убирает. Набор классов на выходе тот же, что в разборе.
-//
-// `children` — для метки `.dot` (непрочитанные у колокольчика): она лежит
-// ВНУТРИ кнопки и позиционируется от неё, поэтому это ребёнок, а не проп.
-/**
- * @param {{
- *   icon: string,
- *   ariaLabel: string,
- *   tone?: 'quiet'|'soft'|'outline'|'solid'|'ai'|'danger',
- *   size?: 'md'|'sm'|'fab',
- *   round?: boolean,
- *   onClick?: any, disabled?: boolean, title?: string,
- *   ariaPressed?: boolean, ariaExpanded?: boolean,
- *   className?: string, children?: any, style?: any
- * }} p
- */
-export const IconBtn = ({
-  icon, ariaLabel, tone = "quiet", size = "md", round,
-  onClick, disabled, title, ariaPressed, ariaExpanded,
-  className = "", children, style,
-}) => (
-  <button
-    type="button"
-    className={[
-      "icon-btn",
-      tone !== "quiet" && `icon-btn--${tone}`,
-      size !== "md" && `icon-btn--${size}`,
-      round && "icon-btn--round",
-      className,
-    ].filter(Boolean).join(" ")}
-    onClick={onClick}
-    disabled={disabled || undefined}
-    aria-label={ariaLabel}
-    aria-pressed={ariaPressed}
-    aria-expanded={ariaExpanded}
-    title={title}
-    style={style}
-  >
-    <Icon name={icon} size={size === "fab" ? 24 : size === "sm" ? 14 : 16} />
-    {children}
   </button>
 );
 

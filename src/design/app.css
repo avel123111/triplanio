@@ -436,8 +436,12 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .eed-fcbox, .eed-nightrow, .docfield, .choice-card,
 .plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
+/* ★TRIP-344: `.map-ctl button` и `.mapfs-close` ушли отсюда - фон и рамку им
+   даёт тон `outline` примитива. Оставить их тут было бы не просто дублем: у
+   `.map-ctl button` специфичность (0,1,1) против (0,1,0) у `.icon-btn--outline`,
+   то есть ко-селектор МОЛЧА перебивал бы рамку тона своей. */
 .cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
-.pro-up .lockmsg, .map-ctl button, .map-legend .c, .mapfs-close,
+.pro-up .lockmsg, .map-legend .c,
 .chat-bubble--them {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1182,17 +1186,51 @@ h4,
   color: var(--muted);
 }
 .icon-btn:hover { background: var(--wash); color: var(--ink); }
+/* Метка непрочитанных. ★TRIP-344: правило было ОСИРОТЕВШИМ — `.dot` внутри
+   `.icon-btn` не стоял нигде, потому что колокольчик рисовал метку инлайном, и
+   оба правила (это и `.app-header`-переопределение ниже) молча описывали то,
+   чего на экране не существовало. Значения взяты С ЖИВОГО инлайна, а не с
+   мёртвого правила: на экране сегодня 11px и `--danger`, а не 7px и `--warm`,
+   и менять вид под текст мёртвого правила значило бы «починить» то, что никто
+   не видел. Поэтому же ушло и `.app-header .icon-btn .dot` — оно перекрашивало
+   метку в `--danger`, который теперь и есть база.
+
+
+
+
+
+
+
 .icon-btn .dot {
-  position: absolute; top: 6px; right: 7px;
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--warm); border: 2px solid var(--surface);
+  position: absolute; top: 4px; right: 4px;
+  width: 11px; height: 11px; border-radius: var(--r-pill);
+  background: var(--danger); border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent);
 }
 /* Header override — keep the 38px round shape; colours fall back to the neutral
-   .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient. */
+   .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient.
+   ★TRIP-344: исключение ОСТАЛОСЬ (38px круг — апрув Pavel: диаметр совпадает с
+   аватаром рядом, ступень 40 с ним разъехалась бы), но выражено РУЧКАМИ
+   примитива, а не литералами поверх него. Рендер тот же; меняется, кто
+   выигрывает объявление. Литералы весили (0,2,0) против (0,1,0) у базы и
+   побеждали ключ `.icon-btn` ЦЕЛИКОМ — то есть геометрия примитива была не
+   видна ни здесь, ни гарду 2p, у которого в карте каскада один победитель на
+   ключ: стороной `.icon-btn` числились ЭТИ 38px. Следствие не косметическое —
+   ЛЮБОЙ перенос приватного класса на примитив печатался как «перенос СО СМЕНОЙ
+   значения» (32px → 38px, `--r-sm` → 50%), и подтвердить переезд было нечем,
+   кроме полусотни непроверяемых исключений. `--tile`/`--tile-r` — те самые
+   ручки, которые база уже читает (`var(--tile, var(--ctl-h))`), поэтому
+   исключение стало СТУПЕНЬЮ, а не перебивкой.
+   ⚠️ Комментарий выше по файлу говорит, что ручка тут бесполезна: это верно для
+   ПРЕДКА (`.app-header`), где литерал на потомке её перебьёт, и неверно для
+   самого потомка — что и используется.
+   Рамке ручки нет, поэтому красится `border-color`: базовое
+   `border: 1px solid transparent` остаётся победителем своего ключа. */
 .app-header .icon-btn {
-  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
+  --tile: 38px; --tile-r: 50%; border-color: var(--line);
 }
-.app-header .icon-btn .dot { background: var(--danger); border: 1.5px solid var(--surface); }
+/* `.app-header .icon-btn .dot` удалено вместе с осиротевшим базовым правилом:
+   оно перекрашивало метку в `--danger`, а `--danger` теперь и есть база. */
 
 /* Account button + avatar ring + PRO badge */
 .app-header__account { display: flex; align-items: center; gap: 7px; background: transparent; border: 0; cursor: pointer; padding: 0 2px; }
@@ -2551,13 +2589,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__lbl { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mbnav__avatar { width: 24px !important; height: 24px !important; }
   .mbnav__center { display: grid; place-items: center; height: 100%; }
+  /* ★TRIP-344: сторона, круг, градиент и тройная тень уехали в
+     `IconBtn size="fab"` - оттуда их теперь берёт и плавающая кнопка чата,
+     которая до разбора была плоской. Здесь остаётся ровно то, что примитиву
+     знать неоткуда: подъём над баром и гашение тап-подсветки.
+     `transform` держится в ОБОИХ правилах намеренно: `:active` перезаписывает
+     свойство целиком, и без повтора подъёма нажатие роняло бы кнопку на бар.
+     visual-diff-move: .mbnav__fab -> icon-btn icon-btn--fab */
   .mbnav__fab {
-    position: relative; transform: translateY(-15px); width: 56px; height: 56px; border-radius: 50%;
-    border: 0; cursor: pointer; display: grid; place-items: center; color: #fff; -webkit-tap-highlight-color: transparent;
-    /* last stop was var(--brand-press, var(--brand)) — --brand-press has never
-       existed, so it always rendered as --brand; spelled out, same pixels. */
-    background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--brand) 82%, #fff) 0%, var(--brand) 46%, var(--brand) 100%);
-    box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--brand) 72%, transparent), 0 4px 10px -2px rgba(15,23,42,.3), inset 0 1px 0 rgba(255,255,255,.4);
+    transform: translateY(-15px); -webkit-tap-highlight-color: transparent;
     transition: transform .16s var(--ease-spring), box-shadow .2s;
   }
   .mbnav__fab:active { transform: translateY(-15px) scale(.9); }
@@ -3401,14 +3441,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ONE send button for both shells. The lens used to draw a wide .btn--primary
    with a label while the widget drew this square on --ai-gradient: the same
    action, two looks, and the gradient claimed sending was an AI act. */
-.chat-send { height: var(--ctl-h); width: var(--ctl-h); flex: none; border: 0; border-radius: var(--r-sm); background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px -9px var(--brand); transition: transform .16s var(--ease-spring), filter .2s; }
+/* ★TRIP-344: сторона, радиус, рамка, заливка и центрирование уехали в
+   `IconBtn tone="solid"`. Здесь остаётся ДЕЛЬТА отправки - подъём тенью и
+   отклик нажатия, которых у канона нет. Цвет иконки уехал на `--primary-fg`
+   (#fff / #08182B) вместе с тоном, поэтому рукописная тёмная строка
+   `[data-theme=dark] .chat-send { color:#0c1424 }` удалена: она была третьим
+   литералом того же смысла.
+   visual-diff-move: .chat-send -> icon-btn icon-btn--solid */
+.chat-send { box-shadow: 0 6px 16px -9px var(--brand); transition: transform .16s var(--ease-spring), filter .2s; }
 .chat-send:hover { filter: brightness(1.06); }
 .chat-send:active { transform: scale(.94); }
-.chat-send:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-[data-theme="dark"] .chat-send { color: #0c1424; }
-/* Call the assistant without knowing the "@" convention. */
-.chat-at { height: var(--ctl-h); width: var(--ctl-h); flex: none; border: 0; border-radius: var(--r-sm); background: var(--ai-soft); color: var(--ai-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .18s var(--ease-out); }
-.chat-at:hover { background: var(--ai-soft-2); }
+/* `cursor: not-allowed` тут больше нет: канон гасит `pointer-events` у
+   `[disabled]`, и курсор был бы объявлением, которое никогда не наблюдается. */
+.chat-send:disabled { box-shadow: none; }
+/* Call the assistant without knowing the "@" convention.
+   ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта
+   кнопка - единственная, которая несёт тот же тинт В ПОКОЕ, поэтому заливка
+   покоя и вторая ступень ховера остаются её собственной дельтой, а ink и
+   геометрия приходят из тона. Прятать различие в общий тон было бы хуже: тогда
+   у крестика AI-блока молча появилась бы фиолетовая заливка в покое.
+   visual-diff-move: .chat-at -> icon-btn icon-btn--ai */
+.chat-at { background: var(--ai-soft); color: var(--ai-ink); transition: background .18s var(--ease-out); }
+.chat-at:hover { background: var(--ai-soft-2); color: var(--ai-ink); }
 /* раскладка уехала: chat-composer__hint -> row */
 .chat-composer__hint { color: var(--muted-2); padding: 0 4px; }
 .chat-composer__hint kbd { font-family: var(--font-mono); font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }
@@ -3457,18 +3511,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Floating chat widget (ChatWidget) — Lumo
    ────────────────────────────────────────────────────────────────────────── */
 /* Brand, not the AI gradient: the widget is the trip chat, and the gradient
-   claimed the whole conversation was an AI surface. */
+   claimed the whole conversation was an AI surface.
+   ★TRIP-344: краску (сторона, круг, заливка, тень, цвет иконки) держит
+   `IconBtn size="fab"`. Здесь остаётся ТОЛЬКО то, что примитиву знать неоткуда:
+   куда кнопка прибита и как она движется. До разбора это была вторая плавающая
+   кнопка приложения с ПЛОСКОЙ заливкой и `--sh-3`, тогда как мобильный FAB нёс
+   радиальный градиент и тройную тень - один объект в двух видах.
+   `[data-theme=dark] .dock { color:#0c1424 }` уходит вместе с заливкой: у FAB
+   иконка белая в обеих темах, потому что подложка у него своя, а не `--brand`.
+   visual-diff-move: .dock -> icon-btn icon-btn--fab */
 .dock {
   position: fixed; right: 24px; bottom: max(24px, env(safe-area-inset-bottom));
-  width: 56px; height: 56px; border-radius: 50%;
-  background: var(--brand); color: #fff; display: grid; place-items: center;
-  box-shadow: var(--sh-3);
-  border: none; cursor: pointer; z-index: var(--z-dock);
+  cursor: pointer; z-index: var(--z-dock);
   transition: transform .16s var(--ease-spring), box-shadow .2s;
 }
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
-[data-theme="dark"] .dock { color: #0c1424; }
 .dock__count {
  position: absolute; top: -4px; right: -4px;
  background: var(--warm); color: #fff;
@@ -3490,7 +3548,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @keyframes dockUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 /* ONE header row — the former tab strip held a single always-active tab. */
 .dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line); }
-.dock-panel__head .icon-btn { width: 32px; height: 32px; }   /* только размер; радиус общий, из ко-селектора `.tile, .icon-btn` */
+/* Контекстной перебивки стороны здесь больше НЕТ: 32px - это ровно ступень
+   `--ctl-h-sm`, поэтому кнопки шапки дока просто просят `size="sm"` у примитива
+   (TRIP-344). Правило-перебивка было бы третьим способом сказать «32», и именно
+   такие правила бьют модификатор `--sm` по специфичности (0,2,0 против 0,1,0),
+   то есть делают ступень необъявляемой из разметки. */
 .dock-panel__head .avatar { width: 26px; height: 26px; }
 .dock-panel__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .dock-panel__id b { color: var(--ink); }
@@ -3514,7 +3576,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ступень теперь общая, у дока остаются свои отступы и отсутствие тени. */
 .dock-panel .chat-composer { border-top: 0; padding: 0; }
 .dock-panel .chat-composer__row { padding: 6px; box-shadow: none; }
-.dock-panel .chat-at, .dock-panel .chat-send { width: 34px; height: 34px; border-radius: var(--r-sm); }
+/* 34px здесь были ТРЕТЬИМ числом стороны мимо обеих ступеней. Уплотнение в доке
+   выражается ступенью `--sm` (32px), а не своим литералом: иначе размер кнопки
+   в доке нельзя объявить из разметки - контекстное правило (0,2,0) молча бьёт
+   модификатор (0,1,0). Радиус общий, из ко-селектора `.tile, .icon-btn`. */
+.dock-panel .chat-at, .dock-panel .chat-send { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
 .dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -4693,9 +4759,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .toast__body { min-width: 0; flex: 1; }
 .toast__body b { display: block; color: var(--ink); }
 .toast__body span { display: block; color: var(--muted); }
-.toast .x { margin-left: auto; flex: none; display: grid; place-items: center; padding: 4px; background: transparent; border: 0; color: var(--muted-2); cursor: pointer; border-radius: var(--r-sm); transition: color .14s, background .14s; }
-.toast .x:hover { color: var(--ink-2); background: var(--surface-2); }
-.toast .x svg { width: 16px; height: 16px; }
+/* ★TRIP-344: геометрия ушла в `IconBtn size="sm"`. Сторону крестик задавал
+   ПАДДИНГОМ, а не шириной с высотой - единственная кнопка в проекте, у которой
+   размера как числа не существовало вовсе, поэтому в ступени он и не попадал.
+   За классом остаётся ОДНА вещь, которой примитив знать не может: он прижат к
+   правому краю тоста. Ховер и цвет покоя тоже канон, свои копии удалены.
+   visual-diff-move: .toast .x -> icon-btn icon-btn--sm */
+.toast .x { margin-left: auto; }
 .toast--success .tic { background: var(--success); }
 .toast--error   .tic { background: var(--danger); }
 .toast--warning .tic { background: var(--warning); }
@@ -4716,7 +4786,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .sheet-grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
 .sheet-h h3 { flex: 1; color: var(--ink); margin: 0; }
-.sheet-h .close { width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--surface-2); border: 0; color: var(--muted); cursor: pointer; display: grid; place-items: center; flex: none; }
+/* ★TRIP-344: правило умерло целиком - крестик листа рисует `IconBtn tone="soft"`.
+   Сторона 32px была тут литералом, а на телефоне контрол обязан расти вместе с
+   `--ctl-h` (44px): именно на этой поверхности тач-таргет 32px и не проходил
+   норму, а лист живёт ТОЛЬКО на телефоне.
+   visual-diff-move: .sheet-h .close -> icon-btn icon-btn--soft */
 .sheet-b { padding: 2px 12px 8px; overflow-y: auto; overscroll-behavior: contain; }
 /* big tap rows used for menu items inside a sheet */
 .sheet-row { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px 14px; border: 0; background: transparent; border-radius: var(--r-btn); font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; }
@@ -6130,12 +6204,16 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
 .map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: 6px; }
-/* TRIP-326: color-mix(transparent) + backdrop-filter сняты — непрозрачный --surface. */
-.map-ctl button { width: 34px; height: 34px; border-radius: var(--r-sm); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
-@media (hover: hover) { .map-ctl button:hover { background: var(--surface-2); box-shadow: var(--sh-1); } }
+/* TRIP-326: color-mix(transparent) + backdrop-filter сняты — непрозрачный --surface.
+   ★TRIP-344: облик кнопки уехал в `IconBtn tone="outline" size="sm"`. Правило по
+   ГОЛОМУ ТЕГУ (`.map-ctl button`) было тут единственным способом одеть кнопку -
+   своего класса у неё не существовало, поэтому из разметки про неё нельзя было
+   сказать ничего. Сторона 34px не совпадала ни с одной ступенью и стала 32.
+   Остаётся только состояние «включено»: заливку даёт общая подсветка ниже, а
+   рамку гасим - кнопка лежит на карте.
+   visual-diff-move: .map-ctl button -> icon-btn icon-btn--outline icon-btn--sm */
 .map-ctl button:active { transform: scale(.92); }
-.map-ctl button.on { border-color: transparent; }  /* заливка - общая подсветка ниже; рамка гасится (кнопка на карте) */
-.map-ctl svg { width: 17px; height: 17px; }
+.map-ctl button.on { border-color: transparent; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
 .map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
 .map-legend .d { width: 11px; height: 11px; border-radius: 4px; }
@@ -6153,8 +6231,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    reparent — the same map element just fills the viewport; consumer calls resize) */
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; }
 /* TRIP-326: glass снят. */
-.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
-.mapfs-close svg { width: 18px; height: 18px; }
+/* ★TRIP-344: круг, сторона и цвет уехали в `IconBtn tone="outline" round`.
+   Здесь остаётся только то, где кнопка лежит: примитиву это знать неоткуда, а
+   два правила ниже ещё и двигают её `top` в полноэкранном режиме.
+   Ховера у неё не было вовсе - теперь приходит с тоном.
+   visual-diff-move: .mapfs-close -> icon-btn icon-btn--outline icon-btn--round */
+.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; }
 /* Fullscreen sits above the app header (--z-overlay is above --z-header). On
    mobile, push the controls below the header band (54px) + notch so the close +
    mode buttons are never hidden under the top bar — robust regardless of any

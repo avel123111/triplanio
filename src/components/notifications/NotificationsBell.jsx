@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -6,7 +7,7 @@ import { useNotificationList, useUnreadNotificationCount, useNotificationActions
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Btn, EmptyState, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
+import { Btn, EmptyState, IconBtn, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
 
 // Render `text` but wrap occurrences of given values in styled <span>s.
 // Used to bold the inviter name and emphasize the trip name in invite rows.
@@ -46,7 +47,11 @@ export function notifMeta(type = '') {
   return { icon: 'bell', color: 'var(--brand)' };
 }
 
-export default function NotificationsBell({ triggerClassName }) {
+// ★TRIP-344: проп `triggerClassName` удалён. Его единственный вызыватель
+// передавал `"icon-btn"` — то есть РОВНО дефолт, — а сам класс теперь несёт
+// примитив. Проп, у которого одно значение и оно же дефолт, это не точка
+// расширения, а вторая дорога к одному результату.
+export default function NotificationsBell() {
   const t = useT();
   const { fmtRelative } = useI18nFormat();
   const { user } = useAuth();
@@ -65,25 +70,17 @@ export default function NotificationsBell({ triggerClassName }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={t('notif.title')}
-          className={`relative ${triggerClassName || 'icon-btn'}`}
-        >
-          <Icon name="bell" size={17} />
-          {unread > 0 && (
-            <span
-              aria-hidden
-              style={{
-                position: 'absolute', top: 4, right: 4,
-                width: 11, height: 11, borderRadius: 'var(--r-pill)',
-                background: 'var(--danger)',
-                border: '2px solid var(--surface)',
-                boxShadow: '0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent)',
-              }}
-            />
-          )}
-        </button>
+        {/* Метка непрочитанных — РЕБЁНОК кнопки: она позиционируется от неё, а
+            не от строки. Класс `.dot` не новый: правило `.icon-btn .dot` в
+            app.css существовало и было ОСИРОТЕВШИМ — ни один `.dot` в проекте
+            не лежал внутри `.icon-btn`, потому что здесь метка рисовалась
+            шестью инлайновыми объявлениями мимо него. Гард 2n такое не ловит:
+            `dot` — живой литерал на других экранах.
+            Класс `relative` тоже ушёл: правила у него нет НИГДЕ (наследство
+            Tailwind), а `position: relative` база `.icon-btn` объявляет сама. */}
+        <IconBtn icon="bell" ariaLabel={t('notif.title')}>
+          {unread > 0 && <span aria-hidden className="dot" />}
+        </IconBtn>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
@@ -145,7 +142,12 @@ function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTri
   });
 
   const time = fmtRelative(n.created_at);
+  // Форма приходит СТРОКОЙ ИЗ БД (`notifications.i18n_params`), и набор ключей
+  // зависит от типа уведомления — статически он не выводим, поэтому объявлен
+  // словарём, а не выдуманным союзом форм.
+  /** @param {Record<string, any>} params */
   const renderParams = (params = {}) => {
+    /** @type {Record<string, any>} */
     const resolved = { ...params };
     if (resolved.role_key) { resolved.role = t(resolved.role_key); delete resolved.role_key; }
     // Booking notifications carry `kind` as a code (hotel/transfer/service) — localize it.

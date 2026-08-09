@@ -46,6 +46,13 @@ const LINES = [
   ['clean', '<Input onFocus={() => {}} maxLength={5} icon="search" />'],
   ['clean', '<Textarea rows={3} placeholder="p" />'],
   ['clean', '<InputGroup role="group"><span>x</span></InputGroup>'],
+  // Остаток `IconBtn` уезжает на `<button>`, значит носитель и есть база. Строка
+  // проверяет ВТОРОЕ направление аннотации: мутация «снять аннотацию» краснеет и
+  // при СЛИШКОМ СТРОГОМ типе, поэтому «обязательное обязательно» ничего про
+  // строгость не доказывает - дефект живёт ровно здесь (урок TRIP-388).
+  // Пропы ниже не декоративны: их вешает Radix через `asChild` на триггер
+  // колокольчика и меню строки, и без них меню не открывается.
+  ['clean', '<IconBtn icon="more" ariaLabel="x" data-state="open" onPointerDown={() => {}} type="button" />'],
   // ── компоненты БЕЗ проброса: законный проп проходит ───────────────────────
   ['clean', '<Icon name="file" size={20} />'],
   ['clean', '<Btn variant="ghost" onClick={() => {}}>b</Btn>'],

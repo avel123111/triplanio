@@ -1,7 +1,7 @@
+// @ts-check
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Icon } from '@/design/icons';
-import { Avatar } from '@/design/index';
+import { Avatar, IconBtn } from '@/design/index';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { useT } from '@/lib/i18n/I18nContext';
 import { displayName } from '@/lib/displayName';
@@ -26,10 +26,18 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
   const nav = useNavigate();
   return (
     <div className="row row--g4">
-      <button className="icon-btn" title={t('nav.toggle_theme')} aria-label={t('nav.toggle_theme')} onClick={onToggleTheme} type="button">
-        <Icon name={isDark ? 'sun' : 'moon'} size={17} />
-      </button>
-      <NotificationsBell triggerClassName="icon-btn" />
+      {/* ★TRIP-344: сторону этим двум кнопкам задаёт НЕ ступень, а контекстное
+          правило `.app-header .icon-btn` (38px, круг) — намеренное локальное
+          исключение шапки, апрув Pavel: оно весит (0,2,0) и осознанно бьёт
+          `size`. Диаметр совпадает с аватаром рядом, и ступень 40 разъехалась
+          бы с ним. */}
+      <IconBtn
+        icon={isDark ? 'sun' : 'moon'}
+        title={t('nav.toggle_theme')}
+        ariaLabel={t('nav.toggle_theme')}
+        onClick={onToggleTheme}
+      />
+      <NotificationsBell />
       <button
         className="app-header__account"
         title={user?.email ? displayName(user.email, user.full_name) : t('nav.account')}
