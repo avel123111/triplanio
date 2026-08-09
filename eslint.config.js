@@ -52,6 +52,57 @@ const RAW_WRITE_ALLOWLIST = [
 ];
 
 export default [
+  // ── Correctness gate for ALL production JS/JSX ──────────────────────────
+  // The design-system gates below (font-scale, raw-write) belong only to
+  // components/ + pages/, so that block is scoped narrowly and even `ignores`
+  // src/lib and src/components/ui. But an UNDEFINED IDENTIFIER — a bare
+  // reference or a JSX component used-but-not-imported — is a runtime
+  // ReferenceError in ANY directory, and the narrow scope left src/App.jsx,
+  // src/design/** (where the design system itself lives), src/lib/**, and all
+  // of src/components/ui/** completely unchecked. That is how a migrated
+  // <IconBtn> shipped a crash on the event modal: it lints clean, typechecks
+  // clean without `// @ts-check`, builds clean (Vite doesn't resolve names),
+  // and fails only at runtime (TRIP-344 PR 2, caught by Sentry not the gate).
+  // This block carries ONLY the two correctness rules, repo-wide — no
+  // design-system gate leaks into the design system or the vendored ui/.
+  // Proven by linting an undefined <Missing/> under App.jsx, design/, lib/,
+  // and components/ui/: each fails here, all four passed before.
+  {
+    files: ["src/**/*.{js,mjs,cjs,jsx}"],
+    languageOptions: {
+      // browser only, exactly like the main block below — src is browser code
+      // (Vite uses import.meta.env, not process). Adding node globals here would
+      // loosen no-undef for components, masking a `process.env` that crashes in
+      // the browser — the very class this block exists to catch.
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    settings: { react: { version: "detect" } },
+    // react-hooks is registered but NOT enabled here: src/lib and
+    // src/components/ui were never linted before, so their existing
+    // `// eslint-disable react-hooks/exhaustive-deps` directives would now
+    // error as "rule not found" the moment this block starts linting them.
+    // Registering the plugin resolves the directive without turning the rule on.
+    plugins: { react: pluginReact, "react-hooks": pluginReactHooks },
+    rules: {
+      "no-undef": "error",
+      "react/jsx-no-undef": "error",
+    },
+  },
+  // The correctness block above is browser-only — right for app code (Vite),
+  // wrong for the src test files, which `package.json` runs with `node --test`
+  // and which legitimately use Node globals (`process`, `Buffer`, …). Without
+  // this a test calling `process.cwd()` fails `no-undef`. Placed after that
+  // block so its Node globals merge on top for test files ONLY; app code keeps
+  // browser-only, so a `process.env` shipped to the browser is still caught.
+  {
+    files: ["src/**/*.test.{js,mjs,cjs,jsx}"],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
   {
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
