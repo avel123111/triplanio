@@ -245,9 +245,11 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
 //   · в РАНТАЙМЕ остаётся `secondary` — файлов без прагмы в репозитории
 //     большинство, и там пропущенный проп обязан дать рабочую кнопку, а не
 //     `btn--undefined`. Значение выбрано не наугад: `secondary` — это ровно то,
-//     куда разбор увёл `ghost`, и его объявления побайтово совпадают с базовым
-//     `.btn`, то есть «кнопка без тона» и «кнопка secondary» — одна и та же
-//     кнопка.
+//     куда разбор увёл `ghost`, и его объявления В ПОКОЕ побайтово совпадают с
+//     базовым `.btn`, то есть до наведения «кнопка без тона» и «кнопка
+//     secondary» неотличимы. ⚠️ Ровно до наведения: `.btn--secondary:hover`
+//     добавляет брендовые рамку и текст плюс тень, у голого `.btn` их нет —
+//     поэтому «одна и та же кнопка» тут сказать нельзя.
 /** @param {{ variant: BtnVariant, icon?: string, iconRight?: string, block?: boolean, disabled?: boolean, loading?: boolean, children?: any, onClick?: any, className?: string, ariaLabel?: string, title?: string, ariaPressed?: boolean, style?: any }} p */
 export const Btn = ({ variant = "secondary", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button

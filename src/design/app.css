@@ -3367,9 +3367,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Тон приходит каналом `--a` с самой карточки (строка выше), а не зашит здесь:
    ровно это и значит «тон от контекста». */
 .chat-reply__more { margin-top: 10px; }
-.chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
+/* ⚠️ Отступ снизу ПЕРЕСЧИТАН, а не поправлен на глаз: кнопка прибита НИЗОМ, а
+   `btn--link` дал ей вертикальный паддинг и прозрачную рамку — бокс вырос с 17.5
+   до 27.5px и потянул текст ВВЕРХ, на градиент-фейд. Замер в браузере: центр
+   текста был в 22.8px от низа карточки; при прежних 13px стал 27.8, при 8px —
+   снова 22.8. То есть подпись осталась ровно там, где стояла. */
+.chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: var(--sp-4); margin: 0; z-index: 2; }
 /* Sits under the answer, aligned with it: 44px = the avatar gutter (32) plus the
-   row gap (12); -8px pulls the ghost buttons' own padding back to that edge. */
+   row gap (12); -8px pulls the buttons' own padding back to that edge. */
 /* раскладка уехала: chat-reply__acts -> row */
 .chat-reply__acts { margin-left: 36px; }
 /* Secondary actions sit under the answer — muted until hovered, so they never
@@ -3659,13 +3664,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   box-shadow: var(--sh-2);
 }
 .bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
-/* Title takes the slack and truncates so the action pill always fits on one line. */
+/* Title takes the slack and truncates so the action next to it fits on one line.
+   ⚠️ Держит это ТОЛЬКО усадка заголовка: он `.grow` (flex-basis 0), поэтому при
+   нехватке места ужимается он. Своего `flex: none` у кнопки больше нет — оно
+   ушло вместе с `.bell-dd__mark` (TRIP-344 PR 3). */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
 .bell-dd__foot { padding: 9px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
-/* Compact soft pill — single line, never wraps, reads as a clean secondary action. */
 /* `.bell-dd__mark` и `.bell-dd__more` удалены: обе кнопки поповера уехали на
-   текстовую кнопку системы (`<Btn variant="link">`, TRIP-344 PR 3). */
+   текстовую кнопку системы (`<Btn variant="link">`, TRIP-344 PR 3). Вместе с
+   `.bell-dd__mark` ушла и его подпись «Compact soft pill …» — она описывала
+   именно удалённое правило и над `.bell-dd__loading` читалась бы как ложь. */
 .bell-dd__loading { display: flex; justify-content: center; padding: 28px 0; color: var(--muted); }
 
 /* Per-type icon tile — colour passed in via inline `--ic` (the notifMeta accent) */
@@ -6375,8 +6384,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
 .s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
 /* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
-   рамка, тон, подчёркивание) уехал в `btn--link`; подчёркивание при этом
-   перестало быть постоянным и приходит на ховере. */
+   рамка, тон, подчёркивание И ТИПОГРАФИКА) уехал в `btn--link`; два следствия
+   названы, потому что видны глазом: подчёркивание перестало быть постоянным и
+   приходит на ховере, а кегль пришёл из канона `.t-ui` кнопки — класс стоял в
+   моно-ярусе `.t-meta` (JetBrains 11/700) и снят оттуда этим же PR. То же
+   касается соседней кнопки сортировки ниже. */
 .s22f-resetall { margin-left: auto; }
 
 /* Count + sort row — SHARED by BOTH fork lists (hotels + activities), so it lives
