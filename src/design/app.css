@@ -566,7 +566,7 @@ h2,
 .pcard__name,   /* TRIP-287: инспектор канонов — название карточки → t-subheading (h3 макета) */
 h3,
 .invite__tx h3,
-.stepper > button,
+.stepper button,
 .sheet-h h3,
 .head__av,
 .vp-h h3,
@@ -602,6 +602,7 @@ h3,
 .ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
+.te-step,
 /* `.sheet .ss-search .input` снят отсюда: это ПОЛЕ ПОИСКА, человек в него
    набирает, а канон-подзаголовок делал набранное Golos 700/13. Селектор весил
    (0,3,0) и перебивал канон самого поля - после переезда ввода на `.t-body`
@@ -667,7 +668,7 @@ h4,
 .addsheet__tx b,
 .eroute p,
 .invite__tx p,
-.stepper--block .ts-startctl__date,
+.stepper .ts-startctl__date,
 .ts-cal__title,
 .chat-mention__row b,
 .te-row__num,
@@ -2946,7 +2947,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
    .te-row__num / .te-cityname / .te-dts). The ONLY difference vs the editor is the
-   trailing action column (<Stepper> nights + <IconBtn> delete instead of
+   trailing action column (<Stepper> nights + .te-step--del delete instead of
    hotel/activity cells), so we keep .te-row's grid and just swap the column
    template, dropping the editor's 96px action columns.
    IMPORTANT: selector is `.te-row.te-row--plan` (specificity 0,2,0). The global
@@ -2964,6 +2965,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
 /* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
 .te-row.te-row--plan .te-row__pacts { justify-self: end; }
+/* Planner has no reliable row-hover (esp. touch) → the delete is ALWAYS visible
+   (the editor reveals it on hover for table density). */
+.te-row.te-row--plan .te-step { opacity: 1; }
+.te-row.te-row--plan .te-step--del { color: var(--muted); }
+.te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
 /* Mobile: drop the grip column (long-press the row still reorders). */
 @media (max-width: 640px) {
   .te-row.te-row--plan { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
@@ -3882,7 +3888,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* visual-diff-move: te-warnbadge -> row row--inline row--g1 */
     .te-warnbadge { color: var(--warning-ink); }
     /* A11y: keyboard-visible focus rings on editor controls. */
-    .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
+    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
     .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible {
       outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-sm);
     }
@@ -3890,6 +3896,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        their visual box (transparent centered hit-area). */
     .ts-step, .te-addmini, .te-grip { position: relative; }
     .ts-step::after, .te-addmini::after, .te-grip::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
+    .te-step { position: relative; }
+    .te-step::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
+    /* .te-step — round icon button of the planner/editor row: nights ± left on the
+       DS <Stepper>, so this now dresses only the row DELETE (.te-step--del). Kept
+       (a non-stepper icon button, an <IconBtn> candidate for a later task). */
+    .te-row:hover .te-step { opacity: 1; }
+    .te-step { width: 26px; height: 26px; border: 0; background: transparent; border-radius: 50%; color: var(--brand); cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .14s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
+    .te-step:hover { background: var(--surface); }
+    .te-step:active:not(:disabled) { transform: scale(0.9); }
+    .te-step:disabled { color: var(--muted-2); cursor: default; }
     .te-cell { flex-shrink: 0; }
     .te-cell--hotel { justify-self: center; min-width: 0; }
     .te-cell--act { justify-self: center; }
@@ -3964,8 +3980,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
       .te-seam { animation: none; }
-      .te-row, .te-seam__pill, .te-actchip, .te-hotelicon { transition-property: background, border-color, color, opacity, box-shadow; }
-      .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active { transform: none; }
+      .te-row, .te-step, .te-seam__pill, .te-actchip, .te-hotelicon { transition-property: background, border-color, color, opacity, box-shadow; }
+      .te-step:active, .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active { transform: none; }
     }
 
 /* =================================================================
@@ -4043,24 +4059,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .gt span { color: var(--muted-2); }
 
 /* ─── <Stepper>: ОБЛИЧЬЯ КОНТРОЛА «− N +» (TRIP-344 PR 5) ──────────────────────
-   Нового префикса тут НЕТ: `.stepper` уже канон-семья. Кнопки скоплены `>`, а не
-   descendant, чтобы кнопка-дата ВНУТРИ `.n` (вариант block) не считалась ±. Для
-   существующей разметки (± — прямые дети, центр — span) `>` эквивалентно, вид не
-   меняется. `pill` — дефолт (панель города). */
+   Нового префикса тут НЕТ: `.stepper` уже канон-семья. `pill` — дефолт (панель
+   города). Кнопки ± — `.stepper button`; центр — `.n` (число ЛИБО кнопка-дата в
+   block). Кнопка-дата (`.ts-startctl__date`) — тоже button, поэтому её геометрию
+   и цвет перебивает адресное правило `.stepper .ts-startctl__date` ниже. */
 .stepper { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
-.stepper > button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.stepper > button:hover:not(:disabled) { background: var(--surface); }
-.stepper > button:active:not(:disabled) { transform: scale(.9); }
-.stepper > button:disabled { color: var(--muted-2); cursor: default; }
+.stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
+.stepper button:hover:not(:disabled) { background: var(--surface); }
+.stepper button:active:not(:disabled) { transform: scale(.9); }
+.stepper button:disabled { color: var(--muted-2); cursor: default; }
 .stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
+/* Кнопка-дата в центре: своя геометрия и цвет (не ± кнопка). */
+.stepper .ts-startctl__date { width: auto; height: auto; align-self: auto; display: block; border-radius: var(--r-sm); color: var(--ink); }
 /* bare: без подложки, встроен в карточку-инпут (гости) — ховер кнопки на её фоне. */
 .stepper--bare { background: transparent; padding: 0; }
-.stepper--bare > button:hover:not(:disabled) { background: var(--surface-2); }
-.stepper--bare > button:active:not(:disabled) { transform: scale(.88); }
+.stepper--bare button:hover:not(:disabled) { background: var(--surface-2); }
+.stepper--bare button:active:not(:disabled) { transform: scale(.88); }
 /* block: во всю ширину ячейки под `--ctl-h`, встаёт в рост с полем рядом; центр
    несёт дату (шапка «Маршрут»). Кнопки квадратные и тянутся во всю высоту. */
 .stepper--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
-.stepper--block > button { width: 38px; height: auto; align-self: stretch; border-radius: var(--r-sm); }
+.stepper--block button { width: 38px; height: auto; align-self: stretch; border-radius: var(--r-sm); }
 .stepper--block .n { flex: 1; }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }

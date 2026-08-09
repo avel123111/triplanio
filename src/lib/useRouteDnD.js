@@ -113,10 +113,9 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   const armDrag = (e, nodeId) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     // ⚠️ Классы контролов, нажатие на которые НЕ должно арсенить перетаскивание
-    // строки. `.stepper` и `.icon-btn` — вместо снятых `.te-stepper`/`.te-step`
-    // (ночи уехали на <Stepper>, удаление на <IconBtn>); `.btn` — плейсхолдеры
-    // ячеек. Класса, по которому их узнавали, больше нет.
-    if (e.target?.closest?.('.stepper, .icon-btn, .btn, .te-actchip, .te-hotelicon, .te-addmini, a, input, select, textarea')) return;
+    // строки. `.stepper` — ночи уехали на <Stepper> (был `.te-stepper`); `.te-step`
+    // остаётся кнопкой удаления; `.btn` — плейсхолдеры ячеек.
+    if (e.target?.closest?.('.stepper, .te-step, .btn, .te-actchip, .te-hotelicon, .te-addmini, a, input, select, textarea')) return;
     const rowEl = rowElRefs.current.get(nodeId);
     if (!rowEl) return;
     const cx = e.clientX, cy = e.clientY;

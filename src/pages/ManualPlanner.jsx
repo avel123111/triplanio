@@ -17,7 +17,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, EmptyState, IconBtn, Severity, Toggle, useToast } from '../design/index';
+import { Btn, EmptyState, Severity, Toggle, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -198,7 +198,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
           plusDisabled={nights >= 30}
         />
       )}
-      <IconBtn icon="trash" tone="danger" size="sm" round onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} ariaLabel={t('common.delete')} />
+      <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
     </CityRowBase>
   );
 
