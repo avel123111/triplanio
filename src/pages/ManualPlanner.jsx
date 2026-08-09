@@ -1027,7 +1027,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             },
           },
         });
-        if (coverErr) console.error('Failed to set cover:', coverErr);
+        // Обложка не критична: трип уже создан, а обложку можно поменять в
+        // настройках, - поэтому отказ НЕ роняет создание. Но и молчать нельзя:
+        // раньше отказ уходил только в консоль, и человек оставался с трипом без
+        // выбранной им обложки, не зная, что её не сохранили. Ветка `!data?.ok`
+        // тут не нужна: после TRIP-378 отказ - настоящий не-2xx, то есть `coverErr`.
+        if (coverErr) {
+          console.error('Failed to set cover:', coverErr);
+          toast({ description: t('planner.err_cover_not_saved'), variant: 'warning' });
+        }
       }
 
       // 2. Build city_visits list with full data
