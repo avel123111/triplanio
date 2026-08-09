@@ -1771,6 +1771,103 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .checkbox input:disabled,
 .checkbox input:disabled ~ span { opacity: .5; cursor: not-allowed; }
 
+/* Переключатель <Toggle> (TRIP-344 PR 1).
+   prefix-exempt: switch — апрув Pavel, компонент ДС жил целиком на инлайнах и был
+   невидим каталогу и гардам 2m/2n/2o. Имя не выдумано: `.switch` уже назван
+   словарём самой системы строкой «(.card/.btn/.badge/.input/.switch/.sev via
+   <Btn>/<Badge>/<Toggle>/<Severity>)» в шапке экрана аккаунта — правило под это
+   имя просто никогда не было написано.
+
+   Состояние читается из АТРИБУТОВ, а не из классов-модификаторов: `aria-checked`
+   и `disabled` уже несут его в DOM (это контракт role="switch"), поэтому вводить
+   `.switch--on` значило бы объявить то же самое второй раз и добавить обличье,
+   которое пришлось бы держать на витрине. Ровно поэтому у семьи НЕТ осей в
+   catalog.json - объявлять нечего.
+
+   ⚠️ Порядок правил несущий: у выключенного-по-праву переключателя фон СЕРЫЙ
+   независимо от `on` (в инлайнах это была тернарная лесенка, где `locked`
+   проверялся первым). Специфичность у обеих строк одинаковая (0,2,0), поэтому
+   решает исходный порядок - `[data-locked]` обязан стоять НИЖЕ `[aria-checked]`.
+
+   ★ ЦЕНА ПО ГАРДАМ, И ОНА ВСЯ — «НЕВИДИМОЕ СТАЛО СЧИТАЕМЫМ», А НЕ НОВЫЙ ДОЛГ.
+   Те же объявления жили инлайнами и не попадали ни в одно число (инлайнов стало
+   686 → 681 ровно на эти пять атрибутов). Переезд в CSS делает их видимыми сразу
+   четырём метрикам пола:
+   floor-exempt: classes +3 — .skeleton · .switch · .switch__knob: три компонента ДС жили без единого класса и были невидимы каталогу и гардам 2m/2n/2o; апрув Pavel (TRIP-344 PR 1)
+   floor-exempt: namespaces +1 — семья switch владеет одним потомком (.switch__knob); апрув Pavel (TRIP-344 PR 1)
+   floor-exempt: layout +1 — .switch__knob объявляет display:grid, чтобы отцентровать кольцо; LAYOUT_CANON знает только row|col|grid|grow|trunc, поэтому внутренний узел примитива ДС читается как приватная раскладка. Раскладка не новая: тот же display:grid стоял инлайном; апрув Pavel (TRIP-344 PR 1)
+   floor-exempt: reach +1 — .switch__knob .spin: канон внутри канона, и сам аудит его так и классифицирует (canonIntoCanon 16 → 17, reachViolations 53 → 53). Пол считает его нарушением только потому, что меряет HEAD КАНОН-НАБОРОМ БАЗЫ, а семьи switch на базе ещё нет — то есть срабатывает защита от переклейки triage→canon, а не реальный дефект; апрув Pavel (TRIP-344 PR 1)
+
+   Ярус 2 (2p): источник переноса — инлайны JSX, а 2p читает только CSS, поэтому
+   `visual-diff-move` неприменим (ему нужен селектор-источник). Каждое объявление
+   названо отдельно; значения сверены с удалёнными инлайнами построчно.
+   visual-diff-exempt: .switch background — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch border — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch border-radius — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch color — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch cursor — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch flex-shrink — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch height — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch left — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch opacity — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch padding — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch position — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch transition — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch width — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch::before content — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch::before inset — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch::before position — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch:disabled cursor — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob background — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob border — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob border-radius — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob border-right-color — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob box-shadow — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob color — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob display — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob height — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob left — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob place-items — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob position — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob top — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob transition — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .switch__knob width — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1) */
+.switch {
+  width: 36px; height: 21px; padding: 0; border: none;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  position: relative; flex-shrink: 0;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+/* Растягивает область попадания с нарисованных 36×21 до минимальных 44px тач-таргета.
+   Псевдоэлемент, а не <span aria-hidden>: узел был пустым и существовал ровно ради
+   этой площади, а ::before красится первым - то есть кнопка-бегунок по-прежнему
+   рисуется поверх него. */
+.switch::before { content: ''; position: absolute; inset: -12px -4px; }
+.switch[aria-checked="true"] { background: var(--brand); }
+.switch[data-locked] { background: var(--wash); opacity: .5; cursor: not-allowed; }
+.switch:disabled { cursor: not-allowed; }
+.switch__knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+  transition: left .15s ease;
+  display: grid; place-items: center;
+  color: var(--muted);
+}
+.switch[aria-checked="true"] .switch__knob { left: 17px; color: var(--brand); }
+/* Кольцо внутри бегунка - тем же приёмом, что `.btn .spin` строкой ниже по файлу:
+   «спиннер внутри контрола» уже выражен в системе так, и заводить под него ступень
+   `.spin--*` не надо (та шкала про размер под экран, а не про место внутри). */
+.switch__knob .spin {
+  width: 11px; height: 11px;
+  border: 2px solid currentColor; border-right-color: transparent;
+  border-radius: 50%;
+}
+
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
 /* Поле и компактный контрол рядом с ним (город вылета + дата старта). Колонки
@@ -2916,6 +3013,29 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* Плашка загрузки <Skeleton> (TRIP-344 PR 1).
+   prefix-exempt: skeleton — апрув Pavel, компонент ДС жил целиком на инлайнах и был
+   невидим каталогу и гардам 2m/2n/2o (75 вызовов, третий по частоте элемент системы).
+   Правило стоит вплотную к @keyframes shimmer, который оно и запускает.
+
+   ⚠️ ГЕОМЕТРИЯ ОСТАЁТСЯ ПРОПОМ, И ЭТО НЕ НЕДОДЕЛКА. Ширина/высота/радиус у плашки
+   разные на каждом вызове - они описывают ТО, ЧТО ГРУЗИТСЯ (строка на 60%, аватар
+   28×28), то есть данные, а не облик. В класс уехало ровно облик: заливка и её
+   анимация. Ступеней под 75 разных размеров заводить не надо - это был бы тот самый
+   зоопарк имён, против которого эпик и затеян.
+
+   Ярус 2 (2p) видит только CSS, поэтому ИСТОЧНИК переноса — инлайны JSX — ему
+   не виден по построению, и `visual-diff-move` тут неприменим: у него источником
+   обязан быть селектор. Поэтому каждое объявление названо поимённо. Значения
+   сверены с удалёнными инлайнами построчно, ни одно не менялось.
+   visual-diff-exempt: .skeleton animation — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .skeleton background — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1)
+   visual-diff-exempt: .skeleton background-size — облик уехал из инлайнов JSX в класс, значение то же (TRIP-344 PR 1) */
+.skeleton {
+  background: linear-gradient(90deg, var(--line) 0%, var(--wash) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
 @keyframes blinkdot { 0%, 80%, 100% { opacity: .2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
 .ai-dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--ai); margin: 0 1px; animation: blinkdot 1.2s infinite ease-in-out; }
 .ai-dots span:nth-child(2) { animation-delay: .15s; }

@@ -36,7 +36,7 @@ import { useEffect, useMemo, useState } from 'react';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Dialog, EmptyState, Field,
-  FileRow, Input, InputGroup, ReadOnlyBanner, RoleBadge, Severity, Sheet,
+  FileRow, Input, InputGroup, ReadOnlyBanner, Severity, Sheet,
   Skeleton, Textarea, Toggle,
 } from '@/design/index';
 
@@ -61,6 +61,12 @@ const TX = {
   cardBody: 'Тело карточки: обычный текст на поверхности.',
   fieldLabel: 'Название',
   fieldHint: 'Подсказка под полем',
+  // Роль участника в тонах бейджа — подписи взяты с живых экранов
+  // (MembersLens / MembersSummaryCard), а не придуманы здесь.
+  roleOwner: 'Владелец',
+  roleAdmin: 'Админ',
+  roleViewer: 'Наблюдатель',
+  rolePending: 'Приглашён',
   placeholder: 'Введите значение',
   area: 'Многострочное поле',
   emptyTitle: 'Пока пусто',
@@ -246,6 +252,18 @@ export default function Kit() {
           {BADGE_VARIANTS.map((v) => (
             <Badge key={v || 'base'} variant={v}>{v || 'base'}</Badge>
           ))}
+          {/* Роль участника — это тон бейджа, а не свой компонент (TRIP-344 PR 1,
+              на месте удалённого `RoleBadge`). Стоит здесь, а не отдельным
+              образцом, ровно потому, что своего класса у неё нет и не должно
+              быть: `.badge--warning` / `--brand` / `--outline` / `--quiet` —
+              те же, что строкой выше. Прежний образец назывался `rb`, такого
+              класса в системе нет, и витрина честно печатала над ним
+              «неизвестно». Оба живых экрана (MembersLens, MembersSummaryCard)
+              рисуют роль именно так. */}
+          <Badge variant="warning">{TX.roleOwner}</Badge>
+          <Badge variant="brand">{TX.roleAdmin}</Badge>
+          <Badge variant="outline">{TX.roleViewer}</Badge>
+          <Badge variant="quiet">{TX.rolePending}</Badge>
         </Specimen>
 
         <Specimen cls="card">
@@ -298,8 +316,17 @@ export default function Kit() {
         <Specimen cls="checkbox">
           <Checkbox checked={checked} onChange={setChecked} label={TX.fieldLabel} />
           <Checkbox checked={false} onChange={() => {}} label={TX.fieldLabel} disabled />
+        </Specimen>
+
+        {/* Переключатель уехал из образца `.checkbox` в свой: у него теперь есть
+            собственный класс, а до этого он делил клетку с чекбоксом просто
+            потому, что своего имени не имел. Показаны все три состояния - им
+            соответствуют `aria-checked`, `disabled` и `data-locked`, а не
+            классы-модификаторы, поэтому в каталоге у семьи нет осей. */}
+        <Specimen cls="switch">
           <Toggle on={toggled} onChange={setToggled} label={TX.fieldLabel} />
           <Toggle on={toggled} onChange={() => {}} busy label={TX.fieldLabel} />
+          <Toggle on={false} onChange={() => {}} locked label={TX.fieldLabel} />
         </Specimen>
 
         <Specimen cls="doc-row">
@@ -317,13 +344,12 @@ export default function Kit() {
           </div>
         </Specimen>
 
-        <Specimen cls="rb">
-          <RoleBadge role="owner" />
-          <RoleBadge role="admin" />
-          <RoleBadge role="viewer" />
-          <RoleBadge role="viewer" status="pending" />
-        </Specimen>
-
+        {/* Образец `rb` снят вместе с компонентом `RoleBadge` (TRIP-344 PR 1).
+            Он и был витриной, показывающей то, чего в системе нет: имени `rb`
+            не существует ни одним классом, а пилюля рисовалась инлайнами. Роль
+            участника выражается тонами `badge--warning` / `--brand` / `--outline`
+            / `--quiet` - так её рисуют оба живых экрана, и все четыре тона уже
+            стоят в образце `badge` выше. */}
         <Specimen cls="dlg">
           <Btn variant="secondary" onClick={() => setDialogOpen(true)}>{TX.openDialog}</Btn>
           <Btn variant="secondary" onClick={() => setSheetOpen(true)}>{TX.openSheet}</Btn>

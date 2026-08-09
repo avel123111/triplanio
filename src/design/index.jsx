@@ -222,6 +222,11 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
 /** @param {{ variant?: string, icon?: string, iconRight?: string, block?: boolean, disabled?: boolean, loading?: boolean, children?: any, onClick?: any, className?: string, ariaLabel?: string, title?: string, ariaPressed?: boolean, style?: any }} p */
 export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
+    // Дефолт <button> внутри формы — submit, поэтому все 163 вызова Btn
+    // отправляли бы ближайшую <form> в довесок к своему onClick. Соседний
+    // Toggle type="button" ставит и объясняет зачем — то есть про грабли
+    // знали, а на самой кнопке системы их не закрыли (TRIP-344 PR 1).
+    type="button"
     className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled || loading}
@@ -298,13 +303,7 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
 // ----- Skeleton -----
 /** @param {{ w?: number|string, h?: number|string, r?: number|string, style?: any }} p */
 export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
-  <div style={{
-    width: w, height: h, borderRadius: r,
-    background: "linear-gradient(90deg, var(--line) 0%, var(--wash) 50%, var(--line) 100%)",
-    backgroundSize: "200% 100%",
-    animation: "shimmer 1.5s linear infinite",
-    ...style,
-  }} />
+  <div className="skeleton" style={{ width: w, height: h, borderRadius: r, ...style }} />
 );
 
 // ----- Checkbox -----
@@ -339,31 +338,20 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
   <button
     type="button"
     role="switch"
+    className="switch"
     aria-checked={!!on}
     aria-label={label}
     aria-busy={busy || undefined}
+    data-locked={locked || undefined}
     onClick={() => !locked && !busy && onChange && onChange(!on)}
     disabled={busy || undefined}
-    style={{
-      width: 36, height: 21, padding: 0, border: "none",
-      borderRadius: 'var(--r-pill)',
-      background: locked ? "var(--wash)" : on ? "var(--brand)" : "var(--line)",
-      position: "relative", flexShrink: 0,
-      opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
-      transition: "background .15s ease",
-    }}
   >
-    {/* Bleeds the hit area from the painted 36×21 track out to the 44px minimum
-        touch target. Sits before the knob so the knob still paints on top. */}
-    <span aria-hidden="true" style={{ position: "absolute", inset: "-12px -4px" }} />
-    <span style={{
-      position: "absolute", top: 2, left: on ? 17 : 2,
-      width: 17, height: 17, borderRadius: "50%",
-      background: "white", boxShadow: "0 1px 2px rgba(0,0,0,.2)",
-      transition: "left .15s ease",
-      display: "grid", placeItems: "center", color: on ? "var(--brand)" : "var(--muted)",
-    }}>
-      {busy && <span className="spin" style={{ width: 11, height: 11, border: "2px solid currentColor", borderRightColor: "transparent", borderRadius: "50%" }} />}
+    {/* Дорожка, бегунок и растянутый до 44px тач-таргет живут в `.switch`
+        (app.css). Состояние сюда не передаётся классом: его уже несут
+        `aria-checked` и `disabled` из контракта role="switch", а «выключен по
+        праву» — `data-locked`. */}
+    <span className="switch__knob">
+      {busy && <span className="spin" />}
     </span>
   </button>
 );
@@ -372,28 +360,14 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
 // Canonical money formatter (locale-aware, decimals only when present).
 export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 
-// ----- RoleBadge with icon -----
-/** @param {{ role?: string, size?: string, status?: string }} p */
-export const RoleBadge = ({ role, size = "md", status }) => {
-  const t = useT();
-  const ROLE_META = {
-    owner:  { icon: "crown",  color: "var(--warm)", soft: "var(--warm-tint)" },
-    admin:  { icon: "shield", color: "var(--brand)", soft: "var(--brand-soft)" },
-    viewer: { icon: "eye",    color: "var(--muted)", soft: "var(--wash)" },
-  };
-  const key = ROLE_META[role] ? role : "viewer";
-  const m = ROLE_META[key];
-  return (
-    <span className="t-micro" style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: size === "sm" ? "2px 7px 2px 5px" : "3px 9px 3px 6px",
-      borderRadius: 'var(--r-pill)', background: m.soft, color: m.color,
-    }}>
-      <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
-      {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
-    </span>
-  );
-};
+// ----- RoleBadge: УДАЛЁН (TRIP-344 PR 1) -----
+// Роль участника — это `<Badge>` с тоном, и приложение уже выражало её так в
+// ОБОИХ местах, где она видна: `MembersLens` и `MembersSummaryCard` независимо
+// сошлись на owner=warning · admin=brand · viewer=outline · приглашён=quiet.
+// `RoleBadge` был третьим, ЧЕТВЁРТЫМ по счёту способом сказать то же самое —
+// собственной пилюлей на инлайнах (свои тона warm/brand-soft/wash, свой радиус,
+// свои отступы), мимо `.badge`, объявленного строкой выше. За пределы витрины
+// `/kit` он не вышел ни разу, так что схлопывание не тронуло ни одного экрана.
 
 // ---- Dialog: title/icon/foot/size convenience wrapper over the ONE canonical
 //      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +

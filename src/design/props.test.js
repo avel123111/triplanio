@@ -58,7 +58,7 @@ const LINES = [
   ['clean', '<Card title="t">x</Card>'],
   ['clean', '<Checkbox checked onChange={() => {}} />'],
   ['clean', '<Toggle on onChange={() => {}} />'],
-  ['clean', '<RoleBadge role="admin" />'],
+  ['clean', '<Toggle on locked busy label="l" />'],
   ['clean', '<AvatarStack people={[]} />'],
   ['clean', '<PartnerLogo url="u" />'],
   ['clean', '<StreamEventRow e={{}} />'],
@@ -83,7 +83,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, PartnerLogo, RoleBadge, Severity, Skeleton, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, PartnerLogo, Severity, Skeleton, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",
