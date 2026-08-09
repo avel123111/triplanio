@@ -17,7 +17,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -132,28 +132,28 @@ test('разные только CRLF и хвостовые пробелы → 0'
   assert.equal(code, 0);
 });
 
-test('расходится только PostgrestVersion (версия рантайма) → 0', (t) => {
-  const { code, out } = run(t, {
-    generated: types({ pgrst: '12.2' }),
-    committed: types({ pgrst: '14.5' }),
-  });
-  assert.equal(code, 0);
-  // Исключение узкое и НАЗВАНО: оба значения обязаны быть напечатаны.
-  assert.match(out, /12\.2/);
-  assert.match(out, /14\.5/);
-});
-
-test('PostgrestVersion гасит только себя — настоящий дрейф рядом остаётся красным', (t) => {
+test('ИСКЛЮЧЕНИЙ НЕТ: расходится только служебный блок генератора → 1', (t) => {
+  // Первая редакция гасила тут `__InternalSupabase.PostgrestVersion` — и это
+  // прятало настоящую причину («артефакт собран ДРУГИМ генератором»). Обе
+  // стороны теперь делает один пинованный CLI, поэтому расхождение красное.
   const { code } = run(t, {
-    generated: types({ pgrst: '12.2', extraColumn: 'cover_image_url: string | null' }),
+    generated: types({ pgrst: '12.2' }),
     committed: types({ pgrst: '14.5' }),
   });
   assert.equal(code, 1);
 });
 
-test('исключение адресует КЛЮЧ, а не кавычки вообще: другой литерал → 1', (t) => {
-  // Пинит, что гасится ровно `PostgrestVersion`, а не «любое значение в кавычках»:
-  // типы колонок у генератора тоже приезжают литералами (`"draft" | "active"`).
+test('ИСКЛЮЧЕНИЙ НЕТ: блока генератора нет на одной стороне → 1', (t) => {
+  const { code } = run(t, {
+    generated: types().replace(/ {2}__InternalSupabase: \{\n.*\n {2}\}\n/, ''),
+    committed: types(),
+  });
+  assert.equal(code, 1);
+});
+
+test('литерал в типе колонки сверяется как всё остальное → 1', (t) => {
+  // Типы колонок у генератора тоже приезжают литералами (`"draft" | "active"`) —
+  // пинит, что нормализация не трогает значения в кавычках.
   const withLiteral = (v) => types().replace('title: string | null', `status: "${v}"`);
   const { code } = run(t, { generated: withLiteral('active'), committed: withLiteral('draft') });
   assert.equal(code, 1);
@@ -171,8 +171,31 @@ test('закоммиченный артефакт удалён → 2', (t) => {
 });
 
 test('путь к сгенерированному не передан → 2', (t) => {
-  const { code } = run(t, { generated: types(), committed: types(), args: [] });
+  const { code, out } = run(t, { generated: types(), committed: types(), args: [] });
   assert.equal(code, 2);
+  // Ассерт на СВОЁ сообщение, а не только на код: без него тест зелен и когда
+  // ветки «не передан путь» нет вовсе — пустой путь падает дальше в «файл не
+  // найден», и это тоже 2. Мутация «снять раннюю проверку» не роняла НИЧЕГО.
+  assert.match(out, /не передан путь/);
+});
+
+test('файл есть, но не читается (каталог вместо файла) → 2, а не 1', (t) => {
+  // `existsSync` говорит «да» и про каталог; непойманный `EISDIR` увёл бы node
+  // на код 1 = «ДРЕЙФ», хотя не измерено ничего. Ветка 1 и ветка 2 не должны
+  // разъезжаться нигде — вердикт «не смог измерить» обязан звучать как он сам.
+  const dir = mkdtempSync(join(tmpdir(), 'guard2t-dir-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const asDir = join(dir, 'generated.types.ts');
+  mkdirSync(asDir);
+  const comPath = join(dir, 'committed.types.ts');
+  writeFileSync(comPath, types());
+
+  const r = spawnSync(process.execPath, [GUARD, asDir], {
+    encoding: 'utf8',
+    env: { ...process.env, COMMITTED_TYPES: comPath },
+  });
+  assert.equal(r.status, 2);
+  assert.match(`${r.stdout}${r.stderr}`, /не прочитался/);
 });
 
 test('ДАТЧИК СЛЕПОТЫ: база не поднялась, таблиц ноль → 2, а не 1', (t) => {
@@ -189,6 +212,17 @@ test('ДАТЧИК СЛЕПОТЫ: пусто с ОБЕИХ сторон → 2, 
 test('сгенерированный файл — мусор (нет корня схемы) → 2', (t) => {
   const { code } = run(t, { generated: 'Error: connection refused\n', committed: types() });
   assert.equal(code, 2);
+});
+
+test('обрезанный файл: таблицы есть, корня схемы нет → 2', (t) => {
+  // Датчик жизни — И-условие из ДВУХ клауз, а мусор выше отсекается ПЕРВОЙ же
+  // (у него ноль таблиц), поэтому вторая клауза не была запинена ничем: мутация
+  // «убрать проверку `export type Database`» оставляла все тесты зелёными.
+  // Здесь таблицы НАСЧИТЫВАЮТСЯ, и вердикт держит ровно корень схемы.
+  const truncated = types().replace('export type Database = {', 'куда-то делась шапка {');
+  const { code, out } = run(t, { generated: truncated, committed: types() });
+  assert.equal(code, 2);
+  assert.match(out, /корень схемы отсутствует/);
 });
 
 test('живой артефакт репо проходит датчик жизни (сам с собой → 0)', (t) => {
