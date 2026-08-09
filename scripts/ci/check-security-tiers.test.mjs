@@ -26,7 +26,15 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkBucketPredicates, checkDoors, checkEditorRoles } from './check-security-tiers.mjs';
+import {
+  checkBucketPredicates,
+  checkDoors,
+  checkEditorRoles,
+  checkSeamDoors,
+  parseGateTokensFromSeam,
+  parseResourceSpecs,
+  parseSeamSlug,
+} from './check-security-tiers.mjs';
 
 // Манифест-фикстура той же формы, что BUCKETS в security-tiers.mjs.
 const TRIPS = {
@@ -406,4 +414,138 @@ test('пустой/отсутствующий вход не молчит', () =>
 // ВЕРНОЕ падение с ВРУЩИМ диагнозом («EDITOR_ROLES не нашёлся» вместо разбора).
 test('EDITOR_ROLES в двойных кавычках читается', () => {
   assert.deepEqual(checkEditorRoles(SQL_OK, 'export const EDITOR_ROLES = ["owner", "admin"];'), []);
+});
+
+// ── SEAM-ДВЕРИ: гейт живёт в спецификации ресурса, а не в index.ts (TRIP-394) ──
+// Дверь, чей index.ts просто зовёт `mutate({ slug })`, гейта в index.ts НЕ несёт
+// — её право (`requires` на каждом действии) держит спецификация ресурса
+// `_shared/resources/<slug>.ts` и исполняет общий `_shared/mutate.ts`. Прежний
+// страж такую дверь мог только ПРИНЯТЬ на слово (объявительное значение). Здесь
+// он её ПРОВЕРЯЕТ: манифест обязан машинно совпасть с `requires` спецификации.
+
+const seamSrc = (name, slug) =>
+  ({ name, code: `Deno.serve(withHandler('${name}', (req, cors) => mutate({ req, slug: '${slug}', corsHeaders: cors })));` });
+
+// Спецификация ресурса как ТЕКСТ (парсер читает файл, не импортирует TS).
+const specText = (slug, requiresPerAction) => ({
+  name: `${slug}.ts`,
+  text: `export const R = { name: '${slug}', scope: { column: 'trip_id', from: 'tripId' }, actions: {\n` +
+    requiresPerAction.map((req, i) =>
+      `  a${i}: { op: 'upsert', table: 't', requires: [${req.map((r) => `'${r}'`).join(', ')}] },`).join('\n') +
+    `\n} };`,
+});
+
+const TOKENS = new Set(['editor', 'self', 'pro']);
+
+test('parseSeamSlug: достаёт slug из mutate({slug}), иначе null', () => {
+  assert.equal(parseSeamSlug("mutate({ req, slug: 'trip-budget', corsHeaders: cors })"), 'trip-budget');
+  assert.equal(parseSeamSlug('if (!(await isCallerEditor(t,u))) return 403;'), null);
+});
+
+test('parseResourceSpecs: имя ресурса + requires по каждому действию', () => {
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['editor', 'pro']])]);
+  const s = specs.get('trip-budget');
+  assert.ok(s, 'ресурс не разобран');
+  assert.deepEqual(s.requiresSets, [['editor', 'pro'], ['editor', 'pro']]);
+});
+
+test('parseGateTokensFromSeam: словарь гейтов берётся из checkRequirement шва', () => {
+  const seam = "switch (name) {\n case 'editor': return x;\n case 'self': return y;\n case 'pro': { return z; }\n }";
+  assert.deepEqual([...parseGateTokensFromSeam(seam)].sort(), ['editor', 'pro', 'self']);
+});
+
+test('здоровая seam-дверь: манифест-набор == requires спецификации', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['editor', 'pro']])]);
+  assert.deepEqual(checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true }), []);
+});
+
+test('★ манифест врёт про гейт (editor вместо editor+pro) → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /манифест.*спецификаци/i);
+});
+
+test('★ спецификация сменила requires, манифест прежний → красный (та же сверка, другая сторона)', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor']])]); // pro сняли из спеки
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /манифест.*спецификаци/i);
+});
+
+test('★ seam-дверь объявлена СТРОКОЙ, а не набором → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: 'editor+pro' };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /набор|массив/i);
+});
+
+test('★ фиктивная seam-дверь без строки в манифесте → красный', () => {
+  const sources = [seamSrc('trip_widget', 'trip-widget')];
+  const specs = parseResourceSpecs([specText('trip-widget', [['editor']])]);
+  const errors = checkSeamDoors({ sources, doors: {}, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /trip_widget/.test(e) && /манифест|DOORS/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ seam-дверь без спецификации ресурса → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const errors = checkSeamDoors({ sources, doors, specs: new Map(), gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /спецификаци/i);
+});
+
+test('★ действия ресурса требуют РАЗНОЕ → красный (одной строкой не выразить)', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['editor']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /РАЗНОЕ|неоднородн/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ неизвестный гейт в спецификации (шов его не реализует) → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'admin'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'admin']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /admin/.test(e) && /неизвестн|не реализ/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ ДАТЧИК СЛЕПОТЫ: ждём seam-дверь, а разбор нашёл ноль → красный', () => {
+  // Сломанный парс mutate({slug}) не должен ТИХО пройти seam-сверку.
+  const sources = [src('getTripDetails', 'if (!isCallerParticipant(t,u)) return 403;')];
+  const errors = checkSeamDoors({ sources, doors: {}, specs: new Map(), gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /ни одной seam|датчик|разбор/i);
+});
+
+test('★ не-seam функция с массивом-значением в манифесте → красный', () => {
+  // Массив = seam-набор; у обычной функции его быть не должно.
+  const sources = [src('updateTripSettings', 'if (!(await isCallerEditor(t,u))) return 403;')];
+  const doors = { updateTripSettings: ['editor'] };
+  const errors = checkSeamDoors({ sources, doors, specs: new Map(), gateTokens: TOKENS, expectSeam: false });
+  assert.ok(errors.some((e) => /updateTripSettings/.test(e) && /не.*seam|не маршрут/i.test(e)), JSON.stringify(errors));
+});
+
+test('checkDoors НЕ трогает seam-двери (их код зовёт mutate, гейта в index нет)', () => {
+  // Старый страж принял бы это за «проверка снята». Теперь checkDoors их пропускает.
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  assert.deepEqual(checkDoors(sources, doors), []);
+});
+
+test('обычные двери проверяются как раньше (регресс не ослаблен)', () => {
+  const doors = { telegramStartLink: 'editor' };
+  const sources = [src('telegramStartLink', 'const ok = await isCallerParticipant(t, u);')];
+  const errors = checkDoors(sources, doors);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /не ту ступень/);
 });
