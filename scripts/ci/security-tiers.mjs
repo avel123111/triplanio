@@ -224,12 +224,19 @@ export const DECISIONS = [
 //     participant — viewer ПРОХОДИТ (чтение, чат, шеринг, копия к себе)
 //     editor      — меняет план трипа: контент, настройки, участники, каналы
 //   ОБЪЯВИТЕЛЬНЫЕ — страж НЕ проверяет, но требует объявить:
-//     owner   — `trips.created_by === caller`, проверка руками на месте
-//     self    — своя строка / свой аккаунт (`user.id`), трипа не касается
-//     auth    — любой залогиненный, трип не при чём (справочники, прайсы)
-//     token   — владение секретом в запросе (share_token, invite-токен, подпись)
-//     n8n     — Bearer N8N_SECRET, вызов сервер-сервер
-//     public  — без аутентификации вовсе (по замыслу, держится rate-limit)
+//     owner    — `trips.created_by === caller`, проверка руками на месте
+//     self     — своя строка / свой аккаунт (`user.id`), трипа не касается
+//     auth     — любой залогиненный, трип не при чём (справочники, прайсы)
+//     token    — владение секретом в запросе (share_token, invite-токен, подпись)
+//     n8n      — Bearer N8N_SECRET, вызов сервер-сервер
+//     public   — без аутентификации вовсе (по замыслу, держится rate-limit)
+//     editor+pro — гейт РУЧНОЙ ЗАПИСИ бюджета, вынесенный в ШОВ (TRIP-394): сам
+//                  `isCallerEditor` + `is_trip_pro` живут в `_shared/mutate.ts`
+//                  (`checkRequirement`), а не в `index.ts` двери — та лишь зовёт
+//                  `mutate()`. Страж грепает ТОЛЬКО `index.ts`, поэтому ступень
+//                  тут невидима ему по построению → значение объявительное, как
+//                  `owner`. Enforcement держат тесты шва (`mutateRules_test.ts`)
+//                  и спецификация ресурса (`resources/tripBudget.ts` → `requires`).
 //
 // ★ ЧТО СТРАЖ НЕ ЛОВИТ (граница инструмента, выписана намеренно — у соседних
 // инвариантов IF4 и предикатов бакета она есть, а у дверей не было). Прогон
@@ -252,7 +259,7 @@ export const STEP_VALUES = new Set(['participant', 'editor']);
 
 /** Весь словарь: проверяемые ступени + объявительные. Вложенность задана
  *  построением — второй рукописный список ступеней разъехался бы с первым. */
-export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 'token', 'n8n', 'public']);
+export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 'token', 'n8n', 'public', 'editor+pro']);
 
 export const DOORS = {
   // ── participant: viewer проходит осознанно ──
@@ -278,6 +285,9 @@ export const DOORS = {
   telegramSetActive:     'editor',
   telegramStartLink:     'editor',
   telegramWebhook:       'editor',      // шов ЗАПИСИ привязки, перепроверяет при редиме
+
+  // ── editor+pro: ручная запись бюджета, гейт в шве _shared/mutate.ts (TRIP-394) ──
+  trip_budget:           'editor+pro',  // expense/category/settings; авто-траты идут мимо (триггер)
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип
