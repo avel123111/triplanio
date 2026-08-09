@@ -262,14 +262,13 @@ const specificity = (sel) => {
  *  Замер на этом дереве: из 51 отказа переноса 33 объяснялись не сменой
  *  значения, а тем, что победителем базового ключа стояло состояние.
  *
+ *  Само вычисление живёт в `compoundState` ниже — состояние привязано к СВОЕМУ
+ *  компаунду, а не собирается в один хвост на весь селектор (ревью Codex, P1).
+ *
  *  Кавычки и пробелы внутри атрибута снимаются, чтобы `[data-state="open"]` и
  *  `[data-state=open]` были ОДНИМ состоянием: иначе форма записи снова решала бы
  *  ответ. Сортировка общая с псевдоклассами — порядок написания состояний в
  *  селекторе ключ менять не должен. */
-const stateOf = (sel) => [
-  ...(sel.match(/:{1,2}[\w-]+(\([^)]*\))?/g) || []),
-  ...(sel.match(/\[[^\]]+\]/g) || []).map((a) => a.replace(/["']/g, '').replace(/\s+/g, '')),
-].sort().join('');
 
 const classesOf = (sel) => [...new Set((sel.match(/\.(-?[a-zA-Z_][\w-]*)/g) || []).map((c) => c.slice(1)))];
 
@@ -314,9 +313,48 @@ const subjectOf = (sel) => normSel(sel).split(/ [>+~] | /).pop() || '';
  *  делить один ключ. Первая редакция этой правки брала классы ТОЛЬКО с
  *  подлежащего и тем самым воспроизводила отвергнутый вариант — поймано
  *  сверкой с замером TRIP-363, а не тестом. */
+/** ★★ Содержимое ФУНКЦИОНАЛЬНОГО псевдокласса снимается ДО поиска классов.
+ *  `:not(.decorative)` — это КВАЛИФИКАТОР компаунда, а не класс на нём:
+ *  `.icon-btn > svg:not(.decorative)` действует на `svg`, и `.decorative`
+ *  подлежащим не является. Пока классы искались текстом, такой компаунд
+ *  считался «несущим класс», правило приписывалось `.icon-btn` — и правка
+ *  предка снова пряталась за потомком (ревью Codex, P1). Сам псевдокласс при
+ *  этом остаётся СОСТОЯНИЕМ: два правила, отличающиеся `:not()`, — разные. */
+const stripFnPseudo = (s) => s.replace(/:{1,2}[\w-]+\([^)]*\)/g, '');
+
+/** Компаунды селектора — то, что стоит между комбинаторами. */
+const compoundsOf = (sel) => normSel(sel).split(/ [>+~] | /).filter(Boolean);
+
+/** ★★ Состояние — СВОЕГО КОМПАУНДА, а не всего селектора. Пока оно собиралось
+ *  в один отсортированный хвост на весь селектор, `.a[data-x] .b` и
+ *  `.a .b[data-x]` давали ОДИН И ТОТ ЖЕ ключ на оба класса: чей это компаунд,
+ *  из ключа не следовало. Воспроизведено: правка `.a[data-x] .b` при живом
+ *  `.a .b[data-x]` давала чистый выход, то есть пряталась (ревью Codex, P1).
+ *  Это третья форма одного закона — «ключ, названный не целиком, склеивает
+ *  разные вещи в одну»: сперва `@media`, потом подлежащее, теперь ПРИВЯЗКА
+ *  состояния к компаунду. */
+const compoundState = (compound) => [
+  ...(compound.match(/:{1,2}[\w-]+(\([^)]*\))?/g) || []),
+  ...(compound.match(/\[[^\]]+\]/g) || []).map((a) => a.replace(/["']/g, '').replace(/\s+/g, '')),
+].sort().join('');
+
 const unitsOf = (sel) => {
-  const cls = classesOf(subjectOf(sel)).length ? classesOf(sel) : [];
-  return cls.length ? { units: cls.map((c) => `.${c}`), state: stateOf(sel) } : { units: [normSel(sel)], state: '' };
+  const compounds = compoundsOf(sel);
+  const subject = compounds[compounds.length - 1] || '';
+  if (!classesOf(stripFnPseudo(subject)).length) return [{ unit: normSel(sel), state: '' }];
+  const out = [];
+  const seen = new Set();
+  for (const compound of compounds) {
+    const state = compoundState(compound);
+    for (const cls of classesOf(stripFnPseudo(compound))) {
+      const unit = `.${cls}`;
+      const id = unit + ' ' + state;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push({ unit, state });
+    }
+  }
+  return out;
 };
 
 /** media-контекст = все родительские at-rule'ы. Правило внутри `@media` — другой
@@ -362,10 +400,10 @@ function semantics(files) {
       const media = mediaOf(rule);
       for (const sel of rule.selectors || []) {
         const spec = specificity(sel);
-        const { units, state } = unitsOf(sel);
+        const pairs = unitsOf(sel);
         rule.walkDecls((decl) => {
           const weight = [decl.important ? 1 : 0, spec, ...orderOf(path, i)];
-          for (const c of units) {
+          for (const { unit: c, state } of pairs) {
             const key = [c, media, state, decl.prop].join(SEP);
             const prev = best.get(key);
             if (!prev || cmpWeight(weight, prev.weight) >= 0) {
@@ -616,10 +654,7 @@ const moveSource = (src) => {
  *  Правило одно и проверяемое глазом: ключ маркера = то, что гард НАПЕЧАТАЛ.
  *  У бесклассовой единицы состояние уже внутри имени (`a:hover`, `:root[…]`),
  *  отдельным полем оно не выносится. */
-const unitOf = (u) => {
-  const { units, state } = unitsOf(u);
-  return { unit: units[0], state };
-};
+const unitOf = (u) => unitsOf(u)[0];
 /** Пробелы внутри `@media (max-width:640px)` — не смысл: сверяем нормализованно.
  *  Гасятся только пробелы ВОКРУГ пунктуации; между словами (`screen and (…)`)
  *  они остаются границей идентификатора, поэтому два РАЗНЫХ запроса совпасть не

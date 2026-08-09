@@ -1195,3 +1195,34 @@ test('★ бесклассовая единица из лексем по-пре�
   const { code } = run(f);
   assert.equal(code, 0);
 });
+
+/** ★★TRIP-344 (ревью Codex, P1): СОСТОЯНИЕ ПРИВЯЗАНО К СВОЕМУ КОМПАУНДУ.
+ *  Пока оно собиралось в один отсортированный хвост на ВЕСЬ селектор,
+ *  `.a[data-x] .b` и `.a .b[data-x]` давали один и тот же ключ на оба класса —
+ *  из ключа не следовало, ЧЕЙ это компаунд, и правка одного пряталась за
+ *  другим. Третья форма закона «неполный ключ склеивает разное»: сперва
+ *  `@media`, потом подлежащее, теперь привязка состояния. */
+test('★★ состояние принадлежит СВОЕМУ компаунду — .a[data-x] .b ≠ .a .b[data-x]', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.a[data-x] .b { color: red; }\n.a .b[data-x] { color: blue; }\n' },
+    head: { 'src/a.css': '.a[data-x] .b { color: green; }\n.a .b[data-x] { color: blue; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /color: red → green/);
+});
+
+/** ★★TRIP-344 (ревью Codex, P1): класс внутри `:not()` НЕ делает компаунд
+ *  «несущим класс». `.icon-btn > svg:not(.decorative)` действует на `svg`;
+ *  пока классы искались текстом, `.decorative` читался как класс подлежащего,
+ *  правило приписывалось `.icon-btn` — и правка предка снова пряталась за
+ *  потомком, то есть ровно тот дефект, который эта правка и чинила. */
+test('★★ класс внутри :not() не делает подлежащее классовым — правка предка видна', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.icon-btn { width: 40px; }\n.icon-btn > svg:not(.decorative) { width: 16px; }\n' },
+    head: { 'src/a.css': '.icon-btn { width: 999px; }\n.icon-btn > svg:not(.decorative) { width: 16px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.icon-btn width: 40px → 999px/);
+});
