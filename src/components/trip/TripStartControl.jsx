@@ -36,13 +36,17 @@ export default function TripStartControl({ date, onStep, onPickDate, label, bloc
   const isSheet = useIsPhone();
   const pick = (iso) => { if (iso) onPickDate?.(iso); setCalOpen(false); };
 
-  // Дата — центр степпера; на десктопе триггер Popover'а, на телефоне открывает Sheet.
+  // Дата — центр степпера. НЕ `<button>` (иначе её задело бы `.stepper button`),
+  // а `<span role=button>` со своей клавиатурой; на десктопе триггер Popover'а,
+  // на телефоне открывает Sheet.
+  const onDateKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } };
+  const dateProps = { className: 'ts-startctl__date', role: 'button', tabIndex: 0, 'aria-label': t('planner.trip_start'), onKeyDown: onDateKey };
   const dateBtn = isSheet
-    ? <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setCalOpen(true)}>{fmtDW(date, lang)}</button>
+    ? <span {...dateProps} onClick={() => setCalOpen(true)}>{fmtDW(date, lang)}</span>
     : (
       <Popover open={calOpen} onOpenChange={setCalOpen}>
         <PopoverTrigger asChild>
-          <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(date, lang)}</button>
+          <span {...dateProps}>{fmtDW(date, lang)}</span>
         </PopoverTrigger>
         <PopoverContent align={popoverAlign} className="ts-startcal-pop">
           <StartCalendar value={date} lang={lang} onPick={pick} />
