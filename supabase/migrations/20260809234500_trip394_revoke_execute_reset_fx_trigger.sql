@@ -1,0 +1,21 @@
+-- TRIP-394 ③ (follow-up) — least-privilege EXECUTE у нового секдеф-триггера.
+--
+-- `reset_fx_on_currency_change()` завелась в `20260809203641` как SECURITY
+-- DEFINER и получила ДЕФОЛТНЫЙ `EXECUTE` на `PUBLIC` + `anon`/`authenticated`
+-- (ALTER DEFAULT PRIVILEGES Supabase на функции схемы public). Соседние
+-- триггер-функции (`seed_budget_on_trip`, `sync_budget_expense`) этот грант
+-- отзывают, а эта — нет, из-за чего LIVE-страж 2e (security-tiers) покраснел
+-- УЖЕ на деплое dev. Замер `pg_proc.proacl`:
+--   было:  {=X/postgres, postgres=X, anon=X, authenticated=X, service_role=X}
+--   цель:  {postgres=X/postgres, service_role=X/postgres}   (как у соседей)
+-- Отзыв у `public`/`anon`/`authenticated` приводит ACL ровно к соседнему:
+-- `service_role` держит ЯВНЫЙ грант (не через PUBLIC) → остаётся исполнимой,
+-- срабатывание триггера от EXECUTE не зависит вовсе (TRIP-49/54).
+--
+-- ★ УРОК В ШАПКУ: любая новая SECURITY DEFINER-функция едет с `REVOKE EXECUTE`
+-- от клиентских ролей В ТОЙ ЖЕ миграции. Статический 2e на PR этого НЕ ловит —
+-- у него нет живой БД; ловит только LIVE-2e после деплоя, то есть уже красным
+-- деплоем. Здесь — отдельная миграция, потому что `20260809203641` уже в
+-- журнале dev и правке не подлежит.
+
+revoke execute on function public.reset_fx_on_currency_change() from public, anon, authenticated;
