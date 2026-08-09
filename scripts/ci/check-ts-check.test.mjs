@@ -8,7 +8,7 @@
  * I/O-обвязке, а не в логике подсчёта.
  *
  * ★ Отдельно от кодов выхода здесь стоит тест «предикат совпадает с НАСТОЯЩИМ
- * tsc»: девять написаний прагмы прогоняются пинованным `node_modules/.bin/tsc`,
+ * tsc»: пятнадцать написаний прагмы прогоняются пинованным `node_modules/.bin/tsc`,
  * и множество файлов, которые ругнулись у tsc, сверяется с множеством, которое
  * насчитал гард. Без него предикат — правдоподобная догадка о чужой семантике
  * (TRIP-388: «инструмент проверяется мутацией РАНЬШЕ, чем на него ссылаются»).
@@ -182,6 +182,30 @@ test('переименование СО СНЯТОЙ прагмой → крас
   assert.match(r.out, /src\/moved\/a\.js \(был src\/a\.js\)/);
 });
 
+test('путь с не-ASCII именем НАБЛЮДАЕТСЯ (иначе тихий зелёный ровно на предмете гарда)', (t) => {
+  // git по умолчанию печатает такие пути C-квотированными («"src/\303\274ber.js"»),
+  // фильтр расширений спотыкается о завершающую кавычку, файл выпадает из
+  // наблюдения ЦЕЛИКОМ — и снятие прагмы проезжает с exit 0. Лечится
+  // `core.quotePath=false` в обёртке git.
+  const f = fixture(t, {
+    base: { 'src/über.js': checked(), 'src/b.js': checked() },
+    head: { 'src/über.js': plain() },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, 'не-ASCII путь обязан судиться так же, как ASCII');
+  assert.match(r.out, /über\.js/);
+});
+
+test('переезд .js → .ts при живой прагме → зелёный (покрытие ВЫРОСЛО, а не упало)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.js': checked(), 'src/b.js': checked() },
+    renames: [['src/a.js', 'src/a.ts']],
+  });
+  const r = run(f);
+  assert.equal(r.code, 0, 'у .ts прагма не нужна — файл проверяется всегда');
+  assert.match(r.out, /переведено в TypeScript/);
+});
+
 test('удаление файла с прагмой → зелёный, вычет напечатан', (t) => {
   const f = fixture(t, {
     base: { 'src/a.js': checked(), 'src/b.js': checked() },
@@ -247,7 +271,7 @@ test('запуск из подкаталога судит весь репо, а 
 
 /* ──────── предикат против НАСТОЯЩЕГО tsc (иначе это догадка о TS) ───────── */
 
-test('предикат совпадает с tsc: девять написаний прагмы судятся одинаково', (t) => {
+test('предикат совпадает с tsc: пятнадцать написаний прагмы судятся одинаково', (t) => {
   assert.ok(
     existsSync(TSC),
     `нет ${TSC}: без пинованного tsc эта сверка ничего не доказывает (npm ci)`,
@@ -265,6 +289,14 @@ test('предикат совпадает с tsc: девять написани�
     'src/h_prose.js': `// TODO @ts-check\n${BODY}`,
     'src/i_suffix.js': `// @ts-check-foo\n${BODY}`,
     'src/j_nocheck_last.js': `// @ts-check\n// @ts-nocheck\n${BODY}`,
+    // ↓ пять написаний, на которых предикат РАСХОДИЛСЯ с tsc (нашёл
+    //   code-simplifier). Стоят здесь, а не отдельным ассертом, ровно затем,
+    //   чтобы судил их сам tsc, а не моё представление о нём.
+    'src/k_bom.js': `\uFEFF// @ts-check\n${BODY}`,
+    'src/l_nbsp.js': `\u00A0// @ts-check\n${BODY}`,
+    'src/m_nel.js': `\u0085// @ts-check\n${BODY}`,
+    'src/n_shebang.js': `#!/usr/bin/env node\n// @ts-check\n${BODY}`,
+    'src/o_case.js': `// @TS-Check\n${BODY}`,
   };
   const f = fixture(t, { base: { 'src/keep.js': `// @ts-check\nexport default 1;\n` }, head: forms });
   writeFileSync(

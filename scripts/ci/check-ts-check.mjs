@@ -45,11 +45,23 @@
  *   `//@ts-check` / `/// @ts-check` / `//   @ts-check`  → ПРОВЕРЯЕТСЯ
  *   `// @ts-check` после блочного комментария и пустой строки → ПРОВЕРЯЕТСЯ
  *   `// @ts-check` с текстом после                     → ПРОВЕРЯЕТСЯ
+ *   `// @TS-Check` (регистр TS не различает)           → ПРОВЕРЯЕТСЯ
+ *   BOM U+FEFF / NBSP U+00A0 / NEL U+0085 перед прагмой → ПРОВЕРЯЕТСЯ
+ *   шебанг `#!/usr/bin/env node` строкой выше          → ПРОВЕРЯЕТСЯ
  *   `@ts-check` внутри БЛОЧНОГО комментария            → НЕ проверяется
  *   `// @ts-check` НИЖЕ первой строки кода             → НЕ проверяется
  *   `// TODO @ts-check` (не в начале комментария)      → НЕ проверяется
  *   `// @ts-check-foo`                                 → НЕ проверяется
  *   `// @ts-check` + ниже `// @ts-nocheck`             → НЕ проверяется (последняя побеждает)
+ *
+ * ★ Пять строк таблицы (регистр, BOM/NBSP/NEL, шебанг) ПОЯВИЛИСЬ ПОСЛЕ
+ * РАСХОЖДЕНИЯ: предикат считал BOM, NBSP, NEL, шебанг и другой регистр
+ * «первым токеном» и отвечал «прагмы нет», тогда как tsc файл ПРОВЕРЯЛ. Цена
+ * такого недоучёта не тихая: BOM, дописанный редактором в шапку файла с живой
+ * прагмой, выкидывал бы файл из набора и гард краснел бы «верни прагму» — про
+ * прагму, которая на месте и работает (класс «маркер, вынуждающий лгать»).
+ * Нашёл `code-simplifier` прогоном по настоящему tsc, а не чтением, — поэтому
+ * все пятнадцать написаний теперь стоят в тесте и судятся самим tsc.
  *
  * ЧТО СВЕРЯЕТСЯ. Правило одно и оно ПОФАЙЛОВОЕ: файл из базового набора, который
  * на HEAD ещё существует, обязан остаться в наборе HEAD. Агрегатное «число не
@@ -72,7 +84,8 @@
  *     нужен прогон tsc, а джоба `guards` намеренно живёт без `npm ci`. Замер на
  *     вводящем PR: все 9 файлов набора программой загружены (`tsc --listFiles`).
  *   · Считаются только JS-семейные расширения. У `.ts`/`.d.ts` прагма не нужна
- *     (проверяются всегда), и их учёт раздувал бы храповик даром.
+ *     (проверяются всегда), и их учёт раздувал бы храповик даром; переезд
+ *     `.js → .ts` поэтому не потеря, а РОСТ покрытия — вычитается и печатается.
  *   · Сторона HEAD читается из РАБОЧЕГО ДЕРЕВА (отслеживаемые файлы), сторона
  *     базы — из `BASE_REF`. Локально это судит то, что у тебя на диске.
  *
@@ -95,8 +108,17 @@ if (unknown.length) {
   process.exit(2);
 }
 
+// `core.quotePath=false` — НЕСУЩЕЕ, а не косметика: по умолчанию git печатает
+// не-ASCII пути C-квотированными (`"src/\303\274ber.js"`), фильтр расширений
+// спотыкается о завершающую кавычку, и файл выпадает из наблюдения ЦЕЛИКОМ.
+// Замерено: `src/über.js` со снятой прагмой давал `1 → 1 (+0)` и exit 0 —
+// ТИХИЙ ЗЕЛЁНЫЙ ровно на том, против чего гард заведён.
 const git = (args) =>
-  execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+  execFileSync('git', ['-c', 'core.quotePath=false', ...args], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 
 /* ------------------------------ the predicate ----------------------------- */
 
@@ -107,25 +129,45 @@ const git = (args) =>
  * однострочные; из встреченных директив побеждает ПОСЛЕДНЯЯ. Каждое из этих
  * трёх условий проверено пробой на живом tsc (список написаний — в шапке).
  */
-export function tsCheckEnabled(src) {
+function tsCheckEnabled(src) {
   let enabled = false;
   let i = 0;
+  let onlyTriviaSoFar = true;
   while (i < src.length) {
     const c = src[i];
-    if (c === ' ' || c === '\t' || c === '\r' || c === '\n') {
+    // Пробел по версии JS (`\s` включает BOM U+FEFF, NBSP U+00A0 и LSEP U+2028)
+    // плюс NEL U+0085, которого в `\s` НЕТ. Символы названы ИМЕНАМИ и записаны
+    // ЭКРАНИРОВАННО, и это не аккуратность: литеральный U+2028 в комментарии
+    // ЗАВЕРШАЕТ СТРОКУ в JS и рвёт файл (проверено — `node --check` упал ровно
+    // на нём), а BOM делает файл двоичным для грепа. Тот же класс, что
+    // литеральный NUL в памяти про 2p: управляющий символ пишется ИМЕНЕМ.
+    //
+    // Узкий список ' \t\r\n' был НЕДОУЧЁТОМ, и цена его НЕ ТИХАЯ: BOM,
+    // дописанный редактором в шапку файла с ЖИВОЙ прагмой, выкидывал бы файл
+    // из набора, и гард краснел бы текстом «верни прагму» — про прагму,
+    // которая стоит на месте и работает. Нашёл `code-simplifier` прогоном.
+    if (/[\s\u0085]/.test(c)) {
       i++;
+    } else if (onlyTriviaSoFar && c === '#' && src[i + 1] === '!') {
+      const nl = src.indexOf('\n', i); // шебанг — тривия, tsc его пропускает
+      i = nl === -1 ? src.length : nl + 1;
+      onlyTriviaSoFar = false;
     } else if (c === '/' && src[i + 1] === '/') {
       const nl = src.indexOf('\n', i);
       const end = nl === -1 ? src.length : nl;
       // `@(\S+)` — как в singleLinePragmaRegEx у TS: имя директивы кончается на
       // первом пробеле, поэтому `@ts-check-foo` директивой НЕ является, а
-      // `// @ts-check и почему` — является.
+      // `// @ts-check и почему` — является. Регистр TS не различает (`i` в его
+      // регулярке + `toLowerCase()`), поэтому `// @TS-Check` — рабочая прагма.
       const m = /^\/\/\/?\s*@(\S+)/.exec(src.slice(i, end));
-      if (m && (m[1] === 'ts-check' || m[1] === 'ts-nocheck')) enabled = m[1] === 'ts-check';
+      const name = m?.[1].toLowerCase();
+      if (name === 'ts-check' || name === 'ts-nocheck') enabled = name === 'ts-check';
       i = end + 1;
+      onlyTriviaSoFar = false;
     } else if (c === '/' && src[i + 1] === '*') {
       const end = src.indexOf('*/', i + 2);
       i = end === -1 ? src.length : end + 2;
+      onlyTriviaSoFar = false;
     } else {
       break; // первый токен — дальше TS директивы не ищет, и мы тоже
     }
@@ -153,7 +195,11 @@ process.chdir(git(['rev-parse', '--show-toplevel']).trim());
 /** Файлы, где ВООБЩЕ встречается текст прагмы, — дешёвый отбор кандидатов. */
 function candidates(rev) {
   try {
-    const args = ['grep', '-l', '-I', '--fixed-strings', '@ts-check'];
+    // `-i` обязателен: TS сравнивает имя директивы БЕЗ учёта регистра, значит
+    // `// @TS-Check` — рабочая прагма. Без флага предикат её узнаёт, а кандидат
+    // не находится — починка регистра была бы инертной (мутация, которая не
+    // запускается, ловится только так: два места, одно правило).
+    const args = ['grep', '-l', '-I', '-i', '--fixed-strings', '@ts-check'];
     if (rev) args.push(rev);
     return git([...args, '--', ROOT])
       .split('\n')
@@ -170,13 +216,21 @@ function candidates(rev) {
 let baseSet;
 let headSet;
 let headInert;
+let headText;
 try {
   baseSet = new Set(
     candidates(BASE_REF).filter((p) => tsCheckEnabled(git(['show', `${BASE_REF}:${p}`]))),
   );
-  const head = candidates(null).filter((p) => existsSync(p));
-  headSet = new Set(head.filter((p) => tsCheckEnabled(readFileSync(p, 'utf8'))));
-  headInert = head.filter((p) => mentionsButInert(readFileSync(p, 'utf8')));
+  // Каждый кандидат читается РОВНО ОДИН раз: набор, список инертных и разбор
+  // потерь спрашивают один и тот же текст.
+  const head = new Map(
+    candidates(null)
+      .filter((p) => existsSync(p))
+      .map((p) => [p, readFileSync(p, 'utf8')]),
+  );
+  headText = head;
+  headSet = new Set([...head].filter(([, src]) => tsCheckEnabled(src)).map(([p]) => p));
+  headInert = [...head].filter(([, src]) => mentionsButInert(src)).map(([p]) => p);
 } catch (e) {
   console.error(`::error::check-ts-check: не смог прочитать дерево: ${e.stderr || e.message}`);
   process.exit(2);
@@ -206,12 +260,23 @@ if (!headSet.size) {
   process.exit(2);
 }
 
+// Переезд в TypeScript — это РОСТ покрытия, а не потеря: у `.ts` прагма не
+// нужна, файл проверяется всегда (шапка говорит это же про `.d.ts`). Без
+// вычета `git mv src/a.js src/a.ts` при живой прагме давал `-1` и код 1 —
+// красный ровно на ходе, ради которого эпик и заведён.
+const TS_TARGET = /\.(m|c)?tsx?$/;
+
 const lost = [];
+const converted = [];
 for (const path of baseSet) {
   const now = renamed.get(path) ?? path;
   if (deleted.has(path) || !existsSync(now)) continue; // удаление вычитается, см. шапку
+  if (TS_TARGET.test(now)) {
+    converted.push(`${path} → ${now}`);
+    continue;
+  }
   if (headSet.has(now)) continue;
-  lost.push({ path, now, inert: mentionsButInert(readFileSync(now, 'utf8')) });
+  lost.push({ path, now, inert: mentionsButInert(headText.get(now) ?? readFileSync(now, 'utf8')) });
 }
 
 const gone = [...baseSet].filter((p) => deleted.has(p) || !existsSync(renamed.get(p) ?? p));
@@ -227,6 +292,7 @@ console.log(
 );
 if (added.length) console.log(`  + ${added.join(' · ')}`);
 if (gone.length) console.log(`  − удалено вместе с файлом (не регресс): ${gone.join(' · ')}`);
+if (converted.length) console.log(`  → переведено в TypeScript (прагма больше не нужна): ${converted.join(' · ')}`);
 if (headInert.length) {
   console.log(
     `  i упоминают «@ts-check» в прозе, но директивы не несут (${headInert.length}): ${headInert.join(' · ')}`,
