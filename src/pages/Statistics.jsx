@@ -371,7 +371,6 @@ export default function Statistics() {
                   <IconBtn
                     icon="globe"
                     size="sm"
-                    className={globe ? 'on' : ''}
                     ariaPressed={globe}
                     onClick={() => setGlobe((g) => !g)}
                     ariaLabel={t('stats.map_globe')}
