@@ -838,8 +838,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           non-owner gets the "enabled by owner" button that opens the same info
           modal as the sidebar plate. Card title is rendered manually (via the
           shared .card-h) so the banner can sit above it. Reuses the EXACT
-          sidebar-plate elements — .pro-up / .pi / .pt / .pro-up p / .lockmsg —
-          so it looks identical to the right-menu plate, just horizontal. */}
+          sidebar-plate elements — .pro-up / .pi / .pt / .pro-up p + the same
+          <Btn> non-owner CTA — so it looks identical to the right-menu plate,
+          just horizontal. */}
       <Card>
         {proResolved && !hasPro && (
           <div className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
@@ -851,10 +852,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             {isOwner ? (
               <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
-              <button className="lockmsg" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>
-                <Icon name="lock" size={14} />
-                {t('trip.pro_by_owner')}
-              </button>
+              <Btn variant="secondary" icon="lock" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>{t('trip.pro_by_owner')}</Btn>
             )}
           </div>
         )}

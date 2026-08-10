@@ -90,6 +90,10 @@ const TX = {
   iconBtnShape: 'Форма кнопки-иконки',
   iconBtnMark: 'Кнопка-иконка с меткой непрочитанных',
   iconBtnFilters: 'Фильтры',
+  iconBtnWarns: 'Есть предупреждения',
+  iconBtnAllClear: 'Всё в порядке',
+  lockmsgLabel: 'Подключает владелец',
+  segAdd: 'Добавить пересадку',
   stepMinus: 'Меньше',
   stepPlus: 'Больше',
   segMonth: 'Месяц',
@@ -474,6 +478,12 @@ const ICONBTN_TONES = ['soft', 'outline', 'solid', 'ai', 'danger'];
 /** @type {Array<'md'|'sm'|'fab'>} */
 const ICONBTN_SIZES = ['sm', 'fab'];
 const ICONBTN_SHAPES = ['round'];
+// Тоны severity живут ТОЛЬКО на плавающей кнопке (`--fab`): на обычной они
+// красили бы канал `--fab-tint`, которого не-fab не читает, то есть образец
+// промолчал бы (правило витрины «не показывать пустышку»). Поэтому отдельный
+// массив под fab-рендер, а не строки в ICONBTN_TONES выше (TRIP-344 PR 3).
+/** @type {Array<'warning'|'success'>} */
+const ICONBTN_FAB_TONES = ['warning', 'success'];
 /** @type {Array<'block'|'bare'>} — pill дефолт (без модификатора). */
 const STEPPER_VARIANTS = ['block', 'bare'];
 /** @type {Array<'fill'>} — auto дефолт (без модификатора); `seg--filter`/`seg--view` —
@@ -633,6 +643,9 @@ export default function Kit() {
           {/* Канон «нажато/включено» = данные (aria-pressed), бренд-заливка —
               как Chip/Seg/Swatch (TRIP-344, канонизация состояния). */}
           <Sample name="aria-pressed"><Btn variant="secondary" ariaPressed>{TX.save}</Btn></Sample>
+          {/* Облик «Подключает владелец» (pro-up плашка): приватный `.lockmsg`
+              схлопнут на `secondary` + `icon="lock"` (TRIP-344 PR 3). */}
+          <Sample name={'secondary icon="lock" (lockmsg)'} full><Btn variant="secondary" icon="lock" block>{TX.lockmsgLabel}</Btn></Sample>
         </Specimen>
         {/* Тон из контекста: `--a` объявлен на ОБОЛОЧКЕ, у самих кнопок пропа
             тона нет — ровно так это работает в приложении (AI-карточка красит
@@ -651,6 +664,17 @@ export default function Kit() {
               нарочно — на витрине должно быть видно, что это ОДИН объект в двух
               обличьях, а не два разных. */}
           <Sample name={'variant="dashed" block tile'} full><Btn variant="dashed" block tile icon="bed" sub={TX.btnTileSub}>{TX.btnTile}</Btn></Sample>
+        </div>
+        {/* Облик «добавить пересадку» (EventEditDialog): пунктир БЕЗ плитки и
+            иконки, текст по центру. В приложении акцент транспорта приходит
+            умолчанием `.btn--dashed { --a: var(--hl, var(--brand)) }` из `--hl`
+            оболочки события; на витрине `--hl` нет, поэтому задаём его на обёртке,
+            чтобы показать ховер-акцент. В покое серый, на ховере — цвет типа. */}
+        <div className="col col--g4" style={{ '--hl': 'var(--ev-transfer)' }}>
+          {/* inline-style-exempt: канал `--hl` объявляет владелец контекста (в
+              приложении — оболочка события через evVars); класса «задать акцент»
+              в системе нет (правило 1 этого файла). */}
+          <Sample name={'variant="dashed" block (add-segment)'} full><Btn variant="dashed" block>{TX.segAdd}</Btn></Sample>
         </div>
         {/* Малая ступень: единственный её случай — пустая ячейка редактора
             маршрута, две иконки без подписи. */}
@@ -683,6 +707,18 @@ export default function Kit() {
         <Specimen cls="icon-btn--sm">
           {ICONBTN_SIZES.map((size) => (
             <Sample key={size} name={`size="${size}"`}><IconBtn icon="plus" size={size} ariaLabel={TX.iconBtnSize} /></Sample>
+          ))}
+          {/* Тоны severity — ТОЛЬКО на fab (плавающая кнопка предупреждений
+              редактора маршрута): warning со счётчиком дочерним `.badge--count`
+              (прецедент — колокольчик), success «всё в порядке». Тон подан
+              каналом `--fab-tint`, роль-токены `--warning`/`--success`. */}
+          {ICONBTN_FAB_TONES.map((tone) => (
+            <Sample key={tone} name={`size="fab" tone="${tone}"`}>
+              <IconBtn size="fab" tone={tone} icon={tone === 'warning' ? 'warning' : 'check'}
+                ariaLabel={tone === 'warning' ? TX.iconBtnWarns : TX.iconBtnAllClear}>
+                {tone === 'warning' && <Badge variant="count">3</Badge>}
+              </IconBtn>
+            </Sample>
           ))}
           {ICONBTN_SHAPES.map((shape) => (
             <Sample key={shape} name={`${shape} tone="soft"`}><IconBtn icon="arrow" round tone="soft" ariaLabel={TX.iconBtnShape} /></Sample>

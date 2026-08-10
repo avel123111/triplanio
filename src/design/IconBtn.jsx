@@ -48,7 +48,7 @@ export const IconBtn = React.forwardRef(
    * @param {React.ComponentPropsWithoutRef<'button'> & {
    *   icon: string,
    *   ariaLabel: string,
-   *   tone?: 'quiet'|'soft'|'outline'|'solid'|'ai'|'danger',
+   *   tone?: 'quiet'|'soft'|'outline'|'solid'|'ai'|'danger'|'warning'|'success',
    *   size?: 'md'|'sm'|'fab',
    *   round?: boolean,
    *   ariaPressed?: boolean, ariaExpanded?: boolean,

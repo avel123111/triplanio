@@ -159,6 +159,10 @@ const ARRAYS = [
   { name: 'ICONBTN_TONES', family: 'icon-btn' },
   { name: 'ICONBTN_SIZES', family: 'icon-btn' },
   { name: 'ICONBTN_SHAPES', family: 'icon-btn' },
+  // ★TRIP-344 PR 3: тоны severity `warning`/`success` живут ТОЛЬКО на fab
+  // (на не-fab красили бы канал `--fab-tint`, который читает лишь `--fab`),
+  // поэтому свой массив под fab-рендер, а не строки в ICONBTN_TONES.
+  { name: 'ICONBTN_FAB_TONES', family: 'icon-btn' },
   // ★TRIP-344: степпер — свой примитив в `src/design/Stepper.jsx`, поэтому его
   // обличья `stepper--block` / `stepper--bare` собираются в рантайме и `emittedByComponents`
   // (читает только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
