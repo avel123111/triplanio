@@ -113,6 +113,7 @@ jobs:
   #   2s check-ts-check              — храповик ВВЕРХ: файл не теряет действующую прагму `// @ts-check`
   #   2t check-db-types              — типы БД не отстали от миграций (отдельной джобой: нужен Docker)
   #   2u check-css-comments          — сломанный /*…*/ роняет правило из бандла (осиротевший/незакрытый)
+  #   2v check-error-codes           — реестр кодов ошибок edge-контракта: эмиссия ⊆ словарь + append-only
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -215,6 +216,17 @@ jobs:
       - name: 2u — целостность CSS-комментариев (сломанный /* */ роняет правило)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-css-comments.mjs
+      # 2v — реестр кодов ошибок edge-контракта (TRIP-394, эпик TRIP-374). Коды
+      # ошибок = API: edge отдаёт `{error,code}`, клиент (и Flutter в сторе)
+      # ветвится по `code`, и договорённость держалась ручным набором одной
+      # строки на двух сторонах. Реестр `_shared/errorCodes.ts` делает набор
+      # явным словарём; гард держит (a) любой UPPER_SNAKE-код, что edge эмитит,
+      # обязан быть в реестре и (b) append-only (код живёт в сторе дольше релиза).
+      # git + стандартная библиотека — инвариант джобы «без npm ci» цел.
+      - name: 2v — реестр кодов ошибок (edge-эмиссия ⊆ словарь, append-only)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-error-codes.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
