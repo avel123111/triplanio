@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * MembersLens - members tab inside TripView.
  *
@@ -16,7 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Input, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Seg, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -54,6 +55,7 @@ const ROLES = [
   { value: 'viewer', labelKey: 'member.role_viewer_desc' },
 ];
 
+/** @param {{ tripId: any, onSaved?: any, promoteMember?: any, open: boolean, onOpenChange?: any }} p */
 export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
@@ -140,33 +142,33 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   return (
     <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
         {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
         {tab === 'offline' && <Btn variant="primary" icon="user" loading={saving} onClick={() => v.attemptSubmit(addOffline)} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
       </>}>
-      <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
-        <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="send" size={12} />{t('member.tab_email')}
-        </button>
-        <button className={tab === 'link' ? 'active' : ''} onClick={() => setTab('link')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="link" size={12} />{t('trip.copy_link')}
-        </button>
-        <button className={tab === 'offline' ? 'active' : ''} onClick={() => setTab('offline')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="user" size={12} />{t('trip.member_offline')}
-        </button>
-      </div>
+      <Seg
+        variant="fill"
+        style={{ marginBottom: 14 }}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'email', label: <><Icon name="send" size={12} />{t('member.tab_email')}</> },
+          { value: 'link', label: <><Icon name="link" size={12} />{t('trip.copy_link')}</> },
+          { value: 'offline', label: <><Icon name="user" size={12} />{t('trip.member_offline')}</> },
+        ]}
+      />
 
       {tab !== 'offline' && (
         <Field label={t('member.invitee_role')}>
-          <div className="tweaks__seg" style={{ display: 'flex' }}>
-            {[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) =>
-              <button key={k} className={role === k ? 'active' : ''} onClick={() => setRole(k)}
-                style={{ flex: 1, flexDirection: 'column', gap: 0, padding: '8px 10px' }}>
-                <div className="t-ui">{lab}</div>
-                <div className="muted t-meta">{sub}</div>
-              </button>
-            )}
-          </div>
+          <Seg
+            variant="fill"
+            value={role}
+            onChange={setRole}
+            options={[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) => ({
+              value: k,
+              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-ui">{lab}</span><span className="muted t-meta">{sub}</span></span>,
+            }))}
+          />
         </Field>
       )}
 
@@ -194,7 +196,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
             <input className="input mono" value={linkLoading ? '' : linkUrl}
               placeholder={linkLoading ? t('share.generating') : ''}
               readOnly style={{ flex: 1 }}
-              onClick={(e) => e.target.select()} />
+              onClick={(e) => e.currentTarget.select()} />
             <Btn variant="primary" icon="copy" loading={linkLoading} onClick={copyLink} disabled={!linkUrl}>
               {linkLoading ? t('share.generating') : (copied ? t('common.copied') : t('share.copy'))}
             </Btn>
@@ -250,7 +252,7 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
   return (
     <Dialog title={t('members.change_role')} icon="edit" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" loading={saving} onClick={save}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
       <div className="t-body" style={{ marginBottom: 14, color: 'var(--muted)' }}>
@@ -415,7 +417,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
               {/* Actions */}
               <div className="mbrow__acts">
                 {m.status === 'offline' && canManage && (
-                  <Btn variant="ghost" icon="send"
+                  <Btn variant="secondary" icon="send"
                     onClick={() => setPromoteState({ member: m })}>
                     {t('members.invite')}
                   </Btn>
@@ -425,14 +427,20 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                     align="end"
                     width={220}
                     title={t('member.actions')}
+                    /* ★TRIP-344: инлайн из четырёх объявлений умер целиком —
+                       сторона 30px была третьей мимо обеих ступеней, а `color`
+                       и прозрачная рамка ПОВТОРЯЛИ то, что база `.icon-btn` и
+                       так объявляет. Повторённый рядом с классом инлайн — это
+                       признак сломанного класса, а не образец для копирования.
+                       Кнопка служит триггером Radix, поэтому примитив обязан
+                       пробрасывать ref и остаток пропов (см. IconBtn). */
                     trigger={
-                      <button
-                        className="icon-btn menu-trig"
-                        style={{ width: 30, height: 30, color: 'var(--muted)', border: '1px solid transparent' }}
+                      <IconBtn
+                        icon="more"
+                        size="sm"
                         title={t('member.actions')}
-                      >
-                        <Icon name="more" size={15} />
-                      </button>
+                        ariaLabel={t('member.actions')}
+                      />
                     }
                     items={isSelf
                       // Your own row: the only self-action is leaving the trip.

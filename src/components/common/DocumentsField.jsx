@@ -4,7 +4,7 @@ import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentM
 import { Icon } from '@/design/icons';
 import { UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
-import { FileRow, useToast } from '@/design/index';
+import { FileRow, IconBtn, useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
 
@@ -105,14 +105,13 @@ export default function DocumentsField({
               fallback={t('event.file_word')}
               href={normalizeExternalUrl(d.file_url)}
               action={(
-                <button
-                  type="button"
+                <IconBtn
+                  icon="close"
+                  tone="danger"
+                  size="sm"
                   onClick={() => removeAt(i)}
-                  className="doc-row__rm"
-                  aria-label={t('doc.remove_doc_aria')}
-                >
-                  <Icon name="close" size={13} />
-                </button>
+                  ariaLabel={t('doc.remove_doc_aria')}
+                />
               )}
             />
           ))}

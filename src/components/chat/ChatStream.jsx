@@ -1,3 +1,4 @@
+// @ts-check
 import React, { memo } from 'react';
 import { Avatar, Btn } from '@/design/index';
 import { Icon } from '@/design/icons';
@@ -93,7 +94,7 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErr
             <Icon name="warning" size={12} />
             {t(footKey)}
           </span>
-          <Btn variant="ghost" onClick={onRetry}>{t('sys.retry')}</Btn>
+          <Btn variant="secondary" onClick={onRetry}>{t('sys.retry')}</Btn>
         </div>
       ) : isMe && lastOfRun && (
         <div className="chat-time">{time}</div>

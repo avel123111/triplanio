@@ -1,17 +1,17 @@
 /**
- * Data-access layer for document writes (TRIP-66).
+ * Data-access layer for document writes (TRIP-66, TRIP-399).
  *
- * Every write to `trip_documents` or to an entity's `documents` array, plus the
- * two-step Storage upload, goes through here — the ONE place that talks to
- * Supabase for documents. Components never call `supabase.from(...).mutate()`
- * for documents directly; they call these functions (which read the write
- * result via `writeRows`, so a failure — real error OR silent 0-row RLS reject —
- * can never masquerade as success). The eslint guard (Slice 5) enforces that.
- *
- * Access model unchanged: direct front → Supabase + RLS (no edge functions);
- * this only makes the front read the result of its own write.
+ * The ONE place the front talks to Supabase for documents. Two rails:
+ *   • the `trip_documents` CARD (title/link/notes/files/visibility) is written
+ *     through the single write door — edge function `trip-document` + seam
+ *     `_shared/mutate.ts` (TRIP-399): право (editor), построчное право удаления
+ *     (private ⇒ author), скоуп строки и форматы держит СЕРВЕР, не RLS + фронт.
+ *   • an entity's `documents` array (booking domain) and the two-step Storage
+ *     upload stay direct front → Supabase (out of this domain), still read via
+ *     `writeRows` so a real error or silent 0-row RLS reject can't pass as success.
  */
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { writeRows } from '@/lib/trip-data';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
@@ -99,27 +99,41 @@ export function uploadErrorText(error, t) {
 }
 
 /**
- * Insert a `trip_documents` row. Throws on error or 0-row RLS reject.
- * @returns the created row.
+ * Create a `trip_documents` row through the write door (TRIP-399).
+ *
+ * `created_by` is stamped by the server from the JWT — the caller must NOT send
+ * it. `invokeFn` never throws on a non-2xx (functions-js returns {data:null,
+ * error}); a refusal comes back as `error`. We surface it as the `write_rejected`
+ * sentinel (never the raw server text — invariant TRIP-378) so the screen maps
+ * it to its own localized line.
+ *
+ * @param {object} body  { tripId, title, notes, link_url, documents, visibility, created_by_name }
+ * @returns the created row (or null).
  */
-export async function insertTripDocument(row) {
-  const [created] = await writeRows(supabase.from('trip_documents').insert(row));
-  return created;
+export async function insertTripDocument(body) {
+  const { data, error } = await invokeFn('trip-document/doc', { body });
+  if (error) throw new Error('write_rejected');
+  return data?.data ?? null; // the seam answers { data: row }
 }
 
 /**
- * Delete a `trip_documents` row.
- * @returns {Promise<boolean>} true if a row was actually deleted; false if
- *   nothing matched — either already gone (benign, another member deleted it)
- *   or RLS hid it (session expired / removed from trip). Callers must NOT treat
- *   false as success. Throws only on a real error.
+ * Delete a `trip_documents` row through the write door (TRIP-399).
+ *
+ * @param {string} tripId  scopes the row and gates the right (server-side)
+ * @param {string} id
+ * @returns {Promise<boolean>} true if a row was deleted; false if it was already
+ *   gone (seam answers 404 NOT_FOUND — another member deleted it). Callers must
+ *   NOT treat false as success. Throws (write_rejected) on any other refusal
+ *   (403 not-editor / private-not-owner, 401 expired) so the screen shows the
+ *   generic failure — never the raw server text (TRIP-378).
  */
-export async function deleteTripDocument(id) {
-  const rows = await writeRows(
-    supabase.from('trip_documents').delete().eq('id', id),
-    { expectRow: false },
-  );
-  return rows.length > 0;
+export async function deleteTripDocument(tripId, id) {
+  const { error, code } = await invokeFn('trip-document/doc/delete', { body: { tripId, id } });
+  if (error) {
+    if (code === 'NOT_FOUND') return false;
+    throw new Error('write_rejected');
+  }
+  return true;
 }
 
 /**

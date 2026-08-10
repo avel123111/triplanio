@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * BudgetLens - budget tab inside TripView.
  *
@@ -20,10 +21,8 @@
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
 import React, { useState, useMemo } from 'react';
-import { supabase } from '@/api/supabaseClient';
-import { writeRows } from '@/lib/trip-data';
+import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
-import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
@@ -34,10 +33,30 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Input, InputGroup, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
+
+// ─── запись бюджета: клиентская половина единой двери (TRIP-394) ──────────────
+//
+// Все записи бюджета идут ЧЕРЕЗ ЭТУ ДВЕРЬ, не прямым PostgREST: право (editor),
+// Pro-гейт, скоуп строки и кэпы длины держит сервер (`trip-budget` + шов
+// `_shared/mutate.ts`). Действие — сегмент пути; SDK сохраняет слэш в имени, так
+// что `trip-budget/expense` даёт `/functions/v1/trip-budget/expense`.
+//
+// invokeFn НЕ бросает на не-2xx (functions-js отдаёт {data:null,error}), поэтому
+// проверяем `error`/`code` из НЕГО, а не `data.code` (handoff блок 0). tripId в
+// теле у КАЖДОГО вызова — по нему сервер и проверяет право, и скоупит строку.
+const budgetMutate = (action, body) => invokeFn(`trip-budget/${action}`, { body });
+
+// Отказ → локализованный текст. Из UI достижим только PRO_REQUIRED (аддон
+// бюджета включали на Pro-трипе, трип мог потерять Pro — редактор всё ещё видит
+// экран, но новая запись отбивается 402). FORBIDDEN/NOT_FOUND/*_NOT_MANUAL/
+// *_SYSTEM из гейтованного UI не приходят → общий «не удалось сохранить».
+const BUDGET_REFUSAL = { PRO_REQUIRED: 'sub.locked_desc' };
+const budgetErrText = (t, code) =>
+  t(code && Object.hasOwn(BUDGET_REFUSAL, code) ? BUDGET_REFUSAL[code] : 'common.write_failed');
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
 
@@ -134,7 +153,6 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
-  const { user } = useAuth();
   const isEdit = !!existing;
   const [title, setTitle] = useState(existing?.title || '');
   const [amount, setAmount] = useState(existing?.original_amount != null ? String(existing.original_amount) : '');
@@ -171,15 +189,13 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         ? orphanCity
         : (cities.find((c) => c.id === cityVisitId)?.city_name || null),
     };
-    try {
-      await writeRows(isEdit
-        ? supabase.from('budget_expenses').update(row).eq('id', existing.id)
-        : supabase.from('budget_expenses').insert({
-            ...row, trip_id: tripId, source_kind: 'manual', source_id: null, created_by: user?.id,
-          }));
-    } catch (e) {
+    // source_kind/source_id/created_by ставит сервер (ручная дверь рождает
+    // только ручную трату) — клиент их больше не шлёт.
+    const { error, code } = await budgetMutate('expense',
+      isEdit ? { tripId, id: existing.id, ...row } : { tripId, ...row });
+    if (error) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setSaving(false);
@@ -193,11 +209,10 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   async function remove() {
     if (!isEdit) return;
     setDeleting(true);
-    try {
-      await writeRows(supabase.from('budget_expenses').delete().eq('id', existing.id), { expectRow: false });
-    } catch (e) {
+    const { error, code } = await budgetMutate('expense/delete', { tripId, id: existing.id });
+    if (error) {
       setDeleting(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setDeleting(false);
@@ -212,7 +227,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
           <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting || saving}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
         )}
         <div className="grow" />
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>
           {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
         </Btn>
@@ -280,11 +295,13 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
   const [err, setErr] = useState('');
   async function remove() {
     setDeleting(true);
-    try {
-      await writeRows(supabase.from('budget_expenses').delete().eq('id', expense.id), { expectRow: false });
-    } catch (e) {
+    // tripId — из строки (её FK на трип), сервер по нему скоупит удаление.
+    const { error, code } = await budgetMutate('expense/delete', {
+      tripId: expense.trip_id, id: expense.id,
+    });
+    if (error) {
       setDeleting(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setDeleting(false);
@@ -295,7 +312,7 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
     <Dialog title={t('trip.delete')} icon="trash" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <div className="grow" />
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
       </>}>
       <div className="col col--g7">
@@ -320,7 +337,6 @@ function liveRateToMain(fx, code) {
 
 function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
-  const { user } = useAuth();
   const close = () => onOpenChange?.(false);
   const others = currencies.filter(c => c && c !== mainCurrency);
   const [values, setValues] = useState(() => {
@@ -349,23 +365,13 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       // actually changed it - otherwise auto rates would get frozen.
       if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
     });
-    try {
-      // expectRow:false so 0 rows doesn't throw — a trip can lack a trip_budgets
-      // row (seed_budget_on_trip swallows its own failures, and ensure_trip_budget
-      // is not client-callable). In that case self-heal by inserting the row so the
-      // overrides actually persist instead of silently vanishing.
-      const rows = await writeRows(
-        supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId),
-        { expectRow: false },
-      );
-      if (!rows.length) {
-        await writeRows(supabase.from('trip_budgets').insert({
-          trip_id: tripId, currency: mainCurrency, fx_overrides: next, created_by: user?.id,
-        }));
-      }
-    } catch (e) {
+    // Self-heal строки бюджета делает СЕРВЕР (settings → ensure_trip_budget,
+    // исполнима только service_role) — клиент больше не вставляет trip_budgets и
+    // не пишет currency (на трипах без main_currency это роняло бы NOT NULL).
+    const { error, code } = await budgetMutate('settings', { tripId, fx_overrides: next });
+    if (error) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setSaving(false);
@@ -376,7 +382,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   return (
     <Dialog title={t('budget.fx_button')} icon="arrowSwap" size="" open={open} onOpenChange={onOpenChange} foot={<>
       <div className="grow" />
-      <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+      <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
       <div className="col col--g4">
@@ -429,7 +435,6 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
-  const { user } = useAuth();
   // Edit a seeded category and the field must start from what the user SEES —
   // the localized label, not the English `name` the seeder stored (TRIP-230).
   const [name, setName] = useState(existing ? categoryDisplayName(existing, t) : '');
@@ -443,30 +448,21 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   async function save() {
     setSaving(true);
     setErr('');
-    try {
-      // Renaming a SEEDED category makes it the user's own: dropping system_key
-      // stops us translating over their text on the next language switch
-      // (TRIP-230). Never for kind='system' — sync_budget_expense routes booking
-      // expenses by system_key, so clearing it would orphan that routing.
-      const dropsSeedKey = existing?.kind === 'custom' && !!existing.system_key
-        && name.trim() !== categoryDisplayName(existing, t);
-      await writeRows(existing
-        ? supabase.from('budget_categories')
-            .update({ name: name.trim(), color, icon, ...(dropsSeedKey ? { system_key: null } : {}) })
-            .eq('id', existing.id)
-        : supabase.from('budget_categories').insert({
-            trip_id: tripId,
-            kind: 'custom',
-            name: name.trim(),
-            system_key: null,
-            icon,
-            color,
-            order_index: 99,
-            created_by: user?.id,
-          }));
-    } catch (e) {
+    // Переименование СЕЯНОЙ категории делает её собственной: отвязка system_key
+    // не даёт при следующей смене языка перевести поверх пользовательского
+    // текста (TRIP-230). Считается это от ЛОКАЛИЗОВАННОЙ подписи, поэтому живёт
+    // на клиенте — сервер языка зрителя не знает; он принимает только ОБНУЛЕНИЕ
+    // ключа (clearOnly), присвоить чужой нельзя (по нему роутятся автотраты).
+    // kind/order_index/created_by на вставке ставит сервер.
+    const dropsSeedKey = existing?.kind === 'custom' && !!existing.system_key
+      && name.trim() !== categoryDisplayName(existing, t);
+    const { error, code } = await budgetMutate('category', existing
+      ? { tripId, id: existing.id, name: name.trim(), color, icon,
+          ...(dropsSeedKey ? { system_key: null } : {}) }
+      : { tripId, name: name.trim(), icon, color });
+    if (error) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('common.write_failed'));
+      setErr(budgetErrText(t, code));
       return;
     }
     setSaving(false);
@@ -478,7 +474,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
     <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="grid" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <div className="grow" />
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
       <div className="col col--g7">
@@ -492,18 +488,15 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
         <div className="field__label">{t('budget.color_label')}</div>
         <div className="row row--g4 row--wrap" role="group" aria-label={t('budget.color_label')}>
           {CAT_COLORS.map(c => (
-            <button key={c} type="button" className={`bgt-swatch tile tile--sm ${color === c ? 'on' : ''}`} style={{ background: c }}
-              aria-pressed={color === c} onClick={() => setColor(c)} />
+            <Swatch key={c} on={color === c} onClick={() => setColor(c)} style={{ background: c }} />
           ))}
         </div>
       </div>
       <div className="col col--g4">
         <div className="field__label">{t('budget.icon_label')}</div>
-        <div className="bgt-iconpick row row--g4 row--wrap" role="group" aria-label={t('budget.icon_label')}>
+        <div className="row row--g4 row--wrap" role="group" aria-label={t('budget.icon_label')}>
           {CAT_ICONS_BUDGET.map(ic => (
-            <button key={ic} type="button" className={`tile tile--lg ${icon === ic ? 'on' : ''}`} aria-pressed={icon === ic}
-              style={icon === ic ? { background: color + '22', borderColor: color, color } : undefined}
-              onClick={() => setIcon(ic)}><Icon name={ic} size={18} /></button>
+            <Swatch key={ic} variant="icon" icon={ic} on={icon === ic} tint={color} onClick={() => setIcon(ic)} />
           ))}
         </div>
       </div>
@@ -522,6 +515,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
 
 // `cityName` is resolved by the caller from the expense's visit (falling back to
 // the frozen string), so the row shows the city in the current language.
+/** @param {{ expense: any, catColor?: any, catIcon?: any, mode?: string, catName?: any, cityName?: any, loc?: any, mainCurrency?: any, mainAmount?: any, ok?: boolean, onOpen?: any, onEdit?: any, onDelete?: any, readOnly?: boolean }} p */
 function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete, readOnly }) {
   const { t } = useI18n();
   const src = expense.source_kind || 'manual';
@@ -551,8 +545,11 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
       {isManual ? (
         !readOnly && (
           <div className="bgt-exrow__acts row row--g2">
-            <button className="icon-btn tile--sm" aria-label={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }}><Icon name="edit" size={15} /></button>
-            <button className="icon-btn bgt-exrow__del tile--sm" aria-label={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }}><Icon name="trash" size={15} /></button>
+            {/* ★TRIP-344: `tile--sm` был ТРЕТЬЕЙ стороной (28px) — ступень
+                ПЛИТКИ на контроле, мимо обеих ступеней кнопки. Опасный ховер
+                больше не экранное имя: тон `danger` теперь есть в каноне. */}
+            <IconBtn icon="edit" size="sm" ariaLabel={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }} />
+            <IconBtn icon="trash" size="sm" tone="danger" ariaLabel={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }} />
           </div>
         )
       ) : (
@@ -723,7 +720,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         <span className="grow" />
         {!readOnly && (
           <>
-            <Btn variant="ghost" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+            <Btn variant="secondary" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
             <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
           </>
         )}
@@ -831,10 +828,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
       {/* ░ CONTROLS ░ */}
       <div className="bgt-ctl row row--g6 row--wrap">
-        <div className="seg" role="group" aria-label={t('budget.group_by_category')}>
-          <button type="button" aria-pressed={grouping === 'category'} onClick={() => setGrouping('category')}><Icon name="grid" size={14} />{t('budget.group_by_category')}</button>
-          <button type="button" aria-pressed={grouping === 'city'} onClick={() => setGrouping('city')}><Icon name="pin" size={14} />{t('budget.group_by_city')}</button>
-        </div>
+        <Seg
+          ariaLabel={t('budget.group_by_category')}
+          value={grouping}
+          onChange={setGrouping}
+          options={[
+            { value: 'category', label: <><Icon name="grid" size={14} />{t('budget.group_by_category')}</> },
+            { value: 'city', label: <><Icon name="pin" size={14} />{t('budget.group_by_city')}</> },
+          ]}
+        />
         <div className="grow" />
         {grouping === 'category' && !readOnly && (
           <Btn variant="soft" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
@@ -871,10 +873,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </button>
               );
             })}
+            {/* Тот же плейсхолдер «добавить», что в планировщике: пунктир и
+                ховер держит `btn--dashed`, свой класс экрану больше не нужен. */}
             {!readOnly && (
-              <button type="button" className="bgt-glist__add row row--g4" onClick={openAddCategory}>
-                <Icon name="plus" size={15} /> {t('budget.add_category')}
-              </button>
+              <Btn variant="dashed" block icon="plus" onClick={openAddCategory}>
+                {t('budget.add_category')}
+              </Btn>
             )}
           </div>
 
@@ -899,7 +903,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               </div>
               {activeCat.kind === 'custom' && !readOnly && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
-                  <Btn variant="ghost" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
+                  <Btn variant="secondary" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
                 </div>
               )}
               {activeCat.items.length === 0 ? (

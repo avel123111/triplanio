@@ -48,7 +48,7 @@ export default function ConfirmDialog({
         )}
         <div className="dlg__foot" style={{ border: 'none', background: 'none', padding: '14px 0 4px' }}>
           {!singleButton && (
-            <Btn variant="ghost" disabled={busy} style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenChange?.(false)}>
+            <Btn variant="secondary" disabled={busy} style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenChange?.(false)}>
               {finalCancelLabel}
             </Btn>
           )}

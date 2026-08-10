@@ -1,5 +1,6 @@
+// @ts-check
 import { Drawer } from 'vaul';
-import { X } from 'lucide-react';
+import { IconBtn } from '@/design/IconBtn';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
@@ -20,6 +21,7 @@ import { useT } from '@/lib/i18n/I18nContext';
  *     ...rows...
  *   </Sheet>
  */
+/** @param {{ open: boolean, onOpenChange: (v: boolean) => void, title?: any, children?: any, className?: string, bodyClassName?: string, titleText?: string }} p */
 export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const t = useT();
   return (
@@ -40,7 +42,13 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
           {title ? (
             <div className="sheet-h">
               <Drawer.Title asChild><h3>{title}</h3></Drawer.Title>
-              <Drawer.Close className="close" aria-label={t('common.close')}><X size={16} /></Drawer.Close>
+              {/* ★TRIP-344: крестик - тот же объект, что в диалоге, и рисуется
+                  тем же примитивом. `asChild` нужен, чтобы vaul повесил свои
+                  обработчики на САМУ кнопку, а не на лишнюю обёртку. Ховера у
+                  него не было вовсе - теперь приходит с тоном. */}
+              <Drawer.Close asChild>
+                <IconBtn icon="close" tone="soft" ariaLabel={t('common.close')} />
+              </Drawer.Close>
             </div>
           ) : (
             <Drawer.Title className="sr-only">

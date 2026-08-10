@@ -142,6 +142,37 @@ const ARRAYS = [
   { name: 'BADGE_VARIANTS', family: 'badge' },
   { name: 'SEV_LEVELS', family: 'sev' },
   { name: 'AVATAR_SIZES', family: 'avatar' },
+  // ★TRIP-344: кнопка-иконка объявлена ТРЕМЯ массивами, потому что у неё три
+  // независимые оси, а не один плоский список (soft И round — законная пара).
+  // ⚠️ Её обличья попали под ЭТУ сверку, а не под `EMITTED`, из-за выноса
+  // примитива в `src/design/IconBtn.jsx`: `emittedByComponents` читает только
+  // `index.jsx`. Это не потеря покрытия, а его СМЕНА НАПРАВЛЕНИЯ — вместо 2б
+  // («компонент эмитит → правило существует») их держит связка «показано на
+  // витрине» + направление 2 («витрина не показывает того, чего в CSS нет»),
+  // то есть проверок стало две вместо одной. Названо вслух, потому что
+  // молчаливый переезд класса из-под одной сверки под другую — ровно тот
+  // случай, где покрытие теряют, не заметив.
+  { name: 'ICONBTN_TONES', family: 'icon-btn' },
+  { name: 'ICONBTN_SIZES', family: 'icon-btn' },
+  { name: 'ICONBTN_SHAPES', family: 'icon-btn' },
+  // ★TRIP-344: степпер — свой примитив в `src/design/Stepper.jsx`, поэтому его
+  // обличья `stepper--block` / `stepper--bare` собираются в рантайме и `emittedByComponents`
+  // (читает только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
+  { name: 'STEPPER_VARIANTS', family: 'stepper' },
+  // ★TRIP-344 PR 6: сегмент-контрол — свой примитив `src/design/Seg.jsx`, его
+  // обличье `seg--fill` собирается в рантайме, `emittedByComponents` (только
+  // `index.jsx`) его не видит — держит связка «массив на витрине» + направление 2.
+  { name: 'SEG_VARIANTS', family: 'seg' },
+  // ★TRIP-344 PR 7: пилюля — свой примитив `src/design/Chip.jsx` (обёртка канона
+  // `.fpill`), её обличья собираются в рантайме из ДВУХ осей (заливка + модификатор),
+  // `emittedByComponents` (только `index.jsx`) их не видит — держит связка «массив
+  // на витрине» + направление 2. Семья `fpill` переведена triage→canon.
+  { name: 'CHIP_VARIANTS', family: 'fpill' },
+  { name: 'CHIP_MODS', family: 'fpill' },
+  // ★TRIP-344: свотч — свой примитив `src/design/Swatch.jsx`, его обличья
+  // `swatch--icon` / `swatch--round` собираются в рантайме, `emittedByComponents`
+  // (только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
+  { name: 'SWATCH_VARIANTS', family: 'swatch' },
 ];
 
 function valuesOf(name) {
@@ -177,7 +208,7 @@ function shownOnKit() {
 const NOT_SHOWN = new Set([
   // раскладка: выравнивание и поток — показаны только ступени зазора
   'row--a-baseline', 'row--div', 'row--flush', 'row--inline', 'row--j-between',
-  'col--a-end', 'col--a-start', 'col--j-center',
+  'col--a-end', 'col--j-center',
   // плитка-иконка: одиннадцать обличий, ни одного образца
   'tile--ai', 'tile--danger', 'tile--info', 'tile--lg', 'tile--quiet',
   'tile--round', 'tile--sm', 'tile--solid', 'tile--success', 'tile--warm', 'tile--warning',
@@ -186,6 +217,9 @@ const NOT_SHOWN = new Set([
   'toast--error', 'toast--info', 'toast--success', 'toast--warning',
   // поверхности и диалог
   'card--danger', 'card--flush', 'dlg--sm', 'dlg--wide',
+  // сегмент-контрол: `--fill` показан на витрине; `--filter`/`--view` — экранные
+  // адаптивы Trips (order/flex в `.trips-toolbar`), не обличья примитива
+  'seg--filter', 'seg--view',
   // прочее, поштучно
   'ai-blk--pill', 'avatar-stack--white', 'btn--brand', 'field-row--aside',
   'input-affix--end', 'input-affix--ic', 'input-unit--lead',

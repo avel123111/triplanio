@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * EventModal - unified read view for a timeline event (hotel / transfer /
  * activity / car rental / esim / insurance).
@@ -19,9 +20,9 @@
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
-  Trash2, X,
+  Trash2,
 } from 'lucide-react';
 import {
   useEventViewModel, useEntityDocs, EventViewSections, eventHeader,
@@ -116,9 +117,7 @@ export default function EventModal(props) {
                 : (hdr.sub && <span className="t-meta">{hdr.sub}</span>)}
             </div>
           </div>
-          <button className="lp-back" onClick={() => setOpen(false)} aria-label={t('common.close')}>
-            <X />
-          </button>
+          <IconBtn icon="close" tone="soft" round onClick={() => setOpen(false)} ariaLabel={t('common.close')} />
         </div>
 
         {/* Body */}
@@ -145,7 +144,7 @@ export default function EventModal(props) {
         <div className={'lp-f' + (confirmDel ? '' : ' lp-f--ratio')}>
           {confirmDel ? (
             <>
-              <Btn variant="ghost" onClick={() => setConfirmDel(false)} disabled={deleting}>
+              <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>
                 {t('trip.form_cancel')}
               </Btn>
               <Btn

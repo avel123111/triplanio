@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Search, RotateCcw, Ticket, AlertTriangle, Star, SlidersHorizontal, CloudOff, X } from 'lucide-react';
-import { Checkbox, Input, InputGroup } from '@/design/index';
+import { Btn, Checkbox, Input, InputGroup } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
@@ -152,7 +152,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
           spark={<CloudOff size={13} />}
           title={t('fork.activities_error_title')}
           body={t('fork.activities_error_body')}
-          action={<button type="button" className="btn btn--soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.activities_retry')}</button>}
+          action={<Btn variant="soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.activities_retry')}</Btn>}
           partner={brandPartner}
         />
       )}
@@ -175,7 +175,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
           spark={<X size={13} />}
           title={t('fork.activities_no_match_title')}
           body={t('fork.activities_no_match_body')}
-          action={<button type="button" className="btn btn--soft" onClick={resetFilters}><RotateCcw size={15} />{t('fork.f_reset')}</button>}
+          action={<Btn variant="soft" onClick={resetFilters}><RotateCcw size={15} />{t('fork.f_reset')}</Btn>}
           partner={brandPartner}
         />
       )}
@@ -227,8 +227,8 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
         /* List chrome (.fork-*) + card (.pcard*) + toolbar (.s22f-*) + count row
-           (.s22-count / .s22-sort on the shared .row primitive) are all shared —
-           see app.css + forkList.jsx. */
+           (.s22-count on the shared .row primitive; sorting is a <Btn variant="link">)
+           are all shared — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

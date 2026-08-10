@@ -1,3 +1,4 @@
+// @ts-check
 import React from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Icon } from '@/design/icons';
@@ -19,7 +20,7 @@ import { Sheet } from '@/components/ui/Sheet';
  *
  *   <ActionMenu
  *     title="Actions"
- *     trigger={<button className="icon-btn menu-trig"><Icon name="more" /></button>}
+ *     trigger={<IconBtn icon="more" size="sm" ariaLabel="Actions" />}
  *     items={[
  *       { icon: 'send', label: 'Resend', onSelect: resend },
  *       { separator: true },
@@ -27,6 +28,7 @@ import { Sheet } from '@/components/ui/Sheet';
  *     ]}
  *   />
  */
+/** @param {{ trigger: any, items?: any[], align?: 'start'|'center'|'end', side?: 'top'|'right'|'bottom'|'left', sideOffset?: number, width?: number, title?: string }} p */
 export function ActionMenu({ trigger, items = [], align = 'end', side = 'bottom', sideOffset = 6, width, title }) {
   const isMobile = useIsMobile();
   const [open, setOpen] = React.useState(false);

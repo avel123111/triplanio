@@ -19,10 +19,3 @@ export async function parseEdgeError(error, data, fallback = null) {
     || fallback;
   return { code, message };
 }
-
-// Convenience: resolve just the user-facing message (mirrors the old
-// MembersLens.edgeErrorMessage helper).
-export async function edgeErrorMessage(error, data, fallback = null) {
-  const { message } = await parseEdgeError(error, data, fallback);
-  return message || fallback;
-}

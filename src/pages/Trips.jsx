@@ -10,7 +10,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, EmptyState, Input, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, EmptyState, Input, Seg, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -706,14 +706,16 @@ export default function Trips() {
             {/* Filters row — adaptive (.trips-toolbar): wraps the search to its own
                 full-width line on phones, segments share the first line. */}
             <div className="trips-toolbar">
-              <div className="seg seg--filter" role="group" aria-label={t('trips.tab_active')}>
-                <button aria-pressed={filterMode === 'active'} onClick={() => setFilterMode('active')}>
-                  {t('trips.tab_active')} · <span className="num">{activeTrips.length}</span>
-                </button>
-                <button aria-pressed={filterMode === 'past'} onClick={() => setFilterMode('past')}>
-                  {t('trips.tab_past')} · <span className="num">{pastTrips.length}</span>
-                </button>
-              </div>
+              <Seg
+                className="seg--filter"
+                ariaLabel={t('trips.tab_active')}
+                value={filterMode}
+                onChange={setFilterMode}
+                options={[
+                  { value: 'active', label: <>{t('trips.tab_active')} · <span className="num">{activeTrips.length}</span></> },
+                  { value: 'past', label: <>{t('trips.tab_past')} · <span className="num">{pastTrips.length}</span></> },
+                ]}
+              />
               <Input
                 className="trips-toolbar__search"
                 icon="search"
@@ -723,10 +725,16 @@ export default function Trips() {
                 onChange={e => setSearch(e.target.value)}
               />
               <div className="trips-toolbar__spacer" />
-              <div className="seg seg--view" role="group" title={t('trips.view')}>
-                <button aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>
-                <button aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><Icon name="list" size={13} /></button>
-              </div>
+              <Seg
+                className="seg--view"
+                title={t('trips.view')}
+                value={viewMode}
+                onChange={setViewMode}
+                options={[
+                  { value: 'grid', label: <Icon name="grid" size={13} /> },
+                  { value: 'list', label: <Icon name="list" size={13} /> },
+                ]}
+              />
             </div>
 
             {/* Free-limit banner — под фильтрами, над списком (TRIP-187): спокойный
@@ -760,7 +768,7 @@ export default function Trips() {
                   </div>
                   <div className="row row--wrap invite__act">
                     <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
-                    <Btn variant="ghost" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
+                    <Btn variant="secondary" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
                   </div>
                 </div>
               ) : (

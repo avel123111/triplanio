@@ -1,6 +1,7 @@
+// @ts-check
 import React from 'react';
-import { ChevronLeft, ChevronRight, Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
-import { Input, Skeleton } from '@/design/index';
+import { Search, RotateCcw, ArrowUpDown } from 'lucide-react';
+import { Badge, Btn, Chip, IconBtn, Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -112,11 +113,11 @@ export function ForkPager({ page, totalPages, pages, onGoto, prevLabel, nextLabe
   if (totalPages <= 1) return null;
   return (
     <div className="fork-pager">
-      <button className="fork-pg" disabled={page <= 1} onClick={() => onGoto(Math.max(1, page - 1))} aria-label={prevLabel}><ChevronLeft size={16} /></button>
+      <Chip sm square icon="chevL" disabled={page <= 1} onClick={() => onGoto(Math.max(1, page - 1))} aria-label={prevLabel} />
       {pages.map((p, i) => (p === '…'
         ? <span key={`g${i}`} className="fork-gap">…</span>
-        : <button key={p} className={`fork-pg ${p === page ? 'fork-pg--on' : ''}`} onClick={() => onGoto(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
-      <button className="fork-pg" disabled={page >= totalPages} onClick={() => onGoto(page + 1)} aria-label={nextLabel}><ChevronRight size={16} /></button>
+        : <Chip key={p} sm square on={p === page} onClick={() => onGoto(p)} aria-current={p === page ? 'page' : undefined}>{p}</Chip>))}
+      <Chip sm square icon="chevron" disabled={page >= totalPages} onClick={() => onGoto(page + 1)} aria-label={nextLabel} />
     </div>
   );
 }
@@ -127,7 +128,7 @@ export function ForkPager({ page, totalPages, pages, onGoto, prevLabel, nextLabe
 function ForkPill({ label, onRemove, removeLabel }) {
   return (
     <span className="s22f-pill">{label}
-      <button type="button" onClick={onRemove} aria-label={removeLabel}><X size={12} /></button>
+      <IconBtn size="sm" tone="quiet" icon="close" ariaLabel={removeLabel} onClick={onRemove} />
     </span>
   );
 }
@@ -154,15 +155,21 @@ export function ForkToolbar({
           type="text" value={searchValue} onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={searchPlaceholder} aria-label={searchPlaceholder}
         />
-        <button
-          type="button"
-          className={`s22f-fbtn ${filtersOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}
-          aria-expanded={filtersOpen} aria-label={t('fork.f_filters')} title={t('fork.f_filters')}
+        {/* Тоггл фильтров — канон `IconBtn` с `aria-pressed` (открыт = бренд-
+            заливка, как у Seg/Chip/Swatch). Счётчик активных — `Badge count`
+            ребёнком, позиция ко-селектором `.icon-btn > .badge--count`. Приватные
+            `.s22f-fbtn`/`--on`/`--active`/`__n` мертвы (сняты в этом PR). Облик
+            меняется намеренно: «открыт» был бренд-рамкой+кольцом → стал бренд-
+            заливкой канона; «есть фильтры» больше не красит рамку — это несёт
+            бейдж-счётчик. `aria-expanded` оставлен: тоггл раскрывает панель. */}
+        <IconBtn
+          icon="sliders" tone="outline"
+          ariaPressed={filtersOpen} ariaExpanded={filtersOpen}
+          ariaLabel={t('fork.f_filters')} title={t('fork.f_filters')}
           onClick={onToggleFilters}
         >
-          <SlidersHorizontal size={17} />
-          {activeCount > 0 && <span className="badge badge--count s22f-fbtn__n">{activeCount}</span>}
-        </button>
+          {activeCount > 0 && <Badge variant="count">{activeCount}</Badge>}
+        </IconBtn>
       </div>
 
       {filtersOpen && (
@@ -170,12 +177,12 @@ export function ForkToolbar({
           <div className="s22f-panel">{children}</div>
           {/* Actions live OUTSIDE the filter card (design) */}
           <div className="s22f-panelfoot">
-            <button type="button" className="btn btn--quiet" onClick={onReset}>
+            <Btn variant="quiet" onClick={onReset}>
               <RotateCcw size={14} />{t('fork.f_reset')}
-            </button>
-            <button type="button" className="btn btn--primary" onClick={onApply}>
+            </Btn>
+            <Btn variant="primary" onClick={onApply}>
               <Search size={14} />{t('fork.f_search')}
-            </button>
+            </Btn>
           </div>
         </>
       )}
@@ -189,7 +196,9 @@ export function ForkToolbar({
       {!filtersOpen && pills.length > 0 && (
         <div className="s22f-pills">
           {pills.map((p) => <ForkPill key={p.key} label={p.label} onRemove={p.onRemove} removeLabel={t('fork.f_reset')} />)}
-          <button type="button" className="s22f-resetall" onClick={onReset}>{t('fork.f_reset_all')}</button>
+          {/* «Сбросить всё» — текстовая кнопка системы; класс остался только
+              носителем `margin-left: auto` (вид целиком у `btn--link`). */}
+          <Btn variant="link" className="s22f-resetall" onClick={onReset}>{t('fork.f_reset_all')}</Btn>
         </div>
       )}
     </div>
@@ -200,12 +209,15 @@ export function ForkToolbar({
 // per-list; the cycle handler is the list's own sort stepper.
 export function ForkCountRow({ countLabel, sortLabel, onCycleSort }) {
   return (
-    <div className="row row--g6">
+    // `.s22-countrow` объявлен блоком, к которому уже относился `__ln`: он
+    // держит `--a` (серый тон текстовой кнопки в этом ряду), а не вид кнопки.
+    <div className="row row--g6 s22-countrow">
       {countLabel ? <span className="s22-count">{countLabel}</span> : null}
       <span className="s22-countrow__ln" />
-      <button type="button" className="s22-sort" onClick={onCycleSort}>
-        <ArrowUpDown size={14} />{sortLabel}
-      </button>
+      {/* Значок остаётся lucide-детищем, а не пропом `icon`: в карте значков ДС
+          двусторонней стрелки сортировки нет, а заводить её ради одного места —
+          новое имя в системе без нужды. */}
+      <Btn variant="link" onClick={onCycleSort}><ArrowUpDown size={14} />{sortLabel}</Btn>
     </div>
   );
 }

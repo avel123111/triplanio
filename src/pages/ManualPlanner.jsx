@@ -130,8 +130,8 @@ function recomputeDates(list, anchorISO) {
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
 // City row built from the EDITOR's primitives (.te-row / .te-grip / .te-row__num /
-// .te-citycell / .te-cityname / .te-dts / .te-stepper / .te-step) so the planner
-// route looks and behaves identically to the structural editor — same bold city
+// .te-citycell / .te-cityname / .te-dts + <Stepper> nights) so the planner route
+// looks and behaves identically to the structural editor — same bold city
 // names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
 // final-point toggle lives once in StepCities (not per row).
 // Planner route row. Owns its editing state + pick/remove/nights handlers, then
@@ -341,7 +341,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
           icon="lock"
           align="mid"
           title={t('planner.geo_off')}
-          action={<Btn variant="ghost" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
+          action={<Btn variant="secondary" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
         >
           <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
         </Severity>
@@ -435,12 +435,12 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
               </div>
             );
           })}
-          {/* Пунктирная кнопка добавления - общая .gadd (её же носят «добавить
-              сервис» и «добавить город» в панели города). Ховер-подсветку она
-              держит правилом, поэтому обработчики мыши больше не нужны. */}
-          <button onClick={() => addCity()} className="gadd gadd--center t-body">
-            <Icon name="plus" size={14} /> {t('planner.add_more_city')}
-          </button>
+          {/* Плейсхолдер «добавить» — тон `dashed` самой кнопки системы: серый
+              пунктир в покое, акцент на ховере. Акцент тут не задаётся: здесь не
+              выбирают тип, поэтому канал `--a` остаётся при умолчании (brand). */}
+          <Btn variant="dashed" block icon="plus" onClick={() => addCity()}>
+            {t('planner.add_more_city')}
+          </Btn>
         </div>
         )}
       </div>
@@ -581,7 +581,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         action={(
           <>
             <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>{t('planner.open_trip')}</Btn>
-            <Btn variant="ghost" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
+            <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}
       />
@@ -1171,7 +1171,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
             action={(
               <>
-                <Btn variant="ghost" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
+                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
                 <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit')}>{t('sub.go_pro')}</Btn>
               </>
             )}
@@ -1306,8 +1306,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             {showFooter && (
               <div className="lp-f flow-foot">
-                {!isFirstStep && <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
-                {!isFirstStep && <Btn variant="ghost" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+                {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
+                {!isFirstStep && <Btn variant="secondary" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>

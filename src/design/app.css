@@ -168,6 +168,12 @@
      паддинге: иначе мобильный анти-зум-гард (16px ниже по файлу) разносит поле
      до 46.39px. Квадратным кнопкам-иконкам тот же токен идёт в `height`. */
   --ctl-h: 40px;
+  /* Компактная ступень того же контрола - только для кнопки-иконки, стоящей не
+     рядом с полем, а внутри своей плашки (зум карты, «+» у заголовка секции,
+     удаление файла). Отдельный токен, а не литерал 32: ступеней ровно ДВЕ, и
+     обе обязаны читаться из одного места - иначе 26/28/30/34 вернутся.
+     floor-exempt: tokens +1 — --ctl-h-sm 32px, апрув Pavel (разбор облика кнопок, TRIP-344) */
+  --ctl-h-sm: 32px;
 
   /* Shadows (Lumo scale) */
   --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
@@ -430,8 +436,11 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .eed-fcbox, .eed-nightrow, .docfield, .choice-card,
 .plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
-.cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
-.pro-up .lockmsg, .map-ctl button, .map-legend .c, .mapfs-close,
+/* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
+   несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
+   outline-тоном примитива, и ко-селектор (0,1,0) молча перебивал бы его рамку. */
+.cbadge, .ts-startctl, .bk-link,
+.pro-up .lockmsg, .map-legend .c, .map-ctl,
 .chat-bubble--them {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -451,7 +460,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* Контрол с сильной рамкой — граница несёт кликабельность (фильтр-пилюля,
    «назад», крестик диалога). Композер чата отсюда ушёл: он `InputGroup`, фон и
    рамку держит группа (TRIP-333). */
-.fpill, .lp-back {
+.fpill {
   background: var(--surface);
   border: 1px solid var(--line-strong);
 }
@@ -623,7 +632,9 @@ h4,
 .pro-hero__sub,
 .notes-block,
 .dl-dview-note,
-.tcp__upload,
+/* `.tcp__upload` снят из этого списка вместе с классом: кнопка загрузки обложки
+   стала обычной `.btn`, а та берёт типографику канона `.t-ui` строкой ниже —
+   подпись кнопки и не должна была стоять в теле текста. */
 .check,
 .checkbox,
 .auth__switch,
@@ -656,11 +667,10 @@ h4,
 .addsheet__tx b,
 .eroute p,
 .invite__tx p,
-.ts-startctl--block .ts-startctl__date,
+.stepper--block .ts-startctl__date,
 .ts-cal__title,
 .chat-mention__row b,
 .te-row__num,
-.te-actchip,
 .bt b,
 .gt b,
 .mrow .mn,
@@ -714,7 +724,6 @@ h4,
 .bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
 .bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
 .visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
-.bell-dd__more,    /* TRIP-175 инсп.: Meta→UI (кнопка «Открыть все уведомления») */
 .fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
 .chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
 .chat-name b,         /* TRIP-296 инсп.: Meta→UI (автор сообщения) */
@@ -722,8 +731,6 @@ h4,
 .chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
 .chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
 .dock-panel__id b,    /* TRIP-296: заголовок виджета */
-.chat-reply__more,    /* TRIP-296: «Показать целиком» под ответом ассистента */
-.chat-jump,           /* TRIP-296: «Новые сообщения ↓» */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
@@ -739,7 +746,6 @@ h4,
 .sev,
 .avatar,
 .avatar--sm,
-.tweaks__seg button,
 .seg button,
 .choice-card__sub,
 .ts-startctl__lbl,
@@ -755,7 +761,6 @@ h4,
 .chat-member__rl,
 .dock__count,
 .dock-panel__head .nm,
-.bell-dd__mark,
 .fpill,
 .fpill__c,
 .nrow__meta,
@@ -768,8 +773,6 @@ h4,
 .partner-pill,
 .te-country,
 .te-warnbadge,
-.te-nights,
-.te-seam__pill,
 .gt span,
 .stepper .n,
 .addr div,
@@ -790,7 +793,6 @@ h4,
 .acct-flabel,
 .acct-plan__p,
 .acct-note,
-.acct-linktext,
 .acct-lang__flag,
 .acct-chan__s,
 .acct-tghint,
@@ -846,7 +848,6 @@ h4,
 .bgt-dleg__p,
 .bgt-stat__s,
 .bgt-glist__c,
-.bgt-glist__add,
 .bgt-detail__s,
 .bgt-detail__amt .l,
 .bgt-exrow__s,
@@ -915,10 +916,8 @@ h4,
 .phone__time,
 .langdd__btn,
 .langdd__item .code,
-.fork-pg,
-.s22f-val,
-.s22-count, .s22-sort,   /* TRIP-224: .s22-sort → Meta канон (кнопка сортировки fork) */
-.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span, .s22f-resetall,
+.s22-count,
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
 .ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
@@ -981,7 +980,7 @@ h4,
    (Micro→Mono) и чипы событий (off-canon→Mono). Гарнитура — Golos, см. .t-sans ниже.
    Близнецы вида «Неделя» (.ncal-aev .atm/.atl) едут вместе с месячными,
    иначе одно и то же событие рендерится двумя шрифтами. */
-.ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
+.ncal-nav-txt, .ncal-nav-trip,
 .ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
@@ -1007,7 +1006,6 @@ h4,
 .app-side__item.active,
 .dock-panel__head .nm b,
 .nrow__link,
-.te-seam__pill--add,
 .bud-leg .nm,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
@@ -1024,8 +1022,8 @@ h4,
 .field__match.is-bad::before,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
 .fork-partner__mid span,
-.fork-or span, .s22f-resetall,
-.fork-pg, .s22f-val, .s22-count, .pcard__score,
+.fork-or span,
+.s22-count, .pcard__score,
 .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
@@ -1048,7 +1046,7 @@ h4,
 .mbrow__email,           /* TRIP-175 инсп.: Meta+Golos (email участника) */
 .invite-banner__desc,    /* TRIP-175 инсп.: Meta+Golos (описание инвайт-баннера) */
 .ov-empty-line,          /* TRIP-175 инсп.: Meta+Golos (пустая строка обзора) */
-.gadd span,              /* TRIP-175 инсп.: Meta+Golos (подпись ghost-add сервиса) */
+.gt span,                /* TRIP-175 инсп.: Meta+Golos (вторая строка пунктирного плейсхолдера; носитель переименован с `.gadd span` вместе со сносом `.gadd`) */
 .acct-hero__mail,        /* TRIP-175 инсп.: Meta+Golos (email в шапке аккаунта) */
 .acct-note span,         /* TRIP-175 инсп.: Meta+Golos (примечание аккаунта) */
 .row__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
@@ -1072,8 +1070,6 @@ h4,
 .bgt-stat__s,            /* TRIP-243 инсп.: Meta+Golos (подпись стат-карточки) */
 .bgt-fxrow__hint,        /* TRIP-243 инсп.: Meta+Golos (хинт строки курса в модалке) */
 .sev,                    /* TRIP-275 инсп.: Meta+Golos (проза сообщений severity/баннера наблюдателя) */
-.tweaks__seg button,     /* TRIP-275 инсп.: Meta+Golos (сегмент-табы диалогов: e-mail/ссылка/офлайн + роль) */
-.tweaks__seg .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подписи роль-табов: Только просмотр/Редактирует) */
 .field__label .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подсказка-hint поля «· свободный текст») */
 .dlg__body > .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (прозовые примечания в теле диалога) */
 .dl-root .muted.t-meta,  /* TRIP-275 инсп.: Meta+Golos (подписи секций документов «Видят все участники») */
@@ -1082,7 +1078,7 @@ h4,
 .dl-dropzone span,       /* TRIP-275 инсп.: Meta+Golos (подпись dropzone «PDF · DOC · XLS…») */
 /* TRIP-280 инсп.: экран календаря целиком уходит с JetBrains на Golos.
    Mono-ярус — пилюли навигации/переключателя, плашки городов, чипы событий: */
-.ncal-nav-txt, .ncal-nav-trip, .ncal-vtgl-btn, .ncal-more,
+.ncal-nav-txt, .ncal-nav-trip,
 .ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
@@ -1161,14 +1157,17 @@ h4,
    БАЗОВУЮ геометрию этот блок не объявляет - форму (центрирование + радиус) даёт
    ко-селектор `.tile, .icon-btn` в блоке примитивов, а СТОРОНУ кнопке там же
    переопределяет своя строка `.icon-btn` (`--ctl-h` вместо плиточных 34px,
-   TRIP-333 §3.3). Два контекста перебивают сторону СВОИМИ литералами:
-   `.app-header .icon-btn` (38px, круг) и `.dock-panel__head .icon-btn` (32px).
-   Оба (0,2,0) против (0,1,0), поэтому выигрывают
-   и на ручку --tile НЕ смотрят: ставить её на предке .icon-btn бесполезно, там
-   победит литерал. Это два будущих потребителя ступеней, а не поломка.
-   Кегль иконки к ручке НЕ подключён намеренно: у кнопки он приходит из пропа
-   size в JSX (18px), а сведение к --tile-ic меняет вид в 10 местах - это
-   решение уровня экрана, со скриншотом, а не правка вслепую отсюда. */
+   TRIP-333 §3.3). ★TRIP-344: контекстных ЛИТЕРАЛОВ стороны больше нет ни
+   одного - `.dock-panel__head .icon-btn` (32px) удалён совсем (это ступень
+   `--sm`), а `.app-header .icon-btn` (38px, круг) переписан на ручки
+   `--tile`/`--tile-r`. Разница не косметическая: литерал весил (0,2,0) и бил
+   ступень, а ручку читает базовая строка (0,1,0), которая ступени `--sm`
+   ПРОИГРЫВАЕТ по порядку. То есть исключение шапки стало ДЕФОЛТОМ, который
+   `size` из разметки перекрывает, а не перебивкой, которую не обойти.
+   Кегль иконки к ручке --tile-ic НЕ подключён намеренно: у кнопки его задаёт
+   `.icon-btn > svg` (16px, ступени `--sm`/`--fab` - свой), а сведение к
+   --tile-ic меняет вид в 10 местах - это решение уровня экрана, со
+   скриншотом, а не правка вслепую отсюда. */
 .icon-btn {
   position: relative;
   border: 1px solid transparent;
@@ -1176,17 +1175,58 @@ h4,
   color: var(--muted);
 }
 .icon-btn:hover { background: var(--wash); color: var(--ink); }
-.icon-btn .dot {
-  position: absolute; top: 6px; right: 7px;
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--warm); border: 2px solid var(--surface);
+/* Метка непрочитанных. ★TRIP-344: правило было ОСИРОТЕВШИМ — `.dot` внутри
+   `.icon-btn` не стоял нигде, потому что колокольчик рисовал метку инлайном, и
+   оба правила (это и `.app-header`-переопределение ниже) молча описывали то,
+   чего на экране не существовало. Значения взяты С ЖИВОГО инлайна, а не с
+   мёртвого правила: на экране сегодня 11px и `--danger`, а не 7px и `--warm`,
+   и менять вид под текст мёртвого правила значило бы «починить» то, что никто
+   не видел. Поэтому же ушло и `.app-header .icon-btn .dot` — оно перекрашивало
+   метку в `--danger`, который теперь и есть база.
+
+   ⚠️ ГРАБЛИ, СТОИВШИЕ ЖИВОГО ДЕФЕКТА, ДВАЖДЫ ПОДРЯД. Сначала терминатор этого
+   комментария стоял на последней строке блока visual-diff-exempt и ушёл вместе
+   с маркерами при построчной замене: незакрытый комментарий съел правило НИЖЕ
+   целиком — метка теряла position:absolute, становилась обычным элементом
+   grid, place-items:center заводил вторую строку, и иконка колокольчика
+   уезжала ВВЕРХ на 10px (видно только при непрочитанных). Потом я описал эту
+   ловушку здесь же — и написал закрывающую пару звёздочки со слэшем ЛИТЕРАЛОМ
+   внутри текста, чем закрыл комментарий досрочно во второй раз.
+   Отсюда два правила. Терминатор не ставить на строку, которую может снять
+   построчная правка. И: закрывающую пару НЕ УПОМИНАТЬ внутри комментария даже
+   в кавычках — говорить о ней словами.
+   Ни один гард этого не ловит: 2p сравнивает РАЗОБРАННЫЙ CSS, а для него
+   правила просто нет с обеих сторон; доказывается только рендером. */
+.icon-btn__dot {
+  position: absolute; top: 4px; right: 4px;
+  width: 11px; height: 11px; border-radius: var(--r-pill);
+  background: var(--danger); border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent);
 }
 /* Header override — keep the 38px round shape; colours fall back to the neutral
-   .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient. */
+   .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient.
+   ★TRIP-344: исключение ОСТАЛОСЬ (38px круг — апрув Pavel: диаметр совпадает с
+   аватаром рядом, ступень 40 с ним разъехалась бы), но выражено РУЧКАМИ
+   примитива, а не литералами поверх него. Рендер тот же; меняется, кто
+   выигрывает объявление. Литералы весили (0,2,0) против (0,1,0) у базы и
+   побеждали ключ `.icon-btn` ЦЕЛИКОМ — то есть геометрия примитива была не
+   видна ни здесь, ни гарду 2p, у которого в карте каскада один победитель на
+   ключ: стороной `.icon-btn` числились ЭТИ 38px. Следствие не косметическое —
+   ЛЮБОЙ перенос приватного класса на примитив печатался как «перенос СО СМЕНОЙ
+   значения» (32px → 38px, `--r-sm` → 50%), и подтвердить переезд было нечем,
+   кроме полусотни непроверяемых исключений. `--tile`/`--tile-r` — те самые
+   ручки, которые база уже читает (`var(--tile, var(--ctl-h))`), поэтому
+   исключение стало СТУПЕНЬЮ, а не перебивкой.
+   ⚠️ Ручка стоит на САМОЙ кнопке, а не на `.app-header`, и это не мелочь:
+   `--tile` наследуется, а читает её и `.tile` тоже — поставленная на предке,
+   она переразмерила бы каждую плитку в шапке заодно.
+   Рамке ручки нет, поэтому красится `border-color`: базовое
+   `border: 1px solid transparent` остаётся победителем своего ключа. */
 .app-header .icon-btn {
-  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
+  --tile: 38px; --tile-r: 50%; border-color: var(--line);
 }
-.app-header .icon-btn .dot { background: var(--danger); border: 1.5px solid var(--surface); }
+/* `.app-header .icon-btn .dot` удалено вместе с осиротевшим базовым правилом:
+   оно перекрашивало метку в `--danger`, а `--danger` теперь и есть база. */
 
 /* Account button + avatar ring + PRO badge */
 .app-header__account { display: flex; align-items: center; gap: 7px; background: transparent; border: 0; cursor: pointer; padding: 0 2px; }
@@ -1255,11 +1295,19 @@ button.app-side__item:hover { background: var(--wash); }
    PRIMITIVES — buttons, fields, badges, cards
    ================================================================= */
 /* ===== Buttons — Lumo primitive layer (--bg/--fg/--bd variant model).
-   Single base + one consistent hover (lift) / active (scale) / focus ring;
-   variants only swap the three vars. Translated to app tokens: the Lumo
-   kit's own var(--primary) → --brand; its var(--primary-fg) → the literal
-   #fff — NOT our --primary-fg token, which flips to dark ink in dark theme
-   while the filled button keeps white text in both. ===== */
+   Single base + one consistent hover / focus ring; variants only swap the three
+   vars. Translated to app tokens: the Lumo kit's own var(--primary) → --brand;
+   its var(--primary-fg) → the literal #fff — NOT our --primary-fg token, which
+   flips to dark ink in dark theme while the filled button keeps white text in
+   both.
+
+   ★ ХОВЕР — ЭТО СМЕНА ЗАЛИВКИ, А НЕ ПОДПРЫГИВАНИЕ (разбор облика кнопок,
+   апрув Pavel, TRIP-344 PR 3). У базы больше НЕТ ни `transform` на `:hover`,
+   ни `scale` на `:active`, и `transform` убран из `transition` — иначе
+   свойство продолжало бы анимироваться от чужих правил. Следствие, названное
+   вслух: у каждого тона отклик на наведение обязан быть СВОЙ и видимый, потому
+   что общего «дёрнулась» больше нет — см. `--secondary` и `--danger-solid`
+   ниже, у которых его пришлось завести. ===== */
 .btn {
   --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -1269,26 +1317,74 @@ button.app-side__item:hover { background: var(--wash); }
   min-height: var(--ctl-h); padding: 0 15px; border-radius: var(--r-btn);
   background: var(--bg); color: var(--fg); border: 1px solid var(--bd);
   cursor: pointer; white-space: nowrap;
-  transition: transform .16s var(--ease-spring), background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
+  transition: background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
 }
-.btn:hover { transform: translateY(-2px); }
 .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .btn--primary { --bg: var(--brand); --fg: #fff; --bd: transparent; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--brand) 70%, transparent); }
 .btn--primary:hover { --bg: var(--primary-hover); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent); }
 .btn--primary:active { --bg: var(--primary-press); }
 .btn--secondary { --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong); }
-.btn--secondary:hover { --bd: var(--brand); --fg: var(--brand); box-shadow: var(--sh-1); }
-/* `.btn.is-on` было ВТОРЫМ именем для этого же состояния - набор объявлений
-   совпадал побайтово. Сведено в один селектор, второе имя удалено. */
-.btn--soft, .btn.is-on { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
-.btn--soft:hover, .btn.is-on:hover { --bg: var(--brand-soft-12); }
-.btn--ghost { --bg: transparent; --fg: var(--ink-2); --bd: transparent; }
-.btn--ghost:hover { --bg: var(--surface-2); --fg: var(--ink); }
+/* Отклик на наведение — ЗАЛИВКА (и чуть более тёмная рамка), а не перекраска
+   текста в бренд с тенью: снятое подпрыгивание было ЕДИНСТВЕННЫМ, что делало
+   прежний ховер похожим на нажимаемую кнопку, а брендовый текст читался как
+   «это ссылка». Тон вторичной кнопки при наведении не меняется. */
+.btn--secondary:hover { --bg: var(--wash); --bd: var(--line-hover); }
+/* `.btn.is-on` было ВТОРЫМ именем для этого же состояния (набор объявлений
+   совпадал побайтово) — и вот теперь оно ДЕЙСТВИТЕЛЬНО удалено. Прежний
+   комментарий обещал именно это, а имя оставалось в селекторе: разбор облика
+   числит его мёртвым модификатором, и замер согласен — `is-on` в разметке живёт
+   на `.ncal-vtgl-btn` и `.dl-visopt`, на `.btn` его не ставит никто. */
+.btn--soft { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
+.btn--soft:hover { --bg: var(--brand-soft-12); }
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
-.btn--quiet:hover { --fg: var(--ink); }
+/* ★TRIP-344: ховер quiet — ЗАЛИВКА в `--wash`, а не только потемнение текста.
+   Эталон `nx-btn--quiet:hover` даёт `--bg: --wash` + `--fg: --ink`; ровно тот
+   принцип «ховер = смена заливки», ради которого снята анимация. Ревью Pavel. */
+.btn--quiet:hover { --bg: var(--wash); --fg: var(--ink); }
+/* Тон `ghost` (прозрачный фон, прозрачная рамка) удалён вместе с 50 вызовами:
+   до наведения он ничем не отличался от текста, то есть кнопка не выглядела
+   кнопкой. Все его места уехали на `secondary` — разбор облика кнопок, апрув
+   Pavel (TRIP-344 PR 3). */
+/* Текстовая кнопка. Тон НЕ зашит в brand, а приходит от контекста через `--a`:
+   «Показать целиком» внутри AI-карточки обязана быть фиолетовой, «Сначала
+   дешёвые» в списке отелей — серой. Умолчание `--a` (brand) стоит фолбэком
+   `var()`, поэтому контексту достаточно объявить одну переменную, а не свой
+   класс. Общая высота контрола снята: это текст в потоке, а не кнопка в ряду.
+   ⚠️ Вертикальный паддинг НЕ ноль, хотя разбор рисует текст без него: при нуле
+   мишень получается ~18px, а SC 2.5.8 требует 24. Ступень `--sp-2` даёт ~26 и
+   текст с места не двигает (бокс растёт симметрично). Горизонтального паддинга
+   нет — иначе текстовая кнопка не встаёт вровень с соседним текстом. */
+/* ⚠️ `white-space` возвращён в `normal` ТОЛЬКО у текстовой кнопки. База держит
+   `nowrap` осознанно (кнопка в ряду не должна ломаться на две строки), но
+   `link` — это текст В ПОТОКЕ, и `nowrap` на нём выдавливал строку за карточку:
+   «Управлять подпиской» в аккаунте на en/es длиннее русского и упиралась в край
+   (ревью Codex, P2). Перенос разрешён, а не задан — короткие подписи стоят в
+   одну строку, как стояли. */
+.btn--link { --bg: transparent; --fg: var(--a, var(--brand)); --bd: transparent; min-height: 0; padding: var(--sp-2) 0; white-space: normal; }
+.btn--link:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* Плейсхолдер «добавить»: в покое серый пунктир, на ховере рамка, текст и фон
+   красятся в акцент контекста (`--a` — тип брони, тип сервиса), с тем же
+   умолчанием brand, что у `link`.
+   Зазор 11px — тот же, что нёс прежний `.gadd`: он рассчитан на плитку-иконку
+   слева, а не на голую иконку, и остаётся один на обе формы, чтобы у
+   плейсхолдера был ОДИН язык расстояний. */
+.btn--dashed { --bg: transparent; --fg: var(--muted-2); --bd: var(--line-strong); border-style: dashed; gap: 11px; }
+.btn--dashed:hover { --bg: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); --bd: var(--a, var(--brand)); --fg: var(--a, var(--brand)); }
+/* Плитка-иконка плейсхолдера (`tile` у Btn). Красится вместе с рамкой — тем же
+   `--a`, тем же переходом. Класс `.gi` не новый: он и был плиткой ghost-add,
+   просто жил под `.gadd`; здесь он переехал под свой примитив вместе с
+   разметкой. Выравнивание по левому краю НЕ задаётся `justify-content` (это
+   сломало бы центрированный плейсхолдер БЕЗ плитки — «Добавить ещё город»,
+   «Трата»): подпись растягивается сама, `.grow--fit` на ней. */
+.btn--dashed .gi { border: 1px dashed var(--bd); background: transparent; color: var(--fg); }
 .btn--danger { --bg: var(--danger-soft); --fg: var(--danger-ink); --bd: transparent; }
 .btn--danger:hover { --bg: color-mix(in srgb, var(--danger) 22%, transparent); }
 .btn--danger-solid { --bg: var(--danger); --fg: #fff; --bd: transparent; }
+/* Единственный тон, у которого своего ховера НЕ БЫЛО ВООБЩЕ: отклик ему давало
+   общее подпрыгивание базы, и вместе с ним кнопка подтверждения необратимого
+   действия осталась бы полностью немой. Заливка темнеет — тот же язык, что у
+   остальных залитых тонов. */
+.btn--danger-solid:hover { --bg: color-mix(in srgb, var(--danger) 86%, #000); }
 /* AI CTA — design-system: white text in light, dark text in dark (the dark-theme
    ai-gradient is brighter, so dark text reads better there). */
 .btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); box-shadow: 0 8px 20px -7px var(--ai); }
@@ -1304,18 +1400,26 @@ button.app-side__item:hover { background: var(--wash); }
    потому незаметен. */
 .btn--ai, .btn--pro { background-origin: border-box; background-size: 170% 170%; }
 .btn--ai:hover, .btn--pro:hover { background-position: 100% 0; }
-/* У кнопки ОДИН размер, и модификаторов размера нет вообще.
-   Было три: базовый 44px, --sm 38px, --lg 54px. Различие базового и --sm
-   (6px, шрифт тот же) на экране не читается — один и тот же экран настроек
-   держал 4 больших и 3 маленьких, и этого никто не замечал, то есть разделение
-   не делало работы. Прежний --sm стал базой: 38px берёт обязательный порог
-   тач-таргета WCAG 2.2 AA (24x24) с запасом, не берёт рекомендованные 44
-   (AAA / Apple HIG) — осознанный размен, диалоги на мобиле всё равно тянут
-   кнопку на всю ширину.
+/* Ступеней размера ДВЕ и только две — ровно как у `.icon-btn`: дефолт
+   `--ctl-h` (кнопка в ряду с полем) и `--sm` `--ctl-h-sm` (кнопка ВНУТРИ своей
+   плашки — ячейка редактора маршрута). Токен общий с иконочной кнопкой, нового
+   имени размер не заводит.
+   ⚠️ Прежняя редакция этого блока писала «модификаторов размера нет вообще», и
+   это было верно ровно до строки ниже. История, из-за которой третьей ступени
+   быть не должно: было три (44 / --sm 38 / --lg 54), различие базового и --sm
+   в 6px при том же шрифте на экране не читалось — один экран настроек держал 4
+   больших и 3 маленьких, и этого никто не замечал. Сегодняшний --sm вернулся не
+   «поменьше вообще», а под ЕДИНСТВЕННЫЙ случай 32px, у которого своя причина
+   (ячейка таблицы), и берёт обязательный порог тач-таргета WCAG 2.2 AA (24x24).
    --lg была маркетинговой: четыре из шести её мест на лендинге и публичной
    странице, а те берут свою копию из landing.css — там она и осталась.
    --icon (42x42) выпилена как мёртвая: ноль потребителей, реальные иконочные
    кнопки живут на отдельном .icon-btn (34x34). */
+.btn--sm { min-height: var(--ctl-h-sm); padding: 0 11px; }
+.btn--sm svg { width: 14px; height: 14px; }
+/* Плейсхолдер в малом размере — это ДВЕ иконки без подписи (пустая ячейка
+   отеля / активности), поэтому зазор плитки ему велик, а тянуть нечего. */
+.btn--dashed.btn--sm { gap: 6px; }
 .btn--block { width: 100%; }
 
 /* Strong card lift (collection cards): -2px + card shadow. Declarative replacement
@@ -1325,12 +1429,21 @@ button.app-side__item:hover { background: var(--wash); }
 .dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--sh-2); }
 .dz-lift-card:active { transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
-.btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
-/* Every button confirms the press — instant tactile feedback. Placed last so it
-   wins over .btn--primary:hover's translateY on equal specificity. */
-/* DS: buttons lift on hover, then confirm the press with a scale-down. */
-@media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
-.btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
+.btn[disabled] { opacity: .55; pointer-events: none; }
+/* Нажато/включено = ДАННЫЕ (aria-pressed), тон — бренд-заливка, как у уже-канонных
+   Chip/Seg/Swatch. Один способ показать «нажато» на всех примитивах-кнопках;
+   классовые способы (.on/--on/--active/.map-ctl button.on) снимаются по мере
+   пересадки экранов (TRIP-344, канонизация состояния). Специфичность 0,2,0 бьёт
+   любой `.btn--variant` (0,1,0), поэтому порядок в файле роли не играет. */
+.btn[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
+.btn[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
+/* ★ ЗДЕСЬ СТОЯЛО ПОДПРЫГИВАНИЕ, И ЕГО БОЛЬШЕ НЕТ. Было: `translateY(-2px)` на
+   наведении под `@media (hover:hover)` плюс `scale(0.97)` на нажатии, и следом
+   ТРИ правила, гасившие это у `link` и `dashed` цепочкой `:not()` ради веса.
+   Снят весь узел целиком: как только у базы нет `transform`, отменять его
+   нечем и незачем — четыре правила и их объяснение ушли одной строкой смысла
+   «ховер меняет заливку». Отдельного правила `prefers-reduced-motion` кнопке
+   тоже больше не нужно: анимировать нечего. */
 
 /* Канонические роли поверхностей (TRIP-189, TRIP-326) — ЕДИНЫЙ источник вида
    карточек. Одна плоская роль, без blur, без теней. Имя роли для разметки одно
@@ -1534,7 +1647,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 [data-theme="dark"] .s22f-gcard,
 [data-theme="dark"] .input-group,
 [data-theme="dark"] .stay-dates,
-[data-theme="dark"] .ts-startctl--block { background: var(--bg); }
+[data-theme="dark"] .stepper--block { background: var(--bg); }
 /* Тень - светлотемная компенсация слабой рамки, в тёмной она только грязнит. */
 [data-theme="dark"] .input,
 [data-theme="dark"] .select,
@@ -2056,14 +2169,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Divider */
 .hr { border: none; border-top: 1px solid var(--line); margin: 0; }
 
-.tweaks__seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); background: var(--wash); border-radius: var(--r-sm); }
-.tweaks__seg button {
- flex: 1; padding: 5px 10px; border: none; background: transparent;
- color: var(--muted);
- border-radius: var(--r-sm);
-}
-.tweaks__seg button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15,23,42,.07); }
-
+/* TRIP-344 PR 6: копия `.tweaks__seg` (Участники) удалена, разметка переехала
+   на канон `<Seg>` (`.seg`) с унифицированным обликом и состоянием через
+   `aria-pressed`. Ниже — объявление УДАЛЕНИЙ для 2p (не перенос значения →
+   точечный exempt). Ключи `.tweaks__seg button` — блайнд-спот TRIP-366
+   (`.класс button` немаркируем), не грайндим.
+   visual-diff-exempt: .tweaks__seg background — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg border — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg border-radius — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg box-shadow — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg color — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg display — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg font-family — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .tweaks__seg padding — копия снята, разметка на канон .seg (TRIP-344 PR6)
+   visual-diff-exempt: .active box-shadow — состояние .active снято, активный сегмент через aria-pressed на .seg (TRIP-344 PR6) */
 /* ── Lumo segmented control (.seg) — pill shape, aria-pressed active state ── */
 .seg {
   display: inline-flex;
@@ -2102,10 +2221,58 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   box-shadow: none;
 }
 .seg button:active { transform: scale(.95); }
+/* TRIP-344 PR 6: фокус-кольцо и reduced-motion ВОЗВРАЩЕНЫ на канон при слиянии
+   копий. Вытесненный `.ncal-vtgl-btn` уважал `:focus-visible` (свой контур), а
+   `.seg button` полагался на UA-умолчание — свожу к кольцу ДС (как `.btn`,
+   `.icon-btn`, `.checkbox`), чтобы у всех сегментов был один индикатор фокуса.
+   Reduced-motion гасит нажимной `scale(.95)` и переходы — тем же крылом, что у
+   `.stepper button` (ревью Codex на PR 5). Обе правки — на канон-теге
+   `.seg button`, то есть блайнд-спот TRIP-366: 2p их не выражает. */
+.seg button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+@media (prefers-reduced-motion: reduce) {
+  .seg button { transition: none; }
+  .seg button:active { transform: none; }
+}
 /* Full-width variant — segments split the row evenly (used by the fork tabs and
    the transfer Direct/Layovers switch). Shared so neither call-site re-invents it. */
 .seg--fill { display: flex; width: 100%; }
 .seg--fill button { flex: 1; justify-content: center; }
+
+/* ── Swatch — плитка выбора (<Swatch>, TRIP-344) ──────────────────────────────
+   Один облик на три прежние реализации: `.bgt-swatch` (цвет категории),
+   `.bgt-iconpick button` (иконка категории), `.tcp__sw` (обложка трипа). База —
+   квадрат 32px (`--ctl-h-sm`), радиус ступени контрола, рамка 2px. Выбор =
+   `aria-pressed`, красится рамкой `--ink` + внутренним кольцом (у обложки этим
+   ушла галочка-оверлей `.tcp__check`). Ховер подсвечивает рамку, а не масштаб.
+   prefix-exempt: swatch — апрув Pavel, разбор облика кнопок (TRIP-344)
+   floor-exempt: namespaces +1 — swatch, новый канон-примитив кнопки, апрув Pavel
+   floor-exempt: layout +1 — swatch объявляет display:grid для центровки иконки,
+     как канон .icon-btn/.tile; примитив системы, не разметка экрана, апрув Pavel */
+.swatch {
+  width: var(--ctl-h-sm); height: var(--ctl-h-sm);
+  border-radius: var(--r-sm);
+  padding: 0; border: 2px solid transparent; cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color .16s, background .16s, color .16s;
+}
+.swatch:hover { border-color: var(--line-hover); }
+.swatch:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+.swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
+/* Выбранная плитка под фокусом с клавиатуры — оба кольца, а не одно вместо другого. */
+.swatch[aria-pressed="true"]:focus-visible { box-shadow: 0 0 0 2px var(--surface) inset, 0 0 0 3px var(--primary-ring); }
+.swatch--round { border-radius: var(--r-pill); }
+/* Иконочная плитка: рамка-контейнер, тон появляется брендовым ховером; в
+   выбранном состоянии тон берётся из канала `--sw` (умолчание — бренд), который
+   оболочка ставит по цвету категории. */
+.swatch--icon { border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+.swatch--icon:hover { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.swatch--icon[aria-pressed="true"] {
+  border-color: var(--sw, var(--brand));
+  color: var(--sw, var(--brand));
+  background: color-mix(in srgb, var(--sw, var(--brand)) 14%, transparent);
+}
+.swatch svg { width: 16px; height: 16px; }
+@media (prefers-reduced-motion: reduce) { .swatch { transition: none; } }
 
 /* ═══════════════ Примитивы раскладки (TRIP-321 Ф11) ═══════════════
    Замер (scripts/ci/audit-design.mjs) на dev@eb5e155: одна и та же форма
@@ -2301,7 +2468,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ступени мельче --sm тут НЕТ по этой же причине: она обязана нести собственный
    --tile-r, а до появления настоящего потребителя выдумывать его - гадание.
    position:relative СОЗНАТЕЛЬНО не здесь: он нужен только .icon-btn под метку
-   .dot, лишним он был бы у всех остальных плиток. */
+   .icon-btn__dot, лишним он был бы у всех остальных плиток. */
 .tile, .icon-btn {
   width: var(--tile, 34px); height: var(--tile, 34px);
   display: grid; place-items: center;
@@ -2312,16 +2479,71 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    общей высоте контрола (TRIP-333 §3.3): в ряду «поле + кнопка-иконка» иначе
    остаётся ступенька (было 34 против 40/44). Ручку `--tile` она по-прежнему
    читает - ступени плиток продолжают её переразмеривать, меняется только ДЕФОЛТ.
-   Два контекстных литерала (`.app-header` 38px круг ВЫШЕ по файлу,
-   `.dock-panel__head` 32px ниже) сильнее по специфичности (0,2,0) и остаются
-   независимо от порядка: там кнопка стоит не рядом с полем, а в своей
-   компактной панели. Реально вырастают с 34 до `--ctl-h` только крестики
+   ★TRIP-344: контекстных литералов стороны не осталось — `.dock-panel__head`
+   (32px) удалён в пользу ступени `--sm`, а `.app-header` (38px круг) переписан
+   на ручку `--tile` ВЫШЕ по файлу; поэтому строка ниже — единственный источник
+   дефолта, и ступень `--sm` его перекрывает по порядку, а не борется с (0,2,0).
+   Реально вырастают с 34 до `--ctl-h` только крестики
    диалогов (`.dlg__head`) - ряд с `h2 { flex: 1 }`, места достаточно. */
 .icon-btn { width: var(--tile, var(--ctl-h)); height: var(--tile, var(--ctl-h)); }
 /* <Icon size={N}> рисует svg презентационными атрибутами width/height, а CSS их
    бьёт -> --tile-ic МОЛЧА выигрывает у пропа size. При переводе экрана ступень
    надо выбирать под фактический size, иначе иконка съедет без единой правки JSX. */
 .tile > svg { width: var(--tile-ic, 17px); height: var(--tile-ic, 17px); }
+
+/* ─── <IconBtn>: ОБЛИЧЬЯ КНОПКИ-ИКОНКИ (TRIP-344 PR 2) ──────────────────────
+   Нового префикса тут НЕТ и не нужно: `.icon-btn` уже канон-семья, разбор облика
+   так её и называет («Канон. Ховер - заливка --wash, есть :focus-visible»).
+   Правится не имя, а то, что девятнадцать приватных копий рисовали то же самое
+   своими сторонами (24·26·28·30·34·38) и своими ховерами.
+
+   ⚠️ ПОРЯДОК НЕСУЩИЙ. Модификаторы стоят ПОСЛЕ `.icon-btn { width }` строкой
+   выше: специфичность у них одинаковая (0,1,0), решает исходный порядок.
+   Поставить их к базе цвета (строка ~1172) значило бы, что `--sm` молча
+   проигрывает стороне по умолчанию.
+
+   Ступеней размера ДВЕ и только две: дефолт `--ctl-h` (рядом с полем) и `--sm`
+   `--ctl-h-sm` (внутри своей плашки). Третьей быть не должно - именно её
+   отсутствие и схлопывает 24/26/28/30/34/38 в два числа. */
+.icon-btn { flex: none; cursor: pointer; transition: background .16s, color .16s, border-color .16s; }
+/* Живой дефект, названный разбором: из девятнадцати иконочных кнопок фокус с
+   клавиатуры показывала РОВНО ОДНА - стрелки календаря, у которых был свой
+   `outline` в общем списке `CalendarLens.css`. Остальные восемнадцать не были
+   видны вовсе; исключение и снято тем же PR - именно потому, что кольцо стало
+   свойством семьи, а не отдельного экрана.
+   Кольцо то же, что у поля и чекбокса (--primary-ring), а не своё. */
+.icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+.icon-btn[disabled] { opacity: .45; pointer-events: none; }
+/* Нажато = бренд-заливка, тот же канон, что у `.btn[aria-pressed]` выше и у Chip.
+   Глобус карты Статистики красится этим правилом (`.map-ctl button.on` снят). */
+.icon-btn[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
+.icon-btn[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
+/* Счётчик активных на кнопке-иконке — реюз `.badge--count` (тоггл фильтров форк-
+   панели), позиция ко-селектором, НОВОГО КЛАССА НЕТ (`.icon-btn` position:relative). */
+.icon-btn > .badge--count { position: absolute; top: -6px; right: -6px; }
+.icon-btn--sm { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
+.icon-btn--round { border-radius: var(--r-pill); }
+.icon-btn--soft { background: var(--secondary); border-color: var(--line); color: var(--ink-2); }
+.icon-btn--soft:hover { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.icon-btn--outline { border-color: var(--line-strong); background: var(--surface); color: var(--ink); }
+.icon-btn--outline:hover { background: var(--wash); border-color: var(--line-hover); }
+.icon-btn--solid { background: var(--brand); color: var(--primary-fg); }
+.icon-btn--solid:hover { background: var(--primary-hover); color: var(--primary-fg); }
+.icon-btn--ai:hover { background: var(--ai-soft); color: var(--ai-ink); }
+.icon-btn--danger:hover { background: var(--danger-soft); color: var(--danger-ink); }
+.icon-btn > svg { width: 16px; height: 16px; }
+.icon-btn--sm > svg { width: 14px; height: 14px; }
+/* Плавающая кнопка. Радиальный градиент и тройная тень с внутренним бликом
+   перенесены с `.mbnav__fab` один в один - позиционирование остаётся за экраном,
+   примитив отвечает только за облик. */
+.icon-btn--fab {
+  width: 56px; height: 56px; border-radius: var(--r-pill); border: 0; color: #fff;
+  background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--brand) 82%, #fff) 0%, var(--brand) 46%, var(--brand) 100%);
+  box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--brand) 72%, transparent),
+              0 4px 10px -2px rgba(15, 23, 42, .3), inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+.icon-btn--fab:hover { filter: brightness(1.05); color: #fff; }
+.icon-btn--fab > svg { width: 24px; height: 24px; }
 
 /* Ступени - НЕ ряд «+6», к которому потом подложили замер. Каждая стоит в
    десятых долях пикселя от взвешенного центра своей полосы (замер по всем CSS
@@ -2501,13 +2723,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__lbl { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mbnav__avatar { width: 24px !important; height: 24px !important; }
   .mbnav__center { display: grid; place-items: center; height: 100%; }
+  /* ★TRIP-344: сторона, круг, градиент и тройная тень уехали в
+     `IconBtn size="fab"` - оттуда их теперь берёт и плавающая кнопка чата,
+     которая до разбора была плоской. Здесь остаётся ровно то, что примитиву
+     знать неоткуда: подъём над баром и гашение тап-подсветки.
+     `transform` держится в ОБОИХ правилах намеренно: `:active` перезаписывает
+     свойство целиком, и без повтора подъёма нажатие роняло бы кнопку на бар.
+     visual-diff-move: .mbnav__fab -> icon-btn icon-btn--fab */
   .mbnav__fab {
-    position: relative; transform: translateY(-15px); width: 56px; height: 56px; border-radius: 50%;
-    border: 0; cursor: pointer; display: grid; place-items: center; color: #fff; -webkit-tap-highlight-color: transparent;
-    /* last stop was var(--brand-press, var(--brand)) — --brand-press has never
-       existed, so it always rendered as --brand; spelled out, same pixels. */
-    background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--brand) 82%, #fff) 0%, var(--brand) 46%, var(--brand) 100%);
-    box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--brand) 72%, transparent), 0 4px 10px -2px rgba(15,23,42,.3), inset 0 1px 0 rgba(255,255,255,.4);
+    transform: translateY(-15px); -webkit-tap-highlight-color: transparent;
     transition: transform .16s var(--ease-spring), box-shadow .2s;
   }
   .mbnav__fab:active { transform: translateY(-15px) scale(.9); }
@@ -2703,8 +2927,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Clear disabled state for the footer CTA — the brand-tinted disabled "Дальше"
    read as a broken button; mute it to a neutral surface. The AI variant keeps
    its vivid gradient (design A6), so exclude it. */
-.flow-foot .btn[disabled]:not(.btn--ai),
-.flow-foot .btn.is-disabled:not(.btn--ai) {
+.flow-foot .btn[disabled]:not(.btn--ai) {
   background: var(--surface-2); color: var(--muted-2); border-color: var(--line); box-shadow: none;
 }
 /* Stack footer buttons full-width earlier (≤768) so the long "Сохранить
@@ -2781,10 +3004,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
-   .te-row__num / .te-cityname / .te-dts / .te-stepper / .te-step). The ONLY
-   difference vs the editor is the trailing action column (nights stepper + delete
-   instead of hotel/activity cells), so we keep .te-row's grid and just swap the
-   column template, dropping the editor's 96px action columns.
+   .te-row__num / .te-cityname / .te-dts). The ONLY difference vs the editor is the
+   trailing action column (<Stepper> nights + .te-step--del delete instead of
+   hotel/activity cells), so we keep .te-row's grid and just swap the column
+   template, dropping the editor's 96px action columns.
    IMPORTANT: selector is `.te-row.te-row--plan` (specificity 0,2,0). The global
    `.te-row { display:grid; 6 columns }` is defined LATER in this file; at equal
    specificity it would win on source order and force the editor's 6-column grid
@@ -2800,8 +3023,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
 /* visual-diff-move: .te-row.te-row--plan .te-row__pacts -> row row--inline row--g4 */
 .te-row.te-row--plan .te-row__pacts { justify-self: end; }
-/* Planner has no reliable row-hover (esp. touch) → nights +/- and delete are
-   ALWAYS visible (the editor reveals them on hover for table density). */
+/* Planner has no reliable row-hover (esp. touch) → the delete is ALWAYS visible
+   (the editor reveals it on hover for table density). */
 .te-row.te-row--plan .te-step { opacity: 1; }
 .te-row.te-row--plan .te-step--del { color: var(--muted); }
 .te-row.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
@@ -2847,23 +3070,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
    rendered them UNSTYLED (the broken/cramped calendar). Now global → one source. */
+/* .ts-startctl — тонкая обёртка [эйбрау · <Stepper bare>] для инлайн-варианта
+   (шапка «Маршрут» / ревью). Сам контрол «− дата +» рисует <Stepper>; block-
+   вариант рендерится без обёртки. Кнопка-дата — центр степпера. */
 .ts-startctl { display: inline-flex; align-items: center; gap: 2px; border-radius: var(--r-sm); padding: 2px; }
 .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
-.ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
+.ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: var(--r-sm); color: var(--ink); white-space: nowrap; }
 .ts-startctl__date:hover { background: var(--wash); }
-/* Block variant — занимает ячейку формы и встаёт в один рост с полем города на
-   шаге 1 создания трипа. Тот же элемент .ts-startctl, без отдельного контрола.
-   ★Высота - общий токен: прежние 48px были хардкодом, а комментарий над ним
-   утверждал, что они «matches the .input height», хотя поле было 41.5 (TRIP-333). */
-.ts-startctl--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
-/* `height: 100%` тут больше не работает и работать не может: у контрола теперь
-   `min-height`, то есть высота НЕОПРЕДЕЛЁННАЯ, и процент от неё разрешается в
-   `auto` - кнопка схлопывалась до высоты своей иконки (замер: 40 -> 18px, при
-   том что и базовые 26px у `.ts-step` процент тоже перебивал). Растягивает её
-   выравнивание, а не высота; `height: auto` обязателен - со ступенью 26px от
-   базового правила `stretch` не сработает. */
-.ts-startctl--block .ts-step { width: 38px; height: auto; align-self: stretch; }
-.ts-startctl--block .ts-startctl__date { flex: 1; text-align: center; }
+/* block: дата тянется во всю ячейку (полный клик-таргет). */
+.stepper--block .n { display: flex; }
+.stepper--block .ts-startctl__date { flex: 1; text-align: center; }
 /* Drag-anywhere route rows (editor grid + planner list): a press anywhere arms
    the reorder, so never let it select the city text or pop the iOS long-press
    callout. The grip already had this; the whole row needs it for whole-row drag. */
@@ -3046,7 +3262,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    when disabled (thinking / empty-prompt), matching the A6 spec. */
 .btn--ai .ai-dots span { background: rgba(255,255,255,.85); }
 [data-theme="dark"] .btn--ai .ai-dots span { background: rgba(12,10,30,.65); }
-.btn--ai[disabled], .btn--ai.is-disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+.btn--ai[disabled] { opacity: .5; box-shadow: none; cursor: not-allowed; }
 /* Ступень ОБОЛОЧКИ - одна на модалку и панель. Было три разных числа у трёх
    контейнеров одного ранга: диалог 16, панель 24, карточка 20, из-за чего одна
    и та же форма события скруглялась по-разному при создании и редактировании,
@@ -3107,15 +3323,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-head__sub { color: var(--muted); }
 /* Members trigger — avatar stack + label in one pill; opens the member list as a
    Popover (desktop) or the canonical Sheet (phones). */
-.chat-members-btn {
-  /* раскладка уехала: chat-members-btn -> row */
-  height: 38px; padding: 0 12px 0 6px;
-  border-radius: var(--r-pill);
-  color: var(--ink-2); cursor: pointer; flex: none;
-  transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
-}
-.chat-members-btn:hover { border-color: var(--line-hover); box-shadow: var(--sh-1); }
-.chat-members-btn .avatar { width: 26px; height: 26px; }
+/* Кнопка «Участники» — примитив <Chip avatars>; стопка аватаров + подпись. */
 .chat-members-pop { width: 330px; max-width: calc(100vw - 16px); padding: 8px; }
 
 /* ── Message stream (shared) ──
@@ -3219,7 +3427,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-reply__who b { color: var(--ai-ink); }
 .chat-reply__who .tm { color: var(--muted-2); }
 .chat-reply__tag { padding: 3px 7px; border-radius: 6px; background: var(--ai-soft); color: var(--ai-ink); }
-.chat-reply__card { position: relative; padding: 16px 20px; border-radius: var(--r-md); overflow: hidden; }
+/* `--a` — тон текстовой кнопки внутри карточки ответа ассистента: «Показать
+   целиком» обязана быть фиолетовой, потому что она внутри AI-карточки, а не
+   потому что у неё свой класс (TRIP-344 PR 3). */
+.chat-reply__card { position: relative; padding: 16px 20px; border-radius: var(--r-md); overflow: hidden; --a: var(--ai-ink); }
 .chat-reply__card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ai-gradient); }
 .chat-reply__card.is-clamped { padding-bottom: 46px; }
 /* Height comes from ChatReply (CLAMP_H) via an inline max-height: the same
@@ -3231,11 +3442,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   content: ""; position: absolute; left: 3px; right: 0; bottom: 0; height: 100px; pointer-events: none;
   background: linear-gradient(180deg, transparent, var(--surface) 62%);
 }
-.chat-reply__more { color: var(--ai-ink); background: none; border: 0; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
-.chat-reply__more:hover { text-decoration: underline; }
-.chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: 13px; margin: 0; z-index: 2; }
+/* От класса остался ОДИН смысл — место кнопки под текстом; вид у `btn--link`.
+   Тон приходит каналом `--a` с самой карточки (строка выше), а не зашит здесь:
+   ровно это и значит «тон от контекста». */
+.chat-reply__more { margin-top: 10px; }
+/* ⚠️ Отступ снизу ПЕРЕСЧИТАН, а не поправлен на глаз: кнопка прибита НИЗОМ, а
+   `btn--link` дал ей вертикальный паддинг и прозрачную рамку — бокс вырос с 17.5
+   до 27.5px и потянул текст ВВЕРХ, на градиент-фейд. Замер в браузере: центр
+   текста был в 22.8px от низа карточки; при прежних 13px стал 27.8, при 8px —
+   снова 22.8. То есть подпись осталась ровно там, где стояла. */
+.chat-reply__card.is-clamped .chat-reply__more { position: absolute; left: 20px; bottom: var(--sp-4); margin: 0; z-index: 2; }
 /* Sits under the answer, aligned with it: 44px = the avatar gutter (32) plus the
-   row gap (12); -8px pulls the ghost buttons' own padding back to that edge. */
+   row gap (12); -8px pulls the buttons' own padding back to that edge. */
 /* раскладка уехала: chat-reply__acts -> row */
 .chat-reply__acts { margin-left: 36px; }
 /* Secondary actions sit under the answer — muted until hovered, so they never
@@ -3255,8 +3473,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Dots take the pill's own ink and the design's 4px — the global .ai-dots are
    5px on the stronger --ai, which inside a soft pill read as a second accent. */
 .chat-thinking .ai-dots span { width: 4px; height: 4px; background: currentColor; }
-.chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
-.chat-jump b { color: var(--brand); }
+/* «Новые сообщения ↓» — примитив <Chip> (счётчик = слот .fpill__c). */
 
 /* ── Composer (shared) ── */
 /* Widget dock (a panel edge). The lens overrides this below into a floating
@@ -3351,14 +3568,28 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ONE send button for both shells. The lens used to draw a wide .btn--primary
    with a label while the widget drew this square on --ai-gradient: the same
    action, two looks, and the gradient claimed sending was an AI act. */
-.chat-send { height: var(--ctl-h); width: var(--ctl-h); flex: none; border: 0; border-radius: var(--r-sm); background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px -9px var(--brand); transition: transform .16s var(--ease-spring), filter .2s; }
+/* ★TRIP-344: сторона, радиус, рамка, заливка и центрирование уехали в
+   `IconBtn tone="solid"`. Здесь остаётся ДЕЛЬТА отправки - подъём тенью и
+   отклик нажатия, которых у канона нет. Цвет иконки уехал на `--primary-fg`
+   (#fff / #08182B) вместе с тоном, поэтому рукописная тёмная строка
+   `[data-theme=dark] .chat-send { color:#0c1424 }` удалена: она была третьим
+   литералом того же смысла.
+   visual-diff-move: .chat-send -> icon-btn icon-btn--solid */
+.chat-send { box-shadow: 0 6px 16px -9px var(--brand); transition: transform .16s var(--ease-spring), filter .2s; }
 .chat-send:hover { filter: brightness(1.06); }
 .chat-send:active { transform: scale(.94); }
-.chat-send:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-[data-theme="dark"] .chat-send { color: #0c1424; }
-/* Call the assistant without knowing the "@" convention. */
-.chat-at { height: var(--ctl-h); width: var(--ctl-h); flex: none; border: 0; border-radius: var(--r-sm); background: var(--ai-soft); color: var(--ai-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .18s var(--ease-out); }
-.chat-at:hover { background: var(--ai-soft-2); }
+/* `cursor: not-allowed` тут больше нет: канон гасит `pointer-events` у
+   `[disabled]`, и курсор был бы объявлением, которое никогда не наблюдается. */
+.chat-send:disabled { box-shadow: none; }
+/* Call the assistant without knowing the "@" convention.
+   ★Тон `ai` в каноне - это ХОВЕР-тинт (так его носит крестик AI-блока). Эта
+   кнопка - единственная, которая несёт тот же тинт В ПОКОЕ, поэтому заливка
+   покоя и вторая ступень ховера остаются её собственной дельтой, а ink и
+   геометрия приходят из тона. Прятать различие в общий тон было бы хуже: тогда
+   у крестика AI-блока молча появилась бы фиолетовая заливка в покое.
+   visual-diff-move: .chat-at -> icon-btn icon-btn--ai */
+.chat-at { background: var(--ai-soft); color: var(--ai-ink); transition: background .18s var(--ease-out); }
+.chat-at:hover { background: var(--ai-soft-2); color: var(--ai-ink); }
 /* раскладка уехала: chat-composer__hint -> row */
 .chat-composer__hint { color: var(--muted-2); padding: 0 4px; }
 .chat-composer__hint kbd { font-family: var(--font-mono); font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }
@@ -3387,8 +3618,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @media (max-width: 768px) {
   .chat-head { height: 56px; padding: 0 14px; gap: 8px; }
   .chat-head__sub { display: none; }
-  .chat-members-btn .chat-members-btn__lbl { display: none; }
-  .chat-members-btn { height: 34px; padding: 0 5px; }
+  .fpill--avatars .chat-members-btn__lbl { display: none; }
   /* Breathing room above the composer — the stream used to end flush against it. */
   .chat-room .chat-msgs { padding: 16px 12px 12px; }
   .chat-run__col { max-width: 86%; }
@@ -3407,18 +3637,22 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Floating chat widget (ChatWidget) — Lumo
    ────────────────────────────────────────────────────────────────────────── */
 /* Brand, not the AI gradient: the widget is the trip chat, and the gradient
-   claimed the whole conversation was an AI surface. */
+   claimed the whole conversation was an AI surface.
+   ★TRIP-344: краску (сторона, круг, заливка, тень, цвет иконки) держит
+   `IconBtn size="fab"`. Здесь остаётся ТОЛЬКО то, что примитиву знать неоткуда:
+   куда кнопка прибита и как она движется. До разбора это была вторая плавающая
+   кнопка приложения с ПЛОСКОЙ заливкой и `--sh-3`, тогда как мобильный FAB нёс
+   радиальный градиент и тройную тень - один объект в двух видах.
+   `[data-theme=dark] .dock { color:#0c1424 }` уходит вместе с заливкой: у FAB
+   иконка белая в обеих темах, потому что подложка у него своя, а не `--brand`.
+   visual-diff-move: .dock -> icon-btn icon-btn--fab */
 .dock {
   position: fixed; right: 24px; bottom: max(24px, env(safe-area-inset-bottom));
-  width: 56px; height: 56px; border-radius: 50%;
-  background: var(--brand); color: #fff; display: grid; place-items: center;
-  box-shadow: var(--sh-3);
-  border: none; cursor: pointer; z-index: var(--z-dock);
+  cursor: pointer; z-index: var(--z-dock);
   transition: transform .16s var(--ease-spring), box-shadow .2s;
 }
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
-[data-theme="dark"] .dock { color: #0c1424; }
 .dock__count {
  position: absolute; top: -4px; right: -4px;
  background: var(--warm); color: #fff;
@@ -3440,7 +3674,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @keyframes dockUp { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 /* ONE header row — the former tab strip held a single always-active tab. */
 .dock-panel__head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px; border-bottom: 1px solid var(--line); }
-.dock-panel__head .icon-btn { width: 32px; height: 32px; }   /* только размер; радиус общий, из ко-селектора `.tile, .icon-btn` */
+/* Контекстной перебивки стороны здесь больше НЕТ: 32px - это ровно ступень
+   `--ctl-h-sm`, поэтому кнопки шапки дока просто просят `size="sm"` у примитива
+   (TRIP-344). Правило-перебивка было бы третьим способом сказать «32», и именно
+   такие правила бьют модификатор `--sm` по специфичности (0,2,0 против 0,1,0),
+   то есть делают ступень необъявляемой из разметки. */
 .dock-panel__head .avatar { width: 26px; height: 26px; }
 .dock-panel__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .dock-panel__id b { color: var(--ink); }
@@ -3464,7 +3702,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Ступень теперь общая, у дока остаются свои отступы и отсутствие тени. */
 .dock-panel .chat-composer { border-top: 0; padding: 0; }
 .dock-panel .chat-composer__row { padding: 6px; box-shadow: none; }
-.dock-panel .chat-at, .dock-panel .chat-send { width: 34px; height: 34px; border-radius: var(--r-sm); }
+/* 34px здесь были ТРЕТЬИМ числом стороны мимо обеих ступеней. Уплотнение в доке
+   выражается ступенью `--sm` (32px), а не своим литералом: иначе размер кнопки
+   в доке нельзя объявить из разметки - контекстное правило (0,2,0) молча бьёт
+   модификатор (0,1,0). Радиус общий, из ко-селектора `.tile, .icon-btn`. */
+.dock-panel .chat-at, .dock-panel .chat-send { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
 .dock-panel .chat-composer__field, .dock-panel .chat-ta { min-height: 34px; }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -3499,15 +3741,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   box-shadow: var(--sh-2);
 }
 .bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
-/* Title takes the slack and truncates so the action pill always fits on one line. */
+/* Title takes the slack and truncates so the action next to it fits on one line.
+   ⚠️ Держит это ТОЛЬКО усадка заголовка: он `.grow` (flex-basis 0), поэтому при
+   нехватке места ужимается он. Своего `flex: none` у кнопки больше нет — оно
+   ушло вместе с `.bell-dd__mark` (TRIP-344 PR 3). */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
 .bell-dd__foot { padding: 9px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
-/* Compact soft pill — single line, never wraps, reads as a clean secondary action. */
-.bell-dd__mark { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--brand-soft); border: none; color: var(--brand); cursor: pointer; padding: 6px 11px; border-radius: var(--r-pill); transition: background .14s, color .14s; }
-.bell-dd__mark:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); }
-.bell-dd__more { display: flex; align-items: center; justify-content: center; width: 100%; background: transparent; border: none; color: var(--brand); cursor: pointer; padding: 9px; border-radius: var(--r-sm); transition: background .14s; }
-.bell-dd__more:hover { background: var(--brand-soft); }
+/* `.bell-dd__mark` и `.bell-dd__more` удалены: обе кнопки поповера уехали на
+   текстовую кнопку системы (`<Btn variant="link">`, TRIP-344 PR 3). Вместе с
+   `.bell-dd__mark` ушла и его подпись «Compact soft pill …» — она описывала
+   именно удалённое правило и над `.bell-dd__loading` читалась бы как ложь. */
 .bell-dd__loading { display: flex; justify-content: center; padding: 28px 0; color: var(--muted); }
 
 /* Per-type icon tile — colour passed in via inline `--ic` (the notifMeta accent) */
@@ -3521,17 +3765,43 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Inbox filter pills (Все / Непрочитанные·N / Приглашения·N) */
 .nfilters { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+/* ── Chip (TRIP-344 PR 7) ──────────────────────────────────────────────────
+   Канон кликабельной пилюли — примитив `<Chip>` (`src/design/Chip.jsx`).
+   Фон и рамку базовой (neutral) формы держит `.fpill` из §«сильная рамка»
+   выше (var(--surface) + 1px var(--line-strong)). Состояние = ДАННЫЕ:
+   активную пилюлю красит `[aria-pressed="true"]`, а не класс `.on`.
+   Тон приходит каналом `--evs/--evi/--ev` с оболочки (шов/ячейка редактора),
+   ровно как `--hl*` у активного сегмента `Seg`. */
 .fpill {
- display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px;
- border-radius: var(--r-pill);
- color: var(--muted); font: inherit; cursor: pointer;
- transition: color .16s, border-color .16s, background .16s, transform .14s var(--ease-spring);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--ctl-h-sm); padding: 0 12px; border-radius: var(--r-pill);
+  color: var(--ink-2); font: inherit; cursor: pointer; white-space: nowrap;
+  transition: background .16s, border-color .16s, color .16s;
 }
-.fpill:hover { color: var(--ink); border-color: var(--line-hover); }
-.fpill:active { transform: scale(.95); }
-.fpill.on { background: var(--brand); border-color: transparent; color: #fff; box-shadow: 0 5px 14px -5px color-mix(in srgb, var(--brand) 60%, transparent); }
-.fpill__c { min-width: 19px; height: 19px; padding: 0 5px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); display: grid; place-items: center; }
-.fpill.on .fpill__c { background: rgba(255,255,255,.28); color: #fff; }
+.fpill:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
+.fpill:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+.fpill:disabled { opacity: .45; pointer-events: none; cursor: default; }
+.fpill[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
+.fpill[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
+/* tone — залито тоном типа (канал `--hl*` с оболочки, дефолт бренда в :root);
+   placeholder — пустой шов. Канал тот же, что у `.te-cell--*` и `--hl`-подсветки. */
+.fpill--tone { background: var(--hl-soft); border-color: transparent; color: var(--hl-ink); }
+.fpill--tone:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
+.fpill--placeholder { background: transparent; border-style: dashed; border-color: var(--line-strong); color: var(--muted-2); }
+.fpill--placeholder:hover { background: var(--hl-soft); border-color: var(--hl); border-style: solid; color: var(--hl-ink); }
+/* предупреждение (несостыковка городов, овернайт) — тон уходит на warning */
+.fpill--tone.is-warn { --hl-soft: var(--warning-soft); --hl-ink: var(--warning-ink); --hl: var(--warning); border-color: var(--hl); }
+/* square — форма ячейки; sm — мелкая ступень; soft — мягкий тон бренда */
+.fpill--square { border-radius: var(--r-sm); min-width: var(--ctl-h-sm); padding: 0 9px; }
+.fpill--sm { min-height: 24px; padding: 0 8px; font-size: var(--fs-micro); font-weight: 500; }
+.fpill--soft { background: var(--brand-soft); border-color: transparent; color: var(--brand); }
+.fpill--soft:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+/* avatars — стопка аватаров + подпись, высота от содержимого */
+.fpill--avatars { padding: 0 12px 0 5px; min-height: 38px; }
+.fpill--avatars .avatar { width: 26px; height: 26px; }
+.fpill__c { min-width: 19px; height: 19px; padding: 0 5px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.fpill[aria-pressed="true"] .fpill__c { background: rgba(255,255,255,.28); color: var(--primary-fg); }
+@media (prefers-reduced-motion: reduce) { .fpill { transition: none; } }
 
 /* Inbox list — stacked date groups of rounded row-cards */
 .ngrp__label { padding: 0 4px; color: var(--muted-2); }
@@ -3691,9 +3961,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
     /* visual-diff-move: te-warnbadge -> row row--inline row--g1 */
     .te-warnbadge { color: var(--warning-ink); }
-    /* A11y: keyboard-visible focus rings on editor controls. */
-    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
-    .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible {
+    /* A11y: keyboard-visible focus rings on editor controls. Заполненные ячейки
+       и швы — <Chip>, у него свой `.fpill:focus-visible`. */
+    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible {
       outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-sm);
     }
     /* A11y: enlarge small icon controls to a ~44px pointer target without growing
@@ -3702,45 +3972,30 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .ts-step::after, .te-addmini::after, .te-grip::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
     .te-step { position: relative; }
     .te-step::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
-    /* Always-on variant of the nights stepper (used in CityPanel, where there's no
-       row hover to reveal it). Same control as the grid — one look, two contexts. */
-    /* Custom nights stepper. Quiet by default (no fill — just the number with
-       hairline +/− that recede), so a column of these doesn't stripe the table.
-       On row hover it lifts into a real segmented control. */
-    /* Nights stepper — design .edl-step: always-on surface-2 pill, round primary buttons. */
-    /* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
-     visual-diff-move: te-stepper -> row row--inline */
-    .te-stepper { gap: 3px; background: transparent; border: 0; border-radius: var(--r-pill); padding: 3px; justify-self: center; transition: background .14s var(--ease-out); }
-    .te-row:hover .te-stepper { background: var(--surface-2); }
+    /* .te-step — round icon button of the planner/editor row: nights ± left on the
+       DS <Stepper>, so this now dresses only the row DELETE (.te-step--del). Kept
+       (a non-stepper icon button, an <IconBtn> candidate for a later task). */
     .te-row:hover .te-step { opacity: 1; }
     .te-step { width: 26px; height: 26px; border: 0; background: transparent; border-radius: 50%; color: var(--brand); cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .14s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-step:hover { background: var(--surface); }
     .te-step:active:not(:disabled) { transform: scale(0.9); }
     .te-step:disabled { color: var(--muted-2); cursor: default; }
-    .te-nights { min-width: 40px; text-align: center; color: var(--ink); }
-    .te-nights .muted { margin-left: 1px; }
     .te-cell { flex-shrink: 0; }
     .te-cell--hotel { justify-self: center; min-width: 0; }
     .te-cell--act { justify-self: center; }
-    /* visual-diff-move: te-cellbtn -> row row--inline row--j-center row--g3 */
-    .te-cellbtn { height: 34px; padding: 0 11px; border-radius: var(--r-sm); cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
-    /* Empty add-cells recede so unfilled rows don't read as a column of dashed
-       boxes; they surface on row hover or keyboard focus. */
-    .te-cellbtn--ghost { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
-    .te-row:hover .te-cellbtn--ghost { opacity: 1; }
-    .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
-    /* add-cell hover takes the cell's own event colour (design .edl: hotel=blue, activity=pink) */
-    .te-cell--hotel .te-cellbtn--ghost:hover,
-    .te-cell--act .te-cellbtn--ghost:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
-    @media (hover: none) { .te-cellbtn--ghost { opacity: 1; } }
-    .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
-    .te-hotelicon:hover { border-color: var(--ev-hotel); }
-    .te-hotelicon.is-warn { background: var(--warning-soft); }
-    /* visual-diff-move: te-actchip -> row row--inline row--j-center row--g3 */
-    .te-actchip { height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
-    .te-actchip:hover { border-color: var(--ev-activity); }
-    .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: scale(0.94); }
-    .te-actchip.is-warn { background: var(--warning-soft); color: var(--warning-ink); }
+    /* Пустая ячейка отеля/активности — это `Btn variant="dashed" size="sm"`, и
+       своих правил у неё больше НЕТ. Ушли вместе с классом: собственная высота
+       34px (теперь `--ctl-h-sm` 32), собственный пунктир и `scale` на нажатии.
+       ★ Ушло и `opacity: 0` — кнопка видна ВСЕГДА. Прежде она проявлялась по
+       ховеру СТРОКИ, то есть на тач-экране её не существовало вовсе, и это
+       лечилось отдельным `@media (hover: none)`; правило-костыль снято вместе с
+       причиной, а не оставлено рядом с ней.
+       Ячейка объявляет кнопке ТОН (`--a`) своим же `--hl`, поэтому акцент
+       ховера остаётся прежним (отель — синий, активность — розовый), а знает о
+       нём по-прежнему ячейка, а не кнопка. */
+    .te-cell--hotel .btn--dashed, .te-cell--act .btn--dashed { --a: var(--hl); }
+    /* Заполненные ячейки отеля/активности — <Chip variant="tone" square>;
+       тон приходит каналом `--hl*` с `.te-cell--hotel`/`--act` (ниже). */
 
     /* ---- redesigned itinerary: NO outer frame — just hairline separators
        between rows; transfers are chips straddling the seam between two cities ---- */
@@ -3757,8 +4012,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        `disabled` prop (incoming seam lives in the previous row). */
     .te-seamwrap.is-pending .te-row,
     .te-seamwrap.is-pending .te-end { opacity: .5; pointer-events: none; }
-    .te-seam__pill:disabled,
-    .te-seam__pill.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
     .te-table .te-row { border-radius: var(--r-btn); box-shadow: var(--sh-1); }
     .te-table .te-row:hover { box-shadow: var(--sh-2); border-color: var(--brand); }
     /* ★Зазор 11px СНЯТ: узел берёт ступень `row--g6` (--sp-6 = 12px). Правка
@@ -3775,17 +4028,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        animation: a filled animation pins opacity and breaks the fade-out. */
     /* visual-diff-move: te-seam -> row row--j-center */
     .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; align-items: stretch; }
+    /* Канал тона переезда для <Chip variant="tone"/"placeholder"> шва. */
+    .te-seam { --hl: var(--ev-transfer); --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
-    /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
-       from the empty dashed "+ переезд" add chip below. */
-    /* ★ОСТАТОК: зазор 7px вне шкалы - удержан.
-     visual-diff-move: te-seam__pill -> row row--inline */
-    .te-seam__pill { gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
-    .te-seam__pill:hover { box-shadow: var(--sh-3); transform: translateY(-1px) scale(1.02); }
-    .te-seam__pill:active { transform: scale(0.96); }
-    .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
-    .te-seam__pill--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); gap: 7px; box-shadow: var(--sh-1); }
-    .te-seam__pill--add:hover { color: var(--ev-transfer-ink); border-color: var(--ev-transfer); background: var(--ev-transfer-soft); transform: translateY(-1px); }
+    /* Швы переезда (заполненный/пустой) — <Chip variant="tone"/"placeholder">. */
 
     .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
     .te-addmini:hover { background: var(--brand-soft); }
@@ -3793,8 +4039,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
       .te-seam { animation: none; }
-      .te-row, .te-step, .te-stepper, .te-seam__pill, .te-actchip, .te-hotelicon, .te-cellbtn { transition-property: background, border-color, color, opacity, box-shadow; }
-      .te-step:active, .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: none; }
+      .te-row, .te-step { transition-property: background, border-color, color, opacity, box-shadow; }
+      .te-step:active { transform: none; }
     }
 
 /* =================================================================
@@ -3819,17 +4065,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    `ti` сидит подстрокой в `ai-blk-ti` и `lp-ti` и грепом читается как живой), а
    заголовок панели несёт `.lp-ti` с тем же `<b>` внутри. Вместе с правилами
    ушли ко-селекторы `.ti b` и `.ti span` из списков типографики выше. */
-/* Кнопка «уйти отсюда» в шапке панели/диалога. Была ДВУМЯ классами: этот и
-   `.ev-dlg-close` - в одной и той же шапке `.lp-h`, разной формы (34px пилюля
-   против 30px со скруглением контрола) и разного цвета покоя. Объект один:
-   пять точек вызова из семи носили второй, поэтому его форма и победила, а имя
-   осталось за этим - оно не врёт про объект и живёт в семействе шапки.
-   Вариация - ТОЛЬКО глиф (× или стрелка), его ставит вызыватель; РАЗМЕР держит
-   класс (`.lp-back svg`), иначе одна и та же кнопка ехала бы 14/15/16 в
-   зависимости от того, что за `size` написали в точке вызова.
-   Подсветку несёт ручка `--hl` ниже по файлу, а не своё правило ховера. */
-.lp-back { width: 30px; height: 30px; border-radius: var(--r-sm); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
-.lp-back svg { width: 15px; height: 15px; }
+/* `.lp-back` УДАЛЁН (TRIP-344 PR 2). Кнопка «уйти отсюда» в шапке панели -
+   это иконочная кнопка, и теперь она `<IconBtn tone="soft" round>`: облик
+   приезжает пропом, а не приватным классом. Семь точек вызова пересажены в
+   этом же PR, поэтому осиротевшего правила не остаётся.
+   Ручка `--hl` вместе с ним не нужна: пин на объекте лечил утечку канала тинта
+   (TRIP-341), а у канон-класса свой ховер, чужого `--hl` он не читает. */
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
@@ -3844,8 +4085,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .btn-label-collapse { display: none; }
 }
 
-.addmini { width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--secondary); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: .14s; }
-.addmini:hover { background: var(--accent); color: var(--accent-ink); }
+/* `.addmini` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft" size="sm">.
+   Обе точки вызова (CityPanel, «добавить отель» / «добавить активность»)
+   пересажены в этом же PR, осиротевшего правила не остаётся. */
 
 /* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан приватным.
    visual-diff-move: bookrow -> row */
@@ -3858,26 +4100,132 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .bt span { color: var(--muted); }
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
-.gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); background: transparent; border: 1px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
-.gadd:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); transform: translateY(-1px); }
-.gi { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--secondary); display: grid; place-items: center; color: var(--muted); flex: none; transition: .16s; }
-/* inside a ghost-add the icon is a DASHED placeholder (design-system .gadd .gi) */
-.gadd .gi { width: 34px; height: 34px; border: 1px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
-.gadd:hover .gi { border-color: var(--a, var(--brand)); color: var(--a, var(--brand)); }
-/* Без плитки слева содержимое встаёт по центру: так выглядит «добавить ещё
-   город» в планировщике - там нечему стоять слева, кнопка замыкает список. */
-.gadd--center { justify-content: center; gap: 8px; color: var(--muted); }
-.gadd--center:hover { color: var(--a, var(--brand)); }
+/* `.gadd` УДАЛЁН — вместе с `.gadd--center` до него это было третье имя для
+   пунктирной кнопки «добавить». Всё, что он держал (пунктир, акцент ховера по
+   `--a`, растущая подпись, плитка-иконка слева), теперь форма примитива:
+   `<Btn variant="dashed" tile sub=… >`. Своей высоты и своего паддинга у
+   плейсхолдера больше нет — он встаёт в общий рост контрола `--ctl-h`.
+   ⚠️ `.gi` (плитка) и `.gt` (подпись) — НЕ остатки: это части того же
+   плейсхолдера, их печатает Btn. Правила оставлены здесь, а не переехали в блок
+   кнопок, чтобы не двигать их через весь файл ради двух строк; пунктирный скин
+   плитки живёт у примитива (`.btn--dashed .gi`), здесь только геометрия. */
+.gi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; transition: border-color .16s, color .16s; }
+/* Подпись растягивается — этим, а не `justify-content`, форма с плиткой встаёт
+   по левому краю. Цвет НЕ задан: обе строки берут `--fg` кнопки, поэтому на
+   ховере подпись уезжает в акцент вместе с рамкой и плиткой. */
 .gt { flex: 1; min-width: 0; }
-.gt b { color: var(--muted); display: block; }
+.gt b { display: block; }
 .gt span { color: var(--muted-2); }
 
+/* Гости: карточка-степпер уезжает на канон bare, значения раскладки те же.
+   visual-diff-move: s22f-step -> stepper stepper--bare
+
+   ★ 2p: схлопывание ЧЕТЫРЁХ приватных степперов в один примитив трогает много
+   объявлений — облик уезжает на канон, частные классы снимаются, часть строк —
+   артефакты агрегации 2p по классу (.n/.muted/.te-row замусорены общими
+   читателями; на самом элементе значение не меняется). Каждое объявлено ниже.
+   ⚠️ 21 ключ вида «.s22f-step button» / «.stepper--bare button» / «.stepper--block
+   button» ОСТАЮТСЯ у 2p: это правила без класса на подлежащем (голый тег с
+   классом-предком), а их exempt-синтаксис не выражает (parser рвёт «класс+пробел»,
+   check-css-semantics.mjs:690). Все они — перенос кнопок ± на канон .stepper button
+   (значения те же) либо геометрия ± у новых вариантов. Разобрано в отчёте PR.
+   visual-diff-exempt: .stepper--block font-family — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block font-size — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block font-weight — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block line-height — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block letter-spacing — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block background — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .ts-startctl__date border-radius — дата-триггер: хардкод 7px → --r-sm
+   visual-diff-exempt: .stepper--block display — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .n display — block: .n флекс для растяжения даты (агрегат .n, только в block)
+   visual-diff-exempt: .stepper--block flex — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block text-align — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .te-row:hover background — снят вклад .te-stepper в агрегат .te-row (на элементе не меняется)
+   visual-diff-exempt: .stepper--block width — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block min-height — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block gap — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block justify-content — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block padding — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block border — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .stepper--block border-radius — трип-старт block → канон .stepper--block
+   visual-diff-exempt: .n flex — block: .n флекс для растяжения даты (агрегат .n, только в block)
+   visual-diff-exempt: .ts-step width — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step = 26px база
+   visual-diff-exempt: .ts-step height — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step = 26px база
+   visual-diff-exempt: .ts-startctl--block font-family — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block font-size — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block font-weight — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block line-height — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block letter-spacing — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .te-nights font-family — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .te-nights font-size — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .te-nights font-weight — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .te-nights line-height — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .te-nights letter-spacing — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val font-family — гости: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val font-size — гости: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val font-weight — гости: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val line-height — гости: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val letter-spacing — гости: значение → канон .stepper .n
+   visual-diff-exempt: .ts-startctl--block background — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block display — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block width — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block min-height — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block gap — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block justify-content — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block padding — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block border — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block border-radius — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block height — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block align-self — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-step align-self — снят блок-оверрайд .ts-startctl--block .ts-step; ts-step = 26px база
+   visual-diff-exempt: .ts-startctl--block flex — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .ts-startctl--block text-align — трип-старт: приватный block снят → .stepper--block
+   visual-diff-exempt: .te-stepper gap — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper background — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper border — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper border-radius — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper padding — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper justify-self — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-stepper transition — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .te-nights min-width — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .te-nights text-align — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .te-nights color — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .te-nights margin-left — ночи: значение → канон .stepper .n
+   visual-diff-exempt: .muted margin-left — снят отступ суффикса «н» (агрегат .muted, на элементе не меняется)
+   visual-diff-exempt: .te-stepper {@media (prefers-reduced-motion: reduce)} transition-property — ночи: контейнер → канон .stepper (всегда видим)
+   visual-diff-exempt: .s22f-val min-width — гости: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val text-align — гости: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val color — гости: значение → канон .stepper .n
+   visual-diff-exempt: .s22f-val font-variant-numeric — гости: значение → канон .stepper .n
+ */
+/* floor-exempt: namespaces +1 — .stepper становится канон-семьёй с вариантами block/bare (схлопывает te-stepper/ts-startctl/s22f-step в один примитив); апрув Pavel в доке TRIP-344 */
+/* ─── <Stepper>: ОБЛИЧЬЯ КОНТРОЛА «− N +» (TRIP-344 PR 5) ──────────────────────
+   Нового префикса тут НЕТ: `.stepper` уже канон-семья. `pill` — дефолт (панель
+   города). Кнопки ± — `.stepper button`; центр — `.n` (число ЛИБО кнопка-дата в
+   block). Дата — `<span role=button>` (НЕ `<button>`), поэтому `.stepper button`
+   её не задевает и своя геометрия ей не нужна. */
 .stepper { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
 .stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
 .stepper button:hover:not(:disabled) { background: var(--surface); }
 .stepper button:active:not(:disabled) { transform: scale(.9); }
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
 .stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
+/* bare: без подложки, встроен в карточку-инпут (гости) — ховер кнопки на её фоне. */
+.stepper--bare { background: transparent; padding: 0; }
+.stepper--bare button:hover:not(:disabled) { background: var(--surface-2); }
+.stepper--bare button:active:not(:disabled) { transform: scale(.88); }
+/* block: во всю ширину ячейки под `--ctl-h`, встаёт в рост с полем рядом; центр
+   несёт дату (шапка «Маршрут»). Кнопки квадратные и тянутся во всю высоту. */
+.stepper--block { display: flex; width: 100%; min-height: var(--ctl-h); gap: 0; justify-content: space-between; padding: 3px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-btn); }
+.stepper--block button { width: 38px; height: auto; align-self: stretch; border-radius: var(--r-sm); }
+.stepper--block .n { flex: 1; }
+/* Слияние в `.stepper button` потеряло reduced-motion: вытесненные `.te-step`/
+   `.ts-step` гасили `transform` на `:active`, `.s22f-step button` — `transition`.
+   Возвращаю оба на примитив, крылом на все варианты сразу (ревью Codex). */
+@media (prefers-reduced-motion: reduce) {
+  .stepper button { transition: none; }
+  .stepper button:active:not(:disabled) { transform: none; }
+}
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
 .lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
@@ -4011,15 +4359,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .wi--activity { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .wdg-h h4 { flex: 1; margin: 0; }
 .wdg-b { padding: 4px 18px 18px; }
-.wdg-act {
-  width: 28px; height: 28px; border-radius: var(--r-sm);
-  border: 1px solid var(--line-strong); background: transparent;
-  color: var(--muted-2); cursor: pointer; display: grid; place-items: center;
-  transition: border-color .16s var(--ease-out), color .16s var(--ease-out),
-              background .16s var(--ease-out), transform .12s var(--ease-out);
-}
-.wdg-act:active { transform: scale(.92); }
-.wdg-act svg { width: 14px; height: 14px; stroke-width: 2.4px; }
+/* `.wdg-act` УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="outline"
+   size="sm">. Обе точки вызова (BudgetSummaryCard, MembersSummaryCard)
+   пересажены в этом же PR. Вместе с классом ушёл и его ко-селектор ховера
+   в канале --hl* ниже по файлу: у канон-класса свой ховер. */
 
 /* ---- budget widget ---- */
 .bud-total { color: var(--ink); }
@@ -4053,8 +4396,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ov-mapcard { padding: 0; overflow: visible; box-shadow: var(--sh-1); }
 .ov-mapcard:hover { box-shadow: var(--sh-2); }
 .ov-mapcard .wdg-h { padding: 15px 18px 11px; }
-.ov-openbtn { margin-left: auto; transition: transform .12s var(--ease-out); }
-.ov-openbtn:active { transform: scale(.97); }
+/* ★TRIP-344: подпрыгивание снято и ЗДЕСЬ. Этот класс висит на `<Btn>` (карточка
+   маршрута в Обзоре), и после снятия анимации у примитива он остался бы
+   ЕДИНСТВЕННОЙ кнопкой приложения, которая ещё сжимается при нажатии — то есть
+   ровно тот случай, ради которого правка делалась системно: экранный класс
+   молча возвращает язык, снятый у канона. За классом остаётся только его
+   раскладочная роль — прижать кнопку к правому краю шапки виджета. */
+.ov-openbtn { margin-left: auto; }
 .ov-maparea { position: relative; height: 280px; background: var(--surface-2); overflow: hidden; border-radius: 0 0 var(--r-xl) var(--r-xl); }
 .ov-map-empty {
  position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -4201,6 +4549,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Поэтому и мёртвые `.ts-confirm-backdrop` / `.ts-confirm-card` / `.ts-warn` /
    `.ts-in` (ни одного вхождения в разметке) прожили тут незамеченными - при
    переносе они удалены, а не скопированы. */
+/* .ts-step — общая мелкая кнопка-иконка: навигация по месяцам в календаре
+   (StartCalendar) и удаление узла в редакторе. НЕ степпер (трип-старт ± уехал
+   на <Stepper>); кандидат в <IconBtn> отдельной задачей. */
 .ts-step { border: none; background: transparent; border-radius: var(--r-sm); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
 .ts-step:hover { background: var(--wash); }
 .ts-step:active:not(:disabled) { transform: scale(0.9); }
@@ -4277,8 +4628,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      Scoped to .ts-grid (editor-only host) so it does NOT leak onto the planner's .te-row--plan
      (the create flow keeps its grip affordance on touch). */
   .ts-grid .te-grip { display: none !important; }
-  /* empty hotel/activity placeholders take no space on mobile */
-  .ts-grid .te-cellbtn--ghost { display: none !important; }
+  /* Правило «пустые плейсхолдеры не занимают места на мобиле» снято как
+     ИЗБЫТОЧНОЕ, а не как ненужное: строкой ниже в этом же медиа-блоке целиком
+     прячутся сами ячейки `.te-cell--hotel` / `.te-cell--act`, внутри которых
+     плейсхолдер и живёт, — то есть оно повторяло уже сказанное. */
   /* compact row: number + name(+dates) + nights (hotel/activity icons hidden).
      Scoped to the editor so the planner's flex .te-row--plan is untouched (no
      leaked grid-template / margins). */
@@ -4495,7 +4848,8 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-move: acct-note -> row row--a-start */
 .acct-note { gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
 .acct-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
-.acct-linktext { background: none; border: none; color: var(--brand); cursor: pointer; font: inherit; padding: 0; text-align: left; }
+/* `.acct-linktext` удалён: «Отменить до конца года» — текстовая кнопка системы
+   (`<Btn variant="link">`, TRIP-344 PR 3). */
 
 /* language flag chip (reused by the language SearchSelect trigger + options) */
 .acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
@@ -4652,9 +5006,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .toast__body { min-width: 0; flex: 1; }
 .toast__body b { display: block; color: var(--ink); }
 .toast__body span { display: block; color: var(--muted); }
-.toast .x { margin-left: auto; flex: none; display: grid; place-items: center; padding: 4px; background: transparent; border: 0; color: var(--muted-2); cursor: pointer; border-radius: var(--r-sm); transition: color .14s, background .14s; }
-.toast .x:hover { color: var(--ink-2); background: var(--surface-2); }
-.toast .x svg { width: 16px; height: 16px; }
+/* ★TRIP-344: геометрия ушла в `IconBtn size="sm"`. Сторону крестик задавал
+   ПАДДИНГОМ, а не шириной с высотой - единственная кнопка в проекте, у которой
+   размера как числа не существовало вовсе, поэтому в ступени он и не попадал.
+   За классом остаётся ОДНА вещь, которой примитив знать не может: он прижат к
+   правому краю тоста. Ховер и цвет покоя тоже канон, свои копии удалены.
+   visual-diff-move: .toast .x -> icon-btn icon-btn--sm */
+.toast .x { margin-left: auto; }
 .toast--success .tic { background: var(--success); }
 .toast--error   .tic { background: var(--danger); }
 .toast--warning .tic { background: var(--warning); }
@@ -4675,7 +5033,11 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .sheet-grip i { width: 40px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
 .sheet-h h3 { flex: 1; color: var(--ink); margin: 0; }
-.sheet-h .close { width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--surface-2); border: 0; color: var(--muted); cursor: pointer; display: grid; place-items: center; flex: none; }
+/* ★TRIP-344: правило умерло целиком - крестик листа рисует `IconBtn tone="soft"`.
+   Сторона 32px была тут литералом, а на телефоне контрол обязан расти вместе с
+   `--ctl-h` (44px): именно на этой поверхности тач-таргет 32px и не проходил
+   норму, а лист живёт ТОЛЬКО на телефоне.
+   visual-diff-move: .sheet-h .close -> icon-btn icon-btn--soft */
 .sheet-b { padding: 2px 12px 8px; overflow-y: auto; overscroll-behavior: contain; }
 /* big tap rows used for menu items inside a sheet */
 .sheet-row { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px 14px; border: 0; background: transparent; border-radius: var(--r-btn); font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; }
@@ -5179,7 +5541,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .ai-blk-ti b{ color:var(--ai-ink);display:flex;align-items:center;gap:6px;}
 /* direct child only — must NOT leak onto the Pro <Badge> span nested in the title */
 .ai-blk-ti > span{display:block; color:var(--muted); margin-top:1px;}
-/* collapse chevron (idle/uploaded/parsed → available) */
+/* Шеврон свёртки. Носителей было ДВА: кнопка состояния `parsed` и НЕинтерактивный
+   `<span aria-hidden>` в кликабельной шапке idle/uploaded (кликом там заведует вся
+   шапка). На <IconBtn tone="ai" size="sm"> уехала ТОЛЬКО кнопка (TRIP-344 PR 2) -
+   спан кнопкой не является, и подменять его настоящим <button> внутри
+   `role="button"` нельзя: это лишняя точка табуляции, дублирующая действие шапки.
+   Поэтому класс живой, правило НЕ осиротело, и 2n тут не за что зацепиться.
+   Схождение размеров 26 → 32 остаётся за пересадкой шапки на общий ряд. */
 .ai-blk-x{width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:var(--r-sm);flex:none;}
 .ai-blk-x:hover{background:var(--ai-soft);color:var(--ai-ink);}
 .ai-blk-body{padding:0 13px 12px;display:flex;flex-direction:column;gap:8px;}
@@ -5350,11 +5718,13 @@ a.doc-row__n:hover{ color: var(--brand); }
    одинаковая (0,2,0), решает порядок. */
 .doc-row--ai{border:1px solid var(--ai-soft-2);}
 .doc-row--ai:hover{background:var(--ai-soft);}
-/* Снять вложение. Было двумя копиями (.dl-upitem__rm 24px и .ai-file-x 26px),
-   с одинаковым поведением: прозрачная кнопка, при наведении - опасный тон. */
-.doc-row__rm{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted-2);cursor:pointer;display:grid;place-items:center;flex:none;transition:background .14s,color .14s;}
-.doc-row__rm:hover{background:var(--danger-soft);color:var(--danger-ink);}
-.doc-row__rm svg{width:13px;height:13px;}
+/* `.doc-row__rm` УДАЛЁН (TRIP-344 PR 2): иконочная кнопка уехала на
+   <IconBtn tone="danger" size="sm">. Класс уже был схлопыванием двух копий
+   (.dl-upitem__rm 24px и .ai-file-x 26px) - теперь схлопнулся до конца, в
+   канон-семью. Все три точки вызова (DocumentsField, EventAiBlock, DocsLens)
+   пересажены в этом же коммите, осиротевшего правила не остаётся.
+   Облик МЕНЯЕТСЯ по решению разбора: 24×24 и радиус 7px мимо шкалы → 32×32
+   (--ctl-h-sm) и радиус из шкалы; опасный тон ховера несёт tone="danger". */
 
 /* ─── Notes block ───────────────────────────────────────────────────────── */
 .notes-block{ color:var(--ink-2); padding:10px 12px;border-radius:var(--r-sm);}
@@ -5607,8 +5977,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .sec-lbl .sl { color: var(--hl-ink); }
-.sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
-.sec-lbl .addmini svg { width: 12px; height: 12px; }
+/* `.sec-lbl .addmini` УДАЛЁН (TRIP-344 PR 2) вместе с базовым `.addmini`: обе
+   точки вызова стоят ИМЕННО в этой шапке, поэтому контекстное правило
+   осиротело ровно вместе с ним. Облик теперь у <IconBtn tone="soft" size="sm">. */
 /* vertical stack used between rows */
 /* AI parsing progress bar */
 .ai-prog { height: 4px; background: var(--ai-soft-2); border-radius: var(--r-pill); overflow: hidden; margin-top: 8px; }
@@ -6046,7 +6417,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    экземпляром нарисован ИНЛАЙНАМИ в Бюджете («нет трат») - та же структура и
    то же поведение, отличалась только шкура (пунктирная рамка на прозрачном
    против залитой плашки). Схлопнуто в один блок; вид - залитая плашка, потому
-   что пунктир в системе уже занят под «добавить» (.bgt-glist__add).
+   что пунктир в системе уже занят под «добавить» (тон `btn--dashed`).
    Раскладка и плитка - примитивы, здесь остаётся только шкура. */
 /* Пустое состояние. Раскладка жила ИНЛАЙНАМИ внутри самого компонента
    EmptyState - то есть примитив системы был собран тем же способом, от которого
@@ -6079,13 +6450,18 @@ a.doc-row__n:hover{ color: var(--brand); }
 .stats-ghost .is-ghost { opacity: .5; filter: saturate(.45); pointer-events: none; }
 
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
-.map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: 6px; }
-/* TRIP-326: color-mix(transparent) + backdrop-filter сняты — непрозрачный --surface. */
-.map-ctl button { width: 34px; height: 34px; border-radius: var(--r-sm); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; transition: .15s; }
-@media (hover: hover) { .map-ctl button:hover { background: var(--surface-2); box-shadow: var(--sh-1); } }
+/* ★TRIP-344: `.map-ctl` — плашка-подложка (фон/рамка из surface-канона выше,
+   радиус+паддинг тут); кнопки внутри quiet. Раскладка тут (левый угол, ряд);
+   MapControls переопределяет угол инлайном. Состояние «включено» держит канон
+   `.icon-btn[aria-pressed]` (бренд-заливка) — один способ на все кнопки системы.
+   Подложка = намеренные объявления, не перенос (правило .icon-btn--outline живо):
+   visual-diff-exempt: .map-ctl border — плашка-подложка карты (эталон nx)
+   visual-diff-exempt: .map-ctl border-radius — плашка-подложка карты (эталон nx)
+   visual-diff-exempt: .map-ctl padding — плашка-подложка карты (эталон nx)
+   visual-diff-exempt: .map-ctl gap — зазор кнопок в плашке 4px (эталон nx) */
+.map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); }
+/* Живая обратная связь на нажатие пальцем (примитив её не несёт). */
 .map-ctl button:active { transform: scale(.92); }
-.map-ctl button.on { border-color: transparent; }  /* заливка - общая подсветка ниже; рамка гасится (кнопка на карте) */
-.map-ctl svg { width: 17px; height: 17px; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
 .map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
 .map-legend .d { width: 11px; height: 11px; border-radius: 4px; }
@@ -6103,8 +6479,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    reparent — the same map element just fills the viewport; consumer calls resize) */
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; min-height: 0; }
 /* TRIP-326: glass снят. */
-.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
-.mapfs-close svg { width: 18px; height: 18px; }
+/* ★TRIP-344: круг, сторона и цвет уехали в `IconBtn tone="outline" round`.
+   Здесь остаётся только то, где кнопка лежит: примитиву это знать неоткуда, а
+   два правила ниже ещё и двигают её `top` в полноэкранном режиме.
+   Ховера у неё не было вовсе - теперь приходит с тоном.
+   visual-diff-move: .mapfs-close -> icon-btn icon-btn--outline icon-btn--round */
+.mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; }
 /* Fullscreen sits above the app header (--z-overlay is above --z-header). On
    mobile, push the controls below the header band (54px) + notch so the close +
    mode buttons are never hidden under the top bar — robust regardless of any
@@ -6129,9 +6509,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vp-h.city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .vp-h h3 { color: var(--ink); margin: 0; }
 .vp-h .s { color: var(--muted); margin-top: 3px; }
-.vp-x { margin-left: auto; width: 34px; height: 34px; border-radius: var(--r-sm); border: 0; background: var(--surface-2); display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
-.vp-x svg { width: 18px; height: 18px; }
-.vp-x:active { transform: scale(.95); }
+/* .vp-x УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft">.
+   `margin-left: auto` не переезжает и не нужен: соседний блок заголовка стоит
+   на `flex: 1`, поэтому крестик и так прижат вправо. */
 .vp-b { flex: 1; min-height: 0; padding: 6px 20px 24px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 /* Mobile bottom-sheet: clear the fixed bottom-nav so the last rows aren't hidden
    under it, and keep the body the scroll container (flex:1 + min-height:0). */
@@ -6165,12 +6545,38 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-searchrow { display: flex; gap: 10px; }
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .s22f-search { flex: 1; }
-.s22f-fbtn { position: relative; flex: none; width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-btn); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
-.s22f-fbtn:hover { border-color: var(--line-hover); }
-.s22f-fbtn:active { transform: scale(.96); }
-.s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
-.s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
-.s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
+/* Тоггл фильтров теперь канон `IconBtn tone=outline` с `aria-pressed`; приватный
+   `.s22f-fbtn`/`--on`/`--active`/`__n` снят (TRIP-344, объект «кнопка»). 2p красный
+   по построению (класс удалён, элемент уехал на примитив — гард видит только CSS,
+   не разметку). Каждый снятый ключ разобран ниже ДО ПРИЧИНЫ.
+
+   — Чистый перенос на канон `icon-btn icon-btn--outline`, ЗНАЧЕНИЕ ТО ЖЕ:
+   visual-diff-exempt: .s22f-fbtn background — уехало на icon-btn--outline (var(--surface), то же)
+   visual-diff-exempt: .s22f-fbtn color — icon-btn--outline color var(--ink) (то же; «muted-2» у гарда — коарс-атрибуция потомка)
+   visual-diff-exempt: .s22f-fbtn border — рамка на канон: border(transparent)+border-color(line-strong); цвет тот же line-strong
+   visual-diff-exempt: .s22f-fbtn cursor — icon-btn cursor pointer (то же)
+   visual-diff-exempt: .s22f-fbtn display — icon-btn display grid (то же)
+   visual-diff-exempt: .s22f-fbtn flex — icon-btn flex none (то же)
+   visual-diff-exempt: .s22f-fbtn width — icon-btn var(--tile, var(--ctl-h)) = 40px (то же)
+   visual-diff-exempt: .s22f-fbtn height — icon-btn var(--tile, var(--ctl-h)) = 40px (то же)
+   visual-diff-exempt: .s22f-fbtn place-items — icon-btn place-items center (то же)
+   visual-diff-exempt: .s22f-fbtn position — icon-btn position relative (то же; «absolute» у гарда — от ко-селектора .icon-btn > .badge--count)
+   visual-diff-exempt: .s22f-fbtn:hover border-color — icon-btn--outline:hover border-color var(--line-hover) (то же)
+   visual-diff-exempt: .s22f-fbtn__n position — уехало на канон .icon-btn > .badge--count (absolute, то же)
+   visual-diff-exempt: .s22f-fbtn__n top — .icon-btn > .badge--count top -6px (то же)
+   visual-diff-exempt: .s22f-fbtn__n right — .icon-btn > .badge--count right -6px (то же)
+
+   — Намеренное изменение облика при переезде на канон:
+   visual-diff-exempt: .s22f-fbtn border-radius — канон icon-btn = --r-sm (8) вместо --r-btn (10)
+   visual-diff-exempt: .s22f-fbtn transition — канон icon-btn: цвет/фон .16s, без spring/transform
+   visual-diff-exempt: .s22f-fbtn:active transform — канон снял press-scale у кнопок
+   visual-diff-exempt: .s22f-fbtn {@media (prefers-reduced-motion: reduce)} transition — блок снят вместе с приватным классом (у канона transform нет)
+   visual-diff-exempt: .s22f-fbtn:active {@media (prefers-reduced-motion: reduce)} transform — то же, press-scale у канона нет
+   visual-diff-exempt: .s22f-fbtn--on border-color — «открыт» = бренд-заливка канона aria-pressed, не рамка
+   visual-diff-exempt: .s22f-fbtn--on box-shadow — «открыт» = заливка, кольцо снято
+   visual-diff-exempt: .s22f-fbtn--active border-color — «есть фильтры» несёт бейдж-счётчик, не рамка
+   visual-diff-exempt: .s22f-fbtn--active color — то же, состояние на счётчике
+   visual-diff-exempt: .s22f-fbtn__n border — канон-бейдж в кнопке без разделительного кольца */
 
 .s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
 .s22f-pmuted { color: var(--muted); }
@@ -6186,31 +6592,36 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
 .s22f-panelfoot .btn { flex: 1; }
-.s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: transparent; padding: 0; }  /* TRIP-176: степпер встроен в карточку-инпут (без вложенного фона/пилюли) */
-.s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.s22f-step button:hover:not(:disabled) { background: var(--surface-2); }  /* TRIP-176: hover читается на фоне карточки-инпута (--surface-3) */
-.s22f-step button:active:not(:disabled) { transform: scale(.88); }
-.s22f-step button:disabled { color: var(--muted-2); cursor: default; }
-.s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
 
-.s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* `--a` = тон текстовой кнопки внутри ряда: «Сбросить всё» здесь серая, а не
+   брендовая. Канал объявлен на контейнере, поэтому у кнопки своего класса под
+   тон нет (TRIP-344 PR 3). */
+.s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; --a: var(--muted); }
 .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
-.s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
-.s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-.s22f-resetall:hover { color: var(--ink); }
+/* Крестик удаления фильтра — примитив <IconBtn size="sm" tone="quiet"> (канон
+   .icon-btn). Приватный каскад `.s22f-pill button` (круг 17px, --brand-soft-12)
+   снят: крестик теперь как везде, унификация к канону (апрув Pavel, TRIP-344).
+   ⚠️ 2p краснеет на снятии этих 9 объявлений и НЕ гасится маркером: единица
+   `.s22f-pill button` — бесклассовый селектор из нескольких лексем, слепой
+   участок TRIP-366 (visual-diff-exempt его не адресует). Оставлено красным с
+   разбором в теле PR — доказательство переноса = рендер до/после. */
+/* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
+   рамка, тон, подчёркивание И ТИПОГРАФИКА) уехал в `btn--link`; два следствия
+   названы, потому что видны глазом: подчёркивание перестало быть постоянным и
+   приходит на ховере, а кегль пришёл из канона `.t-ui` кнопки — класс стоял в
+   моно-ярусе `.t-meta` (JetBrains 11/700) и снят оттуда этим же PR. То же
+   касается соседней кнопки сортировки ниже. */
+.s22f-resetall { margin-left: auto; }
 
 /* Count + sort row — SHARED by BOTH fork lists (hotels + activities), so it lives
    here, not in a component <style> (TRIP-224: the activity panel doesn't mount the
    hotel component, so a component-local rule left the activity sort unstyled). */
+/* Блок ряда объявлен явно (раньше существовал только его элемент `__ln`) и
+   держит ровно одно — `--a`, тон текстовой кнопки сортировки: она тут серая.
+   Сама кнопка — `<Btn variant="link">`, класса `.s22-sort` больше нет. */
+.s22-countrow { --a: var(--muted); }
 .s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
 .s22-count { color: var(--muted); white-space: nowrap; }
-.s22-sort { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; white-space: nowrap; transition: color .15s; }
-.s22-sort:hover { color: var(--ink); }
-.s22-sort svg { color: var(--muted-2); }
-@media (prefers-reduced-motion: reduce) {
-  .s22f-fbtn, .s22f-step button { transition: none; }
-  .s22f-fbtn:active { transform: none; }
-}
 
 /* Fork list chrome — SHARED by BOTH fork lists (hotels + activities) via the
    forkList.jsx components (ForkListSkeleton / ForkState / ForkPager). Kept here,
@@ -6260,12 +6671,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .btn__brandlogo img { width: 15px; height: 15px; object-fit: contain; }
 /* Pager — prev · windowed numbers · next. */
 .fork-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-.fork-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--r-sm); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
-.fork-pg:disabled { opacity: .4; cursor: default; }
-.fork-pg:not(:disabled):active { transform: scale(.94); }
-@media (hover: hover) and (pointer: fine) { .fork-pg:not(:disabled):hover { border-color: var(--line-hover); } }
+/* Пагинация — примитив <Chip sm square>; текущая страница = aria-pressed. */
 .fork-gap { color: var(--muted-2); padding: 0 2px; }
-@media (prefers-reduced-motion: reduce) { .fork-pg { transition: none; } }
 
 /* ============================================================
    CONSENT BANNER (TRIP-311)
@@ -6318,35 +6725,31 @@ a.doc-row__n:hover{ color: var(--brand); }
    три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и var(--primary-fg)).
    Теперь синий один и белый один. */
 .tc-add:hover,
-.wdg-act:hover,
-.bgt-glist__add:hover,
-.bgt-iconpick button.on,
-.menu-trig[data-state="open"],
-.tm-cell.is-active,
-.lp-back:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
+/* ★TRIP-344: подсветка «меню открыто» переехала с приватного .menu-trig на
+   САМ примитив. Приватный класс существовал ровно ради этой строки и был
+   вторым классом семьи `menu` — то есть держал целое пространство имён под
+   одно состояние. Ключ по атрибуту, а не по имени: `data-state` ставит Radix
+   на ЛЮБОЙ триггер, поэтому подсветка теперь одинакова у меню строки и у
+   колокольчика — раньше колокольчик открывал поповер и никак этого не
+   показывал, хотя жест тот же самый. Это ровно тот случай, ради которого
+   ко-селектор и заведён: на состояние класс не повесишь. */
+.icon-btn[data-state="open"],
+.tm-cell.is-active { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
 
-.map-route__item.is-active .map-route__marker,
-.map-ctl button.on,
-.fork-pg--on { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
+/* `.map-ctl button.on` СНЯТ из этого списка (TRIP-344, канонизация состояния):
+   «включено» кнопки держит канон `.icon-btn[aria-pressed]` (бренд-заливка),
+   глобус Статистики перешёл на `aria-pressed`. Подсветка ВЫБРАННОГО МАРКЕРА
+   маршрута — своё правило, тот же hl-облик (запятая-хвост убрана, ревью Codex). */
+.map-route__item.is-active .map-route__marker { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
 
 /* Свой цвет у места = переопределённая ручка, а не своё правило подсветки. */
 .te-cell--hotel { --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
 .te-cell--act   { --hl: var(--ev-activity); --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .dl-addcard--mine { --hl: var(--warm); --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
-.lp-back { --hl: var(--line-hover); --hl-soft: var(--wash); --hl-ink: var(--ink); }
-/* ⚠ Пагинатор пиним ПО ТОЙ ЖЕ причине, что .lp-back выше, и это не украшение.
-   Панель добавления брони встраивает fork-список внутрь оболочки события, а
-   оболочка ставит в канал цвет ТИПА события. Пилюля номера страницы к типу
-   события отношения не имеет и была брендовой всегда: без пина она красилась бы
-   в цвет отеля/активности, причём ТОЛЬКО в панели добавления - в отдельном
-   модале партнёра оболочка цвет не ставит, и один компонент показывал бы два
-   разных цвета в зависимости от того, кто его смонтировал.
-   ★Найдено code-simplifier'ом, и это класс дефекта, которого не видит НИ ОДИН
-   гард: текст правила .fork-pg--on не менялся ни на байт, а 2p сравнивает
-   объявления и про наследование ручки через разметку не знает (это прямо
-   написано в его шапке). Появился он оттого, что канал стал ОБЩИМ: пока имя
-   было приватным (--ev-color), чужой читатель его просто не видел. */
-.fork-pg { --hl: var(--brand); --hl-fg: var(--primary-fg); }
+/* Пагинатор больше не пиним каналом: активная страница = `Chip[aria-pressed]`,
+   а её фон захардкожен `--brand` и от наследованного `--hl` оболочки события не
+   зависит (прежде пилюля номера читала канал и в панели добавления брони брала
+   цвет типа — теперь этот путь исключён самим примитивом). */
 
 /* ═══ ЖУРНАЛ 2p ДЛЯ ЭТОГО PR (04 PR3, тинт) ═══════════════════════════════════
    Ярус 2 визуального гейта печатает КАЖДОЕ изменившееся итоговое объявление, а
@@ -6519,8 +6922,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .wi--primary color — класс удалён, тон уехал на базу через канал --hl - значение то же
    visual-diff-exempt: .wi background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
    visual-diff-exempt: .wi color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
-   visual-diff-exempt: .fork-pg --hl — пин канала на объекте ВОССТАНАВЛИВАЕТ прежний цвет: канал стал общим, и пилюля страницы начала наследовать цвет типа события из оболочки панели добавления брони
-   visual-diff-exempt: .fork-pg --hl-fg — то же, вторая ручка залитой формы: без пина активная страница брала бы чернила чужого тона
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ═══ TRIP-342: ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ (чат) ═════════════════════════
@@ -6689,4 +7090,253 @@ a.doc-row__n:hover{ color: var(--brand); }
    не «11 → 12», а «11 → 12 здесь и 11 → 10 там».
    visual-diff-exempt: .te-end gap — 11px вне шкалы → ступень row--g6 (--sp-6 = 12px), апрув Pavel в TRIP-388
    visual-diff-exempt: .te-cityline gap — 7px вне шкалы → ступень row--g3 (--sp-3 = 6px), апрув Pavel в TRIP-388
+   — TRIP-344 PR 7 (Chip): канон .fpill сведён к компактному облику 32px эталона
+      секции E; заведены модификаторы --tone/--placeholder/--square/--sm/--soft/
+      --avatars и состояние [aria-pressed=true] вместо .on; тон читает канал --hl*
+      (тот же, что у .te-cell--*). Удалены копии .fork-pg(--on) · .chat-jump ·
+      .chat-members-btn · .ncal-more · .te-seam__pill(--add) · .te-actchip · .te-hotelicon —
+      разметка на <Chip>. Счётчик .chat-jump b (brand) уехал на слот-бейдж .fpill__c;
+      цель переноса — .fpill--soft: у неё тон бренда БЕЗУСЛОВНЫЙ, а у .fpill__c каскадный
+      победитель на ключе color — вариант [aria-pressed] (--primary-fg), 2p же помнит
+      одного победителя на ключ. Все правки намеренные (апрув Pavel), сверены /kit.
+   visual-diff-move: .chat-jump b -> fpill--soft
+   visual-diff-exempt: .btn opacity — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn pointer-events — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn--ai box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn--ai cursor — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn--ai opacity — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) background — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) border-color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled pointer-events — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) background — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) border-color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump align-items — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump background — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump border — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump border-radius — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump box-shadow — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump color — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump cursor — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump display — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump font-family — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump font-size — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump font-weight — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump gap — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump height — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump letter-spacing — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump line-height — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump margin-left — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump padding — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn background — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn border — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn border-radius — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn color — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn cursor — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn flex — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn height — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn padding — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn transition — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn width — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn {@media (max-width: 768px)} display — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn {@media (max-width: 768px)} height — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn {@media (max-width: 768px)} padding — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn:hover border-color — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn:hover box-shadow — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg --hl — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg --hl-fg — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg align-items — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg background — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg border — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg border-radius — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg cursor — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg display — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-family — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-size — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-weight — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg height — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg justify-content — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg letter-spacing — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg line-height — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg min-width — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg padding — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg transition — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg {@media (prefers-reduced-motion: reduce)} transition — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on background — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on border-color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:active:not(:disabled) transform — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:disabled cursor — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:disabled opacity — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} border-color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill background — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill border-color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill box-shadow — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill gap — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill justify-content — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill min-height — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill padding — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill transition — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill white-space — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill {@media (prefers-reduced-motion: reduce)} transition — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill--avatars height — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars min-height — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars width — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars {@media (max-width: 768px)} display — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder border-style — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover border-style — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm font-size — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm font-weight — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm min-height — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft:hover background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft:hover color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--square border-radius — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--square min-width — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--square padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --hl — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --hl-ink — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --hl-soft — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone:hover background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone:hover border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone:hover color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill:active transform — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:disabled cursor — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:disabled opacity — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:disabled pointer-events — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:focus-visible box-shadow — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:focus-visible outline — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:hover background — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:hover[aria-pressed=true] background — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill:hover[aria-pressed=true] color — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] background — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] border-color — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] color — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill__c color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill__c font-variant-numeric — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .is-disabled cursor — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .is-disabled opacity — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .is-warn --hl — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn --hl-ink — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn --hl-soft — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more align-items — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more background — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more border — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more border-radius — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more color — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more cursor — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more display — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more font-family — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more font-size — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more font-weight — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more letter-spacing — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more line-height — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more margin-top — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more padding — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more transition — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more {@media (max-width: 640px)} font-size — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more {@media (max-width: 640px)} padding — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more:focus-visible outline — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more:focus-visible outline-offset — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more:hover background — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip background — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip border — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip border-radius — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip color — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip cursor — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip font-family — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip font-size — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip font-weight — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip height — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip letter-spacing — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip line-height — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip min-width — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip padding — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip transition — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip {@media (prefers-reduced-motion: reduce)} transition-property — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:active transform — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:active {@media (prefers-reduced-motion: reduce)} transform — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:focus-visible border-radius — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:focus-visible outline — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:focus-visible outline-offset — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:hover border-color — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon background — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon border — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon border-radius — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon cursor — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon display — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon height — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon place-items — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon position — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon transition — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon width — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon {@media (prefers-reduced-motion: reduce)} transition-property — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:active transform — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:active {@media (prefers-reduced-motion: reduce)} transform — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:focus-visible border-radius — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:focus-visible outline — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:focus-visible outline-offset — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:hover border-color — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam --hl — канал тона переезда --hl* на оболочке шва для <Chip> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam --hl-ink — канал тона переезда --hl* на оболочке шва для <Chip> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam --hl-soft — канал тона переезда --hl* на оболочке шва для <Chip> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill background — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill border — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill border-color — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill border-radius — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill box-shadow — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill color — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill cursor — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill font-family — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill font-size — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill font-weight — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill gap — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill letter-spacing — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill line-height — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill opacity — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill padding — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill pointer-events — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill transition — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill white-space — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill {@media (prefers-reduced-motion: reduce)} transition-property — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add background — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add border — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add box-shadow — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add color — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add font-weight — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add gap — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover background — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover border-color — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover color — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover transform — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:active transform — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:active {@media (prefers-reduced-motion: reduce)} transform — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:disabled cursor — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:disabled opacity — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:disabled pointer-events — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:focus-visible border-radius — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:focus-visible outline — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:focus-visible outline-offset — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:hover box-shadow — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:hover transform — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
    ═══════════════════════════════════════════════════════════════════════════ */

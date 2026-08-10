@@ -39,13 +39,21 @@ export const TABLES = {
   transfers:         { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   city_visits:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   trip_services:     { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  trip_budgets:      { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  budget_categories: { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  budget_expenses:   { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   // роль поверх private-модели TRIP-118: can_edit_trip AND (visibility='shared' OR created_by=self)
-  trip_documents:    { tier: 'A', write: 'can_edit_trip+visibility', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
+  trip_documents:    { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'единый шов записи trip-document + _shared/mutate.ts; удаление построчно (private⇒автор) через guardRow; чтение — getTripDetails под service_role (visibility=shared OR created_by=self, TRIP-118); во фронте ноль .from(trip_documents); гранты authenticated DML/SELECT и anon SELECT сняты, 4 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
 
   // ── Ярус B — авторитетное ───────────────────────────────────────────────────
+  // Бюджет (TRIP-394 Ф2, шаг C) — ПЕРВЫЙ контент-домен, переведённый на единый шов
+  // записи `_shared/mutate.ts`. Пишет только service_role (шов + триггеры авто-трат
+  // и сброса fx); клиентского DML/SELECT нет — читает `getTripDetails` под
+  // service_role, во фронте ноль `.from('budget_*')`. Не ярус A: тот ТРЕБУЕТ
+  // authDml=true и роль-осведомлённую write-политику (I2), а здесь клиент не пишет
+  // вовсе. Гранты authenticated (INSERT/UPDATE/DELETE/SELECT) и остаточный SELECT у
+  // anon сняты; 12 RLS-политик удалены ПОСЛЕ revoke; RLS остаётся включённой
+  // (deny-all без политик), service_role обходит. LIVE-2e сверит, что DML снят.
+  trip_budgets:      { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
+  budget_categories: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
+  budget_expenses:   { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   product:           { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   provider_price:    { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   webhook_event:     { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
@@ -224,12 +232,25 @@ export const DECISIONS = [
 //     participant — viewer ПРОХОДИТ (чтение, чат, шеринг, копия к себе)
 //     editor      — меняет план трипа: контент, настройки, участники, каналы
 //   ОБЪЯВИТЕЛЬНЫЕ — страж НЕ проверяет, но требует объявить:
-//     owner   — `trips.created_by === caller`, проверка руками на месте
-//     self    — своя строка / свой аккаунт (`user.id`), трипа не касается
-//     auth    — любой залогиненный, трип не при чём (справочники, прайсы)
-//     token   — владение секретом в запросе (share_token, invite-токен, подпись)
-//     n8n     — Bearer N8N_SECRET, вызов сервер-сервер
-//     public  — без аутентификации вовсе (по замыслу, держится rate-limit)
+//     owner    — `trips.created_by === caller`, проверка руками на месте
+//     self     — своя строка / свой аккаунт (`user.id`), трипа не касается
+//     auth     — любой залогиненный, трип не при чём (справочники, прайсы)
+//     token    — владение секретом в запросе (share_token, invite-токен, подпись)
+//     n8n      — Bearer N8N_SECRET, вызов сервер-сервер
+//     public   — без аутентификации вовсе (по замыслу, держится rate-limit)
+//
+// ★ SEAM-ДВЕРЬ (TRIP-394) — ОТДЕЛЬНАЯ ФОРМА, значение = МАССИВ гейтов, напр.
+//   `['editor', 'pro']`. Такова дверь, чей `index.ts` просто зовёт
+//   `mutate({ slug })`: сам гейт (`isCallerEditor` + `is_trip_pro`) живёт в шве
+//   `_shared/mutate.ts` (`checkRequirement`), а право по действиям — в
+//   спецификации ресурса `_shared/resources/<slug>.ts` (поле `requires`). Страж
+//   грепает ТОЛЬКО `index.ts`, поэтому ступень там невидима ему по построению.
+//   НО значение здесь НЕ объявительное: `check-security-tiers` МАШИННО сверяет
+//   этот массив с `requires` спецификации (все действия обязаны требовать одно
+//   и то же множество, и оно обязано совпасть с массивом). Токены массива — из
+//   словаря `SEAM_GATE_TOKENS`, который сам выведен из `checkRequirement` шва
+//   (spec не может потребовать гейт, которого шов не реализует). Расхождение
+//   манифест↔спецификация↔шов = красный.
 //
 // ★ ЧТО СТРАЖ НЕ ЛОВИТ (граница инструмента, выписана намеренно — у соседних
 // инвариантов IF4 и предикатов бакета она есть, а у дверей не было). Прогон
@@ -253,6 +274,16 @@ export const STEP_VALUES = new Set(['participant', 'editor']);
 /** Весь словарь: проверяемые ступени + объявительные. Вложенность задана
  *  построением — второй рукописный список ступеней разъехался бы с первым. */
 export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 'token', 'n8n', 'public']);
+
+/**
+ * Токены, которые может нести seam-дверь (массив-значение) и `requires` действия
+ * спецификации ресурса. Это ровно то, что реализует `checkRequirement` в
+ * `_shared/mutate.ts` — держим списком здесь, а тест сверяет его с ЖИВЫМ телом
+ * шва (`parseGateTokensFromSeam`), чтобы spec не мог потребовать гейт, которого
+ * шов не знает. `participant` в шве пока не реализован — появится там, появится
+ * и тут (иначе тест сверки покраснеет).
+ */
+export const SEAM_GATE_TOKENS = new Set(['editor', 'self', 'pro']);
 
 export const DOORS = {
   // ── participant: viewer проходит осознанно ──
@@ -278,6 +309,10 @@ export const DOORS = {
   telegramSetActive:     'editor',
   telegramStartLink:     'editor',
   telegramWebhook:       'editor',      // шов ЗАПИСИ привязки, перепроверяет при редиме
+
+  // ── seam-двери: гейт в шве _shared/mutate.ts, сверяется с requires спецификации (TRIP-394) ──
+  trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
+  trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип

@@ -17,7 +17,7 @@
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, eventFamily } from '../design/index';
+import { Skeleton, IconBtn, Seg, Chip, eventFamily } from '../design/index';
 import { Row, Col, Grid, Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -41,18 +41,10 @@ const cityBg = (idx) => CITY_BG[idx % CITY_BG.length];
 const evCls = (type) => `ev-${eventFamily(type)}`;
 
 // ── Inline SVG icons (no extra dependency) ──────────────────────────────────
-const IcoBack = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-    <path d="M15 18l-6-6 6-6"/>
-  </svg>
-);
-const IcoFwd = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-    <path d="M9 6l6 6-6 6"/>
-  </svg>
-);
+// `IcoBack`/`IcoFwd` УДАЛЕНЫ (TRIP-344 PR 2): стрелки навигации уехали на
+// <IconBtn icon="chevL|chev" tone="soft" size="sm" round>, глиф приходит из
+// реестра — именно ШЕВРОН, а не стрелка: рисованные тут пути были chevron-left
+// и chevron-right, и `back`/`arrow` подменили бы глиф.
 const IcoPin = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -173,9 +165,11 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
                         </button>
                       ))}
                       {ev.length > 2 && (
-                        <button type="button" className="ncal-more" onClick={() => toggle(d)}>
+                        <Chip sm square variant="soft" onClick={() => toggle(d)} style={{ width: '100%' }}>
+                          {/* inline-style-exempt: полная ширина ячейки дня — «+N ещё»
+                              встаёт четвёртой строкой в ряд с событиями (эталон секции E). */}
                           {isOpen ? '−' : `+${ev.length - 2} ${t('calendar.more_count')}`}
-                        </button>
+                        </Chip>
                       )}
                     </div>
                   )}
@@ -529,37 +523,26 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
         <Col align="a-end" className="ncal-hd-r">
           {/* Nav pill */}
           <Row inline gap="g1" className="ncal-nav">
-            <button className="ncal-nav-ico" aria-label={t('calendar.prev')} onClick={goBack}>
-              <IcoBack />
-            </button>
+            <IconBtn icon="chevL" tone="soft" size="sm" round ariaLabel={t('calendar.prev')} onClick={goBack} />
             <button className="ncal-nav-txt" onClick={goToday}>{t('calendar.today')}</button>
             <span className="ncal-nav-div" aria-hidden="true" />
             <button className="row row--inline ncal-nav-trip" onClick={goHome}>
               <IcoPin />
               <span className="ncal-trip-label">{t('calendar.to_trip_start')}</span>
             </button>
-            <button className="ncal-nav-ico" aria-label={t('calendar.next')} onClick={goFwd}>
-              <IcoFwd />
-            </button>
+            <IconBtn icon="chev" tone="soft" size="sm" round ariaLabel={t('calendar.next')} onClick={goFwd} />
           </Row>
 
-          {/* View toggle */}
-          <Row inline gap="g1" className="ncal-vtgl" role="group" aria-label={`${t('calendar.month')} / ${t('calendar.week')}`}>
-            <button
-              className={`ncal-vtgl-btn${view === 'month' ? ' is-on' : ''}`}
-              aria-pressed={view === 'month'}
-              onClick={() => setView('month')}
-            >
-              {t('calendar.month')}
-            </button>
-            <button
-              className={`ncal-vtgl-btn${view === 'week' ? ' is-on' : ''}`}
-              aria-pressed={view === 'week'}
-              onClick={() => setView('week')}
-            >
-              {t('calendar.week')}
-            </button>
-          </Row>
+          {/* View toggle — канон `<Seg>` (было `.ncal-vtgl`, TRIP-344 PR 6) */}
+          <Seg
+            ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'month', label: t('calendar.month') },
+              { value: 'week', label: t('calendar.week') },
+            ]}
+          />
         </Col>
       </Row>
 

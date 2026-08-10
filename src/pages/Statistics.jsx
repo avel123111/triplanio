@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
@@ -21,7 +22,7 @@ import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
-import { Btn, Skeleton } from '@/design/index';
+import { Btn, Skeleton, IconBtn, Seg } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 
@@ -270,7 +271,9 @@ export default function Statistics() {
       name = visits[0]?.city_name || '';
       sub = `${regionName(visits[0]?.country_code)} · ${t('stats.visits_count')}: ${countVisitUnits(visits)}`;
     }
-    visits = visits.slice().sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+    // `.getTime()` не косметика: вычитание двух `Date` работает в рантайме, но
+    // это неявное приведение, и под прагмой оно краснеет честно (TS2362).
+    visits = visits.slice().sort((a, b) => new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime());
     const cc = panel.kind === 'country' ? panel.key : visits[0]?.country_code;
     return { kind: panel.kind, name, sub, visits, cc };
   }, [panel, points, regionName, t]);
@@ -321,12 +324,15 @@ export default function Statistics() {
             </div>
             <div className="sec-actions">
               {years.length > 0 && (
-                <div className="seg" role="group" aria-label={t('stats.period')}>
-                  <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
-                  {years.map((y) => (
-                    <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
-                  ))}
-                </div>
+                <Seg
+                  ariaLabel={t('stats.period')}
+                  value={String(year)}
+                  onChange={(v) => { setYear(v); setPanel(null); }}
+                  options={[
+                    { value: 'all', label: t('stats.year_all') },
+                    ...years.map((y) => ({ value: String(y), label: String(y) })),
+                  ]}
+                />
               )}
               <Btn variant="soft" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
             </div>
@@ -359,11 +365,33 @@ export default function Statistics() {
                 selected={panel ? { kind: panel.kind, key: panel.key } : null}
                 cooperativeGestures={!fs}
               >
+                {/* ★TRIP-344: фон и рамку несёт плашка `.map-ctl`, кнопки внутри
+                    quiet (прозрачные) — эталон «столбиком в своей плашке». */}
                 <div className="map-ctl">
-                  <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><Icon name="globe" /></button>
-                  <button onClick={() => setFs((v) => !v)} aria-label={t('stats.map_fullscreen')}><Icon name="expand" /></button>
+                  <IconBtn
+                    icon="globe"
+                    size="sm"
+                    ariaPressed={globe}
+                    onClick={() => setGlobe((g) => !g)}
+                    ariaLabel={t('stats.map_globe')}
+                  />
+                  <IconBtn
+                    icon="expand"
+                    size="sm"
+                    onClick={() => setFs((v) => !v)}
+                    ariaLabel={t('stats.map_fullscreen')}
+                  />
                 </div>
-                {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>}
+                {fs && (
+                  <IconBtn
+                    icon="close"
+                    tone="outline"
+                    round
+                    className="mapfs-close"
+                    onClick={() => setFs(false)}
+                    ariaLabel={t('common.close')}
+                  />
+                )}
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}>
@@ -394,10 +422,15 @@ export default function Statistics() {
         <div className="sec-head">
           <h2 className="t-subheading">{t('stats.places_title')}</h2>
           <div className="grow" />
-          <div className="seg" role="group" aria-label={t('stats.places_title')}>
-            <button aria-pressed={listMode === 'countries'} onClick={() => setListMode('countries')}>{t('stats.tab_countries')} · {bundle.countries}</button>
-            <button aria-pressed={listMode === 'cities'} onClick={() => setListMode('cities')}>{t('stats.tab_cities')} · {bundle.cities}</button>
-          </div>
+          <Seg
+            ariaLabel={t('stats.places_title')}
+            value={listMode}
+            onChange={setListMode}
+            options={[
+              { value: 'countries', label: <>{t('stats.tab_countries')} · {bundle.countries}</> },
+              { value: 'cities', label: <>{t('stats.tab_cities')} · {bundle.cities}</> },
+            ]}
+          />
         </div>
         <div className="panel" style={{ padding: '16px 18px' }}>
           <VisitList

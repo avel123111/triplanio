@@ -46,9 +46,46 @@ const LINES = [
   ['clean', '<Input onFocus={() => {}} maxLength={5} icon="search" />'],
   ['clean', '<Textarea rows={3} placeholder="p" />'],
   ['clean', '<InputGroup role="group"><span>x</span></InputGroup>'],
+  // Остаток `IconBtn` уезжает на `<button>`, значит носитель и есть база. Строка
+  // проверяет ВТОРОЕ направление аннотации: мутация «снять аннотацию» краснеет и
+  // при СЛИШКОМ СТРОГОМ типе, поэтому «обязательное обязательно» ничего про
+  // строгость не доказывает - дефект живёт ровно здесь (урок TRIP-388).
+  // Пропы ниже не декоративны: их вешает Radix через `asChild` на триггер
+  // колокольчика и меню строки, и без них меню не открывается.
+  ['clean', '<IconBtn icon="more" ariaLabel="x" data-state="open" onPointerDown={() => {}} type="button" />'],
   // ── компоненты БЕЗ проброса: законный проп проходит ───────────────────────
   ['clean', '<Icon name="file" size={20} />'],
-  ['clean', '<Btn variant="ghost" onClick={() => {}}>b</Btn>'],
+  ['clean', '<Btn variant="secondary" onClick={() => {}}>b</Btn>'],
+  // Тоны, заведённые разбором облика кнопок (TRIP-344 PR 3): текстовая кнопка и
+  // плейсхолдер «добавить». Строки не декоративны - они пинят, что закрытый
+  // юнион не отстал от CSS, где правила под оба уже есть.
+  ['clean', '<Btn variant="link">b</Btn>'],
+  ['clean', '<Btn variant="dashed" block icon="plus">b</Btn>'],
+  // Форма плейсхолдера с плиткой и второй строкой + малая ступень. Обе строки
+  // пинят ровно то, что разбор увёл С ЭКРАНА В ПРИМИТИВ: пока это были классы
+  // `.gadd` и `.te-cellbtn--ghost`, ошибиться в них тип не мешал никак.
+  ['clean', '<Btn variant="dashed" tile icon="bed" sub="s">b</Btn>'],
+  ['clean', '<Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel="x" />'],
+  // Три оси IconBtn независимы, и это ровно то, ради чего они три: `.lp-back` -
+  // это soft И round одновременно, плоский юнион такую пару не выразил бы.
+  ['clean', '<IconBtn icon="close" ariaLabel="x" tone="soft" round />'],
+  ['clean', '<IconBtn icon="plus" ariaLabel="x" size="sm" tone="danger" onClick={() => {}} />'],
+  // Степпер отдаёт остаток на `<div>`, значит база — носитель: `onPointerDown`/`title`
+  // законны (ими ночи гасят арминг драга). `children` — центр варианта block (дата).
+  ['clean', '<Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel="a" plusLabel="b" title="t" onPointerDown={() => {}} />'],
+  ['clean', '<Stepper variant="block" onMinus={() => {}} onPlus={() => {}}>d</Stepper>'],
+  // Seg отдаёт остаток на `<div>` — база носитель: `style`/`title` законны (ими
+  // экраны ставят отступ и подпись группы). `options`/`value`/`onChange` обязательны.
+  ['clean', '<Seg options={[{ value: "a", label: "A" }]} value="a" onChange={() => {}} ariaLabel="x" />'],
+  ['clean', '<Seg variant="fill" options={[]} value="a" onChange={() => {}} title="t" />'],
+  // Chip отдаёт остаток на `<button>` — база носитель: `onClick`/`title`/`disabled`
+  // законны. Оси НЕЗАВИСИМЫ (variant × square × sm × avatars), `on`→aria-pressed,
+  // `count`/`icon`/`iconRight` — слоты. Обязательных пропов нет (все со значением
+  // по умолчанию либо необязательны), поэтому «пропущенный обязательный» тут не
+  // проверяется — его у Chip нет.
+  ['clean', '<Chip>x</Chip>'],
+  ['clean', '<Chip variant="tone" square sm avatars on icon="plane" iconRight="chevD" count={3} onClick={() => {}} title="t" disabled>x</Chip>'],
+  ['clean', '<Chip variant="placeholder" icon="plus" />'],
   ['clean', '<Avatar name="A" size="sm" />'],
   ['clean', '<Field label="L"><span>x</span></Field>'],
   ['clean', '<FileRow name="a.pdf" />'],
@@ -75,6 +112,36 @@ const LINES = [
   ['error', '<Icon name={5} />'],
   ['error', '<Skeleton w={{}} />'],
   ['error', '<Checkbox checked="yes" />'],
+  // Набор обличий закрыт ТИПОМ, а не гардом: несуществующий тон - ошибка в
+  // редакторе, а не красный CI (ТЗ 07). И подпись обязательна: кнопка без
+  // текста без `aria-label` для скринридера безымянна.
+  ['error', '<IconBtn icon="close" ariaLabel="x" tone="compact" />'],
+  ['error', '<IconBtn icon="close" />'],
+  // Набор вариантов степпера закрыт ТИПОМ: `compact` не существует.
+  ['error', '<Stepper variant="compact" />'],
+  // Набор вариантов Seg закрыт ТИПОМ: `compact` не существует (auto|fill).
+  ['error', '<Seg variant="compact" options={[]} value="a" onChange={() => {}} />'],
+  // Обязательный проп: без `options` сегментам неоткуда взяться — краснеет
+  // ОТДЕЛЬНО от неверного варианта (два разных поведения аннотации, урок TRIP-388).
+  ['error', '<Seg value="a" onChange={() => {}} />'],
+  // Набор заливок Chip закрыт ТИПОМ: `ghost` не существует (neutral|tone|placeholder|soft).
+  // Отдельная строка — модификатор булев: строка вместо boolean тоже краснеет.
+  ['error', '<Chip variant="ghost">x</Chip>'],
+  ['error', '<Chip square="yes">x</Chip>'],
+  // ★★ ДВЕ РАЗНЫЕ ОШИБКИ, И ВТОРАЯ НУЖНА ИМЕННО ПОТОМУ, ЧТО ПЕРВАЯ ЕЁ НЕ ЛОВИТ.
+  // Закрытый юнион ловит НЕВЕРНОЕ значение (тона `ghost` больше нет) - это первая
+  // строка. ОТСУТСТВИЕ пропа он не ловит по построению: замерено на PR 2, где
+  // снятие `size`/`tone` у пересаженного вызова прошло lint, tsc и все тесты
+  // зелёными. У кнопки цена такого молчания выросла - дефолт сменился с `ghost`
+  // на `secondary`, то есть пропущенный проп теперь МЕНЯЕТ облик; поэтому
+  // `variant` объявлен обязательным, и вторая строка - единственное, что это
+  // удостоверяет (в `src/**` сегодня ноль вызовов без него, замер).
+  ['error', '<Btn variant="ghost">b</Btn>'],
+  ['error', '<Btn>b</Btn>'],
+  // Ступень размера тоже закрыта юнионом: `md`/`lg` у кнопки не существует, и
+  // разбор объявил, что третьей ступени быть не должно — пусть это краснеет в
+  // редакторе, а не проходит классом `btn--md`, которого нет в CSS.
+  ['error', '<Btn variant="secondary" size="lg">b</Btn>'],
   // ⚠️ ДАТЧИК СЛЕПОТЫ САМОЙ ПРОБЫ: `href` не бывает у `div`. Один раз конфиг
   // пробы уже был слепым (React-типы вырождались в `any`) и печатал вывод байт
   // в байт тот же при ВОЗВРАЩЁННОМ дефекте. Эта строка обязана краснеть.
@@ -83,7 +150,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, PartnerLogo, Severity, Skeleton, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",
@@ -121,6 +188,17 @@ test('★★ АННОТАЦИИ ПРОПОВ ДС: законное проход
     const out = r.stdout + r.stderr;
     const bad = new Set([...out.matchAll(/probe\.jsx\((\d+),/g)].map((m) => Number(m[1])));
 
+    // ★ ДАТЧИК «ПРОГОН НЕ СОСТОЯЛСЯ» СТОИТ ПЕРВЫМ, И ЭТО НЕ КОСМЕТИКА.
+    // Ноль ошибок значит ЛИБО «все `error`-строки провалились молча», ЛИБО «tsc
+    // вообще не отработал» — и второе здесь достижимо: пробу запускает `npx`, а
+    // он падает мгновенно при состязании за блокировку, если прогоны идут
+    // подряд (замерено: 52мс против 2.1с у настоящего прогона). Пока эта
+    // проверка стояла ПОСЛЕ цикла, первым срабатывал ассерт строки, и оборванный
+    // прогон отчитывался словами «аннотация НЕ ловит», то есть НАЗЫВАЛ ПРИЧИНОЙ
+    // ОТКАЗА не то, что отказало. «Не смог измерить» обязано звучать как «не
+    // смог измерить», а не как нарушение.
+    assert.ok(bad.size > 0, `tsc не выдал НИ ОДНОЙ ошибки — прогон не состоялся (код ${r.status}):\n${out}`);
+
     LINES.forEach(([kind, jsx], i) => {
       const line = HEAD.length + 1 + i + 1; // +1 за строку OPEN
       if (kind === 'clean') {
@@ -130,9 +208,6 @@ test('★★ АННОТАЦИИ ПРОПОВ ДС: законное проход
       }
     });
 
-    // «Ошибок нет вовсе» = все clean прошли И все error провалились молча.
-    // Пусть скажет прямо, а не сойдёт за успех.
-    assert.ok(bad.size > 0, `tsc не выдал НИ ОДНОЙ ошибки — прогон не состоялся:\n${out}`);
     assert.equal(bad.size, LINES.filter((l) => l[0] === 'error').length, `лишние ошибки вне ожидаемых строк:\n${out}`);
   } finally {
     rmSync(dir, { recursive: true, force: true });

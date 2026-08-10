@@ -181,7 +181,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, useToast } from '../design/index';
+import { Btn, IconBtn, Chip, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -336,7 +336,7 @@ export default function EditLens({ tripId, shell, content }) {
   const leftPaneRef = useRef(null);
   useEffect(() => {
     if (!leftPanel || !leftPaneRef.current) return;
-    const el = leftPaneRef.current.querySelector('.lp-back, button, [tabindex]') || leftPaneRef.current;
+    const el = leftPaneRef.current.querySelector('button, [tabindex]') || leftPaneRef.current;
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
@@ -1143,31 +1143,24 @@ function Conf({ n }) {
 function HotelCell({ hotel, warn, onClick }) {
   const t = useT();
   if (!hotel) return (
-    <button className="row row--inline row--j-center row--g3 te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('hotel.add')}>
-      <Icon name="bed" size={14} /> <Icon name="plus" size={12} />
-    </button>
+    <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')} ariaLabel={t('hotel.add')} />
   );
   return (
-    <button className={'te-hotelicon' + (warn ? ' is-warn' : '')} onClick={onClick} title={hotel.name}
-      style={warn ? { width: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '0 8px' } : undefined}>
-      <Icon name="bed" size={15} style={{ color: warn ? 'var(--warning)' : 'var(--ev-hotel)' }} />
-      {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
-    </button>
+    <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick} title={hotel.name}>
+      {warn && <Icon name="warning" size={11} />}
+    </Chip>
   );
 }
 function ActCell({ count, warn, onClick }) {
   const t = useT();
   if (!count) return (
-    <button className="row row--inline row--j-center row--g3 te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('budget.source_activity')}>
-      <Icon name="ticket" size={14} /> <Icon name="plus" size={12} />
-    </button>
+    <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')} ariaLabel={t('budget.source_activity')} />
   );
   return (
-    <button className={'row row--inline row--j-center row--g3 te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
-      <Icon name="ticket" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
+    <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick} title={count + ''}>
       <span className="num t-meta">{count}</span>
-      {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
-    </button>
+      {warn && <Icon name="warning" size={11} />}
+    </Chip>
   );
 }
 
@@ -1241,18 +1234,17 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   if (!t) {
     return (
       <Row justify="j-center" className="te-seam">
-        <button className={'row row--inline te-seam__pill te-seam__pill--add' + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-          <Icon name="plus" size={11} /> {tx('tse.add_transfer')}
-        </button>
+        <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
+          {tx('tse.add_transfer')}
+        </Chip>
       </Row>
     );
   }
   const meta = transferKind(t.transport_type);
   return (
     <Row justify="j-center" className="te-seam">
-      <button className={'row row--inline te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-        <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
-        <span className="t-meta" style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+      <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
+        <span className="t-meta">{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {/* Тултип овернайта был МЁРТВ: `Icon` деструктурирует свои пропы без
             остатка, `title` до DOM не доезжал вовсе, а под ключ `tse.overnight_title`
             написаны переводы на en/es/ru и он больше нигде не используется.
@@ -1265,7 +1257,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
             им как сырая JSX-строка - первая редакция этого абзаца роняла CI. */}
         {t.day_change && <span title={tx('tse.overnight_title')}><Icon name="moon" size={11} style={{ color: 'var(--brand)' }} /></span>}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
-      </button>
+      </Chip>
     </Row>
   );
 }
@@ -1297,9 +1289,9 @@ function GridEndpoint({ node, date, onRemove }) {
 
 function AddPointButton({ onOpen }) {
   const t = useT();
-  return <button className="btn btn--soft btn--block" onClick={onOpen} style={{ marginTop: 12 }}>
+  return <Btn variant="soft" block onClick={onOpen} style={{ marginTop: 12 }}>
     <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
-  </button>;
+  </Btn>;
 }
 
 const POINT_TYPES = [
@@ -1321,7 +1313,7 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
   return (
     <div className="lp lp--wide">
       <div className="lp-h lp-h--ev">
-        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={14} /></button>
+        <IconBtn icon="back" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
         <span className="lp-ic" style={{ background: 'var(--brand)', color: '#fff' }}><Icon name="pin" size={17} /></span>
         <div className="lp-ti">
           <b>{t('tse.add_point')}</b>

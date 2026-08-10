@@ -18,14 +18,15 @@
  */
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { TRIP_DOCUMENTS_INCLUDE } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -98,7 +99,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     setSaving(true); setErr('');
     try {
       await insertTripDocument({
-        trip_id:    tripId,
+        tripId,
         title:      title.trim(),
         notes:      notes.trim()   || null,
         // Store an ABSOLUTE url: a scheme-less "google.com" is a relative path
@@ -106,7 +107,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
         link_url:   normalizeExternalUrl(linkUrl),
         documents:  documents.length ? documents : null,
         visibility,
-        created_by: user?.id ?? null,
+        // `created_by` is stamped by the server from the JWT (TRIP-399) — not sent.
         // Author-name snapshot — mirrors chat_messages.user_full_name so the
         // uploader's name survives them leaving the trip (their trip_members /
         // active-profile row is gone). resolveAuthor() reads this as the fallback.
@@ -170,9 +171,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <Icon name="file" size={17} />
           </span>
           <h2>{t('doc.dialog_new')}</h2>
-          <button className="icon-btn" onClick={close}>
-            <Icon name="close" size={16} />
-          </button>
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>
 
         {/* ── Body ── */}
@@ -266,18 +265,18 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                     key={i}
                     name={d.file_name}
                     action={(
-                      <button
-                        type="button"
-                        className="doc-row__rm"
-                        aria-label={t('doc.remove_doc_aria')}
+                      <IconBtn
+                        icon="close"
+                        tone="danger"
+                        size="sm"
+                        ariaLabel={t('doc.remove_doc_aria')}
                         onClick={() => {
                           // Staged-but-unsaved upload → the object is already
                           // orphaned, remove it immediately (TRIP-117).
                           removeTripFiles(collectDocPaths([documents[i]]));
                           setDocuments(prev => prev.filter((_, j) => j !== i));
-                        }}>
-                        <Icon name="close" size={13} />
-                      </button>
+                        }}
+                      />
                     )}
                   />
                 ))}
@@ -317,7 +316,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
         {/* ── Footer ── */}
         <div className="dlg__foot">
-          <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+          <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
           <Btn
             variant="primary"
             loading={saving}
@@ -347,7 +346,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     setDeleting(true);
     let deleted;
     try {
-      deleted = await deleteTripDocument(doc.id); // false = nothing removed (RLS/gone), not success
+      deleted = await deleteTripDocument(tripId, doc.id); // false = already gone (404), not success
     } catch {
       setDeleting(false);
       toast({ description: t('doc.delete_failed'), variant: 'destructive' });
@@ -384,9 +383,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
             <Icon name="file" size={17} />
           </span>
           <h2>{doc.title}</h2>
-          <button className="icon-btn" onClick={close}>
-            <Icon name="close" size={16} />
-          </button>
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>
 
         {/* ── Body ── */}
@@ -440,7 +437,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
             </Btn>
           )}
           <Grow />
-          <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+          <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
         </div>
       </DialogContent>
     </Dialog>
@@ -603,13 +600,15 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   const { data: docs = [], isLoading, error } = useQuery({
     queryKey: DOCS_KEY(tripId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('trip_documents')
-        .select('*')
-        .eq('trip_id', tripId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      // Read через единую дверь чтения (TRIP-399, §6): getTripDetails УЖЕ фильтрует
+      // под service_role `shared → всем, private → только автору` (правило
+      // `_can_access_trip_document`), поэтому прямого `.from('trip_documents')`
+      // здесь больше нет — только после его снятия шаг C сможет отозвать SELECT.
+      const data = await invokeGetTripDetails({ tripId, include: TRIP_DOCUMENTS_INCLUDE });
+      // getTripDetails не сортирует documents; список показываем новыми сверху.
+      return (data?.documents || []).slice().sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
     },
     enabled: !!tripId,
   });
@@ -682,16 +681,12 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           placeholder={t('doc.search_ph')}
           aria-label={t('doc.search_ph')}
         />
-        <div className="seg" role="group" aria-label={t('doc.filter_label')}>
-          {filterOpts.map(opt => (
-            <button
-              key={opt.key}
-              aria-pressed={filter === opt.key}
-              onClick={() => setFilter(opt.key)}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <Seg
+          ariaLabel={t('doc.filter_label')}
+          value={filter}
+          onChange={setFilter}
+          options={filterOpts.map(opt => ({ value: opt.key, label: opt.label }))}
+        />
       </Row>
 
       {/* ── Shared section ── */}

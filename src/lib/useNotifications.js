@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * One seam for the in-app notifications inbox (TRIP-282).
  *
@@ -127,6 +128,10 @@ export function useNotificationActions() {
   });
 
   const respondInvite = useMutation({
+    // Аннотация нужна ВЫЗЫВАЮЩЕМУ, а не этой строке: без неё `useMutation`
+    // выводит тип переменных как `void`, и живой `respondInvite.mutate({...})`
+    // краснеет под `// @ts-check` на стороне колокольчика.
+    /** @param {{ memberId: string, action: string }} vars */
     mutationFn: async ({ memberId, action }) => {
       // Edge function: sets user_id on the member (so the accepter is a
       // recognized participant under RLS), notifies the inviter, and marks the

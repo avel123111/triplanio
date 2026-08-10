@@ -3,7 +3,7 @@ import { track } from '@/lib/analytics';
 import { withViralMarks } from '@/lib/viralLink';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Badge, Btn, Dialog, Severity, Skeleton } from '@/design/index';
+import { Badge, Btn, Dialog, Seg, Severity, Skeleton } from '@/design/index';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
 import './ShareDialog.css';
@@ -211,7 +211,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
       size="wide"
       open={open}
       onOpenChange={onOpenChange}
-      foot={<Btn variant="ghost" onClick={() => onOpenChange?.(false)}>{t('common.close')}</Btn>}
+      foot={<Btn variant="secondary" onClick={() => onOpenChange?.(false)}>{t('common.close')}</Btn>}
     >
       {/* 1. Public read-only link */}
       <div className="muted t-body" style={{ marginBottom: 12 }}>{t('trip.share_desc')}</div>
@@ -251,10 +251,17 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
           <div className="sc-controls">
             {stage === 'edit' ? (
               <>
-                <div className="seg seg--fill" role="group" aria-label={t('share.card_title')} style={{ marginBottom: 14 }}>
-                  <button type="button" aria-pressed={format === 'story'} onClick={() => setFormat('story')}>{t('share.card_story')}</button>
-                  <button type="button" aria-pressed={format === 'post'} onClick={() => setFormat('post')}>{t('share.card_post')}</button>
-                </div>
+                <Seg
+                  variant="fill"
+                  ariaLabel={t('share.card_title')}
+                  style={{ marginBottom: 14 }}
+                  value={format}
+                  onChange={setFormat}
+                  options={[
+                    { value: 'story', label: t('share.card_story') },
+                    { value: 'post', label: t('share.card_post') },
+                  ]}
+                />
                 <div className="t-label" style={{ marginBottom: 7 }}>{t('share.card_bg')}</div>
                 {/* Only the Standard background for now; more styles land here later. */}
                 <div style={{ marginBottom: 16 }}>
@@ -268,8 +275,8 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
               <div className="sc-actions">
                 <Btn className="sc-share" variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl}>{t('share.card_share')}</Btn>
                 <div className="sc-actions-sec">
-                  <Btn variant="ghost" icon="edit" onClick={() => setStage('edit')}>{t('share.card_back')}</Btn>
-                  <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl}>{t('share.card_download')}</Btn>
+                  <Btn variant="secondary" icon="edit" onClick={() => setStage('edit')}>{t('share.card_back')}</Btn>
+                  <Btn variant="secondary" icon="download" onClick={downloadCard} disabled={!cardUrl}>{t('share.card_download')}</Btn>
                 </div>
               </div>
             )}

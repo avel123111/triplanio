@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Loader2, Check } from 'lucide-react';
+import { Btn, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -116,35 +116,31 @@ export default function TripCoverPicker({
       )}
 
       <div className="tcp__swatches">
-        {TRIP_GRADIENTS.map((g) => {
-          const active = !coverImageUrl && coverGradient === g.id;
-          return (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => handlePickGradient(g.id)}
-              title={g.name}
-              className={`tcp__sw${active ? ' is-active' : ''}`}
-              style={{ background: g.preview }}
-            >
-              {active && <Check className="tcp__check" size={16} />}
-            </button>
-          );
-        })}
+        {TRIP_GRADIENTS.map((g) => (
+          <Swatch
+            key={g.id}
+            variant="round"
+            on={!coverImageUrl && coverGradient === g.id}
+            onClick={() => handlePickGradient(g.id)}
+            title={g.name}
+            style={{ background: g.preview }}
+          />
+        ))}
 
-        <button
-          type="button"
+        {/* Кнопка загрузки — обычная вторичная кнопка системы. Своего класса
+            `.tcp__upload` у неё больше нет: он повторял тон secondary и при
+            этом брал радиус со ступени ПОВЕРХНОСТИ (--r-md 16px) вместо ступени
+            КОНТРОЛА (--r-btn 10px), из-за чего кнопка была скруглена сильнее
+            соседних. Спиннер отдаёт `loading` — он же гасит кнопку и ставит
+            aria-busy, поэтому отдельный `disabled` не нужен. */}
+        <Btn
+          variant="secondary"
+          icon="upload"
+          loading={uploading}
           onClick={handlePickFile}
-          disabled={uploading}
-          className="tcp__upload"
         >
-          {uploading ? (
-            <Loader2 className="spin" size={14} />
-          ) : (
-            <Upload size={14} />
-          )}
           {uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
-        </button>
+        </Btn>
         <input
           ref={fileRef}
           type="file"

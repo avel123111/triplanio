@@ -1,6 +1,7 @@
+// @ts-check
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -61,9 +62,7 @@ export default function ProUpsellModal({
                   }
                 </h2>
               </DialogTitle>
-              <button className="icon-btn" onClick={close}>
-                <Icon name="close" size={16} />
-              </button>
+              <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
             </div>
 
             {/* ── Body ── */}
@@ -102,14 +101,14 @@ export default function ProUpsellModal({
             <div className="dlg__foot">
               {isInfo ? (
                 <>
-                  <Btn variant="ghost" icon={copied ? 'check' : 'copy'} onClick={copyLink}>
+                  <Btn variant="secondary" icon={copied ? 'check' : 'copy'} onClick={copyLink}>
                     {copied ? t('common.copied') : t('trip.copy_link')}
                   </Btn>
                   <Btn variant="primary" onClick={close}>{t('common.got_it')}</Btn>
                 </>
               ) : (
                 <>
-                  <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+                  <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
                   <Btn variant="pro" icon="pro" onClick={() => { close(); onUpgrade?.(); }}>
                     {t('trips.go_pro')}
                   </Btn>

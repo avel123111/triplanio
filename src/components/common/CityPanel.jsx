@@ -8,18 +8,17 @@
  * bookings open the same view/create panels as the list.
  */
 import React from 'react';
-import { X } from 'lucide-react';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
-import { Btn } from '@/design/index';
+import { Btn, IconBtn, Stepper } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
 const money = (p, c) => fmtPrice(p, c) || '';
 const rangeText = (a, b) => formatDateRange(a, b, fmtDate);
 
-// Lumo section label: coloured uppercase tag (.sl) + optional addmini action.
+// Lumo section label: coloured uppercase tag (.sl) + optional icon-button action.
 function SectionLabel({ children, color, action }) {
   return (
     <div className="sec-lbl" style={{ marginTop: 6 }}>
@@ -28,17 +27,16 @@ function SectionLabel({ children, color, action }) {
     </div>
   );
 }
-// Lumo ghost-add row (.gadd): dashed, filled secondary icon, muted text.
+// Пунктирный плейсхолдер «добавить» — форма примитива (`Btn variant="dashed"`
+// с плиткой). Своего класса у него больше нет: `.gadd` был третьим именем для
+// той же кнопки. Акцент ховера приходит контекстной переменной `--a`, поэтому
+// строка стиля тут — объявление ТОНА, а не оформление кнопки.
 function GhostAdd({ icon, label, sub, accent, onClick }) {
   const a = accent || 'var(--brand)';
   return (
-    <button className="gadd" onClick={onClick} style={{ '--a': a }}>
-      <span className="gi"><Icon name={icon || 'plus'} size={17} /></span>
-      <span className="gt">
-        <b>{label}</b>
-        {sub && <span>{sub}</span>}
-      </span>
-    </button>
+    <Btn variant="dashed" block tile icon={icon || 'plus'} sub={sub} onClick={onClick} style={{ '--a': a }}>
+      {label}
+    </Btn>
   );
 }
 // Lumo booking row (.bookrow): tinted icon + bt(title/mono-sub) + chevron.
@@ -106,7 +104,7 @@ export default function CityPanel({
           <b>{node.city_name}</b>
           {node.country_code && <span className="lp-country"><CountryFlag code={node.country_code} />{fmtCountry(node.country_code)}</span>}
         </div>
-        <button className="lp-back" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
+        <IconBtn icon="close" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
       </div>
 
       <div className="lp-b scrollbar-thin">
@@ -117,11 +115,12 @@ export default function CityPanel({
           <b className="t-strong">{t('tse.nights_in_city')}</b>
           <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>
         </div>
-        <div className="stepper" title={t('tse.nights_label')}>
-          <button onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}>−</button>
-          <span className="n">{nights}</span>
-          <button onClick={onNightsPlus} aria-label={t('tse.nights_add')}>+</button>
-        </div>
+        <Stepper
+          title={t('tse.nights_label')}
+          value={nights}
+          onMinus={onNightsMinus} minusDisabled={nights <= 0} minusLabel={t('tse.nights_remove')}
+          onPlus={onNightsPlus} plusLabel={t('tse.nights_add')}
+        />
       </div>
 
       {/* arrival / departure — both cities AND waypoints (a transit stop still
@@ -139,7 +138,7 @@ export default function CityPanel({
       {/* hotels — cities only (a 0-night waypoint has no overnight stay). */}
       {!isWaypoint && (
       <div className="col col--g4">
-        <SectionLabel color="var(--ev-hotel-ink)" action={hotels.length > 0 ? <button className="addmini" onClick={onAddHotel} aria-label={t('hotel.add')}><Icon name="plus" size={14} /></button> : null}>
+        <SectionLabel color="var(--ev-hotel-ink)" action={hotels.length > 0 ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddHotel} ariaLabel={t('hotel.add')} /> : null}>
           {t('budget.cat_accommodation')}{hotels.length > 0 ? ` · ${hotels.length}` : ''}
         </SectionLabel>
         {hotels.length === 0 ? (
@@ -156,7 +155,7 @@ export default function CityPanel({
 
       {/* activities */}
       <div className="col col--g4">
-        <SectionLabel color="var(--ev-activity-ink)" action={acts.length > 0 ? <button className="addmini" onClick={onAddActivity} aria-label={t('activity.add')}><Icon name="plus" size={14} /></button> : null}>
+        <SectionLabel color="var(--ev-activity-ink)" action={acts.length > 0 ? <IconBtn icon="plus" tone="soft" size="sm" onClick={onAddActivity} ariaLabel={t('activity.add')} /> : null}>
           {t('budget.source_activity')}{acts.length > 0 ? ` · ${acts.length}` : ''}
         </SectionLabel>
         {acts.map((a) => (

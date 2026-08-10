@@ -64,11 +64,13 @@ const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) =
 ))
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName
 
-// Cancel — design-system ghost button
+// Cancel — вторая кнопка диалога, тон `secondary` (TRIP-344 PR 3: тон `ghost`
+// удалён из системы). Класс написан строкой, а не через <Btn>: носителем обязан
+// остаться `AlertDialogPrimitive.Cancel` — на нём висит закрытие диалога.
 const AlertDialogCancel = React.forwardRef(({ className, children, ...props }, ref) => (
   <AlertDialogPrimitive.Cancel
     ref={ref}
-    className={cn("btn btn--ghost", className)}
+    className={cn("btn btn--secondary", className)}
     {...props}>
     {children}
   </AlertDialogPrimitive.Cancel>

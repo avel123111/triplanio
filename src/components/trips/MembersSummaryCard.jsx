@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Avatar } from '@/design/index';
+import { Avatar, Btn, IconBtn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -58,14 +58,14 @@ export default function MembersSummaryCard({
         <span className="wi wi--activity"><Icon name="users" size={17} /></span>
         <h4>{t('trip.who_goes')}</h4>
         {canManage && (
-          <button
-            className="wdg-act"
+          <IconBtn
+            icon="chev"
+            tone="outline"
+            size="sm"
             onClick={onOpenMembers}
             title={t('trip.open_members')}
-            aria-label={t('trip.open_members')}
-          >
-            <Icon name="chev" size={14} />
-          </button>
+            ariaLabel={t('trip.open_members')}
+          />
         )}
       </div>
 
@@ -143,10 +143,10 @@ export default function MembersSummaryCard({
         )}
 
         {!isLoading && canManage && (
-          <button className="btn btn--soft btn--block ov-invite" onClick={onInvite || onOpenMembers}>
+          <Btn variant="soft" block className="ov-invite" onClick={onInvite || onOpenMembers}>
             <Icon name="plus" size={15} />
             {t('members.invite')}
-          </button>
+          </Btn>
         )}
       </div>
     </div>
