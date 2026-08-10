@@ -2231,6 +2231,42 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .seg--fill { display: flex; width: 100%; }
 .seg--fill button { flex: 1; justify-content: center; }
 
+/* ── Swatch — плитка выбора (<Swatch>, TRIP-344) ──────────────────────────────
+   Один облик на три прежние реализации: `.bgt-swatch` (цвет категории),
+   `.bgt-iconpick button` (иконка категории), `.tcp__sw` (обложка трипа). База —
+   квадрат 32px (`--ctl-h-sm`), радиус ступени контрола, рамка 2px. Выбор =
+   `aria-pressed`, красится рамкой `--ink` + внутренним кольцом (у обложки этим
+   ушла галочка-оверлей `.tcp__check`). Ховер подсвечивает рамку, а не масштаб.
+   prefix-exempt: swatch — апрув Pavel, разбор облика кнопок (TRIP-344)
+   floor-exempt: namespaces +1 — swatch, новый канон-примитив кнопки, апрув Pavel
+   floor-exempt: layout +1 — swatch объявляет display:grid для центровки иконки,
+     как канон .icon-btn/.tile; примитив системы, не разметка экрана, апрув Pavel */
+.swatch {
+  width: var(--ctl-h-sm); height: var(--ctl-h-sm);
+  border-radius: var(--r-sm);
+  padding: 0; border: 2px solid transparent; cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color .16s, background .16s, color .16s;
+}
+.swatch:hover { border-color: var(--line-hover); }
+.swatch:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+.swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
+/* Выбранная плитка под фокусом с клавиатуры — оба кольца, а не одно вместо другого. */
+.swatch[aria-pressed="true"]:focus-visible { box-shadow: 0 0 0 2px var(--surface) inset, 0 0 0 3px var(--primary-ring); }
+.swatch--round { border-radius: var(--r-pill); }
+/* Иконочная плитка: рамка-контейнер, тон появляется брендовым ховером; в
+   выбранном состоянии тон берётся из канала `--sw` (умолчание — бренд), который
+   оболочка ставит по цвету категории. */
+.swatch--icon { border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+.swatch--icon:hover { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.swatch--icon[aria-pressed="true"] {
+  border-color: var(--sw, var(--brand));
+  color: var(--sw, var(--brand));
+  background: color-mix(in srgb, var(--sw, var(--brand)) 14%, transparent);
+}
+.swatch svg { width: 16px; height: 16px; }
+@media (prefers-reduced-motion: reduce) { .swatch { transition: none; } }
+
 /* ═══════════════ Примитивы раскладки (TRIP-321 Ф11) ═══════════════
    Замер (scripts/ci/audit-design.mjs) на dev@eb5e155: одна и та же форма
    объявляется заново в 4+ разных семействах 40 раз, это 285 правил. Верхушка -
@@ -6649,7 +6685,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и var(--primary-fg)).
    Теперь синий один и белый один. */
 .tc-add:hover,
-.bgt-iconpick button.on,
 /* ★TRIP-344: подсветка «меню открыто» переехала с приватного .menu-trig на
    САМ примитив. Приватный класс существовал ровно ради этой строки и был
    вторым классом семьи `menu` — то есть держал целое пространство имён под

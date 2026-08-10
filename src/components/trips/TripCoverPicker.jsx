@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Check } from 'lucide-react';
-import { Btn } from '@/design/index';
+import { Btn, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -117,21 +116,16 @@ export default function TripCoverPicker({
       )}
 
       <div className="tcp__swatches">
-        {TRIP_GRADIENTS.map((g) => {
-          const active = !coverImageUrl && coverGradient === g.id;
-          return (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => handlePickGradient(g.id)}
-              title={g.name}
-              className={`tcp__sw${active ? ' is-active' : ''}`}
-              style={{ background: g.preview }}
-            >
-              {active && <Check className="tcp__check" size={16} />}
-            </button>
-          );
-        })}
+        {TRIP_GRADIENTS.map((g) => (
+          <Swatch
+            key={g.id}
+            variant="round"
+            on={!coverImageUrl && coverGradient === g.id}
+            onClick={() => handlePickGradient(g.id)}
+            title={g.name}
+            style={{ background: g.preview }}
+          />
+        ))}
 
         {/* Кнопка загрузки — обычная вторичная кнопка системы. Своего класса
             `.tcp__upload` у неё больше нет: он повторял тон secondary и при

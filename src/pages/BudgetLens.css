@@ -135,13 +135,9 @@
    устройство поля, и общей быть не должна. */
 .bgt-amtgrp__cur { width: 122px; }
 
-/* colour swatches */
-.bgt-swatch { cursor: pointer; border: 2.5px solid transparent; padding: 0; transition: transform .14s var(--ease-spring); }
-.bgt-swatch:hover { transform: scale(1.1); }
-.bgt-swatch.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
-
-/* icon picker */
-.bgt-iconpick button { border: 1px solid var(--line); background: var(--wash-2); color: var(--muted); cursor: pointer; transition: background .14s, border-color .14s, color .14s; }
+/* Выбор цвета и иконки категории — примитив <Swatch> (канон `.swatch`).
+   Прежние `.bgt-swatch` и `.bgt-iconpick button` рисовали ту же плитку своими
+   размерами/рамками и удалены вместе с разметкой (TRIP-344). */
 
 /* fx rate rows */
 .bgt-fxrow { padding: var(--sp-6) 0; border-bottom: 1px solid var(--line); }

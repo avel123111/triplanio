@@ -169,6 +169,10 @@ const ARRAYS = [
   // на витрине» + направление 2. Семья `fpill` переведена triage→canon.
   { name: 'CHIP_VARIANTS', family: 'fpill' },
   { name: 'CHIP_MODS', family: 'fpill' },
+  // ★TRIP-344: свотч — свой примитив `src/design/Swatch.jsx`, его обличья
+  // `swatch--icon` / `swatch--round` собираются в рантайме, `emittedByComponents`
+  // (только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
+  { name: 'SWATCH_VARIANTS', family: 'swatch' },
 ];
 
 function valuesOf(name) {
