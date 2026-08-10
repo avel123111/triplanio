@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton, EmptyState } from '../design/index';
+import { Btn, Badge, Skeleton, EmptyState, Chip } from '../design/index';
 import AppHeader from '@/components/AppHeader';
 import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
 import { useQueryGate } from '@/lib/useQueryGate';
@@ -120,9 +120,9 @@ export default function Inbox() {
         {notifications.length > 0 && (
           <div className="nfilters">
             {TABS.map(([k, l, c]) => (
-              <button key={k} className={`fpill${filter === k ? ' on' : ''}`} onClick={() => setFilter(k)}>
-                {l}{c > 0 && <span className="fpill__c">{c}</span>}
-              </button>
+              <Chip key={k} on={filter === k} onClick={() => setFilter(k)} count={c > 0 ? c : undefined}>
+                {l}
+              </Chip>
             ))}
           </div>
         )}

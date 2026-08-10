@@ -181,7 +181,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, IconBtn, useToast } from '../design/index';
+import { Btn, IconBtn, Chip, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -1146,11 +1146,9 @@ function HotelCell({ hotel, warn, onClick }) {
     <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" onClick={onClick} title={t('hotel.add')} ariaLabel={t('hotel.add')} />
   );
   return (
-    <button className={'te-hotelicon' + (warn ? ' is-warn' : '')} onClick={onClick} title={hotel.name}
-      style={warn ? { width: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '0 8px' } : undefined}>
-      <Icon name="bed" size={15} style={{ color: warn ? 'var(--warning)' : 'var(--ev-hotel)' }} />
-      {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
-    </button>
+    <Chip variant="tone" square icon="bed" className={warn ? 'is-warn' : ''} onClick={onClick} title={hotel.name}>
+      {warn && <Icon name="warning" size={11} />}
+    </Chip>
   );
 }
 function ActCell({ count, warn, onClick }) {
@@ -1159,11 +1157,10 @@ function ActCell({ count, warn, onClick }) {
     <Btn variant="dashed" size="sm" icon="ticket" iconRight="plus" onClick={onClick} title={t('budget.source_activity')} ariaLabel={t('budget.source_activity')} />
   );
   return (
-    <button className={'row row--inline row--j-center row--g3 te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
-      <Icon name="ticket" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
+    <Chip variant="tone" square icon="ticket" className={warn ? 'is-warn' : ''} onClick={onClick} title={count + ''}>
       <span className="num t-meta">{count}</span>
-      {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
-    </button>
+      {warn && <Icon name="warning" size={11} />}
+    </Chip>
   );
 }
 
@@ -1237,18 +1234,17 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   if (!t) {
     return (
       <Row justify="j-center" className="te-seam">
-        <button className={'row row--inline te-seam__pill te-seam__pill--add' + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-          <Icon name="plus" size={11} /> {tx('tse.add_transfer')}
-        </button>
+        <Chip variant="placeholder" icon="plus" disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
+          {tx('tse.add_transfer')}
+        </Chip>
       </Row>
     );
   }
   const meta = transferKind(t.transport_type);
   return (
     <Row justify="j-center" className="te-seam">
-      <button className={'row row--inline te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
-        <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
-        <span className="t-meta" style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+      <Chip variant="tone" icon={mismatch ? 'warning' : meta.icon} className={mismatch ? 'is-warn' : ''} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
+        <span className="t-meta">{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {/* Тултип овернайта был МЁРТВ: `Icon` деструктурирует свои пропы без
             остатка, `title` до DOM не доезжал вовсе, а под ключ `tse.overnight_title`
             написаны переводы на en/es/ru и он больше нигде не используется.
@@ -1261,7 +1257,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
             им как сырая JSX-строка - первая редакция этого абзаца роняла CI. */}
         {t.day_change && <span title={tx('tse.overnight_title')}><Icon name="moon" size={11} style={{ color: 'var(--brand)' }} /></span>}
         <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
-      </button>
+      </Chip>
     </Row>
   );
 }

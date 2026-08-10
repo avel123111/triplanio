@@ -24,8 +24,7 @@ import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from '@/components/chat/ChatStream';
 import ChatComposer from '@/components/chat/ChatComposer';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
-import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
-import { Icon } from '../design/icons';
+import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Chip, Grow, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { chatParticipants, pluralPeople, useChatId, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, fetchOlderMessages, prependChatMessages, CHAT_PAGE } from '@/lib/chat';
 
@@ -259,10 +258,10 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // On phones the button opens the Sheet itself; on desktop PopoverTrigger
   // (asChild) supplies the handler, so it takes `onClick` rather than owning it.
   const renderMembersBtn = (onClick) => (
-    <button type="button" className="row row--g4 chat-members-btn" onClick={onClick} aria-label={t('chat.members_title')}>
+    <Chip avatars onClick={onClick} aria-label={t('chat.members_title')}>
       <AvatarStack people={people} />
       <span className="chat-members-btn__lbl t-ui">{t('trip.sidebar_members')}</span>
-    </button>
+    </Chip>
   );
 
   return (
@@ -336,10 +335,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         isThinking={isThinking}
         withHint
         jump={newCount > 0 ? (
-          <button type="button" className="chat-jump" onClick={jumpToBottom}>
-            {t("chat.new_messages")} <b>{newCount}</b>
-            <Icon name="arrowD" size={13} />
-          </button>
+          <>
+            <Grow />
+            <Chip onClick={jumpToBottom} count={newCount} iconRight="arrowD">
+              {t("chat.new_messages")}
+            </Chip>
+          </>
         ) : null}
       />
 

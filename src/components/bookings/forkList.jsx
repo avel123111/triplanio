@@ -1,7 +1,7 @@
 // @ts-check
 import React from 'react';
-import { ChevronLeft, ChevronRight, Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
-import { Btn, Input, Skeleton } from '@/design/index';
+import { Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
+import { Btn, Chip, Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -113,11 +113,11 @@ export function ForkPager({ page, totalPages, pages, onGoto, prevLabel, nextLabe
   if (totalPages <= 1) return null;
   return (
     <div className="fork-pager">
-      <button className="fork-pg" disabled={page <= 1} onClick={() => onGoto(Math.max(1, page - 1))} aria-label={prevLabel}><ChevronLeft size={16} /></button>
+      <Chip sm square icon="chevL" disabled={page <= 1} onClick={() => onGoto(Math.max(1, page - 1))} aria-label={prevLabel} />
       {pages.map((p, i) => (p === '…'
         ? <span key={`g${i}`} className="fork-gap">…</span>
-        : <button key={p} className={`fork-pg ${p === page ? 'fork-pg--on' : ''}`} onClick={() => onGoto(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
-      <button className="fork-pg" disabled={page >= totalPages} onClick={() => onGoto(page + 1)} aria-label={nextLabel}><ChevronRight size={16} /></button>
+        : <Chip key={p} sm square on={p === page} onClick={() => onGoto(p)} aria-current={p === page ? 'page' : undefined}>{p}</Chip>))}
+      <Chip sm square icon="chevron" disabled={page >= totalPages} onClick={() => onGoto(page + 1)} aria-label={nextLabel} />
     </div>
   );
 }

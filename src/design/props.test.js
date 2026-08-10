@@ -78,6 +78,14 @@ const LINES = [
   // экраны ставят отступ и подпись группы). `options`/`value`/`onChange` обязательны.
   ['clean', '<Seg options={[{ value: "a", label: "A" }]} value="a" onChange={() => {}} ariaLabel="x" />'],
   ['clean', '<Seg variant="fill" options={[]} value="a" onChange={() => {}} title="t" />'],
+  // Chip отдаёт остаток на `<button>` — база носитель: `onClick`/`title`/`disabled`
+  // законны. Оси НЕЗАВИСИМЫ (variant × square × sm × avatars), `on`→aria-pressed,
+  // `count`/`icon`/`iconRight` — слоты. Обязательных пропов нет (все со значением
+  // по умолчанию либо необязательны), поэтому «пропущенный обязательный» тут не
+  // проверяется — его у Chip нет.
+  ['clean', '<Chip>x</Chip>'],
+  ['clean', '<Chip variant="tone" square sm avatars on icon="plane" iconRight="chevD" count={3} onClick={() => {}} title="t" disabled>x</Chip>'],
+  ['clean', '<Chip variant="placeholder" icon="plus" />'],
   ['clean', '<Avatar name="A" size="sm" />'],
   ['clean', '<Field label="L"><span>x</span></Field>'],
   ['clean', '<FileRow name="a.pdf" />'],
@@ -116,6 +124,10 @@ const LINES = [
   // Обязательный проп: без `options` сегментам неоткуда взяться — краснеет
   // ОТДЕЛЬНО от неверного варианта (два разных поведения аннотации, урок TRIP-388).
   ['error', '<Seg value="a" onChange={() => {}} />'],
+  // Набор заливок Chip закрыт ТИПОМ: `ghost` не существует (neutral|tone|placeholder|soft).
+  // Отдельная строка — модификатор булев: строка вместо boolean тоже краснеет.
+  ['error', '<Chip variant="ghost">x</Chip>'],
+  ['error', '<Chip square="yes">x</Chip>'],
   // ★★ ДВЕ РАЗНЫЕ ОШИБКИ, И ВТОРАЯ НУЖНА ИМЕННО ПОТОМУ, ЧТО ПЕРВАЯ ЕЁ НЕ ЛОВИТ.
   // Закрытый юнион ловит НЕВЕРНОЕ значение (тона `ghost` больше нет) - это первая
   // строка. ОТСУТСТВИЕ пропа он не ловит по построению: замерено на PR 2, где
@@ -138,7 +150,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",
