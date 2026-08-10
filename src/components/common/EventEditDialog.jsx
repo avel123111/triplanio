@@ -1898,9 +1898,9 @@ function TransferLegCard({
           {collapsible && <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />}
         </button>
         {onRemove && (
-          <button type="button" className="btn btn--quiet" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
+          <Btn variant="quiet" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
             <Trash2 size={14} />
-          </button>
+          </Btn>
         )}
       </div>
       )}

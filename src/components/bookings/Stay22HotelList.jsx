@@ -3,7 +3,7 @@ import {
   ChevronDown,
   Search, RotateCcw, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
 } from 'lucide-react';
-import { Input, InputGroup, Stepper } from '@/design/index';
+import { Btn, Input, InputGroup, Stepper } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
@@ -243,7 +243,7 @@ export default function Stay22HotelList({
           spark={<CloudOff size={13} />}
           title={t('fork.stay22_error_title')}
           body={t('fork.stay22_error_body')}
-          action={<button type="button" className="btn btn--soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.stay22_retry')}</button>}
+          action={<Btn variant="soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.stay22_retry')}</Btn>}
           partner={brandPartner}
         />
       )}
@@ -255,7 +255,7 @@ export default function Stay22HotelList({
           spark={<X size={13} />}
           title={t('fork.stay22_no_match_title')}
           body={t('fork.stay22_no_match_body')}
-          action={<button type="button" className="btn btn--soft" onClick={resetAll}><RotateCcw size={15} />{t('fork.f_reset')}</button>}
+          action={<Btn variant="soft" onClick={resetAll}><RotateCcw size={15} />{t('fork.f_reset')}</Btn>}
           partner={brandPartner}
         />
       )}

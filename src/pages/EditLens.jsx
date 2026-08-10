@@ -1289,9 +1289,9 @@ function GridEndpoint({ node, date, onRemove }) {
 
 function AddPointButton({ onOpen }) {
   const t = useT();
-  return <button className="btn btn--soft btn--block" onClick={onOpen} style={{ marginTop: 12 }}>
+  return <Btn variant="soft" block onClick={onOpen} style={{ marginTop: 12 }}>
     <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
-  </button>;
+  </Btn>;
 }
 
 const POINT_TYPES = [

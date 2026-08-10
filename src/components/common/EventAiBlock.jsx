@@ -211,9 +211,9 @@ export default function EventAiBlock({
             <b>{t('event.ai_fill_title')}<Lock size={12} className="muted" /></b>
             <span>{t('event.ai_locked_hint')}</span>
           </div>
-          <button type="button" className="btn btn--pro" onClick={onUpgrade}>
+          <Btn variant="pro" onClick={onUpgrade}>
             <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('trips.go_pro')}
-          </button>
+          </Btn>
         </div>
       </div>
     );
@@ -328,9 +328,9 @@ export default function EventAiBlock({
             </Btn>
             <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
             <div className="grow" />
-            <button type="button" className="btn btn--ai" onClick={runParse} disabled={!text.trim() && files.length === 0}>
+            <Btn variant="ai" onClick={runParse} disabled={!text.trim() && files.length === 0}>
               <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
-            </button>
+            </Btn>
           </div>
         </InputGroup>
 
