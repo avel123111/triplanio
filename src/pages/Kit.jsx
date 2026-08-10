@@ -114,6 +114,49 @@ const TX = {
   theme: 'Тема',
   themeLight: 'светлая',
   themeDark: 'тёмная',
+  // Task 3: состояния, не вызываемые ховером/нажатием — показаны prop-driven.
+  segToneLabel: 'Сегмент: тон активного из контекста (--hl на оболочке)',
+  fieldInvalid: 'Невалидное',
+  fieldWarning: 'Предупреждение',
+  fieldDisabled: 'Только чтение (disabled)',
+  // Честное примечание вместо фейк-тумблеров (решение Pavel): наводимые и
+  // нажимаемые состояния видны прямым взаимодействием, reduced-motion — на
+  // уровне ОС и переключателем не эмулируется.
+  interactNote: 'Ховер, нажатие и фокус смотри прямым взаимодействием — они не вынесены в переключатели. Состояния ниже (выбор, disabled/loading, невалидное) — prop-driven, отрисованы напрямую. reduced-motion — на уровне ОС, тумблером не эмулируется.',
+  // Task 2: человеческая подпись у каждого образца (что за элемент + смысл
+  // варианта). Ключ = имя класса образца; `Specimen` берёт подпись отсюда.
+  spec: {
+    'btn': 'Кнопка — основное действие. Варианты = тон (primary/secondary/soft/quiet/link/dashed/danger/danger-solid/ai/pro).',
+    'btn--block': 'Формы и состояния кнопки: loading, disabled, иконка слева/справа, во всю ширину (block).',
+    'btn--sm': 'Малая кнопка (size=sm) — пустая ячейка редактора маршрута, две иконки без подписи.',
+    'icon-btn': 'Кнопка-иконка — действие без подписи. Первый ряд — база (quiet), дальше тон.',
+    'icon-btn--sm': 'Кнопка-иконка: размер (sm/fab) и форма (round); последняя — disabled.',
+    'stepper': 'Степпер — счётчик значения (−N+). pill (дефолт) — в панели города.',
+    'stepper--block': 'Степпер block — во всю ширину ячейки, центр = дата.',
+    'stepper--bare': 'Степпер bare — без подложки, внутри карточки-инпута.',
+    'seg': 'Сегмент-контрол — выбор одного из; активный = aria-pressed. auto — по содержимому.',
+    'seg--fill': 'Сегмент fill — во всю ширину контейнера.',
+    'fpill': 'Chip — кликабельная пилюля; выбранный = aria-pressed. Счётчик — слот count.',
+    'fpill--tone': 'Chip tone/placeholder — тон типа брони из контекста (--hl на ячейке).',
+    'fpill--square': 'Chip square — заполненная ячейка активности/отеля (32×32).',
+    'fpill--avatars': 'Chip avatars — стопка участников, высота от содержимого.',
+    'fpill--sm': 'Chip sm square — пагинация (выбранная = aria-pressed); soft — «+N ещё» календаря.',
+    'swatch': 'Swatch — плитка выбора цвета; выбранный = aria-pressed (рамка + внутреннее кольцо).',
+    'swatch--icon': 'Swatch icon — выбор иконки; тон выбранного из канала --sw (цвет категории).',
+    'swatch--round': 'Swatch round — обложка трипа, круг; выбор рамкой, без галочки.',
+    'badge': 'Бейдж — статусная метка; тон. Роль участника = тон бейджа, а не свой класс.',
+    'card': 'Карточка — поверхность: заголовок, подзаголовок, действие справа.',
+    'field': 'Поле ввода — подпись, подсказка, обязательность; состояния (невалидное/предупреждение/disabled) ниже.',
+    'avatar': 'Аватар — инициалы/фото/AI/плейсхолдер/удалён; размеры sm/md/lg и стопка.',
+    'sev': 'Плашка сообщения — тон по уровню важности (info/warning/error/success/quiet).',
+    'empty-state': 'Пустое состояние — каркас с иконкой, текстом и призывом к действию.',
+    'checkbox': 'Чекбокс — вкл/выкл (aria-checked); второй — disabled.',
+    'switch': 'Тумблер — вкл/выкл; busy (операция в полёте); locked (заблокирован).',
+    'doc-row': 'Строка документа — имя, размер, тон (обычный / ai).',
+    'skeleton': 'Скелет — плейсхолдер загрузки, разной ширины.',
+    'dlg': 'Диалог и шит — оверлеи (открываются кнопкой).',
+    'readonly-banner': 'Плашка «только чтение» — режим просмотра трипа.',
+  },
 };
 
 /* ───────────────────── статус объекта берётся из каталога ────────────────── */
@@ -133,12 +176,19 @@ const StatusTag = ({ cls }) => {
   );
 };
 
-/** Один образец: имя класса, статус из каталога, сам объект. */
-const Specimen = ({ cls, children }) => (
+/** Один образец: человеческая подпись (что это + смысл варианта), имя класса
+ *  моно-шрифтом рядом (нужно ревизору), статус из каталога, сам объект.
+ *  Подпись едет ДАННЫМИ из `TX.spec` по имени класса; `label` её переопределяет
+ *  там, где один класс показан в двух смыслах (тон-из-контекста у `seg`).
+ *  @param {{ cls: string, label?: string, children?: any }} p */
+const Specimen = ({ cls, label, children }) => (
   <div className="col col--g3">
-    <div className="row row--g3 row--j-center">
-      <span className="t-mono trunc">{cls}</span>
-      <StatusTag cls={cls} />
+    <div className="col col--g1">
+      <div className="row row--g3 row--j-center">
+        <span className="t-mono trunc">{cls}</span>
+        <StatusTag cls={cls} />
+      </div>
+      {(label ?? TX.spec[cls]) && <span className="t-meta">{label ?? TX.spec[cls]}</span>}
     </div>
     <div className="row row--g4 row--wrap row--j-center">{children}</div>
   </div>
@@ -313,6 +363,8 @@ export default function Kit() {
 
       {/* ── компоненты ── */}
       <Section title={TX.sections.components}>
+        {/* Честное примечание вместо фейк-тумблеров ховера/нажатия (решение Pavel). */}
+        <p className="t-meta">{TX.interactNote}</p>
         <Specimen cls="btn">
           {BTN_VARIANTS.map((v) => (
             <Btn key={v} variant={v}>{v}</Btn>
@@ -415,7 +467,7 @@ export default function Kit() {
         </Specimen>
         {/* Тон из контекста: та же `<Seg>`, но оболочка ставит канал `--hl*`
             (как панель события по типу брони) — активный сегмент красится им. */}
-        <Specimen cls="seg">
+        <Specimen cls="seg" label={TX.segToneLabel}>
           <div style={{ '--hl-soft': 'var(--ev-hotel-soft)', '--hl-ink': 'var(--ev-hotel-ink)' }}>
             {/* inline-style-exempt: демонстрация механизма «оболочка ставит --hl
                 инлайном» — ровно то, что делают EventModal/AddBookingPanel; иного
@@ -540,6 +592,17 @@ export default function Kit() {
               <Input placeholder={TX.placeholder} />
               <Btn variant="secondary" icon="search" ariaLabel={TX.placeholder} />
             </InputGroup>
+            {/* Task 3: состояния поля не вызвать ховером — показаны prop-driven,
+                теми же атрибутами, что вешает `fieldState()` в приложении. */}
+            <Field label={TX.fieldInvalid}>
+              <Input placeholder={TX.placeholder} aria-invalid="true" />
+            </Field>
+            <Field label={TX.fieldWarning}>
+              <Input placeholder={TX.placeholder} data-warning="" />
+            </Field>
+            <Field label={TX.fieldDisabled}>
+              <Input placeholder={TX.placeholder} disabled />
+            </Field>
           </div>
         </Specimen>
 
