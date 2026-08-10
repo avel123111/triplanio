@@ -40,6 +40,8 @@ import {
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
   Skeleton, Stepper, Swatch, Textarea, Toggle,
 } from '@/design/index';
+// Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
+import './Kit.css';
 
 /* ─────────────────────────── текст (см. правило 2) ────────────────────────── */
 const TX = {
@@ -127,7 +129,45 @@ const TX = {
   // Честное примечание вместо фейк-тумблеров (решение Pavel): наводимые и
   // нажимаемые состояния видны прямым взаимодействием, reduced-motion — на
   // уровне ОС и переключателем не эмулируется.
-  interactNote: 'Ховер, нажатие и фокус смотри прямым взаимодействием — они не вынесены в переключатели. Состояния ниже (выбор, disabled/loading, невалидное) — prop-driven, отрисованы напрямую. reduced-motion — на уровне ОС, тумблером не эмулируется.',
+  interactNote: 'Ниже — force-state харнесс: переключатель флипает ОДИН образец. Наведение, нажатие и фокус вызвать взаимодействием нельзя, поэтому они зеркалятся правилом под data-force ТОЛЬКО в витринном слое (Kit.css), не в проде. disabled/loading — настоящими пропами. reduced-motion — на уровне ОС, тумблером не эмулируется.',
+  // Force-state харнесс (TRIP-344 PR-2): подписи состояний. У IconBtn и Chip
+  // состояний loading/active в системе НЕТ (нет ни пропа, ни правила), поэтому
+  // их переключатель их и не предлагает — фейковых состояний витрина не рисует.
+  forceLabel: 'Состояние образца',
+  forceStates: {
+    default: 'Обычная',
+    hover: 'Наведение',
+    active: 'Нажатие',
+    focus: 'Фокус',
+    disabled: 'Недоступна',
+    loading: 'Загрузка',
+  },
+  forceBtn: 'Btn (primary) — полный набор состояний',
+  forceIcon: 'IconBtn (soft) — без loading/active (в системе их нет)',
+  forceChip: 'Chip (neutral) — без loading/active (в системе их нет)',
+  // Подписи новых образцов (гашение NOT_SHOWN, TRIP-344 PR-2).
+  tileLabel: 'Тон (мягкий) · размер · форма · залитая',
+  spinLabel: 'Кольцо загрузки: ступени размера и тона',
+  toastLabel: 'Тост: тон по уровню (иконный квадрат)',
+  sheetRowLabel: 'Строка меню/шита; danger — деструктивное действие',
+  aiBlkLabel: 'AI-блок в состоянии «доступно» — кликабельная пилюля',
+  timeLabel: 'Колонка времени переезда (вылет/прибытие)',
+  brandLabel: 'Партнёрская кнопка: заливка бренда (--bg) + белый чип-лого',
+  fieldRowLabel: 'Ряд «поле + компактный контрол» (7fr / 3fr)',
+  inputIcon: 'Иконка слева (input-affix--ic)',
+  inputLoad: 'Кольцо справа (input-affix--end)',
+  inputUnit: 'Валюта-префикс группы (input-unit--lead)',
+  axisLabel: 'Оси выравнивания и потока (кроме зазора)',
+  toastTitle: 'Готово',
+  toastBody: 'Изменения сохранены.',
+  brandName: 'Найти на Booking',
+  sheetNormal: 'Обычное действие',
+  sheetDanger: 'Удалить',
+  aiTitle: 'Распознать бронь',
+  aiSub: 'Вставьте текст письма или загрузите файл',
+  unitCur: '₽',
+  fieldA: 'Город вылета',
+  fieldB: 'Дата',
   // Task 2: человеческая подпись у каждого образца (что за элемент + смысл
   // варианта). Ключ = имя класса образца; `Specimen` берёт подпись отсюда.
   spec: {
@@ -161,6 +201,12 @@ const TX = {
     'skeleton': 'Скелет — плейсхолдер загрузки, разной ширины.',
     'dlg': 'Диалог и шит — оверлеи (открываются кнопкой).',
     'readonly-banner': 'Плашка «только чтение» — режим просмотра трипа.',
+    'tile': 'Плитка-иконка — квадрат под значком: тон (мягкий/залитый), размер (sm/md/lg), форма (round).',
+    'spin': 'Кольцо загрузки — ступени размера (lg/xl) и тон головки (ink/onscrim).',
+    'toast': 'Тост — уведомление; тон по уровню важности красит иконный квадрат.',
+    'sheet-row': 'Строка меню/шита — действие во всю ширину; danger — деструктивное.',
+    'ai-blk': 'AI-блок распознавания брони — состояние «доступно» = кликабельная пилюля с подъёмом на ховере.',
+    'time': 'Колонка времени переезда — вылет сверху, прибытие снизу (в ленте у события-переезда).',
   },
 };
 
@@ -227,6 +273,32 @@ const Section = ({ title, children }) => (
     <div className="col col--g8">{children}</div>
   </Card>
 );
+
+/** Force-state харнесс: переключатель (пилюли `Chip`, выбор = aria-pressed)
+ *  флипает ОДИН образец через состояния, которые примитив реально поддерживает.
+ *  hover/active/focus вызвать взаимодействием нельзя — их зеркалит правило под
+ *  `data-force` в Kit.css; disabled/loading — настоящие пропы (см. `render`).
+ *  Оболочка несёт АТРИБУТЫ `data-kit`/`data-force` (не классы — иначе завёлся бы
+ *  витринный CSS-неймспейс, см. Kit.css); внутри РОВНО ОДИН <button> примитива,
+ *  поэтому зеркальное правило по голому `button` точно и не задевает канон-классы.
+ *  Переключатель стоит ВНЕ оболочки — иначе зеркало красило бы и его кнопки.
+ *  @param {{ kind: string, label: string, states: string[], render: (s: string) => any }} p */
+function ForceHarness({ kind, label, states, render }) {
+  const [force, setForce] = useState('default');
+  return (
+    <div className="col col--g3">
+      <span className="t-meta">{label}</span>
+      <div className="row row--g3 row--wrap">
+        {states.map((s) => (
+          <Chip key={s} on={force === s} onClick={() => setForce(s)}>{TX.forceStates[s]}</Chip>
+        ))}
+      </div>
+      <div data-kit={kind} data-force={force}>
+        {render(force)}
+      </div>
+    </div>
+  );
+}
 
 /* ─────────────── что читается из живых стилей, а не из списка ────────────── */
 /** Все правила проекта одним проходом. Кросс-доменные листы кидают на
@@ -338,6 +410,36 @@ const SWATCH_COVERS = [
 ];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
 const AVATAR_SIZES = [undefined, 'sm', 'lg'];
+
+/* ── TRIP-344 PR-2: обличья, ранее висевшие в NOT_SHOWN у Kit.test, теперь на
+   витрине образцами. Имена собираются СОСТАВНЫМИ (`family--${v}`) — полного
+   литерала класса в разметке нет (правило 2 файла), их считает связка «массив
+   на витрине» + направление 2 гарда, тем же приёмом, что Seg/Chip/Swatch. */
+/** @type {Array<'a-baseline'|'inline'|'j-between'|'flush'|'div'>} — оси ряда, кроме зазора. */
+const ROW_AXES = ['a-baseline', 'inline', 'j-between', 'flush', 'div'];
+/** @type {Array<'a-end'|'j-center'>} — оси колонки, кроме зазора. */
+const COL_AXES = ['a-end', 'j-center'];
+const TILE_TONES = ['ai', 'danger', 'info', 'success', 'quiet', 'warning'];
+const TILE_SIZES = ['sm', 'lg'];
+const TILE_SHAPE = ['round'];
+// solid — залитая форма; сама фон не даёт, идёт В ПАРЕ с тоном (.tile--solid.tile--<тон>).
+const TILE_SOLID = ['solid', 'warm'];
+const SPIN_MODS = ['lg', 'xl', 'ink', 'onscrim'];
+const TOAST_TONES = ['error', 'info', 'success', 'warning'];
+const CARD_MODS = ['danger', 'flush'];
+/** @type {Array<'sm'|'wide'>} — размер диалога (проп size у <Dialog>). */
+const DLG_SIZES = ['sm', 'wide'];
+// input-affix--ic / --end эмитит сам <Input> (icon / loading) — массив здесь
+// только для счёта; рендерятся настоящие поля ниже.
+const INPUT_AFFIX = ['ic', 'end'];
+const INPUT_UNIT = ['lead'];
+const FIELD_ROW = ['aside'];
+const SHEET_ROW = ['danger'];
+const AI_BLK = ['pill'];
+const AVATAR_STACK = ['white'];
+const TIME_VARIANTS = ['tr'];
+// brand — не тон, а аддитивный класс тени под заливку --bg (партнёрская кнопка).
+const BTN_SHADOW = ['brand'];
 const LAYOUT = [
   { base: 'row', cls: 'row', steps: [1, 2, 3, 4, 6, 7, 8] },
   { base: 'col', cls: 'col', steps: [1, 2, 3, 4, 6, 7, 8] },
@@ -349,6 +451,7 @@ const SP_SCALE = ['--sp-1', '--sp-2', '--sp-3', '--sp-4', '--sp-5', '--sp-6', '-
 export default function Kit() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [dlgSize, setDlgSize] = useState(null); // 'sm' | 'wide' | null (закрыт)
   const [checked, setChecked] = useState(true);
   const [toggled, setToggled] = useState(true);
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
@@ -391,8 +494,43 @@ export default function Kit() {
 
       {/* ── компоненты ── */}
       <Section title={TX.sections.components}>
-        {/* Честное примечание вместо фейк-тумблеров ховера/нажатия (решение Pavel). */}
+        {/* Force-state харнесс: наведение/нажатие/фокус зеркалом под data-force
+            (Kit.css, не прод), disabled/loading — пропами. Один и тот же элемент
+            флипается переключателем, а не рисуется заново.
+            floor-exempt: dsshare +10 — витрина: 39 образцов раскладки/плитки/
+              спиннера/тоста/поверхностей/поля рисуются СЫРОЙ разметкой (у этих
+              классов компонента нет), доля «собрано из ДС» падает по построению
+              (TRIP-344 PR-2, гашение NOT_SHOWN образцами, апрув Pavel).
+            floor-exempt: inline +3 — витрина: три несущих инлайна образцов
+              (заливка партнёрской кнопки --bg, подложка белого кольца аватара,
+              высота демо оси col--j-center), апрув Pavel */}
         <p className="t-meta">{TX.interactNote}</p>
+        <div className="row row--g8 row--wrap">
+          <ForceHarness
+            kind="btn"
+            label={TX.forceBtn}
+            states={['default', 'hover', 'active', 'focus', 'disabled', 'loading']}
+            render={(s) => (
+              <Btn variant="primary" disabled={s === 'disabled'} loading={s === 'loading'}>{TX.save}</Btn>
+            )}
+          />
+          <ForceHarness
+            kind="icon"
+            label={TX.forceIcon}
+            states={['default', 'hover', 'focus', 'disabled']}
+            render={(s) => (
+              <IconBtn icon="plus" tone="soft" disabled={s === 'disabled'} ariaLabel={TX.iconBtnSize} />
+            )}
+          />
+          <ForceHarness
+            kind="chip"
+            label={TX.forceChip}
+            states={['default', 'hover', 'focus', 'disabled']}
+            render={(s) => (
+              <Chip disabled={s === 'disabled'}>{TX.chipMembers}</Chip>
+            )}
+          />
+        </div>
         <Specimen cls="btn">
           {BTN_VARIANTS.map((v) => (
             <Sample key={v} name={`variant="${v}"`}><Btn variant={v}>{v}</Btn></Sample>
@@ -432,6 +570,19 @@ export default function Kit() {
           <Sample name={'size="sm"'}><Btn variant="secondary" size="sm">{TX.save}</Btn></Sample>
           <Sample name={'size="sm" icon+iconRight'}><Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel={TX.btnTile} /></Sample>
         </Specimen>
+        {/* btn--brand — партнёрская кнопка (forkList): аддитивный класс тени
+            поверх базовой кнопки, заливка бренда каналом `--bg` + белый чип-лого.
+            Не тон (в BtnVariant его нет), поэтому идёт className'ом, а не пропом. */}
+        <div className="col col--g3">
+          <span className="t-meta">{TX.brandLabel}</span>
+          {BTN_SHADOW.map((b) => (
+            <Btn key={b} variant="secondary" className={`btn--${b}`} block style={{ '--bg': 'var(--brand)', '--fg': 'var(--primary-fg)' }}>
+              {/* inline-style-exempt: заливка партнёра приходит каналом `--bg` (в проде — цвет
+                  бренда партнёра), класса «задать заливку» в системе нет — тон ЕСТЬ содержимое. */}
+              <span className="btn__brandlogo" />{TX.brandName}
+            </Btn>
+          ))}
+        </div>
 
         {/* Кнопка-иконка: три оси, каждая своим образцом. Первый ряд — база
             (`quiet`, `md`), у неё класса-модификатора нет и быть не должно. */}
@@ -623,10 +774,20 @@ export default function Kit() {
         </Specimen>
 
         <Specimen cls="card">
-          <div className="grow">
+          <div className="col col--g4 grow">
             <Card title={TX.cardTitle} subtitle={TX.cardSub} action={<Badge variant="quiet">{TX.canon}</Badge>}>
               <p className="t-body">{TX.cardBody}</p>
             </Card>
+            {/* card--danger — карточка тревоги (отступ у вложенной плашки);
+                card--flush — без внутренних полей: содержимое (скелет-медиа)
+                встаёт от края до края, что и демонстрирует снятые поля. */}
+            {CARD_MODS.map((m) => (
+              <Card key={m} className={`card--${m}`} title={m === 'flush' ? undefined : TX.cardTitle}>
+                {m === 'danger'
+                  ? <Severity level="error" title={TX.sevTitle}>{TX.sevBody}</Severity>
+                  : <Skeleton h={48} r={0} />}
+              </Card>
+            ))}
           </div>
         </Specimen>
 
@@ -659,6 +820,26 @@ export default function Kit() {
             <Field label={TX.fieldReadonly}>
               <Input readOnly defaultValue={TX.readonlyVal} />
             </Field>
+            {/* Декорации поля эмитит сам <Input>: иконка слева (input-affix--ic),
+                кольцо загрузки справа (input-affix--end). */}
+            <Field label={TX.inputIcon}>
+              <Input icon="search" placeholder={TX.placeholder} />
+            </Field>
+            <Field label={TX.inputLoad}>
+              <Input loading placeholder={TX.placeholder} />
+            </Field>
+            {/* input-unit--lead — валюта-префикс группы (сумма + валюта). */}
+            <Field label={TX.inputUnit}>
+              <InputGroup>
+                <span className={`input-unit input-unit--${INPUT_UNIT[0]}`}>{TX.unitCur}</span>
+                <Input num placeholder={TX.placeholder} />
+              </InputGroup>
+            </Field>
+            {/* field-row--aside — ряд «поле + компактный контрол», колонки 7fr/3fr. */}
+            <div className={`field-row field-row--${FIELD_ROW[0]}`}>
+              <Field label={TX.fieldA}><Input placeholder={TX.placeholder} /></Field>
+              <Field label={TX.fieldB}><Input placeholder={TX.placeholder} /></Field>
+            </div>
           </div>
         </Specimen>
 
@@ -670,6 +851,17 @@ export default function Kit() {
           <Sample name={'kind="placeholder"'}><Avatar name="?" kind="placeholder" /></Sample>
           <Sample name="deleted"><Avatar name="X" deleted /></Sample>
           <Sample name="AvatarStack"><AvatarStack people={[{ name: 'A B' }, { name: 'C D' }, { name: 'E F' }, { name: 'G H' }, { name: 'I J' }]} /></Sample>
+          {/* avatar-stack--white — кольцо аватара белым (обложка трипа/цветной
+              фон). Виден только на НЕ-белой подложке, поэтому образец на градиенте. */}
+          {AVATAR_STACK.map((m) => (
+            <Sample key={m} name={`avatar-stack--${m}`}>
+              <div className="tile tile--lg tile--solid tile--ai" style={{ width: 'auto', padding: '0 8px' }}>
+                {/* inline-style-exempt: подложка ЕСТЬ условие видимости белого кольца
+                    (в проде это фото-обложка/цветная карточка), классом её не выразить. */}
+                <AvatarStack className={`avatar-stack--${m}`} people={[{ name: 'A B' }, { name: 'C D' }, { name: 'E F' }]} />
+              </div>
+            </Sample>
+          ))}
         </Specimen>
 
         <Specimen cls="sev">
@@ -717,6 +909,91 @@ export default function Kit() {
           </div>
         </Specimen>
 
+        {/* Плитка-иконка: тон (мягкий) · размер · форма · залитая. Пустой квадрат
+            показывает сам тон. `solid` фона не даёт — идёт В ПАРЕ с тоном. */}
+        <Specimen cls="tile">
+          {TILE_TONES.map((t) => (
+            <Sample key={t} name={`tile--${t}`}><span className={`tile tile--${t}`} /></Sample>
+          ))}
+          {TILE_SIZES.map((s) => (
+            <Sample key={s} name={`tile--${s}`}><span className={`tile tile--brand tile--${s}`} /></Sample>
+          ))}
+          {TILE_SHAPE.map((s) => (
+            <Sample key={s} name={`tile--${s}`}><span className={`tile tile--brand tile--${s}`} /></Sample>
+          ))}
+          {TILE_SOLID.map((m) => (
+            <Sample key={m} name={m === 'solid' ? 'tile--solid (+ai)' : `tile--solid + tile--${m}`}>
+              <span className={m === 'solid' ? `tile tile--${m} tile--ai` : `tile tile--solid tile--${m}`} />
+            </Sample>
+          ))}
+        </Specimen>
+
+        {/* Кольцо загрузки: базовая ступень 18px + модификаторы размера (lg/xl) и
+            тона головки (ink/onscrim). onscrim показан на тёмной подложке. */}
+        <Specimen cls="spin">
+          <Sample name="spin--ring (база)"><span className="spin spin--ring" /></Sample>
+          {SPIN_MODS.map((m) => (
+            m === 'onscrim'
+              ? <Sample key={m} name={`spin--${m}`}>
+                  <span className="tile tile--lg tile--solid tile--ai"><span className={`spin spin--ring spin--${m}`} /></span>
+                </Sample>
+              : <Sample key={m} name={`spin--${m}`}><span className={`spin spin--ring spin--${m}`} /></Sample>
+          ))}
+        </Specimen>
+
+        {/* Тост: тон по уровню важности красит иконный квадрат `.tic`. */}
+        <Specimen cls="toast">
+          <div className="col col--g3 grow">
+            {TOAST_TONES.map((t) => (
+              <Sample key={t} name={`toast--${t}`} full>
+                <div className={`toast toast--${t}`}>
+                  <span className="tic" />
+                  <div className="toast__body"><b>{TX.toastTitle}</b><span>{TX.toastBody}</span></div>
+                </div>
+              </Sample>
+            ))}
+          </div>
+        </Specimen>
+
+        {/* Строка меню/шита (ActionMenu): действие во всю ширину; danger — тон
+            деструктивного. Раскладку строки задаёт `.sheet-row`. */}
+        <Specimen cls="sheet-row">
+          <div className="col grow">
+            <Sample name="sheet-row (база)" full><button type="button" className="sheet-row">{TX.sheetNormal}</button></Sample>
+            {SHEET_ROW.map((d) => (
+              <Sample key={d} name={`sheet-row--${d}`} full><button type="button" className={`sheet-row sheet-row--${d}`}>{TX.sheetDanger}</button></Sample>
+            ))}
+          </div>
+        </Specimen>
+
+        {/* AI-блок распознавания брони (EventAiBlock), состояние «доступно» =
+            кликабельная пилюля с подъёмом на ховере. */}
+        <Specimen cls="ai-blk">
+          <div className="grow">
+            {AI_BLK.map((p) => (
+              <Sample key={p} name={`ai-blk--${p}`} full>
+                <button type="button" className={`ai-blk ai-blk--${p}`}>
+                  <div className="ai-blk-hd">
+                    <span className="ai-blk-ti"><b>{TX.aiTitle}</b><span>{TX.aiSub}</span></span>
+                  </div>
+                </button>
+              </Sample>
+            ))}
+          </div>
+        </Specimen>
+
+        {/* Колонка времени переезда (StreamEventRow): вылет сверху, прибытие
+            снизу. Раскладку колонки даёт правило `.tl3-ev--tr .time--tr`. */}
+        <Specimen cls="time">
+          {TIME_VARIANTS.map((v) => (
+            <Sample key={v} name={`time--${v}`}>
+              <div className="tl3-ev tl3-ev--tr">
+                <div className={`time time--${v}`}><span>08:00</span><span>12:30</span></div>
+              </div>
+            </Sample>
+          ))}
+        </Specimen>
+
         {/* Образец `rb` снят вместе с компонентом `RoleBadge` (TRIP-344 PR 1).
             Он и был витриной, показывающей то, чего в системе нет: имени `rb`
             не существует ни одним классом, а пилюля рисовалась инлайнами. Роль
@@ -726,6 +1003,10 @@ export default function Kit() {
         <Specimen cls="dlg">
           <Sample name="Dialog"><Btn variant="secondary" onClick={() => setDialogOpen(true)}>{TX.openDialog}</Btn></Sample>
           <Sample name="Sheet"><Btn variant="secondary" onClick={() => setSheetOpen(true)}>{TX.openSheet}</Btn></Sample>
+          {/* Размер диалога — проп size у <Dialog>, эмитит dlg--sm / dlg--wide. */}
+          {DLG_SIZES.map((sz) => (
+            <Sample key={sz} name={`size="${sz}"`}><Btn variant="secondary" onClick={() => setDlgSize(sz)}>{TX.openDialog}</Btn></Sample>
+          ))}
         </Specimen>
 
         <Specimen cls="readonly-banner">
@@ -760,6 +1041,39 @@ export default function Kit() {
             })}
           </div>
         ))}
+        {/* Оси выравнивания и потока — кроме зазора (тот показан ступенями выше).
+            Каждая ось подписана именем класса; демо составлено из плиток разной
+            ступени, чтобы разница выравнивания была видна. */}
+        <div className="col col--g4">
+          <div className="row row--g3 row--j-center">
+            <span className="t-mono trunc">{'.row / .col'}</span>
+            <span className="t-meta">{TX.axisLabel}</span>
+          </div>
+          {ROW_AXES.map((ax) => (
+            <div key={ax} className="col col--g2">
+              <span className="t-micro">{`.row--${ax}`}</span>
+              <div className={`row row--g3 row--${ax}`}>
+                <span className="tile tile--sm tile--brand" />
+                <span className="tile tile--brand" />
+                <span className="tile tile--lg tile--brand" />
+                <span className="grow t-meta">grow</span>
+              </div>
+            </div>
+          ))}
+          <div className="row row--g4 row--wrap">
+            {COL_AXES.map((ax) => (
+              <div key={ax} className="col col--g2">
+                <span className="t-micro">{`.col--${ax}`}</span>
+                <div className={`col col--g3 col--${ax}`} style={{ minHeight: 80 }}>
+                  {/* inline-style-exempt: у оси main-axis (j-center) без высоты
+                      контейнера центрировать нечего — высота ЕСТЬ условие демо. */}
+                  <span className="tile tile--sm tile--brand" />
+                  <span className="tile tile--lg tile--brand" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </Section>
 
       {/* ── шкала отступов линейками ── */}
@@ -822,6 +1136,13 @@ export default function Kit() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title={TX.sheetTitle} titleText={TX.sheetTitle}>
         <p className="t-body">{TX.dialogBody}</p>
       </Sheet>
+
+      {/* Один диалог, size из состояния — эмитит dlg--sm / dlg--wide. */}
+      <Dialog open={dlgSize !== null} onOpenChange={(o) => { if (!o) setDlgSize(null); }}
+        size={dlgSize || undefined} title={TX.dialogTitle} icon="info"
+        foot={<Btn variant="primary" onClick={() => setDlgSize(null)}>{TX.close}</Btn>}>
+        <p className="t-body">{TX.dialogBody}</p>
+      </Dialog>
     </div>
   );
 }
