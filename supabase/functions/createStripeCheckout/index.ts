@@ -123,14 +123,24 @@ Deno.serve(withHandler('createStripeCheckout', async (req, corsHeaders) => {
       metadata: { user_id: user.id, user_email: user.email!, trip_id: tripId || '', product_code: productCode },
       ...(mode === 'subscription'
         ? { subscription_data: { metadata: { user_id: user.id, product_code: productCode } } }
-        : {}),
+        // Симметрия подписочному случаю: метки уезжают на САМ платёж, а не только на
+        // чек-сессию. Сессии живут сутки, payment_intent — вечно, поэтому это
+        // единственная неисчезающая связка «платёж ↔ трип», по которой Сверка Б
+        // может восстановить покупку, о которой вебхук не узнал.
+        : { payment_intent_data: { metadata: { user_id: user.id, trip_id: tripId || '', product_code: productCode } } }),
     });
 
     // СТАБИЛЬНЫЙ Stripe idempotency-ключ. customerId в ключе: при протухшем customer
     // (см. ниже) ключ меняется вместе с телом — нет Stripe-400 «same key, diff params».
+    //
+    // ⚠️`v2` ОБЯЗАТЕЛЕН вместе с payment_intent_data выше. Ключ идемпотентности живёт
+    // у Stripe 24 часа и запоминает ТЕЛО запроса: добавление payment_intent_data тело
+    // меняет, а ключ без версии остался бы прежним → Stripe вернул бы 400 «same key,
+    // different params» КАЖДОМУ, кто начинал чекаут в предыдущие сутки. Версия в ключе
+    // разводит старое и новое тело, и выкат проходит незаметно.
     const idemKeyFor = (custId: string) => productCode === 'trip_pro_lifetime'
-      ? `checkout:${user.id}:${productCode}:${tripId}:${custId}`
-      : `checkout:${user.id}:${productCode}:${custId}`;
+      ? `checkout:v2:${user.id}:${productCode}:${tripId}:${custId}`
+      : `checkout:v2:${user.id}:${productCode}:${custId}`;
 
     let session: Stripe.Checkout.Session;
     try {

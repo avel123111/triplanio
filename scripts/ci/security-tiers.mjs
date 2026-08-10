@@ -89,6 +89,12 @@ export const TABLES = {
   // и БОТА), время и связку чат↔трип, а вставка сообщения и запуск ассистента были
   // двумя операциями с клиента. Теперь клиент только читает.
   chat_messages:     { tier: 'B', write: 'send_chat_message (secdef RPC)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop insert/update/delete политик; запись только через RPC' },
+  // Журнал сверок энтайтлмента (TRIP-153). Пишет только сама сверка (cron-владелец
+  // и service_role); клиент не читает — разбор идёт SQL-редактором, UI нет.
+  // authSelect=false намеренно: строка находки везёт чужие user_id/trip_id и срез
+  // объекта Stripe, то есть это операционные данные, а не данные пользователя.
+  reconcile_run:     { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-153: сводка прогона сверки' },
+  reconcile_finding: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-153: построчный след расхождений' },
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
   users:              { tier: 'C', write: 'self (id=auth.uid())',      anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (колонки энтайтлмента уже отозваны — TRIP-62/платёжка)' },
@@ -341,6 +347,10 @@ export const DOORS = {
   // ── n8n: Bearer N8N_SECRET, сервер-сервер ──
   aiGate:                'n8n',
   getPendingReminders:   'n8n',
+  // Сверка Б (TRIP-153): расписание держит n8n, авторизация — requireN8nSecret,
+  // как у соседей выше. Пользовательской двери нет: функция не принимает ничей
+  // запрос кроме планировщика и ходит только в Stripe и в свой журнал.
+  reconcileEntitlementStripe: 'n8n',
   getTripById:           'n8n',
   getTripByTelegramChatId: 'n8n',
   triplanioAiReply:      'n8n',

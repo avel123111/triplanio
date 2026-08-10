@@ -91,7 +91,7 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
       const codeByProduct = new Map<string, ProductCode>(
         (await getActiveProviderProducts('stripe', adapter.env)).map((r) => [r.provider_product_id, r.product_code] as [string, ProductCode]),
       );
-      const subs = await adapter.listSubscriptionsByCustomer(customerId, 10);
+      const subs = await adapter.listSubscriptionsByCustomer(customerId);
       const recovered: string[] = [];
       for (const sub of subs) {
         const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;

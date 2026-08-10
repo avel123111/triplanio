@@ -46,6 +46,11 @@ verify_jwt = false
 [functions.aiGate]
 verify_jwt = false
 
+# reconcileEntitlementStripe — Сверка Б (TRIP-153). Зовётся по расписанию из n8n с
+# Bearer <N8N_SECRET> (requireN8nSecret); JWT юзера у планировщика нет по природе.
+[functions.reconcileEntitlementStripe]
+verify_jwt = false
+
 # Anonymous (logged-out) callers: login/signup/reset preflight.
 [functions.signupPrecheck]
 verify_jwt = false
