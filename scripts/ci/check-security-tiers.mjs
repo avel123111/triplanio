@@ -509,12 +509,61 @@ export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
   return errors;
 }
 
+/**
+ * Суждение о ГРАНТАХ таблицы против манифеста — чистая половина (ради теста без
+ * БД, как `checkDoors`/`checkBucketPredicates`). Вход `grants` — строки из
+ * LIVE_SQL: `{ t, anon, auth, anonSel, authSel }` (anon/auth = живой DML; *Sel =
+ * живой SELECT). Возвращает список строк-ошибок.
+ *
+ * Оси:
+ *   DML   — I3a (anon DML нигде) + I3b (auth DML только там, где манифест ждёт) +
+ *           незаклассифицированная таблица с auth DML.
+ *   SELECT (TRIP-399) — закрытие двери ЧТЕНИЯ тоже стережётся:
+ *     • live `authSel` обязан совпасть с манифестным `authSelect`;
+ *     • edge-only таблица (`authSelect:false`) не должна отдавать SELECT аноним —
+ *       это закрывает и anon-ось для ЗАКРЫТЫХ дверей без нового поля манифеста.
+ *   ⚠ anon SELECT при `authSelect:true` НЕ ограничиваем: на таких таблицах чтение
+ *   идёт клиентом напрямую под RLS (переходная модель эпика — контент яруса A ещё
+ *   не переехал на edge; anon-грант широкий по умолчанию Supabase, строки гейтит
+ *   RLS). Ось закроется сама на C-шаге домена: он снимет anon SELECT и переведёт
+ *   `authSelect` в false → правило выше поймает обе оси.
+ */
+export function checkTableGrants(grants = [], tables = TABLES) {
+  const errors = [];
+  for (const g of grants) {
+    const m = tables[g.t];
+    // ── ось DML ──
+    // I3a — anon DML недопустим нигде.
+    if (g.anon) errors.push(`live-дрейф: anon имеет DML на public.${g.t} (I3a — снять грант)`);
+    // I3b + незаклассифицированная таблица.
+    if (g.auth) {
+      if (!m) {
+        errors.push(`live-дрейф: public.${g.t} не в манифесте, но authenticated имеет DML — заведи ярус в security-tiers.mjs`);
+      } else if (m.authDml !== true) {
+        errors.push(`live-дрейф: authenticated имеет DML на public.${g.t} (ярус ${m.tier} запрещает)`);
+      }
+    }
+    // ── ось SELECT (TRIP-399) — только для таблиц в манифесте ──
+    if (m) {
+      if (g.authSel !== m.authSelect) {
+        errors.push(`live-дрейф: authenticated SELECT на public.${g.t} = ${g.authSel}, манифест authSelect=${m.authSelect}`);
+      }
+      if (m.authSelect === false && g.anonSel === true) {
+        errors.push(`live-дрейф: edge-only таблица ${g.t} отдаёт SELECT anon — дверь чтения открыта анониму`);
+      }
+    }
+  }
+  return errors;
+}
+
 // ── LIVE: живая БД совпадает с манифестом ─────────────────────────────────────
 const LIVE_SQL = `select json_build_object(
-  'grants', coalesce((select json_agg(json_build_object('t',t,'anon',anon,'auth',auth)) from (
+  'grants', coalesce((select json_agg(json_build_object('t',t,'anon',anon,'auth',auth,'anonSel',anonSel,'authSel',authSel)) from (
      select c.relname t,
        coalesce(bool_or(x.grantee::regrole::text='anon' and x.privilege_type in ('INSERT','UPDATE','DELETE')),false) anon,
-       coalesce(bool_or(x.grantee::regrole::text='authenticated' and x.privilege_type in ('INSERT','UPDATE','DELETE')),false) auth
+       coalesce(bool_or(x.grantee::regrole::text='authenticated' and x.privilege_type in ('INSERT','UPDATE','DELETE')),false) auth,
+       coalesce(bool_or(x.grantee::regrole::text='anon' and x.privilege_type='SELECT'),false) anonSel,
+       coalesce(bool_or(x.grantee::regrole::text='authenticated' and x.privilege_type='SELECT'),false) authSel
      from pg_class c
      join pg_namespace n on n.oid=c.relnamespace and n.nspname='public'
      left join lateral aclexplode(c.relacl) x on true
@@ -555,16 +604,8 @@ function checkLive(dbUrl) {
   const tierARole = new Set(live.tierA_role || []);
   let fail = 0;
 
-  for (const g of grants) {
-    const m = TABLES[g.t];
-    // I3a — anon DML недопустим нигде.
-    if (g.anon) { err(`live-дрейф: anon имеет DML на public.${g.t} (I3a — снять грант)`); fail = 1; }
-    // I3b + незаклассифицированная таблица.
-    if (g.auth) {
-      if (!m) { err(`live-дрейф: public.${g.t} не в манифесте, но authenticated имеет DML — заведи ярус в security-tiers.mjs`); fail = 1; }
-      else if (m.authDml !== true) { err(`live-дрейф: authenticated имеет DML на public.${g.t} (ярус ${m.tier} запрещает)`); fail = 1; }
-    }
-  }
+  // Гранты (DML + ось SELECT) — суждение в чистой `checkTableGrants` (тест без БД).
+  for (const m of checkTableGrants(grants, TABLES)) { err(m); fail = 1; }
   // I2 — таблицы яруса A обязаны иметь роль-осведомлённую write-политику.
   for (const [t, r] of Object.entries(TABLES)) {
     if (r.tier === 'A' && !tierARole.has(t)) {
