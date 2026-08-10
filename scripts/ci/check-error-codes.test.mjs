@@ -206,12 +206,56 @@ test('код в КОММЕНТАРИИ не считается эмиссией 
   assert.equal(r.code, 0, r.out);
 });
 
-test('реестр и .test.ts НЕ сканируются как эмиттеры', (t) => {
+test('edge-тесты (_test.ts / .test.ts) и реестр НЕ сканируются как эмиттеры', (t) => {
+  // Deno-конвенция edge-тестов — `_test.ts` (mutateRules_test.ts,
+  // redeemRole_test.ts). Тест-код цитирует несуществующий код — он НЕ должен
+  // требоваться в реестре.
   const files = {
     [REGISTRY]: registry(['FORBIDDEN']),
-    // фикстура-тест цитирует несуществующий код — не должен требоваться в реестре
-    'supabase/functions/fn/index.test.ts': `assert(jsonError(400,'x','TEST_ONLY_CODE'));\n`,
+    'supabase/functions/_shared/rules_test.ts': `assert(jsonError(400,'x','TEST_ONLY_CODE'));\n`,
+    'supabase/functions/fn/index.test.ts': `assert(forbid('OTHER_TEST_CODE','y'));\n`,
     'supabase/functions/fn/index.ts': `return jsonError(403, 'no', 'FORBIDDEN', h);\n`,
+  };
+  const r = run(fixture(t, { base: files, head: files }));
+  assert.equal(r.code, 0, r.out);
+});
+
+test('тот же код в ПРОД `.ts` (не тест) → красный (мутация исключения тестов)', (t) => {
+  // Пара к предыдущему: перенеси `TEST_ONLY_CODE` из `_test.ts` в прод-файл —
+  // и он обязан требоваться в реестре. Иначе исключение тестов прятало бы
+  // прод-эмиссию (ровно баг «_test.ts считается прод-кодом», но наоборот).
+  const files = {
+    [REGISTRY]: registry(['FORBIDDEN']),
+    'supabase/functions/fn/index.ts': `return jsonError(400, 'x', 'TEST_ONLY_CODE', h);\n`,
+  };
+  const r = run(fixture(t, { base: files, head: files }));
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /TEST_ONLY_CODE/);
+});
+
+test('эмиссия в ДВОЙНЫХ кавычках, код вне реестра → красный (deno fmt / обход)', (t) => {
+  // `deno fmt` предпочитает двойные кавычки; предикат по одинарным пропускал бы
+  // «новый код в двойных кавычках» мимо контракт-гейта молча.
+  const files = {
+    [REGISTRY]: registry(['FORBIDDEN']),
+    'supabase/functions/fn/index.ts': `
+      return jsonError(400, "x", "DQ_JSONERROR", h);
+      throw new HttpError(400, "y", "DQ_HTTPERROR");
+      forbid("DQ_FORBID", "z");
+      return Response.json({ code: "DQ_CODEPROP" });
+    `,
+  };
+  const r = run(fixture(t, { base: files, head: files }));
+  assert.equal(r.code, 1, r.out);
+  for (const c of ['DQ_JSONERROR', 'DQ_HTTPERROR', 'DQ_FORBID', 'DQ_CODEPROP']) {
+    assert.match(r.out, new RegExp(c), `двойные кавычки не поймали ${c}`);
+  }
+});
+
+test('код в двойных кавычках, но В реестре → OK (append-only не ломается сменой кавычек)', (t) => {
+  const files = {
+    [REGISTRY]: registry(['FORBIDDEN']),
+    'supabase/functions/fn/index.ts': `return jsonError(403, "no", "FORBIDDEN", h);\n`,
   };
   const r = run(fixture(t, { base: files, head: files }));
   assert.equal(r.code, 0, r.out);

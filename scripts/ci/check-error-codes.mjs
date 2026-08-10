@@ -34,11 +34,15 @@
  * канону отдельным заходом.
  *
  * ── ЕДИНИЦА ЭМИССИИ ─────────────────────────────────────────────────────────
- * Код считается ЭМИТИРУЕМЫМ, если UPPER_SNAKE-литерал стоит в позиции контракта:
+ * Код считается ЭМИТИРУЕМЫМ, если UPPER_SNAKE-литерал стоит в позиции контракта
+ * (в ОБЕИХ формах кавычек — `deno fmt` предпочитает двойные, и предикат по одной
+ * форме = дыра «новый код в двойных кавычках мимо гейта», ревью Codex):
  *   • `new HttpError(status, msg, 'CODE')`     — 3-й аргумент
  *   • `jsonError(status, msg, 'CODE', headers)`— 3-й аргумент
  *   • `forbid('CODE', msg)`                    — 1-й аргумент (правила mutate)
  *   • `code: 'CODE'`                           — свойство тела Response.json / правил
+ * Edge-ТЕСТЫ (`_test.ts` по Deno-конвенции, и `.test.ts`) исключены из скана —
+ * иначе тест-код считается прод-эмиссией и требует свои коды в реестре.
  * Разбор — comment-blanking + сопоставление скобок (как 2r): `grep` построчный,
  * а тело ошибки многострочно; и запятая/скобка ВНУТРИ текста сообщения не
  * структурная (`'нет доступа (403)'`). Свой парсер CSS/JS был бы третьим в репо
@@ -159,10 +163,14 @@ function splitArgs(src, open, close) {
   return args.map((a) => a.trim()).filter((a) => a.length);
 }
 
-/** Если текст аргумента — одиночный UPPER_SNAKE-литерал в кавычках, вернуть его. */
+/**
+ * Если текст аргумента — одиночный UPPER_SNAKE-литерал в кавычках, вернуть его.
+ * Обе формы кавычек: `deno fmt` предпочитает двойные, и `code: "NEW"` — валидный
+ * синтаксис; предикат по одной форме = дыра «код в двойных кавычках мимо гейта».
+ */
 function litCode(argText) {
-  const m = argText.match(/^'([A-Za-z0-9_]+)'$/);
-  return m && CODE_SHAPE.test(m[1]) ? m[1] : null;
+  const m = argText.match(/^(['"])([A-Za-z0-9_]+)\1$/);
+  return m && CODE_SHAPE.test(m[2]) ? m[2] : null;
 }
 
 /** Позиционный аргумент вызова `name(` начиная с индекса открытия имени. */
@@ -191,12 +199,12 @@ function collectCallArgCodes(src, regex, argIndex, codes) {
 }
 
 /** Множество UPPER_SNAKE-кодов, эмитируемых исходником (после гашения комментариев). */
-export function emittedCodes(rawSrc) {
+function emittedCodes(rawSrc) {
   const src = blankComments(rawSrc);
   const codes = new Set();
-  // code: 'CODE'  (свойство тела)
-  for (const m of src.matchAll(/\bcode:\s*'([A-Za-z0-9_]+)'/g)) {
-    if (CODE_SHAPE.test(m[1])) codes.add(m[1]);
+  // code: 'CODE' / code: "CODE"  (свойство тела; обе формы кавычек)
+  for (const m of src.matchAll(/\bcode:\s*(['"])([A-Za-z0-9_]+)\1/g)) {
+    if (CODE_SHAPE.test(m[2])) codes.add(m[2]);
   }
   collectCallArgCodes(src, /\bnew\s+HttpError\b/g, 2, codes); // new HttpError( … , 'CODE')
   collectCallArgCodes(src, /\bjsonError\b/g, 2, codes);       // jsonError( … , 'CODE', headers)
@@ -205,16 +213,18 @@ export function emittedCodes(rawSrc) {
 }
 
 /** UPPER_SNAKE-строки-литералы, объявленные в тексте реестра. */
-export function registryCodes(registrySrc) {
+function registryCodes(registrySrc) {
   const src = blankComments(registrySrc);
   const codes = new Set();
-  for (const m of src.matchAll(/'([A-Za-z0-9_]+)'/g)) {
-    if (CODE_SHAPE.test(m[1])) codes.add(m[1]);
+  for (const m of src.matchAll(/(['"])([A-Za-z0-9_]+)\1/g)) {
+    if (CODE_SHAPE.test(m[2])) codes.add(m[2]);
   }
   return codes;
 }
 
 // ── обход дерева edge ────────────────────────────────────────────────────────
+
+const isTestFile = (name) => name.endsWith('_test.ts') || name.endsWith('.test.ts');
 
 function walk(dir, out = []) {
   let entries;
@@ -224,7 +234,10 @@ function walk(dir, out = []) {
     let st;
     try { st = statSync(full); } catch { continue; }
     if (st.isDirectory()) walk(full, out);
-    else if (name.endsWith('.ts') && !name.endsWith('.test.ts') && full !== REGISTRY) out.push(full);
+    // edge-тесты в Deno называются `_test.ts` (mutateRules_test.ts,
+    // redeemRole_test.ts); `.test.ts` тоже исключаем на всякий. Иначе тест-код
+    // считается прод-эмиссией и требует свои коды в реестре.
+    else if (name.endsWith('.ts') && !isTestFile(name) && full !== REGISTRY) out.push(full);
   }
   return out;
 }
