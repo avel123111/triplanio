@@ -73,11 +73,27 @@ export type FieldSpec = {
    * нему автотраты, и две категории с одним ключом развели бы их случайно.
    */
   clearOnly?: boolean;
+  /**
+   * Кастомная проверка формата ПОСЛЕ встроенных (тип/кэп/enum), ДАННЫМИ домена, а
+   * не кодом шва (TRIP-399, приёмка блока 2). Движок лишь ЗОВЁТ хук — regex для
+   * `link_url` и обход `documents[].file_url` живут в спецификации ресурса, шов
+   * их не знает. Заведено под CHECK, которых нельзя выразить `type/max/min/enum`:
+   * без него нарушение долетает до DB-CHECK и возвращается сырым 500 вместо
+   * внятного 400 (регресс честных ответов, TRIP-378). Для `null` НЕ зовётся —
+   * это уже решает `nullable`. Универсально: любое поле с форматом.
+   */
+  validate?: (value: unknown) => Refusal | null;
 };
 
 export type ActionSpec = {
-  /** `upsert` = вставка без id / обновление по id. `delete` = удаление по id. */
-  op: 'upsert' | 'delete';
+  /**
+   * `upsert` = вставка без id / обновление по id. `insert` = ТОЛЬКО вставка
+   * (create-only): присланный id игнорируется, никакого UPDATE — append-only
+   * ресурс (`trip_documents`: редактирования дока с клиента нет, а upsert с
+   * чужим id правил бы чужую SHARED-строку, регресс TRIP-118). `delete` =
+   * удаление по id. Универсально: любой append-only ресурс берёт `insert`.
+   */
+  op: 'upsert' | 'insert' | 'delete';
   table: string;
   /** Имена требований; вычисляет их шов (`mutate.ts`), а не эта половина. */
   requires: readonly string[];
@@ -158,7 +174,11 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
     case 'date':
       return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
     case 'json':
-      return typeof value === 'object' && value !== null && !Array.isArray(value);
+      // jsonb-контейнер: ОБЪЕКТ (`fx_overrides`) ЛИБО МАССИВ (`documents`). Массив
+      // нужен, чтобы jsonb-список объектов доехал до `validate`-хука поля
+      // (TRIP-399); без него `documents` отбивался бы тип-гейтом раньше проверки
+      // элементов. Скаляр (строка/число) — не jsonb-контейнер, отвергается.
+      return typeof value === 'object' && value !== null;
   }
 }
 
@@ -202,6 +222,11 @@ export function validateInput(
     if (spec.enum && !spec.enum.includes(value as string)) {
       return bad(`Field "${name}" must be one of: ${spec.enum.join(', ')}`);
     }
+    // Доменная проверка формата — ПОСЛЕ встроенных, только на не-null значении.
+    if (spec.validate) {
+      const refusal = spec.validate(value);
+      if (refusal) return refusal;
+    }
     values[name] = value;
   }
   return { values };
@@ -230,19 +255,22 @@ export function buildPlan(
     return { op: 'delete', table, match: { id: ctx.targetId, ...scoped } };
   }
 
-  // Синглтон на скоуп: строку гарантирует `prepareRpc`, адресует её сам скоуп.
-  if (action.targetBy === 'scope') {
-    return { op: 'update', table, values: { ...ctx.values }, match: { ...scoped } };
-  }
-
-  if (ctx.targetId) {
-    // Значения БЕЗ `forcedOnInsert`: `created_by` — авторство, а не актор правки.
-    return {
-      op: 'update',
-      table,
-      values: { ...ctx.values },
-      match: { id: ctx.targetId, ...scoped },
-    };
+  // Обновление доступно ТОЛЬКО `upsert`. `op:'insert'` (create-only) проходит
+  // мимо обеих update-веток — присланный id инертен, всегда вставка (TRIP-399).
+  if (action.op === 'upsert') {
+    // Синглтон на скоуп: строку гарантирует `prepareRpc`, адресует её сам скоуп.
+    if (action.targetBy === 'scope') {
+      return { op: 'update', table, values: { ...ctx.values }, match: { ...scoped } };
+    }
+    if (ctx.targetId) {
+      // Значения БЕЗ `forcedOnInsert`: `created_by` — авторство, а не актор правки.
+      return {
+        op: 'update',
+        table,
+        values: { ...ctx.values },
+        match: { id: ctx.targetId, ...scoped },
+      };
+    }
   }
 
   const forced: Record<string, unknown> = {};
@@ -254,6 +282,7 @@ export function buildPlan(
 }
 
 import { TRIP_BUDGET } from './resources/tripBudget.ts';
+import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
 
 /**
  * Все ресурсы записи. Реестр существует не ради диспетчеризации (её делает сама
@@ -262,4 +291,5 @@ import { TRIP_BUDGET } from './resources/tripBudget.ts';
  */
 export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP_BUDGET.name]: TRIP_BUDGET,
+  [TRIP_DOCUMENT.name]: TRIP_DOCUMENT,
 };
