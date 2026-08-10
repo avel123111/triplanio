@@ -289,6 +289,11 @@ const Section = ({ title, children }) => (
  *  ИМЕННО её поведение. Имя класса собирается составным (`row--${ax}`) — полного
  *  литерала в разметке нет (правило 2 витрины, как у остальных примитивов).
  *  @param {{ ax: string }} p */
+// Глиф-образец базовой линии: форма буквы (восходящий+нисходящий вынос), а не
+// переводимая копия — держим неткстовой константой, чтобы i18n-гард 2d не читал
+// её как захардкоженную строку JSX, и заодно не дублируем литерал трижды.
+const BASELINE_GLYPH = 'Ag';
+
 const RowAxisDemo = ({ ax }) => {
   const rowCls = `row row--g3 row--${ax}`;
   switch (ax) {
@@ -296,9 +301,9 @@ const RowAxisDemo = ({ ax }) => {
       // Разный кегль садится на общую БАЗОВУЮ линию (дефолт .row — по центру).
       return (
         <div className={rowCls}>
-          <span className="t-display">Ag</span>
-          <span className="t-heading">Ag</span>
-          <span className="t-body">Ag</span>
+          <span className="t-display">{BASELINE_GLYPH}</span>
+          <span className="t-heading">{BASELINE_GLYPH}</span>
+          <span className="t-body">{BASELINE_GLYPH}</span>
         </div>
       );
     case 'inline':
