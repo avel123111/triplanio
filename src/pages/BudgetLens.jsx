@@ -33,7 +33,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -488,18 +488,15 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
         <div className="field__label">{t('budget.color_label')}</div>
         <div className="row row--g4 row--wrap" role="group" aria-label={t('budget.color_label')}>
           {CAT_COLORS.map(c => (
-            <button key={c} type="button" className={`bgt-swatch tile tile--sm ${color === c ? 'on' : ''}`} style={{ background: c }}
-              aria-pressed={color === c} onClick={() => setColor(c)} />
+            <Swatch key={c} on={color === c} onClick={() => setColor(c)} style={{ background: c }} />
           ))}
         </div>
       </div>
       <div className="col col--g4">
         <div className="field__label">{t('budget.icon_label')}</div>
-        <div className="bgt-iconpick row row--g4 row--wrap" role="group" aria-label={t('budget.icon_label')}>
+        <div className="row row--g4 row--wrap" role="group" aria-label={t('budget.icon_label')}>
           {CAT_ICONS_BUDGET.map(ic => (
-            <button key={ic} type="button" className={`tile tile--lg ${icon === ic ? 'on' : ''}`} aria-pressed={icon === ic}
-              style={icon === ic ? { background: color + '22', borderColor: color, color } : undefined}
-              onClick={() => setIcon(ic)}><Icon name={ic} size={18} /></button>
+            <Swatch key={ic} variant="icon" icon={ic} on={icon === ic} tint={color} onClick={() => setIcon(ic)} />
           ))}
         </div>
       </div>
