@@ -558,16 +558,22 @@ export function checkTableGrants(grants = [], tables = TABLES) {
 
 // ── LIVE: живая БД совпадает с манифестом ─────────────────────────────────────
 const LIVE_SQL = `select json_build_object(
+  -- ЭФФЕКТИВНОЕ право роли (has_*_privilege), а не сырой ACL через aclexplode:
+  -- aclexplode видит только явные ACL-записи и слеп к грантам через PUBLIC,
+  -- наследованию ролей и поколоночным грантам → GRANT SELECT ... TO PUBLIC на
+  -- edge-only таблице прошёл бы мимо молча. has_* даёт итоговый ответ на пару
+  -- (роль, таблица). DELETE поколоночной формы не имеет → has_table_privilege;
+  -- INSERT/UPDATE/SELECT — has_any_column_privilege (покрывает и табличный, и
+  -- поколоночный грант). aclexplode+group by поэтому не нужны (ревью Codex).
   'grants', coalesce((select json_agg(json_build_object('t',t,'anon',anon,'auth',auth,'anonSel',anonSel,'authSel',authSel)) from (
      select c.relname t,
-       coalesce(bool_or(x.grantee::regrole::text='anon' and x.privilege_type in ('INSERT','UPDATE','DELETE')),false) anon,
-       coalesce(bool_or(x.grantee::regrole::text='authenticated' and x.privilege_type in ('INSERT','UPDATE','DELETE')),false) auth,
-       coalesce(bool_or(x.grantee::regrole::text='anon' and x.privilege_type='SELECT'),false) anonSel,
-       coalesce(bool_or(x.grantee::regrole::text='authenticated' and x.privilege_type='SELECT'),false) authSel
+       (has_any_column_privilege('anon',c.oid,'INSERT') or has_any_column_privilege('anon',c.oid,'UPDATE') or has_table_privilege('anon',c.oid,'DELETE')) anon,
+       (has_any_column_privilege('authenticated',c.oid,'INSERT') or has_any_column_privilege('authenticated',c.oid,'UPDATE') or has_table_privilege('authenticated',c.oid,'DELETE')) auth,
+       has_any_column_privilege('anon',c.oid,'SELECT') anonSel,
+       has_any_column_privilege('authenticated',c.oid,'SELECT') authSel
      from pg_class c
      join pg_namespace n on n.oid=c.relnamespace and n.nspname='public'
-     left join lateral aclexplode(c.relacl) x on true
-     where c.relkind='r' group by c.relname) g), '[]'::json),
+     where c.relkind='r') g), '[]'::json),
   'tierA_role', coalesce((select json_agg(distinct tablename) from pg_policies
      where schemaname='public' and cmd in ('INSERT','UPDATE','DELETE','ALL')
        and (coalesce(qual,'') ilike '%can_edit_trip%' or coalesce(with_check,'') ilike '%can_edit_trip%')), '[]'::json),
