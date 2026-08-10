@@ -230,13 +230,19 @@ export const DECISIONS = [
 //     token    — владение секретом в запросе (share_token, invite-токен, подпись)
 //     n8n      — Bearer N8N_SECRET, вызов сервер-сервер
 //     public   — без аутентификации вовсе (по замыслу, держится rate-limit)
-//     editor+pro — гейт РУЧНОЙ ЗАПИСИ бюджета, вынесенный в ШОВ (TRIP-394): сам
-//                  `isCallerEditor` + `is_trip_pro` живут в `_shared/mutate.ts`
-//                  (`checkRequirement`), а не в `index.ts` двери — та лишь зовёт
-//                  `mutate()`. Страж грепает ТОЛЬКО `index.ts`, поэтому ступень
-//                  тут невидима ему по построению → значение объявительное, как
-//                  `owner`. Enforcement держат тесты шва (`mutateRules_test.ts`)
-//                  и спецификация ресурса (`resources/tripBudget.ts` → `requires`).
+//
+// ★ SEAM-ДВЕРЬ (TRIP-394) — ОТДЕЛЬНАЯ ФОРМА, значение = МАССИВ гейтов, напр.
+//   `['editor', 'pro']`. Такова дверь, чей `index.ts` просто зовёт
+//   `mutate({ slug })`: сам гейт (`isCallerEditor` + `is_trip_pro`) живёт в шве
+//   `_shared/mutate.ts` (`checkRequirement`), а право по действиям — в
+//   спецификации ресурса `_shared/resources/<slug>.ts` (поле `requires`). Страж
+//   грепает ТОЛЬКО `index.ts`, поэтому ступень там невидима ему по построению.
+//   НО значение здесь НЕ объявительное: `check-security-tiers` МАШИННО сверяет
+//   этот массив с `requires` спецификации (все действия обязаны требовать одно
+//   и то же множество, и оно обязано совпасть с массивом). Токены массива — из
+//   словаря `SEAM_GATE_TOKENS`, который сам выведен из `checkRequirement` шва
+//   (spec не может потребовать гейт, которого шов не реализует). Расхождение
+//   манифест↔спецификация↔шов = красный.
 //
 // ★ ЧТО СТРАЖ НЕ ЛОВИТ (граница инструмента, выписана намеренно — у соседних
 // инвариантов IF4 и предикатов бакета она есть, а у дверей не было). Прогон
@@ -259,7 +265,17 @@ export const STEP_VALUES = new Set(['participant', 'editor']);
 
 /** Весь словарь: проверяемые ступени + объявительные. Вложенность задана
  *  построением — второй рукописный список ступеней разъехался бы с первым. */
-export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 'token', 'n8n', 'public', 'editor+pro']);
+export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 'token', 'n8n', 'public']);
+
+/**
+ * Токены, которые может нести seam-дверь (массив-значение) и `requires` действия
+ * спецификации ресурса. Это ровно то, что реализует `checkRequirement` в
+ * `_shared/mutate.ts` — держим списком здесь, а тест сверяет его с ЖИВЫМ телом
+ * шва (`parseGateTokensFromSeam`), чтобы spec не мог потребовать гейт, которого
+ * шов не знает. `participant` в шве пока не реализован — появится там, появится
+ * и тут (иначе тест сверки покраснеет).
+ */
+export const SEAM_GATE_TOKENS = new Set(['editor', 'self', 'pro']);
 
 export const DOORS = {
   // ── participant: viewer проходит осознанно ──
@@ -286,8 +302,8 @@ export const DOORS = {
   telegramStartLink:     'editor',
   telegramWebhook:       'editor',      // шов ЗАПИСИ привязки, перепроверяет при редиме
 
-  // ── editor+pro: ручная запись бюджета, гейт в шве _shared/mutate.ts (TRIP-394) ──
-  trip_budget:           'editor+pro',  // expense/category/settings; авто-траты идут мимо (триггер)
+  // ── seam-двери: гейт в шве _shared/mutate.ts, сверяется с requires спецификации (TRIP-394) ──
+  trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип

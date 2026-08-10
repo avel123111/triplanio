@@ -44,7 +44,7 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { TABLES, TIERS, FUNCTIONS, BUCKETS, DOORS, DOORS_VALUES, STEP_VALUES } from './security-tiers.mjs';
+import { TABLES, TIERS, FUNCTIONS, BUCKETS, DOORS, DOORS_VALUES, STEP_VALUES, SEAM_GATE_TOKENS } from './security-tiers.mjs';
 
 const VALID_TIERS = new Set(Object.keys(TIERS)); // A B C D
 const err = (m) => { console.error(`::error::${m}`); };
@@ -94,6 +94,21 @@ function checkStatic() {
     fail = 1;
   } else {
     for (const m of checkDoors(sources)) { err(m); fail = 1; }
+    // SEAM-двери (TRIP-394): гейт сверяется с requires спецификации ресурса.
+    // Словарь гейтов выведен из ЖИВОГО тела шва (checkRequirement) — spec не
+    // вправе требовать гейт, которого шов не реализует.
+    const specs = parseResourceSpecs(readResourceSpecs());
+    const seamTokens = parseGateTokensFromSeam(readSeamSource());
+    // Датчик слепоты словаря: если из шва не вычитался ни один case — не
+    // подменяем его молча константой, это скрыло бы «spec требует то, чего нет».
+    if (seamTokens.size === 0) {
+      err('seam-словарь: из _shared/mutate.ts не вычитан ни один `case` checkRequirement — разбор сломан?');
+      fail = 1;
+    } else if (!eqSet([...seamTokens], [...SEAM_GATE_TOKENS])) {
+      err(`seam-словарь разошёлся: шов реализует [${[...seamTokens].sort().join(', ')}], а SEAM_GATE_TOKENS = [${[...SEAM_GATE_TOKENS].sort().join(', ')}] — приведи манифест к тому, что умеет checkRequirement`);
+      fail = 1;
+    }
+    for (const m of checkSeamDoors({ sources, doors: DOORS, specs, gateTokens: seamTokens.size ? seamTokens : SEAM_GATE_TOKENS, expectSeam: true })) { err(m); fail = 1; }
   }
 
   if (!fail) console.log(`check-security-tiers [static]: манифест согласован — ${Object.keys(TABLES).length} таблиц + ${callable.size} client-вызываемых функций + ${Object.keys(BUCKETS).length} бакета + ${Object.keys(DOORS).length} дверей (из ${sources.length} edge-функций), ярусы ${[...VALID_TIERS].join('/')} — OK`);
@@ -120,6 +135,9 @@ export function checkDoors(sources = [], doors = DOORS) {
   const found = (set) => [...set].sort().join(', ');
 
   for (const [name, value] of Object.entries(doors)) {
+    // Массив-значение = seam-дверь: её словарь и сверку держит checkSeamDoors,
+    // здесь она невидима (иначе Array в Set.has → «не из словаря» ложно).
+    if (Array.isArray(value)) continue;
     if (!DOORS_VALUES.has(value)) {
       errors.push(`дверь '${name}': значение '${value}' не из словаря — допустимые: ${[...DOORS_VALUES].join(', ')}`);
     }
@@ -133,6 +151,11 @@ export function checkDoors(sources = [], doors = DOORS) {
       errors.push(`дверь '${name}': в папке функции нет index.ts — страж не видит её кода; переименуй точку входа или удали папку`);
       continue;
     }
+
+    // Seam-дверь (index.ts зовёт mutate({slug})): гейта в index.ts нет по
+    // построению, сверку держит checkSeamDoors. Прежний страж принял бы это за
+    // «проверка снята» — пропускаем, чтобы не отчитать ложную снятую проверку.
+    if (parseSeamSlug(code)) continue;
 
     const required = new Set();
     if (/\bisCallerEditor\s*\(/.test(code)) required.add('editor');
@@ -190,6 +213,155 @@ export function checkDoors(sources = [], doors = DOORS) {
   for (const name of Object.keys(doors)) {
     if (!sources.some((s) => s.name === name)) {
       errors.push(`дверь '${name}' есть в DOORS, но функции с таким именем нет — переименована или удалена?`);
+    }
+  }
+  return errors;
+}
+
+// ── SEAM-ДВЕРИ: сверка манифест ↔ спецификация ресурса ↔ шов (TRIP-394) ───────
+//
+// Дверь, чей index.ts просто зовёт `mutate({ slug })`, гейта в index.ts не несёт
+// (см. checkDoors — такие пропущены). Право живёт в спецификации ресурса
+// `_shared/resources/<slug>.ts` (поле `requires` на каждом действии) и
+// исполняется общим `_shared/mutate.ts`. Раньше манифест мог только ПРИНЯТЬ такую
+// дверь на слово; здесь он её ПРОВЕРЯЕТ:
+//   1. значение манифеста обязано быть МАССИВОМ (набором гейтов);
+//   2. у ресурса обязаны найтись действия, и все они требуют ОДНО множество;
+//   3. это множество обязано ПОБУКВЕННО совпасть с массивом манифеста;
+//   4. каждый токен обязан быть из словаря шва (checkRequirement) — spec не
+//      может потребовать гейт, которого шов не реализует.
+// Расхождение на любом шаге = красный. Всё это — на ЧИСТЫХ функциях (текст
+// index.ts + текст спеки + словарь), чтобы тест кормился фикстурами без БД.
+
+/** slug из `mutate({ … slug: '<slug>' … })`, либо null — не seam-дверь.
+ *  Комментарии из code уже вырезаны вызывающим (readEdgeSources). */
+export function parseSeamSlug(code) {
+  const m = /\bmutate\s*\(\s*\{[\s\S]*?\bslug:\s*['"]([^'"]+)['"]/.exec(code || '');
+  return m ? m[1] : null;
+}
+
+/** Токены гейтов, которые РЕАЛЬНО реализует шов — из `case '<x>':` в
+ *  `checkRequirement` (_shared/mutate.ts). Источник истины словаря: spec не
+ *  вправе требовать то, чего шов не знает. */
+export function parseGateTokensFromSeam(mutateSource) {
+  const tokens = new Set();
+  for (const m of (mutateSource || '').matchAll(/\bcase\s+'([a-z_]+)'\s*:/g)) tokens.add(m[1]);
+  return tokens;
+}
+
+/**
+ * Спецификации ресурсов из текстов файлов `_shared/resources/*.ts`.
+ * `files` — [{ name, text }]. Возвращает Map slug → { requiresSets }.
+ *
+ * Разбор ТЕКСТОВЫЙ (не import: файлы на TS/Deno). Имя ресурса — первый
+ * `name: '<slug>'` (верхний уровень ResourceSpec); `requires` — КАЖДЫЙ
+ * `requires: [ … ]` в файле (по одному на действие). Ненайденное имя = ресурс не
+ * учитывается (его отсутствие поймает checkSeamDoors как «нет спецификации»).
+ *
+ * ★ ДАТЧИК СЛЕПОТЫ P1 (ревью Codex). Разбор берёт только ЛИТЕРАЛЬНЫЙ
+ * `requires: [ … ]`. Действие с `requires: <переменная>` (константа/спред) под
+ * этот шаблон не попадёт и МОЛЧА выпадет — сверка тогда зеленеет над неполным
+ * набором действий. Поэтому здесь же считаем ВСЕ `requires:` и сравниваем с
+ * числом литеральных; расхождение = `nonLiteralRequires > 0`, checkSeamDoors
+ * роняет прогон («сверять нечего»). Инвариант: каждый `requires` — литерал.
+ */
+export function parseResourceSpecs(files = []) {
+  const specs = new Map();
+  for (const { text } of files) {
+    const nameM = /\bname:\s*'([^']+)'/.exec(text || '');
+    if (!nameM) continue;
+    const requiresSets = [];
+    for (const m of (text || '').matchAll(/\brequires:\s*\[([^\]]*)\]/g)) {
+      requiresSets.push([...m[1].matchAll(/'([^']*)'/g)].map((q) => q[1]));
+    }
+    const totalRequires = [...(text || '').matchAll(/\brequires:/g)].length;
+    specs.set(nameM[1], { requiresSets, nonLiteralRequires: totalRequires - requiresSets.length });
+  }
+  return specs;
+}
+
+const asSet = (arr) => [...new Set(arr)].sort();
+const eqSet = (a, b) => asSet(a).join(',') === asSet(b).join(',');
+// P2 (ревью Codex): seam-требования шов исполняет ПО ПОРЯДКУ (editor раньше pro:
+// «не редактор» перекрывает «не Pro», незалогиненному-в-трип не сообщаем оплату).
+// Значит однородность действий и сверку с манифестом ведём УПОРЯДОЧЕННО, не как
+// множества — иначе `['pro','editor']` сойдёт за `['editor','pro']` и порядок
+// проверки прав молча перевернётся. (Паритет ролей — checkEditorRoles — множество
+// законно и НЕ трогается: там порядок ролей в списке смысла не несёт.)
+const eqOrdered = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+/**
+ * Сверяет seam-двери. `expectSeam` = «в этом наборе ОБЯЗАНА быть хотя бы одна
+ * seam-дверь» — датчик слепоты: сломанный разбор `mutate({slug})` не должен тихо
+ * пройти сверку (на реальном прогоне сегодня seam-дверь ровно одна — trip_budget).
+ */
+export function checkSeamDoors({ sources = [], doors = DOORS, specs = new Map(), gateTokens = SEAM_GATE_TOKENS, expectSeam = false } = {}) {
+  const errors = [];
+  const seam = sources.filter((s) => parseSeamSlug(s.code));
+
+  if (expectSeam && seam.length === 0) {
+    errors.push('seam-сверка: не найдено НИ ОДНОЙ seam-двери (mutate({slug})) — разбор сломан? (датчик слепоты)');
+    return errors;
+  }
+
+  // Массив в манифесте у функции, которая НЕ маршрутизирует в шов: значение-набор
+  // предназначено только seam-дверям, иначе манифест обещает сверку, которой нет.
+  const seamNames = new Set(seam.map((s) => s.name));
+  for (const [name, value] of Object.entries(doors)) {
+    if (Array.isArray(value) && !seamNames.has(name)) {
+      errors.push(`дверь '${name}': объявлена набором-гейтом (seam), но её index.ts не маршрутизирует в mutate() — либо это не seam-дверь, либо разбор сломан`);
+    }
+  }
+
+  for (const { name, code } of seam) {
+    const slug = parseSeamSlug(code);
+    const declared = doors[name];
+
+    if (declared === undefined) {
+      errors.push(`seam-дверь '${name}' зовёт mutate('${slug}'), но не заведена в DOORS — заведи НАБОР требований, напр. ['editor', 'pro']`);
+      continue;
+    }
+    if (!Array.isArray(declared)) {
+      errors.push(`seam-дверь '${name}': гейт объявлен строкой '${declared}', а нужен НАБОР (массив) требований — его сверяют с requires спецификации`);
+      continue;
+    }
+
+    const spec = specs.get(slug);
+    if (!spec) {
+      errors.push(`seam-дверь '${name}': нет спецификации ресурса с name:'${slug}' в _shared/resources — сверять гейт не с чем`);
+      continue;
+    }
+    // P1 (датчик слепоты): у ресурса есть `requires` НЕ литеральным массивом —
+    // разбор его не видит, и сверка пошла бы над неполным набором действий.
+    if (spec.nonLiteralRequires > 0) {
+      errors.push(`seam-дверь '${name}': у ресурса '${slug}' ${spec.nonLiteralRequires} действие(й) с requires НЕ литеральным массивом — объяви requires: [ … ] явно, иначе сверять нечего (P1)`);
+      continue;
+    }
+    if (spec.requiresSets.length === 0) {
+      errors.push(`seam-дверь '${name}': у ресурса '${slug}' не нашлось ни одного requires — действий нет или разбор сломан`);
+      continue;
+    }
+
+    // Все действия обязаны требовать ОДНО, причём В ТОМ ЖЕ ПОРЯДКЕ (P2): манифест
+    // одной строкой не выразит неоднородность, а «хотя бы одно совпало» — дыра.
+    const uniq = [...new Set(spec.requiresSets.map((r) => r.join(',')))];
+    if (uniq.length > 1) {
+      errors.push(`seam-дверь '${name}': действия ресурса '${slug}' требуют РАЗНОЕ (${uniq.map((u) => `[${u}]`).join(' ≠ ')}) — манифест одной строкой это не выразит; сделай действия однородными или заведи per-action`);
+      continue;
+    }
+    const specReq = spec.requiresSets[0];
+
+    // Словарь: и спека, и манифест — только из того, что шов реализует.
+    const unknown = [...new Set([...specReq, ...declared])].filter((t) => !gateTokens.has(t));
+    if (unknown.length) {
+      errors.push(`seam-дверь '${name}': неизвестный гейт ${unknown.map((u) => `'${u}'`).join(', ')} — шов (checkRequirement) его не реализует; допустимо: ${[...gateTokens].sort().join(', ')}`);
+      continue;
+    }
+
+    // Сверка УПОРЯДОЧЕННАЯ (P2): манифест обязан назвать требования ровно в том
+    // порядке, в каком шов их исполняет.
+    if (!eqOrdered(declared, specReq)) {
+      errors.push(`seam-дверь '${name}': манифест [${declared.join(', ')}] ≠ спецификация requires [${specReq.join(', ')}] — приведи в соответствие по составу И порядку (машинная сверка, не на слово)`);
     }
   }
   return errors;
@@ -260,6 +432,23 @@ function readEdgeSources(root = 'supabase/functions') {
     out.push({ name: dir.name.replace(/-/g, '_'), code });
   }
   return out;
+}
+
+/** Тексты спецификаций ресурсов (_shared/resources/*.ts) для seam-сверки.
+ *  Комментарии режем — они цитируют requires соседей и дали бы ложный разбор. */
+function readResourceSpecs(root = 'supabase/functions/_shared/resources') {
+  if (!existsSync(root)) return [];
+  return readdirSync(root, { withFileTypes: true })
+    .filter((f) => f.isFile() && f.name.endsWith('.ts') && !f.name.endsWith('_test.ts'))
+    .map((f) => ({
+      name: f.name,
+      text: readFileSync(`${root}/${f.name}`, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''),
+    }));
+}
+
+/** Тело шва — источник истины словаря гейтов (case-ы checkRequirement). */
+function readSeamSource(file = 'supabase/functions/_shared/mutate.ts') {
+  return existsSync(file) ? readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '') : '';
 }
 
 // ── Предикаты storage-политик (TRIP-274) ─────────────────────────────────────
