@@ -38,7 +38,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
-  Skeleton, Stepper, Textarea, Toggle,
+  Skeleton, Stepper, Swatch, Textarea, Toggle,
 } from '@/design/index';
 
 /* ─────────────────────────── текст (см. правило 2) ────────────────────────── */
@@ -234,6 +234,17 @@ const STEPPER_VARIANTS = ['block', 'bare'];
 /** @type {Array<'fill'>} — auto дефолт (без модификатора); `seg--filter`/`seg--view` —
  *  экранные адаптивы Trips, не обличья примитива (в NOT_SHOWN у Kit.test). */
 const SEG_VARIANTS = ['fill'];
+/** @type {Array<'icon'|'round'>} — color дефолт (без модификатора). Плитка выбора:
+ *  цвет категории (base), иконка категории (icon), обложка трипа (round). */
+const SWATCH_VARIANTS = ['icon', 'round'];
+// Токены, а не сырой HEX: ярус COLOUR гарда check:design читает `#…` в разметке
+// как цвет и роняет прогон. Тон категории на витрине берём каналами `--ev-*`.
+const SWATCH_COLORS = ['var(--ev-hotel)', 'var(--ev-activity)', 'var(--ev-car)'];
+const SWATCH_COVERS = [
+  'linear-gradient(135deg, var(--ev-hotel), var(--brand))',
+  'linear-gradient(135deg, var(--ev-activity), var(--warm))',
+  'linear-gradient(135deg, var(--ev-car), var(--ai))',
+];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
 const AVATAR_SIZES = [undefined, 'sm', 'lg'];
 const LAYOUT = [
@@ -252,6 +263,9 @@ export default function Kit() {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
   const [segView, setSegView] = useState('month');
   const [segTone, setSegTone] = useState('story');
+  const [swColor, setSwColor] = useState(SWATCH_COLORS[0]);
+  const [swIcon, setSwIcon] = useState('bed');
+  const [swCover, setSwCover] = useState(0);
   const [tokens, setTokens] = useState([]);
 
   // Значения токенов зависят от темы - перечитываем при переключении.
@@ -401,6 +415,33 @@ export default function Kit() {
               ]}
             />
           </div>
+        </Specimen>
+
+        {/* Swatch — плитка выбора. color (цвет категории бюджета) · icon (иконка
+            категории, тон выбранного берётся из канала `--sw`, что оболочка
+            ставит по цвету) · round (обложка трипа, круг). Выбор = ДАННЫЕ через
+            `on` → aria-pressed, а не класс `.on`/`.is-active`; галочки-оверлея
+            у обложки больше нет — выбор виден рамкой. */}
+        <Specimen cls="swatch">
+          {SWATCH_COLORS.map((c) => (
+            <Swatch key={c} on={swColor === c} onClick={() => setSwColor(c)} style={{ background: c }} />
+            /* inline-style-exempt: цвет ЕСТЬ содержимое свотча (как фон-инлайн у
+               свотча цвета в BudgetLens); класс его выразить не может.
+               floor-exempt: inline +2 — витрина: фон свотча цвета и обложки
+               динамический (цвет/градиент из данных), апрув Pavel */
+          ))}
+        </Specimen>
+        <Specimen cls="swatch--icon">
+          {['bed', 'plane', 'ticket'].map((ic) => (
+            <Swatch key={ic} variant="icon" icon={ic} on={swIcon === ic} tint={swColor} onClick={() => setSwIcon(ic)} />
+          ))}
+        </Specimen>
+        <Specimen cls="swatch--round">
+          {SWATCH_COVERS.map((g, i) => (
+            <Swatch key={i} variant="round" on={swCover === i} onClick={() => setSwCover(i)} style={{ background: g }} />
+            /* inline-style-exempt: градиент обложки ЕСТЬ содержимое свотча (как
+               фон-инлайн градиента в TripCoverPicker). */
+          ))}
         </Specimen>
 
         <Specimen cls="badge">

@@ -45,6 +45,7 @@ export { Row, Col, Grid, Trunc, Grow } from './Layout';
 export { IconBtn } from './IconBtn';
 export { Stepper } from './Stepper';
 export { Seg } from './Seg';
+export { Swatch } from './Swatch';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================

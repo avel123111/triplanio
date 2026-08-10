@@ -163,6 +163,10 @@ const ARRAYS = [
   // обличье `seg--fill` собирается в рантайме, `emittedByComponents` (только
   // `index.jsx`) его не видит — держит связка «массив на витрине» + направление 2.
   { name: 'SEG_VARIANTS', family: 'seg' },
+  // ★TRIP-344: свотч — свой примитив `src/design/Swatch.jsx`, его обличья
+  // `swatch--icon` / `swatch--round` собираются в рантайме, `emittedByComponents`
+  // (только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
+  { name: 'SWATCH_VARIANTS', family: 'swatch' },
 ];
 
 function valuesOf(name) {
