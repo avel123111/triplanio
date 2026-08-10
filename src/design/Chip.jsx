@@ -67,10 +67,10 @@ export const Chip = React.forwardRef(
       ].filter(Boolean).join(" ")}
       {...rest}
     >
-      {icon && <Icon name={icon} />}
+      {icon && <Icon name={icon} size={sm ? 12 : 14} />}
       {children}
       {count !== undefined && count !== null && <span className="fpill__c">{count}</span>}
-      {iconRight && <Icon name={iconRight} />}
+      {iconRight && <Icon name={iconRight} size={sm ? 12 : 14} />}
     </button>
   ),
 );

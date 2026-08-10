@@ -3747,7 +3747,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .fpill:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 .fpill:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .fpill:disabled { opacity: .45; pointer-events: none; cursor: default; }
-.fpill svg { width: 14px; height: 14px; flex: none; }
 .fpill[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
 .fpill[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
 /* tone — залито тоном типа (канал с оболочки); placeholder — пустой шов */
@@ -3760,7 +3759,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* square — форма ячейки; sm — мелкая ступень; soft — мягкий тон бренда */
 .fpill--square { border-radius: var(--r-sm); min-width: var(--ctl-h-sm); padding: 0 9px; }
 .fpill--sm { min-height: 24px; padding: 0 8px; font-size: var(--fs-micro); font-weight: 500; }
-.fpill--sm svg { width: 12px; height: 12px; }
 .fpill--soft { background: var(--brand-soft); border-color: transparent; color: var(--brand); }
 .fpill--soft:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
 /* avatars — стопка аватаров + подпись, высота от содержимого */
@@ -7061,4 +7059,69 @@ a.doc-row__n:hover{ color: var(--brand); }
    не «11 → 12», а «11 → 12 здесь и 11 → 10 там».
    visual-diff-exempt: .te-end gap — 11px вне шкалы → ступень row--g6 (--sp-6 = 12px), апрув Pavel в TRIP-388
    visual-diff-exempt: .te-cityline gap — 7px вне шкалы → ступень row--g3 (--sp-3 = 6px), апрув Pavel в TRIP-388
+   — TRIP-344 PR 7: канон .fpill (Chip). База пилюли приведена к компактному
+      облику 32px эталона секции E, заведены модификаторы --tone/--placeholder/--square/
+      --sm/--soft/--avatars и состояние [aria-pressed=true] вместо класса .on. Все правки
+      намеренные (апрув Pavel), сверены рендером /kit против правого столбца эталона.
+   visual-diff-exempt: .fpill background — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill border-color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill box-shadow — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill gap — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill justify-content — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill min-height — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill padding — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill transition — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill white-space — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill {@media (prefers-reduced-motion: reduce)} transition — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill--avatars height — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars min-height — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars width — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder border-style — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover border-style — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--placeholder:hover color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm font-size — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm font-weight — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm min-height — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--sm padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft:hover background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--soft:hover color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--square border-radius — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--square min-width — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--square padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --ev — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --evi — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --evs — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone:hover background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone:hover border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone:hover color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill:active transform — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:disabled cursor — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:disabled opacity — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:disabled pointer-events — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:focus-visible box-shadow — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:focus-visible outline — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:hover background — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill:hover[aria-pressed=true] background — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill:hover[aria-pressed=true] color — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] background — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] border-color — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] color — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill__c color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .fpill__c font-variant-numeric — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .is-warn --ev — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn --evi — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn --evs — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    ═══════════════════════════════════════════════════════════════════════════ */
