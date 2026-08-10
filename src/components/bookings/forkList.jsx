@@ -1,7 +1,7 @@
 // @ts-check
 import React from 'react';
-import { Search, RotateCcw, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
-import { Btn, Chip, IconBtn, Input, Skeleton } from '@/design/index';
+import { Search, RotateCcw, ArrowUpDown } from 'lucide-react';
+import { Badge, Btn, Chip, IconBtn, Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -155,15 +155,21 @@ export function ForkToolbar({
           type="text" value={searchValue} onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={searchPlaceholder} aria-label={searchPlaceholder}
         />
-        <button
-          type="button"
-          className={`s22f-fbtn ${filtersOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}
-          aria-expanded={filtersOpen} aria-label={t('fork.f_filters')} title={t('fork.f_filters')}
+        {/* Тоггл фильтров — канон `IconBtn` с `aria-pressed` (открыт = бренд-
+            заливка, как у Seg/Chip/Swatch). Счётчик активных — `Badge count`
+            ребёнком, позиция ко-селектором `.icon-btn > .badge--count`. Приватные
+            `.s22f-fbtn`/`--on`/`--active`/`__n` мертвы (сняты в этом PR). Облик
+            меняется намеренно: «открыт» был бренд-рамкой+кольцом → стал бренд-
+            заливкой канона; «есть фильтры» больше не красит рамку — это несёт
+            бейдж-счётчик. `aria-expanded` оставлен: тоггл раскрывает панель. */}
+        <IconBtn
+          icon="sliders" tone="outline"
+          ariaPressed={filtersOpen} ariaExpanded={filtersOpen}
+          ariaLabel={t('fork.f_filters')} title={t('fork.f_filters')}
           onClick={onToggleFilters}
         >
-          <SlidersHorizontal size={17} />
-          {activeCount > 0 && <span className="badge badge--count s22f-fbtn__n">{activeCount}</span>}
-        </button>
+          {activeCount > 0 && <Badge variant="count">{activeCount}</Badge>}
+        </IconBtn>
       </div>
 
       {filtersOpen && (
