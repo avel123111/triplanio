@@ -79,9 +79,9 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               />
             ))
           ) : (
-            <button className="btn btn--soft btn--block" onClick={() => setMoreOpen(true)}>
+            <Btn variant="soft" block onClick={() => setMoreOpen(true)}>
               <Icon name="plus" size={15} />{t('service.more')}
-            </button>
+            </Btn>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Avatar, IconBtn } from '@/design/index';
+import { Avatar, Btn, IconBtn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -143,10 +143,10 @@ export default function MembersSummaryCard({
         )}
 
         {!isLoading && canManage && (
-          <button className="btn btn--soft btn--block ov-invite" onClick={onInvite || onOpenMembers}>
+          <Btn variant="soft" block className="ov-invite" onClick={onInvite || onOpenMembers}>
             <Icon name="plus" size={15} />
             {t('members.invite')}
-          </button>
+          </Btn>
         )}
       </div>
     </div>
