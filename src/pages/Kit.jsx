@@ -118,7 +118,11 @@ const TX = {
   segToneLabel: 'Сегмент: тон активного из контекста (--hl на оболочке)',
   fieldInvalid: 'Невалидное',
   fieldWarning: 'Предупреждение',
-  fieldDisabled: 'Только чтение (disabled)',
+  // disabled и readOnly — РАЗНЫЕ состояния (ревью Codex): disabled недоступно
+  // целиком, readOnly фокусируется и копируется. Показаны отдельными образцами.
+  fieldDisabled: 'Недоступно (disabled)',
+  fieldReadonly: 'Только чтение (readOnly)',
+  readonlyVal: 'Можно выделить и скопировать',
   // Честное примечание вместо фейк-тумблеров (решение Pavel): наводимые и
   // нажимаемые состояния видны прямым взаимодействием, reduced-motion — на
   // уровне ОС и переключателем не эмулируется.
@@ -602,6 +606,12 @@ export default function Kit() {
             </Field>
             <Field label={TX.fieldDisabled}>
               <Input placeholder={TX.placeholder} disabled />
+            </Field>
+            {/* readOnly ≠ disabled: поле фокусируется и копируется, но не
+                редактируется. defaultValue (неконтролируемое) — иначе React
+                просит onChange у value. */}
+            <Field label={TX.fieldReadonly}>
+              <Input readOnly defaultValue={TX.readonlyVal} />
             </Field>
           </div>
         </Specimen>
