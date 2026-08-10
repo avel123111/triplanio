@@ -17,7 +17,7 @@
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, IconBtn, Seg, eventFamily } from '../design/index';
+import { Skeleton, IconBtn, Seg, Chip, eventFamily } from '../design/index';
 import { Row, Col, Grid, Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -165,9 +165,11 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
                         </button>
                       ))}
                       {ev.length > 2 && (
-                        <button type="button" className="ncal-more" onClick={() => toggle(d)}>
+                        <Chip sm square variant="soft" onClick={() => toggle(d)} style={{ width: '100%' }}>
+                          {/* inline-style-exempt: полная ширина ячейки дня — «+N ещё»
+                              встаёт четвёртой строкой в ряд с событиями (эталон секции E). */}
                           {isOpen ? '−' : `+${ev.length - 2} ${t('calendar.more_count')}`}
-                        </button>
+                        </Chip>
                       )}
                     </div>
                   )}

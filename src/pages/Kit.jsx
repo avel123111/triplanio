@@ -427,21 +427,18 @@ export default function Kit() {
           <Chip on={chipFilter === 'new'} onClick={() => setChipFilter('new')} count={3}>{TX.chipNew}</Chip>
           <Chip count={3} iconRight="chevD">{TX.chipJump}</Chip>
         </Specimen>
-        {/* tone / placeholder — читают канал `--evs/--evi/--ev`, который оболочка
-            шва/ячейки ставит по типу брони (ровно как `--hl` у Seg). На витрине
-            канал ставится инлайном — единственный способ показать тон-из-контекста. */}
+        {/* tone / placeholder — читают канал `--hl*`, который оболочка шва/ячейки
+            ставит по типу брони (как `--hl` у Seg). На витрине канал даёт готовый
+            класс-оболочка `.te-cell--hotel`/`--act` — тот же, что в редакторе, без инлайна. */}
         <Specimen cls="fpill--tone">
-          <div style={{ '--hl-soft': 'var(--ev-transfer-soft)', '--hl-ink': 'var(--ev-transfer-ink)', '--hl': 'var(--ev-transfer)', display: 'inline-flex', gap: 8 }}>
-            {/* inline-style-exempt: канал тона `--hl*` с оболочки — то же, что
-                делают te-seam/te-cell редактора; иначе тон-из-контекста не показать. */}
+          <div className="row row--g3 te-cell--hotel">
             <Chip variant="tone" icon="plane">{TX.chipRoute}</Chip>
             <Chip variant="placeholder" icon="plus">{TX.chipAdd}</Chip>
           </div>
         </Specimen>
         {/* tone·square — заполненные ячейки активностей/отеля (обе 32×32). */}
         <Specimen cls="fpill--square">
-          <div style={{ '--hl-soft': 'var(--ev-activity-soft)', '--hl-ink': 'var(--ev-activity-ink)', '--hl': 'var(--ev-activity)', display: 'inline-flex', gap: 8 }}>
-            {/* inline-style-exempt: канал тона активности с оболочки ячейки (см. выше). */}
+          <div className="row row--g3 te-cell--act">
             <Chip variant="tone" square icon="ticket">3</Chip>
           </div>
           <Chip square>{TX.chipCell}</Chip>

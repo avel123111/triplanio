@@ -439,7 +439,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
    несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
    outline-тоном примитива, и ко-селектор (0,1,0) молча перебивал бы его рамку. */
-.cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link,
+.cbadge, .ts-startctl, .bk-link,
 .pro-up .lockmsg, .map-legend .c, .map-ctl,
 .chat-bubble--them {
   background: var(--surface);
@@ -671,7 +671,6 @@ h4,
 .ts-cal__title,
 .chat-mention__row b,
 .te-row__num,
-.te-actchip,
 .bt b,
 .gt b,
 .mrow .mn,
@@ -732,7 +731,6 @@ h4,
 .chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
 .chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
 .dock-panel__id b,    /* TRIP-296: заголовок виджета */
-.chat-jump,           /* TRIP-296: «Новые сообщения ↓» */
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
@@ -775,7 +773,6 @@ h4,
 .partner-pill,
 .te-country,
 .te-warnbadge,
-.te-seam__pill,
 .gt span,
 .stepper .n,
 .addr div,
@@ -983,7 +980,7 @@ h4,
    (Micro→Mono) и чипы событий (off-canon→Mono). Гарнитура — Golos, см. .t-sans ниже.
    Близнецы вида «Неделя» (.ncal-aev .atm/.atl) едут вместе с месячными,
    иначе одно и то же событие рендерится двумя шрифтами. */
-.ncal-nav-txt, .ncal-nav-trip, .ncal-more,
+.ncal-nav-txt, .ncal-nav-trip,
 .ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
@@ -1009,7 +1006,6 @@ h4,
 .app-side__item.active,
 .dock-panel__head .nm b,
 .nrow__link,
-.te-seam__pill--add,
 .bud-leg .nm,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
@@ -1082,7 +1078,7 @@ h4,
 .dl-dropzone span,       /* TRIP-275 инсп.: Meta+Golos (подпись dropzone «PDF · DOC · XLS…») */
 /* TRIP-280 инсп.: экран календаря целиком уходит с JetBrains на Golos.
    Mono-ярус — пилюли навигации/переключателя, плашки городов, чипы событий: */
-.ncal-nav-txt, .ncal-nav-trip, .ncal-more,
+.ncal-nav-txt, .ncal-nav-trip,
 .ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
@@ -3278,15 +3274,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-head__sub { color: var(--muted); }
 /* Members trigger — avatar stack + label in one pill; opens the member list as a
    Popover (desktop) or the canonical Sheet (phones). */
-.chat-members-btn {
-  /* раскладка уехала: chat-members-btn -> row */
-  height: 38px; padding: 0 12px 0 6px;
-  border-radius: var(--r-pill);
-  color: var(--ink-2); cursor: pointer; flex: none;
-  transition: border-color .18s var(--ease-out), box-shadow .18s var(--ease-out);
-}
-.chat-members-btn:hover { border-color: var(--line-hover); box-shadow: var(--sh-1); }
-.chat-members-btn .avatar { width: 26px; height: 26px; }
+/* Кнопка «Участники» — примитив <Chip avatars>; стопка аватаров + подпись. */
 .chat-members-pop { width: 330px; max-width: calc(100vw - 16px); padding: 8px; }
 
 /* ── Message stream (shared) ──
@@ -3436,8 +3424,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Dots take the pill's own ink and the design's 4px — the global .ai-dots are
    5px on the stronger --ai, which inside a soft pill read as a second accent. */
 .chat-thinking .ai-dots span { width: 4px; height: 4px; background: currentColor; }
-.chat-jump { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); box-shadow: var(--sh-1); color: var(--ink-2); cursor: pointer; }
-.chat-jump b { color: var(--brand); }
+/* «Новые сообщения ↓» — примитив <Chip> (счётчик = слот .fpill__c). */
 
 /* ── Composer (shared) ── */
 /* Widget dock (a panel edge). The lens overrides this below into a floating
@@ -3582,8 +3569,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 @media (max-width: 768px) {
   .chat-head { height: 56px; padding: 0 14px; gap: 8px; }
   .chat-head__sub { display: none; }
-  .chat-members-btn .chat-members-btn__lbl { display: none; }
-  .chat-members-btn { height: 34px; padding: 0 5px; }
+  .fpill--avatars .chat-members-btn__lbl { display: none; }
   /* Breathing room above the composer — the stream used to end flush against it. */
   .chat-room .chat-msgs { padding: 16px 12px 12px; }
   .chat-run__col { max-width: 86%; }
@@ -3926,9 +3912,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
     /* visual-diff-move: te-warnbadge -> row row--inline row--g1 */
     .te-warnbadge { color: var(--warning-ink); }
-    /* A11y: keyboard-visible focus rings on editor controls. */
-    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
-    .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible {
+    /* A11y: keyboard-visible focus rings on editor controls. Заполненные ячейки
+       и швы — <Chip>, у него свой `.fpill:focus-visible`. */
+    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible {
       outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-sm);
     }
     /* A11y: enlarge small icon controls to a ~44px pointer target without growing
@@ -3959,14 +3945,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        ховера остаётся прежним (отель — синий, активность — розовый), а знает о
        нём по-прежнему ячейка, а не кнопка. */
     .te-cell--hotel .btn--dashed, .te-cell--act .btn--dashed { --a: var(--hl); }
-    .te-hotelicon { position: relative; display: grid; place-items: center; width: 36px; height: 34px; border-radius: var(--r-sm); background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .16s var(--ease-out), transform .14s var(--ease-spring); }
-    .te-hotelicon:hover { border-color: var(--ev-hotel); }
-    .te-hotelicon.is-warn { background: var(--warning-soft); }
-    /* visual-diff-move: te-actchip -> row row--inline row--j-center row--g3 */
-    .te-actchip { height: 34px; min-width: 34px; padding: 0 11px; border-radius: var(--r-sm); background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ev-activity-ink); cursor: pointer; transition: border-color .14s var(--ease-out), transform .12s var(--ease-spring); }
-    .te-actchip:hover { border-color: var(--ev-activity); }
-    .te-actchip:active, .te-hotelicon:active { transform: scale(0.94); }
-    .te-actchip.is-warn { background: var(--warning-soft); color: var(--warning-ink); }
+    /* Заполненные ячейки отеля/активности — <Chip variant="tone" square>;
+       тон приходит каналом `--hl*` с `.te-cell--hotel`/`--act` (ниже). */
 
     /* ---- redesigned itinerary: NO outer frame — just hairline separators
        between rows; transfers are chips straddling the seam between two cities ---- */
@@ -3983,8 +3963,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        `disabled` prop (incoming seam lives in the previous row). */
     .te-seamwrap.is-pending .te-row,
     .te-seamwrap.is-pending .te-end { opacity: .5; pointer-events: none; }
-    .te-seam__pill:disabled,
-    .te-seam__pill.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
     .te-table .te-row { border-radius: var(--r-btn); box-shadow: var(--sh-1); }
     .te-table .te-row:hover { box-shadow: var(--sh-2); border-color: var(--brand); }
     /* ★Зазор 11px СНЯТ: узел берёт ступень `row--g6` (--sp-6 = 12px). Правка
@@ -4001,17 +3979,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        animation: a filled animation pins opacity and breaks the fade-out. */
     /* visual-diff-move: te-seam -> row row--j-center */
     .te-seam { position: absolute; left: 0; right: 0; bottom: -8px; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); gap: 0; align-items: stretch; }
+    /* Канал тона переезда для <Chip variant="tone"/"placeholder"> шва. */
+    .te-seam { --hl: var(--ev-transfer); --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
-    /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
-       from the empty dashed "+ переезд" add chip below. */
-    /* ★ОСТАТОК: зазор 7px вне шкалы - удержан.
-     visual-diff-move: te-seam__pill -> row row--inline */
-    .te-seam__pill { gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 40%, transparent); box-shadow: var(--sh-2); cursor: pointer; color: var(--ev-transfer-ink); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .2s var(--ease-out), transform .14s var(--ease-spring); }
-    .te-seam__pill:hover { box-shadow: var(--sh-3); transform: translateY(-1px) scale(1.02); }
-    .te-seam__pill:active { transform: scale(0.96); }
-    .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
-    .te-seam__pill--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-2); gap: 7px; box-shadow: var(--sh-1); }
-    .te-seam__pill--add:hover { color: var(--ev-transfer-ink); border-color: var(--ev-transfer); background: var(--ev-transfer-soft); transform: translateY(-1px); }
+    /* Швы переезда (заполненный/пустой) — <Chip variant="tone"/"placeholder">. */
 
     .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
     .te-addmini:hover { background: var(--brand-soft); }
@@ -4019,8 +3990,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
       .te-seam { animation: none; }
-      .te-row, .te-step, .te-seam__pill, .te-actchip, .te-hotelicon { transition-property: background, border-color, color, opacity, box-shadow; }
-      .te-step:active, .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active { transform: none; }
+      .te-row, .te-step { transition-property: background, border-color, color, opacity, box-shadow; }
+      .te-step:active { transform: none; }
     }
 
 /* =================================================================
@@ -7042,39 +7013,75 @@ a.doc-row__n:hover{ color: var(--brand); }
    не «11 → 12», а «11 → 12 здесь и 11 → 10 там».
    visual-diff-exempt: .te-end gap — 11px вне шкалы → ступень row--g6 (--sp-6 = 12px), апрув Pavel в TRIP-388
    visual-diff-exempt: .te-cityline gap — 7px вне шкалы → ступень row--g3 (--sp-3 = 6px), апрув Pavel в TRIP-388
-   — TRIP-344 PR 7 (Chip): канон .fpill приведён к компактному облику 32px
-      эталона секции E; заведены модификаторы --tone/--placeholder/--square/--sm/
-      --soft/--avatars и состояние [aria-pressed=true] вместо .on; тон читает канал
-      --hl* (тот же, что у .te-cell--*). Класс пагинации .fork-pg/--on удалён —
-      разметка на <Chip sm square>. Все правки намеренные (апрув Pavel), сверены
-      рендером /kit против правого столбца эталона.
-   visual-diff-exempt: .fork-pg --hl — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg --hl-fg — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg align-items — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg background — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg border — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg border-radius — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg cursor — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg display — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg font-family — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg font-size — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg font-weight — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg height — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg justify-content — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg letter-spacing — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg line-height — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg min-width — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg padding — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg transition — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg {@media (prefers-reduced-motion: reduce)} transition — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg--on background — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg--on border-color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg--on color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg:active:not(:disabled) transform — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg:disabled cursor — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg:disabled opacity — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
-   visual-diff-exempt: .fork-pg:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} border-color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   — TRIP-344 PR 7 (Chip): канон .fpill сведён к компактному облику 32px эталона
+      секции E; заведены модификаторы --tone/--placeholder/--square/--sm/--soft/
+      --avatars и состояние [aria-pressed=true] вместо .on; тон читает канал --hl*
+      (тот же, что у .te-cell--*). Удалены копии .fork-pg(--on) · .chat-jump ·
+      .chat-members-btn · .ncal-more · .te-seam__pill(--add) · .te-actchip · .te-hotelicon —
+      разметка на <Chip>. Счётчик .chat-jump b (brand) уехал на слот-бейдж .fpill__c;
+      цель переноса — .fpill--soft: у неё тон бренда БЕЗУСЛОВНЫЙ, а у .fpill__c каскадный
+      победитель на ключе color — вариант [aria-pressed] (--primary-fg), 2p же помнит
+      одного победителя на ключ. Все правки намеренные (апрув Pavel), сверены /kit.
+   visual-diff-move: .chat-jump b -> fpill--soft
+   visual-diff-exempt: .chat-jump align-items — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump background — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump border — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump border-radius — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump box-shadow — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump color — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump cursor — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump display — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump font-family — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump font-size — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump font-weight — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump gap — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump height — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump letter-spacing — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump line-height — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump margin-left — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-jump padding — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn background — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn border — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn border-radius — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn color — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn cursor — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn flex — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn height — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn padding — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn transition — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn width — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn {@media (max-width: 768px)} display — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn {@media (max-width: 768px)} height — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn {@media (max-width: 768px)} padding — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn:hover border-color — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .chat-members-btn:hover box-shadow — класс удалён — «Участники» на <Chip avatars> (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg --hl — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg --hl-fg — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg align-items — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg background — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg border — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg border-radius — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg cursor — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg display — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-family — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-size — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-weight — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg height — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg justify-content — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg letter-spacing — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg line-height — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg min-width — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg padding — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg transition — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg {@media (prefers-reduced-motion: reduce)} transition — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on background — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on border-color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:active:not(:disabled) transform — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:disabled cursor — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:disabled opacity — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} border-color — класс пагинации удалён — <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
    visual-diff-exempt: .fpill background — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill border-color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill box-shadow — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
@@ -7090,6 +7097,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .fpill--avatars min-height — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--avatars padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--avatars width — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--avatars {@media (max-width: 768px)} display — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--placeholder background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--placeholder border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--placeholder border-style — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
@@ -7126,14 +7134,118 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .fpill:focus-visible box-shadow — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill:focus-visible outline — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill:hover background — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
-   visual-diff-exempt: .fpill:hover[aria-pressed=true] background — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
-   visual-diff-exempt: .fpill:hover[aria-pressed=true] color — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
-   visual-diff-exempt: .fpill[aria-pressed=true] background — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
-   visual-diff-exempt: .fpill[aria-pressed=true] border-color — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
-   visual-diff-exempt: .fpill[aria-pressed=true] color — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill:hover[aria-pressed=true] background — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill:hover[aria-pressed=true] color — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] background — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] border-color — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
+   visual-diff-exempt: .fpill[aria-pressed=true] color — состояние = данные: .fpill.on → [aria-pressed=true] (TRIP-344 PR 7)
    visual-diff-exempt: .fpill__c color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill__c font-variant-numeric — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .is-disabled cursor — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
+   visual-diff-exempt: .is-disabled opacity — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .is-warn --hl — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .is-warn --hl-ink — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .is-warn --hl-soft — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more align-items — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more background — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more border — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more border-radius — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more color — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more cursor — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more display — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more font-family — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more font-size — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more font-weight — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more letter-spacing — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more line-height — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more margin-top — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more padding — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more transition — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more {@media (max-width: 640px)} font-size — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more {@media (max-width: 640px)} padding — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more:focus-visible outline — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more:focus-visible outline-offset — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .ncal-more:hover background — класс удалён — «+N ещё» на <Chip sm square soft> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip background — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip border — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip border-radius — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip color — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip cursor — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip font-family — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip font-size — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip font-weight — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip height — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip letter-spacing — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip line-height — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip min-width — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip padding — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip transition — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip {@media (prefers-reduced-motion: reduce)} transition-property — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:active transform — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:active {@media (prefers-reduced-motion: reduce)} transform — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:focus-visible border-radius — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:focus-visible outline — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:focus-visible outline-offset — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-actchip:hover border-color — класс удалён — ячейка активности на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon background — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon border — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon border-radius — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon cursor — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon display — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon height — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon place-items — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon position — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon transition — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon width — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon {@media (prefers-reduced-motion: reduce)} transition-property — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:active transform — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:active {@media (prefers-reduced-motion: reduce)} transform — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:focus-visible border-radius — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:focus-visible outline — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:focus-visible outline-offset — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-hotelicon:hover border-color — класс удалён — ячейка отеля на <Chip tone square> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam --hl — канал тона переезда --hl* на оболочке шва для <Chip> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam --hl-ink — канал тона переезда --hl* на оболочке шва для <Chip> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam --hl-soft — канал тона переезда --hl* на оболочке шва для <Chip> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill background — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill border — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill border-color — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill border-radius — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill box-shadow — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill color — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill cursor — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill font-family — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill font-size — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill font-weight — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill gap — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill letter-spacing — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill line-height — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill opacity — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill padding — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill pointer-events — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill transition — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill white-space — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill {@media (prefers-reduced-motion: reduce)} transition-property — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add background — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add border — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add box-shadow — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add color — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add font-weight — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add gap — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover background — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover border-color — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover color — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill--add:hover transform — класс удалён — пустой шов на <Chip placeholder> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:active transform — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:active {@media (prefers-reduced-motion: reduce)} transform — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:disabled cursor — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:disabled opacity — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:disabled pointer-events — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:focus-visible border-radius — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:focus-visible outline — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:focus-visible outline-offset — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:hover box-shadow — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
+   visual-diff-exempt: .te-seam__pill:hover transform — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
    ═══════════════════════════════════════════════════════════════════════════ */

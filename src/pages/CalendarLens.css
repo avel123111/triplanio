@@ -217,16 +217,7 @@
 .ncal-ev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
 .ncal-ev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
 
-/* "+N more" */
-.ncal-more {
-  display: inline-flex; align-items: center;
-  padding: 2px 8px; border-radius: var(--r-pill);
-  background: var(--brand-soft); color: var(--brand);
-  border: none;
-  margin-top: 2px; cursor: pointer;
-  transition: background .14s;
-}
-.ncal-more:hover { background: var(--brand-soft-12); }
+/* "+N more" — примитив <Chip sm square variant="soft"> (полная ширина ячейки). */
 
 /* ── Week view ─────────────────────────────────────────────────── */
 .ncal-wv-scroll {
@@ -357,7 +348,6 @@
 
 /* ── Focus visibility (keyboard nav) ───────────────────────────── */
 .ncal-ev:focus-visible,
-.ncal-more:focus-visible,
 .ncal-aev:focus-visible,
 .ncal-nav-txt:focus-visible,
 .ncal-nav-trip:focus-visible {
@@ -401,7 +391,6 @@
   .ncal-ev .tm { display: none; }
   .ncal-ev .t  { font-size: var(--fs-nano); }
   .ncal-evl    { padding: 0 3px; gap: 2px; }
-  .ncal-more   { padding: 1px 6px; font-size: var(--fs-nano); }
 
   /* Week cards: horizontal scroll */
   .ncal-wcols {
