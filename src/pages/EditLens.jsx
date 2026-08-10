@@ -1048,9 +1048,9 @@ export default function EditLens({ tripId, shell, content }) {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {outOfPlanTransfers.map((tr) => (
-                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 'var(--r-pill)', background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', color: 'var(--ink)' }}>
-                    <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {nodeName(tr.from_city_visit_id)} → {nodeName(tr.to_city_visit_id)}
-                  </button>
+                  <Chip key={tr.id} icon="warning" onClick={() => openEvent('transfer', tr.id)}>
+                    {nodeName(tr.from_city_visit_id)} → {nodeName(tr.to_city_visit_id)}
+                  </Chip>
                 ))}
               </div>
             </div>
