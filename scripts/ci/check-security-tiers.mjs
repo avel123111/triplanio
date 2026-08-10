@@ -257,6 +257,13 @@ export function parseGateTokensFromSeam(mutateSource) {
  * `name: '<slug>'` (верхний уровень ResourceSpec); `requires` — КАЖДЫЙ
  * `requires: [ … ]` в файле (по одному на действие). Ненайденное имя = ресурс не
  * учитывается (его отсутствие поймает checkSeamDoors как «нет спецификации»).
+ *
+ * ★ ДАТЧИК СЛЕПОТЫ P1 (ревью Codex). Разбор берёт только ЛИТЕРАЛЬНЫЙ
+ * `requires: [ … ]`. Действие с `requires: <переменная>` (константа/спред) под
+ * этот шаблон не попадёт и МОЛЧА выпадет — сверка тогда зеленеет над неполным
+ * набором действий. Поэтому здесь же считаем ВСЕ `requires:` и сравниваем с
+ * числом литеральных; расхождение = `nonLiteralRequires > 0`, checkSeamDoors
+ * роняет прогон («сверять нечего»). Инвариант: каждый `requires` — литерал.
  */
 export function parseResourceSpecs(files = []) {
   const specs = new Map();
@@ -267,13 +274,21 @@ export function parseResourceSpecs(files = []) {
     for (const m of (text || '').matchAll(/\brequires:\s*\[([^\]]*)\]/g)) {
       requiresSets.push([...m[1].matchAll(/'([^']*)'/g)].map((q) => q[1]));
     }
-    specs.set(nameM[1], { requiresSets });
+    const totalRequires = [...(text || '').matchAll(/\brequires:/g)].length;
+    specs.set(nameM[1], { requiresSets, nonLiteralRequires: totalRequires - requiresSets.length });
   }
   return specs;
 }
 
 const asSet = (arr) => [...new Set(arr)].sort();
 const eqSet = (a, b) => asSet(a).join(',') === asSet(b).join(',');
+// P2 (ревью Codex): seam-требования шов исполняет ПО ПОРЯДКУ (editor раньше pro:
+// «не редактор» перекрывает «не Pro», незалогиненному-в-трип не сообщаем оплату).
+// Значит однородность действий и сверку с манифестом ведём УПОРЯДОЧЕННО, не как
+// множества — иначе `['pro','editor']` сойдёт за `['editor','pro']` и порядок
+// проверки прав молча перевернётся. (Паритет ролей — checkEditorRoles — множество
+// законно и НЕ трогается: там порядок ролей в списке смысла не несёт.)
+const eqOrdered = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 /**
  * Сверяет seam-двери. `expectSeam` = «в этом наборе ОБЯЗАНА быть хотя бы одна
@@ -316,29 +331,37 @@ export function checkSeamDoors({ sources = [], doors = DOORS, specs = new Map(),
       errors.push(`seam-дверь '${name}': нет спецификации ресурса с name:'${slug}' в _shared/resources — сверять гейт не с чем`);
       continue;
     }
+    // P1 (датчик слепоты): у ресурса есть `requires` НЕ литеральным массивом —
+    // разбор его не видит, и сверка пошла бы над неполным набором действий.
+    if (spec.nonLiteralRequires > 0) {
+      errors.push(`seam-дверь '${name}': у ресурса '${slug}' ${spec.nonLiteralRequires} действие(й) с requires НЕ литеральным массивом — объяви requires: [ … ] явно, иначе сверять нечего (P1)`);
+      continue;
+    }
     if (spec.requiresSets.length === 0) {
       errors.push(`seam-дверь '${name}': у ресурса '${slug}' не нашлось ни одного requires — действий нет или разбор сломан`);
       continue;
     }
 
-    // Все действия обязаны требовать ОДНО множество: манифест одной строкой не
-    // выразит неоднородность, а «хотя бы одно совпало» — это дыра (Pavel).
-    const uniq = [...new Set(spec.requiresSets.map((r) => asSet(r).join(',')))];
+    // Все действия обязаны требовать ОДНО, причём В ТОМ ЖЕ ПОРЯДКЕ (P2): манифест
+    // одной строкой не выразит неоднородность, а «хотя бы одно совпало» — дыра.
+    const uniq = [...new Set(spec.requiresSets.map((r) => r.join(',')))];
     if (uniq.length > 1) {
       errors.push(`seam-дверь '${name}': действия ресурса '${slug}' требуют РАЗНОЕ (${uniq.map((u) => `[${u}]`).join(' ≠ ')}) — манифест одной строкой это не выразит; сделай действия однородными или заведи per-action`);
       continue;
     }
-    const specSet = asSet(spec.requiresSets[0]);
+    const specReq = spec.requiresSets[0];
 
     // Словарь: и спека, и манифест — только из того, что шов реализует.
-    const unknown = [...new Set([...specSet, ...declared])].filter((t) => !gateTokens.has(t));
+    const unknown = [...new Set([...specReq, ...declared])].filter((t) => !gateTokens.has(t));
     if (unknown.length) {
       errors.push(`seam-дверь '${name}': неизвестный гейт ${unknown.map((u) => `'${u}'`).join(', ')} — шов (checkRequirement) его не реализует; допустимо: ${[...gateTokens].sort().join(', ')}`);
       continue;
     }
 
-    if (!eqSet(declared, specSet)) {
-      errors.push(`seam-дверь '${name}': манифест [${asSet(declared).join(', ')}] ≠ спецификация requires [${specSet.join(', ')}] — приведи в соответствие (машинная сверка, не на слово)`);
+    // Сверка УПОРЯДОЧЕННАЯ (P2): манифест обязан назвать требования ровно в том
+    // порядке, в каком шов их исполняет.
+    if (!eqOrdered(declared, specReq)) {
+      errors.push(`seam-дверь '${name}': манифест [${declared.join(', ')}] ≠ спецификация requires [${specReq.join(', ')}] — приведи в соответствие по составу И порядку (машинная сверка, не на слово)`);
     }
   }
   return errors;

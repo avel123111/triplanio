@@ -511,6 +511,54 @@ test('★ действия ресурса требуют РАЗНОЕ → кра
   assert.ok(errors.some((e) => /РАЗНОЕ|неоднородн/i.test(e)), JSON.stringify(errors));
 });
 
+// Спецификация с requires НЕ литеральным массивом (переменная/константа) —
+// парсер её не видит; собираем текст вручную.
+const specTextRaw = (slug, actionsBody) => ({
+  name: `${slug}.ts`,
+  text: `export const R = { name: '${slug}', scope: { column: 'trip_id', from: 'tripId' }, actions: {\n${actionsBody}\n} };`,
+});
+
+test('★ P1 датчик слепоты: parseResourceSpecs считает НЕлитеральные requires', () => {
+  const specs = parseResourceSpecs([specTextRaw('trip-budget',
+    "  a0: { op: 'upsert', table: 't', requires: ['editor', 'pro'] },\n" +
+    "  a1: { op: 'upsert', table: 't', requires: EDITOR_PRO },")]);
+  const s = specs.get('trip-budget');
+  assert.equal(s.requiresSets.length, 1, 'литеральный requires ровно один');
+  assert.equal(s.nonLiteralRequires, 1, 'один requires — переменная, датчик обязан её заметить');
+});
+
+test('★ P1: seam-дверь с requires-переменной → красный (сверка не над полным набором)', () => {
+  // Раньше действие с `requires: CONST` МОЛЧА выпадало, и сверка зеленела над
+  // неполным набором. Теперь такой ресурс роняет прогон.
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specTextRaw('trip-budget',
+    "  a0: { op: 'upsert', table: 't', requires: ['editor', 'pro'] },\n" +
+    "  a1: { op: 'upsert', table: 't', requires: EDITOR_PRO },")]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /литеральн|P1/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ P2: манифест того же состава, но ДРУГОГО порядка → красный', () => {
+  // Шов исполняет requires ПО ПОРЯДКУ (editor раньше pro). `['pro','editor']` ≠
+  // `['editor','pro']`: как множества равны (прежний eqSet зеленел — дыра), по
+  // порядку — нет.
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['pro', 'editor'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /порядк/i);
+});
+
+test('★ P2: действия одного состава, но разного ПОРЯДКА → неоднородны (красный)', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['pro', 'editor']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /РАЗНОЕ|неоднородн/i.test(e)), JSON.stringify(errors));
+});
+
 test('★ неизвестный гейт в спецификации (шов его не реализует) → красный', () => {
   const sources = [seamSrc('trip_budget', 'trip-budget')];
   const doors = { trip_budget: ['editor', 'admin'] };
