@@ -2515,8 +2515,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .icon-btn[disabled] { opacity: .45; pointer-events: none; }
 /* Нажато = бренд-заливка, тот же канон, что у `.btn[aria-pressed]` выше и у Chip.
-   Ко-селектор `.map-ctl button.on` (0,2,1) перебивает это правило (0,2,0), поэтому
-   глобус Статистики, пока у него жив класс `.on`, свой облик сохраняет. */
+   Глобус карты Статистики красится этим правилом (`.map-ctl button.on` снят). */
 .icon-btn[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
 .icon-btn[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
 /* Счётчик активных на кнопке-иконке — реюз `.badge--count` (тоггл фильтров форк-
@@ -6453,17 +6452,15 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* — map controls + legend + fullscreen (over the .mapwrap surface) — */
 /* ★TRIP-344: `.map-ctl` — плашка-подложка (фон/рамка из surface-канона выше,
    радиус+паддинг тут); кнопки внутри quiet. Раскладка тут (левый угол, ряд);
-   MapControls переопределяет угол инлайном. Состояние «включено» держит
-   ко-селектор `.map-ctl button.on` ниже — на состояние класс-проп не повесишь.
+   MapControls переопределяет угол инлайном. Состояние «включено» держит канон
+   `.icon-btn[aria-pressed]` (бренд-заливка) — один способ на все кнопки системы.
    Подложка = намеренные объявления, не перенос (правило .icon-btn--outline живо):
    visual-diff-exempt: .map-ctl border — плашка-подложка карты (эталон nx)
    visual-diff-exempt: .map-ctl border-radius — плашка-подложка карты (эталон nx)
    visual-diff-exempt: .map-ctl padding — плашка-подложка карты (эталон nx)
    visual-diff-exempt: .map-ctl gap — зазор кнопок в плашке 4px (эталон nx) */
 .map-ctl { position: absolute; left: 14px; top: 13px; z-index: 3; display: flex; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-btn); }
-/* Живая обратная связь на нажатие (примитив её не несёт). Мёртвый
-   `.map-ctl button.on { border-color: transparent }` снят: ко-селектор ниже
-   всё равно перебивал рамку на var(--hl). */
+/* Живая обратная связь на нажатие пальцем (примитив её не несёт). */
 .map-ctl button:active { transform: scale(.92); }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
 .map-legend .c { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
@@ -6718,7 +6715,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .tm-cell.is-active { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
 
 .map-route__item.is-active .map-route__marker,
-.map-ctl button.on { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
+/* `.map-ctl button.on` СНЯТ (TRIP-344, канонизация состояния): «включено» держит
+   канон `.icon-btn[aria-pressed]` (бренд-заливка), глобус Статистики перешёл на
+   `aria-pressed`, класса `.on` в map-ctl больше нет ни у кого. */
 
 /* Свой цвет у места = переопределённая ручка, а не своё правило подсветки. */
 .te-cell--hotel { --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
