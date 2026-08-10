@@ -39,13 +39,21 @@ export const TABLES = {
   transfers:         { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   city_visits:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   trip_services:     { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  trip_budgets:      { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  budget_categories: { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  budget_expenses:   { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   // роль поверх private-модели TRIP-118: can_edit_trip AND (visibility='shared' OR created_by=self)
   trip_documents:    { tier: 'A', write: 'can_edit_trip+visibility', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
 
   // ── Ярус B — авторитетное ───────────────────────────────────────────────────
+  // Бюджет (TRIP-394 Ф2, шаг C) — ПЕРВЫЙ контент-домен, переведённый на единый шов
+  // записи `_shared/mutate.ts`. Пишет только service_role (шов + триггеры авто-трат
+  // и сброса fx); клиентского DML/SELECT нет — читает `getTripDetails` под
+  // service_role, во фронте ноль `.from('budget_*')`. Не ярус A: тот ТРЕБУЕТ
+  // authDml=true и роль-осведомлённую write-политику (I2), а здесь клиент не пишет
+  // вовсе. Гранты authenticated (INSERT/UPDATE/DELETE/SELECT) и остаточный SELECT у
+  // anon сняты; 12 RLS-политик удалены ПОСЛЕ revoke; RLS остаётся включённой
+  // (deny-all без политик), service_role обходит. LIVE-2e сверит, что DML снят.
+  trip_budgets:      { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
+  budget_categories: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
+  budget_expenses:   { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   product:           { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   provider_price:    { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   webhook_event:     { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
