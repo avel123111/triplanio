@@ -31,6 +31,7 @@ import {
   checkDoors,
   checkEditorRoles,
   checkSeamDoors,
+  checkTableGrants,
   parseGateTokensFromSeam,
   parseResourceSpecs,
   parseSeamSlug,
@@ -596,4 +597,65 @@ test('обычные двери проверяются как раньше (ре
   const errors = checkDoors(sources, doors);
   assert.equal(errors.length, 1);
   assert.match(errors[0], /не ту ступень/);
+});
+
+// ── checkTableGrants: DML + ось SELECT (TRIP-399) ────────────────────────────
+// Манифест-фикстура формы TABLES: три показательных яруса.
+const GRANTS_MANIFEST = {
+  content_a: { tier: 'A', authDml: true,  authSelect: true  }, // клиент пишет+читает под RLS
+  edge_b:    { tier: 'B', authDml: false, authSelect: false }, // edge-only, дверь чтения закрыта
+  ownrow_b:  { tier: 'B', authDml: false, authSelect: true  }, // service_role пишет, auth читает свою строку
+};
+// Строка грантов из LIVE_SQL.
+const grant = (t, o = {}) => ({ t, anon: false, auth: false, anonSel: false, authSel: false, ...o });
+
+test('здоровые гранты (DML+SELECT совпали с манифестом) — ноль ошибок', () => {
+  const live = [
+    grant('content_a', { auth: true, authSel: true }),
+    grant('edge_b'),
+    grant('ownrow_b', { authSel: true }),
+  ];
+  assert.deepEqual(checkTableGrants(live, GRANTS_MANIFEST), []);
+});
+
+test('★ SELECT-дрейф: edge-only таблица, а authenticated её читает', () => {
+  const errors = checkTableGrants([grant('edge_b', { authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /authenticated SELECT на public\.edge_b = true, манифест authSelect=false/);
+});
+
+test('★ SELECT-дрейф в другую сторону: манифест ждёт чтение, а его сняли', () => {
+  const errors = checkTableGrants([grant('ownrow_b', { authSel: false })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /authenticated SELECT на public\.ownrow_b = false, манифест authSelect=true/);
+});
+
+test('★ edge-only таблица отдаёт SELECT anon — дверь чтения открыта анониму', () => {
+  const errors = checkTableGrants([grant('edge_b', { anonSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /edge_b отдаёт SELECT anon/);
+});
+
+test('anon SELECT при authSelect:true НЕ ошибка (переходная модель: чтение под RLS)', () => {
+  // На таких таблицах контент яруса A ещё читается клиентом напрямую под RLS;
+  // ось закроется на C-шаге домена, когда authSelect станет false.
+  const live = [grant('content_a', { auth: true, authSel: true, anonSel: true })];
+  assert.deepEqual(checkTableGrants(live, GRANTS_MANIFEST), []);
+});
+
+test('DML-оси не ослаблены: anon DML → I3a, auth DML на B → запрет', () => {
+  const anon = checkTableGrants([grant('content_a', { anon: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(anon.length, 1);
+  assert.match(anon[0], /anon имеет DML на public\.content_a/);
+
+  const authB = checkTableGrants([grant('edge_b', { auth: true })], GRANTS_MANIFEST);
+  assert.equal(authB.length, 1);
+  assert.match(authB[0], /authenticated имеет DML на public\.edge_b .*ярус B запрещает/);
+});
+
+test('незаклассифицированная таблица с auth DML ловится, а SELECT-ось её не трогает', () => {
+  // Нет в манифесте → только DML-ошибка; SELECT-ось молчит (нечего сверять).
+  const errors = checkTableGrants([grant('mystery', { auth: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /public\.mystery не в манифесте/);
 });
