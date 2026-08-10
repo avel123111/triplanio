@@ -208,7 +208,7 @@ function shownOnKit() {
 const NOT_SHOWN = new Set([
   // раскладка: выравнивание и поток — показаны только ступени зазора
   'row--a-baseline', 'row--div', 'row--flush', 'row--inline', 'row--j-between',
-  'col--a-end', 'col--a-start', 'col--j-center',
+  'col--a-end', 'col--j-center',
   // плитка-иконка: одиннадцать обличий, ни одного образца
   'tile--ai', 'tile--danger', 'tile--info', 'tile--lg', 'tile--quiet',
   'tile--round', 'tile--sm', 'tile--solid', 'tile--success', 'tile--warm', 'tile--warning',
