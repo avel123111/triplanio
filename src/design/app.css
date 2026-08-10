@@ -439,7 +439,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
    несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
    outline-тоном примитива, и ко-селектор (0,1,0) молча перебивал бы его рамку. */
-.cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link, .fork-pg,
+.cbadge, .ts-startctl, .chat-members-btn, .chat-jump, .bk-link,
 .pro-up .lockmsg, .map-legend .c, .map-ctl,
 .chat-bubble--them {
   background: var(--surface);
@@ -919,7 +919,6 @@ h4,
 .phone__time,
 .langdd__btn,
 .langdd__item .code,
-.fork-pg,
 .s22-count,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
@@ -1028,7 +1027,7 @@ h4,
 /* booking/editor 700-акценты: тот же канон-размер, но жирный (TRIP-165) */
 .fork-partner__mid span,
 .fork-or span,
-.fork-pg, .s22-count, .pcard__score,
+.s22-count, .pcard__score,
 .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
@@ -3749,13 +3748,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .fpill:disabled { opacity: .45; pointer-events: none; cursor: default; }
 .fpill[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
 .fpill[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
-/* tone — залито тоном типа (канал с оболочки); placeholder — пустой шов */
-.fpill--tone { background: var(--evs); border-color: transparent; color: var(--evi); }
-.fpill--tone:hover { background: var(--evs); border-color: var(--ev); color: var(--evi); }
+/* tone — залито тоном типа (канал `--hl*` с оболочки, дефолт бренда в :root);
+   placeholder — пустой шов. Канал тот же, что у `.te-cell--*` и `--hl`-подсветки. */
+.fpill--tone { background: var(--hl-soft); border-color: transparent; color: var(--hl-ink); }
+.fpill--tone:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
 .fpill--placeholder { background: transparent; border-style: dashed; border-color: var(--line-strong); color: var(--muted-2); }
-.fpill--placeholder:hover { background: var(--evs); border-color: var(--ev); border-style: solid; color: var(--evi); }
+.fpill--placeholder:hover { background: var(--hl-soft); border-color: var(--hl); border-style: solid; color: var(--hl-ink); }
 /* предупреждение (несостыковка городов, овернайт) — тон уходит на warning */
-.fpill--tone.is-warn { --evs: var(--warning-soft); --evi: var(--warning-ink); --ev: var(--warning); border-color: var(--ev); }
+.fpill--tone.is-warn { --hl-soft: var(--warning-soft); --hl-ink: var(--warning-ink); --hl: var(--warning); border-color: var(--hl); }
 /* square — форма ячейки; sm — мелкая ступень; soft — мягкий тон бренда */
 .fpill--square { border-radius: var(--r-sm); min-width: var(--ctl-h-sm); padding: 0 9px; }
 .fpill--sm { min-height: 24px; padding: 0 8px; font-size: var(--fs-micro); font-weight: 500; }
@@ -6625,12 +6625,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .btn__brandlogo img { width: 15px; height: 15px; object-fit: contain; }
 /* Pager — prev · windowed numbers · next. */
 .fork-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-.fork-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--r-sm); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
-.fork-pg:disabled { opacity: .4; cursor: default; }
-.fork-pg:not(:disabled):active { transform: scale(.94); }
-@media (hover: hover) and (pointer: fine) { .fork-pg:not(:disabled):hover { border-color: var(--line-hover); } }
+/* Пагинация — примитив <Chip sm square>; текущая страница = aria-pressed. */
 .fork-gap { color: var(--muted-2); padding: 0 2px; }
-@media (prefers-reduced-motion: reduce) { .fork-pg { transition: none; } }
 
 /* ============================================================
    CONSENT BANNER (TRIP-311)
@@ -6696,27 +6692,16 @@ a.doc-row__n:hover{ color: var(--brand); }
 .tm-cell.is-active { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
 
 .map-route__item.is-active .map-route__marker,
-.map-ctl button.on,
-.fork-pg--on { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
+.map-ctl button.on { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
 
 /* Свой цвет у места = переопределённая ручка, а не своё правило подсветки. */
 .te-cell--hotel { --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
 .te-cell--act   { --hl: var(--ev-activity); --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .dl-addcard--mine { --hl: var(--warm); --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
-/* ⚠ Пагинатор пиним ПО ТОЙ ЖЕ причине, по которой пиновался `.lp-back` (снят в
-   TRIP-344 PR 2 вместе с классом), и это не украшение.
-   Панель добавления брони встраивает fork-список внутрь оболочки события, а
-   оболочка ставит в канал цвет ТИПА события. Пилюля номера страницы к типу
-   события отношения не имеет и была брендовой всегда: без пина она красилась бы
-   в цвет отеля/активности, причём ТОЛЬКО в панели добавления - в отдельном
-   модале партнёра оболочка цвет не ставит, и один компонент показывал бы два
-   разных цвета в зависимости от того, кто его смонтировал.
-   ★Найдено code-simplifier'ом, и это класс дефекта, которого не видит НИ ОДИН
-   гард: текст правила .fork-pg--on не менялся ни на байт, а 2p сравнивает
-   объявления и про наследование ручки через разметку не знает (это прямо
-   написано в его шапке). Появился он оттого, что канал стал ОБЩИМ: пока имя
-   было приватным (--ev-color), чужой читатель его просто не видел. */
-.fork-pg { --hl: var(--brand); --hl-fg: var(--primary-fg); }
+/* Пагинатор больше не пиним каналом: активная страница = `Chip[aria-pressed]`,
+   а её фон захардкожен `--brand` и от наследованного `--hl` оболочки события не
+   зависит (прежде пилюля номера читала канал и в панели добавления брони брала
+   цвет типа — теперь этот путь исключён самим примитивом). */
 
 /* ═══ ЖУРНАЛ 2p ДЛЯ ЭТОГО PR (04 PR3, тинт) ═══════════════════════════════════
    Ярус 2 визуального гейта печатает КАЖДОЕ изменившееся итоговое объявление, а
@@ -6889,8 +6874,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .wi--primary color — класс удалён, тон уехал на базу через канал --hl - значение то же
    visual-diff-exempt: .wi background — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
    visual-diff-exempt: .wi color — база получила тон из канала --hl, дефолт которого в :root и есть прежнее значение варианта
-   visual-diff-exempt: .fork-pg --hl — пин канала на объекте ВОССТАНАВЛИВАЕТ прежний цвет: канал стал общим, и пилюля страницы начала наследовать цвет типа события из оболочки панели добавления брони
-   visual-diff-exempt: .fork-pg --hl-fg — то же, вторая ручка залитой формы: без пина активная страница брала бы чернила чужого тона
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ═══ TRIP-342: ОБЪЯВЛЕННЫЕ ИЗМЕНЕНИЯ (чат) ═════════════════════════
@@ -7059,10 +7042,39 @@ a.doc-row__n:hover{ color: var(--brand); }
    не «11 → 12», а «11 → 12 здесь и 11 → 10 там».
    visual-diff-exempt: .te-end gap — 11px вне шкалы → ступень row--g6 (--sp-6 = 12px), апрув Pavel в TRIP-388
    visual-diff-exempt: .te-cityline gap — 7px вне шкалы → ступень row--g3 (--sp-3 = 6px), апрув Pavel в TRIP-388
-   — TRIP-344 PR 7: канон .fpill (Chip). База пилюли приведена к компактному
-      облику 32px эталона секции E, заведены модификаторы --tone/--placeholder/--square/
-      --sm/--soft/--avatars и состояние [aria-pressed=true] вместо класса .on. Все правки
-      намеренные (апрув Pavel), сверены рендером /kit против правого столбца эталона.
+   — TRIP-344 PR 7 (Chip): канон .fpill приведён к компактному облику 32px
+      эталона секции E; заведены модификаторы --tone/--placeholder/--square/--sm/
+      --soft/--avatars и состояние [aria-pressed=true] вместо .on; тон читает канал
+      --hl* (тот же, что у .te-cell--*). Класс пагинации .fork-pg/--on удалён —
+      разметка на <Chip sm square>. Все правки намеренные (апрув Pavel), сверены
+      рендером /kit против правого столбца эталона.
+   visual-diff-exempt: .fork-pg --hl — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg --hl-fg — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg align-items — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg background — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg border — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg border-radius — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg cursor — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg display — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-family — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-size — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg font-weight — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg height — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg justify-content — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg letter-spacing — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg line-height — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg min-width — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg padding — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg transition — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg {@media (prefers-reduced-motion: reduce)} transition — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on background — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on border-color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg--on color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:active:not(:disabled) transform — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:disabled cursor — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:disabled opacity — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
+   visual-diff-exempt: .fork-pg:hover:not(:disabled) {@media (hover: hover) and (pointer: fine)} border-color — класс пагинации удалён — разметка на <Chip sm square>, активная страница = aria-pressed (TRIP-344 PR 7)
    visual-diff-exempt: .fpill background — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill border-color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill box-shadow — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
@@ -7098,9 +7110,9 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .fpill--square border-radius — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--square min-width — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--square padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
-   visual-diff-exempt: .fpill--tone --ev — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
-   visual-diff-exempt: .fpill--tone --evi — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
-   visual-diff-exempt: .fpill--tone --evs — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --hl — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --hl-ink — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .fpill--tone --hl-soft — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--tone background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--tone border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--tone color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
@@ -7121,7 +7133,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .fpill[aria-pressed=true] color — состояние = данные: класс .fpill.on заменён на [aria-pressed=true] (TRIP-344 PR 7)
    visual-diff-exempt: .fpill__c color — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
    visual-diff-exempt: .fpill__c font-variant-numeric — канон Chip: пилюля 40→32, компактный облик по эталону секции E (TRIP-344 PR 7, апрув Pavel)
-   visual-diff-exempt: .is-warn --ev — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
-   visual-diff-exempt: .is-warn --evi — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
-   visual-diff-exempt: .is-warn --evs — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn --hl — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn --hl-ink — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
+   visual-diff-exempt: .is-warn --hl-soft — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    ═══════════════════════════════════════════════════════════════════════════ */

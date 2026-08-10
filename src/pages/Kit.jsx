@@ -431,8 +431,8 @@ export default function Kit() {
             шва/ячейки ставит по типу брони (ровно как `--hl` у Seg). На витрине
             канал ставится инлайном — единственный способ показать тон-из-контекста. */}
         <Specimen cls="fpill--tone">
-          <div style={{ '--evs': 'var(--ev-transfer-soft)', '--evi': 'var(--ev-transfer-ink)', '--ev': 'var(--ev-transfer)', display: 'inline-flex', gap: 8 }}>
-            {/* inline-style-exempt: канал тона `--ev*` с оболочки — то же, что
+          <div style={{ '--hl-soft': 'var(--ev-transfer-soft)', '--hl-ink': 'var(--ev-transfer-ink)', '--hl': 'var(--ev-transfer)', display: 'inline-flex', gap: 8 }}>
+            {/* inline-style-exempt: канал тона `--hl*` с оболочки — то же, что
                 делают te-seam/te-cell редактора; иначе тон-из-контекста не показать. */}
             <Chip variant="tone" icon="plane">{TX.chipRoute}</Chip>
             <Chip variant="placeholder" icon="plus">{TX.chipAdd}</Chip>
@@ -440,7 +440,7 @@ export default function Kit() {
         </Specimen>
         {/* tone·square — заполненные ячейки активностей/отеля (обе 32×32). */}
         <Specimen cls="fpill--square">
-          <div style={{ '--evs': 'var(--ev-activity-soft)', '--evi': 'var(--ev-activity-ink)', '--ev': 'var(--ev-activity)', display: 'inline-flex', gap: 8 }}>
+          <div style={{ '--hl-soft': 'var(--ev-activity-soft)', '--hl-ink': 'var(--ev-activity-ink)', '--hl': 'var(--ev-activity)', display: 'inline-flex', gap: 8 }}>
             {/* inline-style-exempt: канал тона активности с оболочки ячейки (см. выше). */}
             <Chip variant="tone" square icon="ticket">3</Chip>
           </div>
