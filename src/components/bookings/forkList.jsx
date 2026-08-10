@@ -1,7 +1,7 @@
 // @ts-check
 import React from 'react';
-import { Search, RotateCcw, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
-import { Btn, Chip, Input, Skeleton } from '@/design/index';
+import { Search, RotateCcw, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Btn, Chip, IconBtn, Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -128,7 +128,7 @@ export function ForkPager({ page, totalPages, pages, onGoto, prevLabel, nextLabe
 function ForkPill({ label, onRemove, removeLabel }) {
   return (
     <span className="s22f-pill">{label}
-      <button type="button" onClick={onRemove} aria-label={removeLabel}><X size={12} /></button>
+      <IconBtn size="sm" tone="quiet" icon="close" ariaLabel={removeLabel} onClick={onRemove} />
     </span>
   );
 }

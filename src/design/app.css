@@ -6560,7 +6560,13 @@ a.doc-row__n:hover{ color: var(--brand); }
    тон нет (TRIP-344 PR 3). */
 .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; --a: var(--muted); }
 .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
-.s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
+/* Крестик удаления фильтра — примитив <IconBtn size="sm" tone="quiet"> (канон
+   .icon-btn). Приватный каскад `.s22f-pill button` (круг 17px, --brand-soft-12)
+   снят: крестик теперь как везде, унификация к канону (апрув Pavel, TRIP-344).
+   ⚠️ 2p краснеет на снятии этих 9 объявлений и НЕ гасится маркером: единица
+   `.s22f-pill button` — бесклассовый селектор из нескольких лексем, слепой
+   участок TRIP-366 (visual-diff-exempt его не адресует). Оставлено красным с
+   разбором в теле PR — доказательство переноса = рендер до/после. */
 /* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
    рамка, тон, подчёркивание И ТИПОГРАФИКА) уехал в `btn--link`; два следствия
    названы, потому что видны глазом: подчёркивание перестало быть постоянным и
