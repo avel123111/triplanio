@@ -87,6 +87,7 @@ const TX = {
   iconBtnSize: 'Размер кнопки-иконки',
   iconBtnShape: 'Форма кнопки-иконки',
   iconBtnMark: 'Кнопка-иконка с меткой непрочитанных',
+  iconBtnFilters: 'Фильтры',
   stepMinus: 'Меньше',
   stepPlus: 'Больше',
   segMonth: 'Месяц',
@@ -459,6 +460,9 @@ export default function Kit() {
               ко-селектором `.icon-btn > .badge--count` (тоггл фильтров форк-панели). */}
           <Sample name="aria-pressed"><IconBtn icon="globe" ariaPressed ariaLabel={TX.iconBtnShape} /></Sample>
           <Sample name="+ .badge--count"><IconBtn icon="bell" ariaLabel={TX.iconBtnMark}><Badge variant="count">3</Badge></IconBtn></Sample>
+          {/* Живая композиция: тоггл фильтров форк-панели — outline + счётчик
+              активных (aria-pressed при открытой панели даёт бренд-заливку выше). */}
+          <Sample name='sliders · outline · .badge--count (тоггл фильтров)'><IconBtn icon="sliders" tone="outline" ariaLabel={TX.iconBtnFilters}><Badge variant="count">2</Badge></IconBtn></Sample>
         </Specimen>
 
         {/* Степпер: pill (дефолт, панель города) + block (дата во всю ячейку) +

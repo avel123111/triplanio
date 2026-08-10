@@ -422,10 +422,15 @@ export default function Statistics() {
         <div className="sec-head">
           <h2 className="t-subheading">{t('stats.places_title')}</h2>
           <div className="grow" />
-          <div className="seg" role="group" aria-label={t('stats.places_title')}>
-            <button aria-pressed={listMode === 'countries'} onClick={() => setListMode('countries')}>{t('stats.tab_countries')} · {bundle.countries}</button>
-            <button aria-pressed={listMode === 'cities'} onClick={() => setListMode('cities')}>{t('stats.tab_cities')} · {bundle.cities}</button>
-          </div>
+          <Seg
+            ariaLabel={t('stats.places_title')}
+            value={listMode}
+            onChange={setListMode}
+            options={[
+              { value: 'countries', label: <>{t('stats.tab_countries')} · {bundle.countries}</> },
+              { value: 'cities', label: <>{t('stats.tab_cities')} · {bundle.cities}</> },
+            ]}
+          />
         </div>
         <div className="panel" style={{ padding: '16px 18px' }}>
           <VisitList

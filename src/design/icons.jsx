@@ -7,7 +7,7 @@ import {
   GripVertical, Crown, ArrowRightLeft, Upload, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
-  Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair,
+  Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,6 +119,10 @@ const LUCIDE = {
   // статистика путешествий (2026-06-20)
   buildings: Building2, layers: Layers, suitcase: Luggage, heart: Heart,
   star: Star, expand: Maximize2, crosshair: Crosshair,
+  // Тоггл фильтров форк-панели (TRIP-344): реестр знал глифы карты/списка, а
+  // «ползунки фильтра» жили сырым lucide-импортом на экране. Тот же lucide,
+  // ноль визуальных изменений — форк-кнопка садится на канон `IconBtn`.
+  sliders: SlidersHorizontal,
 };
 
 // ── Легаси-набор (fallback для имён вне LUCIDE/BRAND) ─────────────────────────

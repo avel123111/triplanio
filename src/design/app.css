@@ -6545,12 +6545,38 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22f-searchrow { display: flex; gap: 10px; }
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .s22f-search { flex: 1; }
-.s22f-fbtn { position: relative; flex: none; width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-btn); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
-.s22f-fbtn:hover { border-color: var(--line-hover); }
-.s22f-fbtn:active { transform: scale(.96); }
-.s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 3px var(--primary-ring); }
-.s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
-.s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
+/* Тоггл фильтров теперь канон `IconBtn tone=outline` с `aria-pressed`; приватный
+   `.s22f-fbtn`/`--on`/`--active`/`__n` снят (TRIP-344, объект «кнопка»). 2p красный
+   по построению (класс удалён, элемент уехал на примитив — гард видит только CSS,
+   не разметку). Каждый снятый ключ разобран ниже ДО ПРИЧИНЫ.
+
+   — Чистый перенос на канон `icon-btn icon-btn--outline`, ЗНАЧЕНИЕ ТО ЖЕ:
+   visual-diff-exempt: .s22f-fbtn background — уехало на icon-btn--outline (var(--surface), то же)
+   visual-diff-exempt: .s22f-fbtn color — icon-btn--outline color var(--ink) (то же; «muted-2» у гарда — коарс-атрибуция потомка)
+   visual-diff-exempt: .s22f-fbtn border — рамка на канон: border(transparent)+border-color(line-strong); цвет тот же line-strong
+   visual-diff-exempt: .s22f-fbtn cursor — icon-btn cursor pointer (то же)
+   visual-diff-exempt: .s22f-fbtn display — icon-btn display grid (то же)
+   visual-diff-exempt: .s22f-fbtn flex — icon-btn flex none (то же)
+   visual-diff-exempt: .s22f-fbtn width — icon-btn var(--tile, var(--ctl-h)) = 40px (то же)
+   visual-diff-exempt: .s22f-fbtn height — icon-btn var(--tile, var(--ctl-h)) = 40px (то же)
+   visual-diff-exempt: .s22f-fbtn place-items — icon-btn place-items center (то же)
+   visual-diff-exempt: .s22f-fbtn position — icon-btn position relative (то же; «absolute» у гарда — от ко-селектора .icon-btn > .badge--count)
+   visual-diff-exempt: .s22f-fbtn:hover border-color — icon-btn--outline:hover border-color var(--line-hover) (то же)
+   visual-diff-exempt: .s22f-fbtn__n position — уехало на канон .icon-btn > .badge--count (absolute, то же)
+   visual-diff-exempt: .s22f-fbtn__n top — .icon-btn > .badge--count top -6px (то же)
+   visual-diff-exempt: .s22f-fbtn__n right — .icon-btn > .badge--count right -6px (то же)
+
+   — Намеренное изменение облика при переезде на канон:
+   visual-diff-exempt: .s22f-fbtn border-radius — канон icon-btn = --r-sm (8) вместо --r-btn (10)
+   visual-diff-exempt: .s22f-fbtn transition — канон icon-btn: цвет/фон .16s, без spring/transform
+   visual-diff-exempt: .s22f-fbtn:active transform — канон снял press-scale у кнопок
+   visual-diff-exempt: .s22f-fbtn {@media (prefers-reduced-motion: reduce)} transition — блок снят вместе с приватным классом (у канона transform нет)
+   visual-diff-exempt: .s22f-fbtn:active {@media (prefers-reduced-motion: reduce)} transform — то же, press-scale у канона нет
+   visual-diff-exempt: .s22f-fbtn--on border-color — «открыт» = бренд-заливка канона aria-pressed, не рамка
+   visual-diff-exempt: .s22f-fbtn--on box-shadow — «открыт» = заливка, кольцо снято
+   visual-diff-exempt: .s22f-fbtn--active border-color — «есть фильтры» несёт бейдж-счётчик, не рамка
+   visual-diff-exempt: .s22f-fbtn--active color — то же, состояние на счётчике
+   visual-diff-exempt: .s22f-fbtn__n border — канон-бейдж в кнопке без разделительного кольца */
 
 .s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
 .s22f-pmuted { color: var(--muted); }
@@ -6596,10 +6622,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22-countrow { --a: var(--muted); }
 .s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
 .s22-count { color: var(--muted); white-space: nowrap; }
-@media (prefers-reduced-motion: reduce) {
-  .s22f-fbtn { transition: none; }
-  .s22f-fbtn:active { transform: none; }
-}
 
 /* Fork list chrome — SHARED by BOTH fork lists (hotels + activities) via the
    forkList.jsx components (ForkListSkeleton / ForkState / ForkPager). Kept here,
