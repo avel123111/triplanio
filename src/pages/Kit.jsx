@@ -209,7 +209,10 @@ const Specimen = ({ cls, label, children }) => (
  *    подписи под каждым образцом (требование Pavel) её слегка опускают, апрув Pavel
  *  @param {{ name: string, full?: boolean, children?: any }} p */
 const Sample = ({ name, full, children }) => (
-  <div className={`col col--g1${full ? '' : ' col--a-start'}`}>
+  // `full` — полноширинный объект (block-кнопка, seg--fill, плашка): `grow`
+  // (flex:1) заставляет обёртку занять всю строку контейнера, иначе она жалась
+  // по содержимому и `width:100%` ребёнка заполнял только её (ревью Codex).
+  <div className={`col col--g1${full ? ' grow' : ' col--a-start'}`}>
     {children}
     <span className="t-mono">{name}</span>
   </div>
