@@ -18,7 +18,8 @@
  */
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { TRIP_DOCUMENTS_INCLUDE } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
@@ -98,7 +99,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     setSaving(true); setErr('');
     try {
       await insertTripDocument({
-        trip_id:    tripId,
+        tripId,
         title:      title.trim(),
         notes:      notes.trim()   || null,
         // Store an ABSOLUTE url: a scheme-less "google.com" is a relative path
@@ -106,7 +107,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
         link_url:   normalizeExternalUrl(linkUrl),
         documents:  documents.length ? documents : null,
         visibility,
-        created_by: user?.id ?? null,
+        // `created_by` is stamped by the server from the JWT (TRIP-399) — not sent.
         // Author-name snapshot — mirrors chat_messages.user_full_name so the
         // uploader's name survives them leaving the trip (their trip_members /
         // active-profile row is gone). resolveAuthor() reads this as the fallback.
@@ -345,7 +346,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     setDeleting(true);
     let deleted;
     try {
-      deleted = await deleteTripDocument(doc.id); // false = nothing removed (RLS/gone), not success
+      deleted = await deleteTripDocument(tripId, doc.id); // false = already gone (404), not success
     } catch {
       setDeleting(false);
       toast({ description: t('doc.delete_failed'), variant: 'destructive' });
@@ -599,13 +600,15 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   const { data: docs = [], isLoading, error } = useQuery({
     queryKey: DOCS_KEY(tripId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('trip_documents')
-        .select('*')
-        .eq('trip_id', tripId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      // Read через единую дверь чтения (TRIP-399, §6): getTripDetails УЖЕ фильтрует
+      // под service_role `shared → всем, private → только автору` (правило
+      // `_can_access_trip_document`), поэтому прямого `.from('trip_documents')`
+      // здесь больше нет — только после его снятия шаг C сможет отозвать SELECT.
+      const data = await invokeGetTripDetails({ tripId, include: TRIP_DOCUMENTS_INCLUDE });
+      // getTripDetails не сортирует documents; список показываем новыми сверху.
+      return (data?.documents || []).slice().sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
     },
     enabled: !!tripId,
   });

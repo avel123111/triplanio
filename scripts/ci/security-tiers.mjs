@@ -312,6 +312,7 @@ export const DOORS = {
 
   // ── seam-двери: гейт в шве _shared/mutate.ts, сверяется с requires спецификации (TRIP-394) ──
   trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
+  trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип

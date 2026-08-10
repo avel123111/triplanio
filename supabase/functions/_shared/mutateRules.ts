@@ -56,7 +56,13 @@ export type Refusal = {
 
 /** Объявление колонки, которую МОЖЕТ прислать клиент. Кэпы зеркалят CHECK в БД. */
 export type FieldSpec = {
-  type: 'string' | 'number' | 'uuid' | 'date' | 'json';
+  /**
+   * `json` = jsonb-ОБЪЕКТ (map, напр. `fx_overrides` «валюта→курс»); `array` =
+   * jsonb-МАССИВ (напр. `documents`). Разведены НАМЕРЕННО: если бы `json` принимал
+   * и массив, `fx_overrides: []` прошёл бы и МОЛЧА сбросил курсы (массив вместо
+   * map) — регресс соседнего домена. Тип-гейт держит форму строго.
+   */
+  type: 'string' | 'number' | 'uuid' | 'date' | 'json' | 'array';
   /** Обязательна на ВСТАВКЕ. На обновлении частичная правка законна. */
   required?: boolean;
   /** Кэп длины строки — тот же, что в CHECK (иначе БД отдаст 500 вместо 400). */
@@ -73,11 +79,27 @@ export type FieldSpec = {
    * нему автотраты, и две категории с одним ключом развели бы их случайно.
    */
   clearOnly?: boolean;
+  /**
+   * Кастомная проверка формата ПОСЛЕ встроенных (тип/кэп/enum), ДАННЫМИ домена, а
+   * не кодом шва (TRIP-399, приёмка блока 2). Движок лишь ЗОВЁТ хук — regex для
+   * `link_url` и обход `documents[].file_url` живут в спецификации ресурса, шов
+   * их не знает. Заведено под CHECK, которых нельзя выразить `type/max/min/enum`:
+   * без него нарушение долетает до DB-CHECK и возвращается сырым 500 вместо
+   * внятного 400 (регресс честных ответов, TRIP-378). Для `null` НЕ зовётся —
+   * это уже решает `nullable`. Универсально: любое поле с форматом.
+   */
+  validate?: (value: unknown) => Refusal | null;
 };
 
 export type ActionSpec = {
-  /** `upsert` = вставка без id / обновление по id. `delete` = удаление по id. */
-  op: 'upsert' | 'delete';
+  /**
+   * `upsert` = вставка без id / обновление по id. `insert` = ТОЛЬКО вставка
+   * (create-only): присланный id игнорируется, никакого UPDATE — append-only
+   * ресурс (`trip_documents`: редактирования дока с клиента нет, а upsert с
+   * чужим id правил бы чужую SHARED-строку, регресс TRIP-118). `delete` =
+   * удаление по id. Универсально: любой append-only ресурс берёт `insert`.
+   */
+  op: 'upsert' | 'insert' | 'delete';
   table: string;
   /** Имена требований; вычисляет их шов (`mutate.ts`), а не эта половина. */
   requires: readonly string[];
@@ -158,7 +180,12 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
     case 'date':
       return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
     case 'json':
+      // jsonb-ОБЪЕКТ (map): НЕ массив. `fx_overrides: []` обязан отбиться, иначе
+      // массив молча заменил бы map «валюта→курс» и сбросил курсы (TRIP-399).
       return typeof value === 'object' && value !== null && !Array.isArray(value);
+    case 'array':
+      // jsonb-МАССИВ (`documents`). Элементы проверяет `validate`-хук поля.
+      return Array.isArray(value);
   }
 }
 
@@ -180,9 +207,16 @@ export function validateInput(
   const fields = action.fields ?? {};
   const values: Record<string, unknown> = {};
 
+  // `op:'insert'` — ВСЕГДА вставка (create-only), поэтому обязательность строгая
+  // независимо от `isInsert` из шва: `mutate.ts` считает `isInsert` по присланному
+  // id, а хостовый клиент мог прислать инертный id — тогда пропущенное
+  // обязательное поле проскочило бы к DB NOT NULL и вернулось сырым 500 вместо
+  // 400 (TRIP-399). id остаётся инертным (его игнорирует `buildPlan`).
+  const insert = isInsert || action.op === 'insert';
+
   for (const [name, spec] of Object.entries(fields)) {
     if (!Object.prototype.hasOwnProperty.call(input, name)) {
-      if (isInsert && spec.required) return bad(`Field "${name}" is required`);
+      if (insert && spec.required) return bad(`Field "${name}" is required`);
       continue;
     }
     const value = input[name];
@@ -201,6 +235,11 @@ export function validateInput(
     }
     if (spec.enum && !spec.enum.includes(value as string)) {
       return bad(`Field "${name}" must be one of: ${spec.enum.join(', ')}`);
+    }
+    // Доменная проверка формата — ПОСЛЕ встроенных, только на не-null значении.
+    if (spec.validate) {
+      const refusal = spec.validate(value);
+      if (refusal) return refusal;
     }
     values[name] = value;
   }
@@ -230,19 +269,22 @@ export function buildPlan(
     return { op: 'delete', table, match: { id: ctx.targetId, ...scoped } };
   }
 
-  // Синглтон на скоуп: строку гарантирует `prepareRpc`, адресует её сам скоуп.
-  if (action.targetBy === 'scope') {
-    return { op: 'update', table, values: { ...ctx.values }, match: { ...scoped } };
-  }
-
-  if (ctx.targetId) {
-    // Значения БЕЗ `forcedOnInsert`: `created_by` — авторство, а не актор правки.
-    return {
-      op: 'update',
-      table,
-      values: { ...ctx.values },
-      match: { id: ctx.targetId, ...scoped },
-    };
+  // Обновление доступно ТОЛЬКО `upsert`. `op:'insert'` (create-only) проходит
+  // мимо обеих update-веток — присланный id инертен, всегда вставка (TRIP-399).
+  if (action.op === 'upsert') {
+    // Синглтон на скоуп: строку гарантирует `prepareRpc`, адресует её сам скоуп.
+    if (action.targetBy === 'scope') {
+      return { op: 'update', table, values: { ...ctx.values }, match: { ...scoped } };
+    }
+    if (ctx.targetId) {
+      // Значения БЕЗ `forcedOnInsert`: `created_by` — авторство, а не актор правки.
+      return {
+        op: 'update',
+        table,
+        values: { ...ctx.values },
+        match: { id: ctx.targetId, ...scoped },
+      };
+    }
   }
 
   const forced: Record<string, unknown> = {};
@@ -254,6 +296,7 @@ export function buildPlan(
 }
 
 import { TRIP_BUDGET } from './resources/tripBudget.ts';
+import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
 
 /**
  * Все ресурсы записи. Реестр существует не ради диспетчеризации (её делает сама
@@ -262,4 +305,5 @@ import { TRIP_BUDGET } from './resources/tripBudget.ts';
  */
 export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP_BUDGET.name]: TRIP_BUDGET,
+  [TRIP_DOCUMENT.name]: TRIP_DOCUMENT,
 };

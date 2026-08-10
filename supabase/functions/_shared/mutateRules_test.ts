@@ -287,6 +287,231 @@ Deno.test('★ синглтон адресуется СКОУПОМ, а прис
   assertEquals(plan.match, { trip_id: TRIP });
 });
 
+// ── op:'insert' — create-only (TRIP-399, приёмка блока 2) ────────────────────
+
+const INSERT_ONLY: ActionSpec = {
+  op: 'insert',
+  table: 'things',
+  requires: ['editor'],
+  fields: { title: { type: 'string', required: true, max: 300 } },
+  forcedOnInsert: { created_by: '@actor' },
+};
+
+Deno.test('★ op:insert ВСЕГДА вставка — присланный id не превращает её в UPDATE', () => {
+  // Create-only: клиент, приславший чужой id, не должен уехать в UPDATE — иначе
+  // редактор правил бы чужую SHARED-строку через её id (guardRow пускает shared
+  // любому editor) = регресс TRIP-118. Ветка insert стоит ДО разбора targetId,
+  // поэтому присланный id инертен.
+  const plan = buildPlan(SAMPLE, INSERT_ONLY, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: 'someone-elses-row',
+    values: { title: 't' },
+  });
+  assert(plan.op === 'insert', `op:insert обязан строить insert, получили ${plan.op}`);
+  assertEquals(plan.values, { title: 't', trip_id: TRIP, created_by: ACTOR });
+});
+
+Deno.test('op:insert без id — обычная вставка со скоупом и сервер-колонками', () => {
+  const plan = buildPlan(SAMPLE, INSERT_ONLY, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: null,
+    values: { title: 't' },
+  });
+  assert(plan.op === 'insert');
+  assertEquals(plan.values.created_by, ACTOR);
+  assertEquals(plan.values.trip_id, TRIP);
+});
+
+// ── validate-хук поля (TRIP-399) ─────────────────────────────────────────────
+
+const WITH_VALIDATE: ActionSpec = {
+  op: 'insert',
+  table: 'things',
+  requires: [],
+  fields: {
+    link: {
+      type: 'string',
+      nullable: true,
+      validate: (v) =>
+        typeof v === 'string' && /^https?:\/\//i.test(v)
+          ? null
+          : { status: 400, code: 'INVALID_INPUT', message: 'link must be http(s)' },
+    },
+  },
+};
+
+Deno.test('★ validate-хук отвергает невалидное значение (внятный 400, не сырой 500 БД)', () => {
+  // Без хука кривой URL долетел бы до DB-CHECK и вернулся 500 с текстом Postgres
+  // (регресс честных ответов, TRIP-378). Хук зеркалит CHECK и отвечает 400.
+  const r = validateInput(WITH_VALIDATE, { link: 'javascript:alert(1)' }, { isInsert: true });
+  assert('status' in r && r.status === 400, 'кривой URL обязан отбиться 400');
+});
+
+Deno.test('validate-хук пропускает валидное значение', () => {
+  const ok = validateInput(WITH_VALIDATE, { link: 'https://x.test/a' }, { isInsert: true });
+  assert(!('status' in ok));
+  assertEquals(ok.values, { link: 'https://x.test/a' });
+});
+
+Deno.test('validate-хук НЕ зовётся для null (nullable гасит раньше)', () => {
+  // Иначе каждый хук обязан был бы вручную пропускать null — nullable уже решает.
+  const ok = validateInput(WITH_VALIDATE, { link: null }, { isInsert: true });
+  assert(!('status' in ok));
+  assertEquals(ok.values, { link: null });
+});
+
+// ── jsonb-МАССИВ доезжает до хука (TRIP-399) ─────────────────────────────────
+
+const WITH_ARRAY: ActionSpec = {
+  op: 'insert',
+  table: 'things',
+  requires: [],
+  fields: {
+    items: {
+      type: 'array',
+      nullable: true,
+      validate: (v) =>
+        Array.isArray(v) &&
+          v.every((x) => typeof (x as { file_url?: unknown })?.file_url === 'string' &&
+            /^https?:\/\//i.test((x as { file_url: string }).file_url))
+          ? null
+          : { status: 400, code: 'INVALID_INPUT', message: 'bad items' },
+    },
+  },
+};
+
+const BUDGET_SETTINGS: ActionSpec = {
+  op: 'upsert',
+  table: 'trip_budgets',
+  requires: [],
+  fields: { fx_overrides: { type: 'json' } },
+};
+
+Deno.test('type:array принимает jsonb-МАССИВ (documents доезжает до хука)', () => {
+  const ok = validateInput(WITH_ARRAY, { items: [{ file_url: 'https://a.test/f' }] }, {
+    isInsert: true,
+  });
+  assert(!('status' in ok), 'массив объектов обязан пройти тип-гейт');
+});
+
+Deno.test('type:array отвергает ОБЪЕКТ (не спутать map и список)', () => {
+  const r = validateInput(WITH_ARRAY, { items: {} }, { isInsert: true });
+  assert('status' in r && r.status === 400);
+});
+
+Deno.test('type:array отвергает строку', () => {
+  const r = validateInput(WITH_ARRAY, { items: 'nope' }, { isInsert: true });
+  assert('status' in r && r.status === 400);
+});
+
+Deno.test('★ type:array — сам ТИП-ГЕЙТ отвергает объект (без validate-хука)', () => {
+  // Пинит строгость типа отдельно от хука: у поля без validate объект обязан
+  // отбиться самим тип-гейтом, иначе array и json неразличимы.
+  const noValidate: ActionSpec = {
+    op: 'insert',
+    table: 'things',
+    requires: [],
+    fields: { xs: { type: 'array', nullable: true } },
+  };
+  assert('status' in validateInput(noValidate, { xs: {} }, { isInsert: true }), 'объект → 400');
+  assert(!('status' in validateInput(noValidate, { xs: [1, 2] }, { isInsert: true })), 'массив → ok');
+});
+
+Deno.test('type:json принимает ОБЪЕКТ (fx_overrides)', () => {
+  const ok = validateInput(BUDGET_SETTINGS, { fx_overrides: { EUR: 1.1 } }, { isInsert: false });
+  assert(!('status' in ok));
+});
+
+Deno.test('★ type:json ОТВЕРГАЕТ массив (fx_overrides: [] не сбросит курсы — регресс соседнего домена)', () => {
+  // Если бы json принимал массив, `fx_overrides: []` прошёл бы и молча заменил
+  // map «валюта→курс» пустым массивом. Тип-гейт обязан это отбить.
+  const r = validateInput(BUDGET_SETTINGS, { fx_overrides: [] }, { isInsert: false });
+  assert('status' in r && r.status === 400, 'массив в json-поле обязан отбиться');
+});
+
+// ── op:insert валидируется как ВСТАВКА даже при инертном id (TRIP-399) ────────
+
+Deno.test('★ op:insert требует обязательные поля даже когда isInsert=false (инертный id)', () => {
+  // Шов считает isInsert по присланному id; op:insert его игнорирует, но
+  // обязательность обязана держаться, иначе пропуск title = сырой 500 от DB.
+  const r = validateInput(INSERT_ONLY, {}, { isInsert: false });
+  assert('status' in r && r.status === 400, 'op:insert без title обязан вернуть 400');
+  assert(r.message.includes('title'), `в сообщении нет имени поля: ${r.message}`);
+});
+
+Deno.test('upsert при isInsert=false обязательность НЕ требует (частичная правка)', () => {
+  // Контроль: у обычного upsert-обновления частичная правка законна — фикс ②
+  // не должен захватить update-режим.
+  const r = validateInput(thing, { notes: 'x' }, { isInsert: false });
+  assert(!('status' in r), 'частичная правка upsert не должна отвергаться');
+});
+
+// ── trip-document: спецификация домена (TRIP-399) ────────────────────────────
+
+import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
+
+const DOC = TRIP_DOCUMENT.actions.doc;
+const DOC_DELETE = TRIP_DOCUMENT.actions['doc/delete'];
+
+Deno.test('★ doc — create-only: присланный id игнорируется (регресс TRIP-118)', () => {
+  const plan = buildPlan(TRIP_DOCUMENT, DOC, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: 'a-shared-doc-of-another-user',
+    values: { title: 't', visibility: 'private' },
+  });
+  assert(plan.op === 'insert', 'создание дока не должно уметь UPDATE');
+  assertEquals(plan.values.created_by, ACTOR, 'created_by ставит сервер, не клиент');
+  assertEquals(plan.values.trip_id, TRIP);
+});
+
+Deno.test('★ guardRow: чужой ЛИЧНЫЙ док удалить нельзя', () => {
+  const r = DOC_DELETE.guardRow!({ visibility: 'private', created_by: 'someone-else' }, ACTOR);
+  assert(r && r.status === 403 && r.code === 'DOC_PRIVATE_NOT_OWNER', `ожидался 403, ${JSON.stringify(r)}`);
+});
+
+Deno.test('guardRow: СВОЙ личный док удалить можно', () => {
+  assertEquals(DOC_DELETE.guardRow!({ visibility: 'private', created_by: ACTOR }, ACTOR), null);
+});
+
+Deno.test('guardRow: ОБЩИЙ док удаляет любой редактор', () => {
+  assertEquals(DOC_DELETE.guardRow!({ visibility: 'shared', created_by: 'someone-else' }, ACTOR), null);
+});
+
+Deno.test('★ link_url без http(s)-схемы отвергается (зеркало CHECK td_link_url_scheme)', () => {
+  const r = validateInput(DOC, { title: 't', link_url: 'javascript:alert(1)' }, { isInsert: true });
+  assert('status' in r && r.status === 400, 'javascript: обязан отбиться');
+  const ok = validateInput(DOC, { title: 't', link_url: 'https://a.test/x' }, { isInsert: true });
+  assert(!('status' in ok), 'валидный https обязан пройти');
+});
+
+Deno.test('★ documents[].file_url без http(s) отвергается (антивзлом TRIP-281)', () => {
+  const bad = validateInput(DOC, {
+    title: 't',
+    documents: [{ file_url: 'https://ok.test/a' }, { file_url: 'javascript:evil' }],
+  }, { isInsert: true });
+  assert('status' in bad && bad.status === 400, 'кривой file_url обязан отбиться');
+  const ok = validateInput(DOC, {
+    title: 't',
+    documents: [{ file_url: 'https://ok.test/a', file_name: 'a.pdf' }],
+  }, { isInsert: true });
+  assert(!('status' in ok), 'валидный массив файлов обязан пройти');
+});
+
+Deno.test('documents — ОБЪЕКТ вместо массива отвергается (type:array)', () => {
+  const r = validateInput(DOC, { title: 't', documents: {} }, { isInsert: true });
+  assert('status' in r && r.status === 400, 'documents: {} обязан отбиться');
+});
+
+Deno.test('title обязателен на создании, кэп 300 = CHECK', () => {
+  const miss = validateInput(DOC, { visibility: 'shared' }, { isInsert: true });
+  assert('status' in miss, 'без title создание отбивается');
+  const over = validateInput(DOC, { title: 'x'.repeat(301) }, { isInsert: true });
+  assert('status' in over && over.status === 400, 'title 301 отбивается');
+});
+
 // ── Сквозная проверка реестра ────────────────────────────────────────────────
 
 Deno.test('★ ни одно действие реестра не строит update/delete без скоупа', () => {
