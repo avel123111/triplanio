@@ -194,8 +194,9 @@ const ARRAYS = [
   { name: 'TOAST_TONES', family: 'toast' },
   { name: 'CARD_MODS', family: 'card' },
   { name: 'DLG_SIZES', family: 'dlg' },
-  // Поле (декорации эмитит сам <Input>), группа, ряд:
-  { name: 'INPUT_AFFIX', family: 'input-affix' },
+  // Поле: группа-валюта и ряд «поле + контрол». Декорации input-affix--ic/--end
+  // массива-драйвера НЕ имеют — их class эмитит сам <Input>, «показано» им даёт
+  // shownByInput() (эмиссия + образец), а не count-only запись (см. P2-1 ниже).
   { name: 'INPUT_UNIT', family: 'input-unit' },
   { name: 'FIELD_ROW', family: 'field-row' },
   // Прочие одиночные обличья:
@@ -221,10 +222,41 @@ const LAYOUT_STEPS = () => {
   return shown;
 };
 
+/** ★ P2-1 (ревью Codex): input-affix--ic/--end — единственные обличья под
+ *  наблюдением, у которых НЕТ массива-драйвера и НЕТ литерала className в
+ *  разметке: их class склеивает сам <Input> по пропу (icon → --ic; loading без
+ *  icon → --end). Прежде их «показывали» ДВА текстовых пути, и оба обходятся
+ *  (Г7, «счёт обходим»): запись в ARRAYS и полный литерал имени в подписи-строке
+ *  TX (его ловил `KIT.includes`). Ни один не связан с рендером — удалят образец
+ *  или <Input> перестанет эмитить модификатор, а все тесты останутся зелёными.
+ *
+ *  Здесь «показано» ЗАРАБАТЫВАЕТСЯ двумя фактами разом, оба из исходников (тем
+ *  же приёмом, что emittedByComponents):
+ *    1) Input.jsx действительно эмитит класс — иначе образец рисует пустышку;
+ *    2) на витрине есть <Input>, который этот класс включает (icon / loading).
+ *  Отвалился любой — обличье не заработано, и НАПРАВЛЕНИЕ 1 краснеет (семья
+ *  `input` каноничная → input-affix--* под наблюдением VARIANTS).
+ *
+ *  ⚠️ Что этим ПЕРЕСТАЛИ проверять относительно старой записи в ARRAYS: ничего.
+ *  Направление 2 «класс есть в CSS» для члена VARIANTS тавтологично (VARIANTS и
+ *  берутся из declaredClasses), а тут проверка СТРОЖЕ — класс не просто
+ *  объявлен, а реально эмитится живым <Input> под показанным образцом. */
+function shownByInput() {
+  const src = read('../design/Input.jsx');
+  const attrs = [...KIT.matchAll(/<Input\b([^>]*)>/g)].map((m) => m[1]);
+  const hasIcon = (a) => /\bicon\s*=/.test(a);
+  const shown = new Set();
+  if (/input-affix--ic/.test(src) && attrs.some(hasIcon)) shown.add('input-affix--ic');
+  if (/input-affix--end/.test(src) && attrs.some((a) => /\bloading\b/.test(a) && !hasIcon(a)))
+    shown.add('input-affix--end');
+  return shown;
+}
+
 function shownOnKit() {
   const shown = new Set(LAYOUT_STEPS());
   for (const { name, family } of ARRAYS) for (const v of valuesOf(name)) shown.add(`${family}--${v}`);
   for (const c of VARIANTS) if (KIT.includes(c)) shown.add(c);
+  for (const c of shownByInput()) shown.add(c);
   return shown;
 }
 

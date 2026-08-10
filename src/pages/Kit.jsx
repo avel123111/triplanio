@@ -154,10 +154,17 @@ const TX = {
   timeLabel: 'Колонка времени переезда (вылет/прибытие)',
   brandLabel: 'Партнёрская кнопка: заливка бренда (--bg) + белый чип-лого',
   fieldRowLabel: 'Ряд «поле + компактный контрол» (7fr / 3fr)',
-  inputIcon: 'Иконка слева (input-affix--ic)',
-  inputLoad: 'Кольцо справа (input-affix--end)',
+  // Подписи по ПРОПУ, а не по классу: class эмитит сам <Input>, и полный литерал
+  // имени в подписи ложно засчитывался как «показано» (KIT.includes) в обход
+  // рендера. Соответствие проп → декорация держит shownByInput() в Kit.test.
+  inputIcon: 'Иконка слева (проп icon)',
+  inputLoad: 'Кольцо справа (проп loading)',
   inputUnit: 'Валюта-префикс группы (input-unit--lead)',
   axisLabel: 'Оси выравнивания и потока (кроме зазора)',
+  // Строки списка для демо .row--div / .row--flush (ряд в карточке настроек).
+  listA: 'Уведомления',
+  listB: 'Язык',
+  listC: 'Тема',
   toastTitle: 'Готово',
   toastBody: 'Изменения сохранены.',
   brandName: 'Найти на Booking',
@@ -273,6 +280,80 @@ const Section = ({ title, children }) => (
     <div className="col col--g8">{children}</div>
   </Card>
 );
+
+/** Демо ОДНОЙ оси ряда своим контентом. Общий набор плиток делал три оси
+ *  неотличимыми от базового ряда (ревью Codex): у `j-between` `.grow` последним
+ *  ребёнком съедал всё свободное место (распределять нечего), `inline`
+ *  растягивался родителем-колонкой, у `div` разделитель снят как у `:last-child`
+ *  (единственный ребёнок = последний). Каждая ось получает контент, обнажающий
+ *  ИМЕННО её поведение. Имя класса собирается составным (`row--${ax}`) — полного
+ *  литерала в разметке нет (правило 2 витрины, как у остальных примитивов).
+ *  @param {{ ax: string }} p */
+const RowAxisDemo = ({ ax }) => {
+  const rowCls = `row row--g3 row--${ax}`;
+  switch (ax) {
+    case 'a-baseline':
+      // Разный кегль садится на общую БАЗОВУЮ линию (дефолт .row — по центру).
+      return (
+        <div className={rowCls}>
+          <span className="t-display">Ag</span>
+          <span className="t-heading">Ag</span>
+          <span className="t-body">Ag</span>
+        </div>
+      );
+    case 'inline':
+      // Два inline-flex ряда встают в ОДНУ строку; при flex легли бы столбиком.
+      // Родитель — блочный div: колонка (align-items:stretch) растянула бы ряд на
+      // всю ширину, и inline-flex был бы неотличим от flex.
+      return (
+        <div>
+          <span className={rowCls}>
+            <span className="tile tile--sm tile--brand" />
+            <span className="tile tile--sm tile--brand" />
+          </span>{' '}
+          <span className={rowCls}>
+            <span className="tile tile--sm tile--brand" />
+            <span className="tile tile--sm tile--brand" />
+          </span>
+        </div>
+      );
+    case 'j-between':
+      // БЕЗ .grow: три плитки расходятся к краям ряда (space-between).
+      return (
+        <div className={rowCls}>
+          <span className="tile tile--sm tile--brand" />
+          <span className="tile tile--brand" />
+          <span className="tile tile--lg tile--brand" />
+        </div>
+      );
+    case 'div':
+      // Ряды-строки списка в карточке: разделители видны, у последнего снят.
+      return (
+        <div className="card">
+          {[TX.listA, TX.listB, TX.listC].map((label) => (
+            <div key={label} className={rowCls}>
+              <span className="grow t-body">{label}</span>
+              <span className="tile tile--sm tile--brand" />
+            </div>
+          ))}
+        </div>
+      );
+    case 'flush':
+      // Тот же объект без отбивки и границы: строки прижаты к краям карточки.
+      return (
+        <div className="card">
+          {[TX.listA, TX.listB].map((label) => (
+            <div key={label} className={rowCls}>
+              <span className="grow t-body">{label}</span>
+              <span className="tile tile--sm tile--brand" />
+            </div>
+          ))}
+        </div>
+      );
+    default:
+      return <div className={rowCls} />;
+  }
+};
 
 /** Force-state харнесс: переключатель (пилюли `Chip`, выбор = aria-pressed)
  *  флипает ОДИН образец через состояния, которые примитив реально поддерживает.
@@ -429,9 +510,9 @@ const TOAST_TONES = ['error', 'info', 'success', 'warning'];
 const CARD_MODS = ['danger', 'flush'];
 /** @type {Array<'sm'|'wide'>} — размер диалога (проп size у <Dialog>). */
 const DLG_SIZES = ['sm', 'wide'];
-// input-affix--ic / --end эмитит сам <Input> (icon / loading) — массив здесь
-// только для счёта; рендерятся настоящие поля ниже.
-const INPUT_AFFIX = ['ic', 'end'];
+// input-affix--ic / --end эмитит сам <Input> (icon / loading). Массива-драйвера
+// у них НЕТ намеренно: «показано» зарабатывается рендером живого поля, это
+// держит shownByInput() в Kit.test (эмиссия из Input.jsx + образец на витрине).
 const INPUT_UNIT = ['lead'];
 const FIELD_ROW = ['aside'];
 const SHEET_ROW = ['danger'];
@@ -497,10 +578,12 @@ export default function Kit() {
         {/* Force-state харнесс: наведение/нажатие/фокус зеркалом под data-force
             (Kit.css, не прод), disabled/loading — пропами. Один и тот же элемент
             флипается переключателем, а не рисуется заново.
-            floor-exempt: dsshare +10 — витрина: 39 образцов раскладки/плитки/
+            floor-exempt: dsshare +29 — витрина: образцы раскладки/плитки/
               спиннера/тоста/поверхностей/поля рисуются СЫРОЙ разметкой (у этих
-              классов компонента нет), доля «собрано из ДС» падает по построению
-              (TRIP-344 PR-2, гашение NOT_SHOWN образцами, апрув Pavel).
+              классов компонента нет), доля «собрано из ДС» падает по построению;
+              +19 к прежним 10 — оси ряда получили СВОЙ контент, обнажающий их
+              поведение (ревью Codex P2-2: общий набор плиток делал j-between/
+              inline/div неотличимыми от базы), апрув Pavel.
             floor-exempt: inline +3 — витрина: три несущих инлайна образцов
               (заливка партнёрской кнопки --bg, подложка белого кольца аватара,
               высота демо оси col--j-center), апрув Pavel */}
@@ -1052,12 +1135,7 @@ export default function Kit() {
           {ROW_AXES.map((ax) => (
             <div key={ax} className="col col--g2">
               <span className="t-micro">{`.row--${ax}`}</span>
-              <div className={`row row--g3 row--${ax}`}>
-                <span className="tile tile--sm tile--brand" />
-                <span className="tile tile--brand" />
-                <span className="tile tile--lg tile--brand" />
-                <span className="grow t-meta">grow</span>
-              </div>
+              <RowAxisDemo ax={ax} />
             </div>
           ))}
           <div className="row row--g4 row--wrap">
