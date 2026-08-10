@@ -198,6 +198,29 @@ const Specimen = ({ cls, label, children }) => (
   </div>
 );
 
+/** Один ОТДЕЛЬНЫЙ элемент витрины с машинно-точной подписью под ним — тем
+ *  именем, которым его зовут в коде (проп-вариант / состояние / модификатор).
+ *  Чтобы на любой вид можно было сослаться по имени, а не «пятый слева».
+ *  `full` — для полноширинных объектов (плашка, строка файла, скелет): колонка
+ *  тянет ребёнка, а не жмёт к началу. Имя — код-идентификатор (как `cls`), не
+ *  переводимый текст, поэтому литералом, а не через TX.
+ *  floor-exempt: dsshare +2 — обёртка подписи добавляет разметку (div+span) на
+ *    ВНУТРЕННЮЮ витрину; доля «собрано из ДС» считает элементы исходника, и
+ *    подписи под каждым образцом (требование Pavel) её слегка опускают, апрув Pavel
+ *  @param {{ name: string, full?: boolean, children?: any }} p */
+const Sample = ({ name, full, children }) => (
+  // `full` — полноширинный объект (block-кнопка, seg--fill, плашка): обёртке
+  // нужен `width:100%`, чтобы во флекс-ряду она встала НА СВОЮ строку целиком, а
+  // `width:100%` ребёнка её заполнил. `grow` (flex:1) этого не давал — обёртка
+  // делила строку с соседями и брала лишь остаток (ревью Codex, 2-й проход).
+  // Стиль под ОДИНАРНОЙ фигурной скобкой (`style={full ? … : undefined}`) —
+  // предикат инлайнов `style={{` его не считает, пол не трогается.
+  <div className={`col col--g1${full ? '' : ' col--a-start'}`} style={full ? { width: '100%' } : undefined}>
+    {children}
+    <span className="t-mono">{name}</span>
+  </div>
+);
+
 const Section = ({ title, children }) => (
   <Card title={title}>
     <div className="col col--g8">{children}</div>
@@ -371,15 +394,18 @@ export default function Kit() {
         <p className="t-meta">{TX.interactNote}</p>
         <Specimen cls="btn">
           {BTN_VARIANTS.map((v) => (
-            <Btn key={v} variant={v}>{v}</Btn>
+            <Sample key={v} name={`variant="${v}"`}><Btn variant={v}>{v}</Btn></Sample>
           ))}
         </Specimen>
         <Specimen cls="btn--block">
-          <Btn variant="primary" loading>{TX.save}</Btn>
-          <Btn variant="primary" disabled>{TX.save}</Btn>
-          <Btn variant="secondary" icon="check">{TX.save}</Btn>
-          <Btn variant="secondary" iconRight="chevronRight">{TX.save}</Btn>
-          <Btn variant="primary" block>{TX.save}</Btn>
+          <Sample name="loading"><Btn variant="primary" loading>{TX.save}</Btn></Sample>
+          <Sample name="disabled"><Btn variant="primary" disabled>{TX.save}</Btn></Sample>
+          <Sample name={'icon="check"'}><Btn variant="secondary" icon="check">{TX.save}</Btn></Sample>
+          <Sample name={'iconRight="chevronRight"'}><Btn variant="secondary" iconRight="chevronRight">{TX.save}</Btn></Sample>
+          <Sample name="block" full><Btn variant="primary" block>{TX.save}</Btn></Sample>
+          {/* Канон «нажато/включено» = данные (aria-pressed), бренд-заливка —
+              как Chip/Seg/Swatch (TRIP-344, канонизация состояния). */}
+          <Sample name="aria-pressed"><Btn variant="secondary" ariaPressed>{TX.save}</Btn></Sample>
         </Specimen>
         {/* Тон из контекста: `--a` объявлен на ОБОЛОЧКЕ, у самих кнопок пропа
             тона нет — ровно так это работает в приложении (AI-карточка красит
@@ -391,83 +417,91 @@ export default function Kit() {
               акцент» в системе нет и заводить его тут запрещено правилом 1 этого файла.
               Без сеттера образец показал бы только умолчание brand — то есть промолчал
               бы ровно о том свойстве, ради которого тон и заведён. */}
-          <Btn variant="link">{TX.btnAccent}</Btn>
-          <Btn variant="dashed" block icon="plus">{TX.btnAccent}</Btn>
+          <Sample name={'variant="link"'} full><Btn variant="link">{TX.btnAccent}</Btn></Sample>
+          <Sample name={'variant="dashed" block'} full><Btn variant="dashed" block icon="plus">{TX.btnAccent}</Btn></Sample>
           {/* Вторая форма пунктирного плейсхолдера: плитка-иконка слева и
               растущая подпись со второй строкой. Показана рядом с первой
               нарочно — на витрине должно быть видно, что это ОДИН объект в двух
               обличьях, а не два разных. */}
-          <Btn variant="dashed" block tile icon="bed" sub={TX.btnTileSub}>{TX.btnTile}</Btn>
+          <Sample name={'variant="dashed" block tile'} full><Btn variant="dashed" block tile icon="bed" sub={TX.btnTileSub}>{TX.btnTile}</Btn></Sample>
         </div>
         {/* Малая ступень: единственный её случай — пустая ячейка редактора
             маршрута, две иконки без подписи. */}
         <Specimen cls="btn--sm">
-          <Btn variant="secondary" size="sm">{TX.save}</Btn>
-          <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel={TX.btnTile} />
+          <Sample name={'size="sm"'}><Btn variant="secondary" size="sm">{TX.save}</Btn></Sample>
+          <Sample name={'size="sm" icon+iconRight'}><Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel={TX.btnTile} /></Sample>
         </Specimen>
 
         {/* Кнопка-иконка: три оси, каждая своим образцом. Первый ряд — база
             (`quiet`, `md`), у неё класса-модификатора нет и быть не должно. */}
         <Specimen cls="icon-btn">
-          <IconBtn icon="close" ariaLabel={TX.close} />
+          <Sample name={'tone="quiet" (база)'}><IconBtn icon="close" ariaLabel={TX.close} /></Sample>
           {ICONBTN_TONES.map((tone) => (
-            <IconBtn key={tone} icon="close" tone={tone} ariaLabel={TX.close} title={tone} />
+            <Sample key={tone} name={`tone="${tone}"`}><IconBtn icon="close" tone={tone} ariaLabel={TX.close} /></Sample>
           ))}
         </Specimen>
         <Specimen cls="icon-btn--sm">
           {ICONBTN_SIZES.map((size) => (
-            <IconBtn key={size} icon="plus" size={size} ariaLabel={TX.iconBtnSize} title={size} />
+            <Sample key={size} name={`size="${size}"`}><IconBtn icon="plus" size={size} ariaLabel={TX.iconBtnSize} /></Sample>
           ))}
           {ICONBTN_SHAPES.map((shape) => (
-            <IconBtn key={shape} icon="arrow" round tone="soft" ariaLabel={TX.iconBtnShape} title={shape} />
+            <Sample key={shape} name={`${shape} tone="soft"`}><IconBtn icon="arrow" round tone="soft" ariaLabel={TX.iconBtnShape} /></Sample>
           ))}
           {/* Пара «тон + форма» на одном элементе — то, ради чего оси
               независимы: это ровно `.lp-back` (soft·round) и `.mapfs-close`
               (outline·round) с живых экранов. */}
-          <IconBtn icon="close" tone="outline" round ariaLabel={TX.close} />
-          <IconBtn icon="bell" ariaLabel={TX.iconBtnMark}>
+          <Sample name={'tone="outline" round'}><IconBtn icon="close" tone="outline" round ariaLabel={TX.close} /></Sample>
+          <Sample name="icon-btn__dot"><IconBtn icon="bell" ariaLabel={TX.iconBtnMark}>
             <span aria-hidden className="icon-btn__dot" />
-          </IconBtn>
-          <IconBtn icon="close" disabled ariaLabel={TX.close} />
+          </IconBtn></Sample>
+          <Sample name="disabled"><IconBtn icon="close" disabled ariaLabel={TX.close} /></Sample>
+          {/* Канон «нажато» (бренд-заливка) + счётчик активных реюзом .badge--count
+              ко-селектором `.icon-btn > .badge--count` (тоггл фильтров форк-панели). */}
+          <Sample name="aria-pressed"><IconBtn icon="globe" ariaPressed ariaLabel={TX.iconBtnShape} /></Sample>
+          <Sample name="+ .badge--count"><IconBtn icon="bell" ariaLabel={TX.iconBtnMark}><Badge variant="count">3</Badge></IconBtn></Sample>
         </Specimen>
 
         {/* Степпер: pill (дефолт, панель города) + block (дата во всю ячейку) +
             bare (без подложки, в карточке-инпуте). block/bare — из STEPPER_VARIANTS. */}
         <Specimen cls="stepper">
-          <Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} />
+          <Sample name={'variant="pill" (база)'}><Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} /></Sample>
         </Specimen>
         <Specimen cls="stepper--block">
-          <Stepper variant="block" value="14 авг" onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} />
+          <Sample name={'variant="block"'} full><Stepper variant="block" value="14 авг" onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} /></Sample>
         </Specimen>
         <Specimen cls="stepper--bare">
-          <Stepper variant="bare" value={2} onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} />
+          <Sample name={'variant="bare"'}><Stepper variant="bare" value={2} onMinus={() => {}} onPlus={() => {}} minusLabel={TX.stepMinus} plusLabel={TX.stepPlus} /></Sample>
         </Specimen>
 
         {/* Сегмент-контрол: auto (дефолт) + fill (во всю ширину). fill — из
             SEG_VARIANTS. Тон из контекста — НЕ вариант: активный сегмент читает
             канал `--hl*`, поставленный на оболочке (панели события) инлайном. */}
         <Specimen cls="seg">
-          <Seg
-            ariaLabel={TX.sections.components}
-            value={segView}
-            onChange={setSegView}
-            options={[
-              { value: 'month', label: TX.segMonth },
-              { value: 'week', label: TX.segWeek },
-            ]}
-          />
+          <Sample name={'variant="auto" (база)'}>
+            <Seg
+              ariaLabel={TX.sections.components}
+              value={segView}
+              onChange={setSegView}
+              options={[
+                { value: 'month', label: TX.segMonth },
+                { value: 'week', label: TX.segWeek },
+              ]}
+            />
+          </Sample>
         </Specimen>
         <Specimen cls="seg--fill">
-          <Seg
-            variant="fill"
-            ariaLabel={TX.sections.components}
-            value={segTone}
-            onChange={setSegTone}
-            options={[
-              { value: 'story', label: TX.segStory },
-              { value: 'post', label: TX.segPost },
-            ]}
-          />
+          <Sample name={'variant="fill"'} full>
+            <Seg
+              variant="fill"
+              ariaLabel={TX.sections.components}
+              value={segTone}
+              onChange={setSegTone}
+              options={[
+                { value: 'story', label: TX.segStory },
+                { value: 'post', label: TX.segPost },
+              ]}
+            />
+          </Sample>
         </Specimen>
         {/* Тон из контекста: та же `<Seg>`, но оболочка ставит канал `--hl*`
             (как панель события по типу брони) — активный сегмент красится им. */}
@@ -476,15 +510,17 @@ export default function Kit() {
             {/* inline-style-exempt: демонстрация механизма «оболочка ставит --hl
                 инлайном» — ровно то, что делают EventModal/AddBookingPanel; иного
                 способа показать тон-из-контекста на витрине нет (Pavel: уместно). */}
-            <Seg
-              ariaLabel={TX.segTone}
-              value={segTone}
-              onChange={setSegTone}
-              options={[
-                { value: 'story', label: TX.segStory },
-                { value: 'post', label: TX.segPost },
-              ]}
-            />
+            <Sample name="--hl (оболочка)" full>
+              <Seg
+                ariaLabel={TX.segTone}
+                value={segTone}
+                onChange={setSegTone}
+                options={[
+                  { value: 'story', label: TX.segStory },
+                  { value: 'post', label: TX.segPost },
+                ]}
+              />
+            </Sample>
           </div>
         </Specimen>
 
@@ -493,40 +529,40 @@ export default function Kit() {
             `aria-pressed`, а не класс `.on`. Счётчик — слот `count`
             (`.fpill__c`), тот же у фильтра и у «Новые сообщения». */}
         <Specimen cls="fpill">
-          <Chip on={chipFilter === 'all'} onClick={() => setChipFilter('all')} count={12}>{TX.chipAll}</Chip>
-          <Chip on={chipFilter === 'new'} onClick={() => setChipFilter('new')} count={3}>{TX.chipNew}</Chip>
-          <Chip count={3} iconRight="chevD">{TX.chipJump}</Chip>
+          <Sample name={`on={${chipFilter === 'all'}} count`}><Chip on={chipFilter === 'all'} onClick={() => setChipFilter('all')} count={12}>{TX.chipAll}</Chip></Sample>
+          <Sample name={`on={${chipFilter === 'new'}} count`}><Chip on={chipFilter === 'new'} onClick={() => setChipFilter('new')} count={3}>{TX.chipNew}</Chip></Sample>
+          <Sample name="count iconRight"><Chip count={3} iconRight="chevD">{TX.chipJump}</Chip></Sample>
         </Specimen>
         {/* tone / placeholder — читают канал `--hl*`, который оболочка шва/ячейки
             ставит по типу брони (как `--hl` у Seg). На витрине канал даёт готовый
             класс-оболочка `.te-cell--hotel`/`--act` — тот же, что в редакторе, без инлайна. */}
         <Specimen cls="fpill--tone">
           <div className="row row--g3 te-cell--hotel">
-            <Chip variant="tone" icon="plane">{TX.chipRoute}</Chip>
-            <Chip variant="placeholder" icon="plus">{TX.chipAdd}</Chip>
+            <Sample name={'variant="tone"'}><Chip variant="tone" icon="plane">{TX.chipRoute}</Chip></Sample>
+            <Sample name={'variant="placeholder"'}><Chip variant="placeholder" icon="plus">{TX.chipAdd}</Chip></Sample>
           </div>
         </Specimen>
         {/* tone·square — заполненные ячейки активностей/отеля (обе 32×32). */}
         <Specimen cls="fpill--square">
           <div className="row row--g3 te-cell--act">
-            <Chip variant="tone" square icon="ticket">3</Chip>
+            <Sample name={'variant="tone" square'}><Chip variant="tone" square icon="ticket">3</Chip></Sample>
           </div>
-          <Chip square>{TX.chipCell}</Chip>
+          <Sample name="square"><Chip square>{TX.chipCell}</Chip></Sample>
         </Specimen>
         {/* avatars — стопка аватаров + подпись, высота от содержимого (min-height 38). */}
         <Specimen cls="fpill--avatars">
-          <Chip avatars>
+          <Sample name="avatars"><Chip avatars>
             <AvatarStack people={[{ name: 'А' }, { name: 'М' }, { name: 'К' }]} />
             {TX.chipMembers}
-          </Chip>
+          </Chip></Sample>
         </Specimen>
         {/* sm·square — пагинация форк-панели (текущая страница = `on`);
             sm·square·soft — «+N ещё» календаря, прямоугольная во всю ширину. */}
         <Specimen cls="fpill--sm">
           {[1, 2, 3].map((p) => (
-            <Chip key={p} sm square on={chipPage === p} onClick={() => setChipPage(p)}>{p}</Chip>
+            <Sample key={p} name={`sm square${chipPage === p ? ' on' : ''}`}><Chip sm square on={chipPage === p} onClick={() => setChipPage(p)}>{p}</Chip></Sample>
           ))}
-          <Chip sm square variant="soft">{TX.chipMore}</Chip>
+          <Sample name={'sm square variant="soft"'}><Chip sm square variant="soft">{TX.chipMore}</Chip></Sample>
         </Specimen>
 
         {/* Swatch — плитка выбора. color (цвет категории бюджета) · icon (иконка
@@ -536,29 +572,35 @@ export default function Kit() {
             у обложки больше нет — выбор виден рамкой. */}
         <Specimen cls="swatch">
           {SWATCH_COLORS.map((c) => (
-            <Swatch key={c} on={swColor === c} onClick={() => setSwColor(c)} style={{ background: c }} />
-            /* inline-style-exempt: цвет ЕСТЬ содержимое свотча (как фон-инлайн у
-               свотча цвета в BudgetLens); класс его выразить не может.
-               floor-exempt: inline +2 — витрина: фон свотча цвета и обложки
-               динамический (цвет/градиент из данных), апрув Pavel */
+            <Sample key={c} name={swColor === c ? 'color aria-pressed' : 'color'}>
+              <Swatch on={swColor === c} onClick={() => setSwColor(c)} style={{ background: c }} />
+              {/* inline-style-exempt: цвет ЕСТЬ содержимое свотча (как фон-инлайн у
+                  свотча цвета в BudgetLens); класс его выразить не может.
+                  floor-exempt: inline +2 — витрина: фон свотча цвета и обложки
+                  динамический (цвет/градиент из данных), апрув Pavel */}
+            </Sample>
           ))}
         </Specimen>
         <Specimen cls="swatch--icon">
           {['bed', 'plane', 'ticket'].map((ic) => (
-            <Swatch key={ic} variant="icon" icon={ic} on={swIcon === ic} tint={swColor} onClick={() => setSwIcon(ic)} />
+            <Sample key={ic} name={swIcon === ic ? 'icon aria-pressed' : 'icon'}>
+              <Swatch variant="icon" icon={ic} on={swIcon === ic} tint={swColor} onClick={() => setSwIcon(ic)} />
+            </Sample>
           ))}
         </Specimen>
         <Specimen cls="swatch--round">
           {SWATCH_COVERS.map((g, i) => (
-            <Swatch key={i} variant="round" on={swCover === i} onClick={() => setSwCover(i)} style={{ background: g }} />
-            /* inline-style-exempt: градиент обложки ЕСТЬ содержимое свотча (как
-               фон-инлайн градиента в TripCoverPicker). */
+            <Sample key={i} name={swCover === i ? 'round aria-pressed' : 'round'}>
+              <Swatch variant="round" on={swCover === i} onClick={() => setSwCover(i)} style={{ background: g }} />
+              {/* inline-style-exempt: градиент обложки ЕСТЬ содержимое свотча (как
+                  фон-инлайн градиента в TripCoverPicker). */}
+            </Sample>
           ))}
         </Specimen>
 
         <Specimen cls="badge">
           {BADGE_VARIANTS.map((v) => (
-            <Badge key={v || 'base'} variant={v}>{v || 'base'}</Badge>
+            <Sample key={v || 'base'} name={v ? `variant="${v}"` : 'base'}><Badge variant={v}>{v || 'base'}</Badge></Sample>
           ))}
           {/* Роль участника — это тон бейджа, а не свой компонент (TRIP-344 PR 1,
               на месте удалённого `RoleBadge`). Стоит здесь, а не отдельным
@@ -570,10 +612,10 @@ export default function Kit() {
               (MembersLens, MembersSummaryCard); `quiet` под «ожидает» — только
               с MembersSummaryCard: MembersLens показывает состояние приглашения
               отдельной колонкой `.m-status--pending`, а не бейджем. */}
-          <Badge variant="warning">{TX.roleOwner}</Badge>
-          <Badge variant="brand">{TX.roleAdmin}</Badge>
-          <Badge variant="outline">{TX.roleViewer}</Badge>
-          <Badge variant="quiet">{TX.rolePending}</Badge>
+          <Sample name={'variant="warning" (роль)'}><Badge variant="warning">{TX.roleOwner}</Badge></Sample>
+          <Sample name={'variant="brand" (роль)'}><Badge variant="brand">{TX.roleAdmin}</Badge></Sample>
+          <Sample name={'variant="outline" (роль)'}><Badge variant="outline">{TX.roleViewer}</Badge></Sample>
+          <Sample name={'variant="quiet" (роль)'}><Badge variant="quiet">{TX.rolePending}</Badge></Sample>
         </Specimen>
 
         <Specimen cls="card">
@@ -618,18 +660,18 @@ export default function Kit() {
 
         <Specimen cls="avatar">
           {AVATAR_SIZES.map((s) => (
-            <Avatar key={s || 'md'} name="Pavel M" size={s} />
+            <Sample key={s || 'md'} name={s ? `size="${s}"` : 'size (md)'}><Avatar name="Pavel M" size={s} /></Sample>
           ))}
-          <Avatar name="AI" kind="ai" />
-          <Avatar name="?" kind="placeholder" />
-          <Avatar name="X" deleted />
-          <AvatarStack people={[{ name: 'A B' }, { name: 'C D' }, { name: 'E F' }, { name: 'G H' }, { name: 'I J' }]} />
+          <Sample name={'kind="ai"'}><Avatar name="AI" kind="ai" /></Sample>
+          <Sample name={'kind="placeholder"'}><Avatar name="?" kind="placeholder" /></Sample>
+          <Sample name="deleted"><Avatar name="X" deleted /></Sample>
+          <Sample name="AvatarStack"><AvatarStack people={[{ name: 'A B' }, { name: 'C D' }, { name: 'E F' }, { name: 'G H' }, { name: 'I J' }]} /></Sample>
         </Specimen>
 
         <Specimen cls="sev">
           <div className="col col--g4 grow">
             {SEV_LEVELS.map((l) => (
-              <Severity key={l} level={l} title={TX.sevTitle}>{TX.sevBody}</Severity>
+              <Sample key={l} name={`level="${l}"`} full><Severity level={l} title={TX.sevTitle}>{TX.sevBody}</Severity></Sample>
             ))}
           </div>
         </Specimen>
@@ -641,8 +683,8 @@ export default function Kit() {
         </Specimen>
 
         <Specimen cls="checkbox">
-          <Checkbox checked={checked} onChange={setChecked} label={TX.fieldLabel} />
-          <Checkbox checked={false} onChange={() => {}} label={TX.fieldLabel} disabled />
+          <Sample name="checked"><Checkbox checked={checked} onChange={setChecked} label={TX.fieldLabel} /></Sample>
+          <Sample name="disabled"><Checkbox checked={false} onChange={() => {}} label={TX.fieldLabel} disabled /></Sample>
         </Specimen>
 
         {/* Переключатель уехал из образца `.checkbox` в свой: у него теперь есть
@@ -651,23 +693,23 @@ export default function Kit() {
             соответствуют `aria-checked`, `disabled` и `data-locked`, а не
             классы-модификаторы, поэтому в каталоге у семьи нет осей. */}
         <Specimen cls="switch">
-          <Toggle on={toggled} onChange={setToggled} label={TX.fieldLabel} />
-          <Toggle on={toggled} onChange={() => {}} busy label={TX.fieldLabel} />
-          <Toggle on={false} onChange={() => {}} locked label={TX.fieldLabel} />
+          <Sample name="on"><Toggle on={toggled} onChange={setToggled} label={TX.fieldLabel} /></Sample>
+          <Sample name="busy"><Toggle on={toggled} onChange={() => {}} busy label={TX.fieldLabel} /></Sample>
+          <Sample name="locked"><Toggle on={false} onChange={() => {}} locked label={TX.fieldLabel} /></Sample>
         </Specimen>
 
         <Specimen cls="doc-row">
           <div className="col col--g3 grow">
-            <FileRow name={TX.file} size={TX.fileSize} />
-            <FileRow name={TX.file} size={TX.fileSize} tone="ai" />
+            <Sample name="default" full><FileRow name={TX.file} size={TX.fileSize} /></Sample>
+            <Sample name={'tone="ai"'} full><FileRow name={TX.file} size={TX.fileSize} tone="ai" /></Sample>
           </div>
         </Specimen>
 
         <Specimen cls="skeleton">
           <div className="col col--g3 grow">
-            <Skeleton w="60%" h={18} />
-            <Skeleton />
-            <Skeleton w="80%" />
+            <Sample name={'w="60%" h={18}'} full><Skeleton w="60%" h={18} /></Sample>
+            <Sample name="default" full><Skeleton /></Sample>
+            <Sample name={'w="80%"'} full><Skeleton w="80%" /></Sample>
           </div>
         </Specimen>
 
@@ -678,8 +720,8 @@ export default function Kit() {
             / `--quiet` - так её рисуют оба живых экрана, и все четыре тона уже
             стоят в образце `badge` выше. */}
         <Specimen cls="dlg">
-          <Btn variant="secondary" onClick={() => setDialogOpen(true)}>{TX.openDialog}</Btn>
-          <Btn variant="secondary" onClick={() => setSheetOpen(true)}>{TX.openSheet}</Btn>
+          <Sample name="Dialog"><Btn variant="secondary" onClick={() => setDialogOpen(true)}>{TX.openDialog}</Btn></Sample>
+          <Sample name="Sheet"><Btn variant="secondary" onClick={() => setSheetOpen(true)}>{TX.openSheet}</Btn></Sample>
         </Specimen>
 
         <Specimen cls="readonly-banner">

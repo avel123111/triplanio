@@ -1430,6 +1430,13 @@ button.app-side__item:hover { background: var(--wash); }
 .dz-lift-card:active { transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
 .btn[disabled] { opacity: .55; pointer-events: none; }
+/* Нажато/включено = ДАННЫЕ (aria-pressed), тон — бренд-заливка, как у уже-канонных
+   Chip/Seg/Swatch. Один способ показать «нажато» на всех примитивах-кнопках;
+   классовые способы (.on/--on/--active/.map-ctl button.on) снимаются по мере
+   пересадки экранов (TRIP-344, канонизация состояния). Специфичность 0,2,0 бьёт
+   любой `.btn--variant` (0,1,0), поэтому порядок в файле роли не играет. */
+.btn[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
+.btn[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
 /* ★ ЗДЕСЬ СТОЯЛО ПОДПРЫГИВАНИЕ, И ЕГО БОЛЬШЕ НЕТ. Было: `translateY(-2px)` на
    наведении под `@media (hover:hover)` плюс `scale(0.97)` на нажатии, и следом
    ТРИ правила, гасившие это у `link` и `dashed` цепочкой `:not()` ради веса.
@@ -2507,6 +2514,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Кольцо то же, что у поля и чекбокса (--primary-ring), а не своё. */
 .icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
 .icon-btn[disabled] { opacity: .45; pointer-events: none; }
+/* Нажато = бренд-заливка, тот же канон, что у `.btn[aria-pressed]` выше и у Chip.
+   Ко-селектор `.map-ctl button.on` (0,2,1) перебивает это правило (0,2,0), поэтому
+   глобус Статистики, пока у него жив класс `.on`, свой облик сохраняет. */
+.icon-btn[aria-pressed="true"] { background: var(--brand); border-color: transparent; color: var(--primary-fg); }
+.icon-btn[aria-pressed="true"]:hover { background: var(--primary-hover); color: var(--primary-fg); }
+/* Счётчик активных на кнопке-иконке — реюз `.badge--count` (тоггл фильтров форк-
+   панели), позиция ко-селектором, НОВОГО КЛАССА НЕТ (`.icon-btn` position:relative). */
+.icon-btn > .badge--count { position: absolute; top: -6px; right: -6px; }
 .icon-btn--sm { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
 .icon-btn--round { border-radius: var(--r-pill); }
 .icon-btn--soft { background: var(--secondary); border-color: var(--line); color: var(--ink-2); }
