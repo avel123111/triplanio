@@ -18,7 +18,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
-import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
+import { Btn, Dialog, EmptyState, IconBtn, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
@@ -336,9 +336,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
         {t('trip.no_transfer', { from, to })}
       </div>
       <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
-      <button onClick={() => setHidden(true)} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--warning)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
-        <Icon name="close" size={12} />
-      </button>
+      <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
     </div>
   );
 }

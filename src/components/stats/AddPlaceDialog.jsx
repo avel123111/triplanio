@@ -146,9 +146,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-btn)', background: 'var(--surface)' }}>
               <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
               <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
-              <button type="button" onClick={() => setPicking(true)} className="t-meta" style={{ border: 0, background: 'transparent', color: 'var(--brand)', cursor: 'pointer', padding: 0 }}>
-                {t('stats.change_city')}
-              </button>
+              <Btn variant="link" onClick={() => setPicking(true)}>{t('stats.change_city')}</Btn>
             </div>
           </Field>
         )}
