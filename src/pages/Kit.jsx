@@ -397,6 +397,9 @@ export default function Kit() {
           <Sample name={'icon="check"'}><Btn variant="secondary" icon="check">{TX.save}</Btn></Sample>
           <Sample name={'iconRight="chevronRight"'}><Btn variant="secondary" iconRight="chevronRight">{TX.save}</Btn></Sample>
           <Sample name="block" full><Btn variant="primary" block>{TX.save}</Btn></Sample>
+          {/* Канон «нажато/включено» = данные (aria-pressed), бренд-заливка —
+              как Chip/Seg/Swatch (TRIP-344, канонизация состояния). */}
+          <Sample name="aria-pressed"><Btn variant="secondary" ariaPressed>{TX.save}</Btn></Sample>
         </Specimen>
         {/* Тон из контекста: `--a` объявлен на ОБОЛОЧКЕ, у самих кнопок пропа
             тона нет — ровно так это работает в приложении (AI-карточка красит
@@ -446,6 +449,10 @@ export default function Kit() {
             <span aria-hidden className="icon-btn__dot" />
           </IconBtn></Sample>
           <Sample name="disabled"><IconBtn icon="close" disabled ariaLabel={TX.close} /></Sample>
+          {/* Канон «нажато» (бренд-заливка) + счётчик активных реюзом .badge--count
+              ко-селектором `.icon-btn > .badge--count` (тоггл фильтров форк-панели). */}
+          <Sample name="aria-pressed"><IconBtn icon="globe" ariaPressed ariaLabel={TX.iconBtnShape} /></Sample>
+          <Sample name="+ .badge--count"><IconBtn icon="bell" ariaLabel={TX.iconBtnMark}><Badge variant="count">3</Badge></IconBtn></Sample>
         </Specimen>
 
         {/* Степпер: pill (дефолт, панель города) + block (дата во всю ячейку) +
