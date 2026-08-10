@@ -36,7 +36,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import catalog from '@/design/catalog.json';
 import {
-  Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Dialog, EmptyState, Field,
+  Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
   Skeleton, Stepper, Textarea, Toggle,
 } from '@/design/index';
@@ -94,6 +94,15 @@ const TX = {
   segStory: 'Сторис',
   segPost: 'Пост',
   segTone: 'тон из контекста (--hl на оболочке)',
+  chipAll: 'Все',
+  chipNew: 'Новые',
+  chipAdd: 'Добавить переезд',
+  chipRoute: 'Лиссабон → Порту',
+  chipCell: '12 300 ₽',
+  chipJump: 'Новые сообщения',
+  chipMembers: 'Участники',
+  chipMore: '+2 ещё',
+  chipTone: 'тон из контекста (--ev* на оболочке)',
   readonly: 'Режим только для чтения.',
   file: 'documents-2026.pdf',
   // Живые вызовы отдают УЖЕ отформатированную строку (formatSize), поэтому и
@@ -234,6 +243,10 @@ const STEPPER_VARIANTS = ['block', 'bare'];
 /** @type {Array<'fill'>} — auto дефолт (без модификатора); `seg--filter`/`seg--view` —
  *  экранные адаптивы Trips, не обличья примитива (в NOT_SHOWN у Kit.test). */
 const SEG_VARIANTS = ['fill'];
+/** @type {Array<'tone'|'placeholder'|'soft'>} — neutral дефолт (без модификатора). */
+const CHIP_VARIANTS = ['tone', 'placeholder', 'soft'];
+/** @type {Array<'square'|'sm'|'avatars'>} — ортогональные модификаторы Chip. */
+const CHIP_MODS = ['square', 'sm', 'avatars'];
 const SEV_LEVELS = ['info', 'warning', 'error', 'success', 'quiet'];
 const AVATAR_SIZES = [undefined, 'sm', 'lg'];
 const LAYOUT = [
@@ -252,6 +265,8 @@ export default function Kit() {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
   const [segView, setSegView] = useState('month');
   const [segTone, setSegTone] = useState('story');
+  const [chipFilter, setChipFilter] = useState('new');
+  const [chipPage, setChipPage] = useState(2);
   const [tokens, setTokens] = useState([]);
 
   // Значения токенов зависят от темы - перечитываем при переключении.
@@ -401,6 +416,50 @@ export default function Kit() {
               ]}
             />
           </div>
+        </Specimen>
+
+        {/* Chip — кликабельная пилюля. neutral (фильтр «Входящих»); состояние
+            (выбранный фильтр, текущая страница) = ДАННЫЕ через `on` →
+            `aria-pressed`, а не класс `.on`. Счётчик — слот `count`
+            (`.fpill__c`), тот же у фильтра и у «Новые сообщения». */}
+        <Specimen cls="fpill">
+          <Chip on={chipFilter === 'all'} onClick={() => setChipFilter('all')} count={12}>{TX.chipAll}</Chip>
+          <Chip on={chipFilter === 'new'} onClick={() => setChipFilter('new')} count={3}>{TX.chipNew}</Chip>
+          <Chip count={3} iconRight="chevD">{TX.chipJump}</Chip>
+        </Specimen>
+        {/* tone / placeholder — читают канал `--evs/--evi/--ev`, который оболочка
+            шва/ячейки ставит по типу брони (ровно как `--hl` у Seg). На витрине
+            канал ставится инлайном — единственный способ показать тон-из-контекста. */}
+        <Specimen cls="fpill--tone">
+          <div style={{ '--evs': 'var(--ev-transfer-soft)', '--evi': 'var(--ev-transfer-ink)', '--ev': 'var(--ev-transfer)', display: 'inline-flex', gap: 8 }}>
+            {/* inline-style-exempt: канал тона `--ev*` с оболочки — то же, что
+                делают te-seam/te-cell редактора; иначе тон-из-контекста не показать. */}
+            <Chip variant="tone" icon="plane">{TX.chipRoute}</Chip>
+            <Chip variant="placeholder" icon="plus">{TX.chipAdd}</Chip>
+          </div>
+        </Specimen>
+        {/* tone·square — заполненные ячейки активностей/отеля (обе 32×32). */}
+        <Specimen cls="fpill--square">
+          <div style={{ '--evs': 'var(--ev-activity-soft)', '--evi': 'var(--ev-activity-ink)', '--ev': 'var(--ev-activity)', display: 'inline-flex', gap: 8 }}>
+            {/* inline-style-exempt: канал тона активности с оболочки ячейки (см. выше). */}
+            <Chip variant="tone" square icon="ticket">3</Chip>
+          </div>
+          <Chip square>{TX.chipCell}</Chip>
+        </Specimen>
+        {/* avatars — стопка аватаров + подпись, высота от содержимого (min-height 38). */}
+        <Specimen cls="fpill--avatars">
+          <Chip avatars>
+            <AvatarStack people={[{ name: 'А' }, { name: 'М' }, { name: 'К' }]} />
+            {TX.chipMembers}
+          </Chip>
+        </Specimen>
+        {/* sm·square — пагинация форк-панели (текущая страница = `on`);
+            sm·square·soft — «+N ещё» календаря, прямоугольная во всю ширину. */}
+        <Specimen cls="fpill--sm">
+          {[1, 2, 3].map((p) => (
+            <Chip key={p} sm square on={chipPage === p} onClick={() => setChipPage(p)}>{p}</Chip>
+          ))}
+          <Chip sm square variant="soft">{TX.chipMore}</Chip>
         </Specimen>
 
         <Specimen cls="badge">
