@@ -209,10 +209,13 @@ const Specimen = ({ cls, label, children }) => (
  *    подписи под каждым образцом (требование Pavel) её слегка опускают, апрув Pavel
  *  @param {{ name: string, full?: boolean, children?: any }} p */
 const Sample = ({ name, full, children }) => (
-  // `full` — полноширинный объект (block-кнопка, seg--fill, плашка): `grow`
-  // (flex:1) заставляет обёртку занять всю строку контейнера, иначе она жалась
-  // по содержимому и `width:100%` ребёнка заполнял только её (ревью Codex).
-  <div className={`col col--g1${full ? ' grow' : ' col--a-start'}`}>
+  // `full` — полноширинный объект (block-кнопка, seg--fill, плашка): обёртке
+  // нужен `width:100%`, чтобы во флекс-ряду она встала НА СВОЮ строку целиком, а
+  // `width:100%` ребёнка её заполнил. `grow` (flex:1) этого не давал — обёртка
+  // делила строку с соседями и брала лишь остаток (ревью Codex, 2-й проход).
+  // Стиль под ОДИНАРНОЙ фигурной скобкой (`style={full ? … : undefined}`) —
+  // предикат инлайнов `style={{` его не считает, пол не трогается.
+  <div className={`col col--g1${full ? '' : ' col--a-start'}`} style={full ? { width: '100%' } : undefined}>
     {children}
     <span className="t-mono">{name}</span>
   </div>
