@@ -6714,10 +6714,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 .icon-btn[data-state="open"],
 .tm-cell.is-active { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
 
-.map-route__item.is-active .map-route__marker,
-/* `.map-ctl button.on` СНЯТ (TRIP-344, канонизация состояния): «включено» держит
-   канон `.icon-btn[aria-pressed]` (бренд-заливка), глобус Статистики перешёл на
-   `aria-pressed`, класса `.on` в map-ctl больше нет ни у кого. */
+/* `.map-ctl button.on` СНЯТ из этого списка (TRIP-344, канонизация состояния):
+   «включено» кнопки держит канон `.icon-btn[aria-pressed]` (бренд-заливка),
+   глобус Статистики перешёл на `aria-pressed`. Подсветка ВЫБРАННОГО МАРКЕРА
+   маршрута — своё правило, тот же hl-облик (запятая-хвост убрана, ревью Codex). */
+.map-route__item.is-active .map-route__marker { background: var(--hl); border-color: var(--hl); color: var(--hl-fg); }
 
 /* Свой цвет у места = переопределённая ручка, а не своё правило подсветки. */
 .te-cell--hotel { --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
