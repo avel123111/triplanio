@@ -80,7 +80,7 @@ export const TRIP_DOCUMENT: ResourceSpec = {
             'Field "link_url" must be an http(s) URL',
           )),
         },
-        documents: { type: 'json', nullable: true, validate: validateDocuments },
+        documents: { type: 'array', nullable: true, validate: validateDocuments },
         // Снимок имени автора — переживает выход автора из трипа (его строка
         // trip_members/профиля исчезает), как chat_messages.user_full_name.
         created_by_name: { type: 'string', max: 300, nullable: true },

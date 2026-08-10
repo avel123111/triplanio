@@ -56,7 +56,13 @@ export type Refusal = {
 
 /** Объявление колонки, которую МОЖЕТ прислать клиент. Кэпы зеркалят CHECK в БД. */
 export type FieldSpec = {
-  type: 'string' | 'number' | 'uuid' | 'date' | 'json';
+  /**
+   * `json` = jsonb-ОБЪЕКТ (map, напр. `fx_overrides` «валюта→курс»); `array` =
+   * jsonb-МАССИВ (напр. `documents`). Разведены НАМЕРЕННО: если бы `json` принимал
+   * и массив, `fx_overrides: []` прошёл бы и МОЛЧА сбросил курсы (массив вместо
+   * map) — регресс соседнего домена. Тип-гейт держит форму строго.
+   */
+  type: 'string' | 'number' | 'uuid' | 'date' | 'json' | 'array';
   /** Обязательна на ВСТАВКЕ. На обновлении частичная правка законна. */
   required?: boolean;
   /** Кэп длины строки — тот же, что в CHECK (иначе БД отдаст 500 вместо 400). */
@@ -174,11 +180,12 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
     case 'date':
       return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
     case 'json':
-      // jsonb-контейнер: ОБЪЕКТ (`fx_overrides`) ЛИБО МАССИВ (`documents`). Массив
-      // нужен, чтобы jsonb-список объектов доехал до `validate`-хука поля
-      // (TRIP-399); без него `documents` отбивался бы тип-гейтом раньше проверки
-      // элементов. Скаляр (строка/число) — не jsonb-контейнер, отвергается.
-      return typeof value === 'object' && value !== null;
+      // jsonb-ОБЪЕКТ (map): НЕ массив. `fx_overrides: []` обязан отбиться, иначе
+      // массив молча заменил бы map «валюта→курс» и сбросил курсы (TRIP-399).
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    case 'array':
+      // jsonb-МАССИВ (`documents`). Элементы проверяет `validate`-хук поля.
+      return Array.isArray(value);
   }
 }
 
@@ -200,9 +207,16 @@ export function validateInput(
   const fields = action.fields ?? {};
   const values: Record<string, unknown> = {};
 
+  // `op:'insert'` — ВСЕГДА вставка (create-only), поэтому обязательность строгая
+  // независимо от `isInsert` из шва: `mutate.ts` считает `isInsert` по присланному
+  // id, а хостовый клиент мог прислать инертный id — тогда пропущенное
+  // обязательное поле проскочило бы к DB NOT NULL и вернулось сырым 500 вместо
+  // 400 (TRIP-399). id остаётся инертным (его игнорирует `buildPlan`).
+  const insert = isInsert || action.op === 'insert';
+
   for (const [name, spec] of Object.entries(fields)) {
     if (!Object.prototype.hasOwnProperty.call(input, name)) {
-      if (isInsert && spec.required) return bad(`Field "${name}" is required`);
+      if (insert && spec.required) return bad(`Field "${name}" is required`);
       continue;
     }
     const value = input[name];

@@ -27,6 +27,7 @@ import { callerStep } from '../_shared/tripAccess.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
 import { withHandler } from '../_shared/http.ts';
 import { fetchTripProfiles } from '../_shared/profiles.ts';
+import { readGroup } from './readGroup.ts';
 
 Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // Identify caller — REQUIRED. getRequestUser returns null when there is no
@@ -125,7 +126,12 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     }
 
     const results = await Promise.all(tasks);
-    const pick = (key: string) => slots[key] != null ? (results[slots[key]] as { data: unknown[] | null }).data ?? [] : undefined;
+    // Сбой ЛЮБОЙ запрошенной группы → 5xx (ретраится), а не пустой ответ,
+    // который экран принял бы за «данных нет» (TRIP-399, см. readGroup.ts).
+    const pick = (key: string) =>
+      slots[key] != null
+        ? readGroup(results[slots[key]] as { data: unknown[] | null; error: unknown })
+        : undefined;
 
     // Assemble response
     const response: Record<string, unknown> = { trip };

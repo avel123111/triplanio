@@ -364,13 +364,13 @@ Deno.test('validate-хук НЕ зовётся для null (nullable гасит 
 
 // ── jsonb-МАССИВ доезжает до хука (TRIP-399) ─────────────────────────────────
 
-const WITH_JSON_ARRAY: ActionSpec = {
+const WITH_ARRAY: ActionSpec = {
   op: 'insert',
   table: 'things',
   requires: [],
   fields: {
     items: {
-      type: 'json',
+      type: 'array',
       nullable: true,
       validate: (v) =>
         Array.isArray(v) &&
@@ -382,25 +382,70 @@ const WITH_JSON_ARRAY: ActionSpec = {
   },
 };
 
-Deno.test('★ type:json принимает jsonb-МАССИВ (иначе documents не доедет до хука)', () => {
-  const ok = validateInput(WITH_JSON_ARRAY, { items: [{ file_url: 'https://a.test/f' }] }, {
+const BUDGET_SETTINGS: ActionSpec = {
+  op: 'upsert',
+  table: 'trip_budgets',
+  requires: [],
+  fields: { fx_overrides: { type: 'json' } },
+};
+
+Deno.test('type:array принимает jsonb-МАССИВ (documents доезжает до хука)', () => {
+  const ok = validateInput(WITH_ARRAY, { items: [{ file_url: 'https://a.test/f' }] }, {
     isInsert: true,
   });
-  assert(!('status' in ok), 'массив объектов обязан пройти встроенный тип-гейт');
+  assert(!('status' in ok), 'массив объектов обязан пройти тип-гейт');
 });
 
-Deno.test('type:json по-прежнему принимает ОБЪЕКТ (fx_overrides не сломан)', () => {
-  const ok = validateInput(
-    { op: 'upsert', table: 'trip_budgets', requires: [], fields: { m: { type: 'json' } } },
-    { m: { EUR: 1.1 } },
-    { isInsert: false },
-  );
+Deno.test('type:array отвергает ОБЪЕКТ (не спутать map и список)', () => {
+  const r = validateInput(WITH_ARRAY, { items: {} }, { isInsert: true });
+  assert('status' in r && r.status === 400);
+});
+
+Deno.test('type:array отвергает строку', () => {
+  const r = validateInput(WITH_ARRAY, { items: 'nope' }, { isInsert: true });
+  assert('status' in r && r.status === 400);
+});
+
+Deno.test('★ type:array — сам ТИП-ГЕЙТ отвергает объект (без validate-хука)', () => {
+  // Пинит строгость типа отдельно от хука: у поля без validate объект обязан
+  // отбиться самим тип-гейтом, иначе array и json неразличимы.
+  const noValidate: ActionSpec = {
+    op: 'insert',
+    table: 'things',
+    requires: [],
+    fields: { xs: { type: 'array', nullable: true } },
+  };
+  assert('status' in validateInput(noValidate, { xs: {} }, { isInsert: true }), 'объект → 400');
+  assert(!('status' in validateInput(noValidate, { xs: [1, 2] }, { isInsert: true })), 'массив → ok');
+});
+
+Deno.test('type:json принимает ОБЪЕКТ (fx_overrides)', () => {
+  const ok = validateInput(BUDGET_SETTINGS, { fx_overrides: { EUR: 1.1 } }, { isInsert: false });
   assert(!('status' in ok));
 });
 
-Deno.test('type:json отвергает НЕ-контейнер (строку) — тип-гейт раньше хука', () => {
-  const r = validateInput(WITH_JSON_ARRAY, { items: 'nope' }, { isInsert: true });
-  assert('status' in r && r.status === 400);
+Deno.test('★ type:json ОТВЕРГАЕТ массив (fx_overrides: [] не сбросит курсы — регресс соседнего домена)', () => {
+  // Если бы json принимал массив, `fx_overrides: []` прошёл бы и молча заменил
+  // map «валюта→курс» пустым массивом. Тип-гейт обязан это отбить.
+  const r = validateInput(BUDGET_SETTINGS, { fx_overrides: [] }, { isInsert: false });
+  assert('status' in r && r.status === 400, 'массив в json-поле обязан отбиться');
+});
+
+// ── op:insert валидируется как ВСТАВКА даже при инертном id (TRIP-399) ────────
+
+Deno.test('★ op:insert требует обязательные поля даже когда isInsert=false (инертный id)', () => {
+  // Шов считает isInsert по присланному id; op:insert его игнорирует, но
+  // обязательность обязана держаться, иначе пропуск title = сырой 500 от DB.
+  const r = validateInput(INSERT_ONLY, {}, { isInsert: false });
+  assert('status' in r && r.status === 400, 'op:insert без title обязан вернуть 400');
+  assert(r.message.includes('title'), `в сообщении нет имени поля: ${r.message}`);
+});
+
+Deno.test('upsert при isInsert=false обязательность НЕ требует (частичная правка)', () => {
+  // Контроль: у обычного upsert-обновления частичная правка законна — фикс ②
+  // не должен захватить update-режим.
+  const r = validateInput(thing, { notes: 'x' }, { isInsert: false });
+  assert(!('status' in r), 'частичная правка upsert не должна отвергаться');
 });
 
 // ── trip-document: спецификация домена (TRIP-399) ────────────────────────────
@@ -453,6 +498,11 @@ Deno.test('★ documents[].file_url без http(s) отвергается (ан�
     documents: [{ file_url: 'https://ok.test/a', file_name: 'a.pdf' }],
   }, { isInsert: true });
   assert(!('status' in ok), 'валидный массив файлов обязан пройти');
+});
+
+Deno.test('documents — ОБЪЕКТ вместо массива отвергается (type:array)', () => {
+  const r = validateInput(DOC, { title: 't', documents: {} }, { isInsert: true });
+  assert('status' in r && r.status === 400, 'documents: {} обязан отбиться');
 });
 
 Deno.test('title обязателен на создании, кэп 300 = CHECK', () => {
