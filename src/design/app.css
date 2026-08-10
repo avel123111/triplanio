@@ -1429,7 +1429,7 @@ button.app-side__item:hover { background: var(--wash); }
 .dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--sh-2); }
 .dz-lift-card:active { transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
-.btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
+.btn[disabled] { opacity: .55; pointer-events: none; }
 /* ★ ЗДЕСЬ СТОЯЛО ПОДПРЫГИВАНИЕ, И ЕГО БОЛЬШЕ НЕТ. Было: `translateY(-2px)` на
    наведении под `@media (hover:hover)` плюс `scale(0.97)` на нажатии, и следом
    ТРИ правила, гасившие это у `link` и `dashed` цепочкой `:not()` ради веса.
@@ -2877,8 +2877,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Clear disabled state for the footer CTA — the brand-tinted disabled "Дальше"
    read as a broken button; mute it to a neutral surface. The AI variant keeps
    its vivid gradient (design A6), so exclude it. */
-.flow-foot .btn[disabled]:not(.btn--ai),
-.flow-foot .btn.is-disabled:not(.btn--ai) {
+.flow-foot .btn[disabled]:not(.btn--ai) {
   background: var(--surface-2); color: var(--muted-2); border-color: var(--line); box-shadow: none;
 }
 /* Stack footer buttons full-width earlier (≤768) so the long "Сохранить
@@ -3213,7 +3212,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    when disabled (thinking / empty-prompt), matching the A6 spec. */
 .btn--ai .ai-dots span { background: rgba(255,255,255,.85); }
 [data-theme="dark"] .btn--ai .ai-dots span { background: rgba(12,10,30,.65); }
-.btn--ai[disabled], .btn--ai.is-disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+.btn--ai[disabled] { opacity: .5; box-shadow: none; cursor: not-allowed; }
 /* Ступень ОБОЛОЧКИ - одна на модалку и панель. Было три разных числа у трёх
    контейнеров одного ранга: диалог 16, панель 24, карточка 20, из-за чего одна
    и та же форма события скруглялась по-разному при создании и редактировании,
@@ -7023,6 +7022,21 @@ a.doc-row__n:hover{ color: var(--brand); }
       победитель на ключе color — вариант [aria-pressed] (--primary-fg), 2p же помнит
       одного победителя на ключ. Все правки намеренные (апрув Pavel), сверены /kit.
    visual-diff-move: .chat-jump b -> fpill--soft
+   visual-diff-exempt: .btn opacity — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn pointer-events — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn--ai box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn--ai cursor — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn--ai opacity — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) background — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) border-color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .btn:not(.btn--ai) color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled pointer-events — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) background — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) border-color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) box-shadow — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
+   visual-diff-exempt: .is-disabled:not(.btn--ai) color — снят мёртвый скин .btn.is-disabled/.btn--ai.is-disabled: is-disabled разметкой не эмитится (Btn использует атрибут disabled), вскрыт уходом шва на Chip:disabled (TRIP-344 PR 7)
    visual-diff-exempt: .chat-jump align-items — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
    visual-diff-exempt: .chat-jump background — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
    visual-diff-exempt: .chat-jump border — класс удалён — «Новые сообщения» на <Chip> (счётчик = слот .fpill__c) (TRIP-344 PR 7)
@@ -7112,7 +7126,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .fpill--sm padding — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--soft background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--soft border-color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
-   visual-diff-exempt: .fpill--soft color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--soft:hover background — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--soft:hover color — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
    visual-diff-exempt: .fpill--square border-radius — новый модификатор примитива Chip (эталон секции E, TRIP-344 PR 7)
