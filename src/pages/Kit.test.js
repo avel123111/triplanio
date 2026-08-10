@@ -60,9 +60,12 @@ const KIT_RAW = read('./Kit.jsx');
  *  комментарии (а в шапке `Kit.jsx` разобран как раз снятый `badge--on-arrival`),
  *  сходит за показанный. Тот же промах, что `--sp-9` из комментария на полу 2o.
  *  Гашение может только УБРАТЬ совпадения, то есть ошибается в красную сторону —
- *  безопасную для этой сверки. */
-const KIT = KIT_RAW.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-// (тот же приём применяется и к `src/design/index.jsx` — см. `stripComments` ниже)
+ *  безопасную для этой сверки.
+ *  ОДНА функция на ОБА входа (`Kit.jsx` здесь, `index.jsx` в `emittedByComponents`):
+ *  две копии этой регулярки молча разошлись бы — ровно тот дефект, против
+ *  которого написан весь файл (разбор у `emittedByComponents` ниже). */
+const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+const KIT = stripComments(KIT_RAW);
 
 /** Та же нарезка, что у `familyOf` в `audit-design.mjs` и в самой витрине. */
 const familyOf = (cls) => cls.replace(/(__|--).*/, '').split('-')[0];
@@ -110,8 +113,9 @@ function declaredClasses() {
  *  МЕЖДУ компонентами предыдущему, поэтому мёртвый скин `.field--error`,
  *  упомянутый в комментарии, приписывался живому `ReadOnlyBanner`. Замер:
  *  14 обличий без гашения против 13 с ним. Знать правило и применить его к
- *  одному входу из двух — то же самое, что не знать. */
-const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+ *  одному входу из двух — то же самое, что не знать.
+ *  Сама `stripComments` объявлена ОДНА, у `KIT` выше — чтобы копий регулярки
+ *  не стало две. */
 
 function emittedByComponents() {
   const idx = stripComments(read('../design/index.jsx'));
@@ -173,6 +177,34 @@ const ARRAYS = [
   // `swatch--icon` / `swatch--round` собираются в рантайме, `emittedByComponents`
   // (только `index.jsx`) их не видит — держит связка «массив на витрине» + направление 2.
   { name: 'SWATCH_VARIANTS', family: 'swatch' },
+  // ★TRIP-344 PR-2: гашение NOT_SHOWN. Обличья ниже рендерятся образцами
+  // СОСТАВНЫМИ именами (`family--${v}`), поэтому полного литерала класса в
+  // разметке нет (правило 2 витрины) — их считает эта же связка «массив →
+  // family--value» + направление 2, тем же приёмом, что примитивы выше.
+  // Раскладка (оси, кроме зазора):
+  { name: 'ROW_AXES', family: 'row' },
+  { name: 'COL_AXES', family: 'col' },
+  // Плитка-иконка: тон · размер · форма · залитая:
+  { name: 'TILE_TONES', family: 'tile' },
+  { name: 'TILE_SIZES', family: 'tile' },
+  { name: 'TILE_SHAPE', family: 'tile' },
+  { name: 'TILE_SOLID', family: 'tile' },
+  // Кольцо загрузки, тост, поверхности, диалог:
+  { name: 'SPIN_MODS', family: 'spin' },
+  { name: 'TOAST_TONES', family: 'toast' },
+  { name: 'CARD_MODS', family: 'card' },
+  { name: 'DLG_SIZES', family: 'dlg' },
+  // Поле: группа-валюта и ряд «поле + контрол». Декорации input-affix--ic/--end
+  // массива-драйвера НЕ имеют — их class эмитит сам <Input>, «показано» им даёт
+  // shownByInput() (эмиссия + образец), а не count-only запись (см. P2-1 ниже).
+  { name: 'INPUT_UNIT', family: 'input-unit' },
+  { name: 'FIELD_ROW', family: 'field-row' },
+  // Прочие одиночные обличья:
+  { name: 'SHEET_ROW', family: 'sheet-row' },
+  { name: 'AI_BLK', family: 'ai-blk' },
+  { name: 'AVATAR_STACK', family: 'avatar-stack' },
+  { name: 'TIME_VARIANTS', family: 'time' },
+  { name: 'BTN_SHADOW', family: 'btn' },
 ];
 
 function valuesOf(name) {
@@ -190,10 +222,41 @@ const LAYOUT_STEPS = () => {
   return shown;
 };
 
+/** ★ P2-1 (ревью Codex): input-affix--ic/--end — единственные обличья под
+ *  наблюдением, у которых НЕТ массива-драйвера и НЕТ литерала className в
+ *  разметке: их class склеивает сам <Input> по пропу (icon → --ic; loading без
+ *  icon → --end). Прежде их «показывали» ДВА текстовых пути, и оба обходятся
+ *  (Г7, «счёт обходим»): запись в ARRAYS и полный литерал имени в подписи-строке
+ *  TX (его ловил `KIT.includes`). Ни один не связан с рендером — удалят образец
+ *  или <Input> перестанет эмитить модификатор, а все тесты останутся зелёными.
+ *
+ *  Здесь «показано» ЗАРАБАТЫВАЕТСЯ двумя фактами разом, оба из исходников (тем
+ *  же приёмом, что emittedByComponents):
+ *    1) Input.jsx действительно эмитит класс — иначе образец рисует пустышку;
+ *    2) на витрине есть <Input>, который этот класс включает (icon / loading).
+ *  Отвалился любой — обличье не заработано, и НАПРАВЛЕНИЕ 1 краснеет (семья
+ *  `input` каноничная → input-affix--* под наблюдением VARIANTS).
+ *
+ *  ⚠️ Что этим ПЕРЕСТАЛИ проверять относительно старой записи в ARRAYS: ничего.
+ *  Направление 2 «класс есть в CSS» для члена VARIANTS тавтологично (VARIANTS и
+ *  берутся из declaredClasses), а тут проверка СТРОЖЕ — класс не просто
+ *  объявлен, а реально эмитится живым <Input> под показанным образцом. */
+function shownByInput() {
+  const src = read('../design/Input.jsx');
+  const attrs = [...KIT.matchAll(/<Input\b([^>]*)>/g)].map((m) => m[1]);
+  const hasIcon = (a) => /\bicon\s*=/.test(a);
+  const shown = new Set();
+  if (/input-affix--ic/.test(src) && attrs.some(hasIcon)) shown.add('input-affix--ic');
+  if (/input-affix--end/.test(src) && attrs.some((a) => /\bloading\b/.test(a) && !hasIcon(a)))
+    shown.add('input-affix--end');
+  return shown;
+}
+
 function shownOnKit() {
   const shown = new Set(LAYOUT_STEPS());
   for (const { name, family } of ARRAYS) for (const v of valuesOf(name)) shown.add(`${family}--${v}`);
   for (const c of VARIANTS) if (KIT.includes(c)) shown.add(c);
+  for (const c of shownByInput()) shown.add(c);
   return shown;
 }
 
@@ -206,24 +269,14 @@ function shownOnKit() {
  *  Форма та же, что у остальных обходов репозитория: список называет ровно то,
  *  что гасит, а не «выключить проверку». */
 const NOT_SHOWN = new Set([
-  // раскладка: выравнивание и поток — показаны только ступени зазора
-  'row--a-baseline', 'row--div', 'row--flush', 'row--inline', 'row--j-between',
-  'col--a-end', 'col--j-center',
-  // плитка-иконка: одиннадцать обличий, ни одного образца
-  'tile--ai', 'tile--danger', 'tile--info', 'tile--lg', 'tile--quiet',
-  'tile--round', 'tile--sm', 'tile--solid', 'tile--success', 'tile--warm', 'tile--warning',
-  // спиннер и тост: живут внутри других компонентов, отдельного образца нет
-  'spin--ink', 'spin--lg', 'spin--onscrim', 'spin--xl',
-  'toast--error', 'toast--info', 'toast--success', 'toast--warning',
-  // поверхности и диалог
-  'card--danger', 'card--flush', 'dlg--sm', 'dlg--wide',
-  // сегмент-контрол: `--fill` показан на витрине; `--filter`/`--view` — экранные
-  // адаптивы Trips (order/flex в `.trips-toolbar`), не обличья примитива
+  // ★TRIP-344 PR-2: долг погашен до нуля образцами — 39 обличий раскладки,
+  // плитки, кольца, тоста, поверхностей, диалога, поля и одиночных объектов
+  // теперь на витрине (см. ARRAYS выше). Остаётся ровно то, что образцом
+  // примитива не является:
+  // сегмент-контрол `--filter`/`--view` — это ЭКРАННЫЕ АДАПТИВЫ Trips
+  // (order/flex в `.trips-toolbar`), а не обличья самого `Seg`: показывать их на
+  // витрине примитива нечем и незачем, их место — на экране «Мои путешествия».
   'seg--filter', 'seg--view',
-  // прочее, поштучно
-  'ai-blk--pill', 'avatar-stack--white', 'btn--brand', 'field-row--aside',
-  'input-affix--end', 'input-affix--ic', 'input-unit--lead',
-  'sheet-row--danger', 'time--tr',
 ]);
 
 // ── Сверка ──────────────────────────────────────────────────────────────────

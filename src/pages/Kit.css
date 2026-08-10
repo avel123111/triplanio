@@ -1,0 +1,71 @@
+/* ────────────────────────────────────────────────────────────────────────────
+ * Витринный слой /kit — force-state харнесс (TRIP-344 PR-2, апрув Pavel).
+ *
+ * ЗАЧЕМ. Ховер, нажатие и фокус кнопки нельзя показать «отрисованными напрямую»:
+ * их вызывает указатель и клавиатура, а не проп. Чтобы ревизор увидел эти
+ * состояния БЕЗ живого взаимодействия, витрина ФЛИПАЕТ образец атрибутом
+ * `data-force` на оболочке, а правила ниже ЗЕРКАЛЯТ ровно те объявления, что
+ * ставят настоящие `:hover` / `:active` / `:focus-visible` примитивов. Это тот
+ * же элемент, что и в проде, — меняется только то, чем состояние вызвано.
+ *
+ * ★ ТОЛЬКО ЗДЕСЬ, НИКОГДА в `app.css`/проде: `data-force` — витринная ручка,
+ * в приложении её нет. Ярус 2 (гард 2p) читает и этот файл, поэтому КАЖДАЯ
+ * зеркальная декларация объявлена отдельной строкой `visual-diff-exempt` с
+ * причиной — как и требует правило гарда.
+ *
+ * ★ КРЮК — АТРИБУТЫ `data-kit`/`data-force`, А НЕ КЛАССЫ. Класс завёл бы новое
+ * СЕМЕЙСТВО `kit` (гард 2m — новый префикс, гард 2o — рост классов и запись в
+ * каталог) под чисто витринную оболочку, которой в системе быть не должно.
+ * Атрибут в эти счётчики не попадает вовсе.
+ *
+ * ★ ПОДЛЕЖАЩЕЕ — ГОЛЫЙ `button`, А НЕ `.btn`/`.icon-btn`/`.fpill`. Будь в
+ * селекторе канон-класс, 2p приписал бы зеркальную заливку самому канону
+ * (его базовому ключу) и «поменял» бы `.btn --bg` для всего репозитория —
+ * ложь в опасную сторону. Голый тег даёт БЕСКЛАССОВУЮ единицу (весь селектор),
+ * которая живёт только в этом файле и канон-классов не касается. Оболочка
+ * содержит ровно один `<button>` примитива, поэтому тег точен.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/* Btn — представитель primary (полный набор: hover · active · focus). */
+[data-kit="btn"][data-force="hover"] button {
+  --bg: var(--primary-hover);
+  box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent);
+}
+/* visual-diff-exempt: [data-kit=btn][data-force=hover] button --bg — зеркалит .btn--primary:hover, только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-kit=btn][data-force=hover] button box-shadow — зеркалит .btn--primary:hover, только Kit.css, прод не тронут, апрув Pavel */
+[data-kit="btn"][data-force="active"] button {
+  --bg: var(--primary-press);
+}
+/* visual-diff-exempt: [data-kit=btn][data-force=active] button --bg — зеркалит .btn--primary:active, только Kit.css, прод не тронут, апрув Pavel */
+[data-kit="btn"][data-force="focus"] button {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+/* visual-diff-exempt: [data-kit=btn][data-force=focus] button box-shadow — зеркалит .btn:focus-visible, только Kit.css, прод не тронут, апрув Pavel */
+
+/* IconBtn — представитель soft (hover · focus; :active у .icon-btn нет). */
+[data-kit="icon"][data-force="hover"] button {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+/* visual-diff-exempt: [data-kit=icon][data-force=hover] button background — зеркалит .icon-btn--soft:hover, только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-kit=icon][data-force=hover] button color — зеркалит .icon-btn--soft:hover, только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-kit=icon][data-force=hover] button border-color — зеркалит .icon-btn--soft:hover, только Kit.css, прод не тронут, апрув Pavel */
+[data-kit="icon"][data-force="focus"] button {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+/* visual-diff-exempt: [data-kit=icon][data-force=focus] button box-shadow — зеркалит .icon-btn:focus-visible, только Kit.css, прод не тронут, апрув Pavel */
+
+/* Chip — представитель neutral (hover · focus; :active у .fpill нет). */
+[data-kit="chip"][data-force="hover"] button {
+  background: var(--wash);
+  border-color: var(--line-hover);
+  color: var(--ink);
+}
+/* visual-diff-exempt: [data-kit=chip][data-force=hover] button background — зеркалит .fpill:hover, только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-kit=chip][data-force=hover] button border-color — зеркалит .fpill:hover, только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-kit=chip][data-force=hover] button color — зеркалит .fpill:hover, только Kit.css, прод не тронут, апрув Pavel */
+[data-kit="chip"][data-force="focus"] button {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+/* visual-diff-exempt: [data-kit=chip][data-force=focus] button box-shadow — зеркалит .fpill:focus-visible, только Kit.css, прод не тронут, апрув Pavel */
