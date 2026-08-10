@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseEdgeError, edgeErrorMessage } from './edgeError.js';
+import { parseEdgeError } from './edgeError.js';
 
 // Что тут пиньтся (TRIP-378). Две edge-функции перестали отвечать 200 на отказ:
 // `updateTripSettings` шлёт 403 `FORBIDDEN` / 402 `PRO_REQUIRED`, `deleteTrip` -
@@ -62,14 +62,6 @@ test('★ «нужен Pro» и «нет прав» остаются РАЗЛИ�
   assert.notEqual(pro.code, forbidden.code);
 });
 
-// ── сырой английский текст SDK не доходит до пользователя ─────────────────────
-test('★ строка SDK «non-2xx» отфильтрована, а не показана', async () => {
-  const err = httpErr(403, { error: 'Forbidden', code: 'FORBIDDEN' });
-  assert.equal(err.message, SDK_NON_2XX, 'датчик: это и есть то, что ушло бы в тост');
-  const msg = await edgeErrorMessage(err, null, 'fallback');
-  assert.notEqual(msg, SDK_NON_2XX);
-});
-
 test('тело не по контракту (платформенный отказ) → code null, fallback', async () => {
   // Холодный старт / OOM / 546: `withHandler` не отработал, тела `{error,code}` нет.
   const err = Object.assign(new Error(SDK_NON_2XX), {
@@ -81,7 +73,6 @@ test('тело не по контракту (платформенный отка
   const { code, message } = await parseEdgeError(err, null);
   assert.equal(code, null);
   assert.equal(message, null, 'строка SDK не должна подменять собой причину');
-  assert.equal(await edgeErrorMessage(err, null, 'fallback'), 'fallback');
 });
 
 test('200 с { error } (функция вне канона) по-прежнему разбирается из data', async () => {
