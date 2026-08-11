@@ -155,7 +155,9 @@ export const FUNCTIONS = {
   authExec: [
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
-    'get_trip_owner_profiles', 'get_trip_participant_profiles',
+    'get_trip_owner_profiles',
+    // get_trip_participant_profiles убрана (TRIP-403 шаг C): DROP, поглощена
+    // get_my_trip_cards (edge getTrips, ярус B) — клиентского вызывателя нет.
     // get_user_travel_stats убран (TRIP-402): EXECUTE у authenticated отозван,
     // теперь service_role-only, зовётся edge getTravelStats под service_role.
     // TRIP-296: единственный путь записи в чат. Авторизация в теле —

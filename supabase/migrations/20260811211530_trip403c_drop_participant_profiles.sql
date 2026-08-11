@@ -1,0 +1,22 @@
+-- TRIP-403 шаг C — закрытие двери get_trip_participant_profiles.
+--
+-- Функция поглощена get_my_trip_cards (edge getTrips, ярус B, A+B PR #794):
+-- участники+роль карточки главной теперь приходят оттуда под service_role.
+-- Клиентского вызывателя больше НЕТ (главная ушла на getTrips) — во фронте ноль
+-- `.rpc('get_trip_participant_profiles')`, ни один edge её не звал. Внутри БД её
+-- тоже никто не вызывает (сверено live dev 2026-08-11: единственное совпадение
+-- prosrc — упоминание в КОММЕНТАРИИ get_my_trip_cards, не вызов; pg_depend без
+-- жёстких зависимостей — вьюх/правил нет). Клиент держал EXECUTE у authenticated
+-- (замер live: authenticated=true) — здесь он снимается вместе с функцией.
+--
+-- Полный close = DROP (не REVOKE): оставлять нечего, читателей ноль. `if exists`
+-- — идемпотентно (повторный деплой/стейл-прогон не падает). Зависимостей нет
+-- (сверено), поэтому DROP не тянет CASCADE и не заденет соседей. Соседняя
+-- get_trip_owner_profiles(uuid[]) — ДРУГАЯ функция, НЕ трогаем.
+--
+-- Манифест security-tiers переведён (имя убрано из authExec) → LIVE-2e сверит
+-- ЖИВЫЕ гранты (функции больше нет), не текст. destructive-guard (2c) DROP
+-- FUNCTION не ловит (его паттерны — DROP COLUMN/TABLE/NOT NULL/RENAME), маркер
+-- не нужен (как в TRIP-402c/399c). Деплой через CI/CD (job migrate).
+
+drop function if exists public.get_trip_participant_profiles(uuid[]);

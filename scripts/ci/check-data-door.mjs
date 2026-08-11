@@ -179,7 +179,7 @@ const RPC = {
     'set_city_nights', 'set_trip_start_date', 'add_city', 'remove_city',
     'reorder_cities', 'add_layover_transfer', 'create_trip', 'send_chat_message',
   ],
-  rpcReading: ['get_user_travel_stats', 'get_trip_participant_profiles'],
+  rpcReading: ['get_user_travel_stats'],
   // Публичный поиск: отказывать нечего, неоднозначности «пусто vs нельзя» не
   // существует, дёргается на каждое нажатие клавиши. Остаётся клиентским (§4.B).
   rpcGazetteer: ['search_gazetteer', 'search_gazetteer_batch', 'nearest_cities'],
