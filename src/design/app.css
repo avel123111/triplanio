@@ -430,7 +430,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
 .te-row.te-row--plan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
-.addon-card, .tm-manage, .tm-account, .eroute,
+.tm-manage, .tm-account, .eroute,
 .s22f-panel,
 /* держали эту пару своей копией, а не именем в роли */
 .plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
@@ -4928,8 +4928,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ★`gap: 0` - прежнее значение под своим именем: у флекса начальный зазор 0, а
    `.col` несёт дефолтные 10px, и карточка аддона разъехалась бы.
    visual-diff-move: addon-card -> col */
-.addon-card { --ac: var(--brand); position: relative; border-radius: var(--r-md); padding: 16px; min-height: 150px; box-shadow: var(--sh-1); transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s; gap: 0; }
-@media (hover:hover) { .addon-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); } }
+/* TRIP-343 объект 2: скин аддон-карточки на `<Card radius="md">`; `.addon-card` —
+   численный раскладочный остаток (padding 16 + min-height + position + gap + канал
+   --ac → 08). Карточка СТАТИЧНА (кликается Toggle внутри, не сам div) → декоративный
+   ХОВЕР-ЛИФТ снят (канон покой плоский). rest-тень --sh-1 снята. `--on` (включена:
+   акцент-тинт из канала --ac) и `--locked` остаются вариантами (тон по каналу, как
+   у btn --hl, не приватный зоопарк).
+   visual-diff-exempt: .addon-card background — скин переехал на .card
+   visual-diff-exempt: .addon-card border — скин переехал на .card
+   visual-diff-exempt: .addon-card border-radius — радиус переехал на .card--r-md
+   visual-diff-exempt: .addon-card box-shadow — rest-тень --sh-1 снята (канон покой плоский)
+   visual-diff-exempt: .addon-card transition — декоративный лифт снят (канон без движения)
+   visual-diff-exempt: .addon-card:hover {@media (hover:hover)} transform — лифт снят (канон без движения, апрув /kit)
+   visual-diff-exempt: .addon-card:hover {@media (hover:hover)} box-shadow — лифт снят (был --sh-2, покой плоский) */
+.addon-card { --ac: var(--brand); position: relative; padding: 16px; min-height: 150px; gap: 0; }
 /* Зазор 10px - собственный зазор `.row`.
    visual-diff-move: addon-card__top -> row row--a-start row--j-between */
 .addon-card__top { margin-bottom: 12px; }
