@@ -1609,6 +1609,79 @@ button.app-side__item:hover { background: var(--wash); }
 .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .card-h h3 { flex: 1; }
 
+/* ── Канон-модификаторы поверхности `Card` (TRIP-343, объект 2) ──────────────
+   Один примитив, закрытый набор ФОРМ. Аддитивно к общим co-селекторам скина
+   (background/border - блок ~423) и радиуса (~1502/1539): здесь только то, что
+   РАЗЛИЧАЕТ формы. Значения сведены из прежних приватных источников - .limitcard
+   (tone-brand), .ai-blk (tone-ai/locked), .dl-addcard (add), .notes/.addr
+   (recessed); сами приватные классы гаснут при пересадке экранов (PR-1..4), а
+   здесь канон только ОБЪЯВЛЕН и живёт на /kit.
+   floor-exempt: classes +8 — PR-0 фундамент Card (r-lg r-md interactive tone-brand
+     tone-ai add recessed locked; flush/danger уже были); долг гасится net-минусом
+     при пересадке приватных классов в PR-1..4 (апрув Pavel, TRIP-343).
+
+   ★ Каждое ИТОГОВОЕ объявление форм - НОВОЕ (классов не было на dev), поэтому 2p
+   видит их как намеренные добавления и требует назвать каждое (как канон кнопки
+   в #785). Объявляю блоком; причина у всех одна - консолидация облика 5 форм из
+   названного приватного источника, апрув по скрину обеих тем (Pavel, TRIP-343):
+   visual-diff-exempt: .card--r-lg border-radius — форма БАЗА lg 20
+   visual-diff-exempt: .card--r-md border-radius — форма БАЗА md 16
+   visual-diff-exempt: .card--interactive transition — единый ховер без лифта
+   visual-diff-exempt: .card--interactive:focus-visible outline — фокус-кольцо
+   visual-diff-exempt: .card--interactive:focus-visible box-shadow — фокус-кольцо --primary-ring
+   visual-diff-exempt: .card--interactive:hover {@media (hover: hover) and (pointer: fine)} border-color — ховер: подсветка рамки --line-hover
+   visual-diff-exempt: .card--interactive:hover {@media (hover: hover) and (pointer: fine)} box-shadow — ховер: мягкая тень --sh-1
+   visual-diff-exempt: .card--tone-brand background — тон brand, из .limitcard
+   visual-diff-exempt: .card--tone-brand border-color — тон brand, из .limitcard
+   visual-diff-exempt: .card--tone-ai background — тон ai, из .ai-blk
+   visual-diff-exempt: .card--tone-ai border-color — тон ai, из .ai-blk
+   visual-diff-exempt: .card--tone-ai border-radius — радиус ai = следствие тона (r-btn 10)
+   visual-diff-exempt: .card--tone-ai:hover {@media (hover: hover) and (pointer: fine)} border-color — ai-ховер: рамка --ai, без glow
+   visual-diff-exempt: .card--locked background — ai заблокирован, из .ai-blk.locked
+   visual-diff-exempt: .card--locked border-color — ai заблокирован, из .ai-blk.locked
+   visual-diff-exempt: .card--locked border-radius — радиус ai (r-btn 10)
+   visual-diff-exempt: .card--add background — пунктир/добавить, из .dl-addcard
+   visual-diff-exempt: .card--add border — пунктир line-strong, из .dl-addcard
+   visual-diff-exempt: .card--add color — приглушённая подпись, из .dl-addcard
+   visual-diff-exempt: .card--add:hover {@media (hover: hover) and (pointer: fine)} border-color — add-ховер: brand, без лифта
+   visual-diff-exempt: .card--add:hover {@media (hover: hover) and (pointer: fine)} background — add-ховер: --brand-soft, без лифта
+   visual-diff-exempt: .card--add:hover {@media (hover: hover) and (pointer: fine)} color — add-ховер: --brand
+   visual-diff-exempt: .card--recessed background — утопленная --surface-3, из .notes/.addr */
+.card--r-lg { border-radius: var(--r-xl); }   /* 20 - роли/оболочки */
+.card--r-md { border-radius: var(--r-md); }   /* 16 - секции/вложенные */
+
+/* Интерактивная карточка: ОДИН язык ховера на все формы - подсветка рамки +
+   мягкая тень, БЕЗ движения и glow (апрув Pavel, TRIP-343). Заменяет разнобой
+   лифтов (.dz-lift-card translateY-2+--sh-2, .dl-addcard лифт, .ai-blk glow).
+   Тон/add меняют лишь ЦВЕТ рамки на ховере; тень --sh-1 остаётся от этого
+   правила (все ховер-формы interactive), поэтому её не переобъявляют. */
+.card--interactive { transition: border-color .15s var(--ease-out), box-shadow .15s var(--ease-out); }
+.card--interactive:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+
+/* Тон brand - призыв (лимит-плашка, pro-up, пустая заметка). Объявлен ПОЗЖЕ
+   скина роли, поэтому при равном весе перекрывает фон/рамку .card. */
+.card--tone-brand { background: var(--brand-soft-12); border-color: var(--brand); }
+/* Тон ai - ассистент. Несёт СВОЙ радиус (r-btn 10): sm - следствие тона, не
+   свободная ось радиуса (решение Pavel). Объявлен ПОСЛЕ .card--r-*, поэтому при
+   равной специфичности перекрывает радиус. */
+.card--tone-ai { background: var(--ai-gradient-soft); border-color: var(--ai-line); border-radius: var(--r-btn); }
+/* Заблокированный ai (Pro-гейт): глушится в нейтраль, тот же радиус, что у тона. */
+.card--locked { background: var(--surface-2); border-color: var(--line-strong); border-radius: var(--r-btn); }
+
+/* Пунктир/добавить - «создать ещё». Прозрачный, пунктирная рамка. */
+.card--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); }
+
+/* Утопленная - фон отступает назад от несущей карточки (заметки/адрес/строка). */
+.card--recessed { background: var(--surface-3); }
+
+/* Ховер-формы (только устройства с курсором): базовый язык + цветовой оверрайд
+   рамки у add/ai. Тень несёт .card--interactive:hover, здесь её нет. */
+@media (hover: hover) and (pointer: fine) {
+  .card--interactive:hover { border-color: var(--line-hover); box-shadow: var(--sh-1); }
+  .card--add:hover { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+  .card--tone-ai.card--interactive:hover { border-color: var(--ai); }
+}
+
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 7px; }
 /* Подпись поля - ink-2, чтобы не спорить с самим значением. Размер/вес тут НЕ

@@ -92,7 +92,8 @@ const LINES = [
   ['clean', '<Severity level="info">s</Severity>'],
   ['clean', '<EmptyState title="t" />'],
   ['clean', '<Badge variant="ok">b</Badge>'],
-  ['clean', '<Card title="t">x</Card>'],
+  ['clean', '<Card radius="md" interactive>x</Card>'],
+  ['clean', '<CardHeader title="t" subtitle="s" />'],
   ['clean', '<Checkbox checked onChange={() => {}} />'],
   ['clean', '<Toggle on onChange={() => {}} />'],
   ['clean', '<Toggle on locked busy label="l" />'],
@@ -150,7 +151,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",

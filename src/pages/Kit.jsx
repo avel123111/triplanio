@@ -32,10 +32,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import catalog from '@/design/catalog.json';
 import {
-  Avatar, AvatarStack, Badge, Btn, Card, Checkbox, Chip, Dialog, EmptyState, Field,
+  Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
   Skeleton, Stepper, Swatch, Textarea, Toggle,
-  BTN_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
+  BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
 } from '@/design/index';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
@@ -366,12 +366,36 @@ const RECIPES = {
     },
   ],
 
-  card: (ctx) => [{
-    items: [
-      it('base', <div className="grow"><Card title={TX.cardTitle} subtitle="Подзаголовок" action={<Badge variant="quiet">{TX.canon}</Badge>}><p className="t-body">{TX.cardBody}</p></Card></div>, true),
-      ...ctx.declared.map((c) => { const m = tailOf(c); return it(c, <div className="grow"><Card className={c} title={m === 'flush' ? undefined : TX.cardHead}>{m === 'danger' ? <Severity level="error" title={TX.cardHead}>{TX.sevText}</Severity> : <Skeleton h={48} r={0} />}</Card></div>, true); }),
-    ],
-  }],
+  card: () => {
+    // Проп-набор на каждый суффикс `.card--*`: витрина ПОЛНА ПО ПОСТРОЕНИЮ -
+    // рисует ровно то, что объявляет карта `CARD_VARIANTS` (тест дрейфа сверяет
+    // её ↔ живой CSS в обе стороны). radius/tone эмитятся своими пропами; булевы
+    // формы - одноимённым пропом; danger - `danger`; до-края - `pad="none"`.
+    const P = {
+      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' },
+      interactive: { as: 'button', radius: 'md', interactive: true },
+      'tone-brand': { tone: 'brand', radius: 'md' },
+      'tone-ai': { tone: 'ai' },
+      add: { as: 'button', variant: 'add', radius: 'md', interactive: true },
+      recessed: { recessed: true }, locked: { locked: true },
+      flush: { pad: 'none' }, danger: { danger: true },
+    };
+    const body = (v) =>
+      v === 'danger' ? <Severity level="error" title={TX.cardHead}>{TX.sevText}</Severity>
+        : v === 'flush' ? <Skeleton h={64} r={0} />
+          : v === 'add' ? <b>{TX.cardHead}</b>
+            : <><CardHeader title={TX.cardHead} /><p className="t-body">{TX.cardBody}</p></>;
+    return [
+      {
+        label: 'слот CardHeader (заголовок · подзаголовок · действие справа)',
+        items: [it('CardHeader', <div className="grow"><Card radius="lg"><CardHeader title={TX.cardTitle} subtitle="Подзаголовок" action={<Badge variant="quiet">{TX.canon}</Badge>} /><p className="t-body">{TX.cardBody}</p></Card></div>, true)],
+      },
+      {
+        label: 'формы (карта CARD_VARIANTS) — .card--*',
+        items: CARD_VARIANTS.map((v) => it(`card--${v}`, <div className="grow"><Card {...P[v]}>{body(v)}</Card></div>, true)),
+      },
+    ];
+  },
 
   field: (ctx) => [{
     items: [it('field + field-row', (
@@ -601,7 +625,8 @@ function AxisDemo({ base, ax }) {
 function KitObjectView({ obj, ctx }) {
   const specimens = obj.special ? [] : (RECIPES[obj.id]?.(ctx) ?? []);
   return (
-    <Card title={TX.titles[obj.id] || obj.id}>
+    <Card radius="lg">
+      <CardHeader title={TX.titles[obj.id] || obj.id} />
       <div className="col col--g8">
         <div className="col col--g1">
           <div className="row row--g3 row--j-center">
@@ -682,7 +707,8 @@ function KitIndex() {
         const objs = KIT_OBJECTS.filter((o) => o.group === group);
         if (!objs.length) return null;
         return (
-          <Card key={group} title={TX.groups[group]}>
+          <Card key={group} radius="lg">
+            <CardHeader title={TX.groups[group]} />
             <div className="grid grid--2 grid--g4">
               {objs.map((o) => (
                 <Link key={o.id} to={`/kit/${o.id}`} className="card row row--g3 row--j-center">
