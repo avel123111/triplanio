@@ -103,6 +103,18 @@ function mapValues(name) {
   return [...m[1].matchAll(/["']([^"']*)["']/g)].map((x) => x[1]).filter(Boolean);
 }
 
+/** Тело рецепта объекта из `Kit.jsx` — от заголовка `<id>: (` до следующего
+ *  заголовка рецепта. Нужно направлению 1в: сверить, что рецепт РЕНДЕРИТ карту,
+ *  а не только реестр её ОБЪЯВИЛ. */
+const KIT_SRC = stripComments(read('./Kit.jsx'));
+function recipeBody(id) {
+  const start = KIT_SRC.match(new RegExp(`\\n {2}'?${id.replace(/-/g, '\\-')}'?: \\(`));
+  if (!start) return '';
+  const rest = KIT_SRC.slice(start.index + start[0].length);
+  const next = rest.match(/\n {2}'?[a-z][\w-]*'?: \(/);
+  return next ? rest.slice(0, next.index) : rest;
+}
+
 /** Ступени лестницы row/col/grid витрина сверяет с живым CSS сама; здесь
  *  достаточно знать, что она их перечисляет (замер в браузере, не список тут). */
 function layoutSteps() {
@@ -174,6 +186,27 @@ test('★ НАПРАВЛЕНИЕ 1: обличье из CSS либо показ�
     `эти обличья есть в системе, но их нет ни на витрине (реестр не покрывает семью?), ни в долге — ` +
       `зарегистрируй объект/ось или впиши в NOT_SHOWN с причиной:\n  ${unaccounted.join(' · ')}`,
   );
+});
+
+test('★★★ НАПРАВЛЕНИЕ 1в: карту из реестра рецепт ЛИБО итерирует, ЛИБО кроет каждое значение', () => {
+  // `shownOnKit()` берёт «показано» из ОБЪЯВЛЕНИЯ `maps`, не из рендера. Дыра:
+  // добавь значение в CHIP_VARIANTS + правило в CSS — направления 1 и 2 зелёные,
+  // а рукописный рецепт `chip`/`swatch` его не рисует (реестр врёт «полон по
+  // построению»). Тут — сам рендер: рецепт объекта ЛИБО итерирует карту
+  // (`КАРТА.map/.filter`, полнота по построению, как `btn`/`seg`/`stepper`), ЛИБО
+  // содержит `="значение"` на КАЖДОЕ значение карты (рукописный набор проверен).
+  const missing = [];
+  for (const o of KIT_OBJECTS) {
+    if (!o.maps?.length) continue;
+    const body = recipeBody(o.id);
+    assert.ok(body, `рецепта объекта «${o.id}» нет в Kit.jsx, а реестр объявил ему карту`);
+    for (const name of o.maps) {
+      if (new RegExp(`\\b${name}\\s*\\.\\s*(map|filter|forEach)`).test(body)) continue; // итерирует карту
+      for (const v of mapValues(name)) if (!body.includes(`="${v}"`)) missing.push(`${o.id}: ${name} → "${v}"`);
+    }
+  }
+  assert.deepEqual(missing, [], `реестр объявляет карту, но рецепт объекта её не рендерит ` +
+    `(ни итерацией \`КАРТА.map\`, ни \`="значение"\` на каждое значение):\n  ${missing.join('\n  ')}`);
 });
 
 test('★★ НАПРАВЛЕНИЕ 2: витрина не показывает того, чего в CSS нет (карты + extras)', () => {
