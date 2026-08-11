@@ -346,6 +346,7 @@ export const DOORS = {
   getActiveTrips:        'self',
   getMe:                 'self',        // читает свою строку users по актору из JWT (TRIP-400)
   getTravelStats:        'self',        // общий ридер статов (статистика+главная) по актору из JWT (TRIP-402, ярус A)
+  getTrips:              'self',        // композит карточек главной по актору из JWT (TRIP-403, ярус B)
   getUserPlan:           'self',
   respondTripInvite:     'self',        // приглашение адресовано вызывающему
   telegramGetMyIntegrations: 'self',

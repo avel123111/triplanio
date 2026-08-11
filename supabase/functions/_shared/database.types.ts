@@ -2327,6 +2327,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_my_trip_cards: { Args: { p_actor: string }; Returns: Json }
       get_pending_reminders: {
         Args: { window_minutes?: number }
         Returns: {
