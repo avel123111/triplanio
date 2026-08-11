@@ -32,6 +32,7 @@ import {
   checkEditorRoles,
   checkSeamDoors,
   checkTableGrants,
+  effectiveAuthOps,
   parseGateTokensFromSeam,
   parseResourceSpecs,
   parseSeamSlug,
@@ -623,24 +624,44 @@ test('здоровые гранты (DML+SELECT совпали с манифес
 });
 
 // ── per-op DML (TRIP-400): частичное закрытие двери ──────────────────────────
-test('★ per-op: UPDATE НЕ снят там, где authUpdate:false → красный (грант не снят)', () => {
-  // Ровно дефект, ради которого per-op заведён: REVOKE UPDATE не сработал/забыт.
-  const errors = checkTableGrants([grant('partial_c', { authIns: true, authUpd: true, authSel: true })], GRANTS_MANIFEST);
-  assert.equal(errors.length, 1, JSON.stringify(errors));
-  assert.match(errors[0], /authenticated имеет UPDATE на public\.partial_c .*authUpdate=false.*грант не снят/);
+test('effectiveAuthOps: явный per-op побеждает, иначе булев разворачивается в тройку', () => {
+  assert.deepEqual(effectiveAuthOps({ authDml: true }),  { insert: true,  update: true,  delete: true });
+  assert.deepEqual(effectiveAuthOps({ authDml: false }), { insert: false, update: false, delete: false });
+  // users: INSERT оставлен, UPDATE/DELETE закрыты.
+  assert.deepEqual(effectiveAuthOps({ authDml: true, authInsert: true, authUpdate: false, authDelete: false }),
+    { insert: true, update: false, delete: false });
 });
 
-test('★ per-op: DELETE НЕ снят там, где authDelete:false → красный', () => {
+test('★ per-op: невыпиленный UPDATE (authUpdate:false) → красный, и ошибка называет ИМЕННО UPDATE', () => {
+  // Ровно дефект, ради которого per-op заведён: REVOKE UPDATE не сработал/забыт.
+  // Ошибка обязана назвать UPDATE (а не абстрактный DML) — иначе гард не
+  // доказывает нужную ось (требование Pavel).
+  const errors = checkTableGrants([grant('partial_c', { authIns: true, authUpd: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /authenticated имеет UPDATE на public\.partial_c/);
+  assert.doesNotMatch(errors[0], /INSERT|DELETE/, 'ошибка должна называть именно UPDATE-ось');
+});
+
+test('★ per-op: невыпиленный DELETE (authDelete:false) → красный (называет DELETE)', () => {
   const errors = checkTableGrants([grant('partial_c', { authIns: true, authDel: true, authSel: true })], GRANTS_MANIFEST);
   assert.equal(errors.length, 1, JSON.stringify(errors));
   assert.match(errors[0], /authenticated имеет DELETE на public\.partial_c/);
 });
 
-test('★ per-op: оставленный INSERT пропал (authInsert:true, а гранта нет) → красный', () => {
-  // Обратная сторона: манифест утверждает «INSERT остаётся», а его сняли.
-  const errors = checkTableGrants([grant('partial_c', { authSel: true })], GRANTS_MANIFEST);
-  assert.equal(errors.length, 1, JSON.stringify(errors));
-  assert.match(errors[0], /манифест ждёт INSERT на public\.partial_c .*authInsert=true.*грант пропал/);
+test('оставленный INSERT (authInsert:true) — не дрейф: сверка ОДНОСТОРОННЯЯ (ловит лишнее право)', () => {
+  // Дверь закрывается в два захода — INSERT снимет домен регистрации. Гард ловит
+  // ЛИШНЕЕ живое право (fail-open), а не объявленную-но-снятую ось (снять больше — безопасно).
+  assert.deepEqual(checkTableGrants([grant('partial_c', { authIns: true, authSel: true })], GRANTS_MANIFEST), []);
+  assert.deepEqual(checkTableGrants([grant('partial_c', { authSel: true })], GRANTS_MANIFEST), []);
+});
+
+test('обратная совместимость: таблица на булеве authDml ведёт себя как раньше', () => {
+  // authDml:true (ярус A) — все оси открыты, ноль ошибок; authDml:false (ярус B) —
+  // любой живой op = дрейф, теперь с ИМЕНЕМ оси (раньше «DML»).
+  assert.deepEqual(checkTableGrants([grant('content_a', { authIns: true, authUpd: true, authDel: true, authSel: true })], GRANTS_MANIFEST), []);
+  const b = checkTableGrants([grant('edge_b', { authUpd: true })], GRANTS_MANIFEST);
+  assert.equal(b.length, 1);
+  assert.match(b[0], /authenticated имеет UPDATE на public\.edge_b/);
 });
 
 test('★ SELECT-дрейф: edge-only таблица, а authenticated её читает', () => {
@@ -675,7 +696,7 @@ test('DML-оси не ослаблены: anon DML → I3a, auth DML на B → 
 
   const authB = checkTableGrants([grant('edge_b', { authIns: true })], GRANTS_MANIFEST);
   assert.equal(authB.length, 1);
-  assert.match(authB[0], /authenticated имеет DML на public\.edge_b .*ярус B запрещает/);
+  assert.match(authB[0], /authenticated имеет INSERT на public\.edge_b .*ярус B/);
 });
 
 test('незаклассифицированная таблица с auth DML ловится, а SELECT-ось её не трогает', () => {
