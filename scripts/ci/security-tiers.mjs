@@ -147,7 +147,9 @@ export const FUNCTIONS = {
   authExec: [
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
-    'get_trip_owner_profiles', 'get_trip_participant_profiles', 'get_user_travel_stats',
+    'get_trip_owner_profiles', 'get_trip_participant_profiles',
+    // get_user_travel_stats убран (TRIP-402): EXECUTE у authenticated отозван,
+    // теперь service_role-only, зовётся edge getTravelStats под service_role.
     // TRIP-296: единственный путь записи в чат. Авторизация в теле —
     // is_trip_participant(trip_id) + автор из auth.uid() (IF4 её видит).
     'send_chat_message',
@@ -324,6 +326,7 @@ export const DOORS = {
   trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
   trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
   account:               ['self'],            // profile: своя строка users (scope id=actor), Pro нигде (TRIP-400)
+  user_place:            ['self'],            // place + place/delete: свой user_custom_visits (scope user_id=actor), Pro нигде (TRIP-402)
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип
@@ -334,6 +337,7 @@ export const DOORS = {
   deleteMyAccount:       'self',
   getActiveTrips:        'self',
   getMe:                 'self',        // читает свою строку users по актору из JWT (TRIP-400)
+  getTravelStats:        'self',        // общий ридер статов (статистика+главная) по актору из JWT (TRIP-402, ярус A)
   getUserPlan:           'self',
   respondTripInvite:     'self',        // приглашение адресовано вызывающему
   telegramGetMyIntegrations: 'self',

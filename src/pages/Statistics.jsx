@@ -1,7 +1,7 @@
 // @ts-check
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -91,10 +91,15 @@ export default function Statistics() {
     error: statsError, isPending: statsPending, fetchStatus: statsFetchStatus, refetch: refetchStats,
   } = useQuery({
     queryKey: ['travel-stats', user?.id],
+    // Общий ридер яруса A (TRIP-402): чтение статов идёт через edge getTravelStats
+    // (actor из JWT → RPC под service_role), а не прямым .rpc(). Тот же кэш-ключ
+    // делит главная (Trips.jsx) — кто первый загрузил, второй переиспользует.
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_user_travel_stats');
-      if (error) throw error;
-      return data || { points: [], trips: {}, transfers: [] };
+      const { data, error, code, message } = await invokeFn('getTravelStats');
+      // invokeFn уже пометил error и отчитался в Sentry — бросаем его (не новый),
+      // чтобы query-client не отчитался повторно (__seamHandled).
+      if (error || code) throw error || new Error(message || code);
+      return /** @type {any} */ (data) || { points: [], trips: {}, transfers: [] };
     },
     enabled: !!user?.id,
     staleTime: 30_000,
