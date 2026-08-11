@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Seg, Severity, SearchSelect, useToast,
+  Badge, Btn, Card, Seg, Severity, SearchSelect, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -687,7 +687,7 @@ export default function ScreenAccount() {
           {/* ░░ PROFILE ░░ */}
           <section id="acct-profile">
             <Row as="h2" className="acct-sectitle">{t('account.identity')}</Row>
-            <div className="acct-hero">
+            <Card radius="lg" pad="none" className="acct-hero">
               <div className="acct-hero__band" aria-hidden="true"><span className="blob b1" /><span className="blob b2" /></div>
               {planBadge && <div className="acct-hero__plan">{planBadge}</div>}
               <Row gap="g7" className="acct-hero__row">
@@ -734,7 +734,7 @@ export default function ScreenAccount() {
                   {saving ? t('auth.saving') : t('common.save')}
                 </Btn>
               </Grid>
-            </div>
+            </Card>
           </section>
 
           {/* ░░ SUBSCRIPTION ░░ */}

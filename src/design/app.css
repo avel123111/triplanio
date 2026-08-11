@@ -420,9 +420,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    больше нет: `.surface-glass` был последним следом стекла - блюра и тени,
    которых нет с TRIP-326, - и висел ровно на одном элементе. Каждый носитель
    входит сюда своим именем. */
-.statbar, .wmini, .nextcard, .nonext, .tr, .tl3-card,
-.card, .wdg, .panel, .summary, .invite, .acc, .acct-hero,
-.chat-reply__card, .pl-lastcard, .map-route,
+.wmini,
+.card,
+.chat-reply__card, .map-route,
 /* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
@@ -430,10 +430,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
 .te-row.te-row--plan, .acct-chan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
-.addon-card, .tm-manage, .tm-account, .records, .eroute,
-.hv-namecard, .hv-card, .hv-rows, .tv-card, .pcard, .s22f-panel, .ev-sec,
+.addon-card, .tm-manage, .tm-account, .eroute,
+.pcard, .s22f-panel,
 /* держали эту пару своей копией, а не именем в роли */
-.eed-fcbox, .eed-nightrow, .docfield, .choice-card,
 .plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
 /* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
@@ -1467,10 +1466,16 @@ button.app-side__item:hover { background: var(--wash); }
 /* Strong card lift (collection cards): -2px + card shadow. Declarative replacement
    for JS onMouseEnter style mutation; the base border lives here (not inline) so
    :hover can win over it. */
-.dz-lift-card { border: 1px solid var(--line); transition: border-color .15s var(--ease-out), box-shadow .15s var(--ease-out), transform .15s var(--ease-out); }
-.dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--sh-2); }
-.dz-lift-card:active { transform: translateY(0); }
-@media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
+/* TRIP-343 объект 2: `.dz-lift-card` (лифт-компаньон карточки документа) УДАЛЁН —
+   использовался только на `.dl-card`, теперь ховер = канон `.card--interactive`
+   (рамка --line-hover + мягкая --sh-1 без движения). Рамку/фокус несёт .card.
+   visual-diff-exempt: .dz-lift-card border — рамка переехала на .card (тот же 1px --line)
+   visual-diff-exempt: .dz-lift-card transition — interactive несёт свой (без transform)
+   visual-diff-exempt: .dz-lift-card:hover border-color — → .card--interactive:hover (тот же --line-hover)
+   visual-diff-exempt: .dz-lift-card:hover transform — лифт снят (канон без движения, апрув /kit)
+   visual-diff-exempt: .dz-lift-card:hover box-shadow — был --sh-2, канон мягкая --sh-1
+   visual-diff-exempt: .dz-lift-card:active transform — нажатие без движения (канон)
+   visual-diff-exempt: .dz-lift-card:hover {@media (prefers-reduced-motion: reduce)} transform — снято вместе с лифтом */
 .btn[disabled] { opacity: .55; pointer-events: none; }
 /* Полу-disabled = ШТАТНОЕ состояние примитива (TRIP-344): кнопка выглядит
    приглушённой, но ОСТАЁТСЯ кликабельной. «Сохранить» при незаполненной форме
@@ -1499,19 +1504,8 @@ button.app-side__item:hover { background: var(--wash); }
    Своего ИМЕНИ у роли нет - оба прежних (.surface-glass, .surface-panel)
    удалены как след стекла. Внутреннюю раскладку (падинги/хедеры/overflow)
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
-.statbar,                  /* полоса статистики — /trips и обзор трипа */
 .wmini,                    /* /trips — «Мир исследован» */
-.nextcard,                 /* /trips — следующий трип */
-.nonext,                   /* /trips — пусто «следующий трип» */
-.tr,                       /* /trips — строка трипа (list-view) */
-.tl3-card,                 /* таймлайн трипа — карточки эвентов (TRIP-199) */
 .card,
-.wdg,
-.panel,                    /* экран трипа/статистика — плоские панели/виджеты */
-.summary,                  /* /stats — полоса из 6 стат-плиток */
-.invite,                   /* баннер-приглашение */
-.acct-hero,                /* шапка аккаунта */
-.pl-lastcard,              /* карточка последней брони (планнер) */
 .lp {                      /* панель-оболочка (та же ступень, что у модалки) */
   border-radius: var(--r-xl);
 }
@@ -1536,8 +1530,7 @@ button.app-side__item:hover { background: var(--wash); }
    две и они разной величины (диалог 16, панель 24), «строго меньше внешней»
    недостижимо; 16 - наибольшее, что не превышает НИ ОДНУ из двух. Это станет
    однозначным, когда оболочка останется одна. */
-.acc, .eed-fcbox, .eed-nightrow,
-.ev-sec, .hv-namecard, .hv-card, .hv-rows, .hv-notes, .tv-card {
+.hv-notes {
   border-radius: var(--r-md);
 }
 
@@ -1713,7 +1706,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    пересадки, и лишний отступ оторвал бы её от своего сегмента).
    ★Родитель теперь ОДИН: тело диалога переехало на `.lp-b` вместе со всей
    оболочкой события (TRIP-333 §4). */
-.acc { overflow: hidden; }
+/* TRIP-343 объект 2: eed-fcbox / eed-nightrow — скин снят на `<Card radius="md">`,
+   класс ОСТАЁТСЯ численным раскладочным остатком (padding живёт в
+   EventEditDialog.css: .eed-fcbox 12, .eed-nightrow 12/14 + margin/justify → 08).
+   Статичные. (`.acc` — отдельным заходом: условная обёртка isMulti + хук
+   состояния `.acc.is-open .acc__chev`, требует динамического носителя.)
+   visual-diff-move: eed-fcbox -> card card--r-md
+   visual-diff-move: eed-nightrow -> card card--r-md */
+/* TRIP-343 объект 2: скин аккордеона на `<Card radius="md" pad="none">` (bg/border
+   → .card, radius → .card--r-md, overflow → .card--flush). `.acc` остаётся КЛАССОМ
+   (хук состояния `.acc.is-open .acc__chev`); своё правило было только overflow →
+   ушло на flush, пустого `.acc{}` нет. FLUSH (дети .acc__head несут паддинг 12/14).
+   Носитель: Accordion.jsx — всегда Card; EventEditDialog сегмент — динамический
+   `isMulti ? Card : 'div'` (не-Card ветка className=undefined, без скина).
+   visual-diff-move: acc -> card card--r-md card--flush */
 .acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
 .acc__head:hover { background: var(--wash); } /* TRIP-326: opacity→opaque token */
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -2930,15 +2936,24 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Trip-creation choice card — ONE source, shared by the empty Trips screen and
    the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
+/* TRIP-343 объект 2: скин на `<Card as="button" radius="lg" interactive>`;
+   `.choice-card` — численный раскладочный остаток (padding 20 + flex → 08). РАДИУС
+   r-card 24 → lg 20 (как .records: −1 частный радиус вне канон-5, апрув Pavel).
+   Ховер сведён к канону (подсветка рамки --line-hover без движения): прежний лифт
+   + brand/ai-рамка сняты, включая `--ai:hover` — один язык ховера. `--on` (выбрана),
+   `--stack`, `--sm` остаются вариантами. Апрув облика /kit.
+   visual-diff-exempt: .choice-card background — скин переехал на .card
+   visual-diff-exempt: .choice-card border — скин переехал на .card
+   visual-diff-exempt: .choice-card border-radius — r-card 24 → lg 20 (−1 частный радиус, как .records)
+   visual-diff-exempt: .choice-card transition — interactive несёт свой (без transform)
+   visual-diff-exempt: .choice-card:hover box-shadow — лифт снят (был --sh-2, покой плоский)
+   visual-diff-exempt: .choice-card:hover border-color — brand-рамка → канон .card--interactive:hover (--line-hover)
+   visual-diff-exempt: .choice-card:active transform — нажатие без движения (канон)
+   visual-diff-exempt: .choice-card--ai:hover border-color — ai-рамка ховера снята (один язык ховера, канон) */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
-  border-radius: var(--r-card);
   cursor: pointer; text-align: left;
-  transition: border-color .2s, box-shadow .22s, transform .16s var(--ease-spring);
 }
-.choice-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--brand); }
-.choice-card:active { transform: translateY(0); }
-.choice-card--ai:hover { border-color: var(--ai); }
 /* Тон плитки - канал --hl* с дефолтом из :root, поэтому «ручной» вариант
    отдельным классом больше не описан: он ЗАПИСЫВАЛ дефолт (04 PR3). Своё имя
    осталось только у того варианта, у которого тон действительно свой - ИИ. */
@@ -2997,7 +3012,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 /* ★ОСТАТОК: зазор 22px вне шкалы - удержан. Мобильное правило ниже разворачивает
    этот ряд в колонку - оно идёт позже и выигрывает у примитива.
-   visual-diff-move: invite -> row */
+   TRIP-343 объект 2: скин снят на `<Card radius="lg">`; `.invite` остаётся
+   ЧИСЛЕННЫМ раскладочным остатком (padding 26/30 + gap + position + overflow;
+   Card паддинг не берёт → сводится в фазе 08). Баннер не кликается — статичен.
+   visual-diff-move: invite -> card card--r-lg */
 .invite { position: relative; overflow: hidden; gap: 22px; padding: 26px 30px; }
 .invite__ic { width: 58px; height: 58px; border-radius: var(--r-md); flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
@@ -3215,7 +3233,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
-.pl-lastcard { overflow: hidden; }
+/* TRIP-343 объект 2: скин на `<Card radius="lg" pad="none">`; `.pl-lastcard` остаётся
+   классом (хук `.is-fin` + co-селектор `> .te-row--plan`), своё правило было только
+   overflow → ушло на .card--flush. FLUSH (дети .te-row--plan несут паддинг). Статичн.
+   visual-diff-move: pl-lastcard -> card card--r-lg card--flush */
 .pl-lastcard.is-fin { border-color: var(--brand); }
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
 .pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
@@ -4519,12 +4540,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ovwrap .ov-col:first-child { container-type: inline-size; }
 
 /* ---- widget shell ---- */
-/* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тень только на ховере как affordance */
-.wdg {
-  overflow: hidden;
-  transition: transform .16s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s var(--ease-out);
-}
-.wdg:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
+/* TRIP-343 объект 2: `.wdg` был FLUSH-поверхностью (свой padding:0 + overflow,
+   контент падают дети .wdg-h/.wdg-b) → это КОНТРАКТ `pad="none"` (.card--flush),
+   а не раскладочный остаток. Скин+радиус+flush+единый ховер несёт `<Card
+   radius="lg" pad="none">`; правило `.wdg{}` опустело и удалено (класс снят и с
+   разметки — не orphan). Прежний ХОВЕР-ЛИФТ снят: канон без движения, виджет не
+   кликается → статичен (апрув облика /kit, TRIP-343).
+   visual-diff-exempt: .wdg background — скин переехал на .card (тот же --surface)
+   visual-diff-exempt: .wdg border — скин переехал на .card (тот же 1px --line)
+   visual-diff-exempt: .wdg border-radius — радиус переехал на .card--r-lg (тот же --r-xl)
+   visual-diff-exempt: .wdg overflow — переехал на .card--flush (pad="none")
+   visual-diff-exempt: .wdg transition — снят вместе с ховер-лифтом (канон без движения)
+   visual-diff-exempt: .wdg:hover transform — ховер-лифт снят (канон без лифта, апрув /kit)
+   visual-diff-exempt: .wdg:hover box-shadow — ховер-лифт снят (канон без лифта, апрув /kit) */
 .wdg-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px 12px; }
 .wdg-h .wi { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .wdg-h .wi svg { width: 17px; height: 17px; }
@@ -4647,8 +4675,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tl3-ev { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
 .tl3-ev .time { width: 48px; flex: none; text-align: right; color: var(--muted); }
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-199); тут только раскладка */
-.tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; transition: transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s; }
-@media (hover: hover) { .tl3-card:hover { transform: translateY(-2px); box-shadow: var(--sh-2); } }
+/* TRIP-343 объект 2: скин на `<Card as="button" radius="lg" interactive>`; `.tl3-card`
+   остаётся численным раскладочным остатком (padding 13/16 + flex → 08). Ховер-лифт
+   снят — канон интерактива без движения (рамку-ховер несёт .card--interactive:hover).
+   Радиус 20 (r-xl) СОХРАНЁН (skin-идентично). Фон/рамка — ТИНТ через --hl (свой
+   exempt ниже, :7121), скин-группа давала мёртвый --surface → снятие их не меняет.
+   Апрув облика /kit.
+   visual-diff-exempt: .tl3-card border-radius — радиус переехал на .card--r-lg (тот же r-xl 20)
+   visual-diff-exempt: .tl3-card transition — interactive несёт свой (без transform)
+   visual-diff-exempt: .tl3-card:hover {@media (hover: hover)} transform — лифт снят (канон без движения, апрув /kit)
+   visual-diff-exempt: .tl3-card:hover {@media (hover: hover)} box-shadow — лифт снят (был --sh-2, покой плоский) */
+.tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; }
 /* Единственный экземпляр семейства, существовавший до примитива: геометрия
    больше не переобъявляется, остались три ручки и тон по типу события.
    44/20px - ВНЕ ступеней (ближайшая --xl это 46/21); переезд на ступень меняет
@@ -4975,7 +5012,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* profile hero */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
-.acct-hero { position: relative; overflow: hidden; }
+/* FLUSH: overflow → .card--flush (pad="none"); дети __row/__edit несут паддинг.
+   visual-diff-move: acct-hero -> card card--r-lg card--flush */
+.acct-hero { position: relative; }
 .acct-hero__band { height: 84px; background: var(--brand-grad); position: relative; overflow: hidden; }
 .acct-hero__band .blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.16); pointer-events: none; }
 .acct-hero__band .b1 { width: 170px; height: 170px; top: -70px; right: -30px; }
@@ -5424,14 +5463,24 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* ── Строка-список (list view) ─────────────────────────────── */
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
+/* TRIP-343 объект 2: скин строки трипа на `<Card as="button" radius="lg" interactive>`;
+   `.tr` остаётся численным раскладочным остатком (padding 11/14 + flex → 08). Лифт
+   (translateY + --sh-2) и :active сняты — канон интерактива без движения (рамку-ховер
+   --line-hover несёт .card--interactive:hover). `.tr--add` (add-вариант) делит эту
+   базу и тоже на Card; его dashed-оверрайд/лифт — канонизируется в PR-3. Апрув /kit.
+   visual-diff-exempt: .tr background — скин переехал на .card
+   visual-diff-exempt: .tr border — скин переехал на .card
+   visual-diff-exempt: .tr border-radius — радиус переехал на .card--r-lg
+   visual-diff-exempt: .tr transition — interactive несёт свой (без transform)
+   visual-diff-exempt: .tr:hover {@media (hover: hover)} transform — лифт снят (канон без движения, апрув /kit)
+   visual-diff-exempt: .tr:hover {@media (hover: hover)} box-shadow — лифт снят (был --sh-2, покой плоский)
+   visual-diff-exempt: .tr:hover {@media (hover: hover)} border-color — рамка-ховер → .card--interactive:hover (тот же --line-hover)
+   visual-diff-exempt: .tr:active transform — нажатие без движения (канон) */
 .tr {
   display: flex; align-items: center; gap: 14px;
   padding: 11px 14px;
   cursor: pointer; text-align: left; font-family: inherit;
-  transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s;
 }
-@media (hover: hover) { .tr:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
-.tr:active { transform: translateY(0) scale(.995); }
 .tr--past { opacity: .72; }
 
 /* thumbnail */
@@ -5927,6 +5976,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Top action chips (booking link + "on map") — wrap on narrow widths. */
 .ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
+/* TRIP-343 объект 2: скин на `<Card radius="md">`, `.ev-sec` — численный
+   раскладочный остаток (padding 13/14 + flex + gap; → каркас 08). Статичный.
+   visual-diff-move: ev-sec -> card card--r-md */
 .ev-sec{padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
 /* Заголовок раздела - ОДИН на просмотр и на форму (TRIP-333). Раньше это были
    два разных объекта: тут мелкая метка канона `.t-micro` цветом типа события, а
@@ -5972,6 +6024,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
+/* visual-diff-move: hv-namecard -> card card--r-md */
 .hv-namecard{padding:16px 17px;}
 .hv-name{ color:var(--ink);line-height:1.2;}
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
@@ -5985,10 +6038,13 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
 .hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
+/* visual-diff-move: hv-card -> card card--r-md */
 .hv-card{padding:13px 15px;}
 .hv-price{ color:var(--ink);}
 .hv-pernight{ color:var(--muted);margin-top:2px;}
-.hv-rows{display:flex;flex-direction:column;overflow:hidden;}
+/* `.hv-rows` — FLUSH (нет паддинга, дети .hv-row несут; overflow → .card--flush,
+   pad="none"); остаётся flex-остаток. visual-diff-move: hv-rows -> card card--r-md card--flush */
+.hv-rows{display:flex;flex-direction:column;}
 /* Раскладку даёт .row .row--g6 в разметке (зазор 12 = ступень --sp-6, ТОЧНОЕ
    совпадение). Отбивка своя: строка живёт внутри рамки .hv-rows, у которой нет
    боковых полей, - в отличие от .row--div, что стоит в .card со своими полями. */
@@ -6021,6 +6077,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    и разметка теперь берёт сам .badge--brand. Третьего синего бейджа нет. */
 /* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
    eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
+/* visual-diff-move: tv-card -> card card--r-md */
 .tv-card{padding:16px 17px;}
 /* visual-diff-move: tv-eyebrows -> row row--wrap row--g3 */
 .tv-eyebrows { margin-bottom: 15px; align-items: stretch; }
@@ -6373,7 +6430,12 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* Surface skin comes from the canonical role group above (TRIP-326 collapsed the
    two roles into one alias pair); below = layout only. */
-.statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
+/* TRIP-343 объект 2: скин на `<Card radius="lg" pad="none">`; `.statbar` остаётся
+   раскладочным остатком (flex + margin-top + position/z-index → 08; дети .s несут
+   паддинг 18/20). Overflow → .card--flush. Статичная. Вариант `--inset` (граница
+   снизу + плотный .s) остаётся своим правилом.
+   visual-diff-move: statbar -> card card--r-lg card--flush */
+.statbar { display: flex; align-items: stretch; margin-top: 18px; position: relative; z-index: 1; }
 .statbar .s { position: relative; flex: 1; min-width: 0; padding: 18px 20px; display: flex; align-items: center; gap: 13px; }
 /* inset hairline divider (mockup v01): slim, padded top & bottom, not full-height */
 .statbar .s::before { content: ""; position: absolute; inset: 16px auto 16px 0; width: 1px; background: var(--line); }
@@ -6471,9 +6533,20 @@ a.doc-row__n:hover{ color: var(--brand); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
 
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
-.nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
-@media (hover: hover) { .nextcard:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
-.nextcard:active { transform: translateY(0) scale(.995); }
+/* TRIP-343 объект 2: скин на `<Card as="button" radius="lg" interactive>`; `.nextcard`
+   остаётся ЧИСЛЕННЫМ раскладочным остатком (padding 14 + flex/gap/width/text → 08).
+   Прежний ХОВЕР-ЛИФТ (translateY + --sh-2) и :active снят — канон интерактива:
+   подсветка рамки (--line-hover) + мягкая --sh-1 без движения; рамку-ховер несёт
+   .card--interactive:hover (тот же --line-hover). Апрув облика /kit.
+   visual-diff-exempt: .nextcard background — скин переехал на .card
+   visual-diff-exempt: .nextcard border — скин переехал на .card
+   visual-diff-exempt: .nextcard border-radius — радиус переехал на .card--r-lg
+   visual-diff-exempt: .nextcard transition — interactive несёт свой (без transform)
+   visual-diff-exempt: .nextcard:hover {@media (hover: hover)} transform — лифт снят (канон без движения, апрув /kit)
+   visual-diff-exempt: .nextcard:hover {@media (hover: hover)} box-shadow — лифт снят (был --sh-2, канон покой плоский)
+   visual-diff-exempt: .nextcard:hover {@media (hover: hover)} border-color — рамка-ховер переехала на .card--interactive:hover (тот же --line-hover)
+   visual-diff-exempt: .nextcard:active transform — нажатие без движения (канон) */
+.nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; }
 .nextcard__cover { width: 64px; height: 64px; border-radius: var(--r-btn); flex: none; position: relative; overflow: hidden; display: grid; place-items: center; color: var(--primary-fg); }
 .nextcard__cover svg { width: 24px; height: 24px; position: relative; z-index: 1; }
 .nextcard__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)); }
@@ -6487,6 +6560,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .cdu b { display: block; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cdu span { color: var(--muted); }
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
+/* visual-diff-move: nonext -> card card--r-lg */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }
@@ -6503,6 +6577,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
+/* visual-diff-move: summary -> card card--r-lg */
 .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; margin-top: 18px; }
 @media (max-width: 1040px) { .summary { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
@@ -6521,7 +6596,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* Base white card container (V4). Was missing — so .panel / .panel.world /
    .panel.chart rendered with no background, leaving continents, the country/city
    list and the year chart sitting bare on the page. Used only by the stats blocks. */
-/* .panel — скин (panel) целиком из группового селектора поверхностей в начале файла (TRIP-189) */
+/* .panel — TRIP-343 объект 2: скин переехал на `<Card radius="lg">`; паддинг несут
+   модификаторы (.world 24 / .chart 22-24-18 / инлайн 16-18), они полностью
+   перекрывают дефолт .card 18 — overflow НЕ добавляем (pad default, не flush).
+   visual-diff-move: panel -> card card--r-lg */
 
 /* — world ring + continents — */
 .world { display: grid; grid-template-columns: 230px 1fr; gap: 24px; padding: 24px; position: relative; overflow: hidden; align-items: center; margin-top: 18px; }
@@ -6559,7 +6637,16 @@ a.doc-row__n:hover{ color: var(--brand); }
 .list-empty { padding: 28px 14px; text-align: center; color: var(--muted); column-span: all; }
 
 /* — records (4 across) — */
-.records { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; }
+/* TRIP-343 объект 2: скин на `<Card radius="lg" pad="none">`; `.records` остаётся
+   раскладочным остатком (grid 4col → 08). РАДИУС сведён r-card 24 → lg 20 (решение
+   Pavel: −1 частный радиус, апрув по скрину). Rest-тень --sh-1 снята (канон покой
+   плоский). Overflow → .card--flush. Статичная.
+   visual-diff-exempt: .records background — скин переехал на .card
+   visual-diff-exempt: .records border — скин переехал на .card
+   visual-diff-exempt: .records border-radius — r-card 24 → lg 20 (−1 частный радиус, апрув Pavel)
+   visual-diff-exempt: .records box-shadow — rest-тень --sh-1 снята (канон покой плоский)
+   visual-diff-exempt: .records overflow — переехал на .card--flush (pad="none") */
+.records { display: grid; grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 1040px) { .records { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .records { grid-template-columns: 1fr; } }
 .rec { padding: 20px 22px; display: flex; flex-direction: column; gap: 11px; border-left: 1px solid var(--line); }

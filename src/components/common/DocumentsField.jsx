@@ -4,7 +4,7 @@ import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentM
 import { Icon } from '@/design/icons';
 import { UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
-import { FileRow, IconBtn, useToast } from '@/design/index';
+import { Card, FileRow, IconBtn, useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
 
@@ -82,8 +82,13 @@ export default function DocumentsField({
     }
   };
 
+  // Обрамлённый режим (не bare) — поверхность-раздел через `<Card as="section">`;
+  // bare — голый <section> без скина. Носитель динамический (TRIP-343, не-Card
+  // ветка реально без скина).
+  const Frame = bare ? 'section' : Card;
+  const frameProps = bare ? {} : { as: 'section', radius: 'lg', className: 'docfield' };
   return (
-    <section className={bare ? '' : 'docfield'}>
+    <Frame {...frameProps}>
       {!bare && (
         <div className="row row--j-between row--g4 docfield__head">
           <div className="row row--g4 docfield__title">
@@ -149,6 +154,6 @@ export default function DocumentsField({
           )}
         </div>
       )}
-    </section>
+    </Frame>
   );
 }

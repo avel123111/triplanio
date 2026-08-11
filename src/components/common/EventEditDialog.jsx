@@ -19,7 +19,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, IconBtn, Seg, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Card, IconBtn, Seg, Severity, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
   Plane, Car as CarIcon, Moon, ShieldCheck,
@@ -74,7 +74,7 @@ function Textarea({ className = '', ...p }) {
 function SwitchRow({ on, onChange, title, hint, children }) {
   const flip = () => onChange(!on);
   return (
-    <div className="eed-fcbox">
+    <Card radius="md" className="eed-fcbox">
       <div className="row row--a-start row--g4 eed-fclabel">
         <Toggle on={on} onChange={onChange} label={title} />
         <div className="eed-fcbody">
@@ -83,7 +83,7 @@ function SwitchRow({ on, onChange, title, hint, children }) {
           {children}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -1871,14 +1871,14 @@ function TransferLegCard({
   // same "minutes between two ISO locals, non-negative or null" as the layover gap.
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
   const isOpen = collapsible ? open : true;
+  // TRIP-186/343: сегмент «с пересадками» (isMulti) — поверхность-аккордеон, идёт
+  // через `<Card radius="md" pad="none" className="acc">` (рамку/заливку/скругление/
+  // обрезку держит Card + класс-остаток .acc). Одиночный (direct) трансфер оголён —
+  // обычный div без скина. Носитель поэтому ДИНАМИЧЕСКИЙ (не-Card ветка без скина).
+  const Seg = isMulti ? Card : 'div';
+  const segProps = isMulti ? { radius: 'md', pad: 'none', className: 'acc' } : {};
   return (
-    // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
-    // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    // TRIP-333 §5: сегмент — это сворачиваемый раздел с шапкой и телом, то есть
-    // тот же объект, что «Детали брони» и «Документы и заметки» в этом же окне.
-    // Он рисовался инлайном и сидел на СВОЕЙ ступени скругления; теперь идёт
-    // через `.acc`, и рамку, заливку, скругление и обрезку углов держит класс.
-    <div className={isMulti ? 'acc' : undefined}>
+    <Seg {...segProps}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
@@ -1972,12 +1972,12 @@ function TransferLegCard({
             reads to add the +1 arrival-day gap, so it must always equal the actual
             dates. Shown as a passive badge the moment the arrival date is a later day. */}
         {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <div className="row eed-nightrow">
+          <Card radius="md" className="row eed-nightrow">
             <span className="row row--g4 eed-nightrow__l">
               <Moon size={16} />
               <span className="t-ui">{t('event.overnight_label')}</span>
             </span>
-          </div>
+          </Card>
         )}
 
         {/* Carrier / flight no. */}
@@ -2018,7 +2018,7 @@ function TransferLegCard({
           </div>
         </div>
       </div>
-    </div>
+    </Seg>
   );
 }
 

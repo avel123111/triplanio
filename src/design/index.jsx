@@ -783,7 +783,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <button className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
+      <Card as="button" radius="lg" interactive className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>
@@ -795,7 +795,7 @@ export function StreamEventRow({ e, onClick }) {
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
           </span>
         )}
-      </button>
+      </Card>
     </div>
   );
 }

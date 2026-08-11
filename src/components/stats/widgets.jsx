@@ -1,5 +1,5 @@
 import React from 'react';
-import { Btn, Avatar } from '@/design/index';
+import { Btn, Avatar, Card } from '@/design/index';
 import { Icon } from '@/design/icons';
 
 // Shared presentational widgets for the travel-stats screens (Trips home +
@@ -30,7 +30,7 @@ export function Greeting({ greeting, name, avatarName, photo, sub, eyebrow }) {
 // maps to the .c-* icon colour (city/trip/transfer). Optional trailing CTA node.
 export function StatBar({ items = [], cta = null, className = '' }) {
   return (
-    <div className={`statbar${className ? ` ${className}` : ''}`}>
+    <Card radius="lg" pad="none" className={`statbar${className ? ` ${className}` : ''}`}>
       {items.map((it) => (
         <div key={it.key} className={`s${it.tone ? ` c-${it.tone}` : ''}`}>
           <span className="ic">{it.icon}</span>
@@ -38,7 +38,7 @@ export function StatBar({ items = [], cta = null, className = '' }) {
         </div>
       ))}
       {cta && <div className="cta">{cta}</div>}
-    </div>
+    </Card>
   );
 }
 
@@ -85,7 +85,7 @@ export function AllStatsCta({ label, onClick }) {
 // .c-* (city/cont/trip/flight/transfer).
 export function SummaryTiles({ items = [] }) {
   return (
-    <div className="summary">
+    <Card radius="lg" className="summary">
       {items.map((it) => (
         <div key={it.key} className={`sfig${it.tone ? ` c-${it.tone}` : ''}`}>
           <span className="ic">{it.icon}</span>
@@ -93,7 +93,7 @@ export function SummaryTiles({ items = [] }) {
           <div className="k">{it.label}</div>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 
@@ -138,7 +138,7 @@ export function ContinentBars({ title, rows = [] }) {
 // Records grid. items = [{ key, iconClass, icon, label, value, sub }].
 export function Records({ items = [] }) {
   return (
-    <div className="records">
+    <Card radius="lg" pad="none" className="records">
       {items.map((it) => (
         <div key={it.key} className="rec">
           <span className={`ic ${it.iconClass}`}>{it.icon}</span>
@@ -147,14 +147,14 @@ export function Records({ items = [] }) {
           <div className="s">{it.sub}</div>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 
 // Trips-per-year bar chart. bars = [{ year, value, height, on }]; caption string.
 export function YearChart({ bars = [], caption }) {
   return (
-    <div className="panel chart">
+    <Card radius="lg" className="panel chart">
       <div className="chart__bars">
         {bars.map((b) => (
           <div key={b.year} className={`cbar${b.on ? ' on' : ''}`}>
@@ -165,7 +165,7 @@ export function YearChart({ bars = [], caption }) {
         ))}
       </div>
       {caption && <div className="chart__cap">{caption}</div>}
-    </div>
+    </Card>
   );
 }
 
