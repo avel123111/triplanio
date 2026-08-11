@@ -57,7 +57,11 @@ export const KIT_OBJECTS = [
   { id: 'stepper', family: 'stepper', group: 'components', prefix: 'stepper', maps: ['STEPPER_VARIANTS'] },
   { id: 'swatch', family: 'swatch', group: 'components', prefix: 'swatch', maps: ['SWATCH_VARIANTS'] },
   { id: 'badge', family: 'badge', group: 'components', css: true },
-  { id: 'card', family: 'card', group: 'components', css: true },
+  // Карточка - МНОГООСНЫЙ объект (радиус × тон × interactive/add/recessed/…),
+  // источник оси - карта суффиксов `.card--*`, экспортированная примитивом
+  // (`CARD_VARIANTS`), не CSS-скан: страница рисует по ней, тест дрейфа сверяет
+  // её ↔ живой CSS в обе стороны (TRIP-343). `interactive` - у форм есть ховер.
+  { id: 'card', family: 'card', group: 'components', prefix: 'card', maps: ['CARD_VARIANTS'], interactive: true },
   { id: 'field', family: 'field', group: 'components', css: true },
   { id: 'input', family: 'input', group: 'components', css: true },
   { id: 'avatar', family: 'avatar', group: 'components', css: true },

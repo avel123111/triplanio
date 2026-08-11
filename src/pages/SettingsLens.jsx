@@ -21,7 +21,7 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
@@ -773,16 +773,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* ── Identity: cover + name / description / currency / notes ──────────
           Save here governs only these manually-edited fields; the feature and
           display toggles below auto-save on click. */}
-      <Card
-        title={t('settings.section_basic')}
-        action={readOnly ? null : (
-          <Row>
-            <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
-              {t('trip.form_save')}
-            </Btn>
-          </Row>
-        )}
-      >
+      <Card>
+        <CardHeader
+          title={t('settings.section_basic')}
+          action={readOnly ? null : (
+            <Row>
+              <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
+                {t('trip.form_save')}
+              </Btn>
+            </Row>
+          )}
+        />
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
@@ -876,7 +877,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {/* Chat widget - trip-level toggle for the floating dock button.
               Only shown when the Group Chat addon is on. */}
           {features.chat && (
-            <Card title={t('settings.chat_widget_title')}>
+            <Card>
+              <CardHeader title={t('settings.chat_widget_title')} />
               <Row gap="g7">
                 <Grow fit>
                   <div className="t-ui">{t('settings.chat_widget_label')}</div>
@@ -906,7 +908,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
 
           {/* Warnings / display - extensible bag of trip-level display toggles. */}
-          <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
+          <Card>
+            <CardHeader title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')} />
             <Row gap="g6" className="settings-plate">
               <Grow fit>
                 <div className="t-label">{t('settings.warn_bookings_title')}</div>   {/* TRIP-175 инсп.: UI→Label */}
@@ -920,14 +923,16 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         <Col gap="g7" className="settings-col">
           {/* Telegram - only when the Telegram addon is enabled. */}
           {features.tg && (
-            <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')}>
+            <Card>
+              <CardHeader title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')} />
               <TelegramSection tripId={tripId} />
             </Card>
           )}
 
           {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
           {SHOW_HOTEL_VOTING && (
-            <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
+            <Card>
+              <CardHeader title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} />
               <Col gap="g4">
                 {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked />)}
                 {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked={false} />)}
@@ -967,7 +972,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       </Card>
 
       {/* ── Danger zone (full width) ── */}
-      <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
+      <Card style={{ borderColor: 'var(--danger-soft)' }}>
+        <CardHeader title={t('settings.danger_zone')} />
         {myRole !== 'owner' && (
           <Row gap="g7" className="row--flush">
             <span className="tile tile--lg tile--danger"><Icon name="arrow" size={18} /></span>
