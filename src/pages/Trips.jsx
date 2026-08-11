@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
@@ -456,9 +457,12 @@ export default function Trips() {
   // happen client-side (here it's unfiltered).
   const { data: travelStats } = useQuery({
     queryKey: ['travel-stats', user?.id],
+    // Общий ридер яруса A (TRIP-402): тот же edge getTravelStats и тот же кэш-ключ,
+    // что у экрана «Моя статистика» (Statistics.jsx) — читаем из общего кэша.
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_user_travel_stats');
-      if (error) throw error;
+      const { data, error, code, message } = await invokeFn('getTravelStats');
+      // Бросаем исходный error (помечен __seamHandled) — без повторного отчёта.
+      if (error || code) throw error || new Error(message || code);
       return data || { points: [], trips: {}, transfers_total: 0, trip_visits: {} };
     },
     enabled: !!user?.id,

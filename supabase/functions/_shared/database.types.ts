@@ -2361,7 +2361,7 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_user_travel_stats: { Args: never; Returns: Json }
+      get_user_travel_stats: { Args: { p_actor: string }; Returns: Json }
       is_trip_creator: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_participant: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_pro: { Args: { p_trip_id: string }; Returns: boolean }
