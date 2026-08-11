@@ -437,7 +437,7 @@ export default function Trips() {
     // Композит главной (TRIP-403, ярус B): edge getTrips (actor из JWT → RPC
     // get_my_trip_cards под service_role) отдаёт карточку ЦЕЛИКОМ одним вызовом —
     // список + owner-aware is_pro (БЕЙДЖ отсюда) + моя роль + визиты + участники
-    // (owner первым). Заменяет прямой .from('trips') + get_trip_participant_profiles
+    // (owner первым). Заменяет прямой .from('trips') + RPC профилей участников
     // + карточные слайсы getTravelStats. Порядок — created_at desc (в самой RPC).
     queryFn: async () => {
       const { data, error, code, message } = await invokeFn('getTrips');
@@ -474,7 +474,7 @@ export default function Trips() {
   const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
 
   // Participants (owner + active members, owner первым) приходят В карточке из
-  // getTrips (get_my_trip_cards поглотил get_trip_participant_profiles, TRIP-403).
+  // getTrips (get_my_trip_cards поглотил профили участников, TRIP-403).
   // Здесь только локализуем метку обезличенного (soft-deleted) участника — вместо
   // выскобленного пустого имени (заодно один ровный градиент аватара на всех).
   const participantsByTrip = useMemo(() => {

@@ -2349,19 +2349,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_trip_participant_profiles: {
-        Args: { trip_id_list: string[] }
-        Returns: {
-          avatar_url: string
-          email: string
-          full_name: string
-          is_deleted: boolean
-          is_owner: boolean
-          role: string
-          trip_id: string
-          user_id: string
-        }[]
-      }
       get_user_travel_stats: { Args: { p_actor: string }; Returns: Json }
       is_trip_creator: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_participant: { Args: { p_trip_id: string }; Returns: boolean }
