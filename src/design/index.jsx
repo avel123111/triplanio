@@ -372,12 +372,14 @@ export const CARD_VARIANTS = [
  * @param {{ as?: 'div'|'button'|'a', radius?: CardRadius, interactive?: boolean,
  *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
  *   locked?: boolean, danger?: boolean, href?: string, onClick?: any,
- *   disabled?: boolean, id?: string, ariaLabel?: string, title?: string,
+ *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,
+ *   ariaControls?: string, ariaSelected?: boolean, title?: string,
  *   children?: any, className?: string, style?: any }} p
  */
 export const Card = ({
   as = "div", radius, interactive, pad = "default", tone, variant,
-  recessed, locked, danger, href, onClick, disabled, id, ariaLabel, title,
+  recessed, locked, danger, href, onClick, disabled, id, ariaLabel,
+  ariaExpanded, ariaControls, ariaSelected, title,
   children, className = "", style,
 }) => {
   const mods = [
@@ -398,6 +400,9 @@ export const Card = ({
       id={id}
       title={title}
       aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      aria-selected={ariaSelected}
       onClick={onClick}
       {...(as === "a" ? { href } : null)}
       {...(as === "button" ? { type: "button", disabled } : null)}

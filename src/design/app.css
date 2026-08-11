@@ -428,7 +428,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
-.te-row.te-row--plan, .acct-chan, .acct-tgrow, .tm-cell,
+.te-row.te-row--plan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
 .addon-card, .tm-manage, .tm-account, .eroute,
 .pcard, .s22f-panel,
@@ -5095,7 +5095,14 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    taller Telegram card). The trailing CTA/chevron re-centres on desktop.
    Это ПЕРЕОПРЕДЕЛЕНИЕ .row (у неё align-items:center) при равной специфичности -
    держится только тем, что .acct-chan объявлен ниже .row по файлу. */
-.acct-chan { align-items: flex-start; padding: 14px; border-radius: var(--r-md); transition: border-color .2s, background .2s; }
+/* TRIP-343 объект 2: скин канала-напоминаний на `<Card radius="md">` (bg/border →
+   .card, r-md → .card--r-md); `.acct-chan` — численный раскладочный остаток
+   (padding 14 + align + transition для --btn-ховера → 08). `--btn` (кликабельный,
+   свой ховер border/surface-3) и `--soon` остаются вариантами; носитель --btn —
+   `<Card as="button">` без interactive (свой ховер), aria-expanded/controls через
+   контракт Card. Row-сайты — `<Card>` + row/row--g6.
+   visual-diff-move: acct-chan -> card card--r-md */
+.acct-chan { align-items: flex-start; padding: 14px; transition: border-color .2s, background .2s; }
 .acct-chan > .btn, .acct-chan__chev { align-self: center; }
 /* Status badge ("Coming soon" / "Connected") sits on its OWN line under the
    subtitle (like Telegram's CTA) — NOT inline in the title (wraps differently
