@@ -1365,7 +1365,7 @@ export default function EventEditDialog({
                   onClick={handleSaveClick}
                   loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
-                  style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
+                  ariaDisabled={!canSave}
                 >
                   {isEdit ? t('common.save') : t('event.create')}
                 </Btn>

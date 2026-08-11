@@ -552,7 +552,10 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
         <Btn
           variant="soft"
           icon="plus"
-          style={!isShared ? { background: 'var(--warm-soft)', color: 'var(--warm-ink)' } : undefined}
+          /* Личные доки = тёплый тон. Ведём его ВХОДОМ канала (--hl-soft/--hl-ink),
+             а не инлайном итоговых background/color: так `.btn--soft` держит свой
+             ховер, а не глохнет под перекрытием заливки (TRIP-344). */
+          style={!isShared ? { '--hl-soft': 'var(--warm-soft)', '--hl-ink': 'var(--warm-ink)' } : undefined}
           onClick={() => onOpenAdd?.()}>
           {t('doc.add_doc')}
         </Btn>

@@ -26,17 +26,28 @@
  * содержит ровно один `<button>` примитива, поэтому тег точен.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/* Btn — представитель primary (полный набор: hover · active · focus). */
+/* Btn — представитель primary (полный набор: hover · active · focus). Зеркало
+   ведёт заливку по тому же каналу var(--a,var(--hl,var(--brand))), что и реальный
+   `.btn--primary` после TRIP-344, и так же темнит в light / светлит в dark, —
+   иначе витрина показывала бы облик, которого в проде уже нет. */
 [data-kit="btn"][data-force="hover"] button {
-  --bg: var(--primary-hover);
-  box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent);
+  --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 86%, #000);
+  box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--a, var(--hl, var(--brand))) 75%, transparent);
 }
-/* visual-diff-exempt: [data-kit=btn][data-force=hover] button --bg — зеркалит .btn--primary:hover, только Kit.css, прод не тронут, апрув Pavel */
-/* visual-diff-exempt: [data-kit=btn][data-force=hover] button box-shadow — зеркалит .btn--primary:hover, только Kit.css, прод не тронут, апрув Pavel */
+[data-theme="dark"] [data-kit="btn"][data-force="hover"] button {
+  --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 81%, #fff);
+}
+/* visual-diff-exempt: [data-kit=btn][data-force=hover] button --bg — зеркалит .btn--primary:hover (канал+потемнение), только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-kit=btn][data-force=hover] button box-shadow — зеркалит .btn--primary:hover: тень тоже по каналу var(--a,var(--hl,var(--brand))), как прод-правило после TRIP-344 (было var(--brand), молча отставало); только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-theme=dark] [data-kit=btn][data-force=hover] button --bg — зеркалит [data-theme=dark] .btn--primary:hover (осветление), только Kit.css, апрув Pavel */
 [data-kit="btn"][data-force="active"] button {
-  --bg: var(--primary-press);
+  --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 75%, #000);
 }
-/* visual-diff-exempt: [data-kit=btn][data-force=active] button --bg — зеркалит .btn--primary:active, только Kit.css, прод не тронут, апрув Pavel */
+[data-theme="dark"] [data-kit="btn"][data-force="active"] button {
+  --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 60%, #fff);
+}
+/* visual-diff-exempt: [data-kit=btn][data-force=active] button --bg — зеркалит .btn--primary:active (канал+потемнение), только Kit.css, прод не тронут, апрув Pavel */
+/* visual-diff-exempt: [data-theme=dark] [data-kit=btn][data-force=active] button --bg — зеркалит [data-theme=dark] .btn--primary:active, только Kit.css, апрув Pavel */
 [data-kit="btn"][data-force="focus"] button {
   box-shadow: 0 0 0 3px var(--primary-ring);
 }

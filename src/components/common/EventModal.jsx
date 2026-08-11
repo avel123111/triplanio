@@ -171,7 +171,7 @@ export default function EventModal(props) {
                 </Btn>
               )}
               {canEdit && onEdit && (
-                <Btn variant="primary" icon="edit" onClick={onEdit} style={{ '--bg': theme.color }}>
+                <Btn variant="primary" icon="edit" onClick={onEdit}>
                   {t('trip.edit_trip')}
                 </Btn>
               )}

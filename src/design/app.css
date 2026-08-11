@@ -1318,9 +1318,30 @@ button.app-side__item:hover { background: var(--wash); }
   transition: background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);
 }
 .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
-.btn--primary { --bg: var(--brand); --fg: #fff; --bd: transparent; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--brand) 70%, transparent); }
-.btn--primary:hover { --bg: var(--primary-hover); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent); }
-.btn--primary:active { --bg: var(--primary-press); }
+/* ★TRIP-344 (объект «кнопка», реопен): заливка solid-тона primary едет по
+   каналу var(--a, var(--hl, var(--brand))) — ровно как `.btn--dashed` после
+   #784. Дефолт --hl в :root = brand, поэтому БЕЗ контекста итог тот же brand,
+   а литерал --brand в хвосте цепочки мёртв (как у dashed). Контекст (evVars
+   редактора события: --hl = цвет категории) красит save/edit БЕЗ инлайна --bg,
+   и ховер выживает: раньше инлайн `--bg` бил `:hover{--bg}` по специфичности и
+   глушил отклик.
+   ⚠ danger-solid/ai/pro сюда НЕ включены осознанно: у них фиксированная
+   семантика (красный/градиент/золото), а danger-solid (подтверждение удаления)
+   живёт ВНУТРИ того же evVars-скоупа — читай он канал, кнопка необратимого
+   действия покрасилась бы цветом категории.
+   Ховер/нажатие — это ПОТЕМНЕНИЕ канала в светлой теме и ОСВЕТЛЕНИЕ в тёмной
+   (как ведёт себя brand сегодня), а не токен --primary-hover: тот знает только
+   brand и арбитрарный цвет категории потемнить не умеет. */
+.btn--primary { --bg: var(--a, var(--hl, var(--brand))); --fg: #fff; --bd: transparent; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--a, var(--hl, var(--brand))) 70%, transparent); }
+.btn--primary:hover { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 86%, #000); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--a, var(--hl, var(--brand))) 75%, transparent); }
+.btn--primary:active { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 75%, #000); }
+[data-theme="dark"] .btn--primary:hover { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 81%, #fff); }
+[data-theme="dark"] .btn--primary:active { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 60%, #fff); }
+/* visual-diff-exempt: .btn--primary --bg — заливка на канал var(--a,var(--hl,var(--brand))); дефолт --hl в :root = brand → значение то же (TRIP-344) */
+/* visual-diff-exempt: .btn--primary box-shadow — источник тени brand → канал; дефолт = brand → тень та же (TRIP-344) */
+/* visual-diff-exempt: .btn--primary:hover box-shadow — источник тени brand → канал; дефолт = brand → тень та же (TRIP-344) */
+/* visual-diff-exempt: .btn--primary:hover --bg — ОБЛИК: ховер = потемнение канала (light) / осветление (dark) вместо токена --primary-hover; апрув по скриншоту ховера обеих тем (Pavel, TRIP-344) */
+/* visual-diff-exempt: .btn--primary:active --bg — ОБЛИК: нажатие = потемнение/осветление канала вместо --primary-press; апрув по скриншоту (Pavel, TRIP-344) */
 .btn--secondary { --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong); }
 /* Отклик на наведение — ЗАЛИВКА (и чуть более тёмная рамка), а не перекраска
    текста в бренд с тенью: снятое подпрыгивание было ЕДИНСТВЕННЫМ, что делало
@@ -1332,8 +1353,20 @@ button.app-side__item:hover { background: var(--wash); }
    комментарий обещал именно это, а имя оставалось в селекторе: разбор облика
    числит его мёртвым модификатором, и замер согласен — `is-on` в разметке живёт
    на `.ncal-vtgl-btn` и `.dl-visopt`, на `.btn` его не ставит никто. */
-.btn--soft { --bg: var(--brand-soft); --fg: var(--brand); --bd: transparent; }
-.btn--soft:hover { --bg: var(--brand-soft-12); }
+/* ★TRIP-344: мягкий тон тоже едет по каналу --hl-soft/--hl-ink. Дефолт в :root =
+   brand-soft/brand, поэтому без контекста тон тот же (фолбэк-литерал не пишем —
+   имя объявлено в :root, второй аргумент var() был бы мёртв, как и у прочих
+   читателей --hl*). Личные доки проводят тёплый ВХОДОМ канала (--hl-soft/--hl-ink
+   инлайном на кнопке — это вход, а не итоговое свойство, ховер выживает);
+   fork-state--err/nomatch несут danger/warning, и retry/reset в них принимают
+   тон своего состояния. Ховер = усиление тинта из --hl-ink (light 16% / dark 24%
+   = прежний --brand-soft-12 по обеим темам). */
+.btn--soft { --bg: var(--hl-soft); --fg: var(--hl-ink); --bd: transparent; }
+.btn--soft:hover { --bg: color-mix(in srgb, var(--hl-ink) 16%, transparent); }
+[data-theme="dark"] .btn--soft:hover { --bg: color-mix(in srgb, var(--hl-ink) 24%, transparent); }
+/* visual-diff-exempt: .btn--soft --bg — заливка на канал --hl-soft; дефолт :root = brand-soft → тон тот же (TRIP-344) */
+/* visual-diff-exempt: .btn--soft --fg — текст на канал --hl-ink; дефолт :root = brand → тон тот же (TRIP-344) */
+/* visual-diff-exempt: .btn--soft:hover --bg — ховер = усиление тинта из --hl-ink (light 16% / dark 24% = прежний --brand-soft-12); дефолт тот же (TRIP-344) */
 .btn--quiet { --bg: var(--surface-2); --fg: var(--ink-2); --bd: transparent; }
 /* ★TRIP-344: ховер quiet — ЗАЛИВКА в `--wash`, а не только потемнение текста.
    Эталон `nx-btn--quiet:hover` даёт `--bg: --wash` + `--fg: --ink`; ровно тот
@@ -1439,6 +1472,13 @@ button.app-side__item:hover { background: var(--wash); }
 .dz-lift-card:active { transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
 .btn[disabled] { opacity: .55; pointer-events: none; }
+/* Полу-disabled = ШТАТНОЕ состояние примитива (TRIP-344): кнопка выглядит
+   приглушённой, но ОСТАЁТСЯ кликабельной. «Сохранить» при незаполненной форме
+   не блокируется атрибутом disabled — клик по нему раскрывает валидацию
+   (canSave). Прежде это был инлайн `opacity: canSave ? 1 : 0.6` на кнопке;
+   теперь тем же значением им владеет примитив, а не вызыватель. */
+.btn[aria-disabled="true"] { opacity: .6; }
+/* visual-diff-exempt: .btn[aria-disabled=true] opacity — полу-disabled: инлайн opacity вызывателя → штатное состояние примитива; апрув Pavel (TRIP-344) */
 /* Нажато/включено = ДАННЫЕ (aria-pressed), тон — бренд-заливка, как у уже-канонных
    Chip/Seg/Swatch. Один способ показать «нажато» на всех примитивах-кнопках;
    классовые способы (.on/--on/--active/.map-ctl button.on) снимаются по мере
