@@ -227,6 +227,14 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-error-codes.mjs
+      # 2w (TRIP-400): дискриминант отказа invokeFn — в КОРНЕ результата, не в
+      # `data`. Храповик по диффу: рост `.data.code`/`.data.ok` в тронутом файле →
+      # красный (типизация `invokeFn<T>` краснит это же под @ts-check, гард — на
+      # весь src). git + стандартная библиотека — без npm ci.
+      - name: 2w — дискриминант invokeFn в корне (.data.code/.data.ok не растёт)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-invoke-discriminant.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
