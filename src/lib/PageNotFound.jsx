@@ -7,7 +7,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 
 // Shared system-stub layout - one visual family with the no-access page
 // (mirrors ScreenSystem.jsx §33): icon-in-circle + title + explanation + action.
-export function SystemStub({ icon, tone = 'brand', title, body, primary, secondary }) {
+export function SystemStub({ icon, tone = 'brand', title, body, primary, secondary = null }) {
   const colors = {
     brand:   ['var(--brand-soft)',   'var(--brand)'],
     warm:    ['var(--warm-soft, var(--brand-soft))', 'var(--warm)'],

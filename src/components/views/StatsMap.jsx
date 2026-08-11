@@ -38,7 +38,7 @@ export default function StatsMap({
   sizeSignal = null,
   selected = null,
   cooperativeGestures = true,
-  children,
+  children = null,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
