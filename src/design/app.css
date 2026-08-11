@@ -431,7 +431,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .te-row.te-row--plan, .acct-tgrow, .tm-cell,
 /* карточки разделов и панели экранов */
 .addon-card, .tm-manage, .tm-account, .eroute,
-.pcard, .s22f-panel,
+.s22f-panel,
 /* держали эту пару своей копией, а не именем в роли */
 .plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
@@ -1674,6 +1674,26 @@ button.app-side__item:hover { background: var(--wash); }
   .card--add:hover { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
   .card--tone-ai.card--interactive:hover { border-color: var(--ai); }
 }
+/* TRIP-343 объект 2 (pcard, решение Pavel «Card владеет скином+состоянием, поведение
+   вокруг»): подсветка от ВНЕШНЕГО триггера (map-sync — обёртка ставит data-hovered
+   от карты) = ТОТ ЖЕ облик, что :hover, но по ДАННЫМ, не по указателю (закон 5: один
+   облик, два триггера). ВЫБОР (aria-selected, ex-.pcard.is-sel) — акцент-рамка+кольцо,
+   состояние семантическое, несёт Card; скин выбора КАНОН, не приватный .pcard.is-*.
+   ★ Состояние на ОБЁРТКЕ-поведении, скин на дочернем Card: у pcard вложен `<a>`
+   (Book) — реальный <button> его нести не может, поэтому интерактив (role=button +
+   aria-selected + map-sync) на обёртке, Card-as-div несёт скин; канон читает
+   состояние обёртки дочерним комбинатором. Полностью по принципу «скин на Card,
+   поведение вокруг».
+   visual-diff-exempt: .card--interactive border-color — подсветка канона по данным обёртки (map-hover/выбор), закон 5
+   visual-diff-exempt: .card--interactive box-shadow — подсветка по данным обёртки = --sh-1/кольцо (тот же облик)
+   visual-diff-exempt: [data-card-btn]:focus-visible outline — узкий хук фокуса обёртки: дефолтный outline снят, кольцо на дочернем Card */
+[data-hovered] > .card--interactive { border-color: var(--line-hover); box-shadow: var(--sh-1); }
+[aria-selected="true"] > .card--interactive { border-color: var(--brand); box-shadow: 0 0 0 2px var(--primary-ring); }
+/* Фокус обёртки-поведения (data-card-btn — УЗКИЙ хук, не общий [role=button], иначе
+   снял бы фокус-outline у всех кастомных кнопок; :has() недоступен на build-target):
+   кольцо на дочерний Card, дефолтный outline обёртки снят. */
+[data-card-btn]:focus-visible > .card--interactive { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+[data-card-btn]:focus-visible { outline: none; }
 
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 7px; }
@@ -6328,16 +6348,29 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* ★`row-gap: 0` - прежнее значение под своим именем: у сетки начальный зазор 0, а
    `.grid` несёт дефолтные 10px по обеим осям, тогда как правило задаёт только
    `column-gap`. Между строкой карточки и её нижней планкой появились бы 10px.
-   visual-diff-move: pcard -> grid */
-.pcard { position: relative; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; row-gap: 0; }
-.pcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) {
-  .pcard:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); }
-  .pcard:hover .pcard__thumb img { transform: scale(1.06); }
-}
-.pcard:active { transform: scale(.99); }
-.pcard.is-hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
-.pcard.is-sel { border-color: var(--brand); box-shadow: 0 0 0 2px var(--primary-ring), var(--sh-2); }
+/* TRIP-343 объект 2 (решение Pavel «Card=скин+состояние, поведение вокруг»): скин
+   карточки-брони на `<Card as="button" radius="md" interactive ariaSelected>`; лифт/
+   rest-тень/фокус-outline/`:hover .thumb img`-зум СНЯТЫ (канон без движения, покой
+   плоский, фокус-кольцо канона). `.is-hover` (map-sync) → канон `[data-hovered]`;
+   `.is-sel` → канон `aria-selected`. `.pcard` — раскладочный остаток (grid) БЕЗ скина.
+   visual-diff-exempt: .pcard background — скин переехал на .card
+   visual-diff-exempt: .pcard border — скин переехал на .card
+   visual-diff-exempt: .pcard border-radius — радиус переехал на .card--r-md
+   visual-diff-exempt: .pcard box-shadow — rest-тень --sh-1 снята (канон покой плоский)
+   visual-diff-exempt: .pcard transition — interactive несёт свой (без transform)
+   visual-diff-exempt: .pcard:focus-visible outline — фокус → канон [role=button]:focus-visible > .card--interactive (кольцо)
+   visual-diff-exempt: .pcard:focus-visible outline-offset — фокус → канон (кольцо box-shadow, offset не нужен)
+   visual-diff-exempt: .pcard:hover {@media (hover: hover) and (pointer: fine)} transform — лифт снят (канон без движения, апрув /kit)
+   visual-diff-exempt: .pcard:hover {@media (hover: hover) and (pointer: fine)} border-color — ховер → канон .card--interactive:hover
+   visual-diff-exempt: .pcard:hover {@media (hover: hover) and (pointer: fine)} box-shadow — был --sh-2, канон --sh-1
+   visual-diff-exempt: .pcard:active transform — нажатие без движения (канон)
+   visual-diff-exempt: .pcard border-color — приватные .is-hover/.is-sel (рамка) → канон [data-hovered]/[aria-selected] (закон 5)
+   visual-diff-exempt: .pcard width — каркас: карточка теперь в обёртке-поведении (map-sync), ширина явная вместо flex-stretch
+   visual-diff-exempt: .card--interactive outline — фокус-канон обёртки снимает дефолтный outline, кольцо несёт box-shadow */
+.pcard { position: relative; width: 100%; grid-template-columns: clamp(80px, 26cqw, 104px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; padding: 9px; cursor: pointer; text-decoration: none; color: inherit; row-gap: 0; }
+/* Зум обложки на наведении карточки — внутренний флёр (не лифт карточки), удержан;
+   `.pcard:hover` срабатывает при наведении на Card (он заполняет обёртку). */
+@media (hover: hover) and (pointer: fine) { .pcard:hover .pcard__thumb img { transform: scale(1.06); } }
 .pcard--sk { cursor: default; }
 
 /* Thumb — grid cell (col 1); height follows the text block, min-height keeps its
