@@ -440,7 +440,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
    outline-тоном примитива, и ко-селектор (0,1,0) молча перебивал бы его рамку. */
 .cbadge, .ts-startctl, .bk-link,
-.pro-up .lockmsg, .map-legend .c, .map-ctl,
+.map-legend .c, .map-ctl,
 .chat-bubble--them {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -742,7 +742,6 @@ h4,
 .app-side__item-badge,
 .err, .wrn,
 .pro-up p,
-.pro-up .lockmsg,
 .sev,
 .avatar,
 .avatar--sm,
@@ -1060,7 +1059,6 @@ h4,
 .s22mk__price, .s22mk__count,  /* TRIP-287: инспектор канонов — цена/счётчик маркера карты → Meta+Golos */
 .ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
 .pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
-.pro-up .lockmsg,        /* TRIP-225 инсп.: Meta+Golos («Подключает владелец») */
 .field__sub,             /* TRIP-225 инсп.: Meta+Golos (под-подсказка поля — всегда проза) */
 .bgt-dleg__p,            /* TRIP-243 инсп.: Meta+Golos (процент легенды доната) */
 .bgt-donut__c .l,        /* TRIP-243 инсп.: Meta+Golos (подпись «всего» под числом доната) */
@@ -1365,11 +1363,22 @@ button.app-side__item:hover { background: var(--wash); }
 /* Плейсхолдер «добавить»: в покое серый пунктир, на ховере рамка, текст и фон
    красятся в акцент контекста (`--a` — тип брони, тип сервиса), с тем же
    умолчанием brand, что у `link`.
+   ★TRIP-344 PR 3: цепочка фолбэка ховера — `var(--a, var(--hl, var(--brand)))`.
+   `--a` НЕ переобъявляется на самой кнопке (иначе унаследованный от предка `--a`
+   был бы замаскирован — ревью Codex): явный `--a` (инлайн CityPanel/ServicesCard,
+   контекст `.te-cell`, обёртка на витрине) по-прежнему течёт сквозь; если его нет
+   — берётся `--hl` контекста (акцент типа события, который несут оболочки
+   `evVars`), и только затем brand. Так «добавить пересадку» в редакторе события
+   красится цветом транспорта БЕЗ инлайна и без своего класса, а прочие пунктиры
+   без `--hl` (добавить город/категорию) остаются brand.
    Зазор 11px — тот же, что нёс прежний `.gadd`: он рассчитан на плитку-иконку
    слева, а не на голую иконку, и остаётся один на обе формы, чтобы у
    плейсхолдера был ОДИН язык расстояний. */
 .btn--dashed { --bg: transparent; --fg: var(--muted-2); --bd: var(--line-strong); border-style: dashed; gap: 11px; }
-.btn--dashed:hover { --bg: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); --bd: var(--a, var(--brand)); --fg: var(--a, var(--brand)); }
+.btn--dashed:hover { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 8%, transparent); --bd: var(--a, var(--hl, var(--brand))); --fg: var(--a, var(--hl, var(--brand))); }
+/* visual-diff-exempt: .btn--dashed:hover --bg — фолбэк ховера +--hl в цепочку (var(--a,var(--hl,var(--brand)))); без --a/--hl итог тот же brand (ревью Codex, TRIP-344 PR 3) */
+/* visual-diff-exempt: .btn--dashed:hover --bd — фолбэк ховера +--hl в цепочку; без --a/--hl итог тот же brand (ревью Codex, TRIP-344 PR 3) */
+/* visual-diff-exempt: .btn--dashed:hover --fg — фолбэк ховера +--hl в цепочку; без --a/--hl итог тот же brand (ревью Codex, TRIP-344 PR 3) */
 /* Плитка-иконка плейсхолдера (`tile` у Btn). Красится вместе с рамкой — тем же
    `--a`, тем же переходом. Класс `.gi` не новый: он и был плиткой ghost-add,
    просто жил под `.gadd`; здесь он переехал под свой примитив вместе с
@@ -2061,26 +2070,62 @@ fieldset:disabled .field__label { color: var(--muted-2); }
  /* 12.5px, matches design */
  color: var(--ink-2);
 }
-/* .lockmsg = "ask the owner" row inside the plate */
-.pro-up .lockmsg {
- display: flex; align-items: center; gap: 8px;
- /* 12.5px */ color: var(--muted); padding: 9px 11px;
- border-radius: var(--r-sm);
- cursor: pointer; width: 100%; text-align: left;
- transition: background .15s, border-color .15s;
-}
-.pro-up .lockmsg:hover { background: var(--surface-2); border-color: var(--line-strong); }
-.pro-up .lockmsg svg { width: 14px; height: 14px; flex: none; color: var(--muted); }
+/* ── 2p visual-diff-exempt (TRIP-344 PR 3): снятие приватного `.lockmsg` ──
+   `.lockmsg` схлопнут на `<Btn variant="secondary" icon="lock">` (TripSidebar,
+   SettingsLens). 24 ключа — снятые объявления приватного класса; 17 ключей
+   `.pro-up` — АРТЕФАКТ коарс-атрибуции 2p (победителем ключа `.pro-up` было
+   правило-ПОТОМОК `.pro-up .lockmsg`, снятое вместе с классом; сам `.pro-up`
+   значение не менял). Маркеры живут один PR.
+   visual-diff-exempt: .lockmsg:hover background — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg:hover border-color — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg {@media (max-width: 640px)} width — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg align-items — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg background — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg border — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg border-radius — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg color — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg cursor — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg display — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg font-family — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg font-size — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg font-weight — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg gap — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg letter-spacing — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg line-height — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg padding — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg text-align — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg transition — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .lockmsg width — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up .lockmsg svg color — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up .lockmsg svg flex — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up .lockmsg svg height — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up .lockmsg svg width — приватный .lockmsg схлопнут на <Btn variant=secondary>; облик несёт примитив кнопки (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up--inline width — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up background — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up border — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up border-color — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up border-radius — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up color — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up cursor — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up font-family — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up font-size — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up font-weight — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up gap — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up letter-spacing — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up line-height — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up padding — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up text-align — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up transition — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+   visual-diff-exempt: .pro-up width — коарс-атрибуция 2p: победителем ключа было правило .pro-up .lockmsg(:hover), снятое вместе с классом; собственное правило .pro-up значение не меняло (TRIP-344 PR 3)
+*/
 /* .pro-up--inline = horizontal plate variant (Trip Settings features card):
    [PRO-pill][title + desc][CTA] in a row on desktop, stacked full-width on mobile
    so the CTA never gets squeezed (TRIP-101). */
 .pro-up--inline { display: flex; align-items: center; gap: 14px; }
 .pro-up--inline .pu-body { flex: 1; min-width: 0; }
-.pro-up--inline .lockmsg { width: auto; }
 @media (max-width: 640px) {
   .pro-up--inline { flex-direction: column; align-items: stretch; gap: 12px; }
-  .pro-up--inline .btn,
-  .pro-up--inline .lockmsg { width: 100%; }
+  .pro-up--inline .btn { width: 100%; }
 }
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
@@ -2531,15 +2576,35 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .icon-btn--solid:hover { background: var(--primary-hover); color: var(--primary-fg); }
 .icon-btn--ai:hover { background: var(--ai-soft); color: var(--ai-ink); }
 .icon-btn--danger:hover { background: var(--danger-soft); color: var(--danger-ink); }
+/* Тоны severity (TRIP-344 PR 3, апрув Pavel — вариант (а)). Единственный носитель
+   в системе — плавающая кнопка предупреждений редактора маршрута, поэтому тон
+   подаётся КАНАЛОМ `--fab-tint`: сам `--fab` красится градиентом от
+   `var(--fab-tint, var(--brand))` (ниже), и существующие fab (чат-док, моб-нав)
+   без тона берут brand ФОЛБЭКОМ, а severity-fab — свой роль-токен. Нового цвета
+   НЕТ: только `--warning`/`--success`. Ось `tone` уже держит `danger` — та же
+   семья; отдельной оси `severity` нет (была бы взаимоисключима с tone). */
+.icon-btn--warning { --fab-tint: var(--warning); }
+.icon-btn--success { --fab-tint: var(--success); }
+/* ── 2p visual-diff-exempt (TRIP-344 PR 3): канал --fab-tint ──
+   `.icon-btn--fab` background/box-shadow переписаны с `var(--brand)` на
+   `var(--fab-tint, var(--brand))`: у существующих fab (чат-док, моб-нав) тона нет,
+   фолбэк даёт brand — итоговое значение ТО ЖЕ. Плюс два новых тона severity.
+   visual-diff-exempt: .icon-btn--fab background — канал --fab-tint с фолбэком var(--brand); у существующих fab (чат-док, моб-нав) значение то же (TRIP-344 PR 3)
+   visual-diff-exempt: .icon-btn--fab box-shadow — канал --fab-tint с фолбэком var(--brand); у существующих fab (чат-док, моб-нав) значение то же (TRIP-344 PR 3)
+   visual-diff-exempt: .icon-btn--success --fab-tint — новый тон severity: канал заливки fab, роль-токен (TRIP-344 PR 3)
+   visual-diff-exempt: .icon-btn--warning --fab-tint — новый тон severity: канал заливки fab, роль-токен (TRIP-344 PR 3) */
 .icon-btn > svg { width: 16px; height: 16px; }
 .icon-btn--sm > svg { width: 14px; height: 14px; }
 /* Плавающая кнопка. Радиальный градиент и тройная тень с внутренним бликом
    перенесены с `.mbnav__fab` один в один - позиционирование остаётся за экраном,
    примитив отвечает только за облик. */
+/* Заливка и тень читают `var(--fab-tint, var(--brand))`: без тона (чат-док,
+   моб-нав) фолбэк даёт brand — значение ТО ЖЕ, что было; тон severity
+   (`--warning`/`--success`) перекрашивает и градиент, и тень одним каналом. */
 .icon-btn--fab {
   width: 56px; height: 56px; border-radius: var(--r-pill); border: 0; color: #fff;
-  background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--brand) 82%, #fff) 0%, var(--brand) 46%, var(--brand) 100%);
-  box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--brand) 72%, transparent),
+  background: radial-gradient(120% 120% at 32% 22%, color-mix(in srgb, var(--fab-tint, var(--brand)) 82%, #fff) 0%, var(--fab-tint, var(--brand)) 46%, var(--fab-tint, var(--brand)) 100%);
+  box-shadow: 0 12px 24px -7px color-mix(in srgb, var(--fab-tint, var(--brand)) 72%, transparent),
               0 4px 10px -2px rgba(15, 23, 42, .3), inset 0 1px 0 rgba(255, 255, 255, .4);
 }
 .icon-btn--fab:hover { filter: brightness(1.05); color: #fff; }
@@ -4581,13 +4646,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ts-pdrawer { position: absolute; inset: 0; z-index: 20; /* design-token-exempt: локальный стек внутри левой колонки */ display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
 .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
 @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-/* FAB предупреждений: подъём на ховере, нажатие по клику. */
-.ts-fab { transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
-.ts-fab:hover { transform: scale(1.06); }
-.ts-fab:active { transform: scale(0.96); }
+/* FAB предупреждений редактора маршрута схлопнут на примитив `<IconBtn size="fab">`
+   (TRIP-344 PR 3): облик нажатия у него свой (filter brightness), приватный
+   `.ts-fab` с scale-press снят. */
 @media (prefers-reduced-motion: reduce) {
   .te-panefade, .ts-pdrawer { animation: none; }
-  .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
+  .ts-step:active { transform: none; }
 }
 
 /* Две колонки секции: маршрут слева, карта справа.

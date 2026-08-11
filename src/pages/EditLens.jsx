@@ -48,11 +48,11 @@
  * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} opacity — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} position — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-drawer__scrim {@media (max-width: 880px)} transition — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-fab transition — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-fab:active transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-fab:active {@media (prefers-reduced-motion: reduce)} transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-fab:hover transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-fab:hover {@media (prefers-reduced-motion: reduce)} transform — правило перенесено из тега style внутри рендера в app.css, значения не менялись
+ * visual-diff-exempt: .ts-fab transition — FAB схлопнут на <IconBtn size="fab">, приватный .ts-fab снят; облик нажатия несёт примитив
+ * visual-diff-exempt: .ts-fab:active transform — FAB схлопнут на <IconBtn size="fab">, scale-press снят намеренно (у примитива filter brightness)
+ * visual-diff-exempt: .ts-fab:active {@media (prefers-reduced-motion: reduce)} transform — FAB схлопнут на <IconBtn size="fab">, приватный .ts-fab снят
+ * visual-diff-exempt: .ts-fab:hover transform — FAB схлопнут на <IconBtn size="fab">, scale-press снят намеренно (у примитива filter brightness)
+ * visual-diff-exempt: .ts-fab:hover {@media (prefers-reduced-motion: reduce)} transform — FAB схлопнут на <IconBtn size="fab">, приватный .ts-fab снят
  * visual-diff-exempt: .ts-grid display — новая раскладка секции: колонка скроллит себя вместо документного скролла
  * visual-diff-exempt: .ts-grid gap — новая раскладка секции: колонка скроллит себя вместо документного скролла
  * visual-diff-exempt: .ts-grid grid-template-columns — новая раскладка секции: колонка скроллит себя вместо документного скролла
@@ -181,7 +181,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, IconBtn, Chip, useToast } from '../design/index';
+import { Badge, Btn, IconBtn, Chip, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -1109,22 +1109,20 @@ export default function EditLens({ tripId, shell, content }) {
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
               </div>
             )}
-            <button
-              className="ts-fab"
+            <IconBtn
+              size="fab"
+              tone={issues.length ? 'warning' : 'success'}
+              icon={issues.length ? 'warning' : 'check'}
               onClick={() => { if (issues.length) setShowWarn((v) => !v); }}
-              aria-label={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
+              ariaLabel={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
               title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
-              style={{ position: 'relative', width: 56, height: 56, borderRadius: '50%', border: 'none', flexShrink: 0,
-                cursor: issues.length ? 'pointer' : 'default', display: 'grid', placeItems: 'center', boxShadow: 'var(--sh-3)',
-                background: issues.length ? 'var(--warning)' : 'var(--success)', color: '#fff' }}
             >
-              <Icon name={issues.length ? 'warning' : 'check'} size={23} />
+              {/* Счётчик — дочерним, реюзом `.badge--count` (прецедент — колокольчик):
+                  позиция ко-селектором `.icon-btn > .badge--count`. */}
               {issues.length > 0 && (
-                <span className="t-micro" style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 'var(--r-pill)', background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {issues.length > 99 ? '99+' : issues.length}
-                </span>
+                <Badge variant="count">{issues.length > 99 ? '99+' : issues.length}</Badge>
               )}
-            </button>
+            </IconBtn>
           </div>
         </div>
       </div>

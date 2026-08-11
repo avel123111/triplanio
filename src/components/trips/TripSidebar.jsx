@@ -95,10 +95,7 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
       {isOwner ? (
         <Btn variant="primary" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
       ) : (
-        <button className="lockmsg" onClick={onProInfo}>
-          <Icon name="lock" size={14} />
-          {t('trip.pro_by_owner')}
-        </button>
+        <Btn variant="secondary" icon="lock" block onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
       )}
     </div>
   );
