@@ -91,7 +91,7 @@ export const TABLES = {
   chat_messages:     { tier: 'B', write: 'send_chat_message (secdef RPC)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop insert/update/delete политик; запись только через RPC' },
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
-  users:              { tier: 'C', write: 'self (id=auth.uid())',      anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (колонки энтайтлмента уже отозваны — TRIP-62/платёжка)' },
+  users:              { tier: 'B', write: 'service_role/edge (шов account/profile + webhook)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: ярус C→B — запись только через service_role (edge account/profile для профиля, webhook Stripe для энтайтлмента). REVOKE UPDATE (table+колоночный) и DELETE у authenticated; SELECT/INSERT ПОКА остаются у authenticated (снимет домен регистрации — там insert().select() профиля), поэтому authSelect=true (переходная модель); anon без DML (Ф3)' },
   user_custom_visits: { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
   notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
   chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
