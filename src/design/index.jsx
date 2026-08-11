@@ -281,9 +281,9 @@ export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "d
  * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
  *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
  *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
- *   title?: string, ariaPressed?: boolean, style?: any }} p
+ *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any }} p
  */
-export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style }) => (
   <button
     // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
     // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
@@ -299,6 +299,10 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
     aria-busy={loading || undefined}
     aria-label={ariaLabel}
     aria-pressed={ariaPressed}
+    // Полу-disabled: примитив выглядит приглушённым (`.btn[aria-disabled]`), но
+    // НЕ получает атрибут `disabled` — остаётся кликабельным (клик раскрывает
+    // валидацию). Заменяет инлайн `opacity` у вызывателя (TRIP-344).
+    aria-disabled={ariaDisabled || undefined}
     title={title}
     style={style}
   >

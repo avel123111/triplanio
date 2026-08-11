@@ -263,6 +263,16 @@ const RECIPES = {
         it('btn--brand', <Btn variant="secondary" className="btn--brand" block style={{ '--bg': 'var(--brand)', '--fg': 'var(--primary-fg)' }}><span className="btn__brandlogo" />{TX.brandName}</Btn>, true), // inline-style-exempt: заливка партнёра каналом --bg из данных, тон ЕСТЬ содержимое
       ],
     },
+    {
+      // ★TRIP-344: solid-тон и мягкий тон берут заливку ИЗ КАНАЛА (--hl / --hl-soft),
+      // а не из инлайна итогового свойства — поэтому наведи на образец: заливка
+      // темнеет (light) / светлеет (dark), ховер жив. Инлайн здесь — ВХОД канала.
+      label: 'заливка из канала (--hl = тон контекста) · полу-disabled', items: [
+        it('primary в контексте категории', <span style={{ '--hl': 'var(--ev-hotel)' }}><Btn variant="primary" icon="check">{TX.save}</Btn></span>), // inline-style-exempt: вход канала --hl (тон категории) ставит владелец контекста — панель/диалог события
+        it('soft тёплый (личные доки)', <Btn variant="soft" icon="plus" style={{ '--hl-soft': 'var(--warm-soft)', '--hl-ink': 'var(--warm-ink)' }}>{TX.chipAdd}</Btn>), // inline-style-exempt: вход канала --hl-soft/--hl-ink (тёплый тон), ровно как DocsLens
+        it('aria-disabled (полу-disabled, кликабельна)', <Btn variant="primary" ariaDisabled>{TX.save}</Btn>),
+      ],
+    },
   ],
 
   'icon-btn': () => [
