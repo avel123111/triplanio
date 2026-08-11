@@ -32,6 +32,7 @@ import {
   checkEditorRoles,
   checkSeamDoors,
   checkTableGrants,
+  effectiveAuthOps,
   parseGateTokensFromSeam,
   parseResourceSpecs,
   parseSeamSlug,
@@ -605,17 +606,62 @@ const GRANTS_MANIFEST = {
   content_a: { tier: 'A', authDml: true,  authSelect: true  }, // клиент пишет+читает под RLS
   edge_b:    { tier: 'B', authDml: false, authSelect: false }, // edge-only, дверь чтения закрыта
   ownrow_b:  { tier: 'B', authDml: false, authSelect: true  }, // service_role пишет, auth читает свою строку
+  // TRIP-400: частичное закрытие двери — UPDATE/DELETE сняты, INSERT оставлен
+  // (регистрация). authDml=true (есть INSERT); per-op уточняет что именно.
+  partial_c: { tier: 'C', authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true },
 };
-// Строка грантов из LIVE_SQL.
-const grant = (t, o = {}) => ({ t, anon: false, auth: false, anonSel: false, authSel: false, ...o });
+// Строка грантов из LIVE_SQL (DML теперь ПОШТУЧНО: authIns/authUpd/authDel).
+const grant = (t, o = {}) => ({ t, anon: false, authIns: false, authUpd: false, authDel: false, anonSel: false, authSel: false, ...o });
 
 test('здоровые гранты (DML+SELECT совпали с манифестом) — ноль ошибок', () => {
   const live = [
-    grant('content_a', { auth: true, authSel: true }),
+    grant('content_a', { authIns: true, authUpd: true, authDel: true, authSel: true }),
     grant('edge_b'),
     grant('ownrow_b', { authSel: true }),
+    grant('partial_c', { authIns: true, authSel: true }), // INSERT есть, UPDATE/DELETE сняты — как в манифесте
   ];
   assert.deepEqual(checkTableGrants(live, GRANTS_MANIFEST), []);
+});
+
+// ── per-op DML (TRIP-400): частичное закрытие двери ──────────────────────────
+test('effectiveAuthOps: явный per-op побеждает, иначе булев разворачивается в тройку', () => {
+  assert.deepEqual(effectiveAuthOps({ authDml: true }),  { insert: true,  update: true,  delete: true });
+  assert.deepEqual(effectiveAuthOps({ authDml: false }), { insert: false, update: false, delete: false });
+  // users: INSERT оставлен, UPDATE/DELETE закрыты.
+  assert.deepEqual(effectiveAuthOps({ authDml: true, authInsert: true, authUpdate: false, authDelete: false }),
+    { insert: true, update: false, delete: false });
+});
+
+test('★ per-op: невыпиленный UPDATE (authUpdate:false) → красный, и ошибка называет ИМЕННО UPDATE', () => {
+  // Ровно дефект, ради которого per-op заведён: REVOKE UPDATE не сработал/забыт.
+  // Ошибка обязана назвать UPDATE (а не абстрактный DML) — иначе гард не
+  // доказывает нужную ось (требование Pavel).
+  const errors = checkTableGrants([grant('partial_c', { authIns: true, authUpd: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /authenticated имеет UPDATE на public\.partial_c/);
+  assert.doesNotMatch(errors[0], /INSERT|DELETE/, 'ошибка должна называть именно UPDATE-ось');
+});
+
+test('★ per-op: невыпиленный DELETE (authDelete:false) → красный (называет DELETE)', () => {
+  const errors = checkTableGrants([grant('partial_c', { authIns: true, authDel: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /authenticated имеет DELETE на public\.partial_c/);
+});
+
+test('оставленный INSERT (authInsert:true) — не дрейф: сверка ОДНОСТОРОННЯЯ (ловит лишнее право)', () => {
+  // Дверь закрывается в два захода — INSERT снимет домен регистрации. Гард ловит
+  // ЛИШНЕЕ живое право (fail-open), а не объявленную-но-снятую ось (снять больше — безопасно).
+  assert.deepEqual(checkTableGrants([grant('partial_c', { authIns: true, authSel: true })], GRANTS_MANIFEST), []);
+  assert.deepEqual(checkTableGrants([grant('partial_c', { authSel: true })], GRANTS_MANIFEST), []);
+});
+
+test('обратная совместимость: таблица на булеве authDml ведёт себя как раньше', () => {
+  // authDml:true (ярус A) — все оси открыты, ноль ошибок; authDml:false (ярус B) —
+  // любой живой op = дрейф, теперь с ИМЕНЕМ оси (раньше «DML»).
+  assert.deepEqual(checkTableGrants([grant('content_a', { authIns: true, authUpd: true, authDel: true, authSel: true })], GRANTS_MANIFEST), []);
+  const b = checkTableGrants([grant('edge_b', { authUpd: true })], GRANTS_MANIFEST);
+  assert.equal(b.length, 1);
+  assert.match(b[0], /authenticated имеет UPDATE на public\.edge_b/);
 });
 
 test('★ SELECT-дрейф: edge-only таблица, а authenticated её читает', () => {
@@ -639,23 +685,23 @@ test('★ edge-only таблица отдаёт SELECT anon — дверь чт�
 test('anon SELECT при authSelect:true НЕ ошибка (переходная модель: чтение под RLS)', () => {
   // На таких таблицах контент яруса A ещё читается клиентом напрямую под RLS;
   // ось закроется на C-шаге домена, когда authSelect станет false.
-  const live = [grant('content_a', { auth: true, authSel: true, anonSel: true })];
+  const live = [grant('content_a', { authIns: true, authUpd: true, authDel: true, authSel: true, anonSel: true })];
   assert.deepEqual(checkTableGrants(live, GRANTS_MANIFEST), []);
 });
 
 test('DML-оси не ослаблены: anon DML → I3a, auth DML на B → запрет', () => {
-  const anon = checkTableGrants([grant('content_a', { anon: true, authSel: true })], GRANTS_MANIFEST);
+  const anon = checkTableGrants([grant('content_a', { anon: true, authIns: true, authUpd: true, authDel: true, authSel: true })], GRANTS_MANIFEST);
   assert.equal(anon.length, 1);
   assert.match(anon[0], /anon имеет DML на public\.content_a/);
 
-  const authB = checkTableGrants([grant('edge_b', { auth: true })], GRANTS_MANIFEST);
+  const authB = checkTableGrants([grant('edge_b', { authIns: true })], GRANTS_MANIFEST);
   assert.equal(authB.length, 1);
-  assert.match(authB[0], /authenticated имеет DML на public\.edge_b .*ярус B запрещает/);
+  assert.match(authB[0], /authenticated имеет INSERT на public\.edge_b .*ярус B/);
 });
 
 test('незаклассифицированная таблица с auth DML ловится, а SELECT-ось её не трогает', () => {
   // Нет в манифесте → только DML-ошибка; SELECT-ось молчит (нечего сверять).
-  const errors = checkTableGrants([grant('mystery', { auth: true, authSel: true })], GRANTS_MANIFEST);
+  const errors = checkTableGrants([grant('mystery', { authIns: true, authSel: true })], GRANTS_MANIFEST);
   assert.equal(errors.length, 1);
   assert.match(errors[0], /public\.mystery не в манифесте/);
 });

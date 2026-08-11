@@ -39,10 +39,11 @@ import { Icon } from './icons';
 // ★ БАЗА АННОТАЦИИ = `<button>`: туда уезжает остаток (`onClick`, `title`,
 // `disabled`, `aria-current`, `data-*`). `variant` — закрытая ось; неверное
 // значение (`ghost`) — ошибка типа, а не красный CI.
+/** @typedef {'neutral'|'tone'|'placeholder'|'soft'} ChipVariant */
 export const Chip = React.forwardRef(
   /**
    * @param {Omit<React.ComponentPropsWithoutRef<'button'>, 'aria-pressed'> & {
-   *   variant?: 'neutral'|'tone'|'placeholder'|'soft',
+   *   variant?: ChipVariant,
    *   square?: boolean,
    *   sm?: boolean,
    *   avatars?: boolean,
@@ -75,3 +76,11 @@ export const Chip = React.forwardRef(
   ),
 );
 Chip.displayName = "Chip";
+
+// ── Карта оси `variant` — источник витрины `/kit` (TRIP-344). Тот же union,
+// что типизирует проп: `variant="ghost"` — ошибка типа. Дефолт `neutral` в
+// карту не входит (база без класса). Ортогональные булевы модификаторы
+// (`square`/`sm`/`avatars`) прописью-юниона не имеют — витрина берёт их из
+// CSS-производного списка семьи (второй вид источника оси в реестре).
+/** @type {readonly ChipVariant[]} */
+export const CHIP_VARIANTS = ["tone", "placeholder", "soft"];

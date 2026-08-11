@@ -1196,6 +1196,40 @@ test('★ бесклассовая единица из лексем по-пре�
   assert.equal(code, 0);
 });
 
+/* ───────── TRIP-366 (2-й заход): единица с КЛАССАМИ-ПРЕДКАМИ, но бесклассовым
+ * ПОДЛЕЖАЩИМ. Ровно случай `.lockmsg`: правило `.pro-up .lockmsg svg` действует
+ * на `svg`, класса не несущий, поэтому гард печатает его ЦЕЛЫМ селектором — а
+ * прежний предикат `classesOf(u).length > 0` отвергал такой маркер как
+ * составной, и снос правила нечем было объявить (красный 2p без выхода). ────── */
+
+test('★★ visual-diff-exempt адресует единицу с классами-ПРЕДКАМИ (.pro-up .lockmsg svg)', (t) => {
+  // Мутация «вернуть предикат на classesOf(u).length > 0» роняет ЭТОТ тест:
+  // маркер уходит в malformed (код 2), а гард печатает «маркер не разобран».
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up .lockmsg svg { color: blue; }\n' },
+    head: {
+      'src/a.css':
+        '.pro-up .lockmsg svg { color: red; }\n' +
+        '/* visual-diff-exempt: .pro-up .lockmsg svg color — снят кликабельный апселл */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /\.pro-up \.lockmsg svg color — изменение объявлено намеренным/);
+});
+
+test('★★ снос правила с классами-предками и бесклассовым подлежащим ОБЪЯВЛЯЕМ', (t) => {
+  // Снос (`to === null`) — форма из тикета: `.lockmsg` уезжает на `<Btn>`.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up .lockmsg svg { width: 14px; }\n' },
+    head: {
+      'src/a.css': '/* visual-diff-exempt: .pro-up .lockmsg svg width — .lockmsg удалён */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
 /** ★★TRIP-344 (ревью Codex, P1): СОСТОЯНИЕ ПРИВЯЗАНО К СВОЕМУ КОМПАУНДУ.
  *  Пока оно собиралось в один отсортированный хвост на ВЕСЬ селектор,
  *  `.a[data-x] .b` и `.a .b[data-x]` давали один и тот же ключ на оба класса —

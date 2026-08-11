@@ -297,6 +297,8 @@ export function buildPlan(
 
 import { TRIP_BUDGET } from './resources/tripBudget.ts';
 import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
+import { ACCOUNT } from './resources/account.ts';
+import { USER_PLACE } from './resources/userPlace.ts';
 
 /**
  * Все ресурсы записи. Реестр существует не ради диспетчеризации (её делает сама
@@ -306,4 +308,6 @@ import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
 export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP_BUDGET.name]: TRIP_BUDGET,
   [TRIP_DOCUMENT.name]: TRIP_DOCUMENT,
+  [ACCOUNT.name]: ACCOUNT,
+  [USER_PLACE.name]: USER_PLACE,
 };

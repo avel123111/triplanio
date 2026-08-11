@@ -27,10 +27,11 @@ import { Icon } from './icons';
 // `style` с фоном-цветом/градиентом, `aria-label`, `data-*`). `variant` —
 // закрытая ось из трёх (`color` цвет · `icon` иконка · `round` круглая
 // обложка); неверное значение — ошибка типа, а не красный CI.
+/** @typedef {'color'|'icon'|'round'} SwatchVariant */
 export const Swatch = React.forwardRef(
   /**
    * @param {Omit<React.ComponentPropsWithoutRef<'button'>, 'aria-pressed'> & {
-   *   variant?: 'color'|'icon'|'round',
+   *   variant?: SwatchVariant,
    *   on?: boolean,
    *   icon?: string,
    *   tint?: string,
@@ -56,3 +57,9 @@ export const Swatch = React.forwardRef(
   ),
 );
 Swatch.displayName = "Swatch";
+
+// ── Карта оси `variant` — источник витрины `/kit` (TRIP-344). Тот же union,
+// что типизирует проп: `variant="compact"` — ошибка типа. Дефолт `color` в
+// карту не входит (база без класса-модификатора).
+/** @type {readonly SwatchVariant[]} */
+export const SWATCH_VARIANTS = ["icon", "round"];

@@ -185,7 +185,7 @@ export type Database = {
           created_by: string
           icon: string | null
           id: string
-          kind: string | null
+          kind: string
           name: string
           order_index: number | null
           system_key: string | null
@@ -198,7 +198,7 @@ export type Database = {
           created_by: string
           icon?: string | null
           id?: string
-          kind?: string | null
+          kind?: string
           name: string
           order_index?: number | null
           system_key?: string | null
@@ -211,7 +211,7 @@ export type Database = {
           created_by?: string
           icon?: string | null
           id?: string
-          kind?: string | null
+          kind?: string
           name?: string
           order_index?: number | null
           system_key?: string | null
@@ -247,7 +247,7 @@ export type Database = {
           original_amount: number | null
           original_currency: string | null
           source_id: string | null
-          source_kind: string | null
+          source_kind: string
           spent_on: string | null
           title: string
           trip_id: string
@@ -264,7 +264,7 @@ export type Database = {
           original_amount?: number | null
           original_currency?: string | null
           source_id?: string | null
-          source_kind?: string | null
+          source_kind?: string
           spent_on?: string | null
           title: string
           trip_id: string
@@ -281,7 +281,7 @@ export type Database = {
           original_amount?: number | null
           original_currency?: string | null
           source_id?: string | null
-          source_kind?: string | null
+          source_kind?: string
           spent_on?: string | null
           title?: string
           trip_id?: string
@@ -1657,7 +1657,7 @@ export type Database = {
           title: string
           trip_id: string
           updated_at: string | null
-          visibility: string | null
+          visibility: string
         }
         Insert: {
           created_at?: string | null
@@ -1670,7 +1670,7 @@ export type Database = {
           title: string
           trip_id: string
           updated_at?: string | null
-          visibility?: string | null
+          visibility?: string
         }
         Update: {
           created_at?: string | null
@@ -1683,7 +1683,7 @@ export type Database = {
           title?: string
           trip_id?: string
           updated_at?: string | null
-          visibility?: string | null
+          visibility?: string
         }
         Relationships: [
           {
@@ -2068,7 +2068,6 @@ export type Database = {
           signup_utm_source: string | null
           subscription_end_date: string | null
           subscription_status: string | null
-          theme: string | null
           unit_system: string
           updated_at: string | null
         }
@@ -2087,7 +2086,6 @@ export type Database = {
           signup_utm_source?: string | null
           subscription_end_date?: string | null
           subscription_status?: string | null
-          theme?: string | null
           unit_system?: string
           updated_at?: string | null
         }
@@ -2106,7 +2104,6 @@ export type Database = {
           signup_utm_source?: string | null
           subscription_end_date?: string | null
           subscription_status?: string | null
-          theme?: string | null
           unit_system?: string
           updated_at?: string | null
         }
@@ -2330,6 +2327,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_my_trip_cards: { Args: { p_actor: string }; Returns: Json }
       get_pending_reminders: {
         Args: { window_minutes?: number }
         Returns: {
@@ -2351,20 +2349,7 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_trip_participant_profiles: {
-        Args: { trip_id_list: string[] }
-        Returns: {
-          avatar_url: string
-          email: string
-          full_name: string
-          is_deleted: boolean
-          is_owner: boolean
-          role: string
-          trip_id: string
-          user_id: string
-        }[]
-      }
-      get_user_travel_stats: { Args: never; Returns: Json }
+      get_user_travel_stats: { Args: { p_actor: string }; Returns: Json }
       is_trip_creator: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_participant: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_pro: { Args: { p_trip_id: string }; Returns: boolean }

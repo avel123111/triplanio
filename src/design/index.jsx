@@ -42,11 +42,13 @@ export { Row, Col, Grid, Trunc, Grow } from './Layout';
 // `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
 // оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
 // (TRIP-344). Экраны зовут её отсюда — точка входа в ДС одна.
-export { IconBtn } from './IconBtn';
-export { Stepper } from './Stepper';
-export { Seg } from './Seg';
-export { Chip } from './Chip';
-export { Swatch } from './Swatch';
+// Карты осей примитивов реэкспортятся тем же барралем, что и сами компоненты —
+// точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
+export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
+export { Stepper, STEPPER_VARIANTS } from './Stepper';
+export { Seg, SEG_VARIANTS } from './Seg';
+export { Chip, CHIP_VARIANTS } from './Chip';
+export { Swatch, SWATCH_VARIANTS } from './Swatch';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================
@@ -238,6 +240,15 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
  * @typedef {'primary'|'secondary'|'soft'|'quiet'|'link'|'dashed'|'danger'
  *   |'danger-solid'|'pro'|'ai'} BtnVariant
  */
+// ── Карта оси `variant` — источник витрины `/kit` (TRIP-344). Тот же union,
+// что типизирует проп: `variant="compact"` — ошибка типа у вызывателя под
+// `// @ts-check`, а страница объекта полна по построению. Истинно единый
+// источник (литеральный кортеж) даст перевод ДС в `.ts` — будущий шаг; в
+// `.jsx` `as const` запрещён (TS8016), typedef+массив — компромисс.
+// ⚠️ index.jsx без `// @ts-check`, поэтому `@type` тут не проверяется НА МЕСТЕ —
+// проверка живёт у потребителя (`Kit` под прагмой) и в тесте дрейфа (сверка с CSS).
+/** @type {readonly BtnVariant[]} */
+export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "dashed", "danger", "danger-solid", "pro", "ai"];
 // ★★ ТОН ТЕПЕРЬ НАЗЫВАЕТСЯ ЯВНО, И ЭТО РЕШЕНИЕ, А НЕ ПОБОЧНЫЙ ЭФФЕКТ. Дефолтом
 // был `ghost` — тон, который разбор УДАЛЯЕТ. Оставить дефолтом что угодно молча
 // значило бы перекрасить каждый вызов без пропа, ничего не написав в дифф.
@@ -270,9 +281,9 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
  * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
  *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
  *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
- *   title?: string, ariaPressed?: boolean, style?: any }} p
+ *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any }} p
  */
-export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style }) => (
   <button
     // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
     // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
@@ -288,6 +299,10 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
     aria-busy={loading || undefined}
     aria-label={ariaLabel}
     aria-pressed={ariaPressed}
+    // Полу-disabled: примитив выглядит приглушённым (`.btn[aria-disabled]`), но
+    // НЕ получает атрибут `disabled` — остаётся кликабельным (клик раскрывает
+    // валидацию). Заменяет инлайн `opacity` у вызывателя (TRIP-344).
+    aria-disabled={ariaDisabled || undefined}
     title={title}
     style={style}
   >
@@ -316,19 +331,93 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 );
 
 // ----- Card -----
-/** @param {{ title?: any, subtitle?: any, action?: any, children?: any, className?: string, style?: any }} p */
-export const Card = ({ title, subtitle, action, children, className = "", style }) => (
-  <div className={`card ${className}`} style={style}>
-    {(title || subtitle || action) && (
-      <div className="card-h">
-        <div className="grow">
-          {title && <h3>{title}</h3>}
-          {subtitle && <div className="muted t-meta">{subtitle}</div>}
-        </div>
-        {action}
-      </div>
-    )}
-    {children}
+// ★ ГОЛАЯ ПОВЕРХНОСТЬ (TRIP-343, объект 2). Прежний `Card` жёстко рисовал шапку
+// `card-h`+`h3` в теле - и ровно поэтому его звали 11 раз, а не 200: обернуть им
+// произвольную поверхность (виджет, панель, строку-трипа, add-плитку) было
+// нельзя, навязанная шапка мешала. Теперь примитив ОБОРАЧИВАЕТ `children` и
+// эмитит закрытый набор форм из пропов; удобная шапка вынесена в отдельный слот
+// `CardHeader` (тот же DOM, что был внутри), а не в тело.
+//
+// ★ КАРТА ФОРМ ЭКСПОРТИРУЕТСЯ ИЗ ПРИМИТИВА, как `BTN_VARIANTS`. Карточка -
+// МНОГООСНЫЙ объект (радиус × тон × interactive/add/recessed/locked), поэтому
+// один union «типизирует один проп», как у кнопки, ей не подходит: пропы
+// типизируют typedef'ы `CardRadius`/`CardTone` ниже, а МАШИННЫЙ источник для
+// витрины `/kit` и теста дрейфа - список СУФФИКСОВ классов `.card--*`. Он и есть
+// `CARD_VARIANTS`: страница рисует по нему, тест сверяет его ↔ живой CSS в обе
+// стороны (Р10 - иначе витрина утверждает, а не отражает).
+//
+// ★ ВСЕ КЛАССЫ СТРОЯТСЯ ИНТЕРПОЛЯЦИЕЙ `card--${суффикс}` (суффиксы - литералы
+// без `--`), поэтому НИ ОДИН `.card--*` не читается тестом дрейфа как
+// «склеенный компонентом» (`emittedByComponents` ловит только чистый литерал
+// `xxx--yyy`). Следствие: КАЖДЫЙ `.card--*` попадает под суд направления 1 и
+// обязан быть в `CARD_VARIANTS` - полное, единообразное покрытие, без немой
+// дыры «булев модификатор эмитится литералом и выпадает из-под суда».
+//
+// ★ radius = ОСЬ lg|md ТОЛЬКО (решение Pavel). `sm`(10) НЕ значение оси, а
+// СЛЕДСТВИЕ `tone=ai`: его несёт сам `.card--tone-ai` в CSS, отдельного
+// `.card--r-sm` нет, и в оси радиуса он не открыт (иначе Р14 - ось снова
+// распахнута). `compact` не заведён (YAGNI): проп в контракте есть, но CSS-
+// правило и значение появятся с первым живым вызывателем, не впрок.
+/**
+ * @typedef {'lg'|'md'} CardRadius
+ * @typedef {'brand'|'ai'} CardTone
+ */
+/** @type {readonly string[]} */
+export const CARD_VARIANTS = [
+  "r-lg", "r-md", "interactive", "flush",
+  "tone-brand", "tone-ai", "add", "recessed", "locked", "danger",
+];
+
+/**
+ * @param {{ as?: 'div'|'button'|'a', radius?: CardRadius, interactive?: boolean,
+ *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
+ *   locked?: boolean, danger?: boolean, href?: string, onClick?: any,
+ *   disabled?: boolean, id?: string, ariaLabel?: string, title?: string,
+ *   children?: any, className?: string, style?: any }} p
+ */
+export const Card = ({
+  as = "div", radius, interactive, pad = "default", tone, variant,
+  recessed, locked, danger, href, onClick, disabled, id, ariaLabel, title,
+  children, className = "", style,
+}) => {
+  const mods = [
+    radius && `r-${radius}`,
+    interactive && "interactive",
+    pad === "none" && "flush",
+    tone && `tone-${tone}`,
+    variant === "add" && "add",
+    recessed && "recessed",
+    locked && "locked",
+    danger && "danger",
+  ].filter(Boolean);
+  const El = as;
+  return (
+    <El
+      className={["card", ...mods.map((m) => `card--${m}`), className].filter(Boolean).join(" ")}
+      style={style}
+      id={id}
+      title={title}
+      aria-label={ariaLabel}
+      onClick={onClick}
+      {...(as === "a" ? { href } : null)}
+      {...(as === "button" ? { type: "button", disabled } : null)}
+    >
+      {children}
+    </El>
+  );
+};
+
+// Слот удобной шапки карточки - тот же DOM, что примитив рисовал в теле до
+// TRIP-343 (заголовок·подзаголовок·действие справа). Отдельным экспортом, а не
+// пропом `Card`, чтобы поверхность оставалась голой и не навязывала шапку.
+/** @param {{ title?: any, subtitle?: any, action?: any }} p */
+export const CardHeader = ({ title, subtitle, action }) => (
+  <div className="card-h">
+    <div className="grow">
+      {title && <h3>{title}</h3>}
+      {subtitle && <div className="muted t-meta">{subtitle}</div>}
+    </div>
+    {action}
   </div>
 );
 

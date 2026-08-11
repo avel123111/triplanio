@@ -2,9 +2,9 @@
 //
 // Why this exists: a trip's content outlives its authors. When a member leaves
 // the trip their `trip_members` row is hard-deleted, so the live profile
-// resolver (resolveProfiles / get_trip_participant_profiles, both scoped to
-// active participants) no longer returns them — their past messages/docs would
-// otherwise fall back to "?" with a blank avatar.
+// resolver (resolveProfiles, scoped to active participants) no longer returns
+// them — their past messages/docs would otherwise fall back to "?" with a
+// blank avatar.
 //
 // The cheap fix, shared by chat and docs: every content row carries a
 // denormalized author-name snapshot taken at creation time

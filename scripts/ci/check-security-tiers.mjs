@@ -57,9 +57,17 @@ function checkStatic() {
     // I3a — anon не пишет никуда, без исключений.
     if (r.anonDml !== false) { err(`манифест: '${t}' — anonDml должен быть false (I3a)`); fail = 1; }
     // I3b — клиентская запись (authenticated DML) только на A и C.
+    // Явные per-op поля (опц., частичное закрытие двери) — булевы.
+    for (const k of ['authInsert', 'authUpdate', 'authDelete']) {
+      if (k in r && typeof r[k] !== 'boolean') { err(`манифест: '${t}'.${k} должен быть boolean`); fail = 1; }
+    }
+    // I3b ПОШТУЧНО через ту же нормализацию, что и live: клиентская запись только
+    // на ярусах A/C. Одна модель — никакого «если per-op, иначе булев».
+    const eff = effectiveAuthOps(r);
     const mayAuthWrite = r.tier === 'A' || r.tier === 'C';
-    if (r.authDml === true && !mayAuthWrite) { err(`манифест: '${t}' — authDml=true запрещён на ярусе ${r.tier} (I3b)`); fail = 1; }
-    if (r.authDml !== true && mayAuthWrite) { err(`манифест: '${t}' — ярус ${r.tier} ожидает authDml=true`); fail = 1; }
+    const openOps = ['insert', 'update', 'delete'].filter((o) => eff[o]);
+    if (openOps.length && !mayAuthWrite) { err(`манифест: '${t}' — клиентский DML (${openOps.join('/')}) запрещён на ярусе ${r.tier} (I3b)`); fail = 1; }
+    if (!openOps.length && mayAuthWrite) { err(`манифест: '${t}' — ярус ${r.tier} ожидает клиентскую запись, но все оси закрыты (authDml/per-op=false)`); fail = 1; }
   }
   // FUNCTIONS: списки строк; publicExec ∩ authExec = ∅; authzExempt ⊆ client-вызываемых.
   for (const k of ['publicExec', 'authExec', 'authzExempt']) {
@@ -516,8 +524,13 @@ export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
  * живой SELECT). Возвращает список строк-ошибок.
  *
  * Оси:
- *   DML   — I3a (anon DML нигде) + I3b (auth DML только там, где манифест ждёт) +
- *           незаклассифицированная таблица с auth DML.
+ *   DML   — I3a (anon DML нигде) + I3b ПОШТУЧНО (TRIP-400): живое право по каждой
+ *           оси (INSERT/UPDATE/DELETE) сверяется с ЕДИНОЙ нормализованной тройкой
+ *           `effectiveAuthOps(m)` — op, гранченный живьём там, где тройка его
+ *           закрыла, = дрейф. Одна модель: 40 таблиц на голом `authDml` дают
+ *           тройку из трёх копий булева → поведение ровно прежнее; `users` с
+ *           per-op `authUpdate:false` ловит невыпиленный UPDATE именно как UPDATE.
+ *           Плюс незаклассифицированная таблица с любым живым auth-op.
  *   SELECT (TRIP-399) — закрытие двери ЧТЕНИЯ тоже стережётся:
  *     • live `authSel` обязан совпасть с манифестным `authSelect`;
  *     • edge-only таблица (`authSelect:false`) не должна отдавать SELECT аноним —
@@ -528,19 +541,43 @@ export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
  *   RLS). Ось закроется сама на C-шаге домена: он снимет anon SELECT и переведёт
  *   `authSelect` в false → правило выше поймает обе оси.
  */
+/**
+ * ЕДИНАЯ нормализация права записи authenticated в тройку {insert,update,delete}
+ * (TRIP-400). Явное per-op поле (`authInsert`/`authUpdate`/`authDelete`) побеждает;
+ * где не задано — булев `authDml` разворачивается на эту ось. И статик (I3b), и
+ * live-сверка читают ТОЛЬКО эту тройку — одна модель, без второй ветки логики
+ * («per-op ИЛИ булев»). Для 40 таблиц на голом `authDml` тройка = три копии
+ * булева → поведение ровно прежнее.
+ */
+export function effectiveAuthOps(entry = {}) {
+  return {
+    insert: (entry.authInsert ?? entry.authDml) === true,
+    update: (entry.authUpdate ?? entry.authDml) === true,
+    delete: (entry.authDelete ?? entry.authDml) === true,
+  };
+}
+
+const AUTH_DML_OPS = [
+  { live: 'authIns', key: 'insert', label: 'INSERT' },
+  { live: 'authUpd', key: 'update', label: 'UPDATE' },
+  { live: 'authDel', key: 'delete', label: 'DELETE' },
+];
+
 export function checkTableGrants(grants = [], tables = TABLES) {
   const errors = [];
   for (const g of grants) {
     const m = tables[g.t];
+    const eff = m ? effectiveAuthOps(m) : null;
     // ── ось DML ──
-    // I3a — anon DML недопустим нигде.
+    // I3a — anon DML недопустим нигде (комбинированно: любой op).
     if (g.anon) errors.push(`live-дрейф: anon имеет DML на public.${g.t} (I3a — снять грант)`);
-    // I3b + незаклассифицированная таблица.
-    if (g.auth) {
+    // I3b ПОШТУЧНО через ту же нормализацию: op открыт там, где тройка его закрыла.
+    for (const op of AUTH_DML_OPS) {
+      if (g[op.live] !== true) continue; // op не гранчен живьём — сверять нечего
       if (!m) {
-        errors.push(`live-дрейф: public.${g.t} не в манифесте, но authenticated имеет DML — заведи ярус в security-tiers.mjs`);
-      } else if (m.authDml !== true) {
-        errors.push(`live-дрейф: authenticated имеет DML на public.${g.t} (ярус ${m.tier} запрещает)`);
+        errors.push(`live-дрейф: public.${g.t} не в манифесте, но authenticated имеет ${op.label} — заведи ярус в security-tiers.mjs`);
+      } else if (!eff[op.key]) {
+        errors.push(`live-дрейф: authenticated имеет ${op.label} на public.${g.t} — манифест этот op закрыл (ярус ${m.tier})`);
       }
     }
     // ── ось SELECT (TRIP-399) — только для таблиц в манифесте ──
@@ -565,10 +602,15 @@ const LIVE_SQL = `select json_build_object(
   -- (роль, таблица). DELETE поколоночной формы не имеет → has_table_privilege;
   -- INSERT/UPDATE/SELECT — has_any_column_privilege (покрывает и табличный, и
   -- поколоночный грант). aclexplode+group by поэтому не нужны (ревью Codex).
-  'grants', coalesce((select json_agg(json_build_object('t',t,'anon',anon,'auth',auth,'anonSel',anonSel,'authSel',authSel)) from (
+  'grants', coalesce((select json_agg(json_build_object('t',t,'anon',anon,'authIns',authIns,'authUpd',authUpd,'authDel',authDel,'anonSel',anonSel,'authSel',authSel)) from (
      select c.relname t,
        (has_any_column_privilege('anon',c.oid,'INSERT') or has_any_column_privilege('anon',c.oid,'UPDATE') or has_table_privilege('anon',c.oid,'DELETE')) anon,
-       (has_any_column_privilege('authenticated',c.oid,'INSERT') or has_any_column_privilege('authenticated',c.oid,'UPDATE') or has_table_privilege('authenticated',c.oid,'DELETE')) auth,
+       -- Per-op ЭФФЕКТИВНОЕ право (TRIP-400): INSERT/UPDATE поколоночные, DELETE
+       -- поколоночной формы не имеет. Разведено, чтобы LIVE сверял частичное
+       -- закрытие двери (UPDATE/DELETE сняты, INSERT оставлен) поштучно.
+       has_any_column_privilege('authenticated',c.oid,'INSERT') authIns,
+       has_any_column_privilege('authenticated',c.oid,'UPDATE') authUpd,
+       has_table_privilege('authenticated',c.oid,'DELETE') authDel,
        has_any_column_privilege('anon',c.oid,'SELECT') anonSel,
        has_any_column_privilege('authenticated',c.oid,'SELECT') authSel
      from pg_class c

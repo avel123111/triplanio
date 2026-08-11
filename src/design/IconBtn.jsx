@@ -43,13 +43,15 @@ import { Icon } from './icons';
 // ⚠️ Аннотация стоит НА ПАРАМЕТРЕ, а не перед `const`: у `forwardRef` функция —
 // это АРГУМЕНТ, и JSDoc перед объявлением к ней не относится (TRIP-388: сделал
 // иначе — ошибки остались на месте, а проба выглядела зелёной).
+/** @typedef {'quiet'|'soft'|'outline'|'solid'|'ai'|'danger'|'warning'|'success'} IconBtnTone */
+/** @typedef {'md'|'sm'|'fab'} IconBtnSize */
 export const IconBtn = React.forwardRef(
   /**
    * @param {React.ComponentPropsWithoutRef<'button'> & {
    *   icon: string,
    *   ariaLabel: string,
-   *   tone?: 'quiet'|'soft'|'outline'|'solid'|'ai'|'danger',
-   *   size?: 'md'|'sm'|'fab',
+   *   tone?: IconBtnTone,
+   *   size?: IconBtnSize,
    *   round?: boolean,
    *   ariaPressed?: boolean, ariaExpanded?: boolean,
    * }} p
@@ -81,3 +83,14 @@ export const IconBtn = React.forwardRef(
   ),
 );
 IconBtn.displayName = "IconBtn";
+
+// ── Карты осей — источник витрины `/kit` (TRIP-344). Тот же union, что
+// типизирует пропы (не параллельный массив): `tone="compact"` — ошибка типа,
+// а страница объекта полна по построению. Дефолты (`quiet`/`md`) в карту не
+// входят — у них нет класса-модификатора (база), их рисует базовый образец.
+// Истинно единый источник (литеральный кортеж) даст перевод ДС в `.ts`; в
+// `.jsx` `as const` запрещён (TS8016), typedef+массив — компромисс.
+/** @type {readonly IconBtnTone[]} */
+export const ICON_BTN_TONES = ["soft", "outline", "solid", "ai", "danger", "warning", "success"];
+/** @type {readonly IconBtnSize[]} */
+export const ICON_BTN_SIZES = ["sm", "fab"];

@@ -32,6 +32,10 @@ import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
  */
 const CreateTripContext = createContext({
   openChoice: () => {},
+  // Аритет заглушки, как и у startCopy ниже, берётся ТИПОМ (createContext выводит
+  // форму из значения по умолчанию): без `pick` живой `startCreate('manual')` давал
+  // TS2554 у вызывателя под `// @ts-check` (Trips.jsx, EmptyRoute).
+  /** @type {(pick: 'manual' | 'ai') => void} */
   startCreate: () => {},
   // ⚠️ ТИП БЕРЁТСЯ ОТСЮДА, А НЕ С РЕАЛИЗАЦИИ: `createContext` выводит форму из
   // ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ. Заглушка совпадала с реализацией по асинхронности (об

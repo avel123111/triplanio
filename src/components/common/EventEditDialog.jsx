@@ -1365,7 +1365,7 @@ export default function EventEditDialog({
                   onClick={handleSaveClick}
                   loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
-                  style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
+                  ariaDisabled={!canSave}
                 >
                   {isEdit ? t('common.save') : t('event.create')}
                 </Btn>
@@ -2246,10 +2246,13 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
         );
       })}
 
-      <button type="button" className="t-meta" onClick={addSegment}
-        style={{ marginTop: 6, padding: '11px 14px', border: '1px dashed ' + color, borderRadius: 'var(--r-sm)', background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-        {t('event.add_layover')}
-      </button>
+      {/* Плейсхолдер «добавить пересадку» — канон `<Btn variant="dashed">`. Цвет
+          транспорта сохранён, но подан контекстным каналом (не инлайном): оболочки
+          события несут `--hl` = цвет типа (`evVars`), а ховер `.btn--dashed` берёт
+          `var(--a, var(--hl, var(--brand)))` (см. app.css) — своего `--a` тут нет,
+          поэтому падаем на `--hl`. Прежний внешний отступ (marginTop) снят вместе с
+          инлайном: спейсинг несёт сам ряд, отдельный per-screen отступ не нужен. */}
+      <Btn variant="dashed" block onClick={addSegment}>{t('event.add_layover')}</Btn>
     </div>
   );
 }

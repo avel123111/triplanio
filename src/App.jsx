@@ -78,10 +78,14 @@ const AuthenticatedApp = () => {
 
   // Витрина: только вне прода. На проде роута нет вовсе - путь провалится в
   // общую маршрутизацию ниже и отдаст лендинг/404, как любой чужой адрес.
-  if (!isProdHost && path === '/kit') {
+  // Object-based IA (TRIP-344): `/kit` — индекс, `/kit/:object` — один объект.
+  if (!isProdHost && (path === '/kit' || path.startsWith('/kit/'))) {
     return (
       <Suspense fallback={null}>
-        <Kit />
+        <Routes>
+          <Route path="/kit" element={<Kit />} />
+          <Route path="/kit/:object" element={<Kit />} />
+        </Routes>
       </Suspense>
     );
   }
