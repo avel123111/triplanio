@@ -42,11 +42,13 @@ export { Row, Col, Grid, Trunc, Grow } from './Layout';
 // `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
 // оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
 // (TRIP-344). Экраны зовут её отсюда — точка входа в ДС одна.
-export { IconBtn } from './IconBtn';
-export { Stepper } from './Stepper';
-export { Seg } from './Seg';
-export { Chip } from './Chip';
-export { Swatch } from './Swatch';
+// Карты осей примитивов реэкспортятся тем же барралем, что и сами компоненты —
+// точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
+export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
+export { Stepper, STEPPER_VARIANTS } from './Stepper';
+export { Seg, SEG_VARIANTS } from './Seg';
+export { Chip, CHIP_VARIANTS } from './Chip';
+export { Swatch, SWATCH_VARIANTS } from './Swatch';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================
@@ -238,6 +240,15 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
  * @typedef {'primary'|'secondary'|'soft'|'quiet'|'link'|'dashed'|'danger'
  *   |'danger-solid'|'pro'|'ai'} BtnVariant
  */
+// ── Карта оси `variant` — источник витрины `/kit` (TRIP-344). Тот же union,
+// что типизирует проп: `variant="compact"` — ошибка типа у вызывателя под
+// `// @ts-check`, а страница объекта полна по построению. Истинно единый
+// источник (литеральный кортеж) даст перевод ДС в `.ts` — будущий шаг; в
+// `.jsx` `as const` запрещён (TS8016), typedef+массив — компромисс.
+// ⚠️ index.jsx без `// @ts-check`, поэтому `@type` тут не проверяется НА МЕСТЕ —
+// проверка живёт у потребителя (`Kit` под прагмой) и в тесте дрейфа (сверка с CSS).
+/** @type {readonly BtnVariant[]} */
+export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "dashed", "danger", "danger-solid", "pro", "ai"];
 // ★★ ТОН ТЕПЕРЬ НАЗЫВАЕТСЯ ЯВНО, И ЭТО РЕШЕНИЕ, А НЕ ПОБОЧНЫЙ ЭФФЕКТ. Дефолтом
 // был `ghost` — тон, который разбор УДАЛЯЕТ. Оставить дефолтом что угодно молча
 // значило бы перекрасить каждый вызов без пропа, ничего не написав в дифф.

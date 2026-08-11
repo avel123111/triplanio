@@ -24,6 +24,7 @@ import { Icon } from './icons';
 // гасят арминг драга у ночей в перетаскиваемой строке — без них степпер внутри
 // строки арсенит перетаскивание). Закрыта СВОЯ ось: `variant="compact"` —
 // ошибка типа.
+/** @typedef {'pill'|'block'|'bare'} StepperVariant */
 export const Stepper = React.forwardRef(
   /**
    * @param {React.ComponentPropsWithoutRef<'div'> & {
@@ -32,7 +33,7 @@ export const Stepper = React.forwardRef(
    *   onPlus?: React.MouseEventHandler<HTMLButtonElement>,
    *   minusDisabled?: boolean, plusDisabled?: boolean,
    *   minusLabel?: string, plusLabel?: string,
-   *   variant?: 'pill'|'block'|'bare',
+   *   variant?: StepperVariant,
    * }} p
    */
   ({
@@ -60,3 +61,9 @@ export const Stepper = React.forwardRef(
   ),
 );
 Stepper.displayName = "Stepper";
+
+// ── Карта оси `variant` — источник витрины `/kit` (TRIP-344). Тот же union,
+// что типизирует проп: `variant="compact"` — ошибка типа. Дефолт `pill` в
+// карту не входит (база без класса).
+/** @type {readonly StepperVariant[]} */
+export const STEPPER_VARIANTS = ["block", "bare"];

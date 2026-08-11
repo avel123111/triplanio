@@ -28,13 +28,14 @@ import React from 'react';
 // ★ БАЗА АННОТАЦИИ = `<div>`: туда уезжает остаток (`style`, `title`, `role`,
 // `data-*`). `variant` — закрытая ось (`auto`|`fill`); `fill` растягивает
 // сегменты на всю ширину строки поровну. `compact` — ошибка типа.
+/** @typedef {'auto'|'fill'} SegVariant */
 export const Seg = React.forwardRef(
   /**
    * @param {Omit<React.ComponentPropsWithoutRef<'div'>, 'onChange'> & {
    *   options: { value: string, label: React.ReactNode, ariaLabel?: string, title?: string, disabled?: boolean }[],
    *   value: string,
    *   onChange: (value: string) => void,
-   *   variant?: 'auto'|'fill',
+   *   variant?: SegVariant,
    *   ariaLabel?: string,
    * }} p
    */
@@ -67,3 +68,10 @@ export const Seg = React.forwardRef(
   ),
 );
 Seg.displayName = "Seg";
+
+// ── Карта оси `variant` — источник витрины `/kit` (TRIP-344). Тот же union,
+// что типизирует проп: `variant="compact"` — ошибка типа. Дефолт `auto` в
+// карту не входит (база без класса). `seg--filter`/`seg--view` — ЭКРАННЫЕ
+// адаптивы Trips, не обличья примитива: их держит долг витрины, а не карта.
+/** @type {readonly SegVariant[]} */
+export const SEG_VARIANTS = ["fill"];
