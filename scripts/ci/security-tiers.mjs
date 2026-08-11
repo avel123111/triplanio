@@ -32,6 +32,16 @@ export const TIERS = {
 };
 
 // anonDml/authDml/anonSelect/authSelect = ЦЕЛЕВЫЕ привилегии роли на таблице.
+//
+// authDml (bool) — есть ли у authenticated ХОТЬ КАКОЙ-ТО прямой DML (ось ярус-
+// инварианта I3b: разрешён только на A/C). Опциональные authInsert/authUpdate/
+// authDelete (bool) УТОЧНЯЮТ, какой именно op открыт — для случая ЧАСТИЧНОГО
+// закрытия двери (напр. UPDATE/DELETE сняты, INSERT ещё нужен регистрации).
+// Когда per-op поле задано, LIVE-2e сверяет ровно его ЭФФЕКТИВНОЕ право
+// (has_any_column_privilege/has_table_privilege) в ОБЕ стороны (снят → обязан
+// быть снят, оставлен → обязан быть); где per-op не задан — падает на authDml
+// (все 40 прочих таблиц не трогаем). Инвариант: authDml === OR(per-op), иначе
+// манифест сам себе противоречит.
 export const TABLES = {
   // ── Ярус A — контент трипа (Ф1 / TRIP-124 привёл к цели) ────────────────────
   activities:        { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
@@ -91,7 +101,7 @@ export const TABLES = {
   chat_messages:     { tier: 'B', write: 'send_chat_message (secdef RPC)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop insert/update/delete политик; запись только через RPC' },
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
-  users:              { tier: 'B', write: 'service_role/edge (шов account/profile + webhook)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: ярус C→B — запись только через service_role (edge account/profile для профиля, webhook Stripe для энтайтлмента). REVOKE UPDATE (table+колоночный) и DELETE у authenticated; SELECT/INSERT ПОКА остаются у authenticated (снимет домен регистрации — там insert().select() профиля), поэтому authSelect=true (переходная модель); anon без DML (Ф3)' },
+  users:              { tier: 'C', write: 'edge account/profile (service_role) + INSERT authenticated (регистрация, врем.)', anonDml: false, authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: закрыта дверь ПРАВКИ — REVOKE UPDATE (table+поколоночный) и DELETE у authenticated; правка профиля только через edge account/profile под service_role. INSERT+SELECT ПОКА остаются (снимет домен регистрации — там insert().select() профиля), поэтому ярус остаётся C и authDml=true (частичный клиентский DML). per-op authUpdate/authDelete=false — LIVE-2e сверяет, что сняты ПОШТУЧНО; anon без DML (Ф3)' },
   user_custom_visits: { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
   notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
   chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
