@@ -57,20 +57,17 @@ function checkStatic() {
     // I3a — anon не пишет никуда, без исключений.
     if (r.anonDml !== false) { err(`манифест: '${t}' — anonDml должен быть false (I3a)`); fail = 1; }
     // I3b — клиентская запись (authenticated DML) только на A и C.
+    // Явные per-op поля (опц., частичное закрытие двери) — булевы.
+    for (const k of ['authInsert', 'authUpdate', 'authDelete']) {
+      if (k in r && typeof r[k] !== 'boolean') { err(`манифест: '${t}'.${k} должен быть boolean`); fail = 1; }
+    }
+    // I3b ПОШТУЧНО через ту же нормализацию, что и live: клиентская запись только
+    // на ярусах A/C. Одна модель — никакого «если per-op, иначе булев».
+    const eff = effectiveAuthOps(r);
     const mayAuthWrite = r.tier === 'A' || r.tier === 'C';
-    if (r.authDml === true && !mayAuthWrite) { err(`манифест: '${t}' — authDml=true запрещён на ярусе ${r.tier} (I3b)`); fail = 1; }
-    if (r.authDml !== true && mayAuthWrite) { err(`манифест: '${t}' — ярус ${r.tier} ожидает authDml=true`); fail = 1; }
-    // Per-op DML (опц., частичное закрытие двери): булев, и authDml === OR(per-op)
-    // — иначе манифест сам себе противоречит (authDml=false при открытом INSERT).
-    const AUTH_OPS = ['authInsert', 'authUpdate', 'authDelete'];
-    const perOpPresent = AUTH_OPS.filter((k) => k in r);
-    for (const k of perOpPresent) {
-      if (typeof r[k] !== 'boolean') { err(`манифест: '${t}'.${k} должен быть boolean`); fail = 1; }
-    }
-    if (perOpPresent.length) {
-      const anyOp = AUTH_OPS.some((k) => (k in r ? r[k] : r.authDml) === true);
-      if (r.authDml !== anyOp) { err(`манифест: '${t}' — authDml=${r.authDml} ≠ OR(per-op)=${anyOp}; authDml обязан отражать «есть ли хоть какой клиентский DML»`); fail = 1; }
-    }
+    const openOps = ['insert', 'update', 'delete'].filter((o) => eff[o]);
+    if (openOps.length && !mayAuthWrite) { err(`манифест: '${t}' — клиентский DML (${openOps.join('/')}) запрещён на ярусе ${r.tier} (I3b)`); fail = 1; }
+    if (!openOps.length && mayAuthWrite) { err(`манифест: '${t}' — ярус ${r.tier} ожидает клиентскую запись, но все оси закрыты (authDml/per-op=false)`); fail = 1; }
   }
   // FUNCTIONS: списки строк; publicExec ∩ authExec = ∅; authzExempt ⊆ client-вызываемых.
   for (const k of ['publicExec', 'authExec', 'authzExempt']) {
@@ -527,12 +524,13 @@ export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
  * живой SELECT). Возвращает список строк-ошибок.
  *
  * Оси:
- *   DML   — I3a (anon DML нигде) + I3b ПОШТУЧНО (TRIP-400): для каждого op
- *           (INSERT/UPDATE/DELETE) сверяется ЭФФЕКТИВНОЕ право. Где у таблицы
- *           задано per-op поле (authInsert/authUpdate/authDelete) — сверка в ОБЕ
- *           стороны (снят обязан быть снят, оставлен обязан быть); где не задано —
- *           падает на булев `authDml` (одностор., как раньше — 40 таблиц не
- *           трогаем). Плюс незаклассифицированная таблица с любым auth-op.
+ *   DML   — I3a (anon DML нигде) + I3b ПОШТУЧНО (TRIP-400): живое право по каждой
+ *           оси (INSERT/UPDATE/DELETE) сверяется с ЕДИНОЙ нормализованной тройкой
+ *           `effectiveAuthOps(m)` — op, гранченный живьём там, где тройка его
+ *           закрыла, = дрейф. Одна модель: 40 таблиц на голом `authDml` дают
+ *           тройку из трёх копий булева → поведение ровно прежнее; `users` с
+ *           per-op `authUpdate:false` ловит невыпиленный UPDATE именно как UPDATE.
+ *           Плюс незаклассифицированная таблица с любым живым auth-op.
  *   SELECT (TRIP-399) — закрытие двери ЧТЕНИЯ тоже стережётся:
  *     • live `authSel` обязан совпасть с манифестным `authSelect`;
  *     • edge-only таблица (`authSelect:false`) не должна отдавать SELECT аноним —
@@ -543,38 +541,43 @@ export function checkBucketPredicates(policies = [], buckets = BUCKETS) {
  *   RLS). Ось закроется сама на C-шаге домена: он снимет anon SELECT и переведёт
  *   `authSelect` в false → правило выше поймает обе оси.
  */
+/**
+ * ЕДИНАЯ нормализация права записи authenticated в тройку {insert,update,delete}
+ * (TRIP-400). Явное per-op поле (`authInsert`/`authUpdate`/`authDelete`) побеждает;
+ * где не задано — булев `authDml` разворачивается на эту ось. И статик (I3b), и
+ * live-сверка читают ТОЛЬКО эту тройку — одна модель, без второй ветки логики
+ * («per-op ИЛИ булев»). Для 40 таблиц на голом `authDml` тройка = три копии
+ * булева → поведение ровно прежнее.
+ */
+export function effectiveAuthOps(entry = {}) {
+  return {
+    insert: (entry.authInsert ?? entry.authDml) === true,
+    update: (entry.authUpdate ?? entry.authDml) === true,
+    delete: (entry.authDelete ?? entry.authDml) === true,
+  };
+}
+
 const AUTH_DML_OPS = [
-  { live: 'authIns', field: 'authInsert', label: 'INSERT' },
-  { live: 'authUpd', field: 'authUpdate', label: 'UPDATE' },
-  { live: 'authDel', field: 'authDelete', label: 'DELETE' },
+  { live: 'authIns', key: 'insert', label: 'INSERT' },
+  { live: 'authUpd', key: 'update', label: 'UPDATE' },
+  { live: 'authDel', key: 'delete', label: 'DELETE' },
 ];
 
 export function checkTableGrants(grants = [], tables = TABLES) {
   const errors = [];
   for (const g of grants) {
     const m = tables[g.t];
+    const eff = m ? effectiveAuthOps(m) : null;
     // ── ось DML ──
     // I3a — anon DML недопустим нигде (комбинированно: любой op).
     if (g.anon) errors.push(`live-дрейф: anon имеет DML на public.${g.t} (I3a — снять грант)`);
-    // I3b ПОШТУЧНО: сверяем каждый op отдельно (TRIP-400).
+    // I3b ПОШТУЧНО через ту же нормализацию: op открыт там, где тройка его закрыла.
     for (const op of AUTH_DML_OPS) {
-      const live = g[op.live] === true;
+      if (g[op.live] !== true) continue; // op не гранчен живьём — сверять нечего
       if (!m) {
-        if (live) errors.push(`live-дрейф: public.${g.t} не в манифесте, но authenticated имеет ${op.label} — заведи ярус в security-tiers.mjs`);
-        continue;
-      }
-      const explicit = op.field in m;
-      if (explicit) {
-        // per-op: сверка в ОБЕ стороны — снят обязан быть снят, оставлен обязан быть.
-        const expected = m[op.field] === true;
-        if (live && !expected) {
-          errors.push(`live-дрейф: authenticated имеет ${op.label} на public.${g.t} (манифест ${op.field}=false, ярус ${m.tier}) — грант не снят`);
-        } else if (!live && expected) {
-          errors.push(`live-дрейф: манифест ждёт ${op.label} на public.${g.t} (${op.field}=true), а его нет — грант пропал`);
-        }
-      } else if (live && m.authDml !== true) {
-        // fallback на булев authDml (одностор., как раньше): op открыт там, где DML запрещён.
-        errors.push(`live-дрейф: authenticated имеет DML на public.${g.t} (ярус ${m.tier} запрещает)`);
+        errors.push(`live-дрейф: public.${g.t} не в манифесте, но authenticated имеет ${op.label} — заведи ярус в security-tiers.mjs`);
+      } else if (!eff[op.key]) {
+        errors.push(`live-дрейф: authenticated имеет ${op.label} на public.${g.t} — манифест этот op закрыл (ярус ${m.tier})`);
       }
     }
     // ── ось SELECT (TRIP-399) — только для таблиц в манифесте ──
