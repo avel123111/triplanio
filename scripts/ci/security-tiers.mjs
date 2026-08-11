@@ -102,7 +102,15 @@ export const TABLES = {
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
   users:              { tier: 'C', write: 'edge account/profile (service_role) + INSERT authenticated (регистрация, врем.)', anonDml: false, authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: закрыта дверь ПРАВКИ — REVOKE UPDATE (table+поколоночный) и DELETE у authenticated; правка профиля только через edge account/profile под service_role. INSERT+SELECT ПОКА остаются (снимет домен регистрации — там insert().select() профиля), поэтому ярус остаётся C и authDml=true (частичный клиентский DML). per-op authUpdate/authDelete=false — LIVE-2e сверяет, что сняты ПОШТУЧНО; anon без DML (Ф3)' },
-  user_custom_visits: { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
+  // TRIP-402 шаг C: домен статистики закрыт — edge-only. Запись через шов
+  // user-place (service_role, scope user_id=actor), чтение статов через RPC
+  // get_user_travel_stats(p_actor) под service_role (EXECUTE у authenticated снят
+  // в A+B). Клиент таблицу напрямую не пишет/не читает. Полный close в ОДИН заход
+  // (в отличие от users): REVOKE INSERT/UPDATE/DELETE/SELECT у authenticated +
+  // остаточный SELECT у anon; 4 RLS ucv_* удалены ПОСЛЕ revoke; RLS остаётся
+  // deny-all, service_role обходит. Не ярус C: клиент не пишет вовсе. LIVE-2e
+  // сверит, что DML+SELECT сняты (has_*_privilege).
+  user_custom_visits: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
   chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
   partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
