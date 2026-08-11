@@ -175,3 +175,4 @@
 - [[triplanio-reminder-tz-fix]] — get_pending_reminders слал со сдвигом на offset города (Мадрид в 23 вместо 21); фикс reminder_true_instant (настенное+city tz→реальный момент), prod+dev задеплоено.
 - [[triplanio-sentry-monitoring]] — один EU-проект+env-тег, DSN, переменные; Ф1 фронт СДЕЛАН (errors-only, PII-скраб); Ф4 edge и Ф6 Notion — нет.
 - [[triplanio-cancel-downgrade-no-tripsubrow-bug]] — БАГ dev: вебхук .deleted записан processed, но users остался pro; downgrade резолвит юзера ТОЛЬКО через `trip_subscriptions.stripe_subscription_id`, строки нет → no-op. Тот же риск в prod.
+- [[triplanio-mcp-on-demand]] — MCP-серверы «по требованию»: n8n снят из `.mcp.json` (тяжёлые инструкции в каждое сообщение, нужен редко) — существует, включается копипастом блока обратно. Всегда-вкл: sentry/tolgee/posthog/playwright; платформенные (github/Supabase/Linear/Notion/Vercel) — вне репо.
