@@ -1,0 +1,12 @@
+{
+  "temporary": "Something went wrong. Please try again.",
+  "INVALID_INPUT": "Some of the entered data is invalid.",
+  "INVALID_BODY": "Some of the entered data is invalid.",
+  "FORBIDDEN": "You don't have permission to do that.",
+  "UNAUTHORIZED": "You don't have permission to do that.",
+  "NOT_FOUND": "We couldn't find that.",
+  "UNAUTHENTICATED": "Please sign in again.",
+  "AUTH_UNAVAILABLE": "The sign-in service is temporarily unavailable.",
+  "RATE_LIMITED": "Too many attempts. Please try again in a moment.",
+  "INTERNAL": "Something went wrong on our side. Please try again."
+}

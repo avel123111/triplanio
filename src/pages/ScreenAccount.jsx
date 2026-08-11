@@ -14,6 +14,7 @@ import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
 import { openConsentBanner } from '@/lib/consent';
 import AppHeader from '@/components/AppHeader';
@@ -446,18 +447,23 @@ export default function ScreenAccount() {
   const handleSave = async () => {
     setSaving(true);
     setErrorMsg(null);
+    // Запись профиля идёт единой дверью (шов account/profile), не прямым REST в
+    // users. Отказ приезжает машинным `code` в КОРНЕ результата (не в data);
+    // пользователю показываем локализованный текст через errorText, НЕ серверную
+    // прозу (контракт ошибок TRIP-400).
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ full_name: fullName, avatar_url: avatarUrl })
-        .eq('id', user.id);
-      if (error) throw error;
-      await checkUserAuth?.();
-      toast({ description: t('settings.saved'), variant: 'success' });
-    } catch (e) {
-      console.error('save profile error:', e);
-      setErrorMsg(t('account.err_save') + (e.message || String(e)));
+      const { error, code } = await invokeFn('account/profile', {
+        body: { full_name: fullName, avatar_url: avatarUrl || null },
+      });
+      if (error || code) {
+        setErrorMsg(errorText(t, code));
+      } else {
+        await checkUserAuth?.();
+        toast({ description: t('settings.saved'), variant: 'success' });
+      }
     } finally {
+      // invokeFn по контракту не бросает (отказ приходит значением), но finally
+      // держит кнопку от залипания в «Сохранение…» при неожиданном throw из SDK.
       setSaving(false);
     }
   };
@@ -477,6 +483,17 @@ export default function ScreenAccount() {
     setUploadingAvatar(true);
     setErrorMsg(null);
     try {
+      // TRIP-367 root-cause: «new row violates row-level security policy» при
+      // аплоаде = `auth.uid()` NULL, т.е. storage-запрос ушёл без валидного
+      // токена (сессия ещё не восстановилась после загрузки страницы или токен
+      // протух). Глобальный createAuthRetryFetch лечит только 401, а storage-RLS-
+      // отказ приходит НЕ-401 и проходит мимо него. Форсим восстановление сессии
+      // ДО загрузки байтов: getSession() дожидается восстановления и обновляет
+      // протухший access-token, поэтому следующий storage-запрос уходит с живым
+      // токеном. Нет живой сессии вовсе — честный UNAUTHENTICATED, а не сырой
+      // storage-отказ «violates RLS».
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setErrorMsg(errorText(t, 'UNAUTHENTICATED')); return; }
       // Deterministic key: one object per user, no extension. upsert overwrites
       // it in place, so stale variants can never accumulate and no listing sweep
       // is needed (TRIP-48). The browser renders <img> by the stored Content-Type,
@@ -485,19 +502,23 @@ export default function ScreenAccount() {
       // a `contentType` option here would do nothing (storage-js only applies it
       // to non-Blob bodies), so the MIME allow-list on the bucket is the gate.
       const path = `${user.id}/avatar`;
+      // Байты аватара — прямо в Storage (намеренно разрешённое прямое обращение,
+      // handoff). Только ссылка `avatar_url` идёт через шов.
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, file, { upsert: true });
       if (uploadErr) throw uploadErr;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       const url = `${publicUrl}?t=${Date.now()}`;
-      const { error: dbErr } = await supabase.from('users').update({ avatar_url: url }).eq('id', user.id);
-      if (dbErr) throw dbErr;
+      const { error, code } = await invokeFn('account/profile', { body: { avatar_url: url } });
+      if (error || code) { setErrorMsg(errorText(t, code)); return; }
       setAvatarUrl(url);
       await checkUserAuth?.();
     } catch (e) {
+      // Сбой загрузки байтов в Storage (не edge) — кода нет, показываем общий
+      // текст, не прозу клиента/сервера.
       console.error('avatar upload error:', e);
-      setErrorMsg(t('account.err_avatar_upload') + (e.message || String(e)));
+      setErrorMsg(errorText(t, null));
     } finally {
       setUploadingAvatar(false);
     }
@@ -508,18 +529,18 @@ export default function ScreenAccount() {
     setErrorMsg(null);
     const prev = avatarUrl;
     setAvatarUrl(''); // optimistic
-    try {
-      const { error } = await supabase.from('users').update({ avatar_url: null }).eq('id', user.id);
-      if (error) throw error;
-      try {
-        await supabase.storage.from('avatars').remove([`${user.id}/avatar`]);
-      } catch { /* ignore */ }
-      await checkUserAuth?.();
-    } catch (e) {
-      console.error('avatar remove error:', e);
+    const { error, code } = await invokeFn('account/profile', { body: { avatar_url: null } });
+    if (error || code) {
       setAvatarUrl(prev);
-      setErrorMsg(t('account.err_avatar_remove') + (e.message || String(e)));
+      setErrorMsg(errorText(t, code));
+      return;
     }
+    // Байты — best-effort прямо в Storage (own-folder DELETE policy); провал не
+    // откатывает уже снятую ссылку.
+    try {
+      await supabase.storage.from('avatars').remove([`${user.id}/avatar`]);
+    } catch { /* ignore */ }
+    await checkUserAuth?.();
   };
 
   const handleManageSubscription = async () => {

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { forgetStashedAttribution, getSignupMarks, identifyUser, rememberSignupMarks, resetIdentity, track } from '@/lib/analytics';
 import { marksToColumns, pickSignupMarks } from '@/lib/campaign';
 
@@ -134,12 +135,14 @@ export const AuthProvider = ({ children }) => {
       // checkUserAuth on every remount forever).
       if (!silent) setIsLoadingAuth(true);
 
-      // Fetch profile from public.users
-      let { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
+      // Профиль читается через ярус-A edge getMe (service_role), а не прямым
+      // select — фронт больше не ходит в users за своей строкой (эпик TRIP-374).
+      // Отказ (сеть/edge) приходит в КОРНЕ результата → бросаем в общий catch.
+      // Строки ещё нет → getMe отдаёт 200 { user: null }: ниже это ветка создания
+      // профиля (домен регистрации — не трогаем).
+      const { data: me, error: meErr, code: meCode } = await invokeFn('getMe');
+      if (meErr || meCode) throw meErr || new Error(meCode);
+      let profile = me?.user ?? null;
 
       if (profile?.deleted_at) {
         // Account was anonymized/deleted server-side — force logout even if a
@@ -148,7 +151,7 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      if (error && error.code === 'PGRST116') {
+      if (!profile) {
         // The marks this signup arrived with, from whichever carrier crossed the
         // border the visitor took: auth metadata for email (they survive
         // confirming on another device entirely), the sessionStorage stash for
@@ -191,8 +194,6 @@ export const AuthProvider = ({ children }) => {
         if (createError) throw createError;
         profile = newProfile;
         profileCreated = true;
-      } else if (error) {
-        throw error;
       } else {
         // Signing in to an existing account is not a signup, so the marks the
         // OAuth redirect carried have nothing to attribute. Dropping them here

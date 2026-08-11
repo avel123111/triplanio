@@ -313,6 +313,7 @@ export const DOORS = {
   // ── seam-двери: гейт в шве _shared/mutate.ts, сверяется с requires спецификации (TRIP-394) ──
   trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
   trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
+  account:               ['self'],            // profile: своя строка users (scope id=actor), Pro нигде (TRIP-400)
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип
@@ -322,6 +323,7 @@ export const DOORS = {
   createBillingPortal:   'self',
   deleteMyAccount:       'self',
   getActiveTrips:        'self',
+  getMe:                 'self',        // читает свою строку users по актору из JWT (TRIP-400)
   getUserPlan:           'self',
   respondTripInvite:     'self',        // приглашение адресовано вызывающему
   telegramGetMyIntegrations: 'self',

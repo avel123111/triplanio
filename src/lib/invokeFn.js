@@ -32,9 +32,17 @@ import { parseEdgeError } from '@/lib/edgeError';
 import { Sentry } from '@/lib/sentry';
 
 /**
+ * Единственная точка вызова edge из браузера. Дискриминант ОТКАЗА — только в
+ * КОРНЕ (`code`/`error`), не в `data` (TRIP-400, контракт ошибок 1а): `T` —
+ * форма УСПЕШНОГО тела функции, поэтому `res.data.code` / `res.data.ok` под
+ * `// @ts-check` = ошибка типа (у `T` нет таких полей). Так «читаю статус из
+ * data вместо корня» падает компиляцией, а не в рантайме; CI-гард 2w держит
+ * механическую половину. `data` — `T | null`: на сетевом/relay-сбое тела нет.
+ *
+ * @template T
  * @param {string} name  edge function slug
  * @param {import('@supabase/supabase-js').FunctionInvokeOptions} [options]
- * @returns {Promise<{ data: any, error: any, code: string|null, message: string|null }>}
+ * @returns {Promise<{ data: T|null, error: any, code: string|null, message: string|null }>}
  */
 export async function invokeFn(name, options = {}) {
   const { data, error } = await supabase.functions.invoke(name, options);

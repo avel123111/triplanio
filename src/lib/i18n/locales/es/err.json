@@ -1,0 +1,12 @@
+{
+  "temporary": "Algo salió mal. Inténtalo de nuevo.",
+  "INVALID_INPUT": "Algunos de los datos introducidos no son válidos.",
+  "INVALID_BODY": "Algunos de los datos introducidos no son válidos.",
+  "FORBIDDEN": "No tienes permiso para hacer eso.",
+  "UNAUTHORIZED": "No tienes permiso para hacer eso.",
+  "NOT_FOUND": "No pudimos encontrarlo.",
+  "UNAUTHENTICATED": "Vuelve a iniciar sesión.",
+  "AUTH_UNAVAILABLE": "El servicio de acceso no está disponible temporalmente.",
+  "RATE_LIMITED": "Demasiados intentos. Inténtalo de nuevo en un momento.",
+  "INTERNAL": "Algo salió mal por nuestra parte. Inténtalo de nuevo."
+}
