@@ -4,14 +4,13 @@
  * POST body: { trip_id, email, role: 'viewer'|'admin' }
  *
  * Auth: caller must be authenticated and be the trip owner or an active admin.
- * Creates a pending TripMember, a Notification, and sends an invite email (best-effort).
+ * Creates a pending TripMember and announces `invite_created`; n8n delivers the
+ * in-app notification + email.
  */
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
-import { renderInviteTemplate, renderInviteNotification } from '../_shared/emailTemplate.ts';
-import { sendEmail } from '../_shared/sendEmail.ts';
 import { emit } from '../_shared/emit.ts';
 
 Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
@@ -38,8 +37,8 @@ Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
       return Response.json({ error: 'Only trip admins can invite members' }, { status: 403, headers: corsHeaders });
     }
 
-    // Load trip (for title and created_by)
-    const { data: trip } = await supabaseAdmin.from('trips').select('*').eq('id', trip_id).single();
+    // Load trip (for created_by — owner guard below)
+    const { data: trip } = await supabaseAdmin.from('trips').select('created_by').eq('id', trip_id).single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
     // Check existing membership
@@ -62,14 +61,14 @@ Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
       );
     }
 
-    // Fetch invited user's profile (if registered) to get id, language, full_name
+    // Fetch invited user's profile (if registered) to get id + full_name for the
+    // member row (owner-guard needs id; user_full_name is persisted on the row).
     const { data: invitedUsers } = await supabaseAdmin
       .from('users')
-      .select('id, language, full_name, avatar_url')
+      .select('id, full_name')
       .eq('email', normalizedEmail)
       .limit(1);
     const invitedUser = invitedUsers?.[0] ?? null;
-    const recipientLang = invitedUser?.language ?? 'en';
 
     // The trip creator is the owner via trips.created_by and is NEVER a
     // trip_members row (create_trip writes none). The `existing`-row check above
@@ -82,17 +81,6 @@ Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
         { status: 400, headers: corsHeaders },
       );
     }
-
-    // Fetch caller's profile: display name + language.
-    // The EMAIL language follows the INVITER's app language (callerLang),
-    // while the in-app notification stays in the recipient's language (recipientLang).
-    const { data: callerUsers } = await supabaseAdmin
-      .from('users')
-      .select('full_name, language')
-      .eq('id', user.id)
-      .limit(1);
-    const callerName = callerUsers?.[0]?.full_name || user.email!;
-    const callerLang = callerUsers?.[0]?.language ?? 'en';
 
     // Create the TripMember record (pending) — or, when re-inviting a declined
     // member, reset the existing row back to pending with the new role.
@@ -117,58 +105,8 @@ Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
       throw new Error(memberError?.message || 'Failed to create member');
     }
 
-    // Create in-app notification (i18n keys preferred; legacy fallback fields kept)
-    const notifTexts = renderInviteNotification(recipientLang, {
-      title: trip.title,
-      inviter: callerName,
-      role,
-    });
-
-    // Only registered users have a notifications inbox keyed by user_id.
-    if (invitedUser?.id) {
-      await supabaseAdmin.from('notifications').insert({
-        user_id: invitedUser.id,
-        type: 'trip_invite',
-        i18n_title_key: 'notif.tpl_invite_title',
-        i18n_message_key: 'notif.tpl_invite_msg',
-        i18n_params: {
-          trip: trip.title,
-          inviter: callerName,
-          role_key: role === 'admin' ? 'notif.role_admin' : 'notif.role_viewer',
-        },
-        title: notifTexts.title,
-        message: notifTexts.message,
-        trip_id,
-        trip_member_id: member.id,
-        read: false,
-        created_by: user.id,
-      });
-    }
-
-    // Send invite email via Resend template (best-effort — failure doesn't break the invite)
-    try {
-      const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
-      const appUrl = publicAppUrl || new URL(req.url).origin;
-
-      const tpl = renderInviteTemplate(callerLang, 'invite', {
-        title: trip.title,
-        inviter: callerName,
-        role,
-        appUrl,
-        tripId: trip_id,
-      });
-
-      await sendEmail({
-        to: normalizedEmail,
-        subject: tpl.subject,
-        from_name: tpl.brand,
-        template: { id: tpl.templateId, variables: tpl.variables },
-      });
-    } catch (e) {
-      console.error('sendEmail failed (non-fatal):', e);
-    }
-
-    // TRIP-356: announce the event; n8n resolves audience/text and delivers.
+    // TRIP-356: announce the event; n8n resolves audience/text and delivers
+    // (in-app notification + invite email).
     emit('invite_created', { trip_id, actor_id: user.id, member_id: member.id });
 
     return Response.json({ ok: true, member }, { headers: corsHeaders });

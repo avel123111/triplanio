@@ -4,14 +4,12 @@
  * POST body: { member_id }
  *
  * Auth: caller must be trip owner or active admin.
- * Resends the invite email to a still-pending member.
+ * Re-announces a still-pending invite; n8n re-sends the email.
  */
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
-import { renderInviteTemplate } from '../_shared/emailTemplate.ts';
-import { sendEmail } from '../_shared/sendEmail.ts';
 import { emit } from '../_shared/emit.ts';
 
 Deno.serve(withHandler('resendTripInvite', async (req, corsHeaders) => {
@@ -37,42 +35,7 @@ Deno.serve(withHandler('resendTripInvite', async (req, corsHeaders) => {
       return Response.json({ error: 'Only trip admins can resend invitations' }, { status: 403, headers: corsHeaders });
     }
 
-    const { data: trip } = await supabaseAdmin
-      .from('trips')
-      .select('title')
-      .eq('id', member.trip_id)
-      .single();
-    if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
-
-    // Fetch caller (inviter) display name + language.
-    // The EMAIL language follows the INVITER's app language.
-    const { data: callerUsers } = await supabaseAdmin
-      .from('users')
-      .select('full_name, language')
-      .eq('id', user.id)
-      .limit(1);
-    const callerName = callerUsers?.[0]?.full_name || user.email!;
-    const callerLang = callerUsers?.[0]?.language ?? 'en';
-
-    const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
-    const appUrl = publicAppUrl || new URL(req.url).origin;
-
-    const tpl = renderInviteTemplate(callerLang, 'resend', {
-      title: trip.title,
-      inviter: callerName,
-      role: member.role,
-      appUrl,
-      tripId: member.trip_id,
-    });
-
-    await sendEmail({
-      to: member.invite_email,
-      subject: tpl.subject,
-      from_name: tpl.brand,
-      template: { id: tpl.templateId, variables: tpl.variables },
-    });
-
-    // TRIP-356: announce the event; n8n resolves audience/text and delivers.
+    // TRIP-356: announce the event; n8n resolves audience/text and delivers (invite email).
     emit('invite_resent', { trip_id: member.trip_id, actor_id: user.id, member_id: member.id });
 
     return Response.json({ ok: true }, { headers: corsHeaders });

@@ -24,10 +24,8 @@ import { runInBackground } from './http.ts';
 import { signN8nJwt } from './n8nAuth.ts';
 import { captureEdgeError } from './sentry.ts';
 
-// Live n8n receiver (workflow "Communications"). NOTE: TRIP-356 §1 wrote
-// ".../webhook/notify", but the actual webhook path on the instance is
-// `outgoing-dispatch` — aligned to the real endpoint.
-const N8N_NOTIFY_URL = 'https://n8n-production-d1214.up.railway.app/webhook/outgoing-dispatch';
+// n8n receiver for backend communication events (§1).
+const N8N_NOTIFY_URL = 'https://n8n-production-d1214.up.railway.app/webhook/notify';
 
 /** Id-only slots (§2). Every field optional; the backend fills only what applies. */
 export type EmitIds = {
