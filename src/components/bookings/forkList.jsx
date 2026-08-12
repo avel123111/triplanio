@@ -61,7 +61,7 @@ export function ForkListSkeleton({ count = 4 }) {
 export function ForkState({ variant, icon, spark = null, title, body, action = null, partner = null }) {
   const { t } = useI18nFormat();
   return (
-    <div className={`fork-state fork-state--${variant}`}>
+    <Card className={`fork-state fork-state--${variant}`}>
       <div className="fork-state__art">
         <span className="fork-state__glow" aria-hidden="true" />
         <span className="fork-si">{icon}{spark ? <span className="fork-state__spark">{spark}</span> : null}</span>
@@ -83,7 +83,7 @@ export function ForkState({ variant, icon, spark = null, title, body, action = n
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
