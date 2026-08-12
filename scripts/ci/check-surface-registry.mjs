@@ -30,6 +30,9 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import postcss from 'postcss';
+import { Parser as AcornParser } from 'acorn';
+import acornJsx from 'acorn-jsx';
+const JsxParser = AcornParser.extend(acornJsx());
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
 // Реестр читается ОТНОСИТЕЛЬНО cwd (как `git ls-files`/`readFileSync` ниже) —
@@ -128,9 +131,53 @@ const scanJsx = (readFile) => {
   return { styleSurfaces, inlineSurfaces };
 };
 
+// ── 4. СЫРОЙ ВЫЗЫВАТЕЛЬ card-homed класса (F, TRIP-343) ─────────────────────
+// card-homed класс несёт ТОЛЬКО раскладку — его скин на <Card>. Сырой host-тег
+// (<button>/<div>/<a>…) с таким className мимо <Card> = поверхность потеряна
+// молча (баг трансфера). Три скан-режима выше этого не видят: в .css поверхности
+// нет, инлайна нет, <style> нет. Ловим AST-обходом JSX.
+const classAttrTokens = (attr) => {
+  const out = [];
+  const walk = (n) => {
+    if (!n) return;
+    if (n.type === 'Literal' && typeof n.value === 'string') out.push(...n.value.split(/\s+/));
+    else if (n.type === 'JSXExpressionContainer') walk(n.expression);
+    else if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => out.push(...(q.value.cooked || '').split(/\s+/)));
+    else if (n.type === 'ConditionalExpression') { walk(n.consequent); walk(n.alternate); }
+    else if (n.type === 'LogicalExpression') { walk(n.left); walk(n.right); }
+    else if (n.type === 'BinaryExpression') { walk(n.left); walk(n.right); }
+  };
+  walk(attr && attr.value);
+  return out.filter(Boolean);
+};
+const rawCardHomedCallers = (cardHomed) => {
+  const hits = [];
+  for (const f of lsSrc().filter((f) => f.endsWith('.jsx'))) {
+    let ast;
+    try { ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }); } catch { continue; }
+    const stack = [ast];
+    while (stack.length) {
+      const n = stack.pop();
+      if (!n || typeof n !== 'object') continue;
+      if (n.type === 'JSXOpeningElement' && n.name && n.name.type === 'JSXIdentifier' && /^[a-z]/.test(n.name.name)) {
+        const cls = n.attributes.find((a) => a.type === 'JSXAttribute' && a.name.name === 'className');
+        const homed = classAttrTokens(cls).filter((t) => cardHomed.has(t));
+        if (homed.length) hits.push(`${f}: <${n.name.name} className=[${homed.join(' ')}]> мимо <Card>`);
+      }
+      for (const k in n) {
+        const v = n[k];
+        if (Array.isArray(v)) stack.push(...v);
+        else if (v && typeof v === 'object' && v.type) stack.push(v);
+      }
+    }
+  }
+  return hits;
+};
+
 // ── реестр ──────────────────────────────────────────────────────────────────
 const registry = JSON.parse(readFileSync(REG_PATH, 'utf8'));
 const known = new Set(Object.keys(registry.classes || {}));
+const cardHomed = new Set(registry.cardHomed || []);
 
 const live = cssSurfaceClasses();
 const unregistered = [...live].filter((c) => !known.has(c)).sort();
@@ -139,6 +186,7 @@ const stale = [...known].filter((c) => !live.has(c)).sort();
 const head = scanJsx((f) => { try { return readFileSync(f, 'utf8'); } catch { return null; } });
 const base = scanJsx((f) => git(['show', `${BASE_REF}:${f}`]));
 const baseKnown = git(['rev-parse', BASE_REF]) !== null;
+const rawCallers = rawCardHomedCallers(cardHomed);
 
 console.log(`check-surface-registry (2z): реестр полноты поверхностей`);
 console.log(`  .css surface-классов: ${live.size} · в реестре: ${known.size}`);
@@ -147,6 +195,7 @@ console.log(
   `  инлайн-поверхностей:  ${head.inlineSurfaces}` +
     (baseKnown ? ` (BASE ${base.inlineSurfaces}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
 );
+console.log(`  сырых вызывателей card-homed классов мимо <Card>: ${rawCallers.length} (цель 0)`);
 
 let bad = false;
 if (unregistered.length) {
@@ -168,6 +217,11 @@ if (head.styleSurfaces > 0) {
 if (baseKnown && head.inlineSurfaces > base.inlineSurfaces) {
   bad = true;
   console.log(`\n  РОСТ surface-инлайнов: ${base.inlineSurfaces} → ${head.inlineSurfaces} (ратчет только вниз — переноси на <Card>).`);
+}
+if (rawCallers.length) {
+  bad = true;
+  console.log('\n  СЫРОЙ ВЫЗЫВАТЕЛЬ card-homed класса (скин потерян — оберни в <Card>):');
+  rawCallers.forEach((h) => console.log(`    ${h}`));
 }
 
 if (bad) {

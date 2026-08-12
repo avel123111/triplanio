@@ -22,6 +22,7 @@ const git = (cwd, args) =>
 
 const surfaceCss = (cls) => `.${cls} { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }`;
 const reg = (obj) => JSON.stringify({ classes: obj });
+const regHomed = (cardHomed) => JSON.stringify({ classes: {}, cardHomed });
 const inlineSurface = (n) =>
   `export const C = () => <>${'<i style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16 }}/>'.repeat(n)}</>;\n`;
 
@@ -101,7 +102,29 @@ test('рост surface-инлайнов против base → красный', (
   assert.match(r.out, /инлайн/i);
 });
 
+test('сырой host-тег с card-homed классом мимо <Card> → красный (баг трансфера F)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': regHomed(['tl3-card']),
+      'src/a.jsx': 'export const C = () => (<button className="tl3-card tl3-card--tr" onClick={x}>y</button>);\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /tl3-card/);
+});
+
 /* ── зелёное ─────────────────────────────────────────────────────────────── */
+
+test('тот же card-homed класс НА <Card> → зелёный', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': regHomed(['tl3-card']),
+      'src/a.jsx': 'export const C = () => (<Card as="button" className="tl3-card tl3-card--tr">y</Card>);\n',
+    },
+  });
+  assert.equal(run(f).code, 0, run(f).out);
+});
 
 test('каждый surface-класс приписан, инлайн падает → зелёный', (t) => {
   const f = fixture(t, {

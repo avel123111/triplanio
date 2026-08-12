@@ -1,5 +1,13 @@
 {
   "_note": "Г34 (TRIP-343, объект 2). Реестр полноты поверхностей: КАЖДЫЙ .css surface-класс (предикат аудита §5: радиус+фон+рамка/тень, кроме плиток) обязан быть здесь. object:\"card\" = скин несёт примитив <Card>. object:<имя>+reason = законная не-Card поверхность другого объекта. object:\"card-backlog\" = карточка, ещё на приватном скине, ждёт пересадки на <Card> (это и есть остаток объекта 2, видимый числом). Гард 2z check-surface-registry.mjs: незанесённый класс или устаревшая запись роняют PR.",
+  "_cardHomedNote": "card-homed = приватный класс-остаток, чей СКИН переехал на <Card> (сам класс несёт только раскладку). Такой класс ОБЯЗАН рендериться внутри <Card>: сырой host-тег (<button>/<div>/<a>) с этим className мимо <Card> = поверхность потеряна МОЛЧА (баг трансфера F). AST-скан гарда 2z ловит это — три .css/<style>/inline-скан-режима такого не видят по построению.",
+  "cardHomed": [
+    "tl3-card", "records", "choice-card", "pcard", "fork-manual", "fork-partner", "ov-mapcard",
+    "acc", "acct-chan", "acct-hero", "addon-card", "ai-blk", "cdu", "dz-lift-card", "eed-fcbox",
+    "eed-nightrow", "empty-note", "ev-sec", "fork-state", "hv-card", "hv-namecard", "hv-rows",
+    "invite", "limitcard", "nextcard", "nonext", "pl-lastcard", "pro-up", "statbar", "summary",
+    "te-end", "tr", "tv-card", "wdg"
+  ],
   "classes": {
     "card--locked": { "object": "card", "reason": "канон <Card> — модификатор locked (Pro-гейт ai)" },
     "card--parsed": { "object": "card", "reason": "канон <Card> — модификатор parsed (ai success)" },

@@ -847,7 +847,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           just horizontal. */}
       <Card>
         {proResolved && !hasPro && (
-          <div className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
+          /* TRIP-343 объект 2 (F): скин brand-плашки апгрейда живёт на
+             <Card tone="brand">; была сырым <div className="pro-up"> → без
+             поверхности. `.pro-up` остаётся раскладкой (padding). */
+          <Card tone="brand" radius="md" className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
             <Badge variant="pro" icon="pro">PRO</Badge>
             <div className="pu-body">
               <div className="pt">{t('trip_menu.free_trip_title')}</div>
@@ -858,7 +861,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             ) : (
               <Btn variant="secondary" icon="lock" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>{t('trip.pro_by_owner')}</Btn>
             )}
-          </div>
+          </Card>
         )}
         <div className="card-h">
           <Grow><h3>{t('settings.optional_features')}</h3></Grow>

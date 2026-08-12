@@ -586,10 +586,13 @@ const RECIPES = {
   }],
 
   'ai-blk': (ctx) => [{
+    // TRIP-343 объект 2 (F): скин ai-блока живёт на <Card tone="ai"> (как в проде
+    // EventAiBlock). Витрина рисует ЧЕРЕЗ Card, а не сырым <button> — иначе образец
+    // показывал бы ai-blk без его поверхности (ровно класс дыры, что был у трансфера).
     items: ctx.declared.filter((c) => c.startsWith('ai-blk')).map((c) => it(c, (
-      <button type="button" className={`ai-blk ${c}`}>
+      <Card as="button" tone="ai" className={`ai-blk ${c}`}>
         <div className="ai-blk-hd"><span className="ai-blk-ti"><b>{TX.aiTitle}</b><span>{TX.aiSub}</span></span></div>
-      </button>
+      </Card>
     ), true)),
   }],
 
