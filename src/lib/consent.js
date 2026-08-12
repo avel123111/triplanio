@@ -9,6 +9,7 @@
 import posthog from 'posthog-js';
 import { forgetPendingEvents, identifyUser, isAnalyticsOn, startAnalytics, stopAnalytics } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
+import { initAdsTag } from '@/lib/ads';
 
 const STORAGE_KEY = 'tp-consent';
 
@@ -95,6 +96,11 @@ export function applyConsent(record, uid) {
 
   // Sent for a refusal too: once TRIP-227 loads tags, silence is the wrong signal.
   updateGoogleConsent(record);
+
+  // The advertising tag hangs off marketing consent, independent of the analytics
+  // gate below. Called AFTER updateGoogleConsent so the `update` is already queued
+  // in dataLayer when the tag evaluates. A no-op unless VITE_GADS_TAG_ID is set.
+  initAdsTag(record);
 
   // A refusal on RECORD, not just one clicked in this document: someone who said
   // no on an earlier visit gets no banner, so `setConsent` never runs, and what
