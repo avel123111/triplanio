@@ -11,7 +11,12 @@
 // I18nContext; pure config (LANGUAGES/LOCALE_TAG) lives in translations.js so
 // non-Vite consumers (formatters, tests) never touch the glob.
 
-const modules = import.meta.glob('./locales/*/*.json');
+// The `n8n` namespace (TRIP-404) holds notification/email strings rendered by
+// n8n from Tolgee's Content Delivery — the frontend never reads them, so it is
+// excluded here to keep those keys out of the client bundle. `tolgee pull` still
+// writes locales/<lang>/n8n.json into the repo (Tolgee is the source of truth);
+// this glob just declines to import it.
+const modules = import.meta.glob(['./locales/*/*.json', '!./locales/*/n8n.json']);
 
 // Group the per-file importers by language: { [lang]: { [namespace]: () => import() } }.
 const LOADERS = {};
