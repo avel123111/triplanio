@@ -1660,6 +1660,13 @@ button.app-side__item:hover { background: var(--wash); }
 .card--tone-ai { background: var(--ai-gradient-soft); border-color: var(--ai-line); border-radius: var(--r-btn); }
 /* Заблокированный ai (Pro-гейт): глушится в нейтраль, тот же радиус, что у тона. */
 .card--locked { background: var(--surface-2); border-color: var(--line-strong); border-radius: var(--r-btn); }
+/* Разобранный ai (TRIP-343 PR-2, success-состояние ai-карточки — близнец locked,
+   транслирует существующий облик .ai-blk.parsed; тот же радиус r-btn, что у тона).
+   floor-exempt: classes +1 — PR-2 канон .card--parsed (ai success-state, близнец locked); долг гасится смертью .ai-blk.parsed в этом же PR (апрув Pavel, TRIP-343)
+   visual-diff-exempt: .card--parsed background — ai success-state, из .ai-blk.parsed (--success-soft)
+   visual-diff-exempt: .card--parsed border-color — ai success-state, из .ai-blk.parsed (--success)
+   visual-diff-exempt: .card--parsed border-radius — радиус ai (r-btn 10) */
+.card--parsed { background: var(--success-soft); border-color: var(--success); border-radius: var(--r-btn); }
 
 /* Пунктир/добавить - «создать ещё». Прозрачный, пунктирная рамка. */
 .card--add { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); }
@@ -2182,10 +2189,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Pro upgrade plate — sidebar / inline gate. Дизайн-система TRIP-187:
    тот же паттерн, что и плашка лимита — спокойный бренд-акцент, акцент даёт
    PRO-пилюля (звезда), CTA — бренд-кнопка. */
+/* TRIP-343 PR-2: тон-brand плашки апгрейда на `<Card tone="brand" radius="md">`
+   (bg --brand-soft-12 + рамка --brand = канон точь-в-точь); `.pro-up` — численный
+   остаток (padding 14 → 08).
+   visual-diff-exempt: .pro-up background — тон brand → .card--tone-brand (--brand-soft-12)
+   visual-diff-exempt: .pro-up border — рамка → .card + .card--tone-brand (тот же 1px --brand)
+   visual-diff-exempt: .pro-up border-radius — радиус → .card--r-md */
 .pro-up {
-  background: var(--brand-soft-12);
-  border: 1px solid var(--brand);
-  border-radius: var(--r-md);
   padding: 14px;
 }
 /* .ph = ряд PRO-пилюли (bottom-margin перед заголовком в вертикальном варианте). */
@@ -5601,12 +5611,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Free-limit plaque + Pro-upgrade plates — дизайн-система TRIP-187:
    контейнер на бренд-акценте (спокойный), акцент даёт PRO-пилюля (звезда,
    оранж-розовый градиент), CTA — бренд-кнопка. НЕ на Pro-градиенте. */
+/* TRIP-343 PR-2: тон-brand лимит-плашки на `<Card tone="brand" radius="md">` (bg
+   --brand-soft-12 + рамка --brand = канон .card--tone-brand точь-в-точь); .limitcard
+   — численный раскладочный остаток (margin/flex/gap/padding → 08). Рамка канона =
+   .card(1px --line)+.card--tone-brand(border-color --brand), тот же итог 1px --brand.
+   visual-diff-exempt: .limitcard background — тон brand переехал на .card--tone-brand (--brand-soft-12)
+   visual-diff-exempt: .limitcard border — рамка → .card + .card--tone-brand (тот же 1px --brand)
+   visual-diff-exempt: .limitcard border-radius — радиус переехал на .card--r-md */
 .limitcard {
   margin: 0 0 20px;
   display: flex; align-items: center; gap: 16px;
   padding: 16px 20px;
-  background: var(--brand-soft-12); border: 1px solid var(--brand);
-  border-radius: var(--r-md);
   flex-wrap: wrap;
 }
 .limitcard__body { flex: 1; min-width: 180px; }
@@ -5798,7 +5813,14 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* ─── AI Block (EventAiBlock — booking parser, dialog + side panel) ───────────
    Canonical AI pattern · design-system A4 (6 states). Token-only → light/dark
    and all four palettes follow automatically. */
-.ai-blk{border:1px solid var(--ai-line);border-radius:var(--r-btn);background:var(--ai-gradient-soft);overflow:hidden;margin-bottom:14px;flex:none;}
+/* TRIP-343 PR-2: тон-ai блока на `<Card tone="ai">` (bg --ai-gradient-soft + рамка
+   --ai-line + r-btn = канон .card--tone-ai точь-в-точь); `.ai-blk` — раскладочный
+   остаток (overflow/margin/flex → 08). Состояния: available→as=button+interactive
+   (лифт/glow сняты, канон-ховер); locked→canon .card--locked; parsed→canon .card--parsed.
+   visual-diff-exempt: .ai-blk background — тон ai → .card--tone-ai (--ai-gradient-soft)
+   visual-diff-exempt: .ai-blk border — рамка → .card + .card--tone-ai (тот же 1px --ai-line)
+   visual-diff-exempt: .ai-blk border-radius — радиус → .card--tone-ai (r-btn 10) */
+.ai-blk{overflow:hidden;margin-bottom:14px;flex:none;}
 .ai-blk-hd{display:flex;align-items:center;gap:10px;padding:11px 13px;}
 .ai-blk-ic{position:relative;width:30px;height:30px;border-radius:var(--r-sm);background:var(--ai-gradient);display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px var(--ai);}
 .ai-blk-ic svg{width:15px;height:15px;color:#fff;}
@@ -5816,10 +5838,16 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .ai-blk-x{width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:var(--r-sm);flex:none;}
 .ai-blk-x:hover{background:var(--ai-soft);color:var(--ai-ink);}
 .ai-blk-body{padding:0 13px 12px;display:flex;flex-direction:column;gap:8px;}
-/* available state — clickable pill with a subtle hover lift */
-.ai-blk--pill{cursor:pointer;transition:transform .18s var(--ease-out),box-shadow .18s var(--ease-out),border-color .18s var(--ease-out);}
-.ai-blk--pill:hover{transform:translateY(-2px);box-shadow:0 8px 22px -8px var(--ai);border-color:color-mix(in srgb,var(--ai) 45%,transparent);}
-.ai-blk--pill:active{transform:translateY(0);box-shadow:none;}
+/* available state — кликабельный pill. TRIP-343 PR-2: скин+ховер на `<Card as="button"
+   tone="ai" interactive>`; прежний лифт+glow сняты (канон интерактива: подсветка рамки
+   без движения). `.ai-blk--pill` остаётся раскладочным остатком (cursor).
+   visual-diff-exempt: .ai-blk--pill transition — interactive несёт свой (без transform)
+   visual-diff-exempt: .ai-blk--pill:hover transform — лифт снят (канон без движения, апрув /kit)
+   visual-diff-exempt: .ai-blk--pill:hover box-shadow — glow снят (канон покой плоский)
+   visual-diff-exempt: .ai-blk--pill:hover border-color — рамка-ховер → канон .card--tone-ai.card--interactive:hover (--ai)
+   visual-diff-exempt: .ai-blk--pill:active transform — нажатие без движения (канон)
+   visual-diff-exempt: .ai-blk--pill:active box-shadow — нажатие без тени (канон) */
+.ai-blk--pill{cursor:pointer;}
 /* Строка вложения переехала на общий `.doc-row` + `--ai` (TRIP-321 Ф14.5).
    Прежний комментарий здесь утверждал ровно обратное - «AI-tinted, distinct
    from generic .doc-row»; эта «осознанная разница» на замере оказалась 1px по
@@ -5902,19 +5930,49 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* app-level loading spinner (was Tailwind fixed inset-0 + bordered circle) */
 .app-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
 /* locked / parsed state tints */
-.ai-blk.locked{border-color:var(--line-strong);background:var(--surface-2);}
-.ai-blk.locked .ai-blk-ic{filter:saturate(.55);}
-.ai-blk.locked .ai-blk-ti b{color:var(--muted);}
+/* Заблокированный ai-блок: скин на канон `.card--locked` (surface-2/line-strong,
+   тождественно); своё правило `.ai-blk.locked` удалено, дочерние глушения — на
+   `.card--locked` (subject тот же). Разметка теперь несёт `card--locked`, а не
+   `.locked`, поэтому дочерние co-селекторы переименованы `.ai-blk.locked → .card--locked`;
+   значения ТОЖДЕСТВЕННЫ (переезд state-класса), 2p ключует по каждому классу селектора —
+   поэтому объявлены обе стороны (уход с `.ai-blk`/`.locked`, приход на `.card--locked`).
+   Уход `.ai-blk background` объявлен тон-ai блоком выше (winner-скин у .ai-blk один ключ).
+   visual-diff-exempt: .ai-blk border-color — locked-рамка на канон .card--locked
+   visual-diff-exempt: .ai-blk filter — глушение .ai-blk-ic (locked) на .card--locked, тождественно
+   visual-diff-exempt: .ai-blk {@media (max-width: 640px)} flex — locked hd-кнопка на .card--locked
+   visual-diff-exempt: .ai-blk {@media (max-width: 640px)} flex-wrap — locked hd-обёртка на .card--locked
+   visual-diff-exempt: .ai-blk {@media (max-width: 640px)} justify-content — locked hd-кнопка на .card--locked
+   visual-diff-exempt: .ai-blk.locked .ai-blk-ti b color — заголовок locked на .card--locked .ai-blk-ti b
+   visual-diff-exempt: .locked background — уход state-класса .ai-blk.locked на .card--locked
+   visual-diff-exempt: .locked border-color — уход state-класса .ai-blk.locked на .card--locked
+   visual-diff-exempt: .locked filter — уход глушения .ai-blk-ic на .card--locked
+   visual-diff-exempt: .locked {@media (max-width: 640px)} flex — уход hd-кнопки на .card--locked
+   visual-diff-exempt: .locked {@media (max-width: 640px)} flex-wrap — уход hd-обёртки на .card--locked
+   visual-diff-exempt: .locked {@media (max-width: 640px)} justify-content — уход hd-кнопки на .card--locked
+   visual-diff-exempt: .card--locked filter — приход глушения .ai-blk-ic с .ai-blk.locked, тождественно
+   visual-diff-exempt: .card--locked .ai-blk-ti b color — приход заголовка с .ai-blk.locked .ai-blk-ti b
+   visual-diff-exempt: .card--locked {@media (max-width: 640px)} flex — приход hd-кнопки с .ai-blk.locked
+   visual-diff-exempt: .card--locked {@media (max-width: 640px)} flex-wrap — приход hd-обёртки с .ai-blk.locked
+   visual-diff-exempt: .card--locked {@media (max-width: 640px)} justify-content — приход hd-кнопки с .ai-blk.locked */
+.card--locked .ai-blk-ic{filter:saturate(.55);}
+.card--locked .ai-blk-ti b{color:var(--muted);}
 /* Narrow widths (mobile sheet + narrow side panel): the locked plaque's "Go Pro"
    CTA can't share the row with the icon+title — let the header wrap and drop the
    CTA to its own full-width row (same pattern as the Free-limit banner). */
 @media (max-width: 640px) {
-  .ai-blk.locked .ai-blk-hd { flex-wrap: wrap; }
-  .ai-blk.locked .ai-blk-hd .btn { flex: 1 1 100%; justify-content: center; }
+  .card--locked .ai-blk-hd { flex-wrap: wrap; }
+  .card--locked .ai-blk-hd .btn { flex: 1 1 100%; justify-content: center; }
 }
-.ai-blk.parsed{border-color:var(--success);background:var(--success-soft);}
-.ai-blk.parsed .ai-blk-ic{background:var(--success);}
-.ai-blk.parsed .ai-blk-ti b{color:var(--success-ink);}
+/* Разобранный ai-блок: скин на канон `.card--parsed` (success-soft/success,
+   тождественно); своё правило `.ai-blk.parsed` удалено, дочерние — на `.card--parsed`.
+   Как и у locked, дочерние co-селекторы переименованы `.ai-blk.parsed → .card--parsed`,
+   значения тождественны; 2p ключует по каждому классу — объявлены обе стороны.
+   visual-diff-exempt: .parsed background — уход state-класса .ai-blk.parsed .ai-blk-ic на .card--parsed
+   visual-diff-exempt: .parsed border-color — уход state-класса .ai-blk.parsed на .card--parsed
+   visual-diff-exempt: .ai-blk.parsed .ai-blk-ti b color — заголовок parsed на .card--parsed .ai-blk-ti b
+   visual-diff-exempt: .card--parsed .ai-blk-ti b color — приход заголовка с .ai-blk.parsed .ai-blk-ti b */
+.card--parsed .ai-blk-ic{background:var(--success);}
+.card--parsed .ai-blk-ti b{color:var(--success-ink);}
 
 /* ─── Document format badge ─────────────────────────────────────────────────
    Leads every document row on every screen that shows one (documents lens,
@@ -6756,7 +6814,15 @@ a.doc-row__n:hover{ color: var(--brand); }
 .empty-state--boxed .empty-state__t { margin-bottom: 4px; }
 .empty-state--boxed .empty-state__act { margin-top: 12px; }
 
-.empty-note { padding: var(--sp-7); border-radius: var(--r-md); background: var(--brand-soft); border: 1px solid var(--brand-soft-12); margin-bottom: var(--sp-8); }
+/* TRIP-343 PR-2: тон-brand пустого нотиса на `<Card tone="brand" radius="md">`.
+   ⚠ ОБЛИК СВЕДЁН К КАНОНУ (решение Pavel, апрув по скрину «было светлее → стало
+   канон»): было bg --brand-soft + рамка --brand-soft-12 (светлее), стало канон
+   .card--tone-brand — bg --brand-soft-12 + рамка --brand (унификация brand-тона,
+   второй «light-brand» не заводим). `.empty-note` — раскладочный остаток (padding/margin).
+   Фон/рамку теперь даёт .card--tone-brand (свой ключ), у .empty-note они просто ушли.
+   visual-diff-exempt: .empty-note border — СВЕДЕНО к канону: 1px --brand-soft-12 → 1px --brand (апрув Pavel)
+   visual-diff-exempt: .empty-note border-radius — радиус → .card--r-md */
+.empty-note { padding: var(--sp-7); margin-bottom: var(--sp-8); }
 .empty-note .en-ic { background: var(--surface); color: var(--brand); }
 .empty-note .en-tx b { color: var(--ink); display: block; }
 .empty-note .en-tx span { color: var(--ink-2); }

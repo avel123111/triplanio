@@ -33,7 +33,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -816,14 +816,14 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {noExpenses && (
         // inline-style-exempt: отступ сверху зависит от того, стоит ли выше
         // плашка «нет курса» — это состояние данных, а не вёрстка.
-        <div className="empty-note row row--g7 row--wrap" style={{ marginTop: missingCurrencies.length > 0 ? 16 : 4 }}>
+        <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: missingCurrencies.length > 0 ? 16 : 4 }}>
           <span className="en-ic tile tile--lg"><Icon name="wallet" /></span>
           <span className="en-tx grow--fit">
             <b>{t('budget.no_expenses')}</b>
             <span>{t('budget.no_expenses_desc')}</span>
           </span>
           {!readOnly && <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>}
-        </div>
+        </Card>
       )}
 
       {/* ░ CONTROLS ░ */}

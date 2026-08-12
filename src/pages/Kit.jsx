@@ -377,7 +377,7 @@ const RECIPES = {
       'tone-brand': { tone: 'brand', radius: 'md' },
       'tone-ai': { tone: 'ai' },
       add: { as: 'button', variant: 'add', radius: 'md', interactive: true },
-      recessed: { recessed: true }, locked: { locked: true },
+      recessed: { recessed: true }, locked: { locked: true }, parsed: { parsed: true },
       flush: { pad: 'none' }, danger: { danger: true },
     };
     const body = (v) =>
