@@ -2153,6 +2153,8 @@ function SegTransportGrid({ value, onChange, color }) {
     <div className="grid grid--g4 eed-typegrid">
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
+        // TRIP-343 объект 2 (H): НЕ карточка — тайл-переключатель ВИДА транспорта
+        // (объект 5, сегмент/пикер); тон по выбору = контрол, не поверхность. Инлайн с reason.
         return (
           <button key={k.id} type="button" className="t-meta" onClick={() => onChange(k.id)}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1px solid ' + (active ? color : 'var(--line)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>

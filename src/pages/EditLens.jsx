@@ -1037,6 +1037,11 @@ export default function EditLens({ tripId, shell, content }) {
           </div>
 
           {draggingId != null && ordered[ordered.length - 1]?.kind !== 'end' && (
+            /* TRIP-343 объект 2 (H): НЕ карточка — drop-плейсхолдер DnD (add-аффорданс).
+               Не surface-инлайн (фона нет). Рамка динамически подсвечивается brand при
+               наведении перетаскивания (overGap) — это состояние dragover по ДАННЫМ, а у
+               .card--add канона dragover нет (решение D «только существующий канон»),
+               поэтому остаётся инлайном. */
             <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 'var(--r-sm)', border: '1px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
@@ -1327,6 +1332,9 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7 }}>
           {POINT_TYPES.map((pt) => {
             const dis = disabledFor(pt.id), active = type === pt.id;
+            /* TRIP-343 объект 2 (H): НЕ карточка — тайл-переключатель ТИПА точки
+               (объект 5, сегмент/пикер). Тон меняется по выбору (brand-soft/surface),
+               это контрол выбора, а не поверхность-карточка; остаётся инлайном с reason. */
             return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 'var(--r-sm)', cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
               <Icon name={pt.icon} size={17} /><span className="t-meta">{t(pt.labelKey)}</span>
             </button>;

@@ -136,7 +136,11 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
                 ))}
               </div>
             </div>
-            <div style={{ border: '1px solid var(--pro)', borderRadius: 'var(--r-sm)', padding: 16, background: 'var(--pro-soft)' }}>
+            {/* TRIP-343 объект 2 (H): скин-форма (радиус+рамка+фон) снята с инлайна на
+                <Card>; Pro-тинт (--pro рамка / --pro-soft фон) остаётся остаточным
+                инлайном — у Card нет тона "pro" (тоны brand/ai), а Pro-золото несёт
+                данные колонки, как акцент вилки. Инлайн больше не surface-формы (радиус на Card). */}
+            <Card radius="md" pad="none" style={{ padding: 16, borderColor: 'var(--pro)', background: 'var(--pro-soft)' }}>
               <div className="t-micro" style={{ color: 'var(--pro-ink)', marginBottom: 12 }}>PRO</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proRows.map((node, i) => (
@@ -146,7 +150,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
 
           <div className="t-meta" style={{ textAlign: 'center', color: 'var(--muted)', marginTop: 14 }}>
