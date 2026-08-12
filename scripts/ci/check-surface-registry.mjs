@@ -67,6 +67,36 @@ const declsOf = (rule) => {
 };
 
 // ── 1. surface-классы в .css ────────────────────────────────────────────────
+// ★ ЗАМОК ОТ КО-СЕЛЕКТОРНОГО СЛЕПОГО ПЯТНА (TRIP-337 объект 2, дозакрытие).
+// Ко-селектор `app.css:425` (`.wmini, .card, … { background; border }`) красит
+// поверхность ФОНОМ+РАМКОЙ одним общим правилом, а радиус живёт ОТДЕЛЬНЫМ
+// правилом у каждого члена. Предикат `radius+bg+border В ОДНОМ правиле` (per-rule
+// выше) такую поверхность НЕ ловит: 34 карточки/панели были невидимы гарду,
+// audit §5 их не считал, реестр не требовал — механизм петли «закрыто, но живо».
+// Лечится ВТОРЫМ проходом: класс = поверхность, если ФОН+РАМКУ он получает из
+// ОБЩЕГО (много-классового) правила, И радиус у него есть где угодно. Одиночные
+// правила (`.checkbox`, свои bg+border) сюда НЕ попадают — только скин, разлитый
+// по общему носителю. Это ЗАМОК ОТ РЕГРЕССА (новый член ко-селектора обязан
+// попасть в реестр), НЕ доказательство полноты — доказательство = разбор реестра.
+const coSelectorSurfaceClasses = () => {
+  const hasRadius = new Set();
+  const coMembers = new Set();
+  for (const f of lsSrc().filter((f) => f.endsWith('.css'))) {
+    let root;
+    try { root = postcss.parse(readFileSync(f, 'utf8')); } catch { continue; }
+    root.walkRules((rule) => {
+      const m = declsOf(rule);
+      const classParts = rule.selector.split(',').map((s) => styledClass(s)).filter(Boolean);
+      if (m.has('border-radius')) for (const c of classParts) hasRadius.add(c);
+      // общий (≥2 класс-носителя) скин фон+рамка → каждый член — кандидат
+      if (classParts.length >= 2 && hasBg(m) && (hasBorder(m) || m.has('box-shadow')) && !isTile(m)) {
+        for (const c of classParts) coMembers.add(c);
+      }
+    });
+  }
+  return new Set([...coMembers].filter((c) => hasRadius.has(c)));
+};
+
 const cssSurfaceClasses = () => {
   const set = new Set();
   for (const f of lsSrc().filter((f) => f.endsWith('.css'))) {
@@ -81,6 +111,7 @@ const cssSurfaceClasses = () => {
       }
     });
   }
+  for (const c of coSelectorSurfaceClasses()) set.add(c);
   return set;
 };
 
