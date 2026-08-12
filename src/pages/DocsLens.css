@@ -134,10 +134,16 @@
 .dl-addcard__ic svg { width: 22px; height: 22px; }
 
 /* ─── Empty state ─────────────────────────────────────────────── */
+/* TRIP-343 объект 2: скин утоплённой поверхности СВЕДЁН к канону
+   `<Card recessed radius="md">` (surface-3 + hairline рамка роли + r-md 16);
+   здесь только раскладка. ВИДИМЫЙ СДВИГ (fork 3, апрув Pavel, скрин было/стало):
+   рамка dashed → solid hairline (recessed-канон = сплошная рамка роли `.card`;
+   второй recessed-вид «с пунктиром» не заводим).
+   visual-diff-exempt: .dl-empty background — скин ушёл на .card--recessed (тот же --surface-3, объект 2)
+   visual-diff-exempt: .dl-empty border — dashed → solid: канон recessed = сплошная рамка роли .card (fork 3, апрув Pavel)
+   visual-diff-exempt: .dl-empty border-radius — → канон .card--r-md (тот же r-md 16, объект 2) */
 .dl-empty {
   text-align: center; padding: 40px 20px;
-  border: 1px dashed var(--line); border-radius: var(--r-md);
-  background: var(--surface-3);
 }
 .dl-empty__ic {
   width: 62px; height: 62px; border-radius: var(--r-md);
@@ -157,23 +163,52 @@
 .dl-label svg { width: 13px; height: 13px; }
 
 /* ─── Dialog: visibility toggle ───────────────────────────────── */
-/* Зазор 10px - собственный зазор `.row`.
-   visual-diff-move: dl-visopt -> row */
-.dl-visopt { font: inherit; padding: 12px; border: 1px solid var(--line-strong); border-radius: var(--r-btn); cursor: pointer; background: var(--surface-3); text-align: left; transition: border-color .16s, background .16s; }
+/* TRIP-343 объект 2 (fork 2, эталон `pcard`, решение Pavel «скин на Card,
+   поведение вокруг»): скин утоплённой поверхности + интерактив несёт
+   `<Card recessed interactive radius="md">`; ВЫБОР — семантический `aria-selected`
+   на ОБЁРТКЕ-поведении (`role=button`), канон рисует его дочерним комбинатором
+   `[aria-selected] > .card--interactive` (акцент-рамка + кольцо). Приватная
+   `.is-on`-перекраска фона и потомковый `.dl-visopt__ic`-оверрайд (канал 4)
+   СНЯТЫ. Тон (shared=brand / --mine=тёплый) едет ВХОДОМ канала `--hl` на плитку
+   иконки, как у `.dl-empty__ic` (не пара приватных состояний).
+   ВИДИМЫЙ СДВИГ (fork 2, апрув Pavel, скрин было/стало): выбор перестал заливать
+   фон `--brand/--warm-soft` и красить иконку — приходит канон (рамка --brand +
+   кольцо); рамка базы `--line-strong` → `--line` (рамка роли `.card`); радиус
+   r-btn(10) → r-md(16); плитка иконки тонирована каналом --hl всегда, не только
+   в выборе.
+   Зазор 10px - собственный зазор `.row`. Скин утоплённого + радиус несёт Card
+   (.card--recessed --surface-3 · .card--r-md 16); из-за составной атрибуции 2p
+   каждое ушедшее объявление называю отдельной строкой:
+   visual-diff-exempt: .dl-visopt background — заливка ушла, скин на .card--recessed (тот же --surface-3, fork 2)
+   visual-diff-exempt: .dl-visopt border — рамка базы 1px solid line-strong → рамка роли .card (1px solid line, fork 2 апрув Pavel)
+   visual-diff-exempt: .dl-visopt border-color — приватная перекраска выбора снята, выбор на канон aria-selected (fork 2 апрув Pavel)
+   visual-diff-exempt: .dl-visopt border-radius — r-btn(10) → канон .card--r-md(16) (fork 2 апрув Pavel)
+   visual-diff-exempt: .dl-visopt color — рекраска иконки состоянием снята (канал 4), выбор на канон (fork 2)
+   visual-diff-exempt: .dl-visopt font — сброс шрифта кнопки не нужен: обёртка role=button, скин на Card-div (fork 2)
+   visual-diff-exempt: .dl-visopt transition — переход border-color несёт канон .card--interactive (fork 2)
+   visual-diff-exempt: .dl-visopt__ic background — тон плитки на канал --hl-soft (дефолт :root = brand-soft, тон тот же; fork 2)
+   visual-diff-exempt: .dl-visopt__ic color — тон плитки на канал --hl-ink (дефолт :root = brand; fork 2)
+   visual-diff-exempt: .dl-visopt__ic transition — рекраска состоянием снята (канал 4), переход не нужен (fork 2)
+   visual-diff-exempt: .dl-visopt--mine --hl-soft — тёплый тон едет ВХОДОМ канала --hl (как .dl-empty__ic--mine, fork 2)
+   visual-diff-exempt: .dl-visopt--mine --hl-ink — тёплый тон едет ВХОДОМ канала --hl (как .dl-empty__ic--mine, fork 2)
+   visual-diff-exempt: .dl-visopt--mine border-color — тёплый выбор снят, тон едет каналом --hl (fork 2)
+   visual-diff-exempt: .dl-visopt--mine background — тёплый выбор снят, тон едет каналом --hl (fork 2)
+   visual-diff-exempt: .dl-visopt--mine color — тёплая рекраска иконки снята (канал 4), тон каналом --hl (fork 2)
+   visual-diff-exempt: .is-on border-color — приватная перекраска выбора снята, выбор на канон aria-selected (fork 2 апрув Pavel)
+   visual-diff-exempt: .is-on background — приватная заливка выбора снята, выбор на канон aria-selected (fork 2 апрув Pavel)
+   visual-diff-exempt: .is-on color — рекраска иконки состоянием снята (канал 4), выбор на канон (fork 2)
+   visual-diff-exempt: .dl-visopt height — равные высоты грид-ячеек после разделения обёртка(поведение)/Card(скин), fork 2 */
+.dl-visopt { padding: 12px; text-align: left; cursor: pointer; height: 100%; }
 .dl-visopt__ic {
   width: 34px; height: 34px; border-radius: var(--r-sm);
-  background: var(--surface-2); color: var(--muted);
+  background: var(--hl-soft); color: var(--hl-ink);
   display: grid; place-items: center; flex: none;
-  transition: background .16s, color .16s;
 }
 .dl-visopt__ic svg { width: 17px; height: 17px; }
 .dl-visopt__lbl b    { color: var(--ink); display: block; }
 .dl-visopt__lbl span { color: var(--muted); }
-.dl-visopt.is-on               { border-color: var(--brand); background: var(--brand-soft); }
-.dl-visopt.is-on .dl-visopt__ic { background: var(--brand); color: #fff; }
-/* private/warm variant */
-.dl-visopt.is-on.dl-visopt--mine               { border-color: var(--warm);      background: var(--warm-soft); }
-.dl-visopt.is-on.dl-visopt--mine .dl-visopt__ic { background: var(--warm-ink); color: #fff; }
+/* Тёплый тон личной видимости — вход канала --hl (как `.dl-empty__ic--mine`). */
+.dl-visopt--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── Dialog: dropzone ────────────────────────────────────────── */
 /* TRIP-343 PR-3 объект 2: дашед-dropzone СВЕДЁН к канону `<Card variant="add">`

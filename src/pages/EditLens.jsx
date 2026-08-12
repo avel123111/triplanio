@@ -181,7 +181,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, useToast } from '../design/index';
+import { Badge, Btn, IconBtn, Chip, Card, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -1269,7 +1269,7 @@ function GridEndpoint({ node, date, onRemove }) {
   const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
   const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <Row gap="g6" className="te-end">
+    <Card recessed radius="md" pad="none" className="row row--g6 te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
       <Grow className="te-citycell">
         <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
@@ -1281,7 +1281,7 @@ function GridEndpoint({ node, date, onRemove }) {
         </Row>
       </Grow>
       <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>
-    </Row>
+    </Card>
   );
 }
 

@@ -188,19 +188,29 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <Row gap="g3" className="dl-label">{t('doc.access_label')}</Row>
             <Grid cols="2">
               {visOpts.map(opt => (
-                <button
+                // Поведение + ВЫБОР (aria-selected) на обёртке role=button;
+                // скин утоплённой поверхности + интерактив — на дочернем Card,
+                // канон читает выбор дочерним комбинатором (эталон pcard,
+                // TRIP-343 объект 2, fork 2).
+                <div
                   key={opt.value}
-                  type="button"
-                  className={`row dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
-                  onClick={() => setVisibility(opt.value)}>
-                  <span className="dl-visopt__ic">
-                    <Icon name={opt.icon} size={17} />
-                  </span>
-                  <span className="dl-visopt__lbl">
-                    <b>{opt.label}</b>
-                    <span>{opt.desc}</span>
-                  </span>
-                </button>
+                  role="button"
+                  tabIndex={0}
+                  data-card-btn=""
+                  aria-selected={visibility === opt.value || undefined}
+                  onClick={() => setVisibility(opt.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setVisibility(opt.value); } }}>
+                  <Card as="div" recessed interactive radius="md"
+                    className={`row dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}`}>
+                    <span className="dl-visopt__ic">
+                      <Icon name={opt.icon} size={17} />
+                    </span>
+                    <span className="dl-visopt__lbl">
+                      <b>{opt.label}</b>
+                      <span>{opt.desc}</span>
+                    </span>
+                  </Card>
+                </div>
               ))}
             </Grid>
           </div>
@@ -546,7 +556,8 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
   const { t }    = useI18n();
   const isShared = scope !== 'personal';
   return (
-    <div className="dl-empty">
+    // Скин утоплённой поверхности — канон `<Card recessed>` (TRIP-343 объект 2).
+    <Card recessed radius="md" className="dl-empty">
       <div className={`dl-empty__ic${isShared ? '' : ' dl-empty__ic--mine'}`}>
         <Icon name="file" size={28} />
       </div>
@@ -564,7 +575,7 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
           {t('doc.add_doc')}
         </Btn>
       )}
-    </div>
+    </Card>
   );
 }
 
