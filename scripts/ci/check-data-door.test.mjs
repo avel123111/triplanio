@@ -329,7 +329,7 @@ test('mutation 5 — a multi-line chain is counted', (t) => {
 test('a multi-line RPC call is counted', (t) => {
   const f = fixture(t, {
     base: { 'src/a.js': '' },
-    head: { 'src/a.js': `await supabase.rpc(\n  'add_city',\n  { p: 1 },\n);\n` },
+    head: { 'src/a.js': `await supabase.rpc(\n  'send_chat_message',\n  { p: 1 },\n);\n` },
   });
   const r = run(f);
   assert.equal(r.code, 1, r.out);
@@ -608,7 +608,7 @@ test('mutation 13 — the three RPC buckets get one call EACH, not three in one'
   const f = fixture(t, {
     base: {
       'src/a.js':
-        `await supabase.rpc('add_city', {});\n` +
+        `await supabase.rpc('send_chat_message', {});\n` +
         `await supabase.rpc('get_user_travel_stats');\n` +
         `await supabase.rpc('search_gazetteer', {});\n`,
     },
@@ -622,8 +622,8 @@ test('mutation 13 — the three RPC buckets get one call EACH, not three in one'
 
 test('a reading RPC moving behind edge lowers its own bucket, not the mutating one', (t) => {
   const f = fixture(t, {
-    base: { 'src/a.js': `await supabase.rpc('get_user_travel_stats');\nawait supabase.rpc('add_city', {});\n` },
-    head: { 'src/a.js': `await supabase.rpc('add_city', {});\n` },
+    base: { 'src/a.js': `await supabase.rpc('get_user_travel_stats');\nawait supabase.rpc('send_chat_message', {});\n` },
+    head: { 'src/a.js': `await supabase.rpc('send_chat_message', {});\n` },
   });
   const r = run(f);
   assert.equal(r.code, 0, r.out);

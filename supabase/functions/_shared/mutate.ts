@@ -83,6 +83,22 @@ async function checkRequirement(
         ? null
         : { status: 402, code: 'PRO_REQUIRED', message: 'Pro required', sentrySkip: true };
     }
+    case 'trip_quota': {
+      // Авторитетный гейт лимита free/Pro на ЗАПИСИ (создание трипа). Зовёт ТЕ ЖЕ
+      // предикаты (`is_user_pro` + `count_active_owned_trips`), что триггер
+      // `enforce_trip_limit` (глубинный backstop) и клиентская пред-проверка
+      // планнера — три слоя над ОДНИМ источником, не три формулы. Порог 1 —
+      // зеркало `enforce_trip_limit` (мигр. 0045): кросс-язычную копию литерала не
+      // свести, как и в `src/lib/limits.js`. Сбой БД брошен внутри `rpc()` → 500
+      // (как editor/pro), сюда доезжает только настоящее `data` — «не Pro и уже
+      // есть активный трип» = бизнес-«нет» (лимит), не спрятанный инцидент.
+      const isPro = await rpc('is_user_pro', { p_uid: ctx.actor });
+      if (isPro === true) return null;
+      const active = await rpc('count_active_owned_trips', { p_uid: ctx.actor });
+      return typeof active === 'number' && active < 1
+        ? null
+        : { status: 402, code: 'TRIP_LIMIT_REACHED', message: 'Trip limit reached', sentrySkip: true };
+    }
     default:
       // Незнакомое требование — сбой конфигурации, а не отказ юзеру: 500.
       throw new Error(`mutate: unknown requirement "${name}"`);

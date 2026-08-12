@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
-import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
-import { writeRows } from '@/lib/trip-data';
+import { refusalError } from '@/lib/refusalError';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -1002,23 +1001,49 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setError(null);
 
     try {
-      // RLS requires created_by = auth.uid(). The profiles table may diverge
-      // from the session, so always pull the id straight from the session.
-      const { data: authUser, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authUser?.user?.id) {
-        throw new Error(t('planner.err_no_session'));
-      }
-      const authId = authUser.user.id;
+      // 1. Cities payload: identity (CITY_FIELDS) + role in the chain + nights
+      // (span). Dates are NOT computed here — the SERVER lays them
+      // (create_trip_with_route → recompute_trip), the same engine as live-edit, so
+      // parity with the old client addDays is structural. Home = start anchor; the
+      // final point (or return) = end anchor (no nights); the rest are transit.
+      const cityIdentity = (c) => ({
+        external_city_id: c.external_city_id || null,
+        geonameid: c.geonameid ?? null,
+        name_i18n: c.name_i18n || null,
+        city_name_en: c.city_name_en || null,
+        country_code: c.country_code || null,
+        latitude: c.latitude || null,
+        longitude: c.longitude || null,
+        timezone: c.timezone || null,
+      });
+      const citiesPayload = [];
+      if (home?.city_name) citiesPayload.push({ ...cityIdentity(home), kind: 'start' });
+      cities.forEach((c, i) => {
+        if (!c.city_name) return;
+        const isFinalAnchor = finalPoint && i === cities.length - 1;
+        citiesPayload.push(isFinalAnchor
+          ? { ...cityIdentity(c), kind: 'end' }
+          : { ...cityIdentity(c), kind: 'transit', nights: +c.nights || 0 });
+      });
+      // Return city → kind:'end' (created even when returnMode==='home', so the
+      // cityN → end leg always exists and the "no transfer" affordance shows).
+      if (effectiveReturn?.city_name) citiesPayload.push({ ...cityIdentity(effectiveReturn), kind: 'end' });
 
-      // 1. Create trip via SECURITY DEFINER RPC (bypasses RLS caching issues)
-      const { data: tripId, error: tripErr } = await supabase
-        .rpc('create_trip', { p_title: title, p_description: '' });
-      if (tripErr) throw tripErr;
-      const trip = { id: tripId };
+      // Atomic create through the single door (TRIP-406): trips + city_visits +
+      // recompute in one transaction. The seam authenticates (JWT), gates the
+      // free/Pro limit (trip_quota → honest 402 TRIP_LIMIT_REACHED), and stamps
+      // created_by = actor — the client sends neither the owner nor the dates. A
+      // refusal is a generic code → errorText (never raw server prose, TRIP-378).
+      const { data: newTripId, error: createErr, code } = await invokeFn('trip/create', {
+        body: { title, startDate, cities: citiesPayload },
+      });
+      if (createErr) throw refusalError(code);
+      const trip = { id: newTripId };
 
-      // 1b. Persist cover (gradient or uploaded image). The RPC doesn't accept
-      // cover fields; trips is Ярус B (TRIP-190) — no direct client write — so the
-      // cover goes through the updateTripSettings edge (service_role, whitelisted cols).
+      // 2. Persist cover (gradient or uploaded image). create_trip_with_route
+      // doesn't accept cover fields; trips is Ярус B (TRIP-190) — no direct client
+      // write — so the cover goes through the updateTripSettings edge (declared
+      // Storage boundary: the file lands before tripId exists, re-homed after).
       if (cover?.cover_gradient || cover?.cover_image_url) {
         // Cover was uploaded before the trip existed (draft prefix) — move it
         // under <tripId>/ and re-sign before persisting the URL.
@@ -1047,78 +1072,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         }
       }
 
-      // 2. Build city_visits list with full data
-      const visitsToInsert = [];
-
-      // Home city → kind: 'start'
-      if (home?.city_name) {
-        visitsToInsert.push({
-          trip_id: trip.id,
-          external_city_id: home.external_city_id || null,
-          geonameid: home.geonameid ?? null,
-          name_i18n: home.name_i18n || null,
-          city_name_en: home.city_name_en || null,
-          country_code: home.country_code || null,
-          latitude: home.latitude || null,
-          longitude: home.longitude || null,
-          timezone: home.timezone || null,
-          kind: 'start',
-          start_date: null,
-          end_date: null,
-          created_by: authId,
-        });
-      }
-
-      // Transit cities → kind:'transit'. When finalPoint is on, the LAST
-      // city is the trip's finish anchor → save as kind:'end' with NO
-      // dates at all. start/end anchors are pure markers; trip dates are
-      // derived from the first/last transit city's datetimes.
-      cities.forEach((c, i) => {
-        if (!c.city_name) return;
-        const isFinalAnchor = finalPoint && i === cities.length - 1;
-        visitsToInsert.push({
-          trip_id: trip.id,
-          external_city_id: c.external_city_id || null,
-          geonameid: c.geonameid ?? null,
-          name_i18n: c.name_i18n || null,
-          city_name_en: c.city_name_en || null,
-          country_code: c.country_code || null,
-          latitude: c.latitude || null,
-          longitude: c.longitude || null,
-          timezone: c.timezone || null,
-          kind: isFinalAnchor ? 'end' : 'transit',
-          start_date: isFinalAnchor ? null : (c.startDate || null),
-          end_date: isFinalAnchor ? null : (c.startDate && c.nights ? addDays(c.startDate, +c.nights) : null),
-          created_by: authId,
-        });
-      });
-
-      // Return city → kind: 'end'. Created even when returnMode === 'home'
-      // (home equals return), so the cityN → end leg always exists in the
-      // timeline and the "no transfer" warning / route shows up correctly.
-      if (effectiveReturn?.city_name) {
-        visitsToInsert.push({
-          trip_id: trip.id,
-          external_city_id: effectiveReturn.external_city_id || null,
-          geonameid: effectiveReturn.geonameid ?? null,
-          name_i18n: effectiveReturn.name_i18n || null,
-          city_name_en: effectiveReturn.city_name_en || null,
-          country_code: effectiveReturn.country_code || null,
-          latitude: effectiveReturn.latitude || null,
-          longitude: effectiveReturn.longitude || null,
-          timezone: effectiveReturn.timezone || null,
-          kind: 'end',
-          created_by: authId,
-        });
-      }
-
-      if (visitsToInsert.length > 0) {
-        // position = array index: visitsToInsert is built in itinerary order, so
-        // (start_datetime, position) reproduces it.
-        const withPos = visitsToInsert.map((v, i) => ({ ...v, position: i }));
-        await writeRows(supabase.from('city_visits').insert(withPos));
-      }
-
       // Transfers and activities are intentionally NOT created at trip-creation
       // time. The "Транспорт" step was removed; the timeline shows a "Нет
       // переезда" affordance. AI now returns a cities-only skeleton (no
@@ -1131,7 +1084,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // "first trip ever" is derived in PostHog from the user's first trip_created
       // event (authoritative history) — the client trips cache is unreliable here
       // (may be unloaded, and includes trips the user only participates in).
-      track('trip_created', { method, city_count: visitsToInsert.length, trip_id: trip.id });
+      track('trip_created', { method, city_count: citiesPayload.length, trip_id: trip.id });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {

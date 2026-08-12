@@ -129,6 +129,7 @@ function makeSegment(defCur = 'EUR') {
 
 import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
+import { refusalError } from '@/lib/refusalError';
 import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1415,14 +1416,6 @@ export default function EventEditDialog({
 //  Payload builders - one per kind. Mirrors the legacy dialogs' columns plus
 //  the new lat/lng + flight_number additions.
 // ─────────────────────────────────────────────────────────────────────────────
-
-// A seam refusal → an Error carrying the generic `.code` so the mutation onError
-// words it via `errorText` (never raw server prose, TRIP-378).
-function refusalError(code) {
-  const e = new Error(code || 'write_rejected');
-  e.code = code;
-  return e;
-}
 
 // One booking write through the single door (TRIP-405): `trip-booking/<action>`.
 // The seam gates the editor role + trip scope on the SERVER (service_role) and

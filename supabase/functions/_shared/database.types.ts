@@ -2239,7 +2239,12 @@ export type Database = {
         }[]
       }
       add_city: {
-        Args: { p_city: Json; p_index?: number; p_trip: string }
+        Args: {
+          p_actor: string
+          p_city: Json
+          p_index?: number
+          p_trip: string
+        }
         Returns: string
       }
       add_layover_transfer: {
@@ -2292,8 +2297,13 @@ export type Database = {
         }
       }
       count_active_owned_trips: { Args: { p_uid: string }; Returns: number }
-      create_trip: {
-        Args: { p_description?: string; p_title: string }
+      create_trip_with_route: {
+        Args: {
+          p_actor: string
+          p_cities: Json
+          p_start_date: string
+          p_title: string
+        }
         Returns: string
       }
       daitch_mokotoff: { Args: { "": string }; Returns: string[] }
@@ -2399,9 +2409,12 @@ export type Database = {
         Args: { ts: string; tz: string }
         Returns: string
       }
-      remove_city: { Args: { p_city: string }; Returns: undefined }
+      remove_city: {
+        Args: { p_actor: string; p_city: string; p_trip: string }
+        Returns: undefined
+      }
       reorder_cities: {
-        Args: { p_order: string[]; p_trip: string }
+        Args: { p_actor: string; p_order: string[]; p_trip: string }
         Returns: undefined
       }
       revoke_trip_pro_addons: {
@@ -2487,11 +2500,16 @@ export type Database = {
         }
       }
       set_city_nights: {
-        Args: { p_city: string; p_nights: number }
+        Args: {
+          p_actor: string
+          p_city: string
+          p_nights: number
+          p_trip: string
+        }
         Returns: undefined
       }
       set_trip_start_date: {
-        Args: { p_date: string; p_trip: string }
+        Args: { p_actor: string; p_date: string; p_trip: string }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }

@@ -43,8 +43,7 @@ export const TIERS = {
 // (все 40 прочих таблиц не трогаем). Инвариант: authDml === OR(per-op), иначе
 // манифест сам себе противоречит.
 export const TABLES = {
-  // ── Ярус A — контент трипа (Ф1 / TRIP-124 привёл к цели) ────────────────────
-  city_visits:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
+  city_visits:       { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-406: двух-дверная закрыта — оба клиентских писателя за швом (5 live-edit RPC → trip-route op:rpc, p_actor; создание → trip/create create_trip_with_route). Роль-гейт editor в TS (зеркало _can_edit_trip), IDOR закрыт integrity-scope trip_id в телах RPC; чтение — getTripDetails под service_role; во фронте ноль .from(city_visits). Гранты authenticated DML/SELECT и anon SELECT сняты, 4 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
   // роль поверх private-модели TRIP-118: can_edit_trip AND (visibility='shared' OR created_by=self)
   trip_documents:    { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'единый шов записи trip-document + _shared/mutate.ts; удаление построчно (private⇒автор) через guardRow; чтение — getTripDetails под service_role (visibility=shared OR created_by=self, TRIP-118); во фронте ноль .from(trip_documents); гранты authenticated DML/SELECT и anon SELECT сняты, 4 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
   // 4 booking-таблицы (TRIP-405 шаг C): единый шов записи trip-booking + _shared/mutate.ts;
@@ -158,9 +157,13 @@ export const FUNCTIONS = {
   // `_trip_file_not_others_private`) — internal, гранта клиенту нет (IF3).
   publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
-    '_can_edit_trip', 'add_city', 'create_trip',
-    'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
+    '_can_edit_trip',
     'get_trip_owner_profiles',
+    // add_city/remove_city/reorder_cities/set_city_nights/set_trip_start_date убраны
+    // (TRIP-406): EXECUTE у authenticated снят, теперь service_role-only, зовутся edge
+    // trip-route (op:'rpc', p_actor). create_trip ДРОПНУТА (заменена атомарной
+    // create_trip_with_route, service_role-only → internal IF3; клиент зовёт edge
+    // trip/create). Авторизация editor — в шве, RPC её не дублируют.
     // add_layover_transfer убран (TRIP-405): EXECUTE у authenticated снят,
     // теперь service_role-only, зовётся edge trip-booking/transfer-layover (op:'rpc').
     // get_trip_participant_profiles убрана (TRIP-403 шаг C): DROP, поглощена
@@ -312,7 +315,7 @@ export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 't
  * шов не знает. `participant` в шве пока не реализован — появится там, появится
  * и тут (иначе тест сверки покраснеет).
  */
-export const SEAM_GATE_TOKENS = new Set(['editor', 'self', 'pro']);
+export const SEAM_GATE_TOKENS = new Set(['editor', 'self', 'pro', 'trip_quota']);
 
 export const DOORS = {
   // ── participant: viewer проходит осознанно ──
@@ -343,6 +346,8 @@ export const DOORS = {
   trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
   trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
   trip_booking:          ['editor'],          // hotel/transfer/activity/service upsert+delete + transfer-layover(rpc); Pro нигде (TRIP-405)
+  trip_route:            ['editor'],          // city add/remove/reorder/nights + start-date (5 op:'rpc'); Pro нигде (TRIP-406)
+  trip:                  ['trip_quota'],      // create: атомарный create_trip_with_route, scope=actor, лимит free/Pro → 402 (TRIP-406)
   account:               ['self'],            // profile: своя строка users (scope id=actor), Pro нигде (TRIP-400)
   user_place:            ['self'],            // place + place/delete: свой user_custom_visits (scope user_id=actor), Pro нигде (TRIP-402)
 

@@ -8,5 +8,6 @@
   "UNAUTHENTICATED": "Vuelve a iniciar sesión.",
   "AUTH_UNAVAILABLE": "El servicio de acceso no está disponible temporalmente.",
   "RATE_LIMITED": "Demasiados intentos. Inténtalo de nuevo en un momento.",
+  "TRIP_LIMIT_REACHED": "Has alcanzado el límite de viajes activos. Espera a que termine el actual o pásate a Pro.",
   "INTERNAL": "Algo salió mal por nuestra parte. Inténtalo de nuevo."
 }

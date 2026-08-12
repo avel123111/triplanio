@@ -171,6 +171,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
+import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -365,7 +366,11 @@ export default function EditLens({ tripId, shell, content }) {
     let result;
     try { result = await rpcFn(); }
     catch (e) {
-      toast({ description: t('tse.err_save') + (e?.message || e), variant: 'destructive' });
+      // Honest refusal: the seam carries a generic `code` → localized line via
+      // errorText (never raw server prose, TRIP-378). A client-side throw without
+      // a code falls back to the generic save-failed copy.
+      const desc = e && 'code' in e ? errorText(t, e.code) : t('tse.err_save');
+      toast({ description: desc, variant: 'destructive' });
       // RPC failed → drop the optimistic patch RIGHT AWAY by rebuilding from the last
       // good server state (cache-backed buildDraft). Don't gate the rollback on a
       // refetch that would also fail offline. If a newer action superseded us it owns
@@ -423,7 +428,7 @@ export default function EditLens({ tripId, shell, content }) {
     for (const [id, handle] of nights) {
       clearTimeout(handle);
       const finalN = nightsTarget.current.get(id);
-      if (finalN != null) pending.push(rpcSetCityNights(id, finalN));
+      if (finalN != null) pending.push(rpcSetCityNights(tripId, id, finalN));
     }
     nights.clear();
     nightsTarget.current.clear();
@@ -586,7 +591,7 @@ export default function EditLens({ tripId, shell, content }) {
       timers.delete(id);
       const finalN = nightsTarget.current.get(id);
       nightsTarget.current.delete(id);
-      runAction(() => rpcSetCityNights(id, finalN), undefined, { content: false });
+      runAction(() => rpcSetCityNights(tripId, id, finalN), undefined, { content: false });
     }, 350));
   };
   const shiftStart = (delta) => {
@@ -643,7 +648,7 @@ export default function EditLens({ tripId, shell, content }) {
       ...liveActivities.filter((a) => a.city_visit_id === id),
       ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
     ].flatMap((e) => collectDocPaths(e.documents));
-    runAction(() => rpcRemoveCity(id), () => removeTripFiles(orphanPaths));
+    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths));
   };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
