@@ -33,8 +33,9 @@
  */
 
 import { supabaseAdmin, getRequestUser } from './supabaseAdmin.ts';
-import { HttpError, jsonError } from './http.ts';
-import { isCallerEditor } from './tripAccess.ts';
+import { HttpError, jsonError, refusalResponse } from './http.ts';
+import { isCallerEditor, isCallerParticipant } from './tripAccess.ts';
+import { proRefusal } from './proGate.ts';
 import { buildPlan, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
 import type { ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
 
@@ -63,6 +64,13 @@ async function checkRequirement(
   ctx: { actor: string; scopeValue: string },
 ): Promise<Refusal | null> {
   switch (name) {
+    case 'participant':
+      // Viewer ПРОХОДИТ (чат коллаборативный). Бросает TripAccessError на инфра-
+      // сбое → 5xx, НЕ ложный 403 (TRIP-208). Порядок в `requires` важен: для чата
+      // `['participant','pro']` — не-участник получает 403 и не узнаёт Pro-детали.
+      return (await isCallerParticipant(ctx.scopeValue, ctx.actor))
+        ? null
+        : { status: 403, code: 'FORBIDDEN', message: 'Forbidden' };
     case 'editor':
       // Бросает TripAccessError на инфра-сбое → 5xx, НЕ ложный 403 (TRIP-208).
       return (await isCallerEditor(ctx.scopeValue, ctx.actor))
@@ -73,16 +81,11 @@ async function checkRequirement(
       return ctx.scopeValue === ctx.actor
         ? null
         : { status: 403, code: 'FORBIDDEN', message: 'Forbidden' };
-    case 'pro': {
-      // Сбой БД брошен внутри `rpc()` → 500 INTERNAL (ретраится), как editor-ветка
-      // (TripAccessError). Сюда доезжает только настоящее `data`, поэтому не-true —
-      // это бизнес-«нет» (не Pro), а не спрятанный под x-sentry-skip инцидент.
-      const isPro = await rpc('is_trip_pro', { p_trip_id: ctx.scopeValue });
-      // Бизнес-«нет», не инцидент: помечаем sentrySkip, шов повесит x-sentry-skip.
-      return isPro === true
-        ? null
-        : { status: 402, code: 'PRO_REQUIRED', message: 'Pro required', sentrySkip: true };
-    }
+    case 'pro':
+      // ОДИН источник Pro-отказа (`proRefusal`, предикат `is_trip_pro`) — тот же,
+      // что зовут не-шовные функции через `requireTripPro` (TRIP-408). Сбой RPC
+      // бросается внутри → 500 (не ложный 402); не-Pro → 402 PRO_REQUIRED+skip.
+      return await proRefusal(supabaseAdmin, ctx.scopeValue);
     case 'trip_quota': {
       // Авторитетный гейт лимита free/Pro на ЗАПИСИ (создание трипа) — ОДИН булев
       // предикат `can_create_trip` (is_pro OR active<1), ровно как `pro`-ветка зовёт
@@ -242,10 +245,10 @@ export async function mutate(
   return jsonResult({ data }, corsHeaders);
 }
 
-/** Отказ по канону. `sentrySkip` вешает заголовок (бизнес-«нет» не шумит). */
+/** Отказ по канону — ОДНА логика заголовка `x-sentry-skip` живёт в
+ *  `refusalResponse` (`http.ts`), общая со шва и `requireTripPro` (TRIP-408). */
 function refuse(r: Refusal, corsHeaders: HeadersInit): Response {
-  const headers = r.sentrySkip ? { ...corsHeaders, 'x-sentry-skip': '1' } : corsHeaders;
-  return jsonError(r.status, r.message, r.code, headers);
+  return refusalResponse(r, corsHeaders);
 }
 
 /** Успех: `{ data }`, дополняемый по правилу совместимости (поля не убираем). */

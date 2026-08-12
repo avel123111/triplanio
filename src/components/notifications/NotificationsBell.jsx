@@ -1,8 +1,6 @@
 // @ts-check
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { useNotificationList, useUnreadNotificationCount, useNotificationActions, BELL_ROWS } from '@/lib/useNotifications';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -136,15 +134,9 @@ export default function NotificationsBell() {
 
 function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTrip }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
-  const { data: member } = useQuery({
-    queryKey: ['trip-member', n.trip_member_id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('trip_members').select('*').eq('id', n.trip_member_id).single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!isInvite,
-  });
+  // Invite status rides the row now (getInbox joins trip_members) — no per-row
+  // `.from('trip_members')` waterfall (TRIP-408).
+  const memberStatus = n.member_status;
 
   const time = fmtRelative(n.created_at);
   // Форма приходит СТРОКОЙ ИЗ БД (`notifications.i18n_params`), и набор ключей
@@ -166,7 +158,7 @@ function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTri
   const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } }]) : messageText;
 
   const meta = notifMeta(n.type);
-  const showPending = isInvite && member?.status === 'pending';
+  const showPending = isInvite && memberStatus === 'pending';
 
   return (
     <div
@@ -187,11 +179,11 @@ function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTri
             <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </div>
         )}
-        {isInvite && member?.status === 'active' && (
+        {isInvite && memberStatus === 'active' && (
           <div className="brow__ok">✓ {t('notif.accepted')}</div>
         )}
 
-        {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
+        {n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite') && (
           <Link to={`/trip/${n.trip_id}`} onClick={onOpenTrip} className="brow__link">
             <Icon name="pin" size={12} />{t('notif.view_trip')}
           </Link>

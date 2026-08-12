@@ -46,10 +46,11 @@
  * настоящих 164). Гард 2r от этого защищён — он гасит комментарии, — а ручной
  * греп нет. Родня «2d краснеет на комментарии, цитирующем проблемную форму».
  */
-import { withHandler, jsonError } from '../_shared/http.ts';
+import { withHandler, jsonError, refusalResponse } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
+import { PRO_REQUIRED } from '../_shared/proGate.ts';
 import { PRO_ADDON_SET } from '../_shared/proAddons.ts';
 
 const ALLOWED_COLS = ['title', 'description', 'cover_image_url', 'cover_gradient', 'notes'];
@@ -116,7 +117,10 @@ Deno.serve(withHandler('updateTripSettings', async (req, corsHeaders) => {
             // (`TRIP_ALREADY_PRO`, 409). FORBIDDEN ниже НЕ помечен намеренно:
             // «залогинен, но нельзя» — сигнал, что интерфейс предложил действие
             // тому, кому оно недоступно; `_shared/http.ts` называет 403 отчётным.
-            return jsonError(402, 'Pro required', 'PRO_REQUIRED', { ...corsHeaders, 'x-sentry-skip': '1' });
+            // ОДИН канон отказа (`refusalResponse(PRO_REQUIRED)`) — та же форма
+            // 402 + x-sentry-skip, что дверь send/proRefusal, не ручная копия
+            // заголовка (TRIP-408).
+            return refusalResponse(PRO_REQUIRED, corsHeaders);
           }
         }
         // Shallow-merge so a partial addons body never wipes unrelated flags

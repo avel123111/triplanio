@@ -134,13 +134,16 @@ export async function fetchOlderMessages(chatId, beforeIso) {
 // had already drifted: a failed send kept the text in the lens and silently
 // dropped it in the widget).
 //
-// The client no longer writes the row: it calls send_chat_message and passes
-// only the text. The server sets the author from auth.uid(), the timestamp, the
-// name, caps the length, dedupes by client_msg_id and — in the SAME transaction —
-// marks the row as awaiting the assistant when the text addresses it. That last
-// part is why the decision moved server-side: writing the message and asking the
-// assistant used to be two client operations, so a tab closed in between left a
-// message that would never be answered (TRIP-296).
+// The client no longer writes the row and no longer calls the RPC directly: it
+// invokes the write-seam edge function `trip-chat/send` with tripId + text
+// (TRIP-408 — the last client mutation to move behind the door). The seam gates
+// participant+pro on the SERVER (chat is a Pro addon — this closed a live
+// enforcement hole), then the RPC sets the author from p_actor, the timestamp,
+// the name, caps the length, dedupes by client_msg_id and — in the SAME
+// transaction — marks the row as awaiting the assistant when the text addresses
+// it. That last part is why the decision moved server-side: writing the message
+// and asking the assistant used to be two client operations, so a tab closed in
+// between left a message that would never be answered (TRIP-296).
 
 /** Assistant-run statuses, split by what the UI does with them. */
 const AI_RUN_OPEN = new Set(['queued', 'running']);
@@ -202,14 +205,17 @@ export function useChatSend(chatId, tripId) {
       }]);
     }
 
-    const { data, error } = await supabase.rpc('send_chat_message', {
-      p_chat_id: chatId,
-      p_text: content,
-      p_client_msg_id: clientId,
+    // Отправка за швом (TRIP-408): клиент передаёт tripId + текст, не пишет строку
+    // и не зовёт RPC напрямую. Дверь гейтит participant+pro на СЕРВЕРЕ (закрыта
+    // дыра энфорса чата-Pro). Сервер ставит автора/время/имя, кэп, дедуп по
+    // clientMsgId и пометку прогона ассистента — как раньше делал RPC.
+    const { data, error } = await invokeFn('trip-chat/send', {
+      body: { tripId, text: content, clientMsgId: clientId },
     });
     if (!retryOf) setSending(false);
 
-    if (error || !data) {
+    const row = data?.data ?? null; // шов отвечает { data: row }
+    if (error || !row) {
       // Keep the message ON SCREEN, marked "not sent" with a retry action: the
       // composer has already been cleared, so dropping the row would lose the
       // user's text with nothing to tell them.
@@ -218,12 +224,12 @@ export function useChatSend(chatId, tripId) {
       return;
     }
 
-    applyChatRow(qc, chatId, data);
+    applyChatRow(qc, chatId, row);
     // Tagged @Triplanio → tripl_message_sent; plain message → chat_message_sent.
     // The server decided which it is, so the event can no longer disagree with
     // whether the assistant was actually called.
-    track(data.ai_status ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
-    if (data.ai_status === 'queued') nudgeAssistant(data.id);
+    track(row.ai_status ? 'tripl_message_sent' : 'chat_message_sent', { trip_id: tripId });
+    if (row.ai_status === 'queued') nudgeAssistant(row.id);
   }, [chatId, tripId, qc, patchRow, user?.id, myName]);
 
   // "Retry" under a message: re-send it if it never reached the server, or ask

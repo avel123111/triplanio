@@ -788,3 +788,69 @@ Deno.test('★ ни одно действие реестра не строит u
   // Датчик слепоты: пустой реестр сделал бы этот тест зелёным ни о чём.
   assert(checked > 0, 'реестр пуст — тест не проверил НИЧЕГО');
 });
+
+// ── trip-chat / inbox: контракт RPC-аргументов (TRIP-408) ────────────────────
+
+Deno.test('★ trip-chat/send: p_trip из скоупа, p_actor от шва, тело буквенно', () => {
+  const resource = REGISTRY['trip-chat'];
+  const action = resource.actions.send;
+  // Порядок требований несущий: 403 (participant) раньше 402 (pro).
+  assertEquals([...action.requires], ['participant', 'pro']);
+  const plan = buildPlan(resource, action, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: null,
+    values: { text: 'hi', clientMsgId: 'cmsg-uuid' },
+  });
+  assert(plan.op === 'rpc');
+  assertEquals(plan.name, 'send_chat_message');
+  // p_actor инъектит buildPlan (клиент актора не называет); p_trip — из скоупа.
+  assertEquals(plan.args, {
+    p_trip: TRIP,
+    p_text: 'hi',
+    p_client_msg_id: 'cmsg-uuid',
+    p_actor: ACTOR,
+  });
+});
+
+Deno.test('trip-chat/send: без clientMsgId → p_client_msg_id null (серверная строка)', () => {
+  const resource = REGISTRY['trip-chat'];
+  const plan = buildPlan(resource, resource.actions.send, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: null,
+    values: { text: 'hi' },
+  });
+  assert(plan.op === 'rpc');
+  assertEquals((plan.args as Record<string, unknown>).p_client_msg_id, null);
+});
+
+Deno.test('trip-chat/send: текст свыше 10000 отвергается (кэп = CHECK в RPC)', () => {
+  const action = REGISTRY['trip-chat'].actions.send;
+  const r = validateInput(action, { text: 'x'.repeat(10001) }, { isInsert: true });
+  assert('status' in r && r.status === 400, 'текст >10000 обязан отбиться 400');
+});
+
+Deno.test('★ inbox/read + read-all: p_actor от шва, p_id из тела (self-скоуп)', () => {
+  const resource = REGISTRY['inbox'];
+  assertEquals([...resource.actions.read.requires], ['self']);
+  const read = buildPlan(resource, resource.actions.read, {
+    actor: ACTOR,
+    scopeValue: ACTOR,
+    targetId: null,
+    values: { id: 'notif-uuid' },
+  });
+  assert(read.op === 'rpc');
+  assertEquals(read.name, 'mark_notification_read');
+  assertEquals(read.args, { p_id: 'notif-uuid', p_actor: ACTOR });
+
+  const all = buildPlan(resource, resource.actions['read-all'], {
+    actor: ACTOR,
+    scopeValue: ACTOR,
+    targetId: null,
+    values: {},
+  });
+  assert(all.op === 'rpc');
+  assertEquals(all.name, 'mark_all_notifications_read');
+  assertEquals(all.args, { p_actor: ACTOR });
+});

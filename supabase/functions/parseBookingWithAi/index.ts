@@ -16,6 +16,7 @@
 
 import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { requireTripPro } from '../_shared/proGate.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
@@ -91,14 +92,11 @@ Deno.serve(withHandler('parseBookingWithAi', async (req, corsHeaders) => {
     if (!(await isCallerParticipant(trip_id, user.id))) {
       return Response.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403, headers: corsHeaders });
     }
-    const { data: tripPro, error: proErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: trip_id });
-    if (proErr) {
-      console.error('is_trip_pro rpc error:', proErr);
-      return Response.json({ error: 'Pro check failed' }, { status: 500, headers: corsHeaders });
-    }
-    if (!tripPro) {
-      return Response.json({ error: 'Pro required', code: 'PRO_REQUIRED' }, { status: 403, headers: corsHeaders });
-    }
+    // Pro — ОДИН источник отказа `requireTripPro` (тот же `proRefusal`, что дверь
+    // send/updateTripSettings): 402 PRO_REQUIRED + x-sentry-skip (было 403 — баг:
+    // «нет, нужен Pro» = 402, не 403). Сбой RPC бросается внутри → 500 INTERNAL.
+    const proResp = await requireTripPro(supabaseAdmin, trip_id, corsHeaders);
+    if (proResp) return proResp;
 
     // Rate-limit ПОСЛЕ Pro/membership-гейта, ПЕРЕД дорогим LLM-вызовом (TRIP-111).
     // Общий примитив rate_limit_hits (bucket=ai_trip_parser, key=user_id).

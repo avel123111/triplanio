@@ -102,7 +102,7 @@ export const TABLES = {
   // RLS не могла проверить автора (user_id приходил с клиента → подмена участника
   // и БОТА), время и связку чат↔трип, а вставка сообщения и запуск ассистента были
   // двумя операциями с клиента. Теперь клиент только читает.
-  chat_messages:     { tier: 'B', write: 'send_chat_message (secdef RPC)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop insert/update/delete политик; запись только через RPC' },
+  chat_messages:     { tier: 'B', write: 'send_chat_message via edge trip-chat (service_role)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296 закрыл прямой DML (REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop политик); TRIP-408 увёл и сам RPC за шов — EXECUTE у authenticated снят, send_chat_message(p_trip,p_actor) зовёт только edge trip-chat (op:rpc, гейт participant+pro). authSelect остаётся (realtime-подписка чата)' },
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
   users:              { tier: 'C', write: 'edge account/profile (service_role) + INSERT authenticated (регистрация, врем.)', anonDml: false, authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: закрыта дверь ПРАВКИ — REVOKE UPDATE (table+поколоночный) и DELETE у authenticated; правка профиля только через edge account/profile под service_role. INSERT+SELECT ПОКА остаются (снимет домен регистрации — там insert().select() профиля), поэтому ярус остаётся C и authDml=true (частичный клиентский DML). per-op authUpdate/authDelete=false — LIVE-2e сверяет, что сняты ПОШТУЧНО; anon без DML (Ф3)' },
@@ -115,7 +115,7 @@ export const TABLES = {
   // deny-all, service_role обходит. Не ярус C: клиент не пишет вовсе. LIVE-2e
   // сверит, что DML+SELECT сняты (has_*_privilege).
   user_custom_visits: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
-  notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
+  notifications:      { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-408: полное закрытие — клиент не читает (getInbox под service_role, get_inbox: список+честный unreadCount+member_status join) и не пишет (флаг read → edge inbox seam: mark_notification_read/mark_all_notifications_read); вставку делают триггеры/service_role. REVOKE SELECT+DML FROM authenticated,anon; 3 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
   chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
   partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
 
@@ -170,9 +170,11 @@ export const FUNCTIONS = {
     // get_my_trip_cards (edge getTrips, ярус B) — клиентского вызывателя нет.
     // get_user_travel_stats убран (TRIP-402): EXECUTE у authenticated отозван,
     // теперь service_role-only, зовётся edge getTravelStats под service_role.
-    // TRIP-296: единственный путь записи в чат. Авторизация в теле —
-    // is_trip_participant(trip_id) + автор из auth.uid() (IF4 её видит).
-    'send_chat_message',
+    // send_chat_message убран (TRIP-408): EXECUTE у authenticated снят, теперь
+    // service_role-only, зовётся edge trip-chat (op:'rpc', p_actor, p_trip;
+    // авторизация participant+pro — в шве). get_inbox/mark_notification_read/
+    // mark_all_notifications_read — тоже service_role-only (edge getInbox/inbox),
+    // internal по IF3.
   ],
   // client-вызываемые функции, которым НЕ нужна ссылка на авторизацию в теле
   // (tripwire их пропускает): search_gazetteer(_batch) — публичный текстовый
@@ -225,7 +227,7 @@ export const BUCKETS = {
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
 export const DECISIONS = [
-  'chat_messages: viewer ПИШЕТ в чат (коллаборативно) — решение в силе, но проверка переехала из RLS в send_chat_message (TRIP-296: RLS не умела проверить автора). [решено: да]',
+  'chat_messages: viewer ПИШЕТ в чат (коллаборативно) — решение в силе; проверка переехала из RLS в send_chat_message (TRIP-296), а с TRIP-408 — в шов записи (дверь trip-chat, гейт participant+pro): чат = Pro-аддон, не-Pro участник больше не шлёт в обход. [решено: да]',
   'trips: полный Ярус B — без поколоночных исключений, все записи через edge. [решено: Ярус B]',
   // Формулировка «гейт can_edit_trip в БД» была НЕВЕРНА с момента Ф3c: политику
   // дропнули, а не переписали, и решение полтора месяца не исполнялось (viewer
@@ -312,10 +314,10 @@ export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 't
  * спецификации ресурса. Это ровно то, что реализует `checkRequirement` в
  * `_shared/mutate.ts` — держим списком здесь, а тест сверяет его с ЖИВЫМ телом
  * шва (`parseGateTokensFromSeam`), чтобы spec не мог потребовать гейт, которого
- * шов не знает. `participant` в шве пока не реализован — появится там, появится
- * и тут (иначе тест сверки покраснеет).
+ * шов не знает. `participant` реализован в шве с TRIP-408 (дверь `trip-chat`
+ * зовёт `['participant','pro']`) — `checkRequirement` его знает.
  */
-export const SEAM_GATE_TOKENS = new Set(['editor', 'self', 'pro', 'trip_quota']);
+export const SEAM_GATE_TOKENS = new Set(['participant', 'editor', 'self', 'pro', 'trip_quota']);
 
 export const DOORS = {
   // ── participant: viewer проходит осознанно ──
@@ -350,6 +352,8 @@ export const DOORS = {
   trip:                  ['trip_quota'],      // create: атомарный create_trip_with_route, scope=actor, лимит free/Pro → 402 (TRIP-406)
   account:               ['self'],            // profile: своя строка users (scope id=actor), Pro нигде (TRIP-400)
   user_place:            ['self'],            // place + place/delete: свой user_custom_visits (scope user_id=actor), Pro нигде (TRIP-402)
+  trip_chat:             ['participant', 'pro'], // send: viewer пишет (participant), чат=Pro-аддон (pro); порядок = 403 раньше 402; закрыл дыру энфорса (TRIP-408)
+  inbox:                 ['self'],            // read/read-all: своя строка notifications (scope user_id=actor); полное закрытие notifications (TRIP-408)
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип
@@ -359,6 +363,7 @@ export const DOORS = {
   createBillingPortal:   'self',
   deleteMyAccount:       'self',
   getActiveTrips:        'self',
+  getInbox:              'self',        // ридер инбокса (список+unreadCount) по актору из JWT (TRIP-408, ярус B)
   getMe:                 'self',        // читает свою строку users по актору из JWT (TRIP-400)
   getTravelStats:        'self',        // общий ридер статов (статистика+главная) по актору из JWT (TRIP-402, ярус A)
   getTrips:              'self',        // композит карточек главной по актору из JWT (TRIP-403, ярус B)
