@@ -24,12 +24,18 @@
 .dl-sec-ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── Doc card ────────────────────────────────────────────────── */
-/* Layout + base — lift is handled by compound .dz-lift-card */
-/* Зазор 10px = собственный зазор `.col`. Выравнивания у правила нет, у `.col` тоже -
-   дефолт `stretch` сохраняется сам, ничего восстанавливать не нужно.
-   visual-diff-move: dl-card -> col */
-.dl-card { font: inherit; padding: 16px; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: pointer; text-align: left; width: 100%; }
-.dl-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+/* TRIP-343 объект 2: скин карточки документа на `<Card as="button" radius="md"
+   interactive>`; `.dl-card` — численный раскладочный остаток (padding 16 + font/
+   width → 08). Свои bg(--surface)/radius(r-md) переехали на .card/.card--r-md;
+   REST-тень --sh-1 снята (канон покой плоский); лифт-компаньон .dz-lift-card
+   удалён (был только тут), ховер = канон .card--interactive; фокус-кольцо несёт
+   .card--interactive:focus-visible. Апрув облика /kit.
+   visual-diff-exempt: .dl-card background — скин переехал на .card (тот же --surface)
+   visual-diff-exempt: .dl-card border-radius — радиус переехал на .card--r-md
+   visual-diff-exempt: .dl-card box-shadow — rest-тень --sh-1 снята (канон покой плоский)
+   visual-diff-exempt: .dl-card:focus-visible box-shadow — фокус-кольцо → .card--interactive:focus-visible
+   visual-diff-exempt: .dl-card:focus-visible outline — фокус → .card--interactive:focus-visible */
+.dl-card { font: inherit; padding: 16px; cursor: pointer; text-align: left; width: 100%; }
 
 /* ★ОСТАТОК: зазор 11px вне шкалы - удержан.
    visual-diff-move: dl-card__top -> row row--a-start */

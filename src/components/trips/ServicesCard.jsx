@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn } from '@/design/index';
+import { Btn, Card } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
@@ -37,7 +37,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
   moreAddKinds.push('insurance');
 
   return (
-    <div className="wdg ov-wdg">
+    <Card radius="lg" pad="none" className="ov-wdg">
       <div className="wdg-h">
         <span className="wi"><Icon name="folder-bookmark" size={17} /></span>
         <h4>{t('trip.sidebar_services')}</h4>
@@ -85,6 +85,6 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

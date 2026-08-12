@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Seg, Severity, SearchSelect, useToast,
+  Badge, Btn, Card, Seg, Severity, SearchSelect, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -254,22 +254,22 @@ function ReminderChannels() {
   // future, non-functional channels (visual placeholders)
   const soon = (
     <>
-      <Row gap="g6" className="acct-chan acct-chan--soon">
+      <Card radius="md" className="row row--g6 acct-chan acct-chan--soon">
         <span className="tile tile--lg tile--success"><Icon name="whatsapp" size={20} /></span>
         <Grow fit className="acct-chan__main">
           <Row gap="g4" wrap className="row__t">WhatsApp</Row>{/* i18n-ignore: имя бренда, не переводится */}
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </Grow>
-      </Row>
-      <Row gap="g6" className="acct-chan acct-chan--soon">
+      </Card>
+      <Card radius="md" className="row row--g6 acct-chan acct-chan--soon">
         <span className="tile tile--lg tile--ai"><Icon name="bell" size={20} /></span>
         <Grow fit className="acct-chan__main">
           <Row gap="g4" wrap className="row__t">{t('account.channel_push')}</Row>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
           <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </Grow>
-      </Row>
+      </Card>
     </>
   );
 
@@ -283,7 +283,7 @@ function ReminderChannels() {
           <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>
         ) : connected ? (
           <div>
-            <button className="acct-chan acct-chan--btn row row--g6" aria-expanded={open} onClick={() => setOpen(v => !v)}>
+            <Card as="button" radius="md" className="acct-chan acct-chan--btn row row--g6" ariaExpanded={open} onClick={() => setOpen(v => !v)}>
               <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
               <Grow as="span" fit className="acct-chan__main">
                 <Row as="span" gap="g4" wrap className="row__t">Telegram</Row>{/* i18n-ignore: имя бренда, не переводится */}
@@ -291,7 +291,7 @@ function ReminderChannels() {
                 <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
               </Grow>
               <Icon name="chev" size={16} className="acct-chan__chev" />
-            </button>
+            </Card>
             {open && (
               <div className="acct-tgtrips">
                 <div className="acct-tgtrips__lbl">{t('telegram.linked_trips')}</div>
@@ -314,14 +314,14 @@ function ReminderChannels() {
             )}
           </div>
         ) : (
-          <Row gap="g6" className="acct-chan">
+          <Card radius="md" className="row row--g6 acct-chan">
             <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
             <Grow fit className="acct-chan__main">
               <Row gap="g4" wrap className="row__t">Telegram</Row>{/* i18n-ignore: имя бренда, не переводится */}
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
             </Grow>
             <Btn variant="soft" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
-          </Row>
+          </Card>
         )}
         {soon}
         {unlinkState && (
@@ -687,7 +687,7 @@ export default function ScreenAccount() {
           {/* ░░ PROFILE ░░ */}
           <section id="acct-profile">
             <Row as="h2" className="acct-sectitle">{t('account.identity')}</Row>
-            <div className="acct-hero">
+            <Card radius="lg" pad="none" className="acct-hero">
               <div className="acct-hero__band" aria-hidden="true"><span className="blob b1" /><span className="blob b2" /></div>
               {planBadge && <div className="acct-hero__plan">{planBadge}</div>}
               <Row gap="g7" className="acct-hero__row">
@@ -734,7 +734,7 @@ export default function ScreenAccount() {
                   {saving ? t('auth.saving') : t('common.save')}
                 </Btn>
               </Grid>
-            </div>
+            </Card>
           </section>
 
           {/* ░░ SUBSCRIPTION ░░ */}

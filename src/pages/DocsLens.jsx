@@ -26,7 +26,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -470,8 +470,11 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   }, [doc.created_by, doc.created_by_name, profiles, members, isShared, user, t]);
 
   return (
-    <button
-      className="col dl-card dz-lift-card"
+    <Card
+      as="button"
+      radius="md"
+      interactive
+      className="col dl-card"
       onClick={() => onOpenDetail?.(doc)}>
 
       {/* Icon + title + visibility chip */}
@@ -532,7 +535,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
         )}
         <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
       </Row>
-    </button>
+    </Card>
   );
 }
 

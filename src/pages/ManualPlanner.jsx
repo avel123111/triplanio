@@ -17,7 +17,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, EmptyState, Severity, Toggle, useToast } from '../design/index';
+import { Btn, Card, EmptyState, Severity, Toggle, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -206,7 +206,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
   // Last city — its card carries the final-point toggle (the "finish" applies to
   // THIS city), so the control stays attached to the city it governs.
   return (
-    <div className={'pl-lastcard' + (finalPoint ? ' is-fin' : '')}>
+    <Card radius="lg" pad="none" className={'pl-lastcard' + (finalPoint ? ' is-fin' : '')}>
       {row}
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
@@ -216,7 +216,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
           <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -312,7 +312,10 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
             const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
             return (
-              <button
+              <Card
+                as="button"
+                radius="lg"
+                interactive
                 key={c.external_city_id}
                 onClick={() => setHome(c)}
                 className={`choice-card choice-card--sm${selected ? ' choice-card--on' : ''}`}
@@ -329,7 +332,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                     <Icon name="check" size={11} />
                   </span>
                 )}
-              </button>
+              </Card>
             );
           })}
         </div>
@@ -475,7 +478,10 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <div className="col col--g7">
       <div className={'field-row' + (canHome ? ' cols-2' : '')}>
         {canHome && (
-          <button
+          <Card
+            as="button"
+            radius="lg"
+            interactive
             onClick={() => setReturnMode('home')}
             className={`choice-card choice-card--stack choice-card--sm${returnMode === 'home' ? ' choice-card--on' : ''}`}
           >
@@ -488,10 +494,13 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             <div className="muted t-meta t-sans">
               {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
             </div>
-          </button>
+          </Card>
         )}
 
-        <button
+        <Card
+          as="button"
+          radius="lg"
+          interactive
           onClick={() => setReturnMode('other')}
           className={`choice-card choice-card--stack choice-card--sm${returnMode === 'other' ? ' choice-card--on' : ''}`}
         >
@@ -504,7 +513,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
           <div className="muted t-meta t-sans">
             {t('planner.return_other_desc')}
           </div>
-        </button>
+        </Card>
       </div>
 
       {returnMode === 'other' && (
@@ -611,7 +620,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </div>
 
-        <div className="statbar statbar--inset">
+        <Card radius="lg" pad="none" className="statbar statbar--inset">
           <div className="s">
             <Stat
               label={t('event.start')}
@@ -625,7 +634,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
-        </div>
+        </Card>
 
         <div className="card">
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>

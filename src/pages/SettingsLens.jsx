@@ -110,7 +110,7 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
     + (on ? ' addon-card--on' : '')
     + (feat.locked ? ' addon-card--locked' : '');
   return (
-    <div className={cls} style={{ '--ac': feat.color || 'var(--brand)' }}>
+    <Card radius="md" className={cls} style={{ '--ac': feat.color || 'var(--brand)' }}>
       <Row align="a-start" justify="j-between" className="addon-card__top">
         <div className="addon-card__ic"><Icon name={feat.icon} size={20} /></div>
         {feat.locked
@@ -133,7 +133,7 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
           <Btn variant="soft" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
         </Row>
       )}
-    </div>
+    </Card>
   );
 }
 

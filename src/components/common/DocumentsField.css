@@ -5,7 +5,11 @@
    identical everywhere (TRIP-275). Only the card wrapper is defined here. */
 
 /* card wrapper (non-bare) — роль panel на канонических токенах поверхностей (TRIP-189) */
-.docfield { border-radius: var(--r-xl); padding: 16px; }
+/* TRIP-343 объект 2: скин обрамления документов на `<Card as="section" radius="lg">`
+   (bg/border → .card, r-xl 20 → .card--r-lg); `.docfield` — численный остаток
+   (padding 16 → 08). Условный носитель: bare-ветка = голый <section> без скина.
+   visual-diff-move: docfield -> card card--r-lg */
+.docfield { padding: 16px; }
 
 /* header row — was: flex items-center justify-between mb-2 gap-2 */
 /* visual-diff-move: docfield__head -> row row--j-between row--g4 */

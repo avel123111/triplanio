@@ -11,7 +11,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, EmptyState, Input, Seg, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, Card, EmptyState, Input, Seg, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -109,7 +109,7 @@ function NextTripCard({ trip, onClick, t }) {
   const bg = coverBg(trip);
   const cd = trip.countdown;
   return (
-    <button type="button" className="nextcard" onClick={onClick}>
+    <Card as="button" radius="lg" interactive className="nextcard" onClick={onClick}>
       <span className="nextcard__cover" style={{ background: bg || undefined }}>
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
@@ -125,14 +125,14 @@ function NextTripCard({ trip, onClick, t }) {
         </span>
       </span>
       <span className="nextcard__chev"><Icon name="chev" /></span>
-    </button>
+    </Card>
   );
 }
 
 function NoNextCard({ variant, onPlan, t }) {
   const isEmpty = variant === 'empty';
   return (
-    <div className="nonext">
+    <Card radius="lg" className="nonext">
       <span className="ic"><Icon name="calendar" /></span>
       <div>
         <b>{t('stats.next_trip')}</b>
@@ -141,7 +141,7 @@ function NoNextCard({ variant, onPlan, t }) {
       {!isEmpty && (
         <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -245,7 +245,10 @@ const TripRow = ({ trip, onClick }) => {
   const bg = coverBg(trip);
 
   return (
-    <button
+    <Card
+      as="button"
+      radius="lg"
+      interactive
       onClick={onClick}
       className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
     >
@@ -294,7 +297,7 @@ const TripRow = ({ trip, onClick }) => {
         )}
         <span className="tr__chev"><Icon name="chev" /></span>
       </div>
-    </button>
+    </Card>
   );
 };
 
@@ -737,7 +740,7 @@ export default function Trips() {
               // Active tab with no upcoming/active trips (past ones exist) → invite,
               // not a generic empty. A real search miss still shows empty_search.
               (filterMode === 'active' && !search.trim()) ? (
-                <div className="row invite">
+                <Card radius="lg" className="row invite">
                   <span className="invite__ic"><Icon name="sparkles" size={28} /></span>
                   <div className="invite__tx">
                     <h3>{t('trips.invite_title')}</h3>
@@ -747,7 +750,7 @@ export default function Trips() {
                     <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
                     <Btn variant="secondary" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
                   </div>
-                </div>
+                </Card>
               ) : (
                 <EmptyState
                   icon={filterMode === 'past' ? 'calendar' : 'search'}
@@ -776,13 +779,13 @@ export default function Trips() {
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <button className="tr tr--add" onClick={() => openChoice()}>
+                  <Card as="button" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
                     <span className="tr__addic"><Icon name="plus" size={20} /></span>
                     <span className="tr__main">
                       <b>{t('trips.add_trip')}</b>
                       <small>{t('trips.add_trip_sub')}</small>
                     </span>
-                  </button>
+                  </Card>
                 )}
               </div>
             )}

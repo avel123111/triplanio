@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { ExternalLink } from 'lucide-react';
+import { Card } from '@/design/index';
 
 // Shared result card for the fork partner lists (Stay22 hotels + Viator
 // activities) — these are the SAME element and must behave identically (TRIP-140
@@ -50,17 +51,25 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
   // Second click on the already-selected card opens the link; first click selects.
   const handleCardClick = () => { if (selected) open(); else onSelect?.(id); };
 
+  // TRIP-343 объект 2 (решение Pavel «Card=скин+состояние, поведение вокруг»):
+  // ВНЕШНЯЯ обёртка держит ПОВЕДЕНИЕ (role=button + клавиатура + клик + map-sync
+  // hover), Card-as-div несёт СКИН. Реальный <button> тут нельзя — внутри вложен
+  // <a> (Book). Состояние обёртки (aria-selected/data-hovered) канон читает
+  // дочерним комбинатором ([aria-selected] > .card--interactive и т.п.).
   return (
     <div
       ref={ref}
-      className={`grid pcard${selected ? ' is-sel' : ''}${hovered ? ' is-hover' : ''}`}
       role="button"
       tabIndex={0}
+      data-card-btn=""
+      aria-selected={selected || undefined}
+      data-hovered={hovered || undefined}
       onClick={handleCardClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(); } }}
       onMouseEnter={() => onHover?.(id)}
       onMouseLeave={() => onHover?.(null)}
     >
+      <Card as="div" radius="md" interactive className="grid pcard">
       <div className="pcard__thumb" style={{ '--pc-accent': accent }}>
         <div className="pcard__ph">{icon}</div>
         {image && <img src={image} alt={name} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
@@ -86,6 +95,7 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
           onClick={(e) => { e.stopPropagation(); onOpen?.(); }}
         >{bookLabel}<ExternalLink size={13} /></a>
       </div>
+      </Card>
     </div>
   );
 });
