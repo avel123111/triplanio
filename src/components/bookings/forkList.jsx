@@ -174,7 +174,7 @@ export function ForkToolbar({
 
       {filtersOpen && (
         <>
-          <div className="s22f-panel">{children}</div>
+          <Card className="s22f-panel">{children}</Card>
           {/* Actions live OUTSIDE the filter card (design) */}
           <div className="s22f-panelfoot">
             <Btn variant="quiet" onClick={onReset}>

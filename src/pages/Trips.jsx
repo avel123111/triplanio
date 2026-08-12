@@ -310,7 +310,7 @@ const _ORB = /** @type {React.CSSProperties} */ ({ position: 'absolute', borderR
 function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div className="eroute" style={{ marginTop: 28 }}>
+    <Card className="eroute" style={{ marginTop: 28 }}>
       <span style={{ ..._ORB, width: 300, height: 300, background: 'var(--brand-grad)', top: -150, right: -60, opacity: 0.12 }} />
       <span style={{ ..._ORB, width: 170, height: 170, background: 'var(--ai-gradient)', top: -30, right: '26%', opacity: 0.10 }} />
       <div className="eroute__rail">
@@ -330,7 +330,7 @@ function EmptyRoute({ onManual, onAi }) {
         <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
         <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>
-    </div>
+    </Card>
   );
 }
 

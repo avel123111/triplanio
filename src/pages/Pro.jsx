@@ -7,7 +7,7 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '@/design/icons';
-import { Btn, Skeleton, Severity } from '@/design/index';
+import { Btn, Card, Skeleton, Severity } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
@@ -226,7 +226,7 @@ export default function Pro() {
         <div className="pro-plans" aria-label={t('sub.choose_plan')}>
           {pricesLoading && !prices
             ? Array.from({ length: 3 }).map((_, i) => (
-                <div
+                <Card
                   key={i}
                   className="plan-card-skel"
                   style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
@@ -238,10 +238,10 @@ export default function Pro() {
                     {[0, 1, 2, 3].map((j) => <Skeleton key={j} w={`${88 - j * 7}%`} h={11} />)}
                   </div>
                   <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={'var(--r-sm)'} /></div>
-                </div>
+                </Card>
               ))
             : cards.map((c) => (
-                <div
+                <Card
                   key={c.key}
                   className={`plan-card${c.featured ? ' plan-card--featured' : ''}`}
                 >
@@ -295,7 +295,7 @@ export default function Pro() {
                       {c.cta.label}
                     </Btn>
                   </div>
-                </div>
+                </Card>
               ))
           }
         </div>
@@ -304,7 +304,7 @@ export default function Pro() {
             The skeleton mirrors this same slot so the loading layout matches whether
             the banner will show or not. */}
         {!hidePerTrip && pricesLoading && !prices && (
-          <div className="pro-trip-bar">
+          <Card className="pro-trip-bar">
             <Skeleton w={44} h={44} r={'var(--r-sm)'} />
             <div style={{ flex: 1, minWidth: 220 }}>
               <Skeleton w="42%" h={16} />
@@ -314,10 +314,10 @@ export default function Pro() {
               <Skeleton w={70} h={22} />
               <Skeleton w={92} h={38} r={'var(--r-sm)'} />
             </div>
-          </div>
+          </Card>
         )}
         {!hidePerTrip && !pricesLoading && (
-          <div className="pro-trip-bar">
+          <Card className="pro-trip-bar">
             <span style={{
               width: 44, height: 44, flex: 'none', borderRadius: 'var(--r-sm)',
               background: 'var(--brand-soft)', color: 'var(--brand)',
@@ -340,7 +340,7 @@ export default function Pro() {
                 {t('sub.buy_for_trip')}
               </Btn>
             </div>
-          </div>
+          </Card>
         )}
 
         {/* Trust line — small reassurance at the very bottom, below everything. */}
