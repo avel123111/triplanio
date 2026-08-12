@@ -215,6 +215,36 @@ const rawHomedCallers = (homed, wrapper) => {
   return hits;
 };
 
+// ── SPLIT-СКИН на card-homed (TRIP-337 объект 2 дожиг) ──────────────────────
+// card-homed класс несёт ТОЛЬКО раскладку — скин (в т.ч. радиус и тень) живёт на
+// примитиве <Card> (проп `radius`/`raised`). Если приватный класс объявляет
+// `border-radius` или `box-shadow` в СВОЁМ базовом правиле (голый `.class`) —
+// это split-скин: bg+border на <Card>, а радиус/тень на классе, и радиус-only
+// класс невидим предикату поверхности (следующее слепое пятно). Ратчет вниз:
+// число не растёт против BASE — новый split-скин на card-homed краснеет.
+const splitSkinCount = (readFile, homed) => {
+  let n = 0;
+  const hits = [];
+  for (const f of lsSrc().filter((ff) => ff.endsWith('.css'))) {
+    const src = readFile(f);
+    if (src == null) continue;
+    let root;
+    try { root = postcss.parse(src); } catch { continue; }
+    root.walkRules((rule) => {
+      for (const sel of rule.selector.split(',')) {
+        const s = sel.trim();
+        if (!/^\.[-\w]+$/.test(s)) continue;   // только ГОЛЫЙ .class (не :hover/потомок/pseudo)
+        const c = s.slice(1);
+        if (!homed.has(c)) continue;
+        let split = false;
+        rule.walkDecls((d) => { const p = d.prop.toLowerCase(); if (p === 'border-radius' || p === 'box-shadow') split = true; });
+        if (split) { n++; hits.push(`.${c}`); }
+      }
+    });
+  }
+  return { n, hits };
+};
+
 // ── реестр ──────────────────────────────────────────────────────────────────
 const registry = JSON.parse(readFileSync(REG_PATH, 'utf8'));
 const known = new Set(Object.keys(registry.classes || {}));
@@ -230,6 +260,8 @@ const base = scanJsx((f) => git(['show', `${BASE_REF}:${f}`]));
 const baseKnown = git(['rev-parse', BASE_REF]) !== null;
 const rawCallers = rawHomedCallers(cardHomed, 'Card');
 const rawTileCallers = rawHomedCallers(tileHomed, 'Tile');
+const splitHead = splitSkinCount((f) => { try { return readFileSync(f, 'utf8'); } catch { return null; } }, cardHomed);
+const splitBase = splitSkinCount((f) => git(['show', `${BASE_REF}:${f}`]), cardHomed);
 
 console.log(`check-surface-registry (2z): реестр полноты поверхностей`);
 console.log(`  .css surface-классов: ${live.size} · в реестре: ${known.size}`);
@@ -244,6 +276,10 @@ console.log(
 );
 console.log(`  сырых вызывателей card-homed классов мимо <Card>: ${rawCallers.length} (цель 0)`);
 console.log(`  сырых вызывателей tile-homed классов мимо <Tile>: ${rawTileCallers.length} (цель 0)`);
+console.log(
+  `  split-скин на card-homed (radius/shadow на классе): ${splitHead.n}` +
+    (baseKnown ? ` (BASE ${splitBase.n}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
+);
 
 let bad = false;
 if (unregistered.length) {
@@ -269,6 +305,11 @@ if (baseKnown && head.inlineSurfaces > base.inlineSurfaces) {
 if (baseKnown && head.inlineTiles > base.inlineTiles) {
   bad = true;
   console.log(`\n  РОСТ инлайн-плиток: ${base.inlineTiles} → ${head.inlineTiles} (ратчет только вниз — переноси на <Tile>).`);
+}
+if (baseKnown && splitHead.n > splitBase.n) {
+  bad = true;
+  console.log(`\n  РОСТ split-скина на card-homed: ${splitBase.n} → ${splitHead.n} (radius/shadow на приватном классе — уводи на проп <Card radius/raised>):`);
+  splitHead.hits.forEach((h) => console.log(`    ${h}`));
 }
 if (rawCallers.length) {
   bad = true;

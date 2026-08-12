@@ -424,16 +424,19 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    (скин фон+рамка ушёл с ко-селектора на `.card`; приватный класс несёт только
    раскладку → cardHomed). Радиус/паддинг остаются на приватном классе и бьют
    базу `.card` по каскаду (правило класса ниже по файлу).
+   Цели композиции: фон/рамка на `.card`, радиус на `.card--r-*` (проп radius),
+   тень eroute на `.card--raised` (проп raised) — гард берёт победителя каскада
+   среди целей, поэтому радиус достаётся `.card--r-*` (правило ниже по файлу).
    visual-diff-move: .wmini -> card
-   visual-diff-move: .chat-reply__card -> card
-   visual-diff-move: .plan-card -> card
-   visual-diff-move: .plan-card-skel -> card
-   visual-diff-move: .pro-trip-bar -> card
-   visual-diff-move: .tm-manage -> card
-   visual-diff-move: .tm-account -> card
-   visual-diff-move: .tm-cell -> card
-   visual-diff-move: .eroute -> card
-   visual-diff-move: .s22f-panel -> card */
+   visual-diff-move: .chat-reply__card -> card card--r-md
+   visual-diff-move: .plan-card -> card card--r-card
+   visual-diff-move: .plan-card-skel -> card card--r-card
+   visual-diff-move: .pro-trip-bar -> card card--r-card
+   visual-diff-move: .tm-manage -> card card--r-lg
+   visual-diff-move: .tm-account -> card card--r-lg
+   visual-diff-move: .tm-cell -> card card--r-md
+   visual-diff-move: .eroute -> card card--r-card card--raised
+   visual-diff-move: .s22f-panel -> card card--r-lg */
 .card,
 .map-route,
 /* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
@@ -1692,6 +1695,20 @@ button.app-side__item:hover { background: var(--wash); }
    visual-diff-exempt: .card--recessed background — утопленная --surface-3, из .notes/.addr */
 .card--r-lg { border-radius: var(--r-xl); }   /* 20 - роли/оболочки */
 .card--r-md { border-radius: var(--r-md); }   /* 16 - секции/вложенные */
+/* 24 - контент-карточка (тариф Pro, пустой маршрут, pro-плашка). Проводка пропа
+   `radius="card"` к СУЩЕСТВУЮЩЕМУ токену --r-card (TRIP-337 объект 2 дозжиг скина
+   до layout-only): радиус уходит с приватного класса на канон, значение то же 24. */
+.card--r-card { border-radius: var(--r-card); }
+/* TRIP-337 объект 2 дожиг: радиус (и тень eroute) ушли с приватных карточек на
+   пропы <Card radius/raised> — класс стал layout-only. Перенос объявлен в блоке
+   visual-diff-move у ко-селектора выше (`.X -> card card--r-Y [card--raised]`),
+   значение то же. */
+/* Приподнятая карточка (проп `raised`) — статическая тень --sh-1. База `.card`
+   тени НЕ даёт (только `.card--interactive:hover`), а `.eroute` (пустой маршрут)
+   несла её сама — единственная статически-приподнятая карточка. Проводка к
+   СУЩЕСТВУЮЩЕМУ токену --sh-1, нового цвета/тени нет. ⚠️ЗАМЕР Pavel по скрину:
+   нужен ли системе отдельный «приподнятый» облик карточки — иначе снять тень. */
+.card--raised { box-shadow: var(--sh-1); }
 
 /* Интерактивная карточка: ОДИН язык ховера на все формы - подсветка рамки +
    мягкая тень, БЕЗ движения и glow (апрув Pavel, TRIP-343). Заменяет разнобой
@@ -3080,7 +3097,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   position: relative; overflow: hidden;
   display: flex; flex-direction: column; align-items: center; text-align: center;
   padding: 34px 30px 30px;
-  border-radius: var(--r-card); box-shadow: var(--sh-1);
 }
 .eroute__rail { position: relative; z-index: 1; width: 100%; max-width: 560px; margin-bottom: 22px; }
 .eroute__rail svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -3730,7 +3746,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* `--a` — тон текстовой кнопки внутри карточки ответа ассистента: «Показать
    целиком» обязана быть фиолетовой, потому что она внутри AI-карточки, а не
    потому что у неё свой класс (TRIP-344 PR 3). */
-.chat-reply__card { position: relative; padding: 16px 20px; border-radius: var(--r-md); overflow: hidden; --a: var(--ai-ink); }
+.chat-reply__card { position: relative; padding: 16px 20px; overflow: hidden; --a: var(--ai-ink); }
 .chat-reply__card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ai-gradient); }
 .chat-reply__card.is-clamped { padding-bottom: 46px; }
 /* Height comes from ChatReply (CLAMP_H) via an inline max-height: the same
@@ -5434,7 +5450,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   position: relative;
   display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
   gap: 10px; min-height: 84px; padding: 11px 12px;
-  border-radius: var(--r-md); color: var(--ink-2);
+  color: var(--ink-2);
   cursor: pointer; text-align: left;
   transition: background .15s var(--ease-out), border-color .15s var(--ease-out), color .15s var(--ease-out);
 }
@@ -5445,7 +5461,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tm-cell__badge { position: absolute; top: 10px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--warm); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
 
 .tm-caption { padding: 2px 8px 8px; }
-.tm-manage { border-radius: var(--r-xl); overflow: hidden; }
+.tm-manage { overflow: hidden; }
 .tm-manage__row {
   display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px;
   background: none; border: 0; border-bottom: 1px solid var(--line);
@@ -5463,7 +5479,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 .tm-account {
   display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 18px; padding: 12px 14px;
-  border-radius: var(--r-xl);
   cursor: pointer; text-align: left; transition: border-color .15s var(--ease-out);
 }
 .tm-account:hover { border-color: var(--brand); }
@@ -5843,7 +5858,6 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .plan-card padding — padding:0 перебивает базу .card 18px, итог 0 как было (контент в __body) */
 .plan-card {
   position: relative; display: flex; flex-direction: column; padding: 0;
-  border-radius: var(--r-card);
   transition: box-shadow .22s var(--ease-out), border-color .2s;
 }
 /* Featured (Yearly) = the PRO plan → bound to the --pro accent (not --brand):
@@ -5909,7 +5923,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Plan card skeleton — THIS is the only thing that animates in (staggered). The
    real .plan-card then swaps in statically on top, so the reveal plays once. */
 .plan-card-skel {
-  border-radius: var(--r-card); padding: 24px;
+  padding: 24px;
   animation: cardReveal .45s var(--ease-out) var(--card-delay, .05s) both;
 }
 
@@ -5920,7 +5934,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* One-time per-trip pass bar (sits under the plans grid) */
 .pro-trip-bar {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 18px 22px; border-radius: var(--r-card);
+  padding: 18px 22px;
 }
 .pro-trip-bar__actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
@@ -7140,7 +7154,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .s22f-fbtn--active color — то же, состояние на счётчике
    visual-diff-exempt: .s22f-fbtn__n border — канон-бейдж в кнопке без разделительного кольца */
 
-.s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
+.s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
 .s22f-pmuted { color: var(--muted); }
 /* Только раскладка: скин и состояния держит `<InputGroup>` (TRIP-333). */
 .s22f-field { flex: 1; }
