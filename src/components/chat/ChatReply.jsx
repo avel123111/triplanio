@@ -1,6 +1,6 @@
 // @ts-check
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { Btn } from '@/design/index';
+import { Btn, Card } from '@/design/index';
 import { Icon } from '@/design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
@@ -69,7 +69,7 @@ export default function ChatReply({ text, time, onAsk }) {
             <span className="tm">{time}</span>
           </div>
 
-          <div className={'chat-reply__card' + (clamped ? ' is-clamped' : '')}>
+          <Card className={'chat-reply__card' + (clamped ? ' is-clamped' : '')}>
             {/* CLAMP_H is the single source: it both measures the overflow and
                 clips the text. The CSS only owns `overflow: hidden`. */}
             <div ref={textRef} className="chat-reply__text" style={clamped ? { maxHeight: CLAMP_H } : undefined}>
@@ -85,7 +85,7 @@ export default function ChatReply({ text, time, onAsk }) {
                 <Icon name="chev" size={13} style={{ transform: expanded ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
               </Btn>
             )}
-          </div>
+          </Card>
         </div>
       </div>
 

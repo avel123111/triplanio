@@ -374,14 +374,14 @@ export const CARD_VARIANTS = [
  *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
  *   locked?: boolean, parsed?: boolean, danger?: boolean, href?: string, onClick?: any,
  *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,
- *   ariaControls?: string, ariaSelected?: boolean, ariaBusy?: boolean, title?: string,
- *   target?: string, rel?: string, dataDragover?: boolean,
+ *   ariaControls?: string, ariaSelected?: boolean, ariaBusy?: boolean, ariaCurrent?: string,
+ *   title?: string, target?: string, rel?: string, dataDragover?: boolean,
  *   children?: any, className?: string, style?: any }} p
  */
 export const Card = ({
   as = "div", radius, interactive, pad = "default", tone, variant,
   recessed, locked, parsed, danger, href, onClick, disabled, id, ariaLabel,
-  ariaExpanded, ariaControls, ariaSelected, ariaBusy, title, target, rel, dataDragover,
+  ariaExpanded, ariaControls, ariaSelected, ariaBusy, ariaCurrent, title, target, rel, dataDragover,
   children, className = "", style,
 }) => {
   const mods = [
@@ -407,6 +407,7 @@ export const Card = ({
       aria-controls={ariaControls}
       aria-selected={ariaSelected}
       aria-busy={ariaBusy}
+      aria-current={ariaCurrent}
       data-dragover={dataDragover ? "" : undefined}
       onClick={onClick}
       {...(as === "a" ? { href, target, rel } : null)}

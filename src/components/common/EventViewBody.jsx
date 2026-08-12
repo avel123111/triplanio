@@ -327,7 +327,7 @@ function HotelBody({ entity, docs = [] }) {
       {notes && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.view_notes')}</div>
-          <div className="hv-notes t-body">{notes}</div>
+          <Card recessed radius="md" className="hv-notes t-body">{notes}</Card>
         </div>
       )}
     </div>
@@ -465,7 +465,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {notes && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.view_notes')}</div>
-          <div className="hv-notes t-body">{notes}</div>
+          <Card recessed radius="md" className="hv-notes t-body">{notes}</Card>
         </div>
       )}
     </div>
@@ -534,7 +534,7 @@ function ActivityBody({ entity, docs = [] }) {
       {notes && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.view_notes')}</div>
-          <div className="hv-notes t-body">{notes}</div>
+          <Card recessed radius="md" className="hv-notes t-body">{notes}</Card>
         </div>
       )}
     </div>

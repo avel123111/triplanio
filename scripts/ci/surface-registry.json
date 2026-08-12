@@ -1,5 +1,5 @@
 {
-  "_note": "Г34 (TRIP-343, объект 2). Реестр полноты поверхностей: КАЖДЫЙ .css surface-класс (предикат аудита §5: радиус+фон+рамка/тень, кроме плиток) обязан быть здесь. object:\"card\" = скин несёт примитив <Card>. object:<имя>+reason = законная не-Card поверхность другого объекта. object:\"card-backlog\" = карточка, ещё на приватном скине, ждёт пересадки на <Card> (это и есть остаток объекта 2, видимый числом). Гард 2z check-surface-registry.mjs: незанесённый класс или устаревшая запись роняют PR.",
+  "_note": "Г34 (TRIP-343, объект 2). Реестр полноты поверхностей: КАЖДЫЙ .css surface-класс (предикат аудита §5: радиус+фон+рамка/тень, кроме плиток) обязан быть здесь. object:\"card\" = скин несёт примитив <Card>. object:<имя>+reason = законная не-Card поверхность другого объекта. Настоящие карточки несут скин примитивом <Card> (список cardHomed) — остаток объекта 2 сведён к нулю. Гард 2z check-surface-registry.mjs: незанесённый класс или устаревшая запись роняют PR.",
   "_cardHomedNote": "card-homed = приватный класс-остаток, чей СКИН переехал на <Card> (сам класс несёт только раскладку). Такой класс ОБЯЗАН рендериться внутри <Card>: сырой host-тег (<button>/<div>/<a>) с этим className мимо <Card> = поверхность потеряна МОЛЧА (баг трансфера F). AST-скан гарда 2z ловит это — три .css/<style>/inline-скан-режима такого не видят по построению.",
   "cardHomed": [
     "tl3-card", "records", "choice-card", "pcard", "fork-manual", "fork-partner", "ov-mapcard",
@@ -7,13 +7,15 @@
     "acc", "acct-chan", "acct-hero", "addon-card", "ai-blk", "cdu", "dz-lift-card", "eed-fcbox",
     "eed-nightrow", "empty-note", "ev-sec", "fork-state", "hv-card", "hv-namecard", "hv-rows",
     "invite", "limitcard", "nextcard", "nonext", "pl-lastcard", "pro-up", "statbar", "summary",
-    "te-end", "tr", "tv-card", "wdg"
+    "te-end", "tr", "tv-card", "wdg",
+    "wmini", "chat-reply__card", "plan-card", "plan-card-skel", "pro-trip-bar",
+    "tm-manage", "tm-account", "tm-cell", "eroute", "s22f-panel", "hv-notes"
   ],
   "_tileHomedNote": "TRIP-391 объект 3 (плитка). tile-homed = приватный класс-остаток, чей СКИН квадрата-иконки уехал на примитив <Tile> (сам класс несёт только раскладку/канал --hl). Такой класс ОБЯЗАН рендериться внутри <Tile>: сырой host-тег (<div>/<span>) с этим className мимо <Tile> = плитка потеряна МОЛЧА (та же дыра, что облысила трансфер-карточку в объекте 2). AST-скан гарда 2z ловит это; три .css/<style>/inline-режима такого не видят по построению.",
   "tileHomed": [
     "dl-empty__ic", "dl-addcard__ic"
   ],
-  "_coSelectorNote": "TRIP-337 объект 2 дозакрытие: члены ко-селектора app.css:425 (и родственных 509/515) — фон+рамку несёт ОБЩЕЕ правило, радиус отдельным, поэтому предикат radius+bg+border-в-одном-правиле их не видел (слепое пятно, «закрыто но живо»). Замок 2z coSelectorSurfaceClasses теперь их ловит; каждый обязан быть в classes. card-backlog = настоящая карточка, ещё на общем скине 425, ждёт пересадки на <Card> (остаток объекта 2, видимый числом).",
+  "_coSelectorNote": "TRIP-337 объект 2 дозакрытие: члены ко-селектора app.css:425 (и родственных 509/515) — фон+рамку несёт ОБЩЕЕ правило, радиус отдельным, поэтому предикат radius+bg+border-в-одном-правиле их не видел (слепое пятно, «закрыто но живо»). Замок 2z coSelectorSurfaceClasses теперь их ловит; каждый обязан быть в classes или cardHomed. Настоящие карточки сведены на <Card> (cardHomed), не-карточки приписаны объектом с причиной — остаток объекта 2 = 0.",
   "classes": {
     "card--locked": { "object": "card", "reason": "канон <Card> — модификатор locked (Pro-гейт ai)" },
     "card--parsed": { "object": "card", "reason": "канон <Card> — модификатор parsed (ai success)" },
@@ -89,18 +91,7 @@
     "vrow": { "object": "6", "reason": "строка-список (*-row) — объект 6 (лист/строка), НЕ карточка" },
 
     "card": { "object": "card", "reason": "канон <Card> — базовый surface-класс, скин ко-селектора 425 = скин примитива" },
-    "wmini": { "object": "card-backlog", "reason": "мини-виджет статистики (widgets.jsx div) — карточка на общем скине 425, ждёт <Card>" },
-    "chat-reply__card": { "object": "card-backlog", "reason": "карточка-ответ чата (составное имя, AST) — на скине 425, ждёт <Card>" },
-    "plan-card": { "object": "card-backlog", "reason": "карточка тарифа Pro (Pro.jsx, составное) — на скине 425, ждёт <Card>" },
-    "plan-card-skel": { "object": "card-backlog", "reason": "скелет карточки тарифа (Pro.jsx) — на скине 425, ждёт <Card>" },
-    "pro-trip-bar": { "object": "card-backlog", "reason": "плашка pro-трипа (Pro.jsx div) — на скине 425, ждёт <Card>" },
-    "tm-manage": { "object": "card-backlog", "reason": "панель управления участниками (TripSidebar div) — на скине 425, ждёт <Card>" },
-    "tm-account": { "object": "card-backlog", "reason": "плашка аккаунта (TripSidebar <button>, пересечение об.1∩2) — на скине 425, ждёт <Card as=button>" },
-    "tm-cell": { "object": "card-backlog", "reason": "ячейка участника (составное имя, AST) — на скине 425, ждёт <Card>" },
-    "eroute": { "object": "card-backlog", "reason": "карточка пустого маршрута (Trips div) — на скине 425; инлайн marginTop=раскладка родителя, не скин; ждёт <Card>" },
-    "s22f-panel": { "object": "card-backlog", "reason": "панель форк-листа Stay22 (forkList div) — на скине 425, ждёт <Card>" },
-    "hv-notes": { "object": "card-backlog", "reason": "панель заметок отеля (ко-селектор 515) — карточка на общем скине, ждёт <Card>" },
-    "s22f-gcard": { "object": "card-backlog", "reason": "карточка галереи Stay22 (ко-селектор 509) — на общем скине, ждёт <Card>" },
+    "s22f-gcard": { "object": "6", "reason": "строка галереи отеля Stay22 (field-role: --line-strong, --r-btn, dark --bg, flex space-between) — объект 6 (лист/строка-контрол), НЕ контент-карточка; ко-селектор 509" },
 
     "dlg": { "object": "overlay", "reason": "диалог — объект 6 (оболочка), рамку берёт из ко-селектора 425" },
     "toast": { "object": "overlay", "reason": "тост — объект 6 (оболочка)" },

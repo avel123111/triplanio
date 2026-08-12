@@ -420,20 +420,30 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    больше нет: `.surface-glass` был последним следом стекла - блюра и тени,
    которых нет с TRIP-326, - и висел ровно на одном элементе. Каждый носитель
    входит сюда своим именем. */
-.wmini,
+/* TRIP-337 объект 2 дозжиг card-backlog: 10 членов сведены на примитив <Card>
+   (скин фон+рамка ушёл с ко-селектора на `.card`; приватный класс несёт только
+   раскладку → cardHomed). Радиус/паддинг остаются на приватном классе и бьют
+   базу `.card` по каскаду (правило класса ниже по файлу).
+   visual-diff-move: .wmini -> card
+   visual-diff-move: .chat-reply__card -> card
+   visual-diff-move: .plan-card -> card
+   visual-diff-move: .plan-card-skel -> card
+   visual-diff-move: .pro-trip-bar -> card
+   visual-diff-move: .tm-manage -> card
+   visual-diff-move: .tm-account -> card
+   visual-diff-move: .tm-cell -> card
+   visual-diff-move: .eroute -> card
+   visual-diff-move: .s22f-panel -> card */
 .card,
-.chat-reply__card, .map-route,
+.map-route,
 /* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
-.te-row.te-row--plan, .acct-tgrow, .tm-cell,
-/* карточки разделов и панели экранов */
-.tm-manage, .tm-account, .eroute,
-.s22f-panel,
+.te-row.te-row--plan, .acct-tgrow,
 /* держали эту пару своей копией, а не именем в роли */
-.plan-card, .plan-card-skel, .pro-trip-bar, .bgt-exrow, .ncal-wdc,
+.bgt-exrow, .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
 /* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
    несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
@@ -512,10 +522,16 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 }
 
 /* Мягкая плитка внутри карточки просмотра отеля. */
-.hv-plat, .hv-notes {
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-}
+/* .hv-notes уехал на <Card recessed radius="md"> (TRIP-337 объект 2 дозжиг):
+   рамка → канон .card (--line, тождественно), радиус → .card--r-md (--r-md), фон
+   утопленной → .card--recessed (--surface-3) — минимальный сдвиг с --surface-2,
+   как принято для .te-end (4315), проверено скрином. Пара `.hv-plat` осталась
+   одна — её фон+рамку СВЕЛИ в её же основное правило (ниже по файлу, там же радиус
+   --r-pill), иначе одиночное правило фон+рамка с радиусом отдельно = новое слепое
+   пятно. Значение то же (--surface-2/--line), 2p не видит смены (тот же класс).
+   visual-diff-exempt: .hv-notes background — утопленная --surface-2 → канон .card--recessed --surface-3, минимальный сдвиг (скрин)
+   visual-diff-exempt: .hv-notes border — рамка → канон .card (--line, тождественно)
+   visual-diff-exempt: .hv-notes border-radius — радиус → канон .card--r-md (--r-md, тождественно) */
 
 /* =================================================================
    ТИПОГРАФИКА — 10 канонических текст-стилей.
@@ -1540,7 +1556,7 @@ button.app-side__item:hover { background: var(--wash); }
    Своего ИМЕНИ у роли нет - оба прежних (.surface-glass, .surface-panel)
    удалены как след стекла. Внутреннюю раскладку (падинги/хедеры/overflow)
    каждый примитив доопределяет в собственном блоке ниже по файлу. */
-.wmini,                    /* /trips — «Мир исследован» */
+/* .wmini уехал на <Card> (радиус --r-xl теперь от .card, TRIP-337 объект 2). */
 .card,
 .lp {                      /* панель-оболочка (та же ступень, что у модалки) */
   border-radius: var(--r-xl);
@@ -1566,9 +1582,7 @@ button.app-side__item:hover { background: var(--wash); }
    две и они разной величины (диалог 16, панель 24), «строго меньше внешней»
    недостижимо; 16 - наибольшее, что не превышает НИ ОДНУ из двух. Это станет
    однозначным, когда оболочка останется одна. */
-.hv-notes {
-  border-radius: var(--r-md);
-}
+/* .hv-notes border-radius уехал на .card--r-md (radius="md", TRIP-337 объект 2). */
 
 /* Map lens route panel (TRIP-33): скин - роль поверхности, `.map-route` стоит
    в её co-селекторе СВОИМ именем; этот блок - только раскладка. Floats top-left over the
@@ -5822,8 +5836,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 }
 
 /* ── Plan card ── */
+/* padding:0 перебивает базовый `.card` 18px (TRIP-337 объект 2 дозжиг): контент
+   несёт `.plan-card__body`, у самой карточки отступа не было; итог тот же 0.
+   Не `pad="none"`, т.к. `.card--flush` добавил бы overflow:hidden и обрезал бы
+   внешнюю тень featured-тарифа.
+   visual-diff-exempt: .plan-card padding — padding:0 перебивает базу .card 18px, итог 0 как было (контент в __body) */
 .plan-card {
-  position: relative; display: flex; flex-direction: column;
+  position: relative; display: flex; flex-direction: column; padding: 0;
   border-radius: var(--r-card);
   transition: box-shadow .22s var(--ease-out), border-color .2s;
 }
@@ -6279,7 +6298,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 .hv-name{ color:var(--ink);line-height:1.2;}
 .hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
 .hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
-.hv-plat{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:5px 12px 5px 5px;border-radius:var(--r-pill);}
+.hv-plat{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:5px 12px 5px 5px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);}
 /* Буква-плейсхолдер платформы (когда логотипа нет) лежит НА --brand, поэтому её
    цвет - --primary-fg, а не литерал #fff: в тёмной теме --brand светло-голубой,
    и белым по нему выходит 2.2:1. */
