@@ -26,7 +26,7 @@ import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, Tile, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -202,9 +202,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setVisibility(opt.value); } }}>
                   <Card as="div" recessed interactive radius="md"
                     className={`row dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}`}>
-                    <span className="dl-visopt__ic">
-                      <Icon name={opt.icon} size={17} />
-                    </span>
+                    <Tile as="span" icon={opt.icon} />
                     <span className="dl-visopt__lbl">
                       <b>{opt.label}</b>
                       <span>{opt.desc}</span>
@@ -490,9 +488,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
       {/* Icon + title + visibility chip */}
       <Row align="a-start" className="dl-card__top">
-        <div className={`dl-card__ic${isShared ? '' : ' dl-card__ic--mine'}`}>
-          <Icon name="file" size={20} />
-        </div>
+        <Tile size="lg" icon="file" className={isShared ? undefined : 'dl-card__ic--mine'} />
         <div className="dl-card__h">
           <Trunc className="dl-card__title">{doc.title}</Trunc>
           <div className="dl-card__sub">
@@ -558,9 +554,7 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
   return (
     // Скин утоплённой поверхности — канон `<Card recessed>` (TRIP-343 объект 2).
     <Card recessed radius="md" className="dl-empty">
-      <div className={`dl-empty__ic${isShared ? '' : ' dl-empty__ic--mine'}`}>
-        <Icon name="file" size={28} />
-      </div>
+      <Tile size="2xl" icon="file" className={`dl-empty__ic${isShared ? '' : ' dl-empty__ic--mine'}`} />
       <b>{isShared ? t('doc.empty_shared') : t('doc.empty_private')}</b>
       <span>{isShared ? t('doc.empty_shared_desc') : t('doc.empty_private_desc')}</span>
       {canAdd && (
@@ -593,9 +587,7 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
         <Card as="button" variant="add" radius="md"
           className={`col col--g4 col--j-center dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
           onClick={() => onOpenAdd?.()}>
-          <span className="dl-addcard__ic">
-            <Icon name="plus" size={22} />
-          </span>
+          <Tile as="span" size="xl" tone="quiet" icon="plus" className="dl-addcard__ic" />
           <b>{t('doc.add_doc')}</b>
         </Card>
       )}
@@ -710,9 +702,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
       {/* ── Shared section ── */}
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
-          <div className="dl-sec-ic">
-            <Icon name="users" size={17} />
-          </div>
+          <Tile icon="users" />
           <div>
             <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
               {t('doc.section_shared')}
@@ -740,9 +730,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
       {/* ── Personal section ── */}
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
-          <div className="dl-sec-ic dl-sec-ic--mine">
-            <Icon name="user" size={17} />
-          </div>
+          <Tile icon="user" className="dl-sec-ic--mine" />
           <div>
             <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
               {t('doc.section_private')}
