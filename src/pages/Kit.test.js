@@ -95,7 +95,7 @@ const VARIANTS = [...DECLARED]
 /** Значения карт вариантов — из ТЕКСТА модулей примитивов (единый источник:
  *  тот же массив, что типизирует проп). Регекс, а не импорт, потому что
  *  `node --test` не парсит JSX модулей `@/design/*.jsx`. */
-const DESIGN_SRC = ['index.jsx', 'IconBtn.jsx', 'Chip.jsx', 'Seg.jsx', 'Stepper.jsx', 'Swatch.jsx']
+const DESIGN_SRC = ['index.jsx', 'IconBtn.jsx', 'Tile.jsx', 'Chip.jsx', 'Seg.jsx', 'Stepper.jsx', 'Swatch.jsx']
   .map((f) => stripComments(read(`../design/${f}`))).join('\n');
 function mapValues(name) {
   const m = DESIGN_SRC.match(new RegExp(`export const ${name}\\s*=\\s*\\[([^\\]]*)\\]`, 's'));

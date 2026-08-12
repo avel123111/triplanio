@@ -34,8 +34,9 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
-  Skeleton, Stepper, Swatch, Textarea, Toggle,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
+  TILE_SIZES, TILE_TONES,
 } from '@/design/index';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
@@ -547,16 +548,34 @@ const RECIPES = {
 
   'readonly-banner': () => [{ items: [it('base', <div className="grow"><ReadOnlyBanner>{TX.readonly}</ReadOnlyBanner></div>, true)] }],
 
-  tile: (ctx) => [{
-    label: 'тон · размер · форма · залитая (CSS-производный список семьи)',
-    items: ctx.declared.map((c) => {
-      const t = tailOf(c);
-      if (t === 'solid') return it('tile--solid (+ai)', <span className="tile tile--solid tile--ai" />);
-      if (t === 'warm') return it('tile--solid + tile--warm', <span className="tile tile--solid tile--warm" />);
-      if (['round', 'sm', 'lg', 'xl', '2xl'].includes(t)) return it(c, <span className={`tile tile--brand ${c}`} />);
-      return it(c, <span className={`tile ${c}`} />);
-    }),
-  }],
+  // TRIP-391 объект 3: витрина рисует ЧЕРЕЗ <Tile>, а не сырым `.tile`, и
+  // итерирует карты примитива (TILE_SIZES/TILE_TONES) — полнота по построению,
+  // тест дрейфа сверяет карты ↔ живой CSS. Размер плитки и кегль иконки — РАЗНЫЕ
+  // оси: ступень несёт и то и другое (--tile / --tile-ic), иконка размера не
+  // задаёт (её бьёт `.tile > svg`).
+  tile: () => [
+    {
+      label: 'размер (ось --tile/--tile-ic): дефолт 34 · sm 28 · lg 40 · xl 46 · 2xl 62',
+      items: [
+        it('base (34)', <Tile icon="star" tone="brand" />),
+        ...TILE_SIZES.map((s) => it(`size="${s}"`, <Tile icon="star" tone="brand" size={s} />)),
+      ],
+    },
+    {
+      label: 'тон (мягкий оттенок цвета значка — роль-токен, Р7)',
+      items: TILE_TONES.map((t) => it(`tone="${t}"`, <Tile icon="sparkles" tone={t} />)),
+    },
+    {
+      label: 'форма и залитая (тон warm — только залитый, канон)',
+      items: [
+        it('round', <Tile icon="star" tone="brand" round />),
+        it('solid (+brand)', <Tile icon="star" tone="brand" solid />),
+        it('solid (+ai)', <Tile icon="sparkles" tone="ai" solid />),
+        it('solid (+warm)', <Tile icon="star" tone="warm" solid />),
+        it('children (число вместо иконки)', <Tile tone="quiet" round>3</Tile>),
+      ],
+    },
+  ],
 
   spin: (ctx) => [{
     items: [

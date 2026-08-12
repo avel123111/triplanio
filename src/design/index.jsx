@@ -45,6 +45,7 @@ export { Row, Col, Grid, Trunc, Grow } from './Layout';
 // Карты осей примитивов реэкспортятся тем же барралем, что и сами компоненты —
 // точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
 export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
+export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';

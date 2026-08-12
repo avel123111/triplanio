@@ -73,7 +73,11 @@ export const KIT_OBJECTS = [
   { id: 'skeleton', family: 'skeleton', group: 'components', css: false },
   { id: 'dialog', family: 'dlg', group: 'components', css: true },
   { id: 'readonly-banner', family: 'readonly', group: 'components', css: false },
-  { id: 'tile', family: 'tile', group: 'components', css: true },
+  // Плитка-иконка - двухосный объект (размер × тон) + булевы round/solid и тон
+  // warm (только залитый). Источник оси - карты, экспортированные примитивом
+  // <Tile> (TILE_SIZES/TILE_TONES), не CSS-скан: страница рисует по ним, тест
+  // дрейфа сверяет их ↔ живой CSS в обе стороны (TRIP-391 объект 3).
+  { id: 'tile', family: 'tile', group: 'components', prefix: 'tile', maps: ['TILE_SIZES', 'TILE_TONES'], extras: ['round', 'solid', 'warm'] },
   { id: 'spin', family: 'spin', group: 'components', css: true },
   { id: 'toast', family: 'toast', group: 'components', css: true },
   { id: 'sheet-row', family: 'sheet', group: 'components', css: true },
