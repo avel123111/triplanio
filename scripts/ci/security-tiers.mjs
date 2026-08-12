@@ -153,9 +153,11 @@ export const FUNCTIONS = {
   // `_trip_file_not_others_private`) — internal, гранта клиенту нет (IF3).
   publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
-    '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
+    '_can_edit_trip', 'add_city', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
     'get_trip_owner_profiles',
+    // add_layover_transfer убран (TRIP-405): EXECUTE у authenticated снят,
+    // теперь service_role-only, зовётся edge trip-booking/transfer-layover (op:'rpc').
     // get_trip_participant_profiles убрана (TRIP-403 шаг C): DROP, поглощена
     // get_my_trip_cards (edge getTrips, ярус B) — клиентского вызывателя нет.
     // get_user_travel_stats убран (TRIP-402): EXECUTE у authenticated отозван,
