@@ -114,6 +114,8 @@ jobs:
   #   2t check-db-types              — типы БД не отстали от миграций (отдельной джобой: нужен Docker)
   #   2u check-css-comments          — сломанный /*…*/ роняет правило из бандла (осиротевший/незакрытый)
   #   2v check-error-codes           — реестр кодов ошибок edge-контракта: эмиссия ⊆ словарь + append-only
+  #   2w check-invoke-discriminant   — дискриминант отказа invokeFn в корне результата (.data.code/.data.ok не растёт)
+  #   2x check-i18n-dynamic-keys     — DB/n8n-only key families (notif.tpl_* + emit()→n8n.*) must not be deleted (TRIP-299)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -235,6 +237,9 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-invoke-discriminant.mjs
+      - name: 2x — i18n dynamic keys (DB/n8n-only families must not be deleted)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-i18n-dynamic-keys.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
