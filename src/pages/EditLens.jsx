@@ -1108,9 +1108,11 @@ export default function EditLens({ tripId, shell, content }) {
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
           <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
             {showWarn && issues.length > 0 && (
-              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', boxShadow: 'var(--sh-3)', padding: 8 }}>
+              /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
+                 снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
+              <Card radius="md" pad="none" className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', boxShadow: 'var(--sh-3)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
-              </div>
+              </Card>
             )}
             <IconBtn
               size="fab"

@@ -1,7 +1,7 @@
 // @ts-check
 import React from 'react';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Badge, Btn, Card, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -75,9 +75,12 @@ export default function PaymentResultDialog({
 
               {/* Fail: help note */}
               {!isSuccess && (
-                <div className="t-meta" style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 'var(--r-sm)', color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
+                /* TRIP-343 объект 2 (канал 3): утоплённая заметка → <Card recessed>;
+                   бокс внутри оболочки диалога (объект 6). Примечание: канон recessed
+                   несёт рамку роли .card (1px --line) — у инлайна её не было. */
+                <Card recessed radius="md" pad="none" className="t-meta" style={{ padding: '9px 12px', color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
                   {t('sub.fail_help')}
-                </div>
+                </Card>
               )}
             </div>
 

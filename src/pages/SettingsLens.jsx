@@ -284,7 +284,9 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               divs that inherit it, while the numbered pills keep their own
               .t-meta (mono numerals) because an element's own rule beats
               inheritance. One class instead of two. */}
-          <Col className="t-meta t-sans" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
+          {/* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash) снята с
+              инлайна на <Card recessed>; колоночная раскладка сохранена классом .col. */}
+          <Card recessed radius="md" pad="none" className="col t-meta t-sans" style={{ padding: 14 }}>
             <Row align="a-start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
@@ -293,7 +295,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               <span className="badge badge--count">2</span>
               <div>{t('settings.tg_step2')}</div>
             </Row>
-          </Col>
+          </Card>
 
           <Row gap="g4">
             <Btn variant="secondary" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>

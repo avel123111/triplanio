@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Chip, Textarea } from '../../design/index';
+import { Btn, Card, Chip, Textarea } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import { CityAnchorRow } from './anchors';
 
@@ -80,13 +80,14 @@ export default function PanelAi({ ctx }) {
               can be added right here or skipped (same add-start control as step 2). */}
           <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
           {cities.map((c, i) => (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
+            /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
+            <Card key={c.id} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px' }}>
               <div className="t-meta" style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="trunc te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
               </div>
               <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
-            </div>
+            </Card>
           ))}
           {/* Return/finish — shown only for a round-trip (finish == origin). */}
           {returnCity?.city_name && <CityAnchorRow label={t('ai_plan.end')} city={returnCity} />}
