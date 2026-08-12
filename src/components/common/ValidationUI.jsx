@@ -6,6 +6,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
 import { validateEntity, issuesToShow, isFieldRequired } from '@/lib/validation';
+import { Card } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Hybrid display state: inline shows for TOUCHED fields; the summary panel and
@@ -192,7 +193,10 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
   if (list.length === 0) return null;
   const Chevron = expanded ? ChevronDown : ChevronRight;
   return (
-    <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--surface)', overflow: 'hidden', ...style }}>
+    // TRIP-343 объект 2 (канал 3): инлайн-облик поверхности (--surface + рамка +
+    // r-md + overflow:hidden) снят — скин несёт <Card radius="md" pad="none">; внешний
+    // style пробрасывается (позиционирование вызывателя).
+    <Card radius="md" pad="none" style={style}>
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
@@ -233,6 +237,6 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
           })}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

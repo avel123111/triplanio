@@ -1043,7 +1043,9 @@ export default function EditLens({ tripId, shell, content }) {
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
           {outOfPlanTransfers.length > 0 && (
-            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 'var(--r-sm)', background: 'var(--wash)', border: '1px solid var(--line)' }}>
+            /* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash+рамка+радиус)
+               снята с инлайна на <Card recessed>; остался раскладочный инлайн. */
+            <Card recessed radius="md" pad="none" style={{ marginTop: 14, padding: '11px 13px' }}>
               <div className="eyebrow" style={{ marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {t('tse.transfers_out_of_plan')}
               </div>
@@ -1054,7 +1056,7 @@ export default function EditLens({ tripId, shell, content }) {
                   </Chip>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
           </div>{/* /ts-leftscroll */}
           </>)}

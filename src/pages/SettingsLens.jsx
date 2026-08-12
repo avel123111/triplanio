@@ -402,7 +402,8 @@ function TelegramSection({ tripId }) {
   return (
     <Col gap="g6">
       {accounts.map(a => (
-        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
+        /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
+        <Card key={a.id} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
           {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
           <div className="tile" style={TG_TILE}>
             <Icon name="telegram" size={17} />
@@ -413,7 +414,7 @@ function TelegramSection({ tripId }) {
           </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
           <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
-        </div>
+        </Card>
       ))}
       <Btn variant="secondary" icon="plus" onClick={openConnect}>
         {t('telegram.connect_another')}
