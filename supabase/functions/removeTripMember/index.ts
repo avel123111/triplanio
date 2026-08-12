@@ -12,7 +12,7 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 import { purgePrivateDocsForMember } from '../_shared/personalDocsTeardown.ts';
-import { renderMemberLeftNotification, renderMemberRemovedNotification } from '../_shared/emailTemplate.ts';
+import { emit } from '../_shared/emit.ts';
 
 Deno.serve(withHandler('removeTripMember', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -84,79 +84,12 @@ Deno.serve(withHandler('removeTripMember', async (req, corsHeaders) => {
       });
     }
 
-    // M2/M3 — notify about the membership change. Inserted AFTER the member
-    // delete and with trip_member_id=null on purpose: the cascade above (and the
-    // line-46 cleanup) would otherwise wipe a member-keyed row. Best-effort.
-    try {
-      const { data: tripRow } = await supabaseAdmin
-        .from('trips').select('title, created_by').eq('id', member.trip_id).single();
-      const tripTitle = tripRow?.title ?? '';
-
-      if (isSelf) {
-        // M2 — member left voluntarily → tell the owner + admins (each in their language).
-        const { data: leaverUser } = await supabaseAdmin
-          .from('users').select('full_name').eq('id', member.user_id).limit(1);
-        const leaverName = member.user_full_name || leaverUser?.[0]?.full_name || member.invite_email || '';
-
-        // The trip owner lives in trips.created_by — there is NO 'owner' row in
-        // trip_members — so the owner must be added explicitly, alongside any
-        // active admin members.
-        const { data: managers } = await supabaseAdmin
-          .from('trip_members')
-          .select('user_id')
-          .eq('trip_id', member.trip_id)
-          .eq('status', 'active')
-          .in('role', ['owner', 'admin']);
-
-        const recipientIds = [...new Set([
-          tripRow?.created_by ?? null,
-          ...(managers ?? []).map((m: { user_id: string | null }) => m.user_id),
-        ].filter((id: string | null): id is string => !!id && id !== member.user_id))];
-
-        if (recipientIds.length) {
-          const { data: recipUsers } = await supabaseAdmin
-            .from('users').select('id, language').in('id', recipientIds);
-          const langById = new Map((recipUsers ?? []).map((u: { id: string; language: string | null }) => [u.id, u.language ?? 'en']));
-
-          const rows = recipientIds.map((uid) => {
-            const texts = renderMemberLeftNotification(langById.get(uid) ?? 'en', { name: leaverName, title: tripTitle });
-            return {
-              user_id: uid,
-              type: 'trip_member_left',
-              i18n_title_key: 'notif.tpl_member_left_title',
-              i18n_message_key: 'notif.tpl_member_left_msg',
-              i18n_params: { name: leaverName, trip: tripTitle },
-              title: texts.title,
-              message: texts.message,
-              trip_id: member.trip_id,
-              read: false,
-              created_by: user.id,
-            };
-          });
-          await supabaseAdmin.from('notifications').insert(rows);
-        }
-      } else if (member.user_id) {
-        // M3 — an admin removed a registered member → tell that member.
-        // trip_id=null: they can no longer open the trip, so no dead "open trip" link.
-        const { data: removedUser } = await supabaseAdmin
-          .from('users').select('language').eq('id', member.user_id).limit(1);
-        const lang = removedUser?.[0]?.language ?? 'en';
-        const texts = renderMemberRemovedNotification(lang, { title: tripTitle });
-        await supabaseAdmin.from('notifications').insert({
-          user_id: member.user_id,
-          type: 'trip_member_removed',
-          i18n_title_key: 'notif.tpl_member_removed_title',
-          i18n_message_key: 'notif.tpl_member_removed_msg',
-          i18n_params: { trip: tripTitle },
-          title: texts.title,
-          message: texts.message,
-          trip_id: null,
-          read: false,
-          created_by: user.id,
-        });
-      }
-    } catch (e) {
-      console.error('removeTripMember: change notification failed', e);
+    // TRIP-356: announce the membership change; n8n resolves the audience
+    // (M2: owner + admins on self-leave; M3: the removed member) and delivers.
+    if (isSelf) {
+      emit('member_left', { trip_id: member.trip_id, actor_id: member.user_id });
+    } else if (member.user_id) {
+      emit('member_removed', { trip_id: member.trip_id, recipient_id: member.user_id, actor_id: user.id });
     }
 
     return Response.json({ ok: true }, { headers: corsHeaders });

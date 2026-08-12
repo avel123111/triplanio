@@ -21,6 +21,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { emitTripReached2 } from '../_shared/analytics.ts';
+import { emit } from '../_shared/emit.ts';
 import { resolveRedeemRole } from './redeemRole.ts';
 
 const supabaseAdmin = createClient(
@@ -58,7 +59,7 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     }
 
     const { data: trip } = await supabaseAdmin
-      .from('trips').select('id, title, created_by').eq('id', link.trip_id).maybeSingle();
+      .from('trips').select('id, created_by').eq('id', link.trip_id).maybeSingle();
     if (!trip) return Response.json({ error: 'Trip not found', reason: 'trip_missing' }, { status: 404, headers: corsHeaders });
 
     // Owner already has full access.
@@ -131,24 +132,9 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     // North Star: did this join make the trip collaborative (owner + 1st member = 2)?
     await emitTripReached2(supabaseAdmin, trip.id, user.id);
 
-    // Best-effort: notify the trip owner that someone joined.
+    // TRIP-356: announce the join; n8n notifies the trip owner.
     if (trip.created_by && trip.created_by !== user.id) {
-      try {
-        await supabaseAdmin.from('notifications').insert({
-          user_id: trip.created_by,
-          type: 'trip_member_joined',
-          i18n_title_key: 'notif.tpl_joined_title',
-          i18n_message_key: 'notif.tpl_joined_msg',
-          i18n_params: { name: callerName, trip: trip.title },
-          title: 'New member joined',
-          message: `${callerName} joined \"${trip.title}\"`,
-          trip_id: trip.id,
-          read: false,
-          created_by: user.id,
-        });
-      } catch (e) {
-        console.error('join notification failed (non-fatal):', e);
-      }
+      emit('invite_accepted', { trip_id: trip.id, recipient_id: trip.created_by, actor_id: user.id });
     }
 
     return Response.json({ ok: true, tripId: trip.id, alreadyMember: false }, { headers: corsHeaders });
