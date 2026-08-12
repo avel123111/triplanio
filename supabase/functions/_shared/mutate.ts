@@ -96,8 +96,12 @@ async function loadTargetRow(
   scopeValue: string,
   targetId: string,
 ): Promise<Record<string, unknown> | null> {
+  // `table` опционален (ради `op:'rpc'`), но `loadTarget` бывает только у table-DML.
+  // Сузить тем же паттерном, что `buildPlan`: отсутствие = конфиг-ошибка, не no-op.
+  const table = action.table;
+  if (!table) throw new Error(`loadTarget requires a table for "${action.op}"`);
   const { data, error } = await supabaseAdmin
-    .from(action.table)
+    .from(table)
     .select('*')
     .eq('id', targetId)
     .eq(scopeCol, scopeValue)
