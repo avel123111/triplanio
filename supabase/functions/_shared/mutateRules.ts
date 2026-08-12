@@ -62,7 +62,7 @@ export type FieldSpec = {
    * и массив, `fx_overrides: []` прошёл бы и МОЛЧА сбросил курсы (массив вместо
    * map) — регресс соседнего домена. Тип-гейт держит форму строго.
    */
-  type: 'string' | 'number' | 'uuid' | 'date' | 'json' | 'array';
+  type: 'string' | 'number' | 'boolean' | 'uuid' | 'date' | 'json' | 'array';
   /** Обязательна на ВСТАВКЕ. На обновлении частичная правка законна. */
   required?: boolean;
   /** Кэп длины строки — тот же, что в CHECK (иначе БД отдаст 500 вместо 400). */
@@ -97,10 +97,28 @@ export type ActionSpec = {
    * (create-only): присланный id игнорируется, никакого UPDATE — append-only
    * ресурс (`trip_documents`: редактирования дока с клиента нет, а upsert с
    * чужим id правил бы чужую SHARED-строку, регресс TRIP-118). `delete` =
-   * удаление по id. Универсально: любой append-only ресурс берёт `insert`.
+   * удаление по id. `rpc` = тело действия — ОДИН атомарный RPC (>1 записи в
+   * транзакции: layover пишет waypoint-города + сегменты + recompute). Ветвь
+   * даёт те же авторизацию/кэпы/контракт ошибок/актор, что и table-DML;
+   * пустые RPC-обёртки «для симметрии» запрещены (TRIP-405). Универсально:
+   * любой append-only ресурс берёт `insert`, любая транзакция — `rpc`.
    */
-  op: 'upsert' | 'insert' | 'delete';
-  table: string;
+  op: 'upsert' | 'insert' | 'delete' | 'rpc';
+  /** Таблица DML. Необязательна ТОЛЬКО для `op:'rpc'` (пишет сам RPC). */
+  table?: string;
+  /** Имя атомарного RPC. Только `op:'rpc'`. */
+  rpc?: string;
+  /**
+   * Только `op:'rpc'`. ЧИСТОЕ отображение уже провалидированного входа (через
+   * `fields`/`validate`, в т.ч. per-segment `TRANSFER_FIELDS`) в аргументы RPC —
+   * без `p_actor`, его инъектит `buildPlan` (клиент актора не называет). Инфалибл:
+   * валидация к этому моменту прошла, здесь только маппинг имён колонок в
+   * `p_`-аргументы.
+   */
+  buildArgs?: (
+    values: Record<string, unknown>,
+    ctx: { actor: string; scopeValue: string },
+  ) => Record<string, unknown>;
   /** Имена требований; вычисляет их шов (`mutate.ts`), а не эта половина. */
   requires: readonly string[];
   /**
@@ -146,7 +164,8 @@ export type ResourceSpec = {
 export type WritePlan =
   | { op: 'insert'; table: string; values: Record<string, unknown> }
   | { op: 'update'; table: string; values: Record<string, unknown>; match: Record<string, unknown> }
-  | { op: 'delete'; table: string; match: Record<string, unknown> };
+  | { op: 'delete'; table: string; match: Record<string, unknown> }
+  | { op: 'rpc'; name: string; args: Record<string, unknown> };
 
 /** Подстановка актора в объявленные сервером колонки. */
 const ACTOR_TOKEN = '@actor';
@@ -174,6 +193,11 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
       return typeof value === 'string';
     case 'number':
       return typeof value === 'number' && Number.isFinite(value);
+    case 'boolean':
+      // Строгий тип-гейт: `free_cancellation`/`day_change` — boolean-колонки БД.
+      // Приведение `'true'`/`1` ЗАПРЕЩЕНО (как число не спутать со строкой): кривой
+      // тип → 400, а не молчаливая коэрция к неверному значению.
+      return typeof value === 'boolean';
     case 'uuid':
       return typeof value === 'string' &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -192,7 +216,9 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
 const bad = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
 
 /**
- * Белый список + кэпы. Возвращает ОЧИЩЕННЫЕ значения либо отказ 400.
+ * Вход действия: выбирает семантику обязательности (вставка/транзакция строгая,
+ * частичная правка — нет) и делегирует проверку `validateFields`. Возвращает
+ * ОЧИЩЕННЫЕ значения либо отказ 400.
  *
  * Кэпы дублируют CHECK в БД НАМЕРЕННО и в одну сторону: без них нарушение
  * приезжает пользователю как 500 с текстом Postgres, а не как внятное «слишком
@@ -204,15 +230,28 @@ export function validateInput(
   input: Record<string, unknown>,
   { isInsert }: { isInsert: boolean },
 ): { values: Record<string, unknown> } | Refusal {
-  const fields = action.fields ?? {};
-  const values: Record<string, unknown> = {};
+  // `op:'insert'`/`op:'rpc'` — ВСЕГДА вставка (create-only / транзакция без id),
+  // поэтому обязательность строгая независимо от `isInsert` из шва: `mutate.ts`
+  // считает `isInsert` по присланному id, а хостовый клиент мог прислать инертный
+  // id — тогда пропущенное обязательное поле проскочило бы к DB NOT NULL и
+  // вернулось сырым 500 вместо 400 (TRIP-399). id остаётся инертным (его
+  // игнорирует `buildPlan`).
+  const insert = isInsert || action.op === 'insert' || action.op === 'rpc';
+  return validateFields(action.fields ?? {}, input, { insert });
+}
 
-  // `op:'insert'` — ВСЕГДА вставка (create-only), поэтому обязательность строгая
-  // независимо от `isInsert` из шва: `mutate.ts` считает `isInsert` по присланному
-  // id, а хостовый клиент мог прислать инертный id — тогда пропущенное
-  // обязательное поле проскочило бы к DB NOT NULL и вернулось сырым 500 вместо
-  // 400 (TRIP-399). id остаётся инертным (его игнорирует `buildPlan`).
-  const insert = isInsert || action.op === 'insert';
+/**
+ * Белый список + кэпы над ОДНИМ набором полей. Вынесен из `validateInput`, чтобы
+ * `op:'rpc'` мог провалидировать вложенные объекты (каждый сегмент layover —
+ * `TRANSFER_FIELDS`) ТЕМ ЖЕ движком, а не копией правил (TRIP-405). Возвращает
+ * очищенные значения либо отказ 400.
+ */
+export function validateFields(
+  fields: Record<string, FieldSpec>,
+  input: Record<string, unknown>,
+  { insert }: { insert: boolean },
+): { values: Record<string, unknown> } | Refusal {
+  const values: Record<string, unknown> = {};
 
   for (const [name, spec] of Object.entries(fields)) {
     if (!Object.prototype.hasOwnProperty.call(input, name)) {
@@ -260,8 +299,20 @@ export function buildPlan(
     values: Record<string, unknown>;
   },
 ): WritePlan {
+  // `op:'rpc'` — тело действия транзакция, а не строка: аргументы даёт чистый
+  // `buildArgs` (валидация уже прошла), `p_actor` инъектит ШОВ, а не клиент —
+  // ровно как `forcedOnInsert:{created_by:'@actor'}` у table-DML.
+  if (action.op === 'rpc') {
+    if (!action.rpc) throw new Error(`${resource.name}: op:'rpc' requires an rpc name`);
+    const args = action.buildArgs
+      ? action.buildArgs(ctx.values, { actor: ctx.actor, scopeValue: ctx.scopeValue })
+      : {};
+    return { op: 'rpc', name: action.rpc, args: { ...args, p_actor: ctx.actor } };
+  }
+
   const scopeCol = resource.scope.column;
-  const { table } = action;
+  const table = action.table;
+  if (!table) throw new Error(`${resource.name}: ${action.op} requires a table`);
   const scoped = { [scopeCol]: ctx.scopeValue };
 
   if (action.op === 'delete') {
@@ -297,6 +348,7 @@ export function buildPlan(
 
 import { TRIP_BUDGET } from './resources/tripBudget.ts';
 import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
+import { TRIP_BOOKING } from './resources/tripBooking.ts';
 import { ACCOUNT } from './resources/account.ts';
 import { USER_PLACE } from './resources/userPlace.ts';
 
@@ -308,6 +360,7 @@ import { USER_PLACE } from './resources/userPlace.ts';
 export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP_BUDGET.name]: TRIP_BUDGET,
   [TRIP_DOCUMENT.name]: TRIP_DOCUMENT,
+  [TRIP_BOOKING.name]: TRIP_BOOKING,
   [ACCOUNT.name]: ACCOUNT,
   [USER_PLACE.name]: USER_PLACE,
 };

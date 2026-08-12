@@ -13,15 +13,14 @@
  * view-model exposes the derived values both shells need to build it.
  */
 import React, { useState, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Card, FileRow, Severity, useToast } from '@/design/index';
-import { supabase } from '@/api/supabaseClient';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { optimisticContentUpdate, invalidateTripData } from '@/lib/trip-data';
+import { optimisticContentUpdate, invalidateTripData, TRIP_CONTENT_KEY, TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { uploadTripFiles, uploadErrorText, persistEntityDocuments } from '@/lib/documentMutations';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
@@ -709,73 +708,58 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit, subEv
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Entity source loader (shared by SourceViewLoader modal + editor panel)
-//  Loads a row by (kind,id) plus its related city_visit(s). One loader, two
-//  shells — avoids duplicating the fetch logic.
+//  Entity source (shared by SourceViewLoader modal + editor panel)
+//  Reads the booking row + its related city_visit(s) straight from the
+//  getTripDetails cache the screen already loaded (TRIP-405) — NO direct SELECT.
+//  `useQuery(enabled:false)` is a read-only SUBSCRIPTION to the caches TripView /
+//  EditLens fill (same keys, shared query): it never fetches on its own and
+//  re-derives when an edit invalidates them, so the old refreshKey re-fetch is
+//  gone (the cache is now the single source of truth). One source, two shells.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getEntityRow(table, id) {
-  const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
-  if (error) throw error;
-  return data;
-}
+/** Booking kind → its collection key inside the trip-content cache. */
+const COLL_BY_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
 
-export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0 } = {}) {
+const findById = (list, id) => (Array.isArray(list) && id ? (list.find((r) => r.id === id) ?? null) : null);
+
+export function useEntitySource(kind, id, { tripId, open = true, onError } = {}) {
   const { lang } = useI18n();
-  // State is TAGGED with the id it belongs to. A persistently-mounted consumer
-  // (SourceViewLoader lives for the whole TripView) keeps this state between
-  // opens, so without the tag the next open would briefly render the PREVIOUS
-  // entity before the effect runs — flashing stale content and forcing a
-  // remount (the "appears → disappears → appears" flicker).
-  const [src, setSrc] = useState({ id: null, data: null, visit: null, fromVisit: null, toVisit: null });
+  // Read-only observers of the caches the parent screen already populates. No
+  // queryFn here — the running parent query owns it; enabled:false = never fetch.
+  const { data: content } = useQuery({ queryKey: TRIP_CONTENT_KEY(tripId), enabled: false });
+  const { data: shell } = useQuery({ queryKey: TRIP_SHELL_KEY(tripId), enabled: false });
 
+  const data = useMemo(
+    () => (open && content ? findById(content[COLL_BY_KIND[kind]], id) : null),
+    [open, content, kind, id],
+  );
+
+  // Related city_visit(s) from the shell cache. Localize `city_name` ONCE here, at
+  // the source seam, so every consumer (view body AND the edit dialog reached via
+  // EventSourcePanel) gets a named visit — without it transfer validation rendered
+  // "…въезда в undefined" in edit mode.
+  const visits = shell?.cityVisits;
+  const visit = useMemo(
+    () => (data && (kind === 'hotel' || kind === 'activity')
+      ? withCityName(findById(visits, data.city_visit_id), lang) : null),
+    [data, kind, visits, lang],
+  );
+  const fromVisit = useMemo(
+    () => (data && kind === 'transfer' ? withCityName(findById(visits, data.from_city_visit_id), lang) : null),
+    [data, kind, visits, lang],
+  );
+  const toVisit = useMemo(
+    () => (data && kind === 'transfer' ? withCityName(findById(visits, data.to_city_visit_id), lang) : null),
+    [data, kind, visits, lang],
+  );
+
+  // Row absent while the trip content IS loaded = it was deleted (another member,
+  // or this session) → let the shell close, matching the old fetch's throw→onError.
   React.useEffect(() => {
-    if (!open || !id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        // Gather the row AND its related city_visit(s) before publishing, so the
-        // view shell mounts ONCE with complete data instead of re-laying-out in
-        // two passes.
-        const next = { id, data: null, visit: null, fromVisit: null, toVisit: null };
-        if (kind === 'hotel') {
-          next.data = await getEntityRow('hotel_stays', id);
-          if (next.data?.city_visit_id) next.visit = await getEntityRow('city_visits', next.data.city_visit_id).catch(() => null);
-        } else if (kind === 'transfer') {
-          next.data = await getEntityRow('transfers', id);
-          const [fv, tv] = await Promise.all([
-            next.data?.from_city_visit_id ? getEntityRow('city_visits', next.data.from_city_visit_id).catch(() => null) : null,
-            next.data?.to_city_visit_id ? getEntityRow('city_visits', next.data.to_city_visit_id).catch(() => null) : null,
-          ]);
-          next.fromVisit = fv; next.toVisit = tv;
-        } else if (kind === 'activity') {
-          next.data = await getEntityRow('activities', id);
-          if (next.data?.city_visit_id) next.visit = await getEntityRow('city_visits', next.data.city_visit_id).catch(() => null);
-        } else if (kind === 'service') {
-          next.data = await getEntityRow('trip_services', id);
-        }
-        if (!cancelled) setSrc(next);
-      } catch {
-        if (!cancelled) onError?.();
-      }
-    })();
-    return () => { cancelled = true; };
-    // refreshKey lets callers force a re-fetch after a live edit/toggle (this hook
-    // reads rows directly, not via react-query, so cache invalidation alone misses it).
-  }, [open, kind, id, refreshKey]);
+    if (open && id && content && !findById(content[COLL_BY_KIND[kind]], id)) onError?.();
+  }, [open, id, kind, content]);
 
-  // Only expose data once it belongs to the currently-requested id; otherwise the
-  // consumer would render the stale previous entity until the effect resolves.
-  const fresh = src.id === id;
-  // Resolve the localized `city_name` ONCE here, at the load seam, so every consumer
-  // (view body AND the edit dialog reached via EventSourcePanel) gets a named visit —
-  // without it, transfer validation rendered "…въезда в undefined" in edit mode.
-  // Memoized per source object so the returned visits keep a stable reference across
-  // unrelated re-renders (safe to use in consumer effect deps).
-  const visit = useMemo(() => (fresh ? withCityName(src.visit, lang) : null), [fresh, src.visit, lang]);
-  const fromVisit = useMemo(() => (fresh ? withCityName(src.fromVisit, lang) : null), [fresh, src.fromVisit, lang]);
-  const toVisit = useMemo(() => (fresh ? withCityName(src.toVisit, lang) : null), [fresh, src.toVisit, lang]);
-  return { data: fresh ? src.data : null, visit, fromVisit, toVisit };
+  return { data, visit, fromVisit, toVisit };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

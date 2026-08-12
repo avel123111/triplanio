@@ -127,8 +127,8 @@ function makeSegment(defCur = 'EUR') {
   };
 }
 
-import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { errorText } from '@/lib/errorText';
 import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -139,9 +139,9 @@ import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
 import { aiField } from '@/lib/ai-values';
-import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
+import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
+import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -845,7 +845,6 @@ export default function EventEditDialog({
     // creates keep the awaited mutation (avoids the view-panel read race / multi-row).
     const optimistic = !entity && tripId && OPT_CACHE[currentKind] && !isComplexTransferCreate;
     if (!optimistic) { saveMut.mutate(); return; }
-    const table = ENTITY_TABLE_BY_KIND[currentKind];
     const cacheKind = OPT_CACHE[currentKind];
     const payload = buildCurrentPayload();
     const tempId = 'tmp-' + Math.random().toString(36).slice(2);
@@ -859,7 +858,8 @@ export default function EventEditDialog({
     onOpenChange(false);
     (async () => {
       try {
-        await writeRows(supabase.from(table).insert({ ...payload, created_by: user?.id }));
+        // Same single door as the awaited path — create through `trip-booking`.
+        await upsert(currentKind, null, payload, tripId);
         invalidateTripData(qc, tripId);
         // Same commit point as saveMut below (see removeOrphanedFiles).
         removeOrphanedFiles(seenDocPaths.current, form.documents);
@@ -867,7 +867,8 @@ export default function EventEditDialog({
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
         invalidateTripData(qc, tripId);
         removeTripFiles(collectDocPaths(form.documents));
-        toast({ title: t('event.save_failed'), description: err?.message || String(err), variant: 'destructive' });
+        // Honest refusal: generic code → localized line, never raw server text (TRIP-378).
+        toast({ title: t('event.save_failed'), description: errorText(t, err?.code), variant: 'destructive' });
       }
     })();
   };
@@ -877,25 +878,25 @@ export default function EventEditDialog({
     mutationFn: async () => {
       if (currentKind === 'hotel') {
         const payload = buildHotelPayload(form, visit, tz);
-        return upsert('hotel_stays', entity, payload, user);
+        return upsert('hotel', entity, payload, tripId);
       }
       if (currentKind === 'transfer') {
         // Layover transfer (create mode): build a chain of separate transfer
         // rows through waypoint city_visits (TRIP_EDIT_MODE_TZ §11).
         if (!entity && form.hasLayovers && Array.isArray(form.segments) && form.segments.length >= 2) {
-          return saveLayoverChain(form, fromVisit, toVisit, tripId, user, t);
+          return saveLayoverChain(form, fromVisit, toVisit, tripId, t);
         }
         const payload = buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz);
-        const created = await upsert('transfers', entity, payload, user);
+        const created = await upsert('transfer', entity, payload, tripId);
         return created;
       }
       if (currentKind === 'activity') {
         const payload = buildActivityPayload(form, visit, tz);
-        return upsert('activities', entity, payload, user);
+        return upsert('activity', entity, payload, tripId);
       }
       // service / car_rental
       const payload = buildServicePayload(form, tripId, t);
-      return upsert('trip_services', entity, payload, user);
+      return upsert('service', entity, payload, tripId);
     },
     onSuccess: () => {
       // Commit point: every file staged this session that the saved form no
@@ -909,9 +910,12 @@ export default function EventEditDialog({
       onOpenChange(false);
     },
     onError: (err) => {
+      // Seam refusal carries a generic `code` → localized line (never raw server
+      // prose, TRIP-378); a client-side throw (e.g. err_layover_city) keeps its
+      // own localized message.
       toast({
         title: t('event.save_failed'),
-        description: err?.message || String(err),
+        description: err && 'code' in err ? errorText(t, err.code) : err?.message,
         variant: 'destructive',
       });
     },
@@ -923,11 +927,11 @@ export default function EventEditDialog({
       // Entity gone → every file it referenced (originals + any staged this
       // session) is orphaned. deleteSourceEntity sweeps best-effort on success
       // (TRIP-117); seenDocPaths is the dialog's broader set (originals + staged).
-      const { error, deleted } = await deleteSourceEntity(currentKind, entity.id, [...seenDocPaths.current]);
-      if (error) throw error;
-      // 0 rows removed = RLS hid the row (session expired / not permitted) or it
-      // was already gone → surface (onError), don't close as a phantom success.
-      if (!deleted) throw new Error('write_rejected');
+      const { error, deleted, code } = await deleteSourceEntity(currentKind, entity.id, tripId, [...seenDocPaths.current]);
+      if (error) throw refusalError(code);
+      // deleted:false = the row is already gone (seam answered 404) → surface,
+      // don't close as a phantom success; refetch reconciles the cache.
+      if (!deleted) { const e = new Error('write_rejected'); e.code = 'NOT_FOUND'; throw e; }
     },
     onSuccess: () => {
       committedRef.current = true;
@@ -937,7 +941,7 @@ export default function EventEditDialog({
     onError: (err) => {
       toast({
         title: t('event.delete_failed'),
-        description: err?.message && err.message !== 'write_rejected' ? err.message : undefined,
+        description: err && 'code' in err ? errorText(t, err.code) : undefined,
         variant: 'destructive',
       });
     },
@@ -1412,15 +1416,25 @@ export default function EventEditDialog({
 //  the new lat/lng + flight_number additions.
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function upsert(table, entity, payload, user) {
-  // Single write contract (writeRows): throws on error AND on a silent 0-row
-  // RLS reject. By-id update / insert always affects exactly one row, so we
-  // return the first (was .select().single()).
-  const builder = entity
-    ? supabase.from(table).update(payload).eq('id', entity.id)
-    : supabase.from(table).insert({ ...payload, created_by: user?.id });
-  const [row] = await writeRows(builder);
-  return row;
+// A seam refusal → an Error carrying the generic `.code` so the mutation onError
+// words it via `errorText` (never raw server prose, TRIP-378).
+function refusalError(code) {
+  const e = new Error(code || 'write_rejected');
+  e.code = code;
+  return e;
+}
+
+// One booking write through the single door (TRIP-405): `trip-booking/<action>`.
+// The seam gates the editor role + trip scope on the SERVER (service_role) and
+// stamps `created_by` from the JWT — the client never sends it. `id` present →
+// UPDATE by {id, trip_id} (edit); absent → INSERT. A refusal comes back as a
+// generic `code` (never raw server prose, TRIP-378): we rethrow it as an Error
+// carrying `.code`, so the mutation's onError words it via `errorText`.
+async function upsert(action, entity, payload, tripId) {
+  const body = entity ? { tripId, id: entity.id, ...payload } : { tripId, ...payload };
+  const { data, error, code } = await invokeFn(`trip-booking/${action}`, { body });
+  if (error) throw refusalError(code);
+  return data?.data ?? null; // the seam answers { data: row }
 }
 
 function buildHotelPayload(form, visit, tz) {
@@ -1487,7 +1501,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
 // chain order, then runs a final recompute_trip. This replaces the old client
 // insert→trigger→renumber sequence, which raced the trigger (waypoint at provisional
 // position 0 was laid first and its date/order got corrupted).
-async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
+async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
   const segs = form.segments;
   const N = segs.length;
 
@@ -1530,14 +1544,18 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     notes: i === 0 ? (form.notes || null) : null,
   }));
 
-  const { error } = await supabase.rpc('add_layover_transfer', {
-    p_trip: tripId,
-    p_from: fromVisit?.id,
-    p_to: toVisit?.id,
-    p_waypoints: waypoints,
-    p_segments: segments,
+  // Atomic layover write through the single door (TRIP-405): op:'rpc' →
+  // add_layover_transfer under service_role, with p_actor injected from the JWT.
+  const { error, code } = await invokeFn('trip-booking/transfer-layover', {
+    body: {
+      tripId,
+      from_city_visit_id: fromVisit?.id,
+      to_city_visit_id: toVisit?.id,
+      waypoints,
+      segments,
+    },
   });
-  if (error) throw error;
+  if (error) throw refusalError(code);
   return null;
 }
 

@@ -791,6 +791,7 @@ export default function EditLens({ tripId, shell, content }) {
   } else if (leftPanel?.type === 'event') {
     leftPanelEl = (
       <EventSourcePanel
+        tripId={tripId}
         kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
         autoEdit={leftPanel.autoEdit} canEdit onClose={closePanelAndSync}
       />

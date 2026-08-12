@@ -335,6 +335,7 @@ export const DOORS = {
   // ── seam-двери: гейт в шве _shared/mutate.ts, сверяется с requires спецификации (TRIP-394) ──
   trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
   trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
+  trip_booking:          ['editor'],          // hotel/transfer/activity/service upsert+delete + transfer-layover(rpc); Pro нигде (TRIP-405)
   account:               ['self'],            // profile: своя строка users (scope id=actor), Pro нигде (TRIP-400)
   user_place:            ['self'],            // place + place/delete: свой user_custom_visits (scope user_id=actor), Pro нигде (TRIP-402)
 

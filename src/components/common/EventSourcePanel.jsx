@@ -18,19 +18,17 @@ import { PanelShell, kindIcon } from '@/components/common/EventPanels';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
+import { errorText } from '@/lib/errorText';
 import { cityLabel } from '@/lib/trip-cities';
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };
 
-export default function EventSourcePanel({ kind, id, canEdit = false, warning = null, autoEdit = false, onClose }) {
+export default function EventSourcePanel({ tripId, kind, id, canEdit = false, warning = null, autoEdit = false, onClose }) {
   const { t, lang } = useI18n();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(autoEdit);
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Bumped after a live edit so the view re-reads the row (this panel loads the
-  // entity directly, so react-query invalidation alone wouldn't refresh it).
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Reset view/edit state when a different entity is opened. Skip the first run
   // so an autoEdit intent (edit-from-timeline) isn't immediately cleared.
@@ -40,7 +38,9 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     setEditMode(false); setConfirmDel(false);
   }, [kind, id]);
 
-  const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { open: true, onError: () => onClose?.(), refreshKey });
+  // Reads the row from the getTripDetails cache (TRIP-405): a live edit invalidates
+  // that cache and this hook re-derives — no manual re-read key needed anymore.
+  const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { tripId, open: true, onError: () => onClose?.() });
   // Docs state for the shared view body (read-only here — no upload in view mode).
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, data, canEdit);
 
@@ -69,7 +69,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       <EventEditDialog
         open variant="panel" kind={kind} tripId={data.trip_id} entity={data}
         visit={visit} fromVisit={fromVisit} toVisit={toVisit}
-        onOpenChange={(o) => { if (!o) { setEditMode(false); invalidate(); setRefreshKey((k) => k + 1); } }}
+        onOpenChange={(o) => { if (!o) { setEditMode(false); invalidate(); } }}
       />
     );
   }
@@ -92,7 +92,6 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   const doDelete = async () => {
     if (!ENTITY_TABLE_BY_KIND[kind]) return;
-    const tripId = data.trip_id;
     const cacheKind = CACHE_KIND[kind];
     // Entity gone → its attachments are orphaned. Capture their object keys
     // before delete; deleteSourceEntity sweeps best-effort only once the row is
@@ -105,21 +104,21 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       optimisticContentUpdate(qc, tripId, cacheKind, 'remove', { id: data.id });
       onClose?.();
       (async () => {
-        const { error, deleted } = await deleteSourceEntity(kind, data.id, orphanPaths);
+        const { error, deleted, code } = await deleteSourceEntity(kind, data.id, tripId, orphanPaths);
         // error OR 0-row reject (deleted:false) → undo the optimistic removal so
         // the entity doesn't vanish on a write that never happened.
         if (error || !deleted) {
           if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
-          toast({ description: t('event.delete_failed') + (error ? ': ' + error.message : ''), variant: 'destructive' });
+          toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' });
         }
         invalidate();
       })();
       return;
     }
     setDeleting(true);
-    const { error, deleted } = await deleteSourceEntity(kind, data.id, orphanPaths);
+    const { error, deleted, code } = await deleteSourceEntity(kind, data.id, tripId, orphanPaths);
     setDeleting(false);
-    if (error || !deleted) { toast({ description: t('event.delete_failed') + (error ? ': ' + error.message : ''), variant: 'destructive' }); return; }
+    if (error || !deleted) { toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' }); return; }
     invalidate();
     onClose?.();
   };

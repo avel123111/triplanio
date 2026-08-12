@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Single delete primitive for trip source entities (hotel / transfer / activity
  * / service) and the canonical kind→table map.
@@ -12,9 +13,8 @@
  * call sites keep only their own wrapper (optimistic cache / toast / mutation).
  */
 
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { writeRows } from '@/lib/trip-data';
 
 /** Source entity kind → its DB table. Single source of truth. */
 export const ENTITY_TABLE_BY_KIND = {
@@ -25,33 +25,36 @@ export const ENTITY_TABLE_BY_KIND = {
 };
 
 /**
- * Delete a source entity row and best-effort sweep its orphaned `trips`-bucket
- * files. Files are removed ONLY when the row delete succeeded (never on a failed
- * delete / rollback). `orphanPaths` is supplied by the caller because each
- * surface knows its own set: the edit dialog tracks files staged this session,
- * the panels read them off the entity. The sweep never throws (best-effort).
+ * Delete a source entity row through the single write door (TRIP-405) and
+ * best-effort sweep its orphaned `trips`-bucket files. The row delete now goes
+ * through the seam (`trip-booking/<kind>/delete`): the editor gate + trip scope
+ * live on the SERVER (service_role), not RLS + a bare client `.delete()`. Files
+ * are still swept from the CLIENT (direct Storage bytes are a declared boundary,
+ * handoff §G) and ONLY once the row is actually gone (never on a failed delete /
+ * rollback). `orphanPaths` is supplied by the caller because each surface knows
+ * its own set. The sweep never throws (best-effort).
  *
  * @param {string} kind - hotel | transfer | activity | service
  * @param {string} id - entity row id
+ * @param {string} tripId - scopes the row and gates the right (server-side)
  * @param {string[]} orphanPaths - object keys to remove once the row is gone
- * @returns {Promise<{ error: any, deleted: boolean }>} `deleted` is false when
- *   the row still exists after the call — a silent 0-row RLS reject (session
- *   expired / not permitted) or an already-gone row. Callers must NOT treat
- *   `deleted:false` as success (it used to look like one: bare `.delete()`
- *   returned `error:null` and the UI closed as if it worked).
+ * @returns {Promise<{ error: any, deleted: boolean, code?: string }>} `deleted`
+ *   is false when the row no longer exists (seam answers 404 NOT_FOUND — another
+ *   member removed it): callers must NOT treat it as success. `error` carries a
+ *   generic `code` for a real refusal (403 not-editor / 401 expired / 500) so the
+ *   caller words it via `errorText` — never raw server prose (TRIP-378).
  */
-export async function deleteSourceEntity(kind, id, orphanPaths) {
-  const table = ENTITY_TABLE_BY_KIND[kind];
-  if (!table) return { error: new Error(`unknown entity kind: ${kind}`), deleted: false };
-  try {
-    // writeRows(expectRow:false): reads the deleted rows so a silent 0-row RLS
-    // reject is visible (deleted:false) instead of a phantom success. Files are
-    // swept ONLY when a row was actually removed.
-    const rows = await writeRows(supabase.from(table).delete().eq('id', id), { expectRow: false });
-    const deleted = rows.length > 0;
-    if (deleted) removeTripFiles(orphanPaths);
-    return { error: null, deleted };
-  } catch (error) {
-    return { error, deleted: false };
+export async function deleteSourceEntity(kind, id, tripId, orphanPaths) {
+  if (!ENTITY_TABLE_BY_KIND[kind]) {
+    return { error: new Error(`unknown entity kind: ${kind}`), deleted: false };
   }
+  const { error, code } = await invokeFn(`trip-booking/${kind}/delete`, { body: { tripId, id } });
+  if (error) {
+    // 404 = row already gone: not a failure, but not a delete WE did → deleted:false
+    // so the caller reconciles (undo optimistic removal) without a scary toast.
+    if (code === 'NOT_FOUND') return { error: null, deleted: false };
+    return { error: new Error(code || 'write_rejected'), deleted: false, code };
+  }
+  removeTripFiles(orphanPaths); // best-effort; the row is gone
+  return { error: null, deleted: true };
 }
