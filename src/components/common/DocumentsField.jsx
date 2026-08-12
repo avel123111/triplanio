@@ -123,35 +123,38 @@ export default function DocumentsField({
         </div>
       )}
 
+      {/* Drop zone — поведение (клик/drag) вокруг Card, скин на канон add
+          (Pavel: Card владеет скином, поведение композится вокруг). */}
       {canAddMore && (
         <div
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}
         >
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept={accept}
-            style={{ display: 'none' }}
-            onChange={(e) => uploadFiles(e.target.files)}
-          />
-          {uploading ? (
-            <div className="t-body row row--g4">
-              <span className="spin spin--ring" />
-              {t('common.loading')}
-            </div>
-          ) : (
-            <>
-              <Icon name="upload" size={24} />
-              <b>{docs.length === 0
-                ? t('doc.upload_label')
-                : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
-              <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
-            </>
-          )}
+          <Card variant="add" radius="md" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept={accept}
+              style={{ display: 'none' }}
+              onChange={(e) => uploadFiles(e.target.files)}
+            />
+            {uploading ? (
+              <div className="t-body row row--g4">
+                <span className="spin spin--ring" />
+                {t('common.loading')}
+              </div>
+            ) : (
+              <>
+                <Icon name="upload" size={24} />
+                <b>{docs.length === 0
+                  ? t('doc.upload_label')
+                  : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
+                <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
+              </>
+            )}
+          </Card>
         </div>
       )}
     </Frame>

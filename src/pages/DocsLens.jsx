@@ -283,34 +283,35 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               </Col>
             )}
 
-            {/* Drop zone */}
-            <Col
-              gap="g3"
-              className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
+            {/* Drop zone — поведение (клик/drag) вокруг Card, скин на канон add
+                (Pavel: Card владеет скином, поведение композится вокруг). */}
+            <div
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept={UPLOAD_ACCEPT}
-                style={{ display: 'none' }}
-                onChange={e => uploadFiles(e.target.files)}
-              />
-              {uploading ? (
-                <Row gap="g4" className="t-body">
-                  <span className="spin spin--ring" />
-                  {t('common.loading')}
-                </Row>
-              ) : (
-                <>
-                  <Icon name="upload" size={24} />
-                  <b>{documents.length === 0 ? t('doc.upload_label') : t('doc.add_more_files')}</b>
-                  <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
-                </>
-              )}
-            </Col>
+              <Card variant="add" radius="md" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept={UPLOAD_ACCEPT}
+                  style={{ display: 'none' }}
+                  onChange={e => uploadFiles(e.target.files)}
+                />
+                {uploading ? (
+                  <Row gap="g4" className="t-body">
+                    <span className="spin spin--ring" />
+                    {t('common.loading')}
+                  </Row>
+                ) : (
+                  <>
+                    <Icon name="upload" size={24} />
+                    <b>{documents.length === 0 ? t('doc.upload_label') : t('doc.add_more_files')}</b>
+                    <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
+                  </>
+                )}
+              </Card>
+            </div>
           </div>
         </div>
 
@@ -578,14 +579,14 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
         <DocCard key={d.id} doc={d} scope={scope} members={members} profiles={profiles} onOpenDetail={onOpenDetail} />
       ))}
       {canAdd && (
-        <button
+        <Card as="button" variant="add" radius="md"
           className={`col col--g4 col--j-center dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
           onClick={() => onOpenAdd?.()}>
           <span className="dl-addcard__ic">
             <Icon name="plus" size={22} />
           </span>
           <b>{t('doc.add_doc')}</b>
-        </button>
+        </Card>
       )}
     </div>
   );
