@@ -101,6 +101,9 @@ const TX = {
   forceStates: {
     default: 'Обычная', hover: 'Наведение', active: 'Нажатие',
     focus: 'Фокус', disabled: 'Недоступна', loading: 'Загрузка',
+    // Ось состояний карточки (объект 2)
+    selected: 'Выбрана (aria-selected)', busy: 'Занята · проверка (aria-busy)',
+    parsed: 'Разобрана', locked: 'Заблокирована (Pro)', dragover: 'Перетаскивание (data-dragover)',
   },
   save: 'Сохранить', close: 'Закрыть', placeholder: 'Введите значение',
   sample: 'Съешь ещё этих мягких булок · Sphinx of black quartz · 0123456789',
@@ -385,7 +388,39 @@ const RECIPES = {
         : v === 'flush' ? <Skeleton h={64} r={0} />
           : v === 'add' ? <b>{TX.cardHead}</b>
             : <><CardHeader title={TX.cardHead} /><p className="t-body">{TX.cardBody}</p></>;
+    // Ось СОСТОЯНИЙ карточки (TRIP-343 объект 2): невоспроизводимые в статике
+    // состояния под ПЕРЕКЛЮЧАТЕЛЯМИ, как у кнопки (:243). Каждое несёт РЕАЛЬНЫЙ
+    // проп/атрибут (закон 5: состояние = данные, не класс), приёмка — свой
+    // переключатель + подпись именем:
+    //   hover    → data-hovered на обёртке-поведении → канон [data-hovered] > .card--interactive
+    //   selected → aria-selected на обёртке          → канон [aria-selected] > .card--interactive
+    //   focus    → зеркало data-force в Kit.css (:focus-visible не форсится), как у кнопки
+    //   parsed / locked → пропы (свой канон .card--parsed/.card--locked)
+    //   busy     → ariaBusy → aria-busy (несущий атрибут ai-blk «проверяю/занята»; облик — канон покоя, нового скина не заводим)
+    //   dragover → dataDragover → data-dragover (несущий атрибут дропзоны; облик — канон покоя)
+    const cardState = (s) => (
+      <div
+        data-hovered={s === 'hover' ? '' : undefined}
+        aria-selected={s === 'selected' ? 'true' : undefined}
+      >
+        <Card
+          as="button"
+          radius="md"
+          interactive
+          parsed={s === 'parsed'}
+          locked={s === 'locked'}
+          ariaBusy={s === 'busy'}
+          dataDragover={s === 'dragover'}
+        >
+          <CardHeader title={TX.cardHead} />
+          <p className="t-body">{TX.cardBody}</p>
+        </Card>
+      </div>
+    );
     return [
+      {
+        items: [it('force', <ForceHarness kind="card" states={['default', 'hover', 'focus', 'selected', 'busy', 'parsed', 'locked', 'dragover']} render={cardState} />, true)],
+      },
       {
         label: 'слот CardHeader (заголовок · подзаголовок · действие справа)',
         items: [it('CardHeader', <div className="grow"><Card radius="lg"><CardHeader title={TX.cardTitle} subtitle="Подзаголовок" action={<Badge variant="quiet">{TX.canon}</Badge>} /><p className="t-body">{TX.cardBody}</p></Card></div>, true)],
