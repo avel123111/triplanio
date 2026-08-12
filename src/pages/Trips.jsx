@@ -186,7 +186,7 @@ const TripCard = ({ trip, onClick }) => {
   const bg = coverBg(trip);
 
   return (
-    <button className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
+    <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
       {/* background */}
       <div className="tc__bg" style={{ background: bg || undefined }}>
         {trip.cover_image_url && (
@@ -237,7 +237,7 @@ const TripCard = ({ trip, onClick }) => {
           </div>
         )}
       </div>
-    </button>
+    </Card>
   );
 };
 

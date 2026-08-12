@@ -5502,12 +5502,22 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 18px;
 }
+/* TRIP-343 объект 2 (G): постер трипа на `<Card as="button" pad="none" radius="lg">`.
+   Форма ПОСТЕР (контракт «.tc вне ролей, только радиус»): изображение до краёв,
+   из ролей взяты радиус (`.card--r-lg` 20) + клип (`.card--flush` overflow:hidden)
+   + рамка/фон роли `.card` (фон кроет обложка). `.tc` — раскладочный остаток +
+   rest-тень постера (--sh-1, высота, не роль). `.tc--band` (полоса-шапка) остаётся
+   СЫРЫМ <div> — это не карточка (известный не-Card вызыватель, потому `tc` не в
+   card-homed): у неё нет поверхности вовсе.
+   visual-diff-exempt: .tc background — было none, фон роли --surface на .card (обложка кроет) — объект 2
+   visual-diff-exempt: .tc border — рамка роли переехала на .card (тот же 1px --line) — объект 2
+   visual-diff-exempt: .tc border-radius — радиус постера переехал на .card--r-lg (тот же r-xl 20) — объект 2
+   visual-diff-exempt: .tc overflow — клип переехал на .card--flush (pad="none") — объект 2
+   visual-diff-exempt: .tc padding — переехал на .card--flush (pad="none") — объект 2 */
 .tc {
-  position: relative; display: block; border-radius: var(--r-xl);
-  overflow: hidden; cursor: pointer; text-align: left; font-family: inherit;
-  min-height: 256px; border: 1px solid var(--line); box-shadow: var(--sh-1);
+  position: relative; display: block; cursor: pointer; text-align: left; font-family: inherit;
+  min-height: 256px; box-shadow: var(--sh-1);
   transition: box-shadow .24s var(--ease-out);
-  background: none; padding: 0;
 }
 /* Полоса-обложка: тот же постер внутри карточки, где он не карточка, а шапка
    (превью трипа в планировщике). Ни рамки, ни тени, ни подъёма при наведении -

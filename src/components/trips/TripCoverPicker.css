@@ -2,15 +2,17 @@
    1:1 visual port of the former utility classes. */
 
 
-/* preview frame — was: relative w-full h-[120px] rounded-lg overflow-hidden border bg-muted */
+/* preview frame — TRIP-343 объект 2 (G): скин (рамка+радиус+фон+клип) на
+   `<Card pad="none" radius="md">`; `.tcp__preview` — раскладочный остаток (размер).
+   Фон роли `.card` (--surface) кроется обложкой/плейсхолдером; был --surface-2.
+   visual-diff-exempt: .tcp__preview background — фон роли --surface на .card (обложка кроет), был --surface-2 — объект 2
+   visual-diff-exempt: .tcp__preview border — рамка роли на .card (тот же 1px --line) — объект 2
+   visual-diff-exempt: .tcp__preview border-radius — радиус на .card--r-md (тот же 16) — объект 2
+   visual-diff-exempt: .tcp__preview overflow — клип на .card--flush (pad="none") — объект 2 */
 .tcp__preview {
   position: relative;
   width: 100%;
   height: 120px;
-  border-radius: var(--r-md);              /* rounded-lg (16px) */
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: var(--surface-2);            /* bg-muted */
 }
 .tcp__img { width: 100%; height: 100%; object-fit: cover; }
 /* was: w-full h-full flex items-center justify-center text-3xl opacity-30 */
