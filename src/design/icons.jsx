@@ -8,6 +8,7 @@ import {
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
   Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
+  Footprints,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -123,6 +124,11 @@ const LUCIDE = {
   // «ползунки фильтра» жили сырым lucide-импортом на экране. Тот же lucide,
   // ноль визуальных изменений — форк-кнопка садится на канон `IconBtn`.
   sliders: SlidersHorizontal,
+  // Трансфер «пешком» (TRIP-262): пилюля переезда рендерила кустарный легаси-глиф
+  // `walk` (голова + одна «палка»-нога), тогда как селектор трансфера показывает
+  // lucide `Footprints`. Сажаем `walk` на тот же lucide — иконка в пилюле и в
+  // выборе теперь одна, легаси-глиф ниже становится мёртвым и удалён.
+  walk: Footprints,
 };
 
 // ── Легаси-набор (fallback для имён вне LUCIDE/BRAND) ─────────────────────────
@@ -132,7 +138,6 @@ const ICONS = {
   collection: <><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></>,
   bus: <><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="19" r="1"/><circle cx="16" cy="19" r="1"/></>,
   ferry: <><path d="M3 17c2 2 4 0 6 0s4 2 6 0 4 0 6 0"/><path d="M5 14l7-7 7 7"/><path d="M8 14V9h8v5"/></>,
-  walk: <><circle cx="13" cy="4" r="1.5"/><path d="M9 22l3-7-3-3v-4l5 1 3 5"/></>,
   cup: <><path d="M5 8h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z"/><path d="M17 9h2a2 2 0 0 1 0 4h-2"/></>,
   card: <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18"/></>,
   settings: <><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></>,

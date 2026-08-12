@@ -445,16 +445,54 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
   border: 1px solid var(--line);
 }
 
-/* Утопленное поле — фон отступает НАЗАД от несущей карточки (заметки, адрес,
-   строка «город/даты»).
-   ★`.ev-sec` отсюда ушёл (TRIP-333). Он не поле, а РАЗДЕЛ - тот же объект, что
-   `Accordion` в форме и `.hv-*` в просмотре, а те живут на роли поверхности.
-   Из-за этого один и тот же «раздел» был серым в просмотре события и белым в
-   его редактировании: разными были не поля, а сама коробка вокруг них. */
-.addr, .notes, .notes-block, .cdu {
-  background: var(--surface-3);
-  border: 1px solid var(--line);
-}
+/* Утопленная поверхность (заметки, адрес, плитки отсчёта) СВЕДЕНА к канону
+   `<Card recessed>` (TRIP-343 PR-4, объект 2, закрытие). Прежняя приватная
+   скин-группа `.addr,.notes,.notes-block,.cdu { --surface-3 + рамка }` снята
+   целиком: `.addr`/`.notes` были мертвы (ноль разметки), `.notes-block` негировал
+   свой скин инлайном на единственном вызывателе, а живой `.cdu` уехал на
+   `<Card recessed radius="md">`. Скин утоплённого = `.card--recessed`
+   (background --surface-3) поверх рамки роли `.card` (1px solid --line).
+
+   Снос приватной группы + мёртвых классов ушедшими объявлениями; из-за составной
+   атрибуции 2p (правило приписывается всем классам селектора) каждое называю
+   отдельной строкой:
+   visual-diff-exempt: .addr align-items — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr background — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr border — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr border-radius — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr display — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr div color — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr div font-family — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr div font-size — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr div font-weight — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr div letter-spacing — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr div line-height — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr gap — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr padding — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr svg color — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr svg flex — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr svg height — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr svg margin-top — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .addr svg width — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes background — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes border — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes border-radius — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes color — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes font-family — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes font-size — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes font-weight — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes letter-spacing — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes line-height — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes padding — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes white-space — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes word-break — мёртвый класс (ноль разметки во всём репо), удалён — объект 2 закрытие
+   visual-diff-exempt: .notes-block background — recessed-скин снят (вызыватель негировал его инлайном), класс сведён к цвету+типографике (объект 2)
+   visual-diff-exempt: .notes-block border — recessed-скин снят (вызыватель негировал его инлайном), класс сведён к цвету+типографике (объект 2)
+   visual-diff-exempt: .notes-block border-radius — recessed-скин снят (вызыватель негировал его инлайном), класс сведён к цвету+типографике (объект 2)
+   visual-diff-exempt: .notes-block padding — внутренний отступ утоплённой коробки снят вместе со скином (вызыватель негировал его инлайном), класс сведён к цвету+типографике (объект 2)
+   visual-diff-exempt: .cdu background — скин утоплённого → .card--recessed/.card роли (тот же surface-3 · 1px solid line), объект 2
+   visual-diff-exempt: .cdu border — скин утоплённого → .card--recessed/.card роли (тот же surface-3 · 1px solid line), объект 2
+   visual-diff-exempt: .cdu border-radius — fork 1: r-sm(10) → канон .card--r-md(16), апрув Pavel */
 
 /* Контрол с сильной рамкой — граница несёт кликабельность (фильтр-пилюля,
    «назад», крестик диалога). Композер чата отсюда ушёл: он `InputGroup`, фон и
@@ -773,8 +811,6 @@ h4,
 .te-warnbadge,
 .gt span,
 .stepper .n,
-.addr div,
-.notes,
 .bud-leg,
 .ov-warn,
 .ov-empty-line,
@@ -3291,10 +3327,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .pl-revrow:last-child::before { bottom: 14px; }
 .pl-revrow > .tile { position: relative; z-index: 1; border: 3px solid var(--surface); }
 .pl-revrow--muted .te-cityname { color: var(--muted); }
-/* Add-start affordance — the empty-origin variant of .te-end (dashed, clickable).
-   One control for both flows (manual skip + AI no-origin). */
-.te-end--add { width: 100%; text-align: left; border-style: dashed; cursor: pointer; transition: border-color .15s, background .15s; }
-.te-end--add:hover { border-color: var(--brand); background: var(--brand-soft); }
+/* Add-start affordance — пустой вариант .te-end (пунктир, кликабельный).
+   Скин add-аффорданса (пунктирная рамка line-strong + прозрачный фон + r-md) несёт
+   `<Card variant="add" radius="md">` (канон, TRIP-343 объект 2); ховер (brand-рамка
+   + brand-soft) — канон `.card--add:hover`, приватного класса нет (закон 5). Здесь
+   только раскладка/поведение. ВИДИМЫЙ СДВИГ (назван, скрин): рамка 1px dashed --line
+   → 1px dashed --line-strong (канон add); грунт color-mix(wash,surface) → transparent;
+   радиус r-sm(10) → r-md(16).
+   visual-diff-exempt: .te-end--add:hover background — ховер add-аффорданса на канон .card--add:hover (закон 5), приватного класса нет
+   visual-diff-exempt: .te-end--add:hover border-color — ховер add-аффорданса на канон .card--add:hover (закон 5), приватного класса нет
+   visual-diff-exempt: .te-end--add border-style — пунктир на канон .card--add (1px dashed line-strong, скрин)
+   visual-diff-exempt: .te-end--add transition — переход снят: add-скин статичен, ховер несёт канон .card--add */
+.te-end--add { width: 100%; text-align: left; cursor: pointer; }
 
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
@@ -4192,13 +4236,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-warnbadge { color: var(--warning-ink); }
     /* A11y: keyboard-visible focus rings on editor controls. Заполненные ячейки
        и швы — <Chip>, у него свой `.fpill:focus-visible`. */
-    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible {
+    .te-step:focus-visible, .ts-step:focus-visible, .te-grip:focus-visible {
       outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-sm);
     }
     /* A11y: enlarge small icon controls to a ~44px pointer target without growing
        their visual box (transparent centered hit-area). */
-    .ts-step, .te-addmini, .te-grip { position: relative; }
-    .ts-step::after, .te-addmini::after, .te-grip::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
+    .ts-step, .te-grip { position: relative; }
+    .ts-step::after, .te-grip::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
     .te-step { position: relative; }
     .te-step::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
     /* .te-step — round icon button of the planner/editor row: nights ± left on the
@@ -4248,7 +4292,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        файла, маркер переноса снят. Апрув Pavel в TRIP-388 (комментарий к PR #735).
        ⚠️Носителей ТРИ: `EditLens.GridEndpoint` и ДВЕ плашки `anchors.jsx`
        (обычная и `--add`) - ступень проставлена на каждом. */
-    .te-end { padding: 9px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
+    /* Плашка старт/финиш маршрута — скин утоплённой поверхности несёт
+       `<Card recessed radius="md">` (грунт color-mix(wash,surface) ≈ --surface-3,
+       TRIP-343 объект 2); здесь только внутренний отступ. Радиус r-sm→r-md — видимый
+       сдвиг, назван (второй частный радиус не заводим).
+   visual-diff-exempt: .te-end background — грунт color-mix(wash,surface) ≈ surface-3 → .card--recessed (минимальный сдвиг, скрин)
+   visual-diff-exempt: .te-end border — рамка на роль .card (1px solid --line, тождественно)
+   visual-diff-exempt: .te-end border-radius — fork: r-sm(10) → канон .card--r-md(16), скрин */
+    .te-end { padding: 9px 12px; }
     .te-row__node { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { display: block; margin-bottom: 1px; }
     .te-wptag { color: var(--ev-transfer-ink); padding: 2px 7px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
@@ -4262,8 +4313,29 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     /* Швы переезда (заполненный/пустой) — <Chip variant="tone"/"placeholder">. */
 
-    .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
-    .te-addmini:hover { background: var(--brand-soft); }
+    /* `.te-addmini` удалён — мёртвый CSS (ноль разметки во всём репо), orphan-чистка
+       (объект 2, TRIP-343). Ушедшие объявления называю поимённо:
+   visual-diff-exempt: .te-addmini::after content — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini::after height — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini::after left — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini::after position — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini::after top — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini::after transform — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini::after width — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini:focus-visible border-radius — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini:focus-visible outline — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini:focus-visible outline-offset — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini:hover background — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini background — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini border — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini border-radius — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini color — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini cursor — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini display — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini height — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini place-items — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini position — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2)
+   visual-diff-exempt: .te-addmini width — мёртвый класс (ноль разметки), удалён — orphan-чистка (объект 2) */
 
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {
@@ -4463,11 +4535,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .lp-stepper__tx span { color: var(--muted); }
 
 
-.addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: var(--r-sm); }
-.addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
-.addr div { color: var(--ink-2); }
-/* Notes block — Lumo .notes: surface-3 card with hairline border. */
-.notes { color: var(--ink-2); padding: 11px 13px; border-radius: var(--r-sm); white-space: pre-wrap; word-break: break-word; }
 /* Planning left list: hide the scrollbar entirely (still scrolls). */
 .ts-leftscroll { scrollbar-width: none; -ms-overflow-style: none; }
 .ts-leftscroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
@@ -6060,8 +6127,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    Облик МЕНЯЕТСЯ по решению разбора: 24×24 и радиус 7px мимо шкалы → 32×32
    (--ctl-h-sm) и радиус из шкалы; опасный тон ховера несёт tone="danger". */
 
-/* ─── Notes block ───────────────────────────────────────────────────────── */
-.notes-block{ color:var(--ink-2); padding:10px 12px;border-radius:var(--r-sm);}
+/* Заметки услуги в просмотре события — вторичный тон текста (TRIP-343 объект 2).
+   Утоплённый скин снят (класс ушёл из группы `:454`); это НЕ поверхность, только
+   цвет: `--ink-2` (типографику держит канон `.t-body` co-селектором выше).
+   ★Цвет оставлен ЗДЕСЬ намеренно: полный снос класса → текст берёт `--ink`
+   (замерено, не `--ink-2`), а это видимый сдвиг тона заметки. */
+.notes-block { color: var(--ink-2); }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -6677,7 +6748,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .nextcard__tx .rt { color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nextcard__chev { color: var(--muted-2); flex: none; }
 .nextcard__cd { display: flex; flex-wrap: nowrap; gap: 7px; margin-top: 11px; }
-.cdu { text-align: center; border-radius: var(--r-sm); padding: 7px 0; flex: 1; min-width: 0; }
+/* Плитка обратного отсчёта — скин утоплённой поверхности несёт `<Card recessed
+   radius="md">` (TRIP-343 объект 2); здесь только раскладка и типографика.
+   ★Радиус СНЯТ намеренно: канон recessed = r-md(16), был приватный r-sm(10). */
+.cdu { text-align: center; padding: 7px 0; flex: 1; min-width: 0; }
 .cdu b { display: block; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cdu span { color: var(--muted); }
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
@@ -7025,12 +7099,16 @@ a.doc-row__n:hover{ color: var(--brand); }
    emp=blue, nomatch=yellow — driven by the shared --hl* channel (04 PR3; these
    three handles used to be a private --st-accent* trio, which was the second of
    four names for one channel). */
+/* TRIP-343 объект 2: несущий скин (плоский --surface + рамка роли + r-xl) несёт
+   `<Card>`; здесь остаётся ТОЛЬКО тинт-декорация канала --hl (радиал-глоу поверх
+   подложки --surface, верхняя акцент-линия ::before, медальон/спарк) + тень и
+   раскладка. Рамка и радиус ушли на Card (`visual-diff-move: fork-state -> card`,
+   значения тождественны, пиксель-в-пиксель при дефолте --hl). */
 .fork-state {
   --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink);
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
-  gap: 6px; padding: 26px 20px 22px; border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
+  gap: 6px; padding: 26px 20px 22px; overflow: hidden; isolation: isolate;
   background: radial-gradient(120% 92% at 50% -12%, var(--hl-soft), transparent 62%), var(--surface);
-  border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
 }
 [data-theme="dark"] .fork-state { box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--sh-1); }

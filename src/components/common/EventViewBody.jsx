@@ -949,7 +949,11 @@ export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, acc
       {/* Notes (hotel/transfer/activity render their own inside their body) */}
       {kind === 'service' && (entity.notes || entity.details?.notes) && (
         <Section title={t('activity.view_notes')} accent={accent}>
-          <div className="notes-block" style={{ background: 'transparent', border: 'none', padding: 0 }}>
+          {/* Заметки услуги — простой текст ink-2 (`.notes-block` сведён к цвету+
+              типографике: recessed-скин снят, коробки нет). Инлайн-занул облика
+              снят (канал 3). Класс не поверхность — только вторичный тон текста
+              (TRIP-343 объект 2; `.t-body` в контексте даёт --ink, а не --ink-2). */}
+          <div className="notes-block">
             {entity.notes || entity.details?.notes}
           </div>
         </Section>
