@@ -23,8 +23,11 @@ const git = (cwd, args) =>
 const surfaceCss = (cls) => `.${cls} { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }`;
 const reg = (obj) => JSON.stringify({ classes: obj });
 const regHomed = (cardHomed) => JSON.stringify({ classes: {}, cardHomed });
+const regTileHomed = (tileHomed) => JSON.stringify({ classes: {}, tileHomed });
 const inlineSurface = (n) =>
   `export const C = () => <>${'<i style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16 }}/>'.repeat(n)}</>;\n`;
+const inlineTile = (n) =>
+  `export const C = () => <>${'<i style={{ background: "var(--brand-soft)", width: 38, height: 38 }}/>'.repeat(n)}</>;\n`;
 
 function fixture(t, { base = {}, head = {} }) {
   const dir = mkdtempSync(join(tmpdir(), 'guard2z-'));
@@ -114,7 +117,40 @@ test('сырой host-тег с card-homed классом мимо <Card> → к
   assert.match(r.out, /tl3-card/);
 });
 
+test('сырой host-тег с tile-homed классом мимо <Tile> → красный (TRIP-391 объект 3)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': regTileHomed(['dl-empty__ic']),
+      'src/a.jsx': 'export const C = () => (<div className="dl-empty__ic" />);\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /dl-empty__ic/);
+});
+
+test('рост инлайн-плиток против base → красный (TRIP-391 объект 3)', (t) => {
+  const f = fixture(t, {
+    base: { 'scripts/ci/surface-registry.json': reg({}), 'src/a.jsx': inlineTile(1) },
+    head: { 'scripts/ci/surface-registry.json': reg({}), 'src/a.jsx': inlineTile(4) },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /инлайн-плит/i);
+});
+
 /* ── зелёное ─────────────────────────────────────────────────────────────── */
+
+test('тот же tile-homed класс НА <Tile> → зелёный (TRIP-391 объект 3)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': regTileHomed(['dl-empty__ic']),
+      'src/a.jsx': 'export const C = () => (<Tile size="2xl" icon="file" className="dl-empty__ic" />);\n',
+    },
+  });
+  assert.equal(run(f).code, 0, run(f).out);
+});
+
 
 test('тот же card-homed класс НА <Card> → зелёный', (t) => {
   const f = fixture(t, {

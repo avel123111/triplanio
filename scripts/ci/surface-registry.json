@@ -9,6 +9,10 @@
     "invite", "limitcard", "nextcard", "nonext", "pl-lastcard", "pro-up", "statbar", "summary",
     "te-end", "tr", "tv-card", "wdg"
   ],
+  "_tileHomedNote": "TRIP-391 объект 3 (плитка). tile-homed = приватный класс-остаток, чей СКИН квадрата-иконки уехал на примитив <Tile> (сам класс несёт только раскладку/канал --hl). Такой класс ОБЯЗАН рендериться внутри <Tile>: сырой host-тег (<div>/<span>) с этим className мимо <Tile> = плитка потеряна МОЛЧА (та же дыра, что облысила трансфер-карточку в объекте 2). AST-скан гарда 2z ловит это; три .css/<style>/inline-режима такого не видят по построению.",
+  "tileHomed": [
+    "dl-empty__ic", "dl-addcard__ic"
+  ],
   "classes": {
     "card--locked": { "object": "card", "reason": "канон <Card> — модификатор locked (Pro-гейт ai)" },
     "card--parsed": { "object": "card", "reason": "канон <Card> — модификатор parsed (ai success)" },

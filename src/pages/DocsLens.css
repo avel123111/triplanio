@@ -14,13 +14,13 @@
    Ровно так же уже собран `.dl-addcard--mine` в app.css - это его продолжение,
    а не новая идея. */
 
-/* ─── Section header icon tile ────────────────────────────────── */
-.dl-sec-ic {
-  width: 34px; height: 34px; border-radius: var(--r-sm);
-  display: grid; place-items: center; flex: none;
-  background: var(--hl-soft); color: var(--hl-ink);
-}
-.dl-sec-ic svg { width: 17px; height: 17px; }
+/* ─── Section header icon tile → <Tile> (TRIP-391 объект 3) ─────────
+   Скин (34px квадрат, --r-sm, канал --hl) уехал на <Tile> дефолт. Осталась
+   только подстановка тёплого тона личного раздела ВХОДОМ канала --hl — она и
+   есть весь `--mine`, база <Tile> её читает.
+   visual-diff-move: .dl-sec-ic -> tile
+   visual-diff-exempt: .dl-sec-ic svg width — кегль иконки под каноном .tile > svg (--tile-ic 17px), значение то же
+   visual-diff-exempt: .dl-sec-ic svg height — кегль иконки под каноном .tile > svg (--tile-ic 17px), значение то же */
 .dl-sec-ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── Doc card ────────────────────────────────────────────────── */
@@ -41,12 +41,20 @@
    visual-diff-move: dl-card__top -> row row--a-start */
 .dl-card__top { gap: 11px; }
 
-.dl-card__ic {
-  width: 42px; height: 42px; border-radius: var(--r-sm);
-  display: grid; place-items: center; flex: none;
-  background: var(--hl-soft); color: var(--hl-ink);
-}
-.dl-card__ic svg { width: 20px; height: 20px; }
+/* Иконка-плитка карточки → <Tile size="lg"> (TRIP-391 объект 3). Скин уехал на
+   канон, осталась подстановка тёплого тона личного дока входом канала --hl.
+   Ступень lg несёт значение, поэтому объявления не переносятся дословно (move
+   не резолвит --tile 40 через ступень), а объявлены exempt'ом «значение то же».
+   visual-diff-exempt: .dl-card__ic width — сторона 42 сведена на ступень lg (40), санкц. коллапс как .acct-chan__ic
+   visual-diff-exempt: .dl-card__ic height — сторона 42 сведена на ступень lg (40), санкц. коллапс как .acct-chan__ic
+   visual-diff-exempt: .dl-card__ic border-radius — радиус --r-sm под каноном .tile (--tile-r fallback), значение то же
+   visual-diff-exempt: .dl-card__ic background — фон-канал --hl-soft под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic color — цвет-канал --hl-ink под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic display — grid под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic place-items — center под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic flex — none под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic svg width — кегль под каноном .tile > svg (lg --tile-ic 19px)
+   visual-diff-exempt: .dl-card__ic svg height — кегль под каноном .tile > svg (lg --tile-ic 19px) */
 .dl-card__ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 .dl-card__h     { flex: 1; min-width: 0; }
@@ -126,12 +134,19 @@
   .dl-addcard, .dl-addcard:hover { transform: none; }
 }
 
-.dl-addcard__ic {
-  width: 46px; height: 46px; border-radius: var(--r-btn);
-  background: var(--surface-2); display: grid; place-items: center;
-  transition: background .18s;
-}
-.dl-addcard__ic svg { width: 22px; height: 22px; }
+/* Плитка «добавить документ» → <Tile size="xl" tone="quiet"> (TRIP-391 объект 3).
+   Скин (46px, --r-btn, --surface-2) уехал на канон. Остаётся только `transition`
+   ради ховера `.dl-addcard:hover .tile` ниже (ховер сохранён контекстом).
+   Ступень xl + тон quiet несут значения, поэтому exempt'ы «значение то же».
+   visual-diff-exempt: .dl-addcard__ic width — сторона 46 даёт ступень xl (--tile 46), значение то же
+   visual-diff-exempt: .dl-addcard__ic height — сторона 46 даёт ступень xl (--tile 46), значение то же
+   visual-diff-exempt: .dl-addcard__ic border-radius — радиус --r-btn даёт ступень xl (--tile-r), значение то же
+   visual-diff-exempt: .dl-addcard__ic background — фон --surface-2 даёт тон quiet, значение то же
+   visual-diff-exempt: .dl-addcard__ic display — grid под базой .tile, значение то же
+   visual-diff-exempt: .dl-addcard__ic place-items — center под базой .tile, значение то же
+   visual-diff-exempt: .dl-addcard__ic svg width — кегль под каноном .tile > svg (xl --tile-ic 21px)
+   visual-diff-exempt: .dl-addcard__ic svg height — кегль под каноном .tile > svg (xl --tile-ic 21px) */
+.dl-addcard__ic { transition: background .18s; }
 
 /* ─── Empty state ─────────────────────────────────────────────── */
 /* TRIP-343 объект 2: скин утоплённой поверхности СВЕДЁН к канону
@@ -145,12 +160,19 @@
 .dl-empty {
   text-align: center; padding: 40px 20px;
 }
-.dl-empty__ic {
-  width: 62px; height: 62px; border-radius: var(--r-md);
-  display: grid; place-items: center; margin: 0 auto 14px;
-  background: var(--hl-soft); color: var(--hl-ink);
-}
-.dl-empty__ic svg { width: 28px; height: 28px; }
+/* Плитка пустого экрана → <Tile size="2xl"> (TRIP-391 объект 3). Скин уехал на
+   канон, осталась раскладка (центрирующий margin) + тёплый тон личного экрана.
+   Ступень 2xl несёт значение, поэтому exempt'ы «значение то же».
+   visual-diff-exempt: .dl-empty__ic width — сторона 62 даёт ступень 2xl (--tile 62), значение то же
+   visual-diff-exempt: .dl-empty__ic height — сторона 62 даёт ступень 2xl (--tile 62), значение то же
+   visual-diff-exempt: .dl-empty__ic border-radius — радиус --r-md даёт ступень 2xl (--tile-r), значение то же
+   visual-diff-exempt: .dl-empty__ic background — фон-канал --hl-soft под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic color — цвет-канал --hl-ink под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic display — grid под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic place-items — center под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic svg width — кегль под каноном .tile > svg (2xl --tile-ic 28px), значение то же
+   visual-diff-exempt: .dl-empty__ic svg height — кегль под каноном .tile > svg (2xl --tile-ic 28px), значение то же */
+.dl-empty__ic { margin: 0 auto 14px; }
 /* Личный пустой экран берёт --warm-soft-2, а не --warm-soft: пятно тут крупнее
    (62px), и это расхождение осознанное, а не забытая копия соседа. */
 .dl-empty__ic--mine { --hl-soft: var(--warm-soft-2); --hl-ink: var(--warm-ink); }
@@ -199,12 +221,11 @@
    visual-diff-exempt: .is-on color — рекраска иконки состоянием снята (канал 4), выбор на канон (fork 2)
    visual-diff-exempt: .dl-visopt height — равные высоты грид-ячеек после разделения обёртка(поведение)/Card(скин), fork 2 */
 .dl-visopt { padding: 12px; text-align: left; cursor: pointer; height: 100%; }
-.dl-visopt__ic {
-  width: 34px; height: 34px; border-radius: var(--r-sm);
-  background: var(--hl-soft); color: var(--hl-ink);
-  display: grid; place-items: center; flex: none;
-}
-.dl-visopt__ic svg { width: 17px; height: 17px; }
+/* Иконка-плитка опции видимости → <Tile> дефолт (TRIP-391 объект 3). Скин уехал
+   на канон; тёплый тон личной видимости ставит контейнер `.dl-visopt--mine`.
+   visual-diff-move: .dl-visopt__ic -> tile
+   visual-diff-exempt: .dl-visopt__ic svg width — кегль под каноном .tile > svg (--tile-ic 17px), значение то же
+   visual-diff-exempt: .dl-visopt__ic svg height — кегль под каноном .tile > svg (--tile-ic 17px), значение то же */
 .dl-visopt__lbl b    { color: var(--ink); display: block; }
 .dl-visopt__lbl span { color: var(--muted); }
 /* Тёплый тон личной видимости — вход канала --hl (как `.dl-empty__ic--mine`). */

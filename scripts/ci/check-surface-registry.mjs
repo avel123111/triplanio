@@ -106,18 +106,22 @@ const styleObjects = (src) => {
   }
   return out;
 };
+const hasBgInline = (body) => /\bbackground(Color)?\s*:/.test(body) && !/\bbackground(Color)?\s*:\s*['"]?(transparent|none)\b/.test(body);
+const squareInline = (body) => /\bwidth\s*:\s*([^,]+),[\s\S]*?\bheight\s*:\s*\1\b/.test(body);
 const inlineIsSurface = (body) => {
   const has = (re) => re.test(body);
-  const bg = has(/\bbackground(Color)?\s*:/) && !/\bbackground(Color)?\s*:\s*['"]?(transparent|none)\b/.test(body);
-  const radius = has(/\bborderRadius\s*:/);
   const border = has(/\bborder(Color|Top|Right|Bottom|Left)?\s*:/);
   const shadow = has(/\bboxShadow\s*:/);
-  const square = /\bwidth\s*:\s*([^,]+),[\s\S]*?\bheight\s*:\s*\1\b/.test(body);
-  return bg && radius && (border || shadow) && !square;
+  return hasBgInline(body) && has(/\bborderRadius\s*:/) && (border || shadow) && !squareInline(body);
 };
+// Инлайн-ПЛИТКА (TRIP-391 объект 3): тот же квадрат-с-тинтом, но руками —
+// `style={{ background:'var(--x-soft)', width:38, height:38 }}`. Дом такой формы
+// — <Tile> (тон ролью или каналом --hl). Ратчет вниз, как у инлайн-поверхностей.
+const inlineIsTile = (body) => hasBgInline(body) && squareInline(body);
 const scanJsx = (readFile) => {
   let styleSurfaces = 0;
   let inlineSurfaces = 0;
+  let inlineTiles = 0;
   for (const f of lsSrc().filter((f) => f.endsWith('.jsx'))) {
     const src = readFile(f);
     if (src == null) continue;
@@ -126,9 +130,12 @@ const scanJsx = (readFile) => {
       try { root = postcss.parse(sm[1]); } catch { continue; }
       root.walkRules((rule) => { if (isSurface(declsOf(rule))) styleSurfaces++; });
     }
-    for (const body of styleObjects(src)) if (inlineIsSurface(body)) inlineSurfaces++;
+    for (const body of styleObjects(src)) {
+      if (inlineIsSurface(body)) inlineSurfaces++;
+      if (inlineIsTile(body)) inlineTiles++;
+    }
   }
-  return { styleSurfaces, inlineSurfaces };
+  return { styleSurfaces, inlineSurfaces, inlineTiles };
 };
 
 // ── 4. СЫРОЙ ВЫЗЫВАТЕЛЬ card-homed класса (F, TRIP-343) ─────────────────────
@@ -150,7 +157,10 @@ const classAttrTokens = (attr) => {
   walk(attr && attr.value);
   return out.filter(Boolean);
 };
-const rawCardHomedCallers = (cardHomed) => {
+// Общий обход: сырой host-тег (строчное имя) с homed-классом = скин потерян
+// (его дом — компонент `wrapper`). `<Card>`/`<Tile>` — заглавные, под фильтр
+// `/^[a-z]/` не попадают, поэтому законная обёртка не краснеет.
+const rawHomedCallers = (homed, wrapper) => {
   const hits = [];
   for (const f of lsSrc().filter((f) => f.endsWith('.jsx'))) {
     let ast;
@@ -161,8 +171,8 @@ const rawCardHomedCallers = (cardHomed) => {
       if (!n || typeof n !== 'object') continue;
       if (n.type === 'JSXOpeningElement' && n.name && n.name.type === 'JSXIdentifier' && /^[a-z]/.test(n.name.name)) {
         const cls = n.attributes.find((a) => a.type === 'JSXAttribute' && a.name.name === 'className');
-        const homed = classAttrTokens(cls).filter((t) => cardHomed.has(t));
-        if (homed.length) hits.push(`${f}: <${n.name.name} className=[${homed.join(' ')}]> мимо <Card>`);
+        const hit = classAttrTokens(cls).filter((t) => homed.has(t));
+        if (hit.length) hits.push(`${f}: <${n.name.name} className=[${hit.join(' ')}]> мимо <${wrapper}>`);
       }
       for (const k in n) {
         const v = n[k];
@@ -178,6 +188,7 @@ const rawCardHomedCallers = (cardHomed) => {
 const registry = JSON.parse(readFileSync(REG_PATH, 'utf8'));
 const known = new Set(Object.keys(registry.classes || {}));
 const cardHomed = new Set(registry.cardHomed || []);
+const tileHomed = new Set(registry.tileHomed || []);
 
 const live = cssSurfaceClasses();
 const unregistered = [...live].filter((c) => !known.has(c)).sort();
@@ -186,7 +197,8 @@ const stale = [...known].filter((c) => !live.has(c)).sort();
 const head = scanJsx((f) => { try { return readFileSync(f, 'utf8'); } catch { return null; } });
 const base = scanJsx((f) => git(['show', `${BASE_REF}:${f}`]));
 const baseKnown = git(['rev-parse', BASE_REF]) !== null;
-const rawCallers = rawCardHomedCallers(cardHomed);
+const rawCallers = rawHomedCallers(cardHomed, 'Card');
+const rawTileCallers = rawHomedCallers(tileHomed, 'Tile');
 
 console.log(`check-surface-registry (2z): реестр полноты поверхностей`);
 console.log(`  .css surface-классов: ${live.size} · в реестре: ${known.size}`);
@@ -195,7 +207,12 @@ console.log(
   `  инлайн-поверхностей:  ${head.inlineSurfaces}` +
     (baseKnown ? ` (BASE ${base.inlineSurfaces}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
 );
+console.log(
+  `  инлайн-плиток:        ${head.inlineTiles}` +
+    (baseKnown ? ` (BASE ${base.inlineTiles}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
+);
 console.log(`  сырых вызывателей card-homed классов мимо <Card>: ${rawCallers.length} (цель 0)`);
+console.log(`  сырых вызывателей tile-homed классов мимо <Tile>: ${rawTileCallers.length} (цель 0)`);
 
 let bad = false;
 if (unregistered.length) {
@@ -218,10 +235,19 @@ if (baseKnown && head.inlineSurfaces > base.inlineSurfaces) {
   bad = true;
   console.log(`\n  РОСТ surface-инлайнов: ${base.inlineSurfaces} → ${head.inlineSurfaces} (ратчет только вниз — переноси на <Card>).`);
 }
+if (baseKnown && head.inlineTiles > base.inlineTiles) {
+  bad = true;
+  console.log(`\n  РОСТ инлайн-плиток: ${base.inlineTiles} → ${head.inlineTiles} (ратчет только вниз — переноси на <Tile>).`);
+}
 if (rawCallers.length) {
   bad = true;
   console.log('\n  СЫРОЙ ВЫЗЫВАТЕЛЬ card-homed класса (скин потерян — оберни в <Card>):');
   rawCallers.forEach((h) => console.log(`    ${h}`));
+}
+if (rawTileCallers.length) {
+  bad = true;
+  console.log('\n  СЫРОЙ ВЫЗЫВАТЕЛЬ tile-homed класса (скин плитки потерян — оберни в <Tile>):');
+  rawTileCallers.forEach((h) => console.log(`    ${h}`));
 }
 
 if (bad) {
