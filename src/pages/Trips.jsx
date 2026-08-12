@@ -764,13 +764,13 @@ export default function Trips() {
                   <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <button className="tc-add" onClick={() => openChoice()}>
+                  <Card as="button" variant="add" radius="md" className="tc-add" onClick={() => openChoice()}>
                     <div className="tc-add__ic">
                       <Icon name="plus" size={24} />
                     </div>
                     <b>{t('trips.add_trip')}</b>
                     <small>{t('trips.add_trip_sub')}</small>
-                  </button>
+                  </Card>
                 )}
               </div>
             ) : (

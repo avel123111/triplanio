@@ -5492,11 +5492,22 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .tc__glass svg { width: 12px; height: 12px; }
 
 /* "Add trip" phantom card */
+/* TRIP-343 PR-3: плитка «Добавить путешествие» на канон `<Card variant="add">`
+   (transparent + пунктир --line-strong + --muted). `.tc-add` — раскладочный
+   остаток. Радиус СВЕДЁН к канону add: --r-card(24) → --r-md(16) (у add частного
+   радиуса нет, решение Pavel). Ховер расцеплён из hl-группы (см. co-selector
+   ниже) — его несёт канон `.card--add:hover`; --hl* по умолчанию = --brand*,
+   поэтому пиксель-в-пиксель, а не смена облика.
+   visual-diff-exempt: .tc-add border — на канон card--add (1px dashed --line-strong, тождественно)
+   visual-diff-exempt: .tc-add background — на канон card--add (transparent, тождественно)
+   visual-diff-exempt: .tc-add color — на канон card--add (--muted, тождественно)
+   visual-diff-exempt: .tc-add border-radius — СВЕДЕНО к канону add: --r-card(24) → --r-md(16), радиус add = md (апрув Pavel)
+   visual-diff-exempt: .tc-add:hover border-color — ховер на канон card--add:hover (--hl дефолт = --brand, тождественно)
+   visual-diff-exempt: .tc-add:hover color — ховер на канон card--add:hover (--hl-ink дефолт = --brand, тождественно) */
 .tc-add {
-  border: 1px dashed var(--line-strong); background: transparent;
-  border-radius: var(--r-card); padding: 24px;
+  padding: 24px;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  gap: 10px; cursor: pointer; color: var(--muted); min-height: 256px; font-family: inherit;
+  gap: 10px; cursor: pointer; min-height: 256px; font-family: inherit;
   transition: border-color .2s, color .2s, background .2s, transform .16s var(--ease-spring);
 }
 .tc-add:active { transform: scale(.99); }
@@ -7106,7 +7117,10 @@ a.doc-row__n:hover{ color: var(--brand); }
    тогда .16 против .14 - TRIP-352 выровнял, 04 PR3 первое имя удалил вовсе),
    три «залитых» писали белый ТРЕМЯ способами (#fff ×2 и var(--primary-fg)).
    Теперь синий один и белый один. */
-.tc-add:hover,
+/* `.tc-add:hover` СНЯТ из этого списка (TRIP-343 PR-3): плитка добавления стала
+   `<Card variant="add">`, её ховер несёт канон `.card--add:hover` (бренд-заливка
+   без лифта). Прежде она читала общий канал --hl*, чей дефолт и есть --brand*,
+   поэтому облик не изменился — сменился только владелец правила. */
 /* ★TRIP-344: подсветка «меню открыто» переехала с приватного .menu-trig на
    САМ примитив. Приватный класс существовал ровно ради этой строки и был
    вторым классом семьи `menu` — то есть держал целое пространство имён под
