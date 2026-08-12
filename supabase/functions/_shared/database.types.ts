@@ -2268,6 +2268,7 @@ export type Database = {
           is_confirmed: boolean
         }[]
       }
+      can_create_trip: { Args: { p_uid: string }; Returns: boolean }
       chat_ai_run_watchdog: { Args: never; Returns: number }
       claim_ai_run: {
         Args: { p_message_id: string }
