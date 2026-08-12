@@ -1222,6 +1222,11 @@ const OBJECTS = [
 ];
 
 const objects = {};
+// §5 (ниже) догоняет счёт surface живыми множествами класса/семейства, а не
+// пересортированным снимком `byFamily`, - держим их в стороне ТОЛЬКО для surface,
+// чтобы не таскать Set по всем объектам и не течь им в --json.
+let surfaceCls = new Set();
+let surfaceByFamily = {};
 for (const o of OBJECTS) {
   const hit = blocks.filter(o.pred);
   const cls = new Set();
@@ -1235,14 +1240,13 @@ for (const o of OBJECTS) {
       byFamily[fam] = (byFamily[fam] ?? 0) + 1;
     }
   }
+  if (o.key === 'surface') { surfaceCls = cls; surfaceByFamily = byFamily; }
   objects[o.key] = {
     label: o.label,
     why: o.why,
     rules: hit.length,
     classes: cls.size,
     families: Object.keys(byFamily).length,
-    _cls: cls,
-    _byFamily: byFamily,
     // Распределение - ЭТО и есть то, по чему режутся 05 и 06 (Р11). Круглое
     // число из головы даёт равные PR, распределение - PR по зонам приложения.
     byFamily: Object.fromEntries(Object.entries(byFamily).sort((a, b) => b[1] - a[1])),
@@ -1255,7 +1259,7 @@ for (const o of OBJECTS) {
 // замок 2z check-surface-registry). Догоняем счёт: класс — поверхность, если
 // фон+рамку получает из общего (≥2 класса) блока И радиус есть где угодно.
 {
-  const isTileBlock = (b) => has(b, 'width') && val(b, 'width') === val(b, 'height') && has(b, 'border-radius') && centred(b);
+  const isTileBlock = OBJECTS.find((o) => o.key === 'tile').pred;
   const hasRadiusCls = new Set();
   const coMemberCls = new Set();
   for (const b of blocks) {
@@ -1267,15 +1271,15 @@ for (const o of OBJECTS) {
   }
   const s = objects.surface;
   for (const c of coMemberCls) {
-    if (!hasRadiusCls.has(c) || s._cls.has(c)) continue;
-    s._cls.add(c);
+    if (!hasRadiusCls.has(c) || surfaceCls.has(c)) continue;
+    surfaceCls.add(c);
     const fam = familyOf(c);
-    s._byFamily[fam] = (s._byFamily[fam] ?? 0) + 1;
+    surfaceByFamily[fam] = (surfaceByFamily[fam] ?? 0) + 1;
     s.rules += 1;   // недосчитанный носитель = минимум своё radius-правило
   }
-  s.classes = s._cls.size;
-  s.families = Object.keys(s._byFamily).length;
-  s.byFamily = Object.fromEntries(Object.entries(s._byFamily).sort((a, b) => b[1] - a[1]));
+  s.classes = surfaceCls.size;
+  s.families = Object.keys(surfaceByFamily).length;
+  s.byFamily = Object.fromEntries(Object.entries(surfaceByFamily).sort((a, b) => b[1] - a[1]));
 }
 
 /** Наборы-дубли: блоки с ПОБАЙТОВО совпадающим набором `свойство:значение`.
