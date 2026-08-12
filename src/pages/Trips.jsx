@@ -721,7 +721,7 @@ export default function Trips() {
                 бренд-акцент, PRO-пилюля (звезда) даёт акцент, CTA — бренд-кнопка.
                 Shown only when owned active trips reach/exceed the free cap (1). */}
             {filterMode === 'active' && limitReached && (
-              <div className="limitcard">
+              <Card tone="brand" radius="md" className="limitcard">
                 <Badge variant="pro" icon="pro">PRO</Badge>
                 <div className="limitcard__body">
                   <div className="limitcard__top">
@@ -730,7 +730,7 @@ export default function Trips() {
                   <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
                 </div>
                 <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
-              </div>
+              </Card>
             )}
 
             {/* Trip list */}

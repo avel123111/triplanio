@@ -365,21 +365,21 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 /** @type {readonly string[]} */
 export const CARD_VARIANTS = [
   "r-lg", "r-md", "interactive", "flush",
-  "tone-brand", "tone-ai", "add", "recessed", "locked", "danger",
+  "tone-brand", "tone-ai", "add", "recessed", "locked", "parsed", "danger",
 ];
 
 /**
  * @param {{ as?: 'div'|'button'|'a', radius?: CardRadius, interactive?: boolean,
  *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
- *   locked?: boolean, danger?: boolean, href?: string, onClick?: any,
+ *   locked?: boolean, parsed?: boolean, danger?: boolean, href?: string, onClick?: any,
  *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,
- *   ariaControls?: string, ariaSelected?: boolean, title?: string,
+ *   ariaControls?: string, ariaSelected?: boolean, ariaBusy?: boolean, title?: string,
  *   children?: any, className?: string, style?: any }} p
  */
 export const Card = ({
   as = "div", radius, interactive, pad = "default", tone, variant,
-  recessed, locked, danger, href, onClick, disabled, id, ariaLabel,
-  ariaExpanded, ariaControls, ariaSelected, title,
+  recessed, locked, parsed, danger, href, onClick, disabled, id, ariaLabel,
+  ariaExpanded, ariaControls, ariaSelected, ariaBusy, title,
   children, className = "", style,
 }) => {
   const mods = [
@@ -390,6 +390,7 @@ export const Card = ({
     variant === "add" && "add",
     recessed && "recessed",
     locked && "locked",
+    parsed && "parsed",
     danger && "danger",
   ].filter(Boolean);
   const El = as;
@@ -403,6 +404,7 @@ export const Card = ({
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
       aria-selected={ariaSelected}
+      aria-busy={ariaBusy}
       onClick={onClick}
       {...(as === "a" ? { href } : null)}
       {...(as === "button" ? { type: "button", disabled } : null)}

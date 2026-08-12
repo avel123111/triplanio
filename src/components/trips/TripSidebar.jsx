@@ -1,7 +1,7 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Avatar, Badge, Btn, Sheet } from '@/design/index';
+import { Avatar, Badge, Btn, Card, Sheet } from '@/design/index';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { canShareTrip } from '@/lib/members';
 import { displayName } from '@/lib/displayName';
@@ -86,7 +86,7 @@ function SidebarBody({
 function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
   const { t } = useI18n();
   return (
-    <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
+    <Card tone="brand" radius="md" className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
       <div className="ph">
         <Badge variant="pro" icon="pro">PRO</Badge>
       </div>
@@ -97,7 +97,7 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
       ) : (
         <Btn variant="secondary" icon="lock" block onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
       )}
-    </div>
+    </Card>
   );
 }
 

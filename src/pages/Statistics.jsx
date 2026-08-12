@@ -346,14 +346,14 @@ export default function Statistics() {
 
         {/* empty-state note */}
         {isEmpty && (
-          <div className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
+          <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
             <span className="en-ic tile tile--lg"><Icon name="globe" /></span>
             <span className="en-tx grow--fit">
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>
             <Btn variant="primary" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
-          </div>
+          </Card>
         )}
 
         {/* map hero */}
