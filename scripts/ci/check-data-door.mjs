@@ -176,8 +176,11 @@ const EXEMPT = 'door-exempt';
  *  корзина: новый RPC с клиента обязан быть классифицирован осознанно. */
 const RPC = {
   rpcMutating: [
-    'set_city_nights', 'set_trip_start_date', 'add_city', 'remove_city',
-    'reorder_cities', 'add_layover_transfer', 'create_trip', 'send_chat_message',
+    // TRIP-406: add_city/remove_city/reorder_cities/set_city_nights/
+    // set_trip_start_date ушли на edge trip-route (op:'rpc'), create_trip ДРОПНУТА
+    // (заменена create_trip_with_route на edge trip/create) — клиентских .rpc()
+    // вызовов больше нет. add_layover_transfer уже за швом (TRIP-405).
+    'add_layover_transfer', 'send_chat_message',
   ],
   rpcReading: ['get_user_travel_stats'],
   // Публичный поиск: отказывать нечего, неоднозначности «пусто vs нельзя» не

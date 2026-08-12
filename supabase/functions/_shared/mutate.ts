@@ -83,6 +83,18 @@ async function checkRequirement(
         ? null
         : { status: 402, code: 'PRO_REQUIRED', message: 'Pro required', sentrySkip: true };
     }
+    case 'trip_quota': {
+      // Авторитетный гейт лимита free/Pro на ЗАПИСИ (создание трипа) — ОДИН булев
+      // предикат `can_create_trip` (is_pro OR active<1), ровно как `pro`-ветка зовёт
+      // `is_trip_pro`. Порог и комбинация живут в самом предикате; триггер
+      // `enforce_trip_limit` (backstop) зовёт ТОТ ЖЕ предикат — не две формулы.
+      // Сбой БД брошен внутри `rpc()` → 500 (как editor/pro); сюда доезжает только
+      // настоящее `data` → `false` = бизнес-«нет» (лимит), не спрятанный инцидент.
+      const ok = await rpc('can_create_trip', { p_uid: ctx.actor });
+      return ok === true
+        ? null
+        : { status: 402, code: 'TRIP_LIMIT_REACHED', message: 'Trip limit reached', sentrySkip: true };
+    }
     default:
       // Незнакомое требование — сбой конфигурации, а не отказ юзеру: 500.
       throw new Error(`mutate: unknown requirement "${name}"`);

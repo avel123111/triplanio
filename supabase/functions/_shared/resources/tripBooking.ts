@@ -35,8 +35,9 @@
  * `documents[].file_url` невыразимы `type/max/enum` → едут `validate`-хуком.
  */
 
-import { validateFields } from '../mutateRules.ts';
+import { validateEach } from '../mutateRules.ts';
 import type { FieldSpec, Refusal, ResourceSpec } from '../mutateRules.ts';
+import { CITY_FIELDS } from './cityFields.ts';
 
 const invalid = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
 
@@ -141,32 +142,12 @@ const SEGMENT_FIELDS: Record<string, FieldSpec> = {
   ...TRANSFER_FIELDS,
 };
 
-/** Промежуточный город-пересадка (RPC пишет его строкой `city_visits kind='waypoint'`). */
-const WAYPOINT_FIELDS: Record<string, FieldSpec> = {
-  external_city_id: { type: 'string', max: 300, nullable: true },
-  geonameid: { type: 'number', nullable: true },
-  name_i18n: { type: 'json', nullable: true },
-  city_name_en: { type: 'string', max: 300, nullable: true },
-  country_code: { type: 'string', max: 8, nullable: true },
-  latitude: coord(),
-  longitude: coord(),
-  timezone: { type: 'string', max: 64, nullable: true },
-};
-
-/** Каждый элемент массива валидируется ТЕМ ЖЕ движком, что и одиночная запись. */
-function validateEach(fields: Record<string, FieldSpec>, label: string) {
-  return (value: unknown): Refusal | null => {
-    if (!Array.isArray(value)) return invalid(`Field "${label}" must be a list`);
-    for (const item of value) {
-      if (typeof item !== 'object' || item === null || Array.isArray(item)) {
-        return invalid(`Each ${label} entry must be an object`);
-      }
-      const r = validateFields(fields, item as Record<string, unknown>, { insert: true });
-      if ('status' in r) return r;
-    }
-    return null;
-  };
-}
+/**
+ * Промежуточный город-пересадка (RPC пишет его строкой `city_visits kind='waypoint'`).
+ * Это ТЕ ЖЕ identity-колонки, что у route/create → общий фрагмент `CITY_FIELDS`
+ * (анти-дубль на уровне данных, TRIP-406), а не третья копия описания.
+ */
+const WAYPOINT_FIELDS = CITY_FIELDS;
 
 export const TRIP_BOOKING: ResourceSpec = {
   name: 'trip-booking',

@@ -187,6 +187,17 @@ export function parseAction(pathname: string, slug: string): string | null {
   return tail.length ? tail.join('/') : null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * UUID-предикат шва — ОДИН источник паттерна: `typeOk` для `type:'uuid'` и
+ * валидатор массива uuid (`tripRoute.uuidArray`) сверяются с ним же, а не с двумя
+ * копиями regex.
+ */
+export function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
 function typeOk(spec: FieldSpec, value: unknown): boolean {
   switch (spec.type) {
     case 'string':
@@ -199,8 +210,7 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
       // тип → 400, а не молчаливая коэрция к неверному значению.
       return typeof value === 'boolean';
     case 'uuid':
-      return typeof value === 'string' &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+      return isUuid(value);
     case 'date':
       return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
     case 'json':
@@ -286,6 +296,26 @@ export function validateFields(
 }
 
 /**
+ * Валидатор jsonb-МАССИВА ОБЪЕКТОВ: каждый элемент проходит ТЕМ ЖЕ движком
+ * (`validateFields`, insert-семантика), что и одиночная запись, — не копия правил
+ * (TRIP-405). Возвращает хук для `FieldSpec.validate`. Переиспользуют booking
+ * (waypoints/segments) и trip.create (cities) — один разбор массива на все.
+ */
+export function validateEach(fields: Record<string, FieldSpec>, label: string) {
+  return (value: unknown): Refusal | null => {
+    if (!Array.isArray(value)) return bad(`Field "${label}" must be a list`);
+    for (const item of value) {
+      if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+        return bad(`Each ${label} entry must be an object`);
+      }
+      const r = validateFields(fields, item as Record<string, unknown>, { insert: true });
+      if ('status' in r) return r;
+    }
+    return null;
+  };
+}
+
+/**
  * ПЛАН ЗАПИСИ. Единственный производитель записей в шве — поэтому скоуп здесь
  * не «не забыт», а невыразим иначе (см. шапку файла).
  */
@@ -349,6 +379,8 @@ export function buildPlan(
 import { TRIP_BUDGET } from './resources/tripBudget.ts';
 import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
 import { TRIP_BOOKING } from './resources/tripBooking.ts';
+import { TRIP_ROUTE } from './resources/tripRoute.ts';
+import { TRIP } from './resources/trip.ts';
 import { ACCOUNT } from './resources/account.ts';
 import { USER_PLACE } from './resources/userPlace.ts';
 
@@ -361,6 +393,8 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP_BUDGET.name]: TRIP_BUDGET,
   [TRIP_DOCUMENT.name]: TRIP_DOCUMENT,
   [TRIP_BOOKING.name]: TRIP_BOOKING,
+  [TRIP_ROUTE.name]: TRIP_ROUTE,
+  [TRIP.name]: TRIP,
   [ACCOUNT.name]: ACCOUNT,
   [USER_PLACE.name]: USER_PLACE,
 };
