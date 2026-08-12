@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * DocsLens - documents tab inside TripView.
  *
@@ -17,14 +18,16 @@
  */
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
+import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { TRIP_DOCUMENTS_INCLUDE } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
@@ -96,7 +99,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     setSaving(true); setErr('');
     try {
       await insertTripDocument({
-        trip_id:    tripId,
+        tripId,
         title:      title.trim(),
         notes:      notes.trim()   || null,
         // Store an ABSOLUTE url: a scheme-less "google.com" is a relative path
@@ -104,7 +107,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
         link_url:   normalizeExternalUrl(linkUrl),
         documents:  documents.length ? documents : null,
         visibility,
-        created_by: user?.id ?? null,
+        // `created_by` is stamped by the server from the JWT (TRIP-399) — not sent.
         // Author-name snapshot — mirrors chat_messages.user_full_name so the
         // uploader's name survives them leaving the trip (their trip_members /
         // active-profile row is gone). resolveAuthor() reads this as the fallback.
@@ -168,9 +171,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <Icon name="file" size={17} />
           </span>
           <h2>{t('doc.dialog_new')}</h2>
-          <button className="icon-btn" onClick={close}>
-            <Icon name="close" size={16} />
-          </button>
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>
 
         {/* ── Body ── */}
@@ -184,13 +185,13 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
           {/* Visibility */}
           <div style={{ marginBottom: 16 }}>
-            <div className="dl-label">{t('doc.access_label')}</div>
-            <div className="grid grid--2">
+            <Row gap="g3" className="dl-label">{t('doc.access_label')}</Row>
+            <Grid cols="2">
               {visOpts.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
-                  className={`dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
+                  className={`row dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
                   onClick={() => setVisibility(opt.value)}>
                   <span className="dl-visopt__ic">
                     <Icon name={opt.icon} size={17} />
@@ -201,7 +202,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                   </span>
                 </button>
               ))}
-            </div>
+            </Grid>
           </div>
 
           {/* Title */}
@@ -246,7 +247,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
           {/* Files */}
           <div style={{ marginTop: 16 }}>
-            <div className="dl-label">
+            <Row gap="g3" className="dl-label">
               <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
               {t('doc.files_label')}
               {documents.length > 0 && (
@@ -254,36 +255,37 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                   · {documents.length}
                 </span>
               )}
-            </div>
+            </Row>
 
             {/* Uploaded files list */}
             {documents.length > 0 && (
-              <div className="dl-uplist col col--g3">
+              <Col gap="g3" className="dl-uplist">
                 {documents.map((d, i) => (
                   <FileRow
                     key={i}
                     name={d.file_name}
                     action={(
-                      <button
-                        type="button"
-                        className="doc-row__rm"
-                        aria-label={t('doc.remove_doc_aria')}
+                      <IconBtn
+                        icon="close"
+                        tone="danger"
+                        size="sm"
+                        ariaLabel={t('doc.remove_doc_aria')}
                         onClick={() => {
                           // Staged-but-unsaved upload → the object is already
                           // orphaned, remove it immediately (TRIP-117).
                           removeTripFiles(collectDocPaths([documents[i]]));
                           setDocuments(prev => prev.filter((_, j) => j !== i));
-                        }}>
-                        <Icon name="close" size={13} />
-                      </button>
+                        }}
+                      />
                     )}
                   />
                 ))}
-              </div>
+              </Col>
             )}
 
             {/* Drop zone */}
-            <div
+            <Col
+              gap="g3"
               className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
@@ -297,10 +299,10 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 onChange={e => uploadFiles(e.target.files)}
               />
               {uploading ? (
-                <div className="t-body row row--g4">
+                <Row gap="g4" className="t-body">
                   <span className="spin spin--ring" />
                   {t('common.loading')}
-                </div>
+                </Row>
               ) : (
                 <>
                   <Icon name="upload" size={24} />
@@ -308,13 +310,13 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                   <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
                 </>
               )}
-            </div>
+            </Col>
           </div>
         </div>
 
         {/* ── Footer ── */}
         <div className="dlg__foot">
-          <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+          <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
           <Btn
             variant="primary"
             loading={saving}
@@ -344,7 +346,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     setDeleting(true);
     let deleted;
     try {
-      deleted = await deleteTripDocument(doc.id); // false = nothing removed (RLS/gone), not success
+      deleted = await deleteTripDocument(tripId, doc.id); // false = already gone (404), not success
     } catch {
       setDeleting(false);
       toast({ description: t('doc.delete_failed'), variant: 'destructive' });
@@ -381,9 +383,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
             <Icon name="file" size={17} />
           </span>
           <h2>{doc.title}</h2>
-          <button className="icon-btn" onClick={close}>
-            <Icon name="close" size={16} />
-          </button>
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>
 
         {/* ── Body ── */}
@@ -395,7 +395,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
           {/* href is normalized on save, but rows stored before TRIP-230 still
               hold a bare "google.com" — keep the read side safe for them too. */}
           {doc.link_url && (
-            <a className="dl-dview-link" href={normalizeExternalUrl(doc.link_url)} target="_blank" rel="noreferrer">
+            <a className="row dl-dview-link" href={normalizeExternalUrl(doc.link_url)} target="_blank" rel="noreferrer">
               <Icon name="external" size={16} />
               <b>{doc.link_url}</b>
             </a>
@@ -403,15 +403,15 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
 
           {doc.documents?.length > 0 && (
             <div>
-              <div className="dl-label" style={{ marginTop: doc.notes || doc.link_url ? 14 : 0 }}>
+              <Row gap="g3" className="dl-label" style={{ marginTop: doc.notes || doc.link_url ? 14 : 0 }}>
                 <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
                 {t('doc.files_label')}
-              </div>
-              <div className="col col--g3">
+              </Row>
+              <Col gap="g3">
                 {doc.documents.map((f, i) => (
                   <FileRow key={i} name={f.file_name} fallback={f.file_url} href={normalizeExternalUrl(f.file_url)} />
                 ))}
-              </div>
+              </Col>
             </div>
           )}
 
@@ -422,10 +422,10 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
           )}
 
           {doc.created_at && (
-            <div className="dl-dview-meta">
+            <Row gap="g4" className="dl-dview-meta">
               <Icon name="calendar" size={13} />
               {formatDate(doc.created_at)}
-            </div>
+            </Row>
           )}
         </div>
 
@@ -436,8 +436,8 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
               {t('trip.delete')}
             </Btn>
           )}
-          <div className="grow" />
-          <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+          <Grow />
+          <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
         </div>
       </DialogContent>
     </Dialog>
@@ -470,17 +470,20 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   }, [doc.created_by, doc.created_by_name, profiles, members, isShared, user, t]);
 
   return (
-    <button
-      className="dl-card dz-lift-card"
+    <Card
+      as="button"
+      radius="md"
+      interactive
+      className="col dl-card"
       onClick={() => onOpenDetail?.(doc)}>
 
       {/* Icon + title + visibility chip */}
-      <div className="dl-card__top">
-        <div className={`dl-card__ic dl-card__ic--${isShared ? 'shared' : 'mine'}`}>
+      <Row align="a-start" className="dl-card__top">
+        <div className={`dl-card__ic${isShared ? '' : ' dl-card__ic--mine'}`}>
           <Icon name="file" size={20} />
         </div>
         <div className="dl-card__h">
-          <div className="dl-card__title trunc">{doc.title}</div>
+          <Trunc className="dl-card__title">{doc.title}</Trunc>
           <div className="dl-card__sub">
             {files.length > 0
               ? `${files.length} ${files.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}`
@@ -488,10 +491,10 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
             {doc.link_url && t('doc.has_link')}
           </div>
         </div>
-        <span className={`dl-vischip dl-vischip--${isShared ? 'shared' : 'mine'}`}>
+        <Row as="span" inline gap="g2" className={`dl-vischip${isShared ? '' : ' dl-vischip--mine'}`}>
           <Icon name={isShared ? 'users' : 'lock'} size={11} />
-        </span>
-      </div>
+        </Row>
+      </Row>
 
       {/* Notes excerpt */}
       {doc.notes && (
@@ -500,39 +503,39 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
       {/* File chips (max 2) */}
       {shown.length > 0 && (
-        <div className="col col--g3">
+        <Col gap="g3">
           {shown.map((f, i) => <FileChip key={i} file={f} />)}
           {more > 0 && (
             <span className="dl-filemore">+{more} {t('doc.files_count_few')}</span>
           )}
-        </div>
+        </Col>
       )}
 
       {/* Link row (visual, non-navigating — detail dialog has the real link) */}
       {doc.link_url && (
-        <div className="dl-linkrow">
+        <Row className="dl-linkrow">
           <Icon name="external" size={14} />
           <b>{doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}</b>
           <Icon name="chev" size={13} style={{ opacity: .55 }} />
-        </div>
+        </Row>
       )}
 
       {/* Footer: avatar + name + date */}
-      <div className="dl-card__foot">
+      <Row className="dl-card__foot">
         {isShared ? (
           <>
             <Avatar name={uploader.name} photo={uploader.photo} deleted={uploader.deleted} size="sm" />
-            <span className="dl-card__foot-who">{uploader.name}</span>
+            <Grow as="span" fit className="trunc dl-card__foot-who">{uploader.name}</Grow>
           </>
         ) : (
           <>
             <Avatar name={displayName(user?.email, user?.full_name)} size="sm" />
-            <span className="dl-card__foot-who">{t('doc.only_you')}</span>
+            <Grow as="span" fit className="trunc dl-card__foot-who">{t('doc.only_you')}</Grow>
           </>
         )}
         <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
-      </div>
-    </button>
+      </Row>
+    </Card>
   );
 }
 
@@ -543,7 +546,7 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
   const isShared = scope !== 'personal';
   return (
     <div className="dl-empty">
-      <div className={`dl-empty__ic dl-empty__ic--${isShared ? 'shared' : 'mine'}`}>
+      <div className={`dl-empty__ic${isShared ? '' : ' dl-empty__ic--mine'}`}>
         <Icon name="file" size={28} />
       </div>
       <b>{isShared ? t('doc.empty_shared') : t('doc.empty_private')}</b>
@@ -552,7 +555,10 @@ function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
         <Btn
           variant="soft"
           icon="plus"
-          style={!isShared ? { background: 'var(--warm-soft)', color: 'var(--warm-ink)' } : undefined}
+          /* Личные доки = тёплый тон. Ведём его ВХОДОМ канала (--hl-soft/--hl-ink),
+             а не инлайном итоговых background/color: так `.btn--soft` держит свой
+             ховер, а не глохнет под перекрытием заливки (TRIP-344). */
+          style={!isShared ? { '--hl-soft': 'var(--warm-soft)', '--hl-ink': 'var(--warm-ink)' } : undefined}
           onClick={() => onOpenAdd?.()}>
           {t('doc.add_doc')}
         </Btn>
@@ -573,7 +579,7 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
       ))}
       {canAdd && (
         <button
-          className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
+          className={`col col--g4 col--j-center dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
           onClick={() => onOpenAdd?.()}>
           <span className="dl-addcard__ic">
             <Icon name="plus" size={22} />
@@ -600,13 +606,15 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   const { data: docs = [], isLoading, error } = useQuery({
     queryKey: DOCS_KEY(tripId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('trip_documents')
-        .select('*')
-        .eq('trip_id', tripId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      // Read через единую дверь чтения (TRIP-399, §6): getTripDetails УЖЕ фильтрует
+      // под service_role `shared → всем, private → только автору` (правило
+      // `_can_access_trip_document`), поэтому прямого `.from('trip_documents')`
+      // здесь больше нет — только после его снятия шаг C сможет отозвать SELECT.
+      const data = await invokeGetTripDetails({ tripId, include: TRIP_DOCUMENTS_INCLUDE });
+      // getTripDetails не сортирует documents; список показываем новыми сверху.
+      return (data?.documents || []).slice().sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
     },
     enabled: !!tripId,
   });
@@ -669,7 +677,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
         <ReadOnlyBanner>{t('doc.readonly_banner_desc')}</ReadOnlyBanner>
       )}
       {/* ── Toolbar: search + filter ── */}
-      <div className="dl-toolbar">
+      <Row wrap gap="g6" className="dl-toolbar">
         <Input
           className="dl-search"
           icon="search"
@@ -679,22 +687,18 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           placeholder={t('doc.search_ph')}
           aria-label={t('doc.search_ph')}
         />
-        <div className="seg" role="group" aria-label={t('doc.filter_label')}>
-          {filterOpts.map(opt => (
-            <button
-              key={opt.key}
-              aria-pressed={filter === opt.key}
-              onClick={() => setFilter(opt.key)}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+        <Seg
+          ariaLabel={t('doc.filter_label')}
+          value={filter}
+          onChange={setFilter}
+          options={filterOpts.map(opt => ({ value: opt.key, label: opt.label }))}
+        />
+      </Row>
 
       {/* ── Shared section ── */}
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
-          <div className="dl-sec-ic dl-sec-ic--shared">
+          <div className="dl-sec-ic">
             <Icon name="users" size={17} />
           </div>
           <div>

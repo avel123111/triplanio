@@ -2,9 +2,9 @@
 //
 // Why this exists: a trip's content outlives its authors. When a member leaves
 // the trip their `trip_members` row is hard-deleted, so the live profile
-// resolver (resolveProfiles / get_trip_participant_profiles, both scoped to
-// active participants) no longer returns them — their past messages/docs would
-// otherwise fall back to "?" with a blank avatar.
+// resolver (resolveProfiles, scoped to active participants) no longer returns
+// them — their past messages/docs would otherwise fall back to "?" with a
+// blank avatar.
 //
 // The cheap fix, shared by chat and docs: every content row carries a
 // denormalized author-name snapshot taken at creation time
@@ -47,6 +47,13 @@ export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {
   }));
 }
 
+/** ⚠️ Аннотация обязательна: без неё TS выводит форму из ДЕСТРУКТУРИЗАЦИИ и
+ *  делает каждое поле без дефолта ОБЯЗАТЕЛЬНЫМ, поэтому законный вызов без
+ *  `member` (его передают только поверхности, у которых есть строка членства)
+ *  краснел TS2345 на экране под `// @ts-check`. Тот же запечатанный набор, что
+ *  у компонентов ДС, только у функции.
+ *  @param {{ userId?: any, nameSnapshot?: any, member?: any, profiles?: any,
+ *            members?: any, selfUser?: any, deletedLabel?: any, fallback?: string }} a */
 export function resolveAuthor({
   userId,
   nameSnapshot,

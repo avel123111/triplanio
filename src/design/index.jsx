@@ -34,12 +34,29 @@ export { default as AiField, AiBadge } from '@/components/ui/AiField';
 // напрямую и не замыкать зависимость на этот барраль (TRIP-333).
 export { Input, Textarea, InputGroup } from './Input';
 import { FieldRequired } from './Input';
+// Раскладка — своим модулем по той же причине, что и поле: барраль тянет
+// `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
+// (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
+export { Row, Col, Grid, Trunc, Grow } from './Layout';
+// Кнопка-иконка — своим модулем по той же причине: крестик тоста живёт в
+// `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
+// оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
+// (TRIP-344). Экраны зовут её отсюда — точка входа в ДС одна.
+// Карты осей примитивов реэкспортятся тем же барралем, что и сами компоненты —
+// точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
+export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
+export { Stepper, STEPPER_VARIANTS } from './Stepper';
+export { Seg, SEG_VARIANTS } from './Seg';
+export { Chip, CHIP_VARIANTS } from './Chip';
+export { Swatch, SWATCH_VARIANTS } from './Swatch';
+import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
+/** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, className?: string, style?: any }} p */
 export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
   const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
@@ -66,6 +83,7 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
 // `people` rows carry the same fields as <Avatar>: name + optional photo/deleted/kind.
 // Photos matter — the chat header stacks real member avatars, and without them the
 // stack fell back to initials while the same people showed photos two lines below.
+/** @param {{ people?: any[], max?: number, size?: string, className?: string }} p */
 export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
   <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
     {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
@@ -106,8 +124,9 @@ const SEV_ICON = { info: "info", warning: "warning", error: "error", success: "c
 //   .tile           плитка значка
 //   .grow           текстовый блок
 //   .row__t         заголовок - тот же канон, что у карточек-близнецов
+/** @param {{ level?: string, title?: any, children?: any, action?: any, icon?: string, iconStyle?: any, align?: string, dashed?: boolean, loading?: boolean }} p */
 export const Severity = ({ level = "info", title, children, action, icon, iconStyle, align, dashed, loading }) => (
-  <div className={`sev row row--wrap${align === "mid" ? "" : " row--start"} sev--${level}${dashed ? " sev--dashed" : ""}`}>
+  <div className={`sev row row--wrap${align === "mid" ? "" : " row--a-start"} sev--${level}${dashed ? " sev--dashed" : ""}`}>
     <span className="tile sev__icon" style={iconStyle}>
       {loading ? <span className="spin spin--ring" /> : <Icon name={icon || SEV_ICON[level] || "info"} size={16} />}
     </span>
@@ -140,6 +159,7 @@ export const Severity = ({ level = "info", title, children, action, icon, iconSt
 // шире кликабельного - на телефоне это просто «не нажимается». Ссылкой строка
 // становится только когда действия справа нет: <button> внутри <a> невалиден,
 // поэтому у строки с крестиком ссылка остаётся на имени.
+/** @param {{ name: string, href?: string, size?: string, tone?: string, action?: any, fallback?: string }} p */
 export const FileRow = ({ name, href, size, tone, action, fallback }) => {
   const label = name || fallback || '';
   const cls = `doc-row row${tone === 'ai' ? ' doc-row--ai' : ''}`;
@@ -164,6 +184,7 @@ export const FileRow = ({ name, href, size, tone, action, fallback }) => {
 // Заголовок — канонический (settings.readonly_banner_title); описание — per-lens
 // через children. Обёртка `.readonly-banner` несёт консистентный отступ там, где
 // контейнер не раскладывает детей через gap (см. app.css).
+/** @param {{ children?: any, title?: any }} p */
 export const ReadOnlyBanner = ({ children, title }) => {
   const t = useT();
   return (
@@ -189,6 +210,7 @@ export const ReadOnlyBanner = ({ children, title }) => {
 // раньше это была ТОЛЬКО звёздочка, то есть признак для зрячих - нативный
 // `required` стоял лишь на сырых полях экрана входа, а `aria-required` не стоял
 // нигде. Провайдер объявлен рядом с полем (`./Input`), которое его и читает.
+/** @param {{ label?: any, hint?: any, sub?: any, children?: any, required?: boolean }} p */
 export const Field = ({ label, hint, sub, children, required = false }) => (
   <div className="field">
     {label && (
@@ -209,24 +231,98 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
 // `loading` renders the canonical Lumo in-button spinner (.btn .spin) in place
 // of the leading icon, disables the button and flags aria-busy — the single
 // source of truth for "operation in flight" feedback across the app.
-export const Btn = ({ variant = "ghost", icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+//
+// ★ НАБОР ТОНОВ ЗАКРЫТ ТИПОМ (TRIP-344 PR 3, разбор облика кнопок — апрув
+// Pavel). Тон был `string`, то есть опечатка (`variant="secundary"`) рисовала
+// класс, которого нет, и кнопка молча получала базовый вид — ровно тот класс
+// тихо неверного ответа, против которого заведена витрина `/kit`.
+/**
+ * @typedef {'primary'|'secondary'|'soft'|'quiet'|'link'|'dashed'|'danger'
+ *   |'danger-solid'|'pro'|'ai'} BtnVariant
+ */
+// ── Карта оси `variant` — источник витрины `/kit` (TRIP-344). Тот же union,
+// что типизирует проп: `variant="compact"` — ошибка типа у вызывателя под
+// `// @ts-check`, а страница объекта полна по построению. Истинно единый
+// источник (литеральный кортеж) даст перевод ДС в `.ts` — будущий шаг; в
+// `.jsx` `as const` запрещён (TS8016), typedef+массив — компромисс.
+// ⚠️ index.jsx без `// @ts-check`, поэтому `@type` тут не проверяется НА МЕСТЕ —
+// проверка живёт у потребителя (`Kit` под прагмой) и в тесте дрейфа (сверка с CSS).
+/** @type {readonly BtnVariant[]} */
+export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "dashed", "danger", "danger-solid", "pro", "ai"];
+// ★★ ТОН ТЕПЕРЬ НАЗЫВАЕТСЯ ЯВНО, И ЭТО РЕШЕНИЕ, А НЕ ПОБОЧНЫЙ ЭФФЕКТ. Дефолтом
+// был `ghost` — тон, который разбор УДАЛЯЕТ. Оставить дефолтом что угодно молча
+// значило бы перекрасить каждый вызов без пропа, ничего не написав в дифф.
+// Поэтому:
+//   · в ТИПЕ `variant` обязателен — пропущенный проп краснеет у вызывающего под
+//     `// @ts-check` и в пробе `props.test.js` (закрытый юнион ловит НЕВЕРНОЕ
+//     значение, но НЕ ловит ОТСУТСТВИЕ: замерено на PR 2, где снятие `size`/
+//     `tone` прошло lint, tsc и все тесты зелёными);
+//   · в РАНТАЙМЕ остаётся `secondary` — файлов без прагмы в репозитории
+//     большинство, и там пропущенный проп обязан дать рабочую кнопку, а не
+//     `btn--undefined`. Значение выбрано не наугад: `secondary` — это ровно то,
+//     куда разбор увёл `ghost`, и его объявления В ПОКОЕ побайтово совпадают с
+//     базовым `.btn`, то есть до наведения «кнопка без тона» и «кнопка
+//     secondary» неотличимы. ⚠️ Ровно до наведения: `.btn--secondary:hover`
+//     заливается `--wash` и притемняет рамку, у голого `.btn` этого нет —
+//     поэтому «одна и та же кнопка» тут сказать нельзя.
+//
+// ★ ФОРМА ПЛЕЙСХОЛДЕРА (`variant="dashed"`) СОБИРАЕТСЯ ЗДЕСЬ, А НЕ НА ЭКРАНЕ.
+// Пунктирная «добавить» бывает ДВУХ обличий, и до разбора каждое было своим
+// классом на своём экране (`.gadd`, `.te-cellbtn--ghost`, `.gadd--center`,
+// `.bgt-glist__add`):
+//   · с ПЛИТКОЙ-иконкой слева и растущей подписью (панель города, сервисы) —
+//     `tile` + при необходимости `sub` со второй строкой;
+//   · без плитки — иконка и подпись по центру («Добавить ещё город», «Трата»)
+//     либо две иконки в размере `sm` (пустая ячейка редактора маршрута).
+// Выравнивание НЕ задаётся `justify-content` (оно сломало бы центрированную
+// форму): подпись в `.gt` растягивается сама, и содержимое встаёт слева ровно
+// тогда, когда подпись есть.
+/**
+ * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
+ *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
+ *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
+ *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any }} p
+ */
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style }) => (
   <button
-    className={`btn btn--${variant} ${block ? "btn--block" : ""} ${className}`}
+    // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
+    // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
+    // type="button" ставит и объясняет зачем — то есть про грабли знали, а на
+    // самой кнопке системы их не закрыли (TRIP-344 PR 1).
+    // ⚠️ Правка ПРОФИЛАКТИЧЕСКАЯ, живого дефекта не чинит и поведение сегодня не
+    // меняет: <form> в репозитории ровно четыре (все в Login.jsx), и отправляют
+    // их сырые <button type="submit">, а не Btn. Проверено грепом по всему src.
+    type="button"
+    className={`btn btn--${variant} ${size ? `btn--${size}` : ""} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
     aria-label={ariaLabel}
     aria-pressed={ariaPressed}
+    // Полу-disabled: примитив выглядит приглушённым (`.btn[aria-disabled]`), но
+    // НЕ получает атрибут `disabled` — остаётся кликабельным (клик раскрывает
+    // валидацию). Заменяет инлайн `opacity` у вызывателя (TRIP-344).
+    aria-disabled={ariaDisabled || undefined}
     title={title}
     style={style}
   >
-    {loading ? <span className="spin" /> : (icon && <Icon name={icon} size={16} />)}
-    {children}
+    {loading
+      ? <span className="spin" />
+      : (icon && (tile
+        // Плитка красится вместе с рамкой сама: `.btn--dashed .gi` читает те же
+        // `--bd`/`--fg`, которые ховер тона и меняет.
+        ? <span className="gi"><Icon name={icon} size={17} /></span>
+        : <Icon name={icon} size={16} />))}
+    {/* Подпись растёт (`.gt` = flex:1 + min-width:0) ВСЕГДА, когда слева стоит
+        плитка, а не только когда есть вторая строка: иначе форма с плиткой и
+        однострочной подписью («Добавить активность») схлопнулась бы в центр. */}
+    {(tile || sub) ? <span className="gt"><b>{children}</b>{sub && <span>{sub}</span>}</span> : children}
     {iconRight && !loading && <Icon name={iconRight} size={16} />}
   </button>
 );
 
 // ----- Badge -----
+/** @param {{ variant?: string, icon?: string, children?: any, style?: any }} p */
 export const Badge = ({ variant = "", icon, children, style }) => (
   <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
     {icon && <Icon name={icon} size={11} />}
@@ -235,18 +331,100 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 );
 
 // ----- Card -----
-export const Card = ({ title, subtitle, action, children, className = "", style }) => (
-  <div className={`card ${className}`} style={style}>
-    {(title || subtitle || action) && (
-      <div className="card-h">
-        <div className="grow">
-          {title && <h3>{title}</h3>}
-          {subtitle && <div className="muted t-meta">{subtitle}</div>}
-        </div>
-        {action}
-      </div>
-    )}
-    {children}
+// ★ ГОЛАЯ ПОВЕРХНОСТЬ (TRIP-343, объект 2). Прежний `Card` жёстко рисовал шапку
+// `card-h`+`h3` в теле - и ровно поэтому его звали 11 раз, а не 200: обернуть им
+// произвольную поверхность (виджет, панель, строку-трипа, add-плитку) было
+// нельзя, навязанная шапка мешала. Теперь примитив ОБОРАЧИВАЕТ `children` и
+// эмитит закрытый набор форм из пропов; удобная шапка вынесена в отдельный слот
+// `CardHeader` (тот же DOM, что был внутри), а не в тело.
+//
+// ★ КАРТА ФОРМ ЭКСПОРТИРУЕТСЯ ИЗ ПРИМИТИВА, как `BTN_VARIANTS`. Карточка -
+// МНОГООСНЫЙ объект (радиус × тон × interactive/add/recessed/locked), поэтому
+// один union «типизирует один проп», как у кнопки, ей не подходит: пропы
+// типизируют typedef'ы `CardRadius`/`CardTone` ниже, а МАШИННЫЙ источник для
+// витрины `/kit` и теста дрейфа - список СУФФИКСОВ классов `.card--*`. Он и есть
+// `CARD_VARIANTS`: страница рисует по нему, тест сверяет его ↔ живой CSS в обе
+// стороны (Р10 - иначе витрина утверждает, а не отражает).
+//
+// ★ ВСЕ КЛАССЫ СТРОЯТСЯ ИНТЕРПОЛЯЦИЕЙ `card--${суффикс}` (суффиксы - литералы
+// без `--`), поэтому НИ ОДИН `.card--*` не читается тестом дрейфа как
+// «склеенный компонентом» (`emittedByComponents` ловит только чистый литерал
+// `xxx--yyy`). Следствие: КАЖДЫЙ `.card--*` попадает под суд направления 1 и
+// обязан быть в `CARD_VARIANTS` - полное, единообразное покрытие, без немой
+// дыры «булев модификатор эмитится литералом и выпадает из-под суда».
+//
+// ★ radius = ОСЬ lg|md ТОЛЬКО (решение Pavel). `sm`(10) НЕ значение оси, а
+// СЛЕДСТВИЕ `tone=ai`: его несёт сам `.card--tone-ai` в CSS, отдельного
+// `.card--r-sm` нет, и в оси радиуса он не открыт (иначе Р14 - ось снова
+// распахнута). `compact` не заведён (YAGNI): проп в контракте есть, но CSS-
+// правило и значение появятся с первым живым вызывателем, не впрок.
+/**
+ * @typedef {'lg'|'md'} CardRadius
+ * @typedef {'brand'|'ai'} CardTone
+ */
+/** @type {readonly string[]} */
+export const CARD_VARIANTS = [
+  "r-lg", "r-md", "interactive", "flush",
+  "tone-brand", "tone-ai", "add", "recessed", "locked", "parsed", "danger",
+];
+
+/**
+ * @param {{ as?: 'div'|'button'|'a', radius?: CardRadius, interactive?: boolean,
+ *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
+ *   locked?: boolean, parsed?: boolean, danger?: boolean, href?: string, onClick?: any,
+ *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,
+ *   ariaControls?: string, ariaSelected?: boolean, ariaBusy?: boolean, title?: string,
+ *   children?: any, className?: string, style?: any }} p
+ */
+export const Card = ({
+  as = "div", radius, interactive, pad = "default", tone, variant,
+  recessed, locked, parsed, danger, href, onClick, disabled, id, ariaLabel,
+  ariaExpanded, ariaControls, ariaSelected, ariaBusy, title,
+  children, className = "", style,
+}) => {
+  const mods = [
+    radius && `r-${radius}`,
+    interactive && "interactive",
+    pad === "none" && "flush",
+    tone && `tone-${tone}`,
+    variant === "add" && "add",
+    recessed && "recessed",
+    locked && "locked",
+    parsed && "parsed",
+    danger && "danger",
+  ].filter(Boolean);
+  const El = as;
+  return (
+    <El
+      className={["card", ...mods.map((m) => `card--${m}`), className].filter(Boolean).join(" ")}
+      style={style}
+      id={id}
+      title={title}
+      aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      aria-selected={ariaSelected}
+      aria-busy={ariaBusy}
+      onClick={onClick}
+      {...(as === "a" ? { href } : null)}
+      {...(as === "button" ? { type: "button", disabled } : null)}
+    >
+      {children}
+    </El>
+  );
+};
+
+// Слот удобной шапки карточки - тот же DOM, что примитив рисовал в теле до
+// TRIP-343 (заголовок·подзаголовок·действие справа). Отдельным экспортом, а не
+// пропом `Card`, чтобы поверхность оставалась голой и не навязывала шапку.
+/** @param {{ title?: any, subtitle?: any, action?: any }} p */
+export const CardHeader = ({ title, subtitle, action }) => (
+  <div className="card-h">
+    <div className="grow">
+      {title && <h3>{title}</h3>}
+      {subtitle && <div className="muted t-meta">{subtitle}</div>}
+    </div>
+    {action}
   </div>
 );
 
@@ -267,6 +445,7 @@ export const Card = ({ title, subtitle, action, children, className = "", style 
 // примитива. Новый тон = новая строка, как у SEV_ICON выше.
 const EMPTY_TONE = { empty: "brand", error: "danger", success: "success", warning: "warning" };
 
+/** @param {{ icon?: string, title?: any, body?: any, action?: any, kind?: string, boxed?: boolean, iconStyle?: any }} p */
 export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "empty", boxed = false, iconStyle }) => (
   <div className={`empty-state${boxed ? " empty-state--boxed" : ""}`}>
     <div
@@ -282,14 +461,9 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
 );
 
 // ----- Skeleton -----
+/** @param {{ w?: number|string, h?: number|string, r?: number|string, style?: any }} p */
 export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
-  <div style={{
-    width: w, height: h, borderRadius: r,
-    background: "linear-gradient(90deg, var(--line) 0%, var(--wash) 50%, var(--line) 100%)",
-    backgroundSize: "200% 100%",
-    animation: "shimmer 1.5s linear infinite",
-    ...style,
-  }} />
+  <div className="skeleton" style={{ width: w, height: h, borderRadius: r, ...style }} />
 );
 
 // ----- Checkbox -----
@@ -299,6 +473,7 @@ export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
 // Checkbox vs Toggle: a checkbox is a value you pick and then submit (a form
 // field, a filter applied by a button); a Toggle is a setting that takes effect
 // the moment you flip it. Don't swap one for the other to look tidier.
+/** @param {{ checked?: boolean, onChange?: any, label?: any, disabled?: boolean, className?: string }} p */
 export const Checkbox = ({ checked, onChange, label, disabled, className = "" }) => (
   <label className={`checkbox ${className}`}>
     <input
@@ -318,35 +493,25 @@ export const Checkbox = ({ checked, onChange, label, disabled, className = "" })
 // Rendered as a real switch: `type="button"` keeps a Toggle inside a <form>
 // from submitting it, and `aria-checked` is what carries the on/off state to a
 // screen reader (`aria-label` on its own only supplies the name).
+/** @param {{ on?: boolean, onChange?: any, locked?: boolean, busy?: boolean, label?: any }} p */
 export const Toggle = ({ on, onChange, locked, busy, label }) => (
   <button
     type="button"
     role="switch"
+    className="switch"
     aria-checked={!!on}
     aria-label={label}
     aria-busy={busy || undefined}
+    data-locked={locked || undefined}
     onClick={() => !locked && !busy && onChange && onChange(!on)}
     disabled={busy || undefined}
-    style={{
-      width: 36, height: 21, padding: 0, border: "none",
-      borderRadius: 'var(--r-pill)',
-      background: locked ? "var(--wash)" : on ? "var(--brand)" : "var(--line)",
-      position: "relative", flexShrink: 0,
-      opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
-      transition: "background .15s ease",
-    }}
   >
-    {/* Bleeds the hit area from the painted 36×21 track out to the 44px minimum
-        touch target. Sits before the knob so the knob still paints on top. */}
-    <span aria-hidden="true" style={{ position: "absolute", inset: "-12px -4px" }} />
-    <span style={{
-      position: "absolute", top: 2, left: on ? 17 : 2,
-      width: 17, height: 17, borderRadius: "50%",
-      background: "white", boxShadow: "0 1px 2px rgba(0,0,0,.2)",
-      transition: "left .15s ease",
-      display: "grid", placeItems: "center", color: on ? "var(--brand)" : "var(--muted)",
-    }}>
-      {busy && <span className="spin" style={{ width: 11, height: 11, border: "2px solid currentColor", borderRightColor: "transparent", borderRadius: "50%" }} />}
+    {/* Дорожка, бегунок и растянутый до 44px тач-таргет живут в `.switch`
+        (app.css). Состояние сюда не передаётся классом: его уже несут
+        `aria-checked` и `disabled` из контракта role="switch", а «выключен по
+        праву» — `data-locked`. */}
+    <span className="switch__knob">
+      {busy && <span className="spin" />}
     </span>
   </button>
 );
@@ -355,27 +520,21 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
 // Canonical money formatter (locale-aware, decimals only when present).
 export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 
-// ----- RoleBadge with icon -----
-export const RoleBadge = ({ role, size = "md", status }) => {
-  const t = useT();
-  const ROLE_META = {
-    owner:  { icon: "crown",  color: "var(--warm)", soft: "var(--warm-tint)" },
-    admin:  { icon: "shield", color: "var(--brand)", soft: "var(--brand-soft)" },
-    viewer: { icon: "eye",    color: "var(--muted)", soft: "var(--wash)" },
-  };
-  const key = ROLE_META[role] ? role : "viewer";
-  const m = ROLE_META[key];
-  return (
-    <span className="t-micro" style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: size === "sm" ? "2px 7px 2px 5px" : "3px 9px 3px 6px",
-      borderRadius: 'var(--r-pill)', background: m.soft, color: m.color,
-    }}>
-      <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
-      {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
-    </span>
-  );
-};
+// ----- RoleBadge: УДАЛЁН (TRIP-344 PR 1) -----
+// Роль участника — это `<Badge>` с тоном, и приложение уже выражало её так во
+// ВСЕХ трёх местах, где она видна: `MembersLens` (своя локальная функция с тем
+// же именем), `MembersSummaryCard` и карточка трипа в `Trips.jsx`. Первые два
+// независимо сошлись на owner=warning · admin=brand · viewer=outline; третье
+// рисует только зрителя и берёт `quiet` — расхождение реальное, но это долг
+// экранов, а не повод держать четвёртый способ здесь.
+// `RoleBadge` и был этим четвёртым — собственной пилюлей на инлайнах (свои тона
+// warm/brand-soft/wash, свой радиус, свои отступы), мимо `.badge`, объявленного
+// строкой выше. За пределы витрины `/kit` он не вышел ни разу, так что
+// схлопывание не тронуло ни одного экрана.
+// ⚠️ Вместе с ним осиротели ключи `members.badge_owner/_admin/_viewer` и
+// `members.pending` — других вызывателей у них нет. Не удалены здесь: ключи
+// живут ещё и в Tolgee (он авторитет при `pull`), а зачистка i18n — свой проход
+// по всем шести источникам ссылок, см. memory/feedback-dead-i18n-key-sweep-must-scan-backend.
 
 // ---- Dialog: title/icon/foot/size convenience wrapper over the ONE canonical
 //      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +
@@ -386,7 +545,9 @@ export const RoleBadge = ({ role, size = "md", status }) => {
 const DLG_ICON_TONES = {
   activity: { bg: 'var(--ev-activity-soft)', fg: 'var(--ev-activity-ink)' },
 };
+/** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
+  const t = useT();
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
   const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
   return (
@@ -412,9 +573,10 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
             <DialogTitle asChild><h2>{title}</h2></DialogTitle>
             {subtitle && <DialogDescription asChild><div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div></DialogDescription>}
           </div>
-          <button className="icon-btn" onClick={handleClose}>
-            <Icon name="close" size={16} />
-          </button>
+          {/* Крестик диалога — тот самый «канон» из разбора облика: тон quiet,
+              сторона --ctl-h. Он же был безымянным для скринридера, пока
+              `ariaLabel` не стал обязательным пропом примитива. */}
+          <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} />
         </div>
         <div className="dlg__body">{children}</div>
         {foot && <div className="dlg__foot">{foot}</div>}
@@ -427,6 +589,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
 // Бренд-цвета партнёров живут в lib/externalBrands (единственный дом внешних
 // брендов), а не рядом с компонентом, который их рисует.
 
+/** @param {{ url?: string, size?: number }} p */
 export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);
   // Real favicon of the booking site (same source as the event view/edit dialogs)
@@ -469,6 +632,9 @@ export const PartnerLogo = ({ url, size = 18 }) => {
 };
 
 // Not exported: rendered only by StreamEventRow below.
+// Долг «запечатанных деструктуризацией пропов»: без аннотации TS выводит ОБА
+// ключа обязательными, и единственный живой вызов (без `fallback`) краснеет.
+/** @param {{ url?: string, fallback?: string }} p */
 const PartnerPill = ({ url, fallback }) => {
   const t = useT();
   const p = detectPartner(url);
@@ -491,7 +657,7 @@ const _LOCMAP = { ru: 'ru-RU', en: 'en-US', es: 'es-ES' };
 // ru output kept byte-identical (Public + ru callers unchanged); en/es via Intl.
 export function fmtDate(iso, loc) {
   const d = new Date(iso + "T00:00:00");
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   if (loc && loc !== 'ru') {
     try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { day: 'numeric', month: 'short' }).format(d); } catch { /* fallthrough */ }
   }
@@ -500,7 +666,7 @@ export function fmtDate(iso, loc) {
 
 export function weekday(iso, loc) {
   const d = new Date(iso + "T00:00:00");
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   if (loc && loc !== 'ru') {
     try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'short' }).format(d); } catch { /* fallthrough */ }
   }
@@ -511,7 +677,7 @@ const _WEEKDAYS_LONG = ["воскресенье", "понедельник", "в�
 // Full weekday name (Lumo timeline header writes them out in full).
 export function weekdayLong(iso, loc) {
   const d = new Date(iso + "T00:00:00");
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   if (loc && loc !== 'ru') {
     try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'long' }).format(d); } catch { /* fallthrough */ }
   }
@@ -552,7 +718,9 @@ function _evMeta(e) {
   return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", labelKey: "" };
 }
 
-// Event-type → Lumo tile colour tokens (--evs soft bg / --evi ink).
+// Event-type → значения общего канала тинта --hl-soft / --hl-ink (04 PR3).
+// Своих имён (--evs / --evi) у плитки ленты больше нет: канал один на всё
+// приложение, а вызыватель подставляет в него ЗНАЧЕНИЕ — вот это.
 const _EV_TOK = {
   hotel:    { s: "var(--ev-hotel-soft)",    i: "var(--ev-hotel-ink)" },
   transfer: { s: "var(--ev-transfer-soft)", i: "var(--ev-transfer-ink)" },
@@ -578,6 +746,7 @@ function _evTok(e) {
 // Timeline event plate — Lumo "Таймлайн поездки" (.tl3-ev): time on the left
 // (mono), .tl3-card with a coloured .tile + title/sub. Transfers render as the
 // column .tl3-card--tr (from → mode → to).
+/** @param {{ e: any, onClick?: any }} p */
 export function StreamEventRow({ e, onClick }) {
   const t = useT();
 
@@ -621,7 +790,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <button className="tl3-card" style={{ "--evs": tok.s, "--evi": tok.i }} onClick={onClick}>
+      <Card as="button" radius="lg" interactive className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>
@@ -633,7 +802,7 @@ export function StreamEventRow({ e, onClick }) {
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
           </span>
         )}
-      </button>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Tests for CI guard 2q (scripts/ci/check-i18n-dynamic-keys.mjs).
+ * Tests for CI guard 2x (scripts/ci/check-i18n-dynamic-keys.mjs).
  *
  * A green test proves nothing until it has been seen red: the mutation that
  * matters here is TRIP-299 — a locale key that is alive only through the DB /

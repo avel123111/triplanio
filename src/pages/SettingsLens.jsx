@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * SettingsLens - trip settings tab inside TripView.
  *
@@ -11,16 +12,16 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/api/supabaseClient';
+import { Row, Col, Grid, Grow } from '../design/Layout';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { TRIP_SHELL_KEY, writeRows } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
@@ -59,6 +60,35 @@ const SHOW_HOTEL_VOTING = false;
 // inline-style-exempt: цвет бренда - данные из реестра, не оформление.
 const TG_TILE = { background: tgBrand.bg, color: tgBrand.fg };
 
+// ─── Отказы edge-функций ──────────────────────────────────────────────────────
+// `updateTripSettings` и `deleteTrip` отвечают на отказ НАСТОЯЩИМ статусом
+// (403 / 402 / 404; сбой - 500) и машинным `code` (TRIP-378). Следствие для
+// КЛИЕНТА, а не для сервера: у не-2xx `data` равен null, поэтому ветка по
+// `data.code` молча перестаёт совпадать, а `error.message` - это строка SDK
+// "Edge Function returned a non-2xx status code", то есть сырой английский текст
+// в тосте. Читать надо `code`/`message` от `invokeFn`: он уже снял их с тела ОДИН
+// раз (тело Response читается единожды). Форма - как у `AI_ERROR_KEY` в
+// ChatStream: код → ключ копии.
+//
+// Клауза, а не предложение: подставляется в `settings.save_error*` ("Не удалось
+// сохранить: {message}"). Незнакомый код (500, сеть, платформенный отказ) - это
+// «попробуй ещё раз», и НИКОГДА не текст ошибки с сервера.
+//
+// ⚠️ Правило действует В ЭТИХ вызывателях, а не по всему файлу, и это долг, а не
+// умысел: `telegramSetActive` (~:354), `telegramDisconnect` (~:364) и
+// `removeTripMember` (~:708) всё ещё печатают в тост `error?.message`, то есть на
+// не-2xx - ту самую строку SDK. Не тронуто здесь намеренно: TRIP-378 ограничен
+// двумя функциями (§3 ТЗ), а это смена пользовательской копии на чужих путях.
+// ⚠️ Карта НЕ общерепная и общей пока быть не может: `code` при отказе несут
+// ровно эти две функции, а, например, `getTripDetails` отдаёт 404/403 БЕЗ кода.
+// Прежде чем выносить карту в общий модуль - проверить, что источник её заполняет.
+const REFUSAL_CLAUSE = {
+  FORBIDDEN: 'settings.err_forbidden',
+  NOT_FOUND: 'settings.err_trip_gone',
+};
+// У удаления своя клауза отказа: «нет прав менять настройки» про удаление врёт.
+const DELETE_REFUSAL_CLAUSE = { ...REFUSAL_CLAUSE, FORBIDDEN: 'settings.err_delete_forbidden' };
+
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
 // with every optional/pro feature off - they never auto-enable for anyone.
 function featuresFromTrip(trip) {
@@ -76,34 +106,34 @@ function featuresFromTrip(trip) {
 function FeatureCard({ feat, on, onChange, hasPro, busy }) {
   const { t } = useI18n();
   const proLocked = feat.pro && !hasPro;
-  const cls = 'addon-card'
+  const cls = 'col addon-card'
     + (on ? ' addon-card--on' : '')
     + (feat.locked ? ' addon-card--locked' : '');
   return (
-    <div className={cls} style={{ '--ac': feat.color || 'var(--brand)' }}>
-      <div className="addon-card__top">
+    <Card radius="md" className={cls} style={{ '--ac': feat.color || 'var(--brand)' }}>
+      <Row align="a-start" justify="j-between" className="addon-card__top">
         <div className="addon-card__ic"><Icon name={feat.icon} size={20} /></div>
         {feat.locked
           ? <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
           : proLocked
             ? <Badge variant="pro" icon="pro">PRO</Badge>
             : (
-              <div className="addon-card__status">
+              <Row wrap className="addon-card__status">
                 {feat.pro && hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
                 <Toggle on={on} busy={busy} onChange={onChange} />
-              </div>
+              </Row>
             )}
-      </div>
-      <div className="addon-card__title">
+      </Row>
+      <Row wrap className="addon-card__title">
         {t(feat.labelKey)}
-      </div>
+      </Row>
       <div className="addon-card__desc">{t(feat.descKey)}</div>
       {proLocked && !feat.locked && (
-        <div className="addon-card__foot">
+        <Row gap="g4" className="addon-card__foot">
           <Btn variant="soft" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
-        </div>
+        </Row>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -176,11 +206,11 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
   return (
     <Dialog title={t('telegram.connect_title')} icon="telegram" size=""
       open={open} onOpenChange={onOpenChange}
-      foot={<Btn variant="ghost" onClick={closeConnect}>{t('common.close')}</Btn>}>
+      foot={<Btn variant="secondary" onClick={closeConnect}>{t('common.close')}</Btn>}>
       {/* Ритм окна - ступень шкалы у колонки, а не marginBottom у каждого соседа
           (тот же ход, что у диалогов Бюджета). Отступы были 16/16/16/14/14/14 -
           три разных мнения об одном ритме в одном окне. */}
-      <div className="col col--g7">
+      <Col gap="g7">
       <div className="muted t-body">
         {t('settings.tg_connect_desc')}
       </div>
@@ -212,26 +242,26 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             <div className="muted t-meta">{t('settings.tg_for_trip')}</div>
           </Severity>
 
-          <div className="col col--g4">
+          <Col gap="g4">
             <div className="field__label">{t('telegram.link_label')}</div>
-            <div className="row row--g3">
+            <Row gap="g3">
               <input className="input mono grow--fit" value={url} readOnly />
-              <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
-            </div>
-          </div>
+              <Btn variant="secondary" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
+            </Row>
+          </Col>
 
           <div className="t-body">
             {t('settings.tg_press_below')}
           </div>
 
-          <div className="col col--g4">
+          <Col gap="g4">
             <Btn variant="primary" icon="telegram" block onClick={openBot}>
               {t('telegram.open_bot')}
             </Btn>
             <div className="muted t-meta" style={{ textAlign: 'center' }}>
               {t('settings.tg_after_start')}
             </div>
-          </div>
+          </Col>
         </>
       )}
 
@@ -254,22 +284,22 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               divs that inherit it, while the numbered pills keep their own
               .t-meta (mono numerals) because an element's own rule beats
               inheritance. One class instead of two. */}
-          <div className="t-meta t-sans col" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
-            <div className="row row--start">
+          <Col className="t-meta t-sans" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
+            <Row align="a-start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
-            </div>
-            <div className="row row--start">
+            </Row>
+            <Row align="a-start">
               <span className="badge badge--count">2</span>
               <div>{t('settings.tg_step2')}</div>
-            </div>
-          </div>
+            </Row>
+          </Col>
 
-          <div className="row row--g4">
-            <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
-            <div className="grow" />
+          <Row gap="g4">
+            <Btn variant="secondary" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
+            <Grow />
             <Btn variant="primary" icon="check" onClick={checkNow}>{t('settings.tg_pressed_start')}</Btn>
-          </div>
+          </Row>
         </>
       )}
 
@@ -288,7 +318,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           <Btn variant="primary" icon="check" block onClick={closeConnect}>{t('view.edit_mode_done')}</Btn>
         </>
       )}
-      </div>
+      </Col>
     </Dialog>
   );
 }
@@ -370,22 +400,22 @@ function TelegramSection({ tripId }) {
   }
 
   return (
-    <div className="col col--g6">
+    <Col gap="g6">
       {accounts.map(a => (
         <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
           {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
           <div className="tile" style={TG_TILE}>
             <Icon name="telegram" size={17} />
           </div>
-          <div className="grow--fit">
+          <Grow fit>
             <div className="t-ui">{tgName(a)}</div>
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
-          </div>
+          </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
           <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
         </div>
       ))}
-      <Btn variant="ghost" icon="plus" onClick={openConnect}>
+      <Btn variant="secondary" icon="plus" onClick={openConnect}>
         {t('telegram.connect_another')}
       </Btn>
       <TelegramConnectDialog open={connectOpen} onOpenChange={setConnectOpen} tripId={tripId} onLinked={load} />
@@ -397,7 +427,7 @@ function TelegramSection({ tripId }) {
           onConfirm={() => doRemove(unlinkState.account)}
         />
       )}
-    </div>
+    </Col>
   );
 }
 
@@ -419,16 +449,16 @@ function ApproverRow({ member, profiles, locked }) {
   const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
-    <div className="row">
+    <Row>
       <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
-      <div className="grow">
+      <Grow>
         <div className="t-ui">{who.name}</div>
         <div className="muted t-meta">{roleLabel}</div>
-      </div>
+      </Grow>
       {locked
         ? <span className="muted t-meta">{t('settings.approver_by_role')}</span>
         : <Toggle on={on} onChange={() => setOn(v => !v)} />}
-    </div>
+    </Row>
   );
 }
 
@@ -504,6 +534,26 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     coverGradient   !== (trip?.cover_gradient || '') ||
     currency        !== persistedCurrency;
 
+  // ЕДИНСТВЕННОЕ место, где отказ edge-функции превращается в текст: обёртка
+  // (`save_error` "Не удалось сохранить: …" / `save_error2` "Ошибка: …") плюс
+  // клауза причины по `code`. Одна точка - потому что инвариант тут ровно один:
+  // серверный текст пользователю не показывается НИКОГДА (см. REFUSAL_CLAUSE).
+  /**
+   * @param {string|null} code машинный `code` от `invokeFn`, не `data.code`
+   * @param {string} [wrapKey] обёртка: `save_error` | `save_error2`
+   * @param {Record<string,string>} [clauses] карта код → ключ клаузы
+   */
+  const refusalToast = (code, wrapKey = 'settings.save_error', clauses = REFUSAL_CLAUSE) =>
+    toast({
+      // `hasOwn`, а не `clauses[code]`: код приезжает СТРОКОЙ ИЗ ТЕЛА ОТВЕТА, и
+      // `'toString'` достал бы функцию из прототипа, а `t(fn)` отрисовал бы мусор.
+      // Тот же приём и по той же причине, что у `pickSignupMarks`.
+      description: t(wrapKey, {
+        message: t((code && Object.hasOwn(clauses, code) && clauses[code]) || 'settings.err_temporary'),
+      }),
+      variant: 'destructive',
+    });
+
   // Trip-level display toggle. Persisted under details.display via the edge
   // function (trips RLS is owner-only). Architecture note: `display` is an
   // extensible bag - adding another visibility flag later is just another key.
@@ -511,11 +561,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !bookingWarnings;
     setBusyToggle('booking_warnings');
-    const { data, error } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, display: { booking_warnings: next } },
     });
     if (error || !data?.ok) {
-      toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
+      refusalToast(code);
     } else {
       setBookingWarnings(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -532,11 +582,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !chatWidget;
     setBusyToggle('chat_widget');
-    const { data, error } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, display: { chat_widget: next } },
     });
     if (error || !data?.ok) {
-      toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
+      refusalToast(code);
     } else {
       setChatWidget(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -563,26 +613,14 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
-    const { data, error } = await invokeFn('updateTripSettings', {
+    // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
+    // валюты). Сброс делает СЕРВЕР в той же транзакции — второй клиентской
+    // до-записи в trip_budgets больше нет (единая дверь, TRIP-394).
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, fields, main_currency: currency },
     });
-    // Main currency changed → existing FX overrides were defined against the OLD
-    // main currency and are now meaningless. Reset them (trip_budgets is participant-RLS).
-    if (!error && data?.ok && currency !== prevCurrency) {
-      try {
-        // Secondary to the edge save above; expectRow:false because a trip may
-        // have no trip_budgets row yet (nothing to reset). Was a bare await that
-        // swallowed both real errors and the silent 0-row case.
-        await writeRows(
-          supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId),
-          { expectRow: false },
-        );
-      } catch {
-        toast({ description: t('common.write_failed'), variant: 'destructive' });
-      }
-    }
     setSaving(false);
-    if (error || !data?.ok) { toast({ description: t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' }); return; }
+    if (error || !data?.ok) { refusalToast(code, 'settings.save_error2'); return; }
     // Cover replaced/cleared → the previously persisted object is now orphaned.
     // Delete it best-effort, comparing object KEYS (signed-URL tokens differ but
     // the key is stable) so we never delete the key the new cover still uses (TRIP-117).
@@ -631,14 +669,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
-    const { data, error } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('updateTripSettings', {
       body: { tripId, addons: nextAddons },
     });
     if (error || !data?.ok) {
-      if (data?.code === 'PRO_REQUIRED') {
+      // Единственная ветка, ЗАВИСЯЩАЯ от кода: Pro-отказ открывает апселл, а не
+      // тост. Читается `code` от invokeFn, не `data.code` - 402 оставляет `data`
+      // пустым, и прежняя ветка перестала бы совпадать МОЛЧА (см. REFUSAL_CLAUSE).
+      if (code === 'PRO_REQUIRED') {
         openProUpsell({ mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
       } else {
-        toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
+        refusalToast(code);
       }
       setBusyToggle(null);
       return;
@@ -687,12 +728,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // button carries the spinner while deleteTrip (Telegram teardown + Storage
     // purge + DELETE) runs.
     const runDelete = async () => {
-      const { data, error, message } = await invokeFn('deleteTrip', { body: { tripId } });
+      const { data, error, code } = await invokeFn('deleteTrip', { body: { tripId } });
       if (error || !data?.ok) {
-        // invokeFn already parsed the body (read error.context once); use its
-        // message rather than re-reading the already-consumed Response.
-        const msg = message || '';
-        toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
+        // Своя карта клауз: у удаления «нельзя» значит «ты не владелец». Раньше
+        // сюда уходил серверный `message` - сырое английское 'Not found' /
+        // 'Forbidden', а с 500 - ещё и текст ошибки БД.
+        refusalToast(code, 'settings.save_error2', DELETE_REFUSAL_CLAUSE);
         return;
       }
       // Deleting an owned trip lowers the active-trip count — drop the gate cache
@@ -723,7 +764,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
 
   return (
-    <div className="settings-lens">
+    <Col gap="g7" className="settings-lens">
       {/* Viewer read-only notice — only this banner + the Leave button are
           interactive for a viewer (TRIP-137). */}
       {readOnly && (
@@ -732,20 +773,21 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* ── Identity: cover + name / description / currency / notes ──────────
           Save here governs only these manually-edited fields; the feature and
           display toggles below auto-save on click. */}
-      <Card
-        title={t('settings.section_basic')}
-        action={readOnly ? null : (
-          <div className="row">
-            <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
-              {t('trip.form_save')}
-            </Btn>
-          </div>
-        )}
-      >
+      <Card>
+        <CardHeader
+          title={t('settings.section_basic')}
+          action={readOnly ? null : (
+            <Row>
+              <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
+                {t('trip.form_save')}
+              </Btn>
+            </Row>
+          )}
+        />
         {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
             pointer-events + opacity mute the whole block visually. */}
         <fieldset disabled={readOnly}>
-        <div className="settings-identity">
+        <Grid className="settings-identity">
           <div className="settings-identity__cover">
             <Field label={t('trip.form_cover')}>
               <TripCoverPicker
@@ -759,7 +801,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               />
             </Field>
           </div>
-          <div className="settings-identity__fields">
+          <Col gap="g7" className="settings-identity__fields">
             <Field label={t('trip.title_label')}>
               <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
             </Field>
@@ -772,8 +814,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Field label={t('trip.form_notes')}>
               <Textarea rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />
             </Field>
-          </div>
-        </div>
+          </Col>
+        </Grid>
         </fieldset>
       </Card>
 
@@ -787,7 +829,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           dead end. Only "Leave trip" (Danger zone, OUTSIDE this fieldset) stays
           interactive. flex+gap mirrors the .settings-lens spacing so wrapping the
           cards doesn't collapse the 16px gaps. */}
-      <fieldset className="col col--g7" disabled={readOnly}>
+      <Col as="fieldset" gap="g7" disabled={readOnly}>
       {/* ── Features: addon widget cards (Lumo DS §D1), full width ──
           The Pro upgrade banner lives INSIDE this panel, above the heading
           (matches the approved prototype). Shown on the same condition as the
@@ -797,8 +839,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           non-owner gets the "enabled by owner" button that opens the same info
           modal as the sidebar plate. Card title is rendered manually (via the
           shared .card-h) so the banner can sit above it. Reuses the EXACT
-          sidebar-plate elements — .pro-up / .pi / .pt / .pro-up p / .lockmsg —
-          so it looks identical to the right-menu plate, just horizontal. */}
+          sidebar-plate elements — .pro-up / .pi / .pt / .pro-up p + the same
+          <Btn> non-owner CTA — so it looks identical to the right-menu plate,
+          just horizontal. */}
       <Card>
         {proResolved && !hasPro && (
           <div className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
@@ -810,17 +853,14 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             {isOwner ? (
               <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
-              <button className="lockmsg" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>
-                <Icon name="lock" size={14} />
-                {t('trip.pro_by_owner')}
-              </button>
+              <Btn variant="secondary" icon="lock" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>{t('trip.pro_by_owner')}</Btn>
             )}
           </div>
         )}
         <div className="card-h">
-          <div className="grow"><h3>{t('settings.optional_features')}</h3></div>
+          <Grow><h3>{t('settings.optional_features')}</h3></Grow>
         </div>
-        <div className="addon-grid">
+        <Grid className="addon-grid">
           {FEATURES
             .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')
             .map(f => (
@@ -828,27 +868,28 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 busy={busyToggle === f.id}
                 onChange={() => toggleFeature(f.id, f.pro)} />
             ))}
-        </div>
+        </Grid>
       </Card>
 
       {/* ── Integrations · warnings (2-col → 1-col on mobile) ── */}
-      <div className="settings-grid">
-        <div className="settings-col">
+      <Grid cols="2" gap="g7" className="settings-grid">
+        <Col gap="g7" className="settings-col">
           {/* Chat widget - trip-level toggle for the floating dock button.
               Only shown when the Group Chat addon is on. */}
           {features.chat && (
-            <Card title={t('settings.chat_widget_title')}>
-              <div className="row row--g7">
-                <div className="grow--fit">
+            <Card>
+              <CardHeader title={t('settings.chat_widget_title')} />
+              <Row gap="g7">
+                <Grow fit>
                   <div className="t-ui">{t('settings.chat_widget_label')}</div>
                   <div className="muted t-meta">
                     {t('settings.chat_widget_desc')}
                   </div>
-                </div>
+                </Grow>
                 <Toggle on={chatWidget} busy={busyToggle === 'chat_widget'} onChange={toggleChatWidget} />
-              </div>
+              </Row>
 
-              <div className="row row--g6 settings-plate" style={{ marginTop: 12 }}>
+              <Row gap="g6" className="settings-plate" style={{ marginTop: 12 }}>
                 {/* inline-style-exempt: градиент и гашение - состояние виджета (данные), не скин */}
                 <div className="tile tile--xl" style={{
                   background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)',
@@ -862,45 +903,48 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                     ? t('settings.chat_widget_on')
                     : t('settings.chat_widget_off')}
                 </div>
-              </div>
+              </Row>
             </Card>
           )}
 
           {/* Warnings / display - extensible bag of trip-level display toggles. */}
-          <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
-            <div className="row row--g6 settings-plate">
-              <div className="grow--fit">
+          <Card>
+            <CardHeader title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')} />
+            <Row gap="g6" className="settings-plate">
+              <Grow fit>
                 <div className="t-label">{t('settings.warn_bookings_title')}</div>   {/* TRIP-175 инсп.: UI→Label */}
                 <div className="muted t-meta">{t('settings.warn_bookings_desc')}</div>
-              </div>
+              </Grow>
               <Toggle on={bookingWarnings} busy={busyToggle === 'booking_warnings'} onChange={toggleBookingWarnings} />
-            </div>
+            </Row>
           </Card>
-        </div>
+        </Col>
 
-        <div className="settings-col">
+        <Col gap="g7" className="settings-col">
           {/* Telegram - only when the Telegram addon is enabled. */}
           {features.tg && (
-            <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')}>
+            <Card>
+              <CardHeader title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')} />
               <TelegramSection tripId={tripId} />
             </Card>
           )}
 
           {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
           {SHOW_HOTEL_VOTING && (
-            <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
-              <div className="col col--g4">
+            <Card>
+              <CardHeader title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} />
+              <Col gap="g4">
                 {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked />)}
                 {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked={false} />)}
                 {members.length === 0 && (
                   <div className="muted t-body">{t('settings.members_loading')}</div>
                 )}
-              </div>
+              </Col>
             </Card>
           )}
-        </div>
-      </div>
-      </fieldset>
+        </Col>
+      </Grid>
+      </Col>
 
       {/* ── Copy trip (full width) ────────────────────────────────────────────
           Moved here from the old header "…" menu. Copy creates a NEW trip owned
@@ -915,53 +959,54 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           тело - поэтому она уезжала ПОД текст и ярус заголовка был крупнее
           соседних. Одна деталь - одна раскладка. */}
       <Card>
-        <div className="row row--g7 row--flush">
+        <Row gap="g7" className="row--flush">
           <span className="tile tile--lg tile--brand"><Icon name="copy" size={18} /></span>
-          <div className="grow">
+          <Grow>
             <div className="row__t">{t('settings.copy_trip_title')}</div>
             <div className="row__s">{t('settings.copy_trip_desc')}</div>
-          </div>
+          </Grow>
           <Btn variant="soft" icon="copy" loading={copying} onClick={() => void startCopy(tripId)}>
             {t('settings.copy_trip_btn')}
           </Btn>
-        </div>
+        </Row>
       </Card>
 
       {/* ── Danger zone (full width) ── */}
-      <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
+      <Card style={{ borderColor: 'var(--danger-soft)' }}>
+        <CardHeader title={t('settings.danger_zone')} />
         {myRole !== 'owner' && (
-          <div className="row row--g7 row--flush">
+          <Row gap="g7" className="row--flush">
             <span className="tile tile--lg tile--danger"><Icon name="arrow" size={18} /></span>
-            <div className="grow">
+            <Grow>
               <div className="row__t">{t('settings.leave_trip')}</div>
               <div className="row__s">{t('settings.leave_desc')}</div>
-            </div>
+            </Grow>
             <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
-          </div>
+          </Row>
         )}
         {myRole === 'owner' && (
           <>
             {/* Линейку между строками несёт сама строка (.row--div), поэтому
                 отдельный <hr> больше не нужен - его сброс был ещё одним инлайном. */}
-            <div className="row row--g7 row--div">
+            <Row gap="g7" className="row--div">
               <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
-              <div className="grow">
+              <Grow>
                 <div className="row__t">{t('settings.leave_trip')}</div>
                 <div className="row__s">{t('settings.leave_owner_blocked')}</div>
-              </div>
+              </Grow>
               <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
-            </div>
-            <div className="row row--g7 row--div">
+            </Row>
+            <Row gap="g7" className="row--div">
               <span className="tile tile--lg tile--danger"><Icon name="trash" size={18} /></span>
-              <div className="grow">
+              <Grow>
                 <div className="row__t">{t('settings.delete_trip')}</div>
                 <div className="row__s">{t('settings.delete_desc')}</div>
-              </div>
+              </Grow>
               <Btn variant="danger-solid" onClick={deleteTrip}>{t('settings.delete_trip')}</Btn>
-            </div>
+            </Row>
           </>
         )}
       </Card>
-    </div>
+    </Col>
   );
 }

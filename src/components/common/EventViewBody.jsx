@@ -15,7 +15,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { FileRow, Severity, useToast } from '@/design/index';
+import { Card, FileRow, Severity, useToast } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -158,14 +158,14 @@ export function stayNights(checkInIso, checkOutIso) {
 
 export function Section({ title, accent, count, children }) {
   return (
-    <div className="ev-sec" style={accent ? { '--ev-color': accent } : undefined}>
+    <Card radius="md" className="ev-sec" style={accent ? { '--hl': accent } : undefined}>
       {/* Канон тот же, что у заголовка раздела в форме (`.acc__title`) — раздел
           один объект, и подпись на нём одна. Тип события несёт планка-акцент. */}
       <div className="ev-sec-lbl t-ui">
         {title}{count != null && count > 0 ? ` · ${count}` : ''}
       </div>
       {children}
-    </div>
+    </Card>
   );
 }
 
@@ -186,13 +186,15 @@ function paymentLabel(t, status) {
   return status || null;
 }
 
-// Payment status as a Lumo badge (design: badge--paid / --partial / --on-arrival).
+// Payment status as a Lumo badge (design: badge--paid / --partial / --brand).
+// «На месте» = синий бейдж, то есть ровно .badge--brand: своего класса у него
+// больше нет — .badge--on-arrival был вторым именем того же тона (04 PR3).
 function PaymentBadge({ t, status }) {
   const label = paymentLabel(t, status);
   if (!label) return null;
   const cls = status === 'paid' ? 'badge--paid'
     : status === 'partial' ? 'badge--partial'
-    : status === 'pay_on_arrival' ? 'badge--on-arrival' : 'badge--quiet';
+    : status === 'pay_on_arrival' ? 'badge--brand' : 'badge--quiet';
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 
@@ -217,7 +219,7 @@ function HotelBody({ entity, docs = [] }) {
   return (
     <div className="col col--g7">
       {/* Name card */}
-      <div className="hv-namecard">
+      <Card radius="md" className="hv-namecard">
         <div className="hv-name t-title">{entity.name}</div>
         {entity.address && (
           <div className="hv-addr t-meta"><MapIcon size={13} /><span>{entity.address}</span></div>
@@ -230,7 +232,7 @@ function HotelBody({ entity, docs = [] }) {
             <span className="hv-plat__nm t-meta">{t('event.booked_on', { platform: platformName || '—' })}</span>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Stay dates */}
       {(entity.check_in_datetime || entity.check_out_datetime) && (
@@ -259,13 +261,13 @@ function HotelBody({ entity, docs = [] }) {
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.cost')}</div>
-          <div className="hv-card row row--g6">
+          <Card radius="md" className="hv-card row row--g6">
             <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
               {perNight && <div className="hv-pernight t-meta">{perNight} / {t('view.nights_one')}</div>}
             </div>
             <PaymentBadge t={t} status={entity.payment_status} />
-          </div>
+          </Card>
         </div>
       )}
 
@@ -285,7 +287,7 @@ function HotelBody({ entity, docs = [] }) {
       {(entity.booking_reference || entity.phone || entity.email) && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.booking_details')}</div>
-          <div className="hv-rows">
+          <Card radius="md" pad="none" className="hv-rows">
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
@@ -310,7 +312,7 @@ function HotelBody({ entity, docs = [] }) {
                 <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--brand)' }}>{entity.email}</a>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
@@ -363,59 +365,59 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   return (
     <div className="col col--g7">
       {/* Route rail */}
-      <div className="tv-card">
-        <div className="tv-eyebrows">
+      <Card radius="md" className="tv-card">
+        <div className="row row--wrap row--g3 tv-eyebrows">
           <span className="badge badge--sm tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
           {night && <span className="badge badge--sm tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
         </div>
-        <div className="tv-route">
+        <div className="grid tv-route">
           <div className="tv-when">
             <div className="tv-when__t t-strong">{fmtTime(entity.start_datetime)}</div>
             <div className="tv-when__d t-meta">{fmtDate(entity.start_datetime)}</div>
           </div>
-          <div className="tv-nodecell"><span className="tv-node tv-node--from" /></div>
+          <div className="row row--j-center tv-nodecell"><span className="tv-node tv-node--from" /></div>
           <div className="tv-loc tv-loc--from">
             {fromCity && <div className="tv-loc__c t-strong">{fromCity}</div>}
             {entity.from_address && <div className="tv-loc__a t-meta">{entity.from_address}</div>}
           </div>
 
-          <div className="tv-durcell">{dur && <span className="tv-dur t-meta">{dur}</span>}</div>
-          <div className="tv-conncell"><span className="tv-conn" /></div>
-          <div className="tv-carrier">
+          <div className="row tv-durcell">{dur && <span className="tv-dur t-meta">{dur}</span>}</div>
+          <div className="row row--j-center tv-conncell"><span className="tv-conn" /></div>
+          <div className="row row--g4 tv-carrier">
             {carrier && (
               <>
-                <span className="tv-carrier__av t-micro">{carrier[0].toUpperCase()}</span>
+                <span className="row row--j-center tv-carrier__av t-micro">{carrier[0].toUpperCase()}</span>
                 <span className="tv-carrier__nm t-body trunc">{carrier}</span>
               </>
             )}
           </div>
 
           <div className="tv-when">
-            <div className="tv-arr">
+            <div className="row row--a-baseline row--g2 tv-arr">
               <span className="tv-when__t t-strong">{fmtTime(entity.end_datetime)}</span>
               {night && <span className="tv-plus1 t-meta">+1</span>}
             </div>
             <div className="tv-when__d t-meta">{fmtDate(entity.end_datetime)}</div>
           </div>
-          <div className="tv-nodecell"><span className="tv-node tv-node--to" /></div>
+          <div className="row row--j-center tv-nodecell"><span className="tv-node tv-node--to" /></div>
           <div className="tv-loc tv-loc--to">
             {toCity && <div className="tv-loc__c t-strong">{toCity}</div>}
             {entity.to_address && <div className="tv-loc__a t-meta">{entity.to_address}</div>}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Cost */}
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.cost')}</div>
-          <div className="hv-card row row--g6">
+          <Card radius="md" className="hv-card row row--g6">
             <div className="grow--fit">
               <div className="hv-price t-heading">{priceText}</div>
               <div className="hv-pernight t-meta">{t('event.for_whole_transfer')}</div>
             </div>
             <PaymentBadge t={t} status={entity.payment_status} />
-          </div>
+          </Card>
         </div>
       )}
 
@@ -423,7 +425,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
       {hasDetails && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.booking_details')}</div>
-          <div className="hv-rows">
+          <Card radius="md" pad="none" className="hv-rows">
             {entity.booking_reference && (
               <div className="hv-row row row--g6">
                 <span className="hv-row__ic"><Hash /></span>
@@ -448,7 +450,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
                 <span className="hv-row__v t-strong mono">{entity.flight_number}</span>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
@@ -505,21 +507,21 @@ function ActivityBody({ entity, docs = [] }) {
       {entity.location_address && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('event.meeting_point')}</div>
-          <div className="hv-rows">
+          <Card radius="md" pad="none" className="hv-rows">
             <div className="hv-row row row--g6">
               <span className="hv-row__ic"><MapIcon /></span>
               <span className="hv-row__v t-strong" style={{ textAlign: 'left', maxWidth: 'none', whiteSpace: 'normal' }}>{entity.location_address}</span>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {priceText && (
         <div className="hv-sec">
           <div className="hv-lbl">{t('activity.price')}</div>
-          <div className="hv-card row row--g6">
+          <Card radius="md" className="hv-card row row--g6">
             <div className="grow--fit"><div className="hv-price t-heading">{priceText}</div></div>
-          </div>
+          </Card>
         </div>
       )}
 

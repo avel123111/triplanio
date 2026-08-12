@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
-import { writeRows } from '@/lib/trip-data';
+import { invokeFn } from '@/lib/invokeFn';
+import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, Btn, Field, useToast } from '@/design/index';
@@ -57,13 +57,14 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     if (from > to) { setErr(t('stats.err_date_order')); return; }
     if (!user?.id) { setErr(t('stats.err_dates')); return; }
     setSaving(true); setErr('');
-    // user_id is set explicitly: the RLS insert/update policy requires it to equal
-    // auth.uid() (a user can only write their own visits).
-    // Identity + display follow the trip-city model (TRIP-65): geonameid dedups
-    // cross-locale, name_i18n is the localized snapshot. Both come straight from
-    // the CitySearch pick. The dropped city_name column is no longer written.
-    const row = {
-      user_id: user.id,
+    // Запись идёт единой дверью (шов user-place/place), не прямым REST в таблицу.
+    // user_id НЕ шлём — его ставит сам шов из актора JWT (scope.column='user_id'),
+    // владение/IDOR закрыты по построению. Identity + display по модели trip-city
+    // (TRIP-65): geonameid дедупит кросс-локально, name_i18n — снимок локали, оба
+    // из выбора CitySearch. На правке шлём id строкой: шов адресует update по нему,
+    // а user_custom_visits.id — bigint (в теле нужен string, иначе шов сочтёт это
+    // вставкой).
+    const body = {
       geonameid: city.geonameid ?? null,
       name_i18n: city.name_i18n || null,
       country_code: city.country_code || null,
@@ -71,17 +72,14 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
       lng: city.longitude ?? null,
       start_date: from,
       end_date: to,
+      ...(isEdit ? { id: String(editing.id) } : {}),
     };
-    try {
-      // writeRows: reads the result, so a silent 0-row RLS reject on update
-      // (session expired / not your visit) no longer looks like success.
-      await writeRows(isEdit
-        ? supabase.from('user_custom_visits').update(row).eq('id', editing.id)
-        : supabase.from('user_custom_visits').insert(row));
-    } catch (e) {
+    // invokeFn не бросает: отказ приезжает машинным code в КОРНЕ. Пользователю —
+    // локализованный errorText(t, code), НЕ серверная проза (контракт TRIP-400).
+    const { error, code } = await invokeFn('user-place/place', { body });
+    if (error || code) {
       setSaving(false);
-      console.error('user_custom_visits save failed:', e?.message);
-      setErr(t('stats.err_save'));
+      setErr(errorText(t, code));
       return;
     }
     setSaving(false);
@@ -94,12 +92,12 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const remove = async () => {
     if (!isEdit) return;
     setSaving(true); setErr('');
-    try {
-      await writeRows(supabase.from('user_custom_visits').delete().eq('id', editing.id), { expectRow: false });
-    } catch (e) {
+    // Удаление той же дверью (шов user-place/place/delete): match {id, user_id:actor}
+    // ставит buildPlan — чужую строку не удалить. id строкой (см. submit).
+    const { error, code } = await invokeFn('user-place/place/delete', { body: { id: String(editing.id) } });
+    if (error || code) {
       setSaving(false);
-      console.error('user_custom_visits delete failed:', e?.message);
-      setErr(t('stats.err_delete'));
+      setErr(errorText(t, code));
       return;
     }
     setSaving(false);
@@ -116,7 +114,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
           {t('stats.delete_btn')}
         </Btn>
       )}
-      <Btn variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
+      <Btn variant="secondary" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
       <Btn variant="primary" icon="check" onClick={submit} disabled={saving}>
         {isEdit ? t('stats.save_btn') : t('stats.add_btn')}
       </Btn>
@@ -146,9 +144,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-btn)', background: 'var(--surface)' }}>
               <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
               <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
-              <button type="button" onClick={() => setPicking(true)} className="t-meta" style={{ border: 0, background: 'transparent', color: 'var(--brand)', cursor: 'pointer', padding: 0 }}>
-                {t('stats.change_city')}
-              </button>
+              <Btn variant="link" onClick={() => setPicking(true)}>{t('stats.change_city')}</Btn>
             </div>
           </Field>
         )}

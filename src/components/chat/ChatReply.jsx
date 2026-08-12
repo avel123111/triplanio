@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Btn } from '@/design/index';
 import { Icon } from '@/design/icons';
@@ -52,17 +53,17 @@ export default function ChatReply({ text, time, onAsk }) {
   };
 
   return (
-    <div className="chat-reply">
+    <div className="col col--g4 chat-reply">
       {/* The avatar's sticky travel is bounded by THIS row, which ends with the
           answer itself — the actions below are deliberately outside it, so the
           avatar comes to rest at the bottom of the message and not at the bottom
           of the "Copy / Ask again" buttons. */}
-      <div className="chat-reply__row">
+      <div className="row row--g6">
         <div className="chat-run__av">
           <TriplanioAvatar />
         </div>
-        <div className="chat-reply__body">
-          <div className="chat-reply__who">
+        <div className="col col--g4 grow--fit">
+          <div className="row row--g4 chat-reply__who">
             <b>{TRIPLANIO_BOT_NAME}</b>
             <span className="chat-reply__tag">{t('chat.assistant_tag')}</span>
             <span className="tm">{time}</span>
@@ -74,22 +75,26 @@ export default function ChatReply({ text, time, onAsk }) {
             <div ref={textRef} className="chat-reply__text" style={clamped ? { maxHeight: CLAMP_H } : undefined}>
               <ChatMarkdown text={text} linkClassName="cm-a cm-a--brand" />
             </div>
+            {/* Тон НЕ задаётся здесь: `--a` объявлен на `.chat-reply__card`,
+                поэтому кнопка внутри AI-карточки остаётся фиолетовой, а тот же
+                примитив в аккаунте — брендовым. Класс остался носителем
+                раскладки (в свёрнутом состоянии кнопка позиционируется). */}
             {overflows && (
-              <button type="button" className="chat-reply__more" onClick={() => setExpanded((v) => !v)}>
+              <Btn variant="link" className="chat-reply__more" onClick={() => setExpanded((v) => !v)}>
                 <span>{expanded ? t('chat.reply_less') : t('chat.reply_more')}</span>
                 <Icon name="chev" size={13} style={{ transform: expanded ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
-              </button>
+              </Btn>
             )}
           </div>
         </div>
       </div>
 
-      <div className="chat-reply__acts">
-        <Btn variant="ghost" icon={copied ? 'check' : 'copy'} onClick={copy}>
+      <div className="row row--g1 row--wrap chat-reply__acts">
+        <Btn variant="secondary" icon={copied ? 'check' : 'copy'} onClick={copy}>
           {copied ? t('common.copied') : t('common.copy')}
         </Btn>
         {onAsk && (
-          <Btn variant="ghost" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
+          <Btn variant="secondary" icon="chat" onClick={onAsk}>{t('chat.reply_ask')}</Btn>
         )}
       </div>
     </div>

@@ -320,7 +320,7 @@ export default function Pro() {
           <div className="pro-trip-bar">
             <span style={{
               width: 44, height: 44, flex: 'none', borderRadius: 'var(--r-sm)',
-              background: 'var(--primary-soft)', color: 'var(--brand)',
+              background: 'var(--brand-soft)', color: 'var(--brand)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <Icon name="ticket" size={21} />

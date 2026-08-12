@@ -17,7 +17,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, EmptyState, Severity, Toggle, useToast } from '../design/index';
+import { Btn, Card, EmptyState, Severity, Toggle, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -130,8 +130,8 @@ function recomputeDates(list, anchorISO) {
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
 // City row built from the EDITOR's primitives (.te-row / .te-grip / .te-row__num /
-// .te-citycell / .te-cityname / .te-dts / .te-stepper / .te-step) so the planner
-// route looks and behaves identically to the structural editor — same bold city
+// .te-citycell / .te-cityname / .te-dts + <Stepper> nights) so the planner route
+// looks and behaves identically to the structural editor — same bold city
 // names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
 // final-point toggle lives once in StepCities (not per row).
 // Planner route row. Owns its editing state + pick/remove/nights handlers, then
@@ -206,7 +206,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
   // Last city — its card carries the final-point toggle (the "finish" applies to
   // THIS city), so the control stays attached to the city it governs.
   return (
-    <div className={'pl-lastcard' + (finalPoint ? ' is-fin' : '')}>
+    <Card radius="lg" pad="none" className={'pl-lastcard' + (finalPoint ? ' is-fin' : '')}>
       {row}
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
@@ -216,7 +216,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
           <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -299,7 +299,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'loading' && (
-        <Severity level="info" dashed loading align="mid">
+        <Severity level="info" loading align="mid">
           <span className="t-body muted">{t('planner.detecting')}</span>
         </Severity>
       )}
@@ -312,7 +312,10 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             // Rounded 0 km (standing inside the city centroid) reads wrong → "<1".
             const distLabel = dist.value === '0' ? `<1 ${dist.unit}` : `${dist.value} ${dist.unit}`;
             return (
-              <button
+              <Card
+                as="button"
+                radius="lg"
+                interactive
                 key={c.external_city_id}
                 onClick={() => setHome(c)}
                 className={`choice-card choice-card--sm${selected ? ' choice-card--on' : ''}`}
@@ -329,7 +332,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                     <Icon name="check" size={11} />
                   </span>
                 )}
-              </button>
+              </Card>
             );
           })}
         </div>
@@ -341,7 +344,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
           icon="lock"
           align="mid"
           title={t('planner.geo_off')}
-          action={<Btn variant="ghost" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
+          action={<Btn variant="secondary" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
         >
           <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
         </Severity>
@@ -435,12 +438,12 @@ function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoin
               </div>
             );
           })}
-          {/* Пунктирная кнопка добавления - общая .gadd (её же носят «добавить
-              сервис» и «добавить город» в панели города). Ховер-подсветку она
-              держит правилом, поэтому обработчики мыши больше не нужны. */}
-          <button onClick={() => addCity()} className="gadd gadd--center t-body">
-            <Icon name="plus" size={14} /> {t('planner.add_more_city')}
-          </button>
+          {/* Плейсхолдер «добавить» — тон `dashed` самой кнопки системы: серый
+              пунктир в покое, акцент на ховере. Акцент тут не задаётся: здесь не
+              выбирают тип, поэтому канал `--a` остаётся при умолчании (brand). */}
+          <Btn variant="dashed" block icon="plus" onClick={() => addCity()}>
+            {t('planner.add_more_city')}
+          </Btn>
         </div>
         )}
       </div>
@@ -475,7 +478,10 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <div className="col col--g7">
       <div className={'field-row' + (canHome ? ' cols-2' : '')}>
         {canHome && (
-          <button
+          <Card
+            as="button"
+            radius="lg"
+            interactive
             onClick={() => setReturnMode('home')}
             className={`choice-card choice-card--stack choice-card--sm${returnMode === 'home' ? ' choice-card--on' : ''}`}
           >
@@ -488,10 +494,13 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             <div className="muted t-meta t-sans">
               {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
             </div>
-          </button>
+          </Card>
         )}
 
-        <button
+        <Card
+          as="button"
+          radius="lg"
+          interactive
           onClick={() => setReturnMode('other')}
           className={`choice-card choice-card--stack choice-card--sm${returnMode === 'other' ? ' choice-card--on' : ''}`}
         >
@@ -504,7 +513,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
           <div className="muted t-meta t-sans">
             {t('planner.return_other_desc')}
           </div>
-        </button>
+        </Card>
       </div>
 
       {returnMode === 'other' && (
@@ -540,7 +549,7 @@ function ReviewRow({ num, name, sub, icon, muted }) {
         {icon ? <Icon name={icon} size={12} /> : num}
       </span>
       <div className="grow--fit">
-        <div className="te-cityname">{name || '-'}</div>
+        <div className="trunc te-cityname">{name || '-'}</div>
         <div className="muted t-meta">{sub}</div>
       </div>
     </div>
@@ -581,7 +590,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
         action={(
           <>
             <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>{t('planner.open_trip')}</Btn>
-            <Btn variant="ghost" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
+            <Btn variant="secondary" onClick={() => nav('/trips')}>{t('notif.to_collection')}</Btn>
           </>
         )}
       />
@@ -611,7 +620,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           </div>
         </div>
 
-        <div className="statbar statbar--inset">
+        <Card radius="lg" pad="none" className="statbar statbar--inset">
           <div className="s">
             <Stat
               label={t('event.start')}
@@ -625,7 +634,7 @@ function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tri
           <div className="s">
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
-        </div>
+        </Card>
 
         <div className="card">
           <div className="eyebrow">{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
@@ -1027,7 +1036,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             },
           },
         });
-        if (coverErr) console.error('Failed to set cover:', coverErr);
+        // Обложка не критична: трип уже создан, а обложку можно поменять в
+        // настройках, - поэтому отказ НЕ роняет создание. Но и молчать нельзя:
+        // раньше отказ уходил только в консоль, и человек оставался с трипом без
+        // выбранной им обложки, не зная, что её не сохранили. Ветка `!data?.ok`
+        // тут не нужна: после TRIP-378 отказ - настоящий не-2xx, то есть `coverErr`.
+        if (coverErr) {
+          console.error('Failed to set cover:', coverErr);
+          toast({ description: t('planner.err_cover_not_saved'), variant: 'warning' });
+        }
       }
 
       // 2. Build city_visits list with full data
@@ -1138,7 +1155,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   if (!isPro && checkingLimit && !savedOk) {
     return (
       // Оболочка маршрута - та же .flow-page, что у самого планировщика ниже.
-      <div className="flow-page row row--center">
+      <div className="flow-page row row--j-center">
         <div className="spin spin--ring spin--xl" />
       </div>
     );
@@ -1155,7 +1172,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           onBack={() => nav('/trips')}
           backTitle={t('notif.to_collection')}
         />
-        <div className="grow row row--center">
+        <div className="grow row row--j-center">
           <EmptyState
             icon="lock"
             kind="warning"
@@ -1163,7 +1180,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             body={<>{t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}</>}
             action={(
               <>
-                <Btn variant="ghost" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
+                <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
                 <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit')}>{t('sub.go_pro')}</Btn>
               </>
             )}
@@ -1298,8 +1315,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             {showFooter && (
               <div className="lp-f flow-foot">
-                {!isFirstStep && <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
-                {!isFirstStep && <Btn variant="ghost" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+                {!isFirstStep && <Btn variant="secondary" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
+                {!isFirstStep && <Btn variant="secondary" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div className="flow-foot__spacer grow" />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>

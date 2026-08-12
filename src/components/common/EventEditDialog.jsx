@@ -6,7 +6,7 @@
  *
  * One shared chrome — the `.lp-*` canon (tinted header + body + footer), themed
  * per kind/subtype via `meta` (TYPE_META / SERVICE_META →
- * --ev-color/--ev-soft/--ev-ink). TRIP-333 §4: the chrome is literally the same
+ * --hl/--hl-soft/--hl-ink). TRIP-333 §4: the chrome is literally the same
  * in both shells; before that the dialog branch drew its own `.ev-dlg-*` family.
  * Each kind renders its own field group; service dispatches on form.service_kind.
  *
@@ -19,9 +19,9 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Card, IconBtn, Seg, Severity, useToast } from '@/design/index';
 import {
-  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
+  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
   Plane, Car as CarIcon, Moon, ShieldCheck,
   BedDouble, Ticket,
 } from 'lucide-react';
@@ -74,8 +74,8 @@ function Textarea({ className = '', ...p }) {
 function SwitchRow({ on, onChange, title, hint, children }) {
   const flip = () => onChange(!on);
   return (
-    <div className="eed-fcbox">
-      <div className="eed-fclabel">
+    <Card radius="md" className="eed-fcbox">
+      <div className="row row--a-start row--g4 eed-fclabel">
         <Toggle on={on} onChange={onChange} label={title} />
         <div className="eed-fcbody">
           <div className="eed-fctitle" onClick={flip}>{title}</div>
@@ -83,7 +83,7 @@ function SwitchRow({ on, onChange, title, hint, children }) {
           {children}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -197,12 +197,12 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
         </div>
       </AiField>
       {value && (
-        <div className="eed-bkmeta">
-          <span className="eed-bkpill">
+        <div className="row row--g4 eed-bkmeta">
+          <span className="row row--inline row--g3 eed-bkpill">
             {logo && <img src={logo} alt="" className="eed-bkpill__logo" />}
             {label}
           </span>
-          <a href={normalizeExternalUrl(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
+          <a href={normalizeExternalUrl(value)} target="_blank" rel="noreferrer" className="row row--inline row--g2 eed-bkopen">
             <ExternalLink size={12} />{t('common.open')}
           </a>
         </div>
@@ -1211,14 +1211,14 @@ export default function EventEditDialog({
                   {hdr.sub && <span className="t-meta">{hdr.sub}</span>}
                 </div>
               </div>
-              <button
-                className="lp-back"
+              <IconBtn
+                icon="close"
+                tone="soft"
+                round
                 onClick={() => onOpenChange?.(false)}
                 title={isPanel ? t('common.back') : undefined}
-                aria-label={isPanel ? t('common.back') : t('common.cancel')}
-              >
-                <X style={{ width: 15, height: 15 }} />
-              </button>
+                ariaLabel={isPanel ? t('common.back') : t('common.cancel')}
+              />
             </div>
           )}
 
@@ -1365,7 +1365,7 @@ export default function EventEditDialog({
                   onClick={handleSaveClick}
                   loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
-                  style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
+                  ariaDisabled={!canSave}
                 >
                   {isEdit ? t('common.save') : t('event.create')}
                 </Btn>
@@ -1375,7 +1375,7 @@ export default function EventEditDialog({
     </>
   );
 
-  const evVars = { '--ev-color': meta.color, '--ev-soft': meta.soft, '--ev-ink': meta.ink || meta.color };
+  const evVars = { '--hl': meta.color, '--hl-soft': meta.soft, '--hl-ink': meta.ink || meta.color };
 
   // TRIP-176: embedded — body + footer only (no .lp shell / header). The
   // AddBookingPanel wrapper provides the .lp shell + shared header + tabs.
@@ -1637,7 +1637,7 @@ function buildServicePayload(form, tripId, t) {
 
 function SectionHeader({ children }) {
   // Lumo form section header: coloured uppercase label + trailing rule.
-  // Colour comes from the --ev-color set on the shell root — `.ev-dlg` in the
+  // Colour comes from the --hl set on the shell root — `.ev-dlg` in the
   // dialog branch, `.lp` in the panel branch (both get it from `evVars`).
   return <div className="f-sec">{children}</div>;
 }
@@ -1698,7 +1698,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
       {/* Price + currency + payment pills (design: "Стоимость за всё") */}
       <div className="eed-finance">
         <div className="hv-lbl">{t('event.price_total')}</div>
-        <div className="eed-pricerow">
+        <div className="grid grid--g4 eed-pricerow">
           <AiField active={aiFields.has('price')}>
             <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
           </AiField>
@@ -1707,19 +1707,17 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
           </AiField>
         </div>
         <AiField active={aiFields.has('payment_status')}>
-          <div className="seg seg--fill" role="group" aria-label={t('event.payment_status')}>
-            {[['paid', 'event.paid'], ['partial', 'event.partial'], ['pay_on_arrival', 'event.on_arrival']].map(([v, k]) => (
-              <button
-                key={v}
-                type="button"
-                className="t-ui"
-                aria-pressed={form.payment_status === v}
-                onClick={() => setField('payment_status', form.payment_status === v ? '' : v)}
-              >
-                {t(k)}
-              </button>
-            ))}
-          </div>
+          <Seg
+            variant="fill"
+            ariaLabel={t('event.payment_status')}
+            value={form.payment_status}
+            onChange={(v) => setField('payment_status', form.payment_status === v ? '' : v)}
+            options={[
+              { value: 'paid', label: t('event.paid') },
+              { value: 'partial', label: t('event.partial') },
+              { value: 'pay_on_arrival', label: t('event.on_arrival') },
+            ]}
+          />
         </AiField>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
@@ -1873,14 +1871,14 @@ function TransferLegCard({
   // same "minutes between two ISO locals, non-negative or null" as the layover gap.
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
   const isOpen = collapsible ? open : true;
+  // TRIP-186/343: сегмент «с пересадками» (isMulti) — поверхность-аккордеон, идёт
+  // через `<Card radius="md" pad="none" className="acc">` (рамку/заливку/скругление/
+  // обрезку держит Card + класс-остаток .acc). Одиночный (direct) трансфер оголён —
+  // обычный div без скина. Носитель поэтому ДИНАМИЧЕСКИЙ (не-Card ветка без скина).
+  const Seg = isMulti ? Card : 'div';
+  const segProps = isMulti ? { radius: 'md', pad: 'none', className: 'acc' } : {};
   return (
-    // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
-    // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    // TRIP-333 §5: сегмент — это сворачиваемый раздел с шапкой и телом, то есть
-    // тот же объект, что «Детали брони» и «Документы и заметки» в этом же окне.
-    // Он рисовался инлайном и сидел на СВОЕЙ ступени скругления; теперь идёт
-    // через `.acc`, и рамку, заливку, скругление и обрезку углов держит класс.
-    <div className={isMulti ? 'acc' : undefined}>
+    <Seg {...segProps}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
@@ -1900,9 +1898,9 @@ function TransferLegCard({
           {collapsible && <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />}
         </button>
         {onRemove && (
-          <button type="button" className="btn btn--quiet" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
+          <Btn variant="quiet" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
             <Trash2 size={14} />
-          </button>
+          </Btn>
         )}
       </div>
       )}
@@ -1974,12 +1972,12 @@ function TransferLegCard({
             reads to add the +1 arrival-day gap, so it must always equal the actual
             dates. Shown as a passive badge the moment the arrival date is a later day. */}
         {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <div className="eed-nightrow">
-            <span className="eed-nightrow__l">
+          <Card radius="md" className="row eed-nightrow">
+            <span className="row row--g4 eed-nightrow__l">
               <Moon size={16} />
               <span className="t-ui">{t('event.overnight_label')}</span>
             </span>
-          </div>
+          </Card>
         )}
 
         {/* Carrier / flight no. */}
@@ -2020,7 +2018,7 @@ function TransferLegCard({
           </div>
         </div>
       </div>
-    </div>
+    </Seg>
   );
 }
 
@@ -2042,10 +2040,17 @@ function LayoverToggle({ form, setForm }) {
       <SectionHeader>{t('trip.sidebar_route')}</SectionHeader>
       {/* Direct / With-layovers switch — reuses the design-system .seg (+ shared
           .seg--fill), same primitive as the fork tabs. */}
-      <div className="seg seg--fill" role="group" aria-label={t('trip.sidebar_route')} style={{ marginBottom: form.hasLayovers ? 8 : 14 }}>
-        <button type="button" aria-pressed={!form.hasLayovers} onClick={() => { if (form.hasLayovers) disable(); }}>{t('event.route_direct')}</button>
-        <button type="button" aria-pressed={form.hasLayovers} onClick={() => { if (!form.hasLayovers) enable(); }}>{t('event.with_layovers')}</button>
-      </div>
+      <Seg
+        variant="fill"
+        ariaLabel={t('trip.sidebar_route')}
+        style={{ marginBottom: form.hasLayovers ? 8 : 14 }}
+        value={form.hasLayovers ? 'layovers' : 'direct'}
+        onChange={(v) => { if (v === 'layovers' && !form.hasLayovers) enable(); else if (v === 'direct' && form.hasLayovers) disable(); }}
+        options={[
+          { value: 'direct', label: t('event.route_direct') },
+          { value: 'layovers', label: t('event.with_layovers') },
+        ]}
+      />
       {form.hasLayovers && (
         <div className="muted t-meta" style={{ marginBottom: 14 }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</div>
       )}
@@ -2113,7 +2118,7 @@ function DateRangeBlock({
         </div>
       </div>
       {(startTz || endTz) && (
-        <div className="eed-drange-tz">
+        <div className="row row--g6 eed-drange-tz">
           <TimezoneHint tz={startTz} />
           <TimezoneHint tz={endTz} />
         </div>
@@ -2127,7 +2132,7 @@ function DateRangeBlock({
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
-    <div className="eed-typegrid">
+    <div className="grid grid--g4 eed-typegrid">
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
         return (
@@ -2241,10 +2246,13 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
         );
       })}
 
-      <button type="button" className="t-meta" onClick={addSegment}
-        style={{ marginTop: 6, padding: '11px 14px', border: '1px dashed ' + color, borderRadius: 'var(--r-sm)', background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-        {t('event.add_layover')}
-      </button>
+      {/* Плейсхолдер «добавить пересадку» — канон `<Btn variant="dashed">`. Цвет
+          транспорта сохранён, но подан контекстным каналом (не инлайном): оболочки
+          события несут `--hl` = цвет типа (`evVars`), а ховер `.btn--dashed` берёт
+          `var(--a, var(--hl, var(--brand)))` (см. app.css) — своего `--a` тут нет,
+          поэтому падаем на `--hl`. Прежний внешний отступ (marginTop) снят вместе с
+          инлайном: спейсинг несёт сам ряд, отдельный per-screen отступ не нужен. */}
+      <Btn variant="dashed" block onClick={addSegment}>{t('event.add_layover')}</Btn>
     </div>
   );
 }

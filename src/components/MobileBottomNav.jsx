@@ -1,42 +1,57 @@
+// @ts-check
 /**
  * MobileBottomNav — custom mobile-only bottom navigation (≤640px).
  *
- * A floating frosted-glass "capsule dock" with a raised, glowing primary "+"
- * in the centre. Two context-aware variants, chosen by route:
- *   • trip   (/trip/:id)            — Обзор · Хронология · (+) · Календарь · Ещё
- *   • app    (/trips /settings …)   — Поездки · (+) · Профиль
+ * A floating frosted-glass "capsule dock" with a raised, glowing primary "+" in
+ * the centre. Two context-aware variants:
+ *   • trip — Обзор · Хронология · (+) · Календарь · Ещё
+ *   • app  — Поездки · (+) · Профиль
  *
- * Hidden on focused full-screen flows that own their navigation: the structure
- * planner (/trip/:id/edit), the create wizard (/new-trip, /plan-trip-ai), and
- * the public/landing/login routes.
+ * Какой вариант показать, решает РЕГИСТРАЦИЯ, а не разбор адреса: пока на
+ * экране живёт `TripShell`, он объявляет себя через `MobileNavContext`
+ * (текущая секция, переход, открытие меню и «+»). Раньше половина этого ехала
+ * через ГЛОБАЛ `window.__navigate` (TripView вешал функцию на window, док её
+ * дёргал), а вторая половина — через этот самый контекст: два канала на одну
+ * работу, и один из них мутируемый глобал, пересоздаваемый на каждой
+ * навигации. Теперь канал один.
  *
- * Trip-only actions (open the "…" menu sheet, open the add sheet) live in
- * <TripView>; it publishes them through MobileNavContext so this global nav can
- * trigger them. Lens navigation reuses the existing window.__navigate bridge.
+ * Подписи, иконки и активность пунктов берутся из реестра секций
+ * (`src/lib/tripMenu.js`), а не переписываются здесь заново.
  */
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Icon } from '@/design/icons';
-import { Avatar } from '@/design/index';
+import { Avatar, IconBtn } from '@/design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
+import { DOCK_SECTIONS, sectionById } from '@/lib/tripMenu';
 
 // ─── Context bridge ──────────────────────────────────────────────────────────
-// TripView registers { openMenu, openAdd } while mounted; the global nav reads
-// them for the trip variant. null when no trip screen is active.
-const MobileNavContext = createContext({ tripCtx: null, setTripCtx: () => {} });
+// TripShell регистрирует { current, onNavigate, openMenu, openAdd,
+// hidesDock } пока смонтирован; null = экрана трипа сейчас нет.
+// ⚠️ Тип контекста TS берёт с ДЕФОЛТНОГО ЗНАЧЕНИЯ, а не с реализации: заглушка
+// `() => {}` объявляла сеттер БЕЗ аргументов, и настоящий `setTripNav` из
+// `useState` в него не влезал. Долг был невидим при `checkJs:false` и вскрылся
+// ровно тогда, когда в файл поставили прагму.
+/** @type {React.Context<{ tripNav: any, setTripNav: (v: any) => void }>} */
+const MobileNavContext = createContext({ tripNav: null, setTripNav: () => {} });
 
 export function MobileNavProvider({ children }) {
-  const [tripCtx, setTripCtx] = useState(null);
-  const value = useMemo(() => ({ tripCtx, setTripCtx }), [tripCtx]);
+  const [tripNav, setTripNav] = useState(null);
+  const value = useMemo(() => ({ tripNav, setTripNav }), [tripNav]);
   return <MobileNavContext.Provider value={value}>{children}</MobileNavContext.Provider>;
 }
 
 export const useMobileNav = () => useContext(MobileNavContext);
 
 // ─── Items ───────────────────────────────────────────────────────────────────
+// Аннотация обязательна не для красоты: без неё TS выводит тип из
+// деструктуризации и делает КАЖДЫЙ проп без дефолта обязательным - вызов
+// «иконка без аватара» и вызов «аватар без иконки» краснели оба, хотя оба
+// законны и оба живые.
+/** @param {{ icon?: string, label: string, active: boolean, onClick: () => any, avatar?: any }} p */
 function NavItem({ icon, label, active, onClick, avatar }) {
   return (
     <button
@@ -57,34 +72,37 @@ export default function MobileBottomNav() {
   const t = useT();
   const nav = useNavigate();
   const loc = useLocation();
-  const [sp] = useSearchParams();
   const { user } = useAuth();
-  const { tripCtx } = useMobileNav();
+  const { tripNav } = useMobileNav();
   const { openChoice } = useCreateTrip();
   const path = loc.pathname;
 
-  // Chat lens (TRIP-296): the room hands its whole bottom edge to the composer,
-  // so the floating nav would sit on top of the send button.
-  const onChatLens = /^\/trip\/[^/]+\/?$/.test(path) && sp.get('lens') === 'chat';
+  // Секция сама объявляет, что дока на ней быть не должно (композер чата забрал
+  // нижнюю кромку; у редактора раскладка под док ещё не сделана). Причина живёт
+  // в реестре секций строкой — здесь нужен только факт, поэтому приводим к
+  // булеву, а не сверяем с true.
+  const sectionHidesDock = !!tripNav?.hidesDock;
 
-  // Routes that own their navigation / aren't app screens → no bottom nav.
+  // Роуты, которые владеют своей навигацией / не являются экранами приложения.
+  // Первые четыре — пояс поверх ремня: до них исполнение не доходит, App.jsx
+  // возвращает эти ветки ДО аут-гейта, под которым живёт этот док.
+  // Строки про /trip/:id/edit тут больше НЕТ: редактор стал секцией и прячет
+  // док сам, объявлением в реестре.
   const hidden =
-    path === '/' ||
     path.startsWith('/login') ||
     path.startsWith('/reset-password') ||
-    path.startsWith('/new-trip') ||
-    path.startsWith('/plan-trip-ai') ||
     path.startsWith('/public') ||
     path.startsWith('/join') ||
-    /^\/trip\/[^/]+\/edit\/?$/.test(path) ||
-    onChatLens;
+    path === '/' ||
+    path.startsWith('/new-trip') ||
+    path.startsWith('/plan-trip-ai') ||
+    sectionHidesDock;
 
-  // Flag the root while something owns the bottom edge — this dock, or the chat
-  // composer on the one lens that hides it. The consent banner is a sibling of
-  // the router and can see neither, so it reads this class to know whether to
-  // lift (TRIP-311). A class, not `:has()`: the build target includes Firefox
-  // 104, which predates it — see the note above `.checkbox input:disabled`.
-  const bottomOwned = !hidden || onChatLens;
+  // Помечаем корень, пока нижней кромкой кто-то владеет — этим доком либо
+  // композером на той секции, что его прячет. Консент-баннер живёт соседом
+  // роутера и не видит ни того, ни другого, поэтому читает класс (TRIP-311).
+  // Класс, а не `:has()`: цель сборки включает Firefox 104, где его ещё нет.
+  const bottomOwned = !hidden || sectionHidesDock;
   useEffect(() => {
     document.documentElement.classList.toggle('has-bottom-dock', bottomOwned);
     return () => document.documentElement.classList.remove('has-bottom-dock');
@@ -92,26 +110,32 @@ export default function MobileBottomNav() {
 
   if (hidden) return null;
 
-  const onTrip = /^\/trip\/[^/]+\/?$/.test(path);
   const avatarEl = (
     <Avatar className="mbnav__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} size="sm" />
   );
 
-  if (onTrip) {
-    const lens = sp.get('lens') || 'overview';
-    const go = (target) => window.__navigate?.(target);
+  if (tripNav) {
+    const sectionItems = (ids) => ids.map((id) => {
+      const s = sectionById(id);
+      return (
+        <NavItem
+          key={id}
+          icon={s.icon}
+          label={t(s.labelKey)}
+          active={tripNav.current === id}
+          onClick={() => tripNav.onNavigate?.(id)}
+        />
+      );
+    });
     return (
       <nav className="mbnav" aria-label={t('nav.trips')}>
         <div className="mbnav__dock">
-          <NavItem icon="grid" label={t('trip_menu.overview')} active={lens === 'overview'} onClick={() => go('overview')} />
-          <NavItem icon="list" label={t('trip_menu.timeline')} active={lens === 'timeline'} onClick={() => go('timeline')} />
+          {sectionItems(DOCK_SECTIONS.left)}
           <span className="mbnav__center">
-            <button type="button" className="mbnav__fab" aria-label={t('common.add')} onClick={() => tripCtx?.openAdd?.()}>
-              <Icon name="plus" size={26} />
-            </button>
+            <IconBtn icon="plus" size="fab" className="mbnav__fab" ariaLabel={t('common.add')} onClick={() => tripNav.openAdd?.()} />
           </span>
-          <NavItem icon="calendar" label={t('trip_menu.calendar')} active={lens === 'calendar'} onClick={() => go('calendar')} />
-          <NavItem icon="more" label={t('common.more')} active={false} onClick={() => tripCtx?.openMenu?.()} />
+          {sectionItems(DOCK_SECTIONS.right)}
+          <NavItem icon="more" label={t('common.more')} active={false} onClick={() => tripNav.openMenu?.()} />
         </div>
       </nav>
     );
@@ -123,9 +147,7 @@ export default function MobileBottomNav() {
       <div className="mbnav__dock mbnav__dock--app">
         <NavItem icon="grid" label={t('nav.trips')} active={path.startsWith('/trips')} onClick={() => nav('/trips')} />
         <span className="mbnav__center">
-          <button type="button" className="mbnav__fab" aria-label={t('trips.new')} onClick={() => openChoice()}>
-            <Icon name="plus" size={26} />
-          </button>
+          <IconBtn icon="plus" size="fab" className="mbnav__fab" ariaLabel={t('trips.new')} onClick={() => openChoice()} />
         </span>
         <NavItem label={t('nav.account')} active={path.startsWith('/settings')} avatar={avatarEl} onClick={() => nav('/settings')} />
       </div>

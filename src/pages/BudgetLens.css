@@ -46,7 +46,7 @@
 .bgt-stat__v { color: var(--ink); margin-top: var(--sp-1); }
 .bgt-stat__s { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-stat__s b { color: var(--ink-2); }
-.bgt-stat--total .bgt-stat__ic { background: var(--primary-soft); color: var(--brand); }
+.bgt-stat--total .bgt-stat__ic { background: var(--brand-soft); color: var(--brand); }
 .bgt-stat--ppl .bgt-stat__ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .bgt-stat--fx .bgt-stat__ic { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 .bgt-stat--fx { cursor: pointer; transition: border-color .18s, box-shadow .2s; width: 100%; text-align: left; }
@@ -66,14 +66,16 @@
 .bgt-glist { padding: var(--sp-5); }
 .bgt-glist__row { width: 100%; text-align: left; padding: var(--sp-6); border-radius: var(--r-btn); border: 1px solid transparent; background: transparent; cursor: pointer; font: inherit; transition: background .15s, border-color .15s; }
 .bgt-glist__row:hover { background: var(--wash); }
-.bgt-glist__row.on { background: var(--primary-soft); border-color: var(--primary-soft-2); }
+.bgt-glist__row.on { background: var(--brand-soft); border-color: var(--brand-soft-12); }
 .bgt-glist__n { color: var(--ink); min-width: 0; }
 .bgt-glist__c { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-glist__c .miss { color: var(--danger); }
 .bgt-glist__r { text-align: right; flex: none; }
 .bgt-glist__v { color: var(--ink); }
 .bgt-glist__v.muted { color: var(--muted-2); }
-.bgt-glist__add { justify-content: center; width: 100%; padding: var(--sp-6); border-radius: var(--r-btn); border: 1px dashed var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; margin-top: var(--sp-2); transition: border-color .16s, color .16s, background .16s; }
+/* `.bgt-glist__add` удалён: «добавить категорию» — `<Btn variant="dashed" block>`
+   (TRIP-344 PR 3). Список раскладывается своим зазором, отдельного отступа у
+   кнопки больше нет. */
 
 /* detail pane */
 .bgt-detail { padding: var(--sp-8); min-height: 280px; }
@@ -107,12 +109,18 @@
    покоя молча съело бы состояние из дизайн-системы.
    cursor не объявляем: `button { cursor: pointer }` стоит глобально. */
 .bgt-exrow__acts .icon-btn { color: var(--muted-2); transition: background .14s, color .14s; }
-.bgt-exrow__acts .icon-btn:hover { color: var(--ink); }
-/* Опасное действие - деталь ЭТОГО экрана, а не модификатор дизайн-системы:
-   имя вида .icon-btn--danger читалось бы как общий модификатор, но работает
-   только внутри .bgt-exrow__acts - следующий экран навесил бы его и получил
-   тишину. Поэтому имя в префиксе экрана. */
-.bgt-exrow__acts .bgt-exrow__del:hover { background: var(--danger-soft); color: var(--danger); }
+/* ★TRIP-344: `:not(.icon-btn--danger)` — не украшение, а единственный способ не
+   съесть канон. Прежнее рассуждение («опасное действие — деталь ЭТОГО экрана, в
+   системе такого модификатора нет») перестало быть верным: тон `danger` теперь
+   канон, и своё имя `.bgt-exrow__del` умерло. Но ховер экрана БЕЗ `:not` весил
+   бы (0,3,0) против (0,2,0) у `.icon-btn--danger:hover`, то есть выигрывал бы
+   ВСЕГДА — тут даже не нужен порядок в бандле, которым берёт строка выше, — и
+   красный ховер удаления молча стал бы серым. То есть уточнение ПОКОЯ съело бы
+   СОСТОЯНИЕ из системы — ровно та ловушка, про которую написан комментарий
+   выше, только на ступень злее: там спор решал порядок файлов, здесь вес.
+   Сам `:not` добавляет свой аргумент в вес (итог (0,4,0)) — на исход это не
+   влияет, кнопка удаления под это правило просто не попадает. */
+.bgt-exrow__acts .icon-btn:not(.icon-btn--danger):hover { color: var(--ink); }
 
 @media (hover: hover) {
   .bgt-exrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
@@ -127,13 +135,9 @@
    устройство поля, и общей быть не должна. */
 .bgt-amtgrp__cur { width: 122px; }
 
-/* colour swatches */
-.bgt-swatch { cursor: pointer; border: 2.5px solid transparent; padding: 0; transition: transform .14s var(--ease-spring); }
-.bgt-swatch:hover { transform: scale(1.1); }
-.bgt-swatch.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
-
-/* icon picker */
-.bgt-iconpick button { border: 1px solid var(--line); background: var(--wash-2); color: var(--muted); cursor: pointer; transition: background .14s, border-color .14s, color .14s; }
+/* Выбор цвета и иконки категории — примитив <Swatch> (канон `.swatch`).
+   Прежние `.bgt-swatch` и `.bgt-iconpick button` рисовали ту же плитку своими
+   размерами/рамками и удалены вместе с разметкой (TRIP-344). */
 
 /* fx rate rows */
 .bgt-fxrow { padding: var(--sp-6) 0; border-bottom: 1px solid var(--line); }

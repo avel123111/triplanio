@@ -5,15 +5,23 @@
    identical everywhere (TRIP-275). Only the card wrapper is defined here. */
 
 /* card wrapper (non-bare) — роль panel на канонических токенах поверхностей (TRIP-189) */
-.docfield { border-radius: var(--r-xl); padding: 16px; }
+/* TRIP-343 объект 2: скин обрамления документов на `<Card as="section" radius="lg">`
+   (bg/border → .card, r-xl 20 → .card--r-lg); `.docfield` — численный остаток
+   (padding 16 → 08). Условный носитель: bare-ветка = голый <section> без скина.
+   visual-diff-move: docfield -> card card--r-lg */
+.docfield { padding: 16px; }
 
 /* header row — was: flex items-center justify-between mb-2 gap-2 */
-.docfield__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+/* visual-diff-move: docfield__head -> row row--j-between row--g4 */
+.docfield__head { margin-bottom: 8px; }
 
 /* title cluster — was: flex items-center gap-2 text-sm font-semibold min-w-0 */
-.docfield__title { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); }
+/* visual-diff-move: docfield__title -> row row--g4 */
+.docfield__title { min-width: 0; color: var(--ink); }
 .docfield__title .ico { flex: none; }
-.docfield__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* was truncate */
+/* visual-diff-move: docfield__name -> trunc */
+/* `.docfield__name` (was: truncate) has no declarations of its own left — the
+   ellipsis lives on the shared `.trunc` primitive. */
 /* count — was: text-xs text-muted-foreground font-normal.
    Typography now on the .t-meta canon (co-selector in app.css); weight collapses to the canon 600. */
 .docfield__count { color: var(--muted); }

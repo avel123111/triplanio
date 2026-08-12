@@ -4,14 +4,14 @@
  * POST body: { member_id, action: 'accept'|'decline' }
  *
  * Auth: caller must own the invite (member.user_id === caller, or member.invite_email === caller email).
- * On accept: activates member, notifies inviter in THEIR language.
- * On decline: sets status to 'declined'.
- * In both cases: marks the invite notification as read.
+ * On accept: activates member. On decline: sets status to 'declined'. In both
+ * cases: announces the response (n8n notifies the inviter) and marks the invite
+ * notification as read.
  */
 
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { renderJoinedNotification, renderDeclinedNotification } from '../_shared/emailTemplate.ts';
+import { emit } from '../_shared/emit.ts';
 import { emitTripReached2 } from '../_shared/analytics.ts';
 
 Deno.serve(withHandler('respondTripInvite', async (req, corsHeaders) => {
@@ -60,46 +60,8 @@ Deno.serve(withHandler('respondTripInvite', async (req, corsHeaders) => {
         .from('trip_members')
         .update({ status: 'declined' })
         .eq('id', member_id);
-
-      // M1 — notify the inviter that the invite was declined (in THEIR language).
-      // Best-effort: a failure here must not fail the decline itself.
-      if (member.invited_by) {
-        try {
-          const { data: callerUsers } = await supabaseAdmin
-            .from('users').select('full_name').eq('id', user.id).limit(1);
-          const callerName = callerUsers?.[0]?.full_name || member.user_full_name || user.email!;
-
-          const [tripResult, inviterResult] = await Promise.all([
-            supabaseAdmin.from('trips').select('title').eq('id', member.trip_id).single(),
-            supabaseAdmin.from('users').select('language').eq('id', member.invited_by).limit(1),
-          ]);
-          const trip = tripResult.data;
-          const inviterLang = inviterResult.data?.[0]?.language ?? 'en';
-
-          if (trip) {
-            const notifTexts = renderDeclinedNotification(inviterLang, {
-              name: callerName,
-              title: trip.title,
-            });
-            await supabaseAdmin.from('notifications').insert({
-              user_id: member.invited_by,
-              type: 'trip_invite_declined',
-              i18n_title_key: 'notif.tpl_invite_declined_title',
-              i18n_message_key: 'notif.tpl_invite_declined_msg',
-              i18n_params: { name: callerName, trip: trip.title },
-              title: notifTexts.title,
-              message: notifTexts.message,
-              trip_id: member.trip_id,
-              read: false,
-              created_by: user.id,
-            });
-          }
-        } catch (e) {
-          console.error('respondTripInvite: decline notification failed', e);
-        }
-      }
     } else {
-      // Fetch caller's display name
+      // Fetch caller's display name (persisted on the member row).
       const { data: callerUsers } = await supabaseAdmin
         .from('users')
         .select('full_name')
@@ -119,40 +81,15 @@ Deno.serve(withHandler('respondTripInvite', async (req, corsHeaders) => {
 
       // North Star: did this accept make the trip collaborative (owner + 1st member = 2)?
       await emitTripReached2(supabaseAdmin, member.trip_id, user.id);
+    }
 
-      // Notify the inviter in THEIR language (not the accepter's)
-      if (member.invited_by) {
-        const [tripResult, inviterResult] = await Promise.all([
-          supabaseAdmin.from('trips').select('title').eq('id', member.trip_id).single(),
-          supabaseAdmin.from('users').select('language').eq('id', member.invited_by).limit(1),
-        ]);
-
-        const trip = tripResult.data;
-        const inviterLang = inviterResult.data?.[0]?.language ?? 'en';
-
-        if (trip) {
-          const notifTexts = renderJoinedNotification(inviterLang, {
-            name: callerName,
-            title: trip.title,
-          });
-
-          await supabaseAdmin.from('notifications').insert({
-            user_id: member.invited_by,
-            type: 'trip_member_joined',
-            i18n_title_key: 'notif.tpl_joined_title',
-            i18n_message_key: 'notif.tpl_joined_msg',
-            i18n_params: {
-              name: callerName,
-              trip: trip.title,
-            },
-            title: notifTexts.title,
-            message: notifTexts.message,
-            trip_id: member.trip_id,
-            read: false,
-            created_by: user.id,
-          });
-        }
-      }
+    // TRIP-356: notify the inviter of the response; only when there is one.
+    if (member.invited_by) {
+      emit(action === 'decline' ? 'invite_declined' : 'invite_accepted', {
+        trip_id: member.trip_id,
+        recipient_id: member.invited_by,
+        actor_id: user.id,
+      });
     }
 
     // Mark the original invite notification as read

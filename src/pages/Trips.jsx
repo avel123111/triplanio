@@ -1,6 +1,7 @@
+// @ts-check
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
@@ -10,7 +11,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, EmptyState, Input, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, Card, EmptyState, Input, Seg, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -37,11 +38,12 @@ function scopeLabel(t, visits = []) {
 }
 
 /**
- * Shape raw Supabase trip + visits into the object the card components expect.
+ * Shape a getTrips card (+ its localized visits) into the object the card
+ * components expect.
  *
- * participants = rows from get_trip_participant_profiles RPC:
- *   { user_id, full_name, email, avatar_url, role, is_owner }
- *   Owner is always first (ensured by participantsByTrip grouping).
+ * participants = the card's participants (owner + active members, owner first):
+ *   { user_id, full_name, email, avatar_url, is_owner, is_deleted }
+ *   from get_my_trip_cards (TRIP-403).
  *
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
@@ -53,12 +55,12 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
     role,
     // Owner-aware Pro badge (TRIP-121). Effective Pro = is_pro_trip OR the trip
     // OWNER has an active subscription — true for EVERY trip the user sees, incl.
-    // foreign trips made Pro by their owner's sub. The server computes it once in
-    // get_user_travel_stats via the canonical is_trip_pro() predicate (the client
-    // can't see a foreign owner's billing), exposed per trip as `serverPro`.
-    // Fallback (older RPC build with no is_pro field): the client predicate —
-    // own trips only (is_pro_trip OR I'm the owner with an active sub) — so a
-    // stale deploy degrades gracefully instead of dropping all badges.
+    // foreign trips made Pro by their owner's sub. getTrips computes it once via
+    // is_user_pro (the client can't see a foreign owner's billing), exposed per
+    // card as `serverPro` (card.is_pro) — the SINGLE source of the badge (TRIP-403).
+    // Fallback (stale deploy with no is_pro field): the client predicate — own
+    // trips only (is_pro_trip OR I'm the owner with an active sub) — so it degrades
+    // gracefully instead of dropping all badges.
     pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)),
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
@@ -107,7 +109,7 @@ function NextTripCard({ trip, onClick, t }) {
   const bg = coverBg(trip);
   const cd = trip.countdown;
   return (
-    <button type="button" className="nextcard" onClick={onClick}>
+    <Card as="button" radius="lg" interactive className="nextcard" onClick={onClick}>
       <span className="nextcard__cover" style={{ background: bg || undefined }}>
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
@@ -123,14 +125,14 @@ function NextTripCard({ trip, onClick, t }) {
         </span>
       </span>
       <span className="nextcard__chev"><Icon name="chev" /></span>
-    </button>
+    </Card>
   );
 }
 
 function NoNextCard({ variant, onPlan, t }) {
   const isEmpty = variant === 'empty';
   return (
-    <div className="nonext">
+    <Card radius="lg" className="nonext">
       <span className="ic"><Icon name="calendar" /></span>
       <div>
         <b>{t('stats.next_trip')}</b>
@@ -139,7 +141,7 @@ function NoNextCard({ variant, onPlan, t }) {
       {!isEmpty && (
         <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -243,7 +245,10 @@ const TripRow = ({ trip, onClick }) => {
   const bg = coverBg(trip);
 
   return (
-    <button
+    <Card
+      as="button"
+      radius="lg"
+      interactive
       onClick={onClick}
       className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
     >
@@ -292,14 +297,14 @@ const TripRow = ({ trip, onClick }) => {
         )}
         <span className="tr__chev"><Icon name="chev" /></span>
       </div>
-    </button>
+    </Card>
   );
 };
 
 // ─── Empty collection · "Маршрут" — itinerary-rail hero + manual/AI choices ─────
 // Decorative orbs are inline-styled (no shared `.blob` class in this stylesheet);
 // the rail illustration + copy + choice pair sit above them (z-index 1).
-const _ORB = { position: 'absolute', borderRadius: '50%', filter: 'blur(12px)', pointerEvents: 'none', zIndex: 0 };
+const _ORB = /** @type {React.CSSProperties} */ ({ position: 'absolute', borderRadius: '50%', filter: 'blur(12px)', pointerEvents: 'none', zIndex: 0 });
 function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
@@ -432,112 +437,75 @@ export default function Trips() {
     error: tripsError, isPending: tripsPending, fetchStatus: tripsFetchStatus, refetch: refetchTrips,
   } = useQuery({
     queryKey: ['trips', user?.id],
+    // Композит главной (TRIP-403, ярус B): edge getTrips (actor из JWT → RPC
+    // get_my_trip_cards под service_role) отдаёт карточку ЦЕЛИКОМ одним вызовом —
+    // список + owner-aware is_pro (БЕЙДЖ отсюда) + моя роль + визиты + участники
+    // (owner первым). Заменяет прямой .from('trips') + RPC профилей участников
+    // + карточные слайсы getTravelStats. Порядок — created_at desc (в самой RPC).
     queryFn: async () => {
-      // Select only the columns the cards / role / search / cover actually read —
-      // not select('*'). Keeps the home payload lean; the per-trip visit rows and
-      // covers come from the get_user_travel_stats RPC.
-      const { data, error } = await supabase
-        .from('trips')
-        .select('id, title, description, cover_gradient, cover_image_url, created_by, is_pro_trip')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const { data, error, code, message } = await invokeFn('getTrips');
+      // Бросаем исходный error (помечен __seamHandled) — без повторного отчёта.
+      if (error || code) throw error || new Error(message || code);
       return data || [];
     },
     enabled: !!user?.id,
   });
 
-  const tripIds  = allTrips.map(tr => tr.id);
-  const hasTrips = tripIds.length > 0;
+  const hasTrips = allTrips.length > 0;
 
-  // ── Travel-stats RPC: one call powers the stat-bar, map fill/pins, "world
-  // explored" AND the trip cards. `trip_visits` carries each trip's visit rows
-  // (date range / past-active / city scope), so the home no longer needs a
-  // separate `select * from city_visits` round-trip. Year filtering / aggregates
-  // happen client-side (here it's unfiltered).
+  // ── Travel-stats reader — верхние виджеты только: stat-bar, map fill/pins,
+  // "world explored". Главная берёт ОТСЮДА лишь points и transfers_total; карточные
+  // слайсы (trips/trip_visits) ушли в getTrips (TRIP-403). Year filtering /
+  // aggregates happen client-side (here it's unfiltered).
   const { data: travelStats } = useQuery({
     queryKey: ['travel-stats', user?.id],
+    // Общий ридер яруса A (TRIP-402): тот же edge getTravelStats и кэш-ключ, что у
+    // «Моей статистики» (Statistics.jsx) — читаем из общего кэша.
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_user_travel_stats');
-      if (error) throw error;
-      return data || { points: [], trips: {}, transfers_total: 0, trip_visits: {} };
+      const { data, error, code, message } = await invokeFn('getTravelStats');
+      // Бросаем исходный error (помечен __seamHandled) — без повторного отчёта.
+      if (error || code) throw error || new Error(message || code);
+      return data || { points: [], transfers_total: 0 };
     },
     enabled: !!user?.id,
     staleTime: 30_000,
   });
   const statsLoaded    = travelStats !== undefined;
-  const rpcTripVisits  = travelStats?.trip_visits || null; // null only on a pre-0044 RPC build
   const statsPoints    = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
   const transfersTotal = travelStats?.transfers_total || 0;
   const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
   const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
 
-  // Backward-compatible fallback: only fetch city_visits separately when the RPC
-  // build in this environment hasn't shipped `trip_visits` yet (pre-0044). Once
-  // 0044 is deployed this query is permanently disabled — no extra round-trip.
-  const { data: allVisits = [], isLoading: loadingVisits } = useQuery({
-    queryKey: ['all-city-visits', tripIds.join(',')],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('city_visits').select('*').in('trip_id', tripIds);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: hasTrips && statsLoaded && !rpcTripVisits,
-  });
-
-  // ── Single RPC: all participants (owner + active members) with avatar_url ──
-  const { data: allParticipants = [] } = useQuery({
-    queryKey: ['trip-participant-profiles', tripIds.join(',')],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_trip_participant_profiles', {
-        trip_id_list: tripIds,
-      });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: hasTrips,
-    staleTime: 30_000,
-  });
-
-  // Group participants by trip_id, owner always first
+  // Participants (owner + active members, owner первым) приходят В карточке из
+  // getTrips (get_my_trip_cards поглотил профили участников, TRIP-403).
+  // Здесь только локализуем метку обезличенного (soft-deleted) участника — вместо
+  // выскобленного пустого имени (заодно один ровный градиент аватара на всех).
   const participantsByTrip = useMemo(() => {
     const m = {};
-    allParticipants.forEach(p => {
-      // Anonymized (soft-deleted) users: show a localized label instead of the
-      // scrubbed empty name (also yields one uniform avatar gradient for all).
-      const pp = p.is_deleted ? { ...p, full_name: t('common.deleted_user') } : p;
-      if (!m[pp.trip_id]) m[pp.trip_id] = [];
-      if (pp.is_owner) m[pp.trip_id].unshift(pp);
-      else m[pp.trip_id].push(pp);
-    });
+    for (const tr of allTrips) {
+      m[tr.id] = (tr.participants || []).map(p =>
+        p.is_deleted ? { ...p, full_name: t('common.deleted_user') } : p,
+      );
+    }
     return m;
-  }, [allParticipants, t]);
+  }, [allTrips, t]);
 
-  // Cards read per-trip visits from the RPC's trip_visits when present, else from
-  // the fallback query. Either way the shape is { trip_id: [visit rows] } and the
-  // downstream helpers (isTripInPast / scopeLabel / computeTripRange) are unchanged.
+  // Per-trip visits come IN the card from getTrips (TRIP-403). Localize each
+  // trip's city names from the per-visit snapshot (TRIP-146). Downstream helpers
+  // (isTripInPast / scopeLabel / computeTripRange) are unchanged.
   const visitsByTrip = useMemo(() => {
-    const base = rpcTripVisits || allVisits.reduce((m, v) => { (m[v.trip_id] ||= []).push(v); return m; }, {});
-    // Localize each trip's city names from the per-visit snapshot (TRIP-146).
     const out = {};
-    for (const k in base) out[k] = localizeVisits(base[k], lang);
+    for (const tr of allTrips) out[tr.id] = localizeVisits(tr.visits || [], lang);
     return out;
-  }, [rpcTripVisits, allVisits, lang]);
-
-  // Derive current user's role from the participant profiles RPC result
-  const getRoleFor = (trip) => {
-    const parts = participantsByTrip[trip.id] || [];
-    const me = parts.find(p => p.user_id === user?.id);
-    if (!me) return trip.created_by === user?.id ? 'owner' : 'member';
-    return me.is_owner ? 'owner' : (me.role || 'member');
-  };
+  }, [allTrips, lang]);
 
   // ── Search haystack ──────────────────────────────────────────────────────────
   // One lowercased blob per trip: title + description + its cities + countries.
   // Cities use the same deduped transit set shown on the card, in every locale we
   // hold (name_i18n en/es/ru + the en-fallback city_name), so "париж"/"paris" both
   // match. Countries are localized from country_code via localizeCountry (current
-  // UI language + English fallback + the raw ISO code). No backend change — all of
-  // this already arrives from get_user_travel_stats.
+  // UI language + English fallback + the raw ISO code). No extra fetch — all of
+  // this already arrives in the card's visits from getTrips (get_my_trip_cards).
   const haystackByTrip = useMemo(() => {
     const out = {};
     for (const tr of allTrips) {
@@ -578,19 +546,19 @@ export default function Trips() {
       if (!sa && !sb) return 0;
       if (!sa) return 1;
       if (!sb) return -1;
-      return new Date(sa) - new Date(sb);
+      return new Date(sa).getTime() - new Date(sb).getTime();
     });
 
   // Past → most recently finished first (end desc). Past trips always have an
   // end date (isTripInPast requires it), so no null guard is needed.
   const pastTrips = allTrips
     .filter(tr => isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
-    .sort((a, b) => new Date(rangeOf(b).end) - new Date(rangeOf(a).end));
+    .sort((a, b) => new Date(rangeOf(b).end).getTime() - new Date(rangeOf(a).end).getTime());
 
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [], travelStats?.trips?.[tr.id]?.is_pro)
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], tr.role, isPro, participantsByTrip[tr.id] || [], tr.is_pro)
   );
 
   // ── Next upcoming trip (nearest future start) for the rail card ──────────────
@@ -619,8 +587,11 @@ export default function Trips() {
   }, [allTrips, visitsByTrip, t]);
 
 
-  // Visits come from the RPC (ready once stats load) or the fallback query.
-  const isLoadingData = isLoading || (hasTrips && !rpcTripVisits && (!statsLoaded || loadingVisits));
+  // The screen shows the trip LIST and the stat HERO together, so first paint
+  // waits for BOTH composites: getTrips (cards: list/visits/participants/roles/
+  // badge) via `isLoading`, and getTravelStats (hero: stat-bar/map/world) via
+  // `statsLoaded`. Cached list wins — a background stats refetch never re-gates.
+  const isLoadingData = isLoading || (hasTrips && !statsLoaded);
   // TRIP-188: склоняем каждое существительное отдельно (Intl.PluralRules) — «1 путешествие»,
   // «2 страны», «5 городов» вместо застывшего множественного числа.
   const subText = hasTrips
@@ -715,14 +686,16 @@ export default function Trips() {
             {/* Filters row — adaptive (.trips-toolbar): wraps the search to its own
                 full-width line on phones, segments share the first line. */}
             <div className="trips-toolbar">
-              <div className="seg seg--filter" role="group" aria-label={t('trips.tab_active')}>
-                <button aria-pressed={filterMode === 'active'} onClick={() => setFilterMode('active')}>
-                  {t('trips.tab_active')} · <span className="num">{activeTrips.length}</span>
-                </button>
-                <button aria-pressed={filterMode === 'past'} onClick={() => setFilterMode('past')}>
-                  {t('trips.tab_past')} · <span className="num">{pastTrips.length}</span>
-                </button>
-              </div>
+              <Seg
+                className="seg--filter"
+                ariaLabel={t('trips.tab_active')}
+                value={filterMode}
+                onChange={setFilterMode}
+                options={[
+                  { value: 'active', label: <>{t('trips.tab_active')} · <span className="num">{activeTrips.length}</span></> },
+                  { value: 'past', label: <>{t('trips.tab_past')} · <span className="num">{pastTrips.length}</span></> },
+                ]}
+              />
               <Input
                 className="trips-toolbar__search"
                 icon="search"
@@ -732,17 +705,23 @@ export default function Trips() {
                 onChange={e => setSearch(e.target.value)}
               />
               <div className="trips-toolbar__spacer" />
-              <div className="seg seg--view" role="group" title={t('trips.view')}>
-                <button aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>
-                <button aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><Icon name="list" size={13} /></button>
-              </div>
+              <Seg
+                className="seg--view"
+                title={t('trips.view')}
+                value={viewMode}
+                onChange={setViewMode}
+                options={[
+                  { value: 'grid', label: <Icon name="grid" size={13} /> },
+                  { value: 'list', label: <Icon name="list" size={13} /> },
+                ]}
+              />
             </div>
 
             {/* Free-limit banner — под фильтрами, над списком (TRIP-187): спокойный
                 бренд-акцент, PRO-пилюля (звезда) даёт акцент, CTA — бренд-кнопка.
                 Shown only when owned active trips reach/exceed the free cap (1). */}
             {filterMode === 'active' && limitReached && (
-              <div className="limitcard">
+              <Card tone="brand" radius="md" className="limitcard">
                 <Badge variant="pro" icon="pro">PRO</Badge>
                 <div className="limitcard__body">
                   <div className="limitcard__top">
@@ -751,7 +730,7 @@ export default function Trips() {
                   <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
                 </div>
                 <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
-              </div>
+              </Card>
             )}
 
             {/* Trip list */}
@@ -761,17 +740,17 @@ export default function Trips() {
               // Active tab with no upcoming/active trips (past ones exist) → invite,
               // not a generic empty. A real search miss still shows empty_search.
               (filterMode === 'active' && !search.trim()) ? (
-                <div className="invite">
+                <Card radius="lg" className="row invite">
                   <span className="invite__ic"><Icon name="sparkles" size={28} /></span>
                   <div className="invite__tx">
                     <h3>{t('trips.invite_title')}</h3>
                     <p>{t('trips.invite_desc')}</p>
                   </div>
-                  <div className="invite__act">
+                  <div className="row row--wrap invite__act">
                     <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
-                    <Btn variant="ghost" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
+                    <Btn variant="secondary" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
                   </div>
-                </div>
+                </Card>
               ) : (
                 <EmptyState
                   icon={filterMode === 'past' ? 'calendar' : 'search'}
@@ -800,13 +779,13 @@ export default function Trips() {
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <button className="tr tr--add" onClick={() => openChoice()}>
+                  <Card as="button" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
                     <span className="tr__addic"><Icon name="plus" size={20} /></span>
                     <span className="tr__main">
                       <b>{t('trips.add_trip')}</b>
                       <small>{t('trips.add_trip_sub')}</small>
                     </span>
-                  </button>
+                  </Card>
                 )}
               </div>
             )}

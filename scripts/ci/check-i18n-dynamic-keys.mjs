@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CI guard 2q (TRIP-404) — i18n key families referenced ONLY dynamically, which
+ * CI guard 2x (TRIP-404) — i18n key families referenced ONLY dynamically, which
  * the static sweeps in check-i18n (2d) cannot see, so a "dead key" cleanup
  * deletes them while they are still alive. This is exactly TRIP-299: a sweep
  * dropped 606 keys, 22 of them live, and prod rendered 104 raw keys in the Inbox

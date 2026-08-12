@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * CalendarLens — Lumo redesign (ncal-* system).
  *
@@ -16,7 +17,8 @@
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { Info, DateTime } from 'luxon';
-import { Skeleton, eventFamily } from '../design/index';
+import { Skeleton, IconBtn, Seg, Chip, eventFamily } from '../design/index';
+import { Row, Col, Grid, Grow } from '../design/Layout';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
@@ -39,18 +41,10 @@ const cityBg = (idx) => CITY_BG[idx % CITY_BG.length];
 const evCls = (type) => `ev-${eventFamily(type)}`;
 
 // ── Inline SVG icons (no extra dependency) ──────────────────────────────────
-const IcoBack = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-    <path d="M15 18l-6-6 6-6"/>
-  </svg>
-);
-const IcoFwd = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-    <path d="M9 6l6 6-6 6"/>
-  </svg>
-);
+// `IcoBack`/`IcoFwd` УДАЛЕНЫ (TRIP-344 PR 2): стрелки навигации уехали на
+// <IconBtn icon="chevL|chev" tone="soft" size="sm" round>, глиф приходит из
+// реестра — именно ШЕВРОН, а не стрелка: рисованные тут пути были chevron-left
+// и chevron-right, и `back`/`arrow` подменили бы глиф.
 const IcoPin = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -85,16 +79,16 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
   return (
     <div className="ncal-month">
       {/* Weekday header */}
-      <div className="ncal-wd-row" role="row">
+      <Grid className="ncal-wd-row" role="row">
         {WD_NAMES.map(w => (
           <div key={w} className="ncal-wd" role="columnheader">{w}</div>
         ))}
-      </div>
+      </Grid>
 
       {/* Week rows */}
       {weeks.map((week, wi) => (
         <div key={wi} className="ncal-wk">
-          <div className="ncal-dgrid" role="row">
+          <Grid className="ncal-dgrid" role="row">
             {week.map((d, ci) => {
               const inTrip = d != null && inTripDays.has(d);
               const isToday = d === todayDay;
@@ -114,33 +108,34 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
               // ── City strip at top of cell ─────────────────────
               let cityStrip;
               if (!cities.length) {
-                cityStrip = <div className="ncal-cstrip cs-empty" />;
+                cityStrip = <Row className="ncal-cstrip cs-empty" />;
               } else if (cities.length === 1) {
                 const c = cities[0];
                 // Show city name only on the first day of this visit in the month
                 const showLabel = d === c.startDay;
                 cityStrip = (
-                  <div
+                  <Row
                     className="ncal-cstrip"
                     style={{ background: cityBg(c.colorIdx) }}
                   >
                     {showLabel ? c.label : ''}
-                  </div>
+                  </Row>
                 );
               } else {
                 // Transit day: split strip — always show all city names
                 cityStrip = (
-                  <div className="ncal-cstrip is-split">
+                  <Row className="ncal-cstrip is-split">
                     {cities.map((c, si) => (
-                      <span
+                      <Row
+                        as="span"
                         key={si}
-                        className="ncal-cstrip-seg"
+                        className="grow ncal-cstrip-seg"
                         style={{ background: cityBg(c.colorIdx), flex: 1 }}
                       >
                         {c.label}
-                      </span>
+                      </Row>
                     ))}
-                  </div>
+                  </Row>
                 );
               }
 
@@ -170,16 +165,18 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
                         </button>
                       ))}
                       {ev.length > 2 && (
-                        <button type="button" className="ncal-more" onClick={() => toggle(d)}>
+                        <Chip sm square variant="soft" onClick={() => toggle(d)} style={{ width: '100%' }}>
+                          {/* inline-style-exempt: полная ширина ячейки дня — «+N ещё»
+                              встаёт четвёртой строкой в ряд с событиями (эталон секции E). */}
                           {isOpen ? '−' : `+${ev.length - 2} ${t('calendar.more_count')}`}
-                        </button>
+                        </Chip>
                       )}
                     </div>
                   )}
                 </div>
               );
             })}
-          </div>
+          </Grid>
         </div>
       ))}
     </div>
@@ -215,9 +212,10 @@ function WeekView({ days, eventsByDayArr, onOpenEvent }) {
             cbar = (
               <div className="ncal-wdc-cbar is-split">
                 {cities.map((c, ci) => (
-                  <span
+                  <Row
+                    as="span"
                     key={ci}
-                    className="ncal-cstrip-seg"
+                    className="grow ncal-cstrip-seg"
                     style={{ background: cityBg(c.colorIdx), flex: 1 }}
                   />
                 ))}
@@ -288,17 +286,17 @@ function Legend({ visits }) {
   if (!uniqueCities.length) return null;
 
   return (
-    <div className="ncal-legend">
-      <div className="ncal-legend-group">
+    <Col className="ncal-legend">
+      <Row wrap className="ncal-legend-group">
         <span className="ncal-legend-lbl">{t('calendar.legend_group_cities')}</span>
         {uniqueCities.map((c, i) => (
-          <span key={i} className="ncal-leg">
+          <Row as="span" key={i} inline gap="g3" className="ncal-leg">
             <span className="ncal-leg-sw" style={{ background: cityBg(c.colorIdx) }} />
             {c.name}
-          </span>
+          </Row>
         ))}
-      </div>
-    </div>
+      </Row>
+    </Col>
   );
 }
 
@@ -351,6 +349,17 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       const e = parseNaive(v.end_date);
       if (!s || !e) return;
       const mStart = currentMonth.startOf('month');
+      // ⚠️ ТОТ ЖЕ ЗАПЕЧАТАННЫЙ НАБОР, ЧТО У КОМПОНЕНТОВ ДС, НО В ЧУЖОЙ БИБЛИОТЕКЕ.
+      // luxon НЕ поставляет `.d.ts`, и TS выводит сигнатуру из его исходника:
+      // `startOf(unit, {…} = {})` имеет дефолт и вызывается одним аргументом
+      // спокойно, а у `endOf(unit, opts)` дефолта НЕТ - параметр выведен
+      // ОБЯЗАТЕЛЬНЫМ, хотя внутри `opts` уходит в тот же `startOf`, который его
+      // и подставляет. Рантайм верен, неверен только выведенный тип.
+      // Взят `@ts-expect-error`, а не `@ts-ignore` и не дописанный `{}` в вызов:
+      // он ЕДИНСТВЕННЫЙ маркер, который сам краснеет, когда перестаёт быть
+      // нужным (появятся типы luxon - строка упадёт и её снимут). Это первое
+      // подавление в репозитории; в `src` ровно ОДИН вызов `.endOf(` - вот этот.
+      // @ts-expect-error luxon без типов: `endOf(unit, opts)` без дефолта у opts
       const mEnd   = currentMonth.endOf('month');
       const cs = s < mStart ? mStart : s;
       const ce = e > mEnd   ? mEnd   : e;
@@ -475,7 +484,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
           <Skeleton w={200} h={32} r={'var(--r-sm)'} />
-          <div className="grow" />
+          <Grow />
           <Skeleton w={220} h={32} r={'var(--r-xl)'} />
         </div>
         <Skeleton w="100%" h={500} r={'var(--r-md)'} />
@@ -491,9 +500,9 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
   return (
     <div className="ov-anim--cal">
       {/* ── Toolbar ────────────────────────────────────────────── */}
-      <div className="ncal-hd">
-        <div className="ncal-hd-l">
-          <div className="ncal-title-row">
+      <Row align="a-start" justify="j-between" gap="g7" wrap className="ncal-hd">
+        <Grow fit className="ncal-hd-l">
+          <Row align="a-baseline" wrap className="ncal-title-row">
             <span className="ncal-month-lbl">{MONTH_NAMES[
               view === 'month' ? currentMonth.month : (baseDate.startOf('week').plus({ weeks: weekOffset }).month)
             ]}</span>
@@ -508,45 +517,34 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
                 </span>
               )}
             </span>
-          </div>
-        </div>
+          </Row>
+        </Grow>
 
-        <div className="ncal-hd-r">
+        <Col align="a-end" className="ncal-hd-r">
           {/* Nav pill */}
-          <div className="ncal-nav">
-            <button className="ncal-nav-ico" aria-label={t('calendar.prev')} onClick={goBack}>
-              <IcoBack />
-            </button>
+          <Row inline gap="g1" className="ncal-nav">
+            <IconBtn icon="chevL" tone="soft" size="sm" round ariaLabel={t('calendar.prev')} onClick={goBack} />
             <button className="ncal-nav-txt" onClick={goToday}>{t('calendar.today')}</button>
             <span className="ncal-nav-div" aria-hidden="true" />
-            <button className="ncal-nav-trip" onClick={goHome}>
+            <button className="row row--inline ncal-nav-trip" onClick={goHome}>
               <IcoPin />
               <span className="ncal-trip-label">{t('calendar.to_trip_start')}</span>
             </button>
-            <button className="ncal-nav-ico" aria-label={t('calendar.next')} onClick={goFwd}>
-              <IcoFwd />
-            </button>
-          </div>
+            <IconBtn icon="chev" tone="soft" size="sm" round ariaLabel={t('calendar.next')} onClick={goFwd} />
+          </Row>
 
-          {/* View toggle */}
-          <div className="ncal-vtgl" role="group" aria-label={`${t('calendar.month')} / ${t('calendar.week')}`}>
-            <button
-              className={`ncal-vtgl-btn${view === 'month' ? ' is-on' : ''}`}
-              aria-pressed={view === 'month'}
-              onClick={() => setView('month')}
-            >
-              {t('calendar.month')}
-            </button>
-            <button
-              className={`ncal-vtgl-btn${view === 'week' ? ' is-on' : ''}`}
-              aria-pressed={view === 'week'}
-              onClick={() => setView('week')}
-            >
-              {t('calendar.week')}
-            </button>
-          </div>
-        </div>
-      </div>
+          {/* View toggle — канон `<Seg>` (было `.ncal-vtgl`, TRIP-344 PR 6) */}
+          <Seg
+            ariaLabel={`${t('calendar.month')} / ${t('calendar.week')}`}
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'month', label: t('calendar.month') },
+              { value: 'week', label: t('calendar.week') },
+            ]}
+          />
+        </Col>
+      </Row>
 
       {/* ── Views ──────────────────────────────────────────────── */}
       {view === 'month' ? (

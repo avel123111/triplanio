@@ -1,6 +1,7 @@
+// @ts-check
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -21,7 +22,7 @@ import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
-import { Btn, Skeleton } from '@/design/index';
+import { Btn, Card, Skeleton, IconBtn, Seg } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 
@@ -56,16 +57,16 @@ function StatsScreenSkeleton() {
         </div>
       </div>
       <Skeleton w="100%" h={420} r={'var(--r-card)'} style={{ marginTop: 18 }} />
-      <div className="summary" style={{ marginTop: 18 }}>
+      <Card radius="lg" className="summary" style={{ marginTop: 18 }}>
         {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={'var(--r-xl)'} />)}
-      </div>
+      </Card>
       <Skeleton w="100%" h={220} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={180} h={22} r={6} /></div>
       <Skeleton w="100%" h={240} r={'var(--r-card)'} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={140} h={22} r={6} /></div>
-      <div className="records">
+      <Card radius="lg" pad="none" className="records">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={'var(--r-xl)'} />)}
-      </div>
+      </Card>
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={160} h={22} r={6} /></div>
       <Skeleton w="100%" h={220} r={'var(--r-card)'} />
     </>
@@ -90,10 +91,15 @@ export default function Statistics() {
     error: statsError, isPending: statsPending, fetchStatus: statsFetchStatus, refetch: refetchStats,
   } = useQuery({
     queryKey: ['travel-stats', user?.id],
+    // Общий ридер яруса A (TRIP-402): чтение статов идёт через edge getTravelStats
+    // (actor из JWT → RPC под service_role), а не прямым .rpc(). Тот же кэш-ключ
+    // делит главная (Trips.jsx) — кто первый загрузил, второй переиспользует.
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_user_travel_stats');
-      if (error) throw error;
-      return data || { points: [], trips: {}, transfers: [] };
+      const { data, error, code, message } = await invokeFn('getTravelStats');
+      // invokeFn уже пометил error и отчитался в Sentry — бросаем его (не новый),
+      // чтобы query-client не отчитался повторно (__seamHandled).
+      if (error || code) throw error || new Error(message || code);
+      return /** @type {any} */ (data) || { points: [], trips: {}, transfers: [] };
     },
     enabled: !!user?.id,
     staleTime: 30_000,
@@ -270,7 +276,9 @@ export default function Statistics() {
       name = visits[0]?.city_name || '';
       sub = `${regionName(visits[0]?.country_code)} · ${t('stats.visits_count')}: ${countVisitUnits(visits)}`;
     }
-    visits = visits.slice().sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+    // `.getTime()` не косметика: вычитание двух `Date` работает в рантайме, но
+    // это неявное приведение, и под прагмой оно краснеет честно (TS2362).
+    visits = visits.slice().sort((a, b) => new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime());
     const cc = panel.kind === 'country' ? panel.key : visits[0]?.country_code;
     return { kind: panel.kind, name, sub, visits, cc };
   }, [panel, points, regionName, t]);
@@ -321,12 +329,15 @@ export default function Statistics() {
             </div>
             <div className="sec-actions">
               {years.length > 0 && (
-                <div className="seg" role="group" aria-label={t('stats.period')}>
-                  <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
-                  {years.map((y) => (
-                    <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
-                  ))}
-                </div>
+                <Seg
+                  ariaLabel={t('stats.period')}
+                  value={String(year)}
+                  onChange={(v) => { setYear(v); setPanel(null); }}
+                  options={[
+                    { value: 'all', label: t('stats.year_all') },
+                    ...years.map((y) => ({ value: String(y), label: String(y) })),
+                  ]}
+                />
               )}
               <Btn variant="soft" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
             </div>
@@ -335,14 +346,14 @@ export default function Statistics() {
 
         {/* empty-state note */}
         {isEmpty && (
-          <div className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
+          <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
             <span className="en-ic tile tile--lg"><Icon name="globe" /></span>
             <span className="en-tx grow--fit">
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>
             <Btn variant="primary" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
-          </div>
+          </Card>
         )}
 
         {/* map hero */}
@@ -359,11 +370,33 @@ export default function Statistics() {
                 selected={panel ? { kind: panel.kind, key: panel.key } : null}
                 cooperativeGestures={!fs}
               >
+                {/* ★TRIP-344: фон и рамку несёт плашка `.map-ctl`, кнопки внутри
+                    quiet (прозрачные) — эталон «столбиком в своей плашке». */}
                 <div className="map-ctl">
-                  <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><Icon name="globe" /></button>
-                  <button onClick={() => setFs((v) => !v)} aria-label={t('stats.map_fullscreen')}><Icon name="expand" /></button>
+                  <IconBtn
+                    icon="globe"
+                    size="sm"
+                    ariaPressed={globe}
+                    onClick={() => setGlobe((g) => !g)}
+                    ariaLabel={t('stats.map_globe')}
+                  />
+                  <IconBtn
+                    icon="expand"
+                    size="sm"
+                    onClick={() => setFs((v) => !v)}
+                    ariaLabel={t('stats.map_fullscreen')}
+                  />
                 </div>
-                {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>}
+                {fs && (
+                  <IconBtn
+                    icon="close"
+                    tone="outline"
+                    round
+                    className="mapfs-close"
+                    onClick={() => setFs(false)}
+                    ariaLabel={t('common.close')}
+                  />
+                )}
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}>
@@ -381,31 +414,36 @@ export default function Statistics() {
         <SummaryTiles items={summaryItems} />
 
         {/* world ring + continents */}
-        <div className="panel world">
+        <Card radius="lg" className="panel world">
           <WorldRing
             world={bundle.world}
             label={t('stats.world_label')}
             caption={<><b>{bundle.world.visited}</b> {t('stats.world_cap', { total: bundle.world.total })}</>}
           />
           <ContinentBars title={t('stats.continents_title')} rows={contRows} />
-        </div>
+        </Card>
 
         {/* country / city lists */}
         <div className="sec-head">
           <h2 className="t-subheading">{t('stats.places_title')}</h2>
           <div className="grow" />
-          <div className="seg" role="group" aria-label={t('stats.places_title')}>
-            <button aria-pressed={listMode === 'countries'} onClick={() => setListMode('countries')}>{t('stats.tab_countries')} · {bundle.countries}</button>
-            <button aria-pressed={listMode === 'cities'} onClick={() => setListMode('cities')}>{t('stats.tab_cities')} · {bundle.cities}</button>
-          </div>
+          <Seg
+            ariaLabel={t('stats.places_title')}
+            value={listMode}
+            onChange={setListMode}
+            options={[
+              { value: 'countries', label: <>{t('stats.tab_countries')} · {bundle.countries}</> },
+              { value: 'cities', label: <>{t('stats.tab_cities')} · {bundle.cities}</> },
+            ]}
+          />
         </div>
-        <div className="panel" style={{ padding: '16px 18px' }}>
+        <Card radius="lg" className="panel" style={{ padding: '16px 18px' }}>
           <VisitList
             rows={listRows}
             emptyText={listMode === 'countries' ? t('stats.list_empty_countries') : t('stats.list_empty_cities')}
             onSelect={onListSelect}
           />
-        </div>
+        </Card>
 
         {/* records */}
         <div className="sec-head"><h2 className="t-subheading">{t('stats.records_title')}</h2></div>

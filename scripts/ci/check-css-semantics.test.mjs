@@ -137,6 +137,98 @@ test('★ :hover не вытесняет базовое значение — с�
   assert.doesNotMatch(out, /\n\s+\.btn gap/);
 });
 
+/** ★TRIP-344: ТОТ ЖЕ ЗАКОН, ДРУГАЯ ФОРМА ЗАПИСИ. Состояние бывает выражено
+ *  атрибутом (`[disabled]`, `[data-state=open]`, `[aria-pressed=true]`), весит
+ *  столько же (0,2,0), сколько `:hover`, — и до этой правки предикат его не
+ *  видел, поэтому атрибутное состояние попадало в БАЗОВЫЙ ключ и выигрывало
+ *  его. Дыра, ради которой состояние вообще попало в ключ, была закрыта ровно
+ *  наполовину: правка ПОКОЯ пряталась за состоянием и не печаталась.
+ *  Проверяется ИМЕННО правка покоя, а не появление состояния: мутация «вернуть
+ *  прежний stateOf» обязана ронять этот тест, а тест на «состояние напечатано»
+ *  она бы прошла. */
+test('★ [data-state] не вытесняет базовое значение — атрибутное состояние это тоже состояние', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/a.css': '.btn { background: transparent; }\n.btn[data-state="open"] { background: red; }\n',
+    },
+    head: {
+      'src/a.css': '.btn { background: blue; }\n.btn[data-state="open"] { background: red; }\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  // Правка ПОКОЯ обязана быть напечатана и адресуема базовым ключом.
+  assert.match(out, /\.btn background: transparent → blue/);
+});
+
+/** ⚠️ Прежняя редакция этого теста БЫЛА ИНЕРТНА и это поймал ревьюер, а не
+ *  прогон: она сверяла «обе формы записи дают код 0», а при СТАРОМ предикате
+ *  атрибут не попадал в состояние вовсе, обе стороны давали пустое состояние —
+ *  и результат совпадал при обеих реализациях. Тест, проходящий при возвращённом
+ *  дефекте, ничего не пинит. Дискриминирует ИМЕННО ПЕЧАТАЕМЫЙ КЛЮЧ: без снятия
+ *  кавычек `[data-state="open"]` и `[data-state=open]` стали бы РАЗНЫМИ
+ *  состояниями, и вместо одной строки `9px → 12px` гард напечатал бы пару
+ *  «ушло/появилось»; при старом предикате в ключе не было бы атрибута вообще. */
+test('★ форма записи атрибута ключ не меняет — [x="a"] и [x=a] это одно состояние', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.btn[data-state="open"] { gap: 9px; }\n' },
+    head: { 'src/a.css': '.btn[data-state=open] { gap: 12px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.btn\[data-state=open\] gap: 9px → 12px/);
+  assert.doesNotMatch(out, /gap: [−+]/);
+});
+
+/** ★★TRIP-344: ОБЪЯВЛЕНИЕ ПОТОМКА-ТЕГА НЕ ПРИНАДЛЕЖИТ КЛАССУ ПРЕДКА.
+ *  Фикстура — ровно замер из коммита: `.icon-btn > svg` специфичнее, поэтому
+ *  при склеенном ключе ОН выигрывал, и правка стороны САМОЙ кнопки не
+ *  печаталась вовсе («итоговые объявления не изменились ни у одного класса»).
+ *  Мутация «вернуть `unitsOf` к классам всего селектора» обязана ронять этот
+ *  тест: при ней обе стороны читают 16px и изменений нет.
+ *  ⚠️ Правка уехала БЕЗ теста и была поймана откатом ревьюера, а не прогоном —
+ *  тот случай, когда «мутационно доказано» относилось к соседней половине
+ *  правки. */
+test('★★ правка стороны предка видна при живом правиле потомка-тега', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.icon-btn { width: 40px; }\n.icon-btn > svg { width: 16px; }\n' },
+    head: { 'src/a.css': '.icon-btn { width: 999px; }\n.icon-btn > svg { width: 16px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.icon-btn width: 40px → 999px/);
+});
+
+/** Обратная сторона той же развилки: правило потомка НЕ исчезает из наблюдения,
+ *  а получает СВОЮ единицу — целый селектор. Это и отличает правку от
+ *  отвергнутой в TRIP-363 «единицы = подлежащее», которая уносила ключи совсем.
+ *  Мутация «вернуть прежний `unitsOf`» печатает здесь `.icon-btn width`, то есть
+ *  приписывает правку иконки КНОПКЕ — ассерт на имя единицы это ловит. */
+test('★★ правило потомка-тега наблюдается под своей единицей, а не под классом предка', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.icon-btn { width: 40px; }\n.icon-btn > svg { width: 16px; }\n' },
+    head: { 'src/a.css': '.icon-btn { width: 40px; }\n.icon-btn > svg { width: 20px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.icon-btn > svg width: 16px → 20px/);
+});
+
+/** ★ ГРАНИЦА ПРАВКИ: у `.a .b` подлежащее НЕСЁТ класс, поэтому ключи остаются на
+ *  ВСЕХ классах селектора — ровно как решено в TRIP-363. Без этого теста правка
+ *  незаметно съехала бы в отвергнутый там вариант («единица = подлежащее»,
+ *  −1926 ключей): первая редакция этой правки именно так и была написана. */
+test('★ у составного селектора с классом-подлежащим ключи остаются на ВСЕХ классах', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up .pu-body { flex: 1; }\n' },
+    head: { 'src/a.css': '.pro-up .pu-body { flex: 2; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.pu-body flex: 1 → 2/);
+  assert.match(out, /\.pro-up flex: 1 → 2/);
+});
+
 test('★ @media — отдельный контекст, мобильное значение не схлопывается с базой', (t) => {
   // ★ Меняется ДЕСКТОПНОЕ значение, а мобильное правило стоит НИЖЕ в файле и
   // при той же специфичности перекрыло бы его. Если media выкинуть из ключа,
@@ -360,7 +452,7 @@ test('★ перенос на несуществующую цель — крас
   });
   const { code, out } = run(f);
   assert.equal(code, 1, out);
-  assert.match(out, /у цели на HEAD нет ни одного объявления/);
+  assert.match(out, /у цели \.grow--ftt на HEAD нет ни одного объявления/);
 });
 
 test('★ цель есть, но НУЖНОГО объявления на ней нет — красный', (t) => {
@@ -447,6 +539,131 @@ test('маркер переноса на БАЗЕ не действует — к
   });
   const { code, out } = run(f);
   assert.equal(code, 1, out);
+});
+
+/* ───────── источник переноса называется ЦЕЛИКОМ (TRIP-363) ─────────
+ * Объявление составного правила приписывается ВСЕМ классам селектора, поэтому
+ * однословный маркер закрывал только половину ключей, и зелёным гард становился
+ * от ВТОРОГО маркера — заведомо ложного («уехал и предок»). Проверяется, что
+ * одной правдивой строки достаточно И что она не гасит ничего сверх своего
+ * правила.                                                                  */
+
+const TARGET = '.grow--fit { flex: 1; min-width: 0; }\n';
+
+test('★★ перенос из СОСТАВНОГО селектора объявляется ОДНОЙ строкой — зелёный', (t) => {
+  // Воспроизведение из тикета (`app.css:1867`): раскладку отдаёт `.pu-body`
+  // внутри `.pro-up--inline`, а ключи заводятся на ОБА класса — четыре штуки.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.pro-up--inline .pu-body { flex: 1; min-width: 0; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .pro-up--inline .pu-body -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /перенос \.pro-up--inline \.pu-body → \.grow--fit: объявлений 4/);
+});
+
+test('★★ маркер на СОСТАВНОЙ не гасит снос ОДИНОЧНОГО правила того же класса', (t) => {
+  // ★ Ради этого перенос скоупится СЕЛЕКТОРОМ, а не набором его классов.
+  // `.pu { flex: 1 }` живёт своей жизнью, и его снос — не объявленный перенос,
+  // хотя значение совпадает с целью. Мутация «сверять набор классов маркера»
+  // проходит все прочие фикстуры насквозь и валится только здесь.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.wrap .pu { min-width: 0; }\n.pu { flex: 1; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .wrap .pu -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.pu flex: − 1/);
+});
+
+test('★ маркер на ДРУГОЙ составной селектор не гасит — сверяется сам селектор', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': `.pu .pu-body { flex: 1; min-width: 0; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .other .pu-body -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.pu flex: − 1/);
+});
+
+test('★ перенос из составного СО СМЕНОЙ значения — красный (регрессия TRIP-351)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pu .pu-body { flex: 1; }\n.grow--fit { flex: 1; }\n' },
+    head: { 'src/a.css': '/* visual-diff-move: .pu .pu-body -> grow--fit */\n.grow--fit { flex: 2; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /flex: 1 → 2 — перенос на \.grow--fit СО СМЕНОЙ значения/);
+});
+
+test('★ перенос из составного на несуществующую цель — красный', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pu .pu-body { flex: 1; }\n' },
+    head: { 'src/a.css': '/* visual-diff-move: .pu .pu-body -> grow--ftt */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /у цели \.grow--ftt на HEAD нет ни одного объявления/);
+});
+
+test('★ `.a.b` — обе половины закрывает один маркер (подлежащего у него нет)', (t) => {
+  // У селектора на ОДНОМ элементе правого класса-подлежащего не существует:
+  // объявление получают оба. 92 таких селектора в репо.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.field-row.cols-2 { display: flex; gap: 8px; }\n.row--split { display: flex; gap: 8px; }\n` },
+    head: { 'src/a.css': '/* visual-diff-move: .field-row.cols-2 -> row--split */\n.row--split { display: flex; gap: 8px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /объявлений 4/);
+});
+
+test('★ комбинатор: `.a>.b` в файле и `.a > .b` в маркере — одна орфография', (t) => {
+  // Пробел возле `>` на рендер не влияет вообще. Маркер, отвергнутый из-за него,
+  // удаляют в раздражении, а с ним и проверку.
+  const f = fixture(t, {
+    base: { 'src/a.css': `.sc-actions-sec>.btn { flex: 1; min-width: 0; }\n${TARGET}` },
+    head: { 'src/a.css': `/* visual-diff-move: .sc-actions-sec > .btn -> grow--fit */\n${TARGET}` },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ печать НАЗЫВАЕТ правило-источник — иначе маркер не из чего составить', (t) => {
+  // Автор видит ключ `.pro-up--inline flex` и без источника не знает, из какого
+  // правила объявление пришло: форма маркера ему известна, а содержание — нет.
+  // Мутация «не печатать источник» валит ровно этот тест.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up--inline .pu-body { flex: 1; }\n' },
+    head: { 'src/a.css': '' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.pro-up--inline flex: − 1 {3}\(правило \.pro-up--inline \.pu-body\)/);
+  assert.match(out, /\.pu-body flex: − 1 {3}\(правило \.pro-up--inline \.pu-body\)/);
+});
+
+test('★ у одноклассового правила источник НЕ печатается — это был бы шум на 2595 строках', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'src/a.css': '.checkbox { gap: 17px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.doesNotMatch(out, /\(правило/);
+
+  // ★ Состояние УЖЕ напечатано слева от двоеточия (`.btn:hover gap`), поэтому
+  // подсказка `(правило .btn:hover)` была бы дословным повтором ключа — а таких
+  // правил в репо сотни, и шум съел бы ровно те строки, ради которых источник и
+  // печатается. Сверять с единицей БЕЗ состояния — значит печатать его всегда.
+  const h = fixture(t, {
+    base: { 'src/a.css': '.btn:hover { gap: 8px; }\n' },
+    head: { 'src/a.css': '.btn:hover { gap: 9px; }\n' },
+  });
+  const r = run(h);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /\.btn:hover gap: 8px → 9px$/m);
+  assert.doesNotMatch(r.out, /\(правило/);
 });
 
 /* ─────────── значения токенов: правило без класса тоже под наблюдением ───────────
@@ -700,9 +917,10 @@ test('★ `|` в селекторе не режет ключ — раздели�
   assert.match(out, /изменение объявлено намеренным/);
 });
 
-test('visual-diff-move про КЛАССЫ — селектор в маркере переноса не разбирается (код 2)', (t) => {
-  // Перенос — это «разметка уехала с класса на класс». Маркер с `:root` не
-  // должен молча превращаться в неработающий: неразобранный маркер = код 2.
+test('visual-diff-move про КЛАССЫ — источник БЕЗ единого класса не разбирается (код 2)', (t) => {
+  // Перенос — это «разметка уехала с класса на класс». Целый селектор источником
+  // законен (TRIP-363), но только если в нём есть класс: маркер с `:root` не
+  // должен молча превращаться в неработающий — неразобранный маркер = код 2.
   const f = fixture(t, {
     base: { 'src/a.css': ':root { --x: 1px; }\n' },
     head: { 'src/a.css': '/* visual-diff-move: :root -> grow--fit */\n' },
@@ -723,4 +941,322 @@ test('★ гард видит НЕЗАСТЕЙДЖЕННУЮ правку — ч
   const { code, out } = run(f);
   assert.equal(code, 1, out);
   assert.match(out, /gap: 9px → 17px/);
+});
+
+/* ──────────── сторона ЦЕЛИ: набор целей и разворачивание токенов ────────────
+ * Зеркало TRIP-363. Там маркер, названный не целиком, вынуждал ЛГАТЬ про
+ * источник; здесь цель нельзя назвать целиком по двум независимым причинам —
+ * раскладка уезжает на КОМПОЗИЦИЮ классов, а значения сверяются текстом, из-за
+ * чего перенос сырого `16px` на `var(--sp-7)` читался как смена значения.     */
+
+test('★ перенос сырого значения на ТОКЕН той же величины — ЗЕЛЁНЫЙ', (t) => {
+  // Ровно то, ради чего шкала и заведена: `16px` уезжает на `var(--sp-7)`.
+  // Текстовое сравнение читало это как «перенос СО СМЕНОЙ значения», и цена
+  // была 117 непроверяемых исключений на одну зону.
+  const f = fixture(t, {
+    base: {
+      'src/design/app.css': ':root { --sp-7: 16px; }\n.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n',
+    },
+    head: {
+      'src/design/app.css':
+        ':root { --sp-7: 16px; }\n.grow--fit { flex: 1; gap: var(--sp-7); }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /сошлись через токен/);
+});
+
+test('★★ перенос на токен ДРУГОЙ величины — КРАСНЫЙ (резолв не ослабляет сверку значений)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/design/app.css': ':root { --sp-6: 12px; }\n.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n',
+    },
+    head: {
+      'src/design/app.css':
+        ':root { --sp-6: 12px; }\n.grow--fit { flex: 1; gap: var(--sp-6); }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ резолв НЕ глобальный: правка самого токена по-прежнему блокирует', (t) => {
+  // Разверни `var()` во всём сравнении — и правка одного токена зажгла бы всех
+  // его потребителей, у которых в тексте не изменилось ничего. Потребитель
+  // молчит, токен краснеет.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --sp-7: 16px; }\n.pad { gap: var(--sp-7); }\n' },
+    head: { 'src/a.css': ':root { --sp-7: 20px; }\n.pad { gap: var(--sp-7); }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /:root --sp-7: 16px → 20px/);
+  assert.doesNotMatch(out, /\.pad/);
+});
+
+test('★ неизвестный токен оставляет var() в тексте — сверка остаётся строгой', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        '.grow--fit { flex: 1; gap: var(--nope); }\n/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ фолбэк var(--нет, 16px) берётся, когда имени нет в :root', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { gap: 16px; }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        '.grow--fit { flex: 1; gap: var(--nope, 16px); }\n/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★ тёмный :root в словарь резолва НЕ входит (тема — второй словарь)', (t) => {
+  // Сверять перенос по двум словарям сразу значило бы выбирать, какой из них
+  // «настоящий». Берётся ровно `:root` в базовом контексте.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { color: red; }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        ':root[data-theme=dark] { --c: red; }\n.grow--fit { flex: 1; color: var(--c); }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ ОДИН маркер называет НАБОР целей — раскладка уезжает на композицию', (t) => {
+  const f = fixture(t, {
+    base: {
+      'src/design/app.css':
+        '.brow__body { flex: 1; gap: 12px; }\n.row { flex: 1; }\n.row--g3 { gap: 12px; }\n',
+    },
+    head: {
+      'src/design/app.css':
+        '.row { flex: 1; }\n.row--g3 { gap: 12px; }\n' +
+        '/* visual-diff-move: brow__body -> row row--g3 */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /перенос \.brow__body → \.row \.row--g3: объявлений 2/);
+});
+
+test('★★ покрывает ПОБЕДИТЕЛЬ ПО ВЕСУ среди целей, а не «есть хоть у одной»', (t) => {
+  // Дыра ровно того класса, что нашла мутация в TRIP-363: значение совпало у
+  // ПРОИГРАВШЕЙ цели, а элементу достаётся значение победителя.
+  // ★ Фикстура специально разводит цели по РАЗНЫМ единицам и разным правилам.
+  // Первая проба писала `.row` + `.row.row--g3`, и она была зелёной при
+  // сломанном гарде: составное правило заводит ключ и на `.row` тоже, поэтому
+  // «первая попавшаяся цель» тоже давала 99px. Мутация «есть хоть у одной» её не
+  // ловила — тест проходил по неверной причине. Здесь `.hit` объявлен ПЕРВЫМ и
+  // совпадает с ушедшим значением, `.win` стоит ниже при той же специфичности,
+  // поэтому каскад отдаёт элементу именно его 99px.
+  const f = fixture(t, {
+    base: { 'src/design/app.css': '.brow__body { gap: 12px; }\n.hit { gap: 12px; }\n.win { gap: 99px; }\n' },
+    head: {
+      'src/design/app.css':
+        '.hit { gap: 12px; }\n.win { gap: 99px; }\n/* visual-diff-move: brow__body -> hit win */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★ пустая цель в наборе называется поимённо, а не «одна из»', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.brow__body { flex: 1; }\n.row { flex: 1; }\n' },
+    head: { 'src/a.css': '.row { flex: 1; }\n/* visual-diff-move: brow__body -> row nosuch */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /у цели \.nosuch на HEAD нет ни одного объявления/);
+});
+
+/* ───────── TRIP-366: бесклассовая единица из нескольких лексем ───────── */
+
+test('★ visual-diff-exempt адресует единицу из НЕСКОЛЬКИХ лексем (h1 em color)', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': 'h1 em { color: blue; }\n' },
+    head: {
+      'src/a.css': 'h1 em { color: red; }\n/* visual-diff-exempt: h1 em color — снят второй канон */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /h1 em color — изменение объявлено намеренным/);
+});
+
+test('★ маркер БЕЗ причины — код 2 с подсказкой, а не разбор не туда', (t) => {
+  // Причиной кончается КЛЮЧ: без неё «последняя лексема» не определена, и
+  // `h1 em color` разобрался бы как единица `h1` + свойство `em`.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'src/a.css': '.checkbox { gap: 17px; }\n/* visual-diff-exempt: .checkbox gap */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 2, out);
+  assert.match(out, /не разобран/);
+});
+
+test('★ ASCII-дефис в пробелах годится разделителем причины', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: {
+      'src/a.css': '.checkbox { gap: 17px; }\n/* visual-diff-exempt: .checkbox gap - ступень шкалы */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★ маркер БЕЗ единицы (одно свойство) — код 2, а не маркер-пустышка', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.checkbox { gap: 9px; }\n' },
+    head: { 'src/a.css': '.checkbox { gap: 17px; }\n/* visual-diff-exempt: gap — причина */\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 2, out);
+  assert.match(out, /не разобран/);
+});
+
+test('★ media остаётся частью ключа при разборе справа налево', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '@media (max-width: 640px) { h1 em { color: blue; } }\n' },
+    head: {
+      'src/a.css':
+        '@media (max-width: 640px) { h1 em { color: red; } }\n' +
+        '/* visual-diff-exempt: h1 em {@media (max-width: 640px)} color — мобильная правка */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ каждая сторона разворачивается по СВОЕМУ :root — правку токена перенос не маскирует', (t) => {
+  // Источник на базе — `var(--x)` при `--x: 16px`; цель на HEAD — сырые 20px, и
+  // `--x` в этом же PR стал 20px. Разверни обе стороны по словарю HEAD — и
+  // перенос сойдётся, спрятав смену величины под маркером переноса.
+  const f = fixture(t, {
+    base: { 'src/a.css': ':root { --x: 16px; }\n.brow__body { gap: var(--x); }\n.grow--fit { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        ':root { --x: 20px; }\n.grow--fit { flex: 1; gap: 20px; }\n' +
+        '/* visual-diff-move: brow__body -> grow--fit */\n' +
+        '/* visual-diff-exempt: :root --x — правка токена объявлена отдельно */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★★ составная единица С КЛАССОМ в exempt — код 2, а не гашение предка', (t) => {
+  // Дыру открыл разбор справа налево, нашёл её `code-simplifier` прогоном:
+  // `unitOf` берёт ПЕРВЫЙ класс, поэтому маркер «про .pu-body» молча гасил бы
+  // правку на ПРЕДКЕ — общем классе. Тот же класс дефекта, от которого лечит
+  // TRIP-363: маркер гасит не то, что удостоверяет. Правило: единица = то, что
+  // гард НАПЕЧАТАЛ, а у правила с классами он печатает по одному классу.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up--inline { color: blue; }\n.pro-up--inline .pu-body { flex: 1; }\n' },
+    head: {
+      'src/a.css':
+        '.pro-up--inline { color: red; }\n.pro-up--inline .pu-body { flex: 1; }\n' +
+        '/* visual-diff-exempt: .pro-up--inline .pu-body color — я думал это про .pu-body */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 2, out);
+  assert.match(out, /не разобран/);
+});
+
+test('★ бесклассовая единица из лексем по-прежнему законна (границу не перекрыли)', (t) => {
+  // Проверка предиката с другой стороны: запрет обязан бить по «пробел + класс»,
+  // а не по «пробел» — иначе он отменил бы ровно то, ради чего TRIP-366 делался.
+  const f = fixture(t, {
+    base: { 'src/a.css': 'h1 em { color: blue; }\n' },
+    head: { 'src/a.css': 'h1 em { color: red; }\n/* visual-diff-exempt: h1 em color — граница жива */\n' },
+  });
+  const { code } = run(f);
+  assert.equal(code, 0);
+});
+
+/* ───────── TRIP-366 (2-й заход): единица с КЛАССАМИ-ПРЕДКАМИ, но бесклассовым
+ * ПОДЛЕЖАЩИМ. Ровно случай `.lockmsg`: правило `.pro-up .lockmsg svg` действует
+ * на `svg`, класса не несущий, поэтому гард печатает его ЦЕЛЫМ селектором — а
+ * прежний предикат `classesOf(u).length > 0` отвергал такой маркер как
+ * составной, и снос правила нечем было объявить (красный 2p без выхода). ────── */
+
+test('★★ visual-diff-exempt адресует единицу с классами-ПРЕДКАМИ (.pro-up .lockmsg svg)', (t) => {
+  // Мутация «вернуть предикат на classesOf(u).length > 0» роняет ЭТОТ тест:
+  // маркер уходит в malformed (код 2), а гард печатает «маркер не разобран».
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up .lockmsg svg { color: blue; }\n' },
+    head: {
+      'src/a.css':
+        '.pro-up .lockmsg svg { color: red; }\n' +
+        '/* visual-diff-exempt: .pro-up .lockmsg svg color — снят кликабельный апселл */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+  assert.match(out, /\.pro-up \.lockmsg svg color — изменение объявлено намеренным/);
+});
+
+test('★★ снос правила с классами-предками и бесклассовым подлежащим ОБЪЯВЛЯЕМ', (t) => {
+  // Снос (`to === null`) — форма из тикета: `.lockmsg` уезжает на `<Btn>`.
+  const f = fixture(t, {
+    base: { 'src/a.css': '.pro-up .lockmsg svg { width: 14px; }\n' },
+    head: {
+      'src/a.css': '/* visual-diff-exempt: .pro-up .lockmsg svg width — .lockmsg удалён */\n',
+    },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+/** ★★TRIP-344 (ревью Codex, P1): СОСТОЯНИЕ ПРИВЯЗАНО К СВОЕМУ КОМПАУНДУ.
+ *  Пока оно собиралось в один отсортированный хвост на ВЕСЬ селектор,
+ *  `.a[data-x] .b` и `.a .b[data-x]` давали один и тот же ключ на оба класса —
+ *  из ключа не следовало, ЧЕЙ это компаунд, и правка одного пряталась за
+ *  другим. Третья форма закона «неполный ключ склеивает разное»: сперва
+ *  `@media`, потом подлежащее, теперь привязка состояния. */
+test('★★ состояние принадлежит СВОЕМУ компаунду — .a[data-x] .b ≠ .a .b[data-x]', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.a[data-x] .b { color: red; }\n.a .b[data-x] { color: blue; }\n' },
+    head: { 'src/a.css': '.a[data-x] .b { color: green; }\n.a .b[data-x] { color: blue; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /color: red → green/);
+});
+
+/** ★★TRIP-344 (ревью Codex, P1): класс внутри `:not()` НЕ делает компаунд
+ *  «несущим класс». `.icon-btn > svg:not(.decorative)` действует на `svg`;
+ *  пока классы искались текстом, `.decorative` читался как класс подлежащего,
+ *  правило приписывалось `.icon-btn` — и правка предка снова пряталась за
+ *  потомком, то есть ровно тот дефект, который эта правка и чинила. */
+test('★★ класс внутри :not() не делает подлежащее классовым — правка предка видна', (t) => {
+  const f = fixture(t, {
+    base: { 'src/a.css': '.icon-btn { width: 40px; }\n.icon-btn > svg:not(.decorative) { width: 16px; }\n' },
+    head: { 'src/a.css': '.icon-btn { width: 999px; }\n.icon-btn > svg:not(.decorative) { width: 16px; }\n' },
+  });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /\.icon-btn width: 40px → 999px/);
 });

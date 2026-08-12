@@ -1,5 +1,6 @@
+// @ts-check
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Icon } from '@/design/icons';
+import { IconBtn } from '@/design/index';
 import { InputGroup } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
@@ -27,10 +28,27 @@ import TriplanioAvatar from './TriplanioAvatar';
  *   withHint      show the Shift+Enter / Enter pills (desktop lens only)
  *   maxHeight     auto-grow ceiling in px
  */
-const ChatComposer = forwardRef(function ChatComposer(
-  { onSend, disabled = false, placeholder, isThinking = false, jump = null, withHint = false, maxHeight = 132 },
-  ref,
-) {
+// ⚠️ Аннотация стоит НА ПАРАМЕТРЕ: у `forwardRef` функция - это АРГУМЕНТ.
+// Без неё TS выводит тип из деструктуризации и запечатывает набор ДО
+// `RefAttributes`, то есть у вызывающего под `// @ts-check` краснеет КАЖДЫЙ
+// проп (`onSend does not exist`) - долг, невидимый при `checkJs:false` и
+// вскрывшийся ровно в тот момент, когда прагму поставили в `ChatWidget`.
+const ChatComposer = forwardRef(
+  /**
+   * @param {{
+   *   onSend: (text: string, retryOf?: any) => any,
+   *   disabled?: boolean,
+   *   placeholder?: string,
+   *   isThinking?: boolean,
+   *   jump?: any,
+   *   withHint?: boolean,
+   *   maxHeight?: number,
+   * }} p
+   */
+  function ChatComposer(
+    { onSend, disabled = false, placeholder, isThinking = false, jump = null, withHint = false, maxHeight = 132 },
+    ref,
+  ) {
   const { t } = useI18n();
   const [text, setText] = useState('');
   const [showMention, setShowMention] = useState(false);
@@ -85,9 +103,9 @@ const ChatComposer = forwardRef(function ChatComposer(
 
   return (
     <div className="chat-composer">
-      <div className="chat-composer__in">
+      <div className="col col--g4 chat-composer__in">
         {(isThinking || jump) && (
-          <div className="chat-overline">
+          <div className="row row--g4 chat-overline">
             {isThinking && (
               <div className="chat-thinking">
                 <TriplanioAvatar size="xs" />
@@ -105,7 +123,7 @@ const ChatComposer = forwardRef(function ChatComposer(
                 popup lists just the assistant. */}
             <button
               onMouseDown={(e) => { e.preventDefault(); insertMention(); }}
-              className="chat-mention__row"
+              className="row chat-mention__row"
             >
               <TriplanioAvatar />
               <span className="grow">
@@ -124,16 +142,15 @@ const ChatComposer = forwardRef(function ChatComposer(
             дока несёт тень, а не форма угла. Оверлей меншенов не тронут. */}
         <InputGroup className="chat-composer__row">
           {/* Calling the assistant used to be discoverable only by typing "@". */}
-          <button
-            type="button"
+          <IconBtn
+            icon="at"
+            tone="ai"
             className="chat-at"
             onMouseDown={(e) => e.preventDefault()}
             onClick={insertMention}
             title={t('chat.mention_all_hint')}
-            aria-label={t('chat.mention')}
-          >
-            <Icon name="at" size={18} />
-          </button>
+            ariaLabel={t('chat.mention')}
+          />
 
           <div className="chat-composer__field">
             {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
@@ -191,23 +208,22 @@ const ChatComposer = forwardRef(function ChatComposer(
             />
           </div>
 
-          <button
-            type="button"
+          <IconBtn
+            icon="send"
+            tone="solid"
             className="chat-send"
             /* Don't let the button take focus: on phones that collapses the
                keyboard between messages. */
             onMouseDown={(e) => e.preventDefault()}
             onClick={send}
             disabled={disabled || !text.trim()}
-            aria-label={t('chat.send')}
-          >
-            <Icon name="send" size={17} />
-          </button>
+            ariaLabel={t('chat.send')}
+          />
         </InputGroup>
 
         {withHint && (
           /* Keys render as <kbd> pills; "Enter"/"Shift" are key names, not copy. */
-          <div className="chat-composer__hint">
+          <div className="row row--g4 chat-composer__hint">
             <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint_send')}</span> {/* i18n-ignore: key names */}
             <span>·</span>
             <span><kbd>Enter</kbd> {t('chat.hint_newline')}</span> {/* i18n-ignore: key name */}
@@ -216,6 +232,7 @@ const ChatComposer = forwardRef(function ChatComposer(
       </div>
     </div>
   );
-});
+  },
+);
 
 export default ChatComposer;

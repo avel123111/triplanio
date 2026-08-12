@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
@@ -71,7 +72,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
         <DialogContent className="dlg--sm" aria-describedby={undefined}>
           {/* Transient loading state has no visible heading — sr-only Title carries the name. */}
           <DialogTitle className="sr-only">{t('sub.limit_hero_title')}</DialogTitle>
-          <div className="row row--center" style={{ padding: '32px 0' }}>
+          <div className="row row--j-center" style={{ padding: '32px 0' }}>
             <div className="spin spin--ring spin--lg" />
           </div>
         </DialogContent>
@@ -152,7 +153,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
 
           {/* Footer */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-            <Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Btn>
+            <Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Btn>
             <Btn variant="pro" icon="pro" onClick={openUpgrade}>{t('sub.see_plans')}</Btn>
           </div>
         </div>

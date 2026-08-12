@@ -54,17 +54,19 @@
  *      three trap shapes without depending on the live stylesheet.
  */
 import { readFileSync, readdirSync, statSync, writeSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { Parser as AcornParser } from 'acorn';
 import acornJsx from 'acorn-jsx';
 import postcss from 'postcss';
+/** Периметр эпика вынесен в общий модуль: тот же предикат нужен гарду 2q, а два
+ *  гарда по одному дереву с РАЗНЫМ периметром молча выдают разные вердикты - это
+ *  и случилось (см. шапку `perimeter.mjs`). */
+import { OUT_OF_SCOPE, inScope } from './perimeter.mjs';
+/** Счёт `apart` — ОДНОЙ функцией на двоих с 2q: два счётчика одного числа уже
+ *  разошлись на `apart: { sev: null }` (см. шапку catalog.mjs). */
+import { countApart, countAxesFamilies } from './catalog.mjs';
 
 const ROOT = process.env.AUDIT_ROOT || 'src';
-
-/** Files the TRIP-321 unification does not touch (landing / auth / public perimeter).
- *  They are still SCANNED for alias definitions — a token island there is exactly
- *  what makes a global rename unsafe — but excluded from the family/class counts. */
-const OUT_OF_SCOPE = /(^|\/)(login\.css|PublicTrip|JoinTrip|SiteChrome|Landing|Privacy|Terms)/;
 
 const walk = (dir, out = []) => {
   for (const name of readdirSync(dir)) {
@@ -80,7 +82,6 @@ const cssFiles = files.filter((f) => f.endsWith('.css'));
 const jsxFiles = files.filter((f) => /\.(jsx|tsx|js)$/.test(f));
 
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
-const inScope = (f) => !OUT_OF_SCOPE.test(f);
 
 // ── 1. Families & classes ───────────────────────────────────────────────────
 /** Prefix = the class name up to the first `-`, `--` or `__`. That is the unit a
@@ -211,29 +212,47 @@ const singletons = singletonsStandalone + singletonsAttached;
 const JsxParser = AcornParser.extend(acornJsx());
 const parseFailures = [];
 
-const classNameTokens = (f) => {
-  const out = new Set();
-  const add = (s) => { for (const tok of s.split(/\s+/)) if (tok) out.add(tok); };
-  let ast;
+/** ОДИН разбор на файл на весь скрипт. Классы (1c/1d) и доля «собрано из
+ *  системы» (1e) читают одно и то же дерево: два разбора одного файла - это два
+ *  списка `parseFailures`, которые расходятся ровно в тот день, когда один из
+ *  них поменяет опции. */
+const astCache = new Map();
+const astOf = (f) => {
+  if (astCache.has(f)) return astCache.get(f);
+  let ast = null;
   try {
     ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' });
   } catch (e) {
     // Молча пропустить нельзя: непрочитанный файл выглядит как файл без классов,
     // а это ровно «нечего проверять» и «проверено, чисто» с одинаковым вердиктом.
     parseFailures.push(`${f}: ${e.message}`);
-    return out;
   }
-  const strings = (n) => {
-    if (!n || typeof n !== 'object') return;
-    if (Array.isArray(n)) { n.forEach(strings); return; }
-    if (n.type === 'Literal' && typeof n.value === 'string') add(n.value);
-    if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => add(q.value.cooked ?? q.value.raw));
-    for (const k of Object.keys(n)) if (k !== 'type') strings(n[k]);
-  };
+  astCache.set(f, ast);
+  return ast;
+};
+
+/** Строковые классы из ЗНАЧЕНИЯ `className`, на любой глубине. Вынесено из
+ *  `classNameTokens`, потому что тот же разбор нужен §1f (двойное владение
+ *  раскладкой): два сборщика одного значения расходятся ровно в тот день,
+ *  когда один научится читать новую форму, а второй нет — а §1f и §1c обязаны
+ *  отвечать про ОДИН и тот же класс. */
+const classStringsInto = (n, add) => {
+  if (!n || typeof n !== 'object') return;
+  if (Array.isArray(n)) { n.forEach((x) => classStringsInto(x, add)); return; }
+  if (n.type === 'Literal' && typeof n.value === 'string') add(n.value);
+  if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => add(q.value.cooked ?? q.value.raw));
+  for (const k of Object.keys(n)) if (k !== 'type') classStringsInto(n[k], add);
+};
+
+const classNameTokens = (f) => {
+  const out = new Set();
+  const add = (s) => { for (const tok of s.split(/\s+/)) if (tok) out.add(tok); };
+  const ast = astOf(f);
+  if (!ast) return out;
   const walk = (n) => {
     if (!n || typeof n !== 'object') return;
     if (Array.isArray(n)) { n.forEach(walk); return; }
-    if (n.type === 'JSXAttribute' && n.name?.name === 'className') { strings(n.value); return; }
+    if (n.type === 'JSXAttribute' && n.name?.name === 'className') { classStringsInto(n.value, add); return; }
     for (const k of Object.keys(n)) if (k !== 'type') walk(n[k]);
   };
   walk(ast);
@@ -306,6 +325,22 @@ const CATALOG_PATH = join(ROOT, 'design', 'catalog.json');
 const STATUSES = new Set(['canon', 'triage']);
 let catalogStatuses = null;
 let catalogError = null;
+/** ★ 7-е число (TRIP-364 PR-I): записи `apart` — обличья, объявленные вне осей.
+ *  До этого apart НЕ ХРАПОВИЛСЯ НИЧЕМ: он живёт внутри гарда 2q, а пол про него
+ *  не знал. То есть любое уникальное исполнение клалось туда с красивой
+ *  причиной, и ни одно число не краснело — дверь ровно того класса, ради
+ *  закрытия которого написан пол. Своя шапка каталога обещает про этот список
+ *  «видим в диффе, печатается числом и ОБЯЗАН ПУСТЕТЬ» — обещание без храповика
+ *  и есть та самая непроверяемая строка.
+ *  `null`, а не 0, когда каталога нет: иначе «файла нет» и «список пуст» дают
+ *  одно число, а 2o обязан их различать (та же дисциплина, что у пятой). */
+let apartEntries = null;
+/** ★ 8-е число (TRIP-364 PR-I): семьи, объявившие оси. ТОЛЬКО ВВЕРХ - против
+ *  дыры в седьмом: apart понижается ДЕ-ДЕКЛАРАЦИЕЙ. Убери семью из axes вместе с
+ *  её записями в apart - apart упадёт, а оба гарда останутся зелёными, потому
+ *  что семья без ключа в axes не проверяется 2q вовсе. Число понижалось бы
+ *  изменением того, ЧТО ОНО СЧИТАЕТ. */
+let axesFamilies = null;
 try {
   const parsed = JSON.parse(readFileSync(CATALOG_PATH, 'utf8'));
   // `families: null` passes `typeof … === 'object'` and would otherwise read as
@@ -315,6 +350,14 @@ try {
     catalogError = `${CATALOG_PATH}: expected an object under "families"`;
   } else {
     catalogStatuses = parsed.families;
+    // Отсутствующий `apart` — законный ноль (семьи есть, исключений нет), а вот
+    // ЧИТАЕМЫЙ каталог с кривым `apart` — ошибка, а не «ноль исключений»:
+    // иначе список гасится опечаткой ровно так же, как пятая метрика скобкой.
+    const ap = parsed.apart;
+    if (ap === undefined || ap === null) apartEntries = 0;
+    else if (typeof ap !== 'object' || Array.isArray(ap)) catalogError = `${CATALOG_PATH}: expected an object under "apart"`;
+    else apartEntries = countApart(ap);
+    axesFamilies = countAxesFamilies(parsed.axes);
   }
 } catch (e) {
   if (e.code !== 'ENOENT') catalogError = `${CATALOG_PATH}: ${e.message}`;
@@ -353,6 +396,313 @@ const catalogInvalid = catalogStatuses
  *  classes the same move reads `-1` immediately. */
 const triageClasses = catalogStatuses
   ? [...families].reduce((n, [fam, list]) => n + (catalogStatuses[fam] === 'triage' ? list.length : 0), 0)
+  : null;
+
+// ── 1e. Приложение собрано из системы (TRIP-337 §1 · ГЛАВНОЕ ЧИСЛО ЭПИКА) ───
+/** ★ «Классов ≤500» снято решением Pavel 2026-08-07: 500 было взято как
+ *  «примерно столько в нормальных приложениях» и здоровья системы не мерило -
+ *  прийти к 500 и остаться с зоопарком можно. Здоровье - это ЭКРАНЫ, СОБРАННЫЕ
+ *  ИЗ СИСТЕМЫ и почти ничего не рисующие сами. Вот это число.
+ *
+ *  ── ТРИ ОСИ, И ОНИ ДАЮТ РАЗБРОС 16-23% НА ОДНОМ ДЕРЕВЕ ──
+ *  Замеры на `dev @ 2a753a2`, все шесть воспроизводятся:
+ *
+ *    периметр \ знаменатель        листья разметки     + композиция и вендор
+ *    всё src (внутренности ДС)      811/4177 = 19.4%     811/5016 = 16.2%
+ *    без внутренностей ДС           808/3977 = 20.3%     808/4746 = 17.0%
+ *    ещё минус лендинг/вход         806/3492 = 23.1%     806/4201 = 19.2%
+ *
+ *  Ручная ревизия эпика дала 17% (правая колонка средней строки, 4328
+ *  элементов против моих 4746), прежний диагноз TRIP-321 - 5.7% по третьему
+ *  предикату. Никто не ошибался: «элемент интерфейса» не был определён. Ниже -
+ *  определение, и число печатает оно.
+ *
+ *  Таблица - сверка ОСЕЙ и снята до того, как предикат дописали; шипнутое число
+ *  берётся из нижней правой ячейки МИНУС восемь элементов: 5 нерендерящих тегов
+ *  (`style`/`script`/`noscript`) и 3 составных имени (`<theme.Icon/>` и родня,
+ *  см. `elementKind`). На том же `2a753a2` код печатает 806/3484 = 23.13%.
+ *
+ *  ── ЧИСЛИТЕЛЬ ──
+ *  Элемент, чьё имя импортировано из `<ROOT>/design/**`.
+ *
+ *  ── ЗНАМЕНАТЕЛЬ = ЛИСТЬЯ РАЗМЕТКИ ──
+ *  Числитель + сырые host-теги + элементы из `<ROOT>/components/ui/**`.
+ *  Легаси-слой шадсн стоит в ЗНАМЕНАТЕЛЕ намеренно: DoD (a) требует его нуля,
+ *  значит переезд `ui → design` обязан долю ПОДНИМАТЬ, а не оставлять на месте.
+ *
+ *  ── ЧТО НЕ СЧИТАЕТСЯ ВООБЩЕ, И ПОЧЕМУ ИМЕННО ТАК ──
+ *  · СВОЯ КОМПОЗИЦИЯ (`<MembersLens/>`, компонент, объявленный в этом же файле)
+ *    и ВЕНДОР (`lucide`, `Route`, провайдеры). Иначе метрика краснеет на
+ *    ПРАВИЛЬНОМ ходе: разбиение экрана на подкомпоненты - это фаза 09, а каждый
+ *    новый `<CityRow/>` в разметке опускал бы долю. Красный на правильном ходе
+ *    = выключенный гард (урок 2p). Внутренности такого компонента считаются
+ *    ТАМ, ГДЕ ОБЪЯВЛЕНЫ, поэтому спрятать разметку за своим именем нельзя.
+ *  · ПОТРОХА `<svg>` - графика, заменить примитивом нечего.
+ *  · Нерендерящие теги (`style`, `script`, `noscript`) и фрагменты.
+ *
+ *  ── ПЕРИМЕТР ──
+ *  `inScope` - тот же, что у классов и семейств, - ПЛЮС исключены внутренности
+ *  самой ДС (`design/**`, `components/ui/**`).
+ *
+ *  ★★ ВТОРОЕ ИСКЛЮЧЕНИЕ И ЕСТЬ ГЛАВНАЯ ЛОВУШКА ПРЕДИКАТА: `Btn` внутри собран
+ *  из `<button>`, `Card` из `<div>` - это система, а не долг. С потрохами ДС в
+ *  знаменателе 100% недостижимы ПО ПОСТРОЕНИЮ, а каждый новый примитив
+ *  УХУДШАЕТ число, то есть метрика штрафует ровно ту работу, ради которой
+ *  заведена. Тот же класс ошибки, что «канон = 82 синглтона» (§1d), только на
+ *  другой оси.
+ *
+ *  ── ГРАНИЦЫ, НАЗВАННЫЕ ВСЛУХ (то, чего это число НЕ видит) ──
+ *  1. ЛОКАЛЬНЫЙ ШИМ. Рукописный `<Label>` с 41 вызовом виден как ОДИН сырой
+ *     `<label>` в месте объявления. Это прямая цена границы «своя композиция не
+ *     считается», поэтому шимы с именем, которое ДС уже экспортирует,
+ *     ПЕЧАТАЮТСЯ отдельным списком - дыра названа, а не выведена из числа.
+ *  2. СВАЛИТЬ РАЗМЕТКУ ЭКРАНА В `design/**` = поднять долю без работы. Это
+ *     стоит строки диффа и ломается о каталог (2o напечатает переклейку), но
+ *     дополнительно печатается `implHost` - сырые теги внутри самой ДС.
+ *  3. Динамический `import()` и ре-экспорт через промежуточный модуль читаются
+ *     как своя композиция, а не как ДС: ошибка в БЕЗОПАСНУЮ сторону (доля
+ *     занижена, ход всё равно засчитается через прямой импорт).
+ *  4. РАЗМЕТКА ЭКРАНА ВХОДА В ЧИСЛЕ ЕСТЬ, хотя §10 держит его вне периметра до
+ *     подзадачи 10: `OUT_OF_SCOPE` называет `login.css`, а компонент - это
+ *     `Login.jsx`, и он под предикат не подпадает. Правится это НЕ здесь:
+ *     трогать общий предиката периметра ради одной метрики - завести вторую
+ *     линейку. Цена названа: 203 сырых тега заморожены до 10, то есть число
+ *     ПЕССИМИСТИЧНО ровно на них. */
+const DS_MODULE = /(^|\/)design(\/|$)/;
+const UI_MODULE = /(^|\/)components\/ui(\/|$)/;
+const NON_RENDERING = new Set(['style', 'script', 'noscript']);
+
+/** `@/x` - алиас на корень скана (в репозитории это `src/`), относительный путь
+ *  - от каталога файла, голый спецификатор - вендор (`null`). Резолвится ПУТЬ, а
+ *  не имя пакета: предикат «строка содержит design» ловил бы `@/lib/design-tokens`. */
+const importTarget = (file, spec) => {
+  if (spec.startsWith('@/')) return join(ROOT, spec.slice(2));
+  if (spec.startsWith('.')) return join(dirname(file), spec);
+  return null;
+};
+
+/** Имена, которые ДС экспортирует. Нужны ровно для одного - назвать локальный
+ *  шим (`const Input = …` при живом `Input` из ДС). Дефолтный экспорт читается
+ *  ТОЖЕ: `export default Icon` - единственная форма в `design/icons.jsx`, и без
+ *  неё список шимов молчал бы ровно про те компоненты, у которых имени в
+ *  `export {…}` нет, то есть называл бы дыру неполно. Анонимный
+ *  (`export default () => …`) имени не даёт и не добавляется. */
+/** Имена, экспортированные ОДНИМ модулем. Вынесено из сборщика `dsExports`,
+ *  потому что тот же вопрос задаёт §1f про `Layout.jsx`, а свой урезанный
+ *  сборщик рядом с полным - это дыра, которая уже случилась: первая редакция
+ *  §1f читала только `export const X`, и рефактор примитивов в
+ *  `const Row = …; export { Row }` МОЛЧА выключал измерение (ревью Codex,
+ *  P2). Формы: объявление в `export`, `export function/class`, `export {…}`
+ *  и именованный `export default`. */
+const exportedNames = (ast) => {
+  const out = new Set();
+  for (const n of ast.body) {
+    if (n.type === 'ExportDefaultDeclaration') {
+      const d = n.declaration;
+      if (d.type === 'Identifier') out.add(d.name);
+      else if (d.id?.name) out.add(d.id.name);
+      continue;
+    }
+    if (n.type !== 'ExportNamedDeclaration') continue;
+    if (n.declaration?.type === 'VariableDeclaration') {
+      for (const d of n.declaration.declarations) if (d.id?.name) out.add(d.id.name);
+    } else if (n.declaration?.id?.name) out.add(n.declaration.id.name);
+    for (const s of n.specifiers ?? []) if (s.exported?.name) out.add(s.exported.name);
+  }
+  return out;
+};
+
+const dsExports = new Set();
+for (const f of jsxFiles) {
+  if (!DS_MODULE.test(f)) continue;
+  const ast = astOf(f);
+  if (!ast) continue;
+  for (const name of exportedNames(ast)) dsExports.add(name);
+}
+
+const dsShare = {
+  ds: 0, ui: 0, host: 0, app: 0, local: 0, vendor: 0, svg: 0, nonRendering: 0, implHost: 0,
+  denominator: 0, byFile: [], shims: [], byTag: [], byComponent: [],
+};
+
+/** ★ §1f · ИМЕНА ПРИМИТИВОВ РАСКЛАДКИ ЧИТАЮТСЯ ИЗ САМОГО МОДУЛЯ, а не
+ *  переписываются сюда списком: шестой примитив, заведённый когда-нибудь в
+ *  `Layout.jsx`, обязан попасть под замер в тот же день, а не в день, когда
+ *  кто-то вспомнит про эту строку. Ровно поэтому оси берутся из каталога, а не
+ *  из головы (TRIP-388, апрув 1).
+ *
+ *  `null` = модуля нет (так выглядит база ДО TRIP-388 и фикстура без него).
+ *  Это НЕ ноль: «нечего мерить» и «померено, чисто» не должны печатать
+ *  одинаковый вердикт — правило, которым уже поймана дыра в 2l. */
+const LAYOUT_PRIMITIVES_FILE = join(ROOT, 'design', 'Layout.jsx');
+const layoutPrimitiveNames = jsxFiles.includes(LAYOUT_PRIMITIVES_FILE)
+  ? (() => {
+      const ast = astOf(LAYOUT_PRIMITIVES_FILE);
+      if (!ast) return null;
+      const out = exportedNames(ast);
+      return out.size ? out : null;
+    })()
+  : null;
+
+/** ★★ ДВЕ ДВЕРИ, ПОТОМУ ЧТО ИХ РЕАЛЬНО ДВЕ. Через баррель (`from '@/design'`)
+ *  файл-источник неизвестен, и спросить можно только ИМЯ; напрямую
+ *  (`from '@/design/Layout'`) имя не нужно вовсе — примитив тот, кто приехал ИЗ
+ *  ЭТОГО ФАЙЛА, как бы его ни назвали на месте.
+ *
+ *  Именная дверь дала ТРИ тихих пропуска подряд (все три - ревью Codex, P2, и
+ *  все три воспроизведены прогоном): алиас `Row as Stack`, форма экспорта
+ *  `export {…}`, переименованный ДЕФОЛТНЫЙ импорт `import Stack from
+ *  '…/Layout'`. Общее у них одно - измеритель отвечал «чисто» над
+ *  непроверенным местом, ничего не печатая. Файловая дверь закрывает весь этот
+ *  класс разом: она не про то, как имя написано. */
+const noExt = (p) => p.replace(/\.(jsx|tsx|js|ts)$/, '');
+const LAYOUT_PRIMITIVES_SPEC = noExt(LAYOUT_PRIMITIVES_FILE);
+
+/** Узлы-примитивы, которым экран передал СВОЙ класс. Пересечение с приватными
+ *  классами раскладки считается ниже — там, где те уже собраны из CSS. */
+const layoutPrimitiveUses = [];
+const classNameValueOf = (node) =>
+  node.openingElement.attributes.find(
+    (a) => a.type === 'JSXAttribute' && a.name?.name === 'className',
+  )?.value ?? null;
+
+/** ★ РАЗБИВКА ПО ТЕГУ - ЭТО НЕ УКРАШЕНИЕ ОТЧЁТА, А ТО, ЧЕМ РЕШАЕТСЯ ПОРЯДОК ФАЗ.
+ *  Доля двигается ровно одним способом: сырой тег стал компонентом ДС. Тогда
+ *  элемент уезжает из `host` в `ds`, знаменатель НЕ меняется, и вклад тега
+ *  считается арифметикой: `Δ п.п. = 100 * n / знаменатель`. Отсюда видно, что
+ *  фаза, переносящая ПРАВИЛА между классами (05, 06), это число не двигает
+ *  вообще - `div` с новым классом остаётся `div`, - а фаза компонентов (07)
+ *  двигает сразу и много. Печатается, чтобы такой довод предъявлялся числом. */
+const byTag = new Map();
+const byComponent = new Map();
+const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
+const top = (m, n) => [...m].sort((a, b) => b[1] - a[1]).slice(0, n);
+
+/** `<div/>` → `{base:'div'}`; `<Dialog.Title/>` → `{base:'Dialog', member:true}`
+ *  (импортом связан КОРЕНЬ, `Title` - его поле); `<svg:path/>` → `{base:'path'}`. */
+const elementName = (node) => {
+  const n = node.openingElement.name;
+  if (n.type === 'JSXMemberExpression') {
+    let o = n.object;
+    while (o.type === 'JSXMemberExpression') o = o.object;
+    return { base: o.name ?? '', member: true };
+  }
+  // JSXIdentifier - имя целиком; JSXNamespacedName (`<svg:path/>`) - его local-часть.
+  return { base: (n.type === 'JSXIdentifier' ? n.name : n.name?.name) ?? '', member: false };
+};
+
+/** Элемент → куча.
+ *
+ *  ★ РЕГИСТР РЕШАЕТ ТОЛЬКО У ОДНОСЛОВНОГО ИМЕНИ. По грамматике JSX составное имя
+ *  - ВСЕГДА компонент, каким бы ни был регистр корня: `<motion.div/>`,
+ *  `<theme.Icon/>`, `<d.Icon/>` (все три живые в src) - это не сырые теги. Без
+ *  `member` они падали в `host`, то есть в ЗНАМЕНАТЕЛЬ, и метрика утверждала
+ *  «экран нарисовал это сам». Хуже направление ошибки: при
+ *  `import * as ds from '@/design'` вызов `<ds.Btn/>` тоже читался как сырой тег
+ *  - метрика штрафовала бы ровно ту работу, ради которой заведена (тот же класс
+ *  ошибки, что «внутренности ДС в знаменателе», только на оси имени). */
+const elementKind = ({ base, member }, imports) => {
+  if (!member && !/^[A-Z]/.test(base)) return NON_RENDERING.has(base) ? 'nonRendering' : 'host';
+  if (!imports.has(base)) return 'local';
+  const target = imports.get(base);
+  if (target === null) return 'vendor';
+  if (DS_MODULE.test(target)) return 'ds';
+  if (UI_MODULE.test(target)) return 'ui';
+  return 'app';
+};
+
+for (const f of jsxFiles) {
+  const impl = DESIGN_SOURCE.test(f);
+  if (!impl && !inScope(f)) continue;
+  const ast = astOf(f);
+  if (!ast) continue;
+
+  const imports = new Map();
+  /** ЛОКАЛЬНОЕ имя → ЭКСПОРТИРОВАННОЕ. Нужно §1f: под алиасом
+   *  (`import { Row as Stack }`) в разметке стоит `Stack`, и проверка по имени
+   *  тега пропускает узел, который рисует `Row`; обратный алиас
+   *  (`import { Btn as Row }`) даёт ЛОЖНОЕ срабатывание. `imports` хранит
+   *  только путь модуля и на этот вопрос не отвечает (ревью Codex, P2). */
+  const importedAs = new Map();
+  /** Локальные имена, приехавшие ПРЯМО из модуля примитивов — вторая дверь §1f
+   *  (см. «ДВЕ ДВЕРИ»). Имя тут не спрашивается вообще. */
+  const fromLayoutModule = new Set();
+  for (const n of ast.body) {
+    if (n.type !== 'ImportDeclaration') continue;
+    const target = importTarget(f, n.source.value);
+    const isLayoutModule = target !== null && noExt(target) === LAYOUT_PRIMITIVES_SPEC;
+    for (const s of n.specifiers) {
+      imports.set(s.local.name, target);
+      if (s.type === 'ImportSpecifier' && s.imported?.name) importedAs.set(s.local.name, s.imported.name);
+      // Пространство имён (`import * as L`) сюда НЕ идёт: обращение к нему -
+      // `<L.Row>`, то есть `member`, и оно отсекается ниже вместе с `<ds.Row>`.
+      if (isLayoutModule && s.type !== 'ImportNamespaceSpecifier') fromLayoutModule.add(s.local.name);
+    }
+  }
+
+  const localUses = new Map();
+  let raw = 0;
+  const visit = (n, inSvg) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach((x) => visit(x, inSvg)); return; }
+    let svg = inSvg;
+    if (n.type === 'JSXElement') {
+      const el = elementName(n);
+      if (el.base === 'svg') svg = true;
+      const kind = svg ? 'svg' : elementKind(el, imports);
+      if (impl) {
+        // Внутренности ДС в знаменатель не идут - но сырые теги там СЧИТАЮТСЯ
+        // отдельно, иначе «свалить разметку экрана в design/» поднимает долю молча.
+        if (kind === 'host') dsShare.implHost += 1;
+      } else {
+        dsShare[kind] += 1;
+        if (kind === 'host') { raw += 1; bump(byTag, el.base); }
+        if (kind === 'ds') bump(byComponent, el.member ? `${el.base}.${el.member}` : el.base);
+        if (kind === 'local') bump(localUses, el.base);
+        // §1f. Условие `kind === 'ds'` несущее: одноимённый локальный `Row`
+        // чужого файла - не примитив системы, и считать его двойным владением
+        // значит вписать в долг работу, которой там нет.
+        // ⚠️ Граница: `import * as ds` + `<ds.Row>` сюда не попадает (`member`),
+        // и в `src` таких обращений к примитивам нет ни одного - но появятся,
+        // и это будет ТИХИЙ пропуск, а не ошибка.
+        const isLayoutPrimitive =
+          fromLayoutModule.has(el.base) || layoutPrimitiveNames?.has(importedAs.get(el.base) ?? el.base);
+        if (kind === 'ds' && !el.member && isLayoutPrimitive) {
+          const v = classNameValueOf(n);
+          if (v) {
+            const cs = new Set();
+            classStringsInto(v, (s) => { for (const t of s.split(/\s+/)) if (t) cs.add(t); });
+            if (cs.size) layoutPrimitiveUses.push({ file: f, classes: [...cs] });
+          }
+        }
+      }
+    }
+    for (const k of Object.keys(n)) if (k !== 'type') visit(n[k], svg);
+  };
+  visit(ast.body, false);
+
+  // Избыточно по построению - в ветке `impl` выше не трогаются ни `raw`, ни
+  // `localUses`, - и оставлено намеренно, а не по недосмотру: оба списка ниже про
+  // ЭКРАНЫ, и дописанный когда-нибудь счётчик в ту ветку не должен начать молча
+  // наполнять их разметкой самой ДС.
+  if (impl) continue;
+  if (raw) dsShare.byFile.push([f, raw]);
+  for (const [name, uses] of localUses) {
+    if (dsExports.has(name)) dsShare.shims.push({ name, file: f, uses });
+  }
+}
+dsShare.byFile.sort((a, b) => b[1] - a[1]);
+dsShare.shims.sort((a, b) => b.uses - a.uses);
+dsShare.byTag = top(byTag, 15);
+dsShare.byComponent = top(byComponent, 15);
+dsShare.denominator = dsShare.ds + dsShare.ui + dsShare.host;
+
+/** Сотые доли процента, а не проценты: при знаменателе 3492 один элемент - это
+ *  2.9 bp, и в целых процентах правка на три десятка элементов невидима.
+ *  ПУСТОЕ ДЕРЕВО - `null`, а не 0: «мерить нечего» и «померили, чисто» не
+ *  должны печатать один вердикт (то же правило, что у каталога в §1d). */
+const dsShareBp = dsShare.denominator
+  ? Math.round((10000 * dsShare.ds) / dsShare.denominator)
   : null;
 
 // ── 2. Inline styles ────────────────────────────────────────────────────────
@@ -630,6 +980,195 @@ const centred = (b) => has(b, 'place-items') || (has(b, 'align-items') && has(b,
 const COLOR_PROP = /^(color|background|background-color|fill|stroke|opacity|border(-(top|right|bottom|left))?-color)$/;
 const SPACE_PROP = /^(margin|padding|gap|row-gap|column-gap)(-(top|right|bottom|left|inline|block))?(-(start|end))?$/;
 
+// ── 3a. Классы, ОБЪЯВЛЯЮЩИЕ раскладку (TRIP-388 · десятое число пола 2o) ────
+/** ★ ЗАЧЕМ. Пересадка экрана на примитив имеет объявленную дверь - проброс
+ *  `className`. Она нужна (крючок экрана обязан доехать), но через неё же можно
+ *  «пересадить» экран, оставив приватный класс живым: элемент получит `.row` И
+ *  `.bgt-head`, доля `dsshare` вырастет, а второй источник раскладки останется
+ *  под новым именем. `dsshare` этого не видит по построению, 2p тоже (CSS не
+ *  менялся). Видит ровно это число: PR пересадки обязан уронить его на те
+ *  классы, которые тронул. Не упало - работа замаскирована пробросом.
+ *
+ *  ПРЕДИКАТ: класс - ПОДЛЕЖАЩЕЕ правила, объявления которого трогают хоть одно
+ *  из ПЯТИ свойств, которыми владеет примитив (`display`, `gap`, `align-items`,
+ *  `justify-content`, `flex-direction`); разбор форм записи и границы - у
+ *  `LAYOUT_PROP` ниже. Подлежащее, а не все классы
+ *  селектора: в `.te-x .row {display:flex}` раскладку объявляет `.row`, и
+ *  приписывать её `.te-x` значило бы двигать число у нетронутого класса (та же
+ *  логика, что у семейства объекта строкой выше).
+ *
+ *  ★★★ ПОДЛЕЖАЩЕЕ НЕ ЗАВИСИТ ОТ ПОРЯДКА КЛАССОВ В СЕЛЕКТОРЕ. Это не удобство, а
+ *  условие того, что число вообще что-то измеряет: `.row.bgt-head` и
+ *  `.bgt-head.row` - ОДНО И ТО ЖЕ правило в CSS, и предикат, дающий им разные
+ *  ответы, снимается переписыванием места, а не работой. Первая редакция брала
+ *  ПЕРВЫЙ класс ступени (`classesIn(tail)[0]`), поэтому `.row.bgt-head` отдавала
+ *  канон `row`, приватный `bgt-head` пропадал из наблюдения, и удержанное
+ *  объявление раскладки проезжало гейт. Дыра лежала ровно на пути пересадки:
+ *  правило экрана, приколотое к примитиву, естественно пишется примитивом
+ *  вперёд («когда этот ряд - шапка бюджета, сделать X»).
+ *
+ *  ПОЭТОМУ: из ступени берутся ВСЕ классы, из них выбрасываются канон-примитивы
+ *  и состояния (`is-*`), и объявление записывается на ВСЕ оставшиеся; не
+ *  осталось ни одного - на первый. Множественная запись здесь несущая, а не
+ *  щедрость: она и делает ответ независимым от порядка (множество классов
+ *  ступени порядка не имеет), и ОНА ЖЕ структурно закрывает дефект, ради
+ *  которого стоял `[0]`, - объект теперь записывается ВСЕГДА, рядом с любым
+ *  состоянием, поэтому «две разные плашки схлопнулись в одну запись на
+ *  `is-split`» невозможно по построению, а не по удаче порядка.
+ *
+ *  ⚠️ ГРАНИЦА, НАЗВАННАЯ ВСЛУХ: состоянием считается только префикс `is-`.
+ *  Бесприставочные (`on`, `active`) остаются в наблюдении как объекты. Замер
+ *  сегодня: правил раскладки с составной ступенью в периметре РОВНО ОДНО
+ *  (`.ncal-wdc-cbar.is-split`), бесприставочных среди них ноль, - то есть цена
+ *  границы сейчас нулевая. И если такое правило появится, лишнее имя число
+ *  ПОДНИМЕТ, а пол храповит его ВНИЗ: ошибка уедет в красноту, которую автор
+ *  увидит, а не в тихое занижение, которое выглядит прогрессом.
+ *
+ *  ⚠️ ТРЕТЬЯ ГРАНИЦА (нашёл прогон `code-simplifier`, живых случаев ноль): класс
+ *  вычитывается РЕГУЛЯРКОЙ по тексту ступени, поэтому функциональная скобка и
+ *  строка в атрибуте читаются наивно - `.card:not(.a-x)` запишет ИСКЛЮЧЁННЫЙ
+ *  `a-x`, `a[href$=".pdf"]` заведёт класс `pdf`, а `.a-x:is(.b-x,.c-x)` наоборот
+ *  ПОТЕРЯЕТ `a-x`. Замер по периметру: селекторов раскладки 439, из них с `:not(`
+ *  0, с `:is(`/`:where(` 0, с точкой внутри атрибута 0. Разбирать нечего, и
+ *  чинить это до первого случая значит везти в предикат необкатанный код. Первые
+ *  два промаха дают ЛИШНЕЕ имя, то есть красноту; `:is(` имя ТЕРЯЕТ - вот его и
+ *  закрывать первым, если появится.
+ *
+ *  ⚠️ ВТОРАЯ ГРАНИЦА: если у последней ступени класса НЕТ (`.checkbox input`,
+ *  `.seg button`, `.app-header [data-mobile-toggle]` - 9 живых правил в
+ *  периметре), раскладку объявляет голый тег, и запись идёт на БЛИЖАЙШУЮ
+ *  ступень, у которой класс есть: снять её всё равно можно только правкой его
+ *  набора правил. Альтернатива «не считать вовсе» уносит из наблюдения живые
+ *  объявления раскладки и опускает число БЕЗ работы - то есть в ту самую
+ *  сторону, куда его храповит пол. Селектор, где класса нет нигде (`div > *`,
+ *  `:root`, шаг кейфрейма), не считается никуда. К найденной ступени
+ *  применяется ТО ЖЕ правило - иначе порядок классов решал бы ответ этажом
+ *  выше (`.row.bgt-head input` против `.bgt-head.row input`), а это та же дыра,
+ *  просто в предке. Поэтому `styledClass` (последний класс ВСЕГО селектора)
+ *  здесь не зовётся: на нём стоят числа §3/§4, и править его той же рукой,
+ *  которой вводится измерение, - ровно ошибка §12.
+ *
+ *  ★★ КАНОН ЗДЕСЬ - ФИКСИРОВАННЫЙ СПИСОК ПЯТИ СЕМЕЙ, А НЕ КАТАЛОГ. Это
+ *  сознательный отказ от `catalog.json`: у `primitiveReach` зависимость от
+ *  каталога означает, что переклейка `triage → canon` двигает число БЕЗ строки
+ *  CSS, и храповить его нельзя. Здесь список зашит, поэтому число двигают
+ *  только правки CSS: схлопнул приватный класс - упало, завёл новый с
+ *  раскладкой - выросло, добавил примитив - не шелохнулось. */
+const LAYOUT_CANON = /^(row|col|grid|grow|trunc)(--|$)/;
+/** ⚠️ ПЯТЬ СВОЙСТВ, А НЕ ОДНО. Примитив владеет `display`, `gap`, `align-items`,
+ *  `justify-content`, `flex-direction` - правило объявлено в шапке
+ *  `src/design/Layout.jsx`. Первая редакция предиката смотрела ТОЛЬКО `display`,
+ *  то есть проверяла пятую часть правила: класс, приехавший через `className` к
+ *  `.row` и продолжающий объявлять зазор и выравнивание, получал `display` от
+ *  примитива и в число НЕ ПОПАДАЛ. Гейт «число упало» зеленел на работе, которая
+ *  не сделана, - причём именно на том ходе, ради которого он и заведён.
+ *
+ *  ★ СОКРАЩЁННЫЕ ФОРМЫ ЗДЕСЬ НЕ ПЕДАНТИЗМ, А ЗАКРЫТИЕ ДЫРЫ ПО ПОСТРОЕНИЮ.
+ *  Проверочный вопрос к любому числу: можно ли, ничего не меняя ПО СУЩЕСТВУ,
+ *  переписать место так, чтобы число стало другим? У набора из пяти длинных имён
+ *  ответ «да» четырьмя способами - `row-gap`/`column-gap` вместо `gap`,
+ *  `place-items` вместо `align-items`, `place-content` вместо `justify-content`,
+ *  `flex-flow` вместо `flex-direction`. Это тот же визуальный результат другим
+ *  написанием, то есть предикат, чувствительный к форме записи. Форма не
+ *  гипотетическая: `place-items` в этом репозитории ЖИВОЙ - он стоит в §3 среди
+ *  форм, объявленных заново в девяти семействах.
+ *
+ *  ⚠️ `display` СЧИТАЕТСЯ ТОЛЬКО FLEX/GRID, а не любым значением: `display:none`
+ *  и `display:block` - это видимость и поток, а не раскладка. Считать их значило
+ *  бы набить захраповленное число классами, которых ни один PR пересадки не
+ *  тронет, и сделать его подвижным от посторонней правки. Остальные четыре
+ *  свойства считаются САМИ ПО СЕБЕ, без оглядки на `display`, - в этом вся суть:
+ *  у такого класса `display` как раз и приезжает от примитива.
+ *
+ *  ⚠️ ЕЩЁ ОДНА ФОРМА, НЕ ЗАКРЫТАЯ НАМЕРЕННО: имя свойства читается как есть, а в
+ *  CSS оно регистро-независимо (`GAP:` - легально). Замер по периметру через
+ *  `postcss`: свойств с не-строчным написанием НОЛЬ, и та же чувствительность
+ *  уже есть у соседних предикатов (`val(b,'display')`). Чинить до первого случая
+ *  значит везти сюда необкатанный код ради формы, которой никто не пишет. */
+const LAYOUT_PROP =
+  /^(gap|row-gap|column-gap|align-items|place-items|justify-content|place-content|flex-direction|flex-flow)$/;
+const declaresLayout = (b) =>
+  /^(inline-)?(flex|grid)$/.test(val(b, 'display')) || [...b.decls.keys()].some((p) => LAYOUT_PROP.test(p));
+const IS_STATE = /^is-/;
+/** Объекты, которым принадлежит объявление раскладки. См. ★★★ и ⚠️ выше.
+ *  Возвращает СПИСОК: у ступени из двух объектов их два, и порядок записи в
+ *  селекторе на ответ не влияет. */
+const layoutSubjects = (sel) => {
+  const steps = sel.trim().split(/[\s>+~]+/);
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const all = classesIn(steps[i]);
+    if (!all.length) continue; // голый тег - спрашиваем ступень выше
+    // ⚠️ ОТСЕИВАЮТСЯ ТОЛЬКО СОСТОЯНИЯ, КАНОН - НЕТ. Канон снимается ПОЗЖЕ, при
+    // сборке приватного списка, и это не перестановка строк: у первой редакции
+    // канон стоял ЗДЕСЬ, и `.row.is-open` (оба класса отброшены → фолбэк на
+    // первый) давало канон `row` и 0 приватных, а `.is-open.row` - состояние
+    // `is-open` и 1 приватный. Порядок продолжал решать, а в ЗАХРАПОВЛЕННОЕ
+    // число попадало имя СОСТОЯНИЯ - тот самый дефект, против которого написан
+    // предикат, просто уехавший в фолбэк. Заслонить объект канон не может по
+    // построению: записываются ВСЕ оставшиеся, а не один.
+    const kept = all.filter((c) => !IS_STATE.test(c));
+    return kept.length ? kept : [all[0]];
+  }
+  return [];
+};
+const layoutAll = new Set();
+for (const b of blocks) {
+  if (!declaresLayout(b)) continue;
+  for (const sel of b.sels) {
+    for (const c of layoutSubjects(sel)) layoutAll.add(c);
+  }
+}
+const layoutPrivateNames = [...layoutAll].filter((c) => !LAYOUT_CANON.test(c)).sort();
+const layoutClasses = { total: layoutAll.size, names: layoutPrivateNames };
+const layoutPrivateClasses = layoutPrivateNames.length;
+
+/** ── §1f · ДВОЙНОЕ ВЛАДЕНИЕ РАСКЛАДКОЙ (TRIP-388) ──────────────────────────
+ *  Узел, который несёт примитив раскладки И приватный класс, ВСЁ ЕЩЁ
+ *  объявляющий раскладку. Дословно то, что запрещает апрув Pavel п.3: «класс,
+ *  прошедший через `className` и всё ещё объявляющий хоть одно из них — это не
+ *  пересадка, а второй источник раскладки под новым именем».
+ *
+ *  ★ ЗАЧЕМ ЧИСЛО ВООБЩЕ ЗАВЕДЕНО. Пересадка четырёх экранов (152 узла) сдвинула
+ *  РОВНО ОДНО из десяти чисел пола - долю из ДС, +440 bp, - а классы,
+ *  пространства имён, инлайны и приватные классы раскладки остались как были.
+ *  Примитив встал ПОВЕРХ класса, который продолжает владеть раскладкой; довести
+ *  это до конца всех экранов значит получить долю у цели при нетронутом зоопарке.
+ *  Ни один гард такого не видит: у 2o все числа «только вниз», а PR, который
+ *  только ДОБАВЛЯЕТ, ни одного из них не двигает - и пол честно печатает
+ *  «держится».
+ *
+ *  ★★ РЕПОРТ, А НЕ ХРАПОВИК, И ЭТО НЕ МЯГКОСТЬ. Число РАСТЁТ на каждом честном
+ *  PR пересадки нового экрана (узлы появляются раньше, чем схлопывается CSS), а
+ *  падает на разгребании долга. Храповик «только вниз» блокировал бы ровно то
+ *  движение, ради которого заведён, - тот же дефект, что и предикат «все `--x:`»
+ *  на токенах. Ратчет уже стоит СОСЕДНИМ числом: приватные классы раскладки
+ *  (десятая строка пола) - именно они обязаны падать.
+ *
+ *  ⚠️ ЭТО НИЖНЯЯ ОЦЕНКА, и граница названа: класс, приезжающий в примитив
+ *  ПРОПОМ (`<Row className={props.cls}>`), из литералов не виден. Читать как
+ *  «не меньше», а не как «ровно столько».
+ *
+ *  ⚠️⚠️ ЧИСЛО РАНЬШЕ ПРЕДИКАТА - ЗАКОН ЭПИКА, И ОН УЖЕ НАРУШЕН ИМЕННО ЗДЕСЬ.
+ *  Один и тот же долг был назван 38 и 56 в двух прогонах, третий (мой) дал 55.
+ *  Никто не ошибался: 38 считало столкновение по ТОМУ ЖЕ свойству, 56/55 - любую
+ *  раскладку, и предиката не было ни у одного. Здесь он ЗАФИКСИРОВАН кодом, и
+ *  выбран второй: апрув говорит «хоть одно из них», а не «то же самое». */
+const dualLayout = { measured: layoutPrimitiveNames !== null, nodes: 0, byFile: [], classes: [] };
+if (dualLayout.measured) {
+  const priv = new Set(layoutPrivateNames);
+  const perFile = new Map();
+  const hit = new Set();
+  for (const u of layoutPrimitiveUses) {
+    const bad = u.classes.filter((c) => priv.has(c));
+    if (!bad.length) continue;
+    dualLayout.nodes += 1;
+    perFile.set(u.file, (perFile.get(u.file) ?? 0) + 1);
+    for (const c of bad) hit.add(c);
+  }
+  dualLayout.byFile = [...perFile].sort((a, b) => b[1] - a[1]);
+  dualLayout.classes = [...hit].sort();
+}
+
 /** ТАБЛИЦА, А НЕ ДЕСЯТЬ БЛОКОВ КОДА: добавить объект = добавить строку, и его
  *  определение читается рядом с его именем. `why` - не украшение: без него
  *  следующий заход «уточнит» предикат и число снова перестанет быть сравнимым
@@ -772,16 +1311,79 @@ const dupSetRulesCrossFamily = rulesIn(dupCross);
  *  класс ловушки, о котором вся эта секция: метрика, отвечающая собственным
  *  определением. Поэтому 06 берёт отсюда СПИСОК (`byFamily`, `samples`), а не
  *  число, и пересчитывает его на своей базе. */
+/** ★★ ГРАНИЦА ЯЗЫКА, ПО КОТОРОЙ СЧИТАЕТСЯ ДОСЯГАЕМОСТЬ, УМЕЕТ ЗАДАВАТЬСЯ ИЗВНЕ
+ *  (TRIP-364, `AUDIT_CANON_FAMILIES`). Это НЕ настройка на вкус, а лечение
+ *  противоречия, названного абзацем выше: число зависит от каталога по
+ *  построению, поэтому переклейка `triage → canon` - легальный, бесплатный и
+ *  никогда не блокируемый ход - его ПОДНИМАЕТ. Захрапови сырое число, и гард
+ *  станет красным на правильном ходе, а такой гард выключают.
+ *
+ *  Лечение доктринальное: не ослабить проверку и не заставлять писать
+ *  `floor-exempt` на поощряемое движение, а МЕРИТЬ ОБЕ СТОРОНЫ ОДНОЙ МЕРКОЙ.
+ *  Пол 2o передаёт сюда канон-набор БАЗЫ, когда меряет HEAD, — тогда число
+ *  двигают только правки CSS, а переклейка не двигает вовсе. Отчёт (без env)
+ *  по-прежнему считает по своему каталогу: вопрос «кто дотягивается внутрь
+ *  языка» обязан переезжать вместе с границей языка. */
+const canonOverride = process.env.AUDIT_CANON_FAMILIES;
 const canonFamilies = new Set(
-  catalogStatuses ? Object.entries(catalogStatuses).filter(([, s]) => s === 'canon').map(([f]) => f) : [],
+  canonOverride !== undefined
+    ? canonOverride.split(',').filter(Boolean)
+    : catalogStatuses
+      ? Object.entries(catalogStatuses).filter(([, s]) => s === 'canon').map(([f]) => f)
+      : [],
 );
 /** Составные части селектора: `.a > .b .c` → ['.a', '.b', '.c']. Каждая часть -
  *  ОДИН элемент; классов внутри неё может быть сколько угодно. */
 const compoundsOf = (sel) => sel.split(/\s*[>+~]\s*|\s+/).filter(Boolean);
 const isRealProp = (p) => !p.startsWith('--');
 
-const reach = { violations: 0, varOnly: 0, canonIntoCanon: 0, byFamily: {}, samples: [] };
+/** ★★ ВЫЧЕТ СОБСТВЕННОГО КАНОНА ТИПОГРАФИКИ (TRIP-364), без которого число нельзя
+ *  храповить. Единый источник текст-стилей объявлен СО-СЕЛЕКТОРНЫМ списком
+ *  (`app.css:578` и соседние): рядом с `.t-subheading` перечислены `.wdg-h h4`,
+ *  `.bell-dd__head .t-ui`, `.tl3-card .body b` - элементы, которым канон
+ *  ПЕРЕНАЗНАЧАЕТ текст-стиль. Предикат `reach` читает такую строку как «экран
+ *  дотянулся до примитива `.t` и объявил font-family», хотя это механизм самой
+ *  ДС (TRIP-175/183), а не долг экрана. Захрапови мы сырое число - считали бы
+ *  долгом собственный канон; в этом эпике наивный предикат целился в свой канон
+ *  уже дважды (199 «дублей» и «canon = одиночки»).
+ *
+ *  Предикат ВЫБРАН ЗАМЕРОМ, а не на глаз, и два кандидата различаются ровно
+ *  живым дефектом: «правило объявляет ТОЛЬКО типографические свойства» даёт 14,
+ *  «правило ЕСТЬ канон - среди его селекторов есть голый `.t-*`» даёт 13, и
+ *  разница - `.ncal-ev .t { font-size }` в CalendarLens.css, то есть экран,
+ *  ужимающий кегль примитива. Это НАСТОЯЩЕЕ нарушение, и первый предикат его
+ *  прощал. Берём второй.
+ *
+ *  Вычтенное печатается ОТДЕЛЬНОЙ строкой, а не исчезает: вычет, которого не
+ *  видно, - это тот же бланкетный escape, только внутри метрики.
+ *
+ *  ★★ ВТОРОЕ УСЛОВИЕ - НЕ УКРАШЕНИЕ, А ЗАКРЫТИЕ КАНАЛА ОБХОДА (нашёл
+ *  `code-simplifier` прогоном). Проверяй мы только «есть голый `.t-*` среди
+ *  селекторов» - допиши такой со-селектор к своему правилу, и ЛЮБОЕ нарушение
+ *  закона 3 исчезнет из ЗАХРАПОВЛЕННОГО числа: `.t-sub, .scr-a .card { padding:
+ *  99px }` давало 0. Поэтому вычитается правило, которое И стоит в канон-списке,
+ *  И объявляет ТОЛЬКО типографику. На живом коде оба условия дают одни и те же
+ *  13 правил (пересечение замерено), то есть закрытие канала не стоит ни одного
+ *  числа - но снимает дверь, которой у храповика быть не должно. */
+const TYPO_PROPS = new Set([
+  'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing',
+  'text-transform', 'font-style', 'font-variant-numeric',
+]);
+const isTypographyCanon = (b) =>
+  b.sels.some((s) => /^\.t-[a-z]+$/.test(s.trim())) &&
+  [...b.decls.keys()].filter(isRealProp).every((p) => TYPO_PROPS.has(p));
+
+const reach = {
+  violations: 0,
+  varOnly: 0,
+  canonIntoCanon: 0,
+  canonTypography: 0,
+  canonTypographyWouldViolate: 0,
+  byFamily: {},
+  samples: [],
+};
 for (const b of blocks) {
+  const typographyCanon = isTypographyCanon(b);
   const declaresReal = [...b.decls.keys()].some(isRealProp);
   let violation = false;
   let legal = false;
@@ -798,11 +1400,22 @@ for (const b of blocks) {
     if (canonFamilies.has(ownerFam)) { inner = true; continue; }
     if (declaresReal) {
       violation = true;
+      // Вычтенное правило не попадает НИ В ОДИН счётчик долга, включая
+      // разбивку по семьям и примеры: иначе 06 пошла бы чинить канон.
+      if (typographyCanon) continue;
       reach.byFamily[ownerFam] = (reach.byFamily[ownerFam] ?? 0) + 1;
       if (reach.samples.length < 12) reach.samples.push(`${s} { ${[...b.decls.keys()].filter(isRealProp).join('; ')} }`);
     } else {
       legal = true;
     }
+  }
+  if (typographyCanon) {
+    // Печатается и то, СКОЛЬКО из вычтенного было бы долгом: строка «вычтено 13»
+    // рядом со «53» читается как «на самом деле 66», а это неправда - долгом из
+    // них были бы единицы. Число в ревью никто не перепроверяет.
+    reach.canonTypography += 1;
+    if (violation) reach.canonTypographyWouldViolate += 1;
+    continue;
   }
   if (violation) reach.violations += 1;
   else if (legal) reach.varOnly += 1;
@@ -891,6 +1504,13 @@ if (process.argv.includes('--json')) {
         // The catalog (TRIP-340). `triageClasses` is the fifth number guard 2o
         // ratchets; `catalogStatuses` is what lets it name the promotions.
         triageClasses,
+        // The seventh (TRIP-364 PR-I): entries in `apart`. The catalog's own
+        // header promises this list "must empty out" — until now nothing held
+        // it to that, and apart was the one place an appearance could be filed
+        // with a reason while every number stayed green.
+        apartEntries,
+        // Восьмое (TRIP-364 PR-I): только ВВЕРХ, см. объявление выше.
+        axesFamilies,
         catalogStatuses,
         catalogMissing,
         catalogStale,
@@ -906,6 +1526,19 @@ if (process.argv.includes('--json')) {
         // count go DOWN while the vocabulary is unchanged — the name merely hid.
         rootTokenNames: [...rootTokenNames].sort(),
         privateTokens,
+        // ГЛАВНОЕ ЧИСЛО ЭПИКА (TRIP-337 §1): доля элементов интерфейса, взятых
+        // из ДС. Плоское `dsShareBp` храповит 2o (в сотых долях процента и
+        // ТОЛЬКО ВВЕРХ), `dsShare` держит обе кучи и обе названные границы.
+        dsShareBp,
+        dsShare: { ...dsShare, byFile: dsShare.byFile.slice(0, 15) },
+        // TRIP-388: классы, ОБЪЯВЛЯЮЩИЕ раскладку. Плоское число - десятая
+        // строка пола 2o (вниз), СПИСОК ИМЁН - то, из чего 2o печатает, какие
+        // именно классы ушли и пришли: «упало на столько же» и «упало на тех
+        // классах, которые PR тронул» - разные факты, и одним счётом второй не
+        // проверяется (тот же довод, что у `rootTokenNames` строкой выше).
+        layoutClasses,
+        layoutPrivateClasses,
+        dualLayout,
         // Объекты (TRIP-341 PR 0). `byFamily` - то, по чему режутся 05 и 06.
         objects,
         cssParseFailures,
@@ -915,6 +1548,10 @@ if (process.argv.includes('--json')) {
         dupSetRulesCrossFamily,
         dupTop: dupCross.slice(0, 25).map((d) => ({ sig: d.sig, media: d.media, count: d.members.length, members: d.members })),
         primitiveReach: reach,
+        // Плоское число для храповика 2o (метрики читаются как `json[field]`), и
+        // канон-набор, которым оно посчитано, — им пол меряет HEAD той же меркой.
+        reachViolations: reach.violations,
+        canonFamiliesUsed: [...canonFamilies].sort(),
         dupShapes: dupShapes.length,
         dupShapeRules,
         synonyms: synonyms.map((s) => ({ name: s.name, target: s.target, uses: s.uses })),
@@ -986,6 +1623,49 @@ if (catalogError) {
   if (drift.length) {
     console.log(`   ─ предикат зовёт каноном, а в каталоге разбор (${drift.length}): ${drift.join(' · ')}`);
     console.log('     Это не ошибка: машина не видит экранных имён, зашитых ВНУТРЬ компонента ДС.');
+  }
+}
+console.log();
+
+console.log('1e. ПРИЛОЖЕНИЕ СОБРАНО ИЗ СИСТЕМЫ (главное число эпика, храповит 2o ВВЕРХ)');
+if (dsShareBp === null) {
+  console.log('   элементов интерфейса ноль - мерить нечего (это НЕ 0%)');
+} else {
+  console.log(`   ДОЛЯ ИЗ ДС:          ${(dsShareBp / 100).toFixed(2)}%  ← ${dsShare.ds} из ${dsShare.denominator} листьев разметки`);
+  console.log(`   сырых тегов:         ${num(dsShare.host, 5)}  ← это и есть «экран рисует сам»`);
+  console.log(`   легаси components/ui:${num(dsShare.ui, 5)}  ← в знаменателе: переезд в design/ обязан поднимать долю`);
+  console.log(`   не в счёте:          композиция ${dsShare.app} · локальные ${dsShare.local} · вендор ${dsShare.vendor} · svg ${dsShare.svg} · нерендерящие ${dsShare.nonRendering}`);
+  console.log(`   сырые теги ВНУТРИ ДС:${num(dsShare.implHost, 5)}  ← репорт: свалить разметку экрана в design/ подняло бы долю`);
+  console.log(`   топ файлов по сырым тегам: ${dsShare.byFile.slice(0, 8).map(([f, n]) => `${f.replace(/^.*\//, '')}(${n})`).join(' · ')}`);
+  console.log(`   взято из ДС: ${dsShare.byComponent.slice(0, 10).map(([c, n]) => `${c}(${n})`).join(' · ')}`);
+  // Вклад тега = что будет с долей, когда он станет компонентом ДС: элемент
+  // уезжает из знаменателя в числитель, знаменатель тот же. Это и есть довод о
+  // порядке фаз - число, а не мнение.
+  console.log('   ─ сырые теги и вклад каждого в долю, если он станет компонентом ДС:');
+  for (const [tag, n] of dsShare.byTag.slice(0, 8)) {
+    console.log(`      <${tag}>`.padEnd(15) + `${String(n).padStart(5)}   +${((100 * n) / dsShare.denominator).toFixed(1)} п.п.`);
+  }
+  if (dsShare.shims.length) {
+    console.log(`   ─ локальный компонент повторяет имя из ДС (${dsShare.shims.length}) - цена границы «своя композиция не считается»:`);
+    for (const s of dsShare.shims) console.log(`      ${s.name} ×${s.uses} в ${s.file}`);
+  }
+}
+// Печатается ВНЕ ветки доли: у десятого числа свой предикат (CSS, а не разметка),
+// и пустое дерево разметки - не повод не печатать замер по CSS. Сама пара стоит
+// рядом намеренно: у PR пересадки одно число идёт вверх, другое вниз.
+console.log(`   классов с РАСКЛАДКОЙ: ${layoutClasses.total}, из них ПРИВАТНЫХ ${layoutPrivateClasses}  ← десятая строка пола 2o (только вниз)`);
+console.log(`      первые 10 по алфавиту: ${layoutPrivateNames.slice(0, 10).join(' · ')}  (весь список - в --json; что именно ушло, печатает 2o)`);
+// §1f. Печатается СРАЗУ ПОД приватными классами: это две половины одного
+// вопроса - сколько имён ещё владеет раскладкой и сколько узлов держат ДВУХ
+// владельцев сразу. Репорт, не гейт (разбор - в шапке `dualLayout`).
+if (!dualLayout.measured) {
+  console.log('   двойное владение раскладкой: НЕ ИЗМЕРЕНО - нет src/design/Layout.jsx  ← это не ноль');
+} else {
+  console.log(`   ДВОЙНОЕ ВЛАДЕНИЕ раскладкой: ${dualLayout.nodes} узлов · ${dualLayout.classes.length} классов  ← примитив ДС + приватный класс, всё ещё объявляющий раскладку`);
+  if (dualLayout.nodes) {
+    console.log(`      по экранам: ${dualLayout.byFile.slice(0, 8).map(([f, n]) => `${f.replace(/^.*\//, '')}(${n})`).join(' · ')}`);
+    console.log(`      классы: ${dualLayout.classes.slice(0, 10).join(' · ')}${dualLayout.classes.length > 10 ? ' …' : ''}  (весь список - в --json)`);
+    console.log('      ⚠ нижняя оценка: класс, приезжающий в примитив ПРОПОМ, из литералов не виден');
   }
 }
 console.log();
@@ -1064,6 +1744,8 @@ console.log('\n   ПОТОМКОВЫЕ ПРАВИЛА НА ПРИМИТИВАХ 
 console.log(`     экран дотянулся и ОБЪЯВИЛ СВОЙСТВО: ${num(reach.violations, 4)}  ← нарушение закона 3, это работа 06`);
 console.log(`     дотянулся и переопределил ТОЛЬКО ручку: ${num(reach.varOnly, 4)}  ← закон 3 это РАЗРЕШАЕТ`);
 console.log(`     канон внутри канона:                ${num(reach.canonIntoCanon, 4)}  ← композиция ДС, не долг экранов`);
+console.log(`     вычтен канон типографики:           ${num(reach.canonTypography, 4)}  ← со-селекторный список .t-*, механизм самой ДС`);
+console.log(`       из них были бы долгом:            ${num(reach.canonTypographyWouldViolate, 4)}  ← остальные не нарушали и без вычета`);
 if (Object.keys(reach.byFamily).length) {
   console.log(`     кто дотягивается: ${Object.entries(reach.byFamily).slice(0, 10).map(([f, n]) => `${f}(${n})`).join(' · ')}`);
   for (const s of reach.samples.slice(0, 5)) console.log(`       ${s.slice(0, 96)}`);

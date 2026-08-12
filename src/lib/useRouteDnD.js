@@ -112,7 +112,11 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   // Presses on inner controls (steppers, booking cells, links) are ignored.
   const armDrag = (e, nodeId) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (e.target?.closest?.('.te-stepper, .te-step, .te-cellbtn, .te-actchip, .te-hotelicon, .te-addmini, a, input, select, textarea')) return;
+    // ⚠️ Классы контролов, нажатие на которые НЕ должно арсенить перетаскивание
+    // строки. `.stepper` — ночи уехали на <Stepper> (был `.te-stepper`); `.te-step`
+    // остаётся кнопкой удаления; `.btn` — плейсхолдеры ячеек; `.fpill` —
+    // заполненные ячейки отеля/активности (<Chip>, был `.te-actchip`/`.te-hotelicon`).
+    if (e.target?.closest?.('.stepper, .te-step, .btn, .fpill, .te-addmini, a, input, select, textarea')) return;
     const rowEl = rowElRefs.current.get(nodeId);
     if (!rowEl) return;
     const cx = e.clientX, cy = e.clientY;

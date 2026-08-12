@@ -1,36 +1,40 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Avatar, Badge, Btn, Sheet } from '@/design/index';
-import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
+import { Avatar, Badge, Btn, Card, Sheet } from '@/design/index';
+import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { canShareTrip } from '@/lib/members';
 import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
 
-// Shared menu BODY (groups + upgrade card). Rendered identically by:
-//   • TripSidebar      — the desktop/tablet <aside> (and the editor's slide drawer)
-//   • TripSidebarSheet — the phone bottom-sheet
-// Keeping a single body guarantees the two shells expose the exact same item
-// set, role gating, chat badge and "upgrade to Pro" card.
+// Общее ТЕЛО меню (группы + карточка апгрейда). Одинаково рисуется двумя
+// оболочками пункта меню:
+//   • TripSidebar      — <aside> для десктопа/планшета
+//   • TripSidebarSheet — телефонный bottom-sheet
+// Одно тело гарантирует, что набор пунктов, ролевые гейты, бейдж чата и
+// карточка Pro у них совпадают.
+//
+// Все пункты — обычные секции из реестра. Отдельного случая под структурный
+// редактор тут больше нет: до TRIP-349 он был роутом, поэтому уезжал мимо
+// onNavigate прямой навигацией и тащил за собой флаг isEditScreen, который
+// гасил подсветку у ВСЕХ остальных пунктов.
 function SidebarBody({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myRole,
-  onUpgrade, onProInfo, onShare, isEditScreen = false,
+  onUpgrade, onProInfo, onShare,
 }) {
   const { t } = useI18n();
-  const navSb = useNavigate();
-  const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
-  // Viewers see Settings (read-only, to leave the trip) but not Members. (TRIP-137)
-  const mgmtItems = MGMT_ITEMS.filter((item) =>
-    !(myRole === 'viewer' && item.id === 'members'));
+  // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
+  // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
+  const lensItems = availableSections(trip, myRole, 'lens');
+  const mgmtItems = availableSections(trip, myRole, 'manage');
   const canShare = canShareTrip(myRole);
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro;
   // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
   // the badge only renders under a visible chat item, so a chat-off trip holds
   // zero realtime subscriptions instead of a live one that can never show.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isLensVisible(trip, 'chat') });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myRole) });
   return (
     <>
       <div className="app-side__group">
@@ -38,7 +42,7 @@ function SidebarBody({
         {lensItems.map((item) => (
           <button
             key={item.id}
-            className={'app-side__item' + (!isEditScreen && lens === item.id ? ' active' : '')}
+            className={'app-side__item' + (lens === item.id ? ' active' : '')}
             onClick={() => onNavigate(item.id)}
           >
             <Icon name={item.icon} size={15} />
@@ -51,22 +55,13 @@ function SidebarBody({
           </button>
         ))}
       </div>
-      {(mgmtItems.length > 0 || canShare || canEditStructure(myRole)) && (
+      {(mgmtItems.length > 0 || canShare) && (
         <div className="app-side__group">
           <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-          {canEditStructure(myRole) && (
-            <button
-              className={'app-side__item' + (isEditScreen ? ' active' : '')}
-              onClick={() => { if (!isEditScreen) navSb(`/trip/${tripId}/edit`); }}
-            >
-              <Icon name={EDIT_ITEM.icon} size={15} />
-              <span className="app-side__label">{t(EDIT_ITEM.labelKey)}</span>
-            </button>
-          )}
           {mgmtItems.map((item) => (
             <button
               key={item.id}
-              className={'app-side__item' + (!isEditScreen && lens === item.id ? ' active' : '')}
+              className={'app-side__item' + (lens === item.id ? ' active' : '')}
               onClick={() => onNavigate(item.id)}
             >
               <Icon name={item.icon} size={15} />
@@ -91,7 +86,7 @@ function SidebarBody({
 function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
   const { t } = useI18n();
   return (
-    <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
+    <Card tone="brand" radius="md" className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
       <div className="ph">
         <Badge variant="pro" icon="pro">PRO</Badge>
       </div>
@@ -100,33 +95,25 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
       {isOwner ? (
         <Btn variant="primary" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
       ) : (
-        <button className="lockmsg" onClick={onProInfo}>
-          <Icon name="lock" size={14} />
-          {t('trip.pro_by_owner')}
-        </button>
+        <Btn variant="secondary" icon="lock" block onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
       )}
-    </div>
+    </Card>
   );
 }
 
-// Shared left trip menu — used by both the trip screens (TripView) and the
-// structure editor (TripStructureEdit) so the two are IDENTICAL: same full
-// sidebar, same item set (addon-gated lenses + management), same role gating,
-// chat badge and "upgrade to Pro" card. The only difference is navigation:
-//   • TripView   passes onNavigate=setLens (in-page lens switch), lens=current.
-//   • the editor passes onNavigate=route-nav and isEditScreen so the "Edit
-//     structure" item is the active one.
+// Левое меню трипа. Рисуется ОДИН раз — оболочкой TripShell, — а все секции,
+// включая структурный редактор, переключаются одним и тем же onNavigate.
 export default function TripSidebar({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myRole,
-  onUpgrade, onProInfo, onShare, isEditScreen = false,
+  onUpgrade, onProInfo, onShare,
 }) {
   return (
     <aside className="app-side">
       <SidebarBody
         tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
         isPro={isPro} proResolved={proResolved} isOwner={isOwner} myRole={myRole}
-        onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare} isEditScreen={isEditScreen}
+        onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare}
       />
     </aside>
   );
@@ -142,17 +129,15 @@ function SidebarSheetBody({
   onUpgrade, onProInfo, onShare, user, onAccount,
 }) {
   const { t } = useI18n();
-  const navSb = useNavigate();
-  const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
-  const mgmtItems = MGMT_ITEMS.filter((item) => !(myRole === 'viewer' && item.id === 'members'));
+  const lensItems = availableSections(trip, myRole, 'lens');
+  const mgmtItems = availableSections(trip, myRole, 'manage');
   const canShare = canShareTrip(myRole);
   const showUpgrade = proResolved && !isPro;
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isLensVisible(trip, 'chat') });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myRole) });
   const accountName = displayName(user?.email, user?.full_name);
 
-  // Management rows: edit-structure (owner/admin) + members/settings + share.
+  // Ряды управления: секции группы 'manage' + «Поделиться».
   const manageRows = [
-    ...(canEditStructure(myRole) ? [{ id: 'edit', icon: EDIT_ITEM.icon, labelKey: EDIT_ITEM.labelKey, onClick: () => navSb(`/trip/${tripId}/edit`) }] : []),
     ...mgmtItems.map((item) => ({ id: item.id, icon: item.icon, labelKey: item.labelKey, active: lens === item.id, onClick: () => onNavigate(item.id) })),
     ...(canShare && onShare ? [{ id: 'share', icon: 'share', labelKey: 'trip.share', onClick: onShare }] : []),
   ];

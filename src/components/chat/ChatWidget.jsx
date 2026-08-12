@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * ChatWidget - floating chat button + docked panel.
  *
@@ -15,11 +16,10 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useChatId, useUnreadChatCount, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, chatParticipants, pluralPeople, CHAT_MESSAGES_KEY } from '@/lib/chat';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { AvatarStack, EmptyState } from '@/design/index';
+import { AvatarStack, EmptyState, IconBtn } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from './ChatStream';
 import ChatComposer from './ChatComposer';
-import { Icon } from '@/design/icons';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 
 export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {
@@ -84,16 +84,17 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // ── Closed: floating button ──
   if (!open) {
     return (
-      <button
+      <IconBtn
+        icon="chat"
+        size="fab"
         className="dock"
         onClick={() => setOpen(true)}
-        aria-label={t('chat.open_aria')}
+        ariaLabel={t('chat.open_aria')}
       >
-        <Icon name="chat" size={22} />
         {unread > 0 && (
           <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
         )}
-      </button>
+      </IconBtn>
     );
   }
 
@@ -109,23 +110,21 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           <b className="trunc">{t('chat.group_title')}</b>
           <span className="trunc">{tripTitle ? `${tripTitle} · ` : ""}{pluralPeople(activeMembers.length, t, lang)}</span>
         </div>
-        <button
-          className="icon-btn"
+        <IconBtn
+          icon="expand"
+          size="sm"
           onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
-          aria-label={t('chat.open_full_aria')}
-        >
-          <Icon name="expand" size={15} />
-        </button>
-        <button
-          className="icon-btn"
+          ariaLabel={t('chat.open_full_aria')}
+        />
+        <IconBtn
+          icon="close"
+          size="sm"
           onClick={() => setOpen(false)}
-          aria-label={t('common.close')}
-        >
-          <Icon name="close" size={15} />
-        </button>
+          ariaLabel={t('common.close')}
+        />
       </div>
 
-      <div ref={scrollRef} className="chat-msgs scrollbar-thin">
+      <div ref={scrollRef} className="col col--g1 chat-msgs scrollbar-thin">
         {msgs.length === 0 ? (
           <div style={{ margin: 'auto' }}>
             <EmptyState icon="chat" title={t('chat.write_first')} />

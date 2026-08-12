@@ -1,27 +1,29 @@
 import React from 'react';
-import { Icon } from '../../design/icons';
+import { Stepper } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 
 // ─── NightsStepper ────────────────────────────────────────────────────────────
-// Shared nights +/- stepper used by both the planner route list and the
-// structural editor grid. Was duplicated inline in two places with the same
-// `.te-stepper / .te-step / .te-nights` markup; unified here so one control
-// drives both screens. Stops pointerdown + click so using the stepper inside a
-// draggable / clickable row never arms a drag or opens the city panel.
+// Nights +/- for the planner route list and the structural editor grid. Thin
+// wrapper over the DS <Stepper> that owns the trip-specific bits: the "Nн" value
+// suffix and stopping pointerdown/click so using the stepper inside a draggable /
+// clickable row never arms a drag or opens the city panel.
 //
-// Props: value, onMinus, onPlus, minusDisabled, plusDisabled, title.
+// ⚠️ АННОТАЦИЯ ОБЯЗАТЕЛЬНА (TRIP-388): без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ
+// и делает `title` ОБЯЗАТЕЛЬНЫМ. Набор ЗАКРЫТЫЙ, `...rest` тут нет.
+/**
+ * @param {{ value: any, onMinus: any, onPlus: any,
+ *           minusDisabled?: boolean, plusDisabled?: boolean, title?: string }} p
+ */
 export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = false, plusDisabled = false, title }) {
   const t = useT();
   const stop = (e) => e.stopPropagation();
   return (
-    <span className="te-stepper" onPointerDown={stop} onClick={stop} title={title || t('tse.col_nights')}>
-      <button className="te-step" onClick={onMinus} disabled={minusDisabled} aria-label={t('planner.fewer_nights')}>
-        <Icon name="minus" size={12} />
-      </button>
-      <span className="num te-nights">{value}<span className="muted">{t('planner.night_short')}</span></span>
-      <button className="te-step" onClick={onPlus} disabled={plusDisabled} aria-label={t('planner.more_nights')}>
-        <Icon name="plus" size={10} />
-      </button>
-    </span>
+    <Stepper
+      value={<>{value}<span className="muted">{t('planner.night_short')}</span></>}
+      onMinus={onMinus} minusDisabled={minusDisabled} minusLabel={t('planner.fewer_nights')}
+      onPlus={onPlus} plusDisabled={plusDisabled} plusLabel={t('planner.more_nights')}
+      title={title || t('tse.col_nights')}
+      onPointerDown={stop} onClick={stop}
+    />
   );
 }

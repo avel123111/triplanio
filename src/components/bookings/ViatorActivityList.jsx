@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Search, RotateCcw, Ticket, AlertTriangle, Star, SlidersHorizontal, CloudOff, X } from 'lucide-react';
-import { Checkbox, Input, InputGroup } from '@/design/index';
+import { Btn, Checkbox, Input, InputGroup } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
@@ -152,7 +152,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
           spark={<CloudOff size={13} />}
           title={t('fork.activities_error_title')}
           body={t('fork.activities_error_body')}
-          action={<button type="button" className="btn btn--soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.activities_retry')}</button>}
+          action={<Btn variant="soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.activities_retry')}</Btn>}
           partner={brandPartner}
         />
       )}
@@ -175,7 +175,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
           spark={<X size={13} />}
           title={t('fork.activities_no_match_title')}
           body={t('fork.activities_no_match_body')}
-          action={<button type="button" className="btn btn--soft" onClick={resetFilters}><RotateCcw size={15} />{t('fork.f_reset')}</button>}
+          action={<Btn variant="soft" onClick={resetFilters}><RotateCcw size={15} />{t('fork.f_reset')}</Btn>}
           partner={brandPartner}
         />
       )}
@@ -195,13 +195,13 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
                   <span className="pcard__score pcard__score--star"><Star size={10} />{Number(a.rating).toFixed(1)}</span>
                 ) : null}
                 meta={a.reviewCount ? (
-                  <div className="pcard__meta"><span className="pcard__mtx">{t('fork.activities_reviews', { n: a.reviewCount })}</span></div>
+                  <div className="row row--a-baseline pcard__meta"><span className="trunc pcard__mtx">{t('fork.activities_reviews', { n: a.reviewCount })}</span></div>
                 ) : null}
                 subline={a.freeCancellation ? (
-                  <div className="pcard__addr pcard__addr--ok">{t('fork.activities_free_cancel')}</div>
+                  <div className="trunc pcard__addr pcard__addr--ok">{t('fork.activities_free_cancel')}</div>
                 ) : null}
                 price={a.fromPrice != null ? (
-                  <span className="pcard__price">
+                  <span className="row row--a-baseline pcard__price">
                     <span>{t('fork.activities_from')}</span>
                     <b>{fmtMoney(a.fromPrice, a.currency || currency)}</b>
                   </span>
@@ -227,8 +227,8 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
         /* List chrome (.fork-*) + card (.pcard*) + toolbar (.s22f-*) + count row
-           (.s22-count / .s22-sort on the shared .row primitive) are all shared —
-           see app.css + forkList.jsx. */
+           (.s22-count on the shared .row primitive; sorting is a <Btn variant="link">)
+           are all shared — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

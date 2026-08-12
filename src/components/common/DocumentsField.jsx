@@ -4,7 +4,7 @@ import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentM
 import { Icon } from '@/design/icons';
 import { UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
-import { FileRow, useToast } from '@/design/index';
+import { Card, FileRow, IconBtn, useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
 
@@ -82,13 +82,18 @@ export default function DocumentsField({
     }
   };
 
+  // Обрамлённый режим (не bare) — поверхность-раздел через `<Card as="section">`;
+  // bare — голый <section> без скина. Носитель динамический (TRIP-343, не-Card
+  // ветка реально без скина).
+  const Frame = bare ? 'section' : Card;
+  const frameProps = bare ? {} : { as: 'section', radius: 'lg', className: 'docfield' };
   return (
-    <section className={bare ? '' : 'docfield'}>
+    <Frame {...frameProps}>
       {!bare && (
-        <div className="docfield__head">
-          <div className="docfield__title">
+        <div className="row row--j-between row--g4 docfield__head">
+          <div className="row row--g4 docfield__title">
             <Icon name="paperclip" size={16} className="ico" style={{ color: iconColor }} />
-            <span className="docfield__name">{label || t('event.documents')}</span>
+            <span className="trunc docfield__name">{label || t('event.documents')}</span>
             {docs.length > 0 && (
               <span className="docfield__count">· {docs.length}</span>
             )}
@@ -105,14 +110,13 @@ export default function DocumentsField({
               fallback={t('event.file_word')}
               href={normalizeExternalUrl(d.file_url)}
               action={(
-                <button
-                  type="button"
+                <IconBtn
+                  icon="close"
+                  tone="danger"
+                  size="sm"
                   onClick={() => removeAt(i)}
-                  className="doc-row__rm"
-                  aria-label={t('doc.remove_doc_aria')}
-                >
-                  <Icon name="close" size={13} />
-                </button>
+                  ariaLabel={t('doc.remove_doc_aria')}
+                />
               )}
             />
           ))}
@@ -124,7 +128,7 @@ export default function DocumentsField({
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
+          className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}
         >
           <input
             ref={inputRef}
@@ -150,6 +154,6 @@ export default function DocumentsField({
           )}
         </div>
       )}
-    </section>
+    </Frame>
   );
 }

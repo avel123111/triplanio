@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Search, FileText, BedDouble, Plane, Ticket, X } from 'lucide-react';
+import { Search, FileText, BedDouble, Plane, Ticket } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
+import { IconBtn, Seg } from '@/design/index';
 import { eventHeader } from '@/components/common/EventViewBody';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -51,7 +52,7 @@ export default function AddBookingPanel({
   const close = () => onClose?.();
 
   return (
-    <div className="lp lp--wide abp" style={{ '--ev-color': meta.color, '--ev-soft': meta.soft, '--ev-ink': meta.color }}>
+    <div className="lp lp--wide abp" style={{ '--hl': meta.color, '--hl-soft': meta.soft, '--hl-ink': meta.color }}>
       {/* Shared contextual header (× closes the panel). */}
       <div className="lp-h lp-h--ev">
         <span className="lp-ic"><HeaderIcon size={18} /></span>
@@ -62,21 +63,21 @@ export default function AddBookingPanel({
             {subtitle && <span className="t-meta">{subtitle}</span>}
           </div>
         </div>
-        <button className="lp-back" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
-          <X size={15} />
-        </button>
+        <IconBtn icon="close" tone="soft" round onClick={close} ariaLabel={t('fork.cancel')} title={t('fork.cancel')} />
       </div>
 
       {/* Segmented tabs (reuses the design-system .seg + shared .seg--fill). */}
       <div className="abp-tabwrap">
-        <div className="seg seg--fill" role="group" aria-label={t(meta.eyebrowKey)}>
-          <button type="button" aria-pressed={tab === 'find'} onClick={() => setTab('find')}>
-            <Search size={14} />{t(meta.findKey)}
-          </button>
-          <button type="button" aria-pressed={tab === 'manual'} onClick={() => setTab('manual')}>
-            <FileText size={14} />{t('fork.tab_have_booking')}
-          </button>
-        </div>
+        <Seg
+          variant="fill"
+          ariaLabel={t(meta.eyebrowKey)}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'find', label: <><Search size={14} />{t(meta.findKey)}</> },
+            { value: 'manual', label: <><FileText size={14} />{t('fork.tab_have_booking')}</> },
+          ]}
+        />
       </div>
 
       {/* Active tab body + its own footer (only one tab is mounted at a time). */}

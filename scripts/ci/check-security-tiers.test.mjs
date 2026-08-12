@@ -26,7 +26,17 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkBucketPredicates, checkDoors, checkEditorRoles } from './check-security-tiers.mjs';
+import {
+  checkBucketPredicates,
+  checkDoors,
+  checkEditorRoles,
+  checkSeamDoors,
+  checkTableGrants,
+  effectiveAuthOps,
+  parseGateTokensFromSeam,
+  parseResourceSpecs,
+  parseSeamSlug,
+} from './check-security-tiers.mjs';
 
 // Манифест-фикстура той же формы, что BUCKETS в security-tiers.mjs.
 const TRIPS = {
@@ -406,4 +416,292 @@ test('пустой/отсутствующий вход не молчит', () =>
 // ВЕРНОЕ падение с ВРУЩИМ диагнозом («EDITOR_ROLES не нашёлся» вместо разбора).
 test('EDITOR_ROLES в двойных кавычках читается', () => {
   assert.deepEqual(checkEditorRoles(SQL_OK, 'export const EDITOR_ROLES = ["owner", "admin"];'), []);
+});
+
+// ── SEAM-ДВЕРИ: гейт живёт в спецификации ресурса, а не в index.ts (TRIP-394) ──
+// Дверь, чей index.ts просто зовёт `mutate({ slug })`, гейта в index.ts НЕ несёт
+// — её право (`requires` на каждом действии) держит спецификация ресурса
+// `_shared/resources/<slug>.ts` и исполняет общий `_shared/mutate.ts`. Прежний
+// страж такую дверь мог только ПРИНЯТЬ на слово (объявительное значение). Здесь
+// он её ПРОВЕРЯЕТ: манифест обязан машинно совпасть с `requires` спецификации.
+
+const seamSrc = (name, slug) =>
+  ({ name, code: `Deno.serve(withHandler('${name}', (req, cors) => mutate({ req, slug: '${slug}', corsHeaders: cors })));` });
+
+// Спецификация ресурса как ТЕКСТ (парсер читает файл, не импортирует TS).
+const specText = (slug, requiresPerAction) => ({
+  name: `${slug}.ts`,
+  text: `export const R = { name: '${slug}', scope: { column: 'trip_id', from: 'tripId' }, actions: {\n` +
+    requiresPerAction.map((req, i) =>
+      `  a${i}: { op: 'upsert', table: 't', requires: [${req.map((r) => `'${r}'`).join(', ')}] },`).join('\n') +
+    `\n} };`,
+});
+
+const TOKENS = new Set(['editor', 'self', 'pro']);
+
+test('parseSeamSlug: достаёт slug из mutate({slug}), иначе null', () => {
+  assert.equal(parseSeamSlug("mutate({ req, slug: 'trip-budget', corsHeaders: cors })"), 'trip-budget');
+  assert.equal(parseSeamSlug('if (!(await isCallerEditor(t,u))) return 403;'), null);
+});
+
+test('parseResourceSpecs: имя ресурса + requires по каждому действию', () => {
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['editor', 'pro']])]);
+  const s = specs.get('trip-budget');
+  assert.ok(s, 'ресурс не разобран');
+  assert.deepEqual(s.requiresSets, [['editor', 'pro'], ['editor', 'pro']]);
+});
+
+test('parseGateTokensFromSeam: словарь гейтов берётся из checkRequirement шва', () => {
+  const seam = "switch (name) {\n case 'editor': return x;\n case 'self': return y;\n case 'pro': { return z; }\n }";
+  assert.deepEqual([...parseGateTokensFromSeam(seam)].sort(), ['editor', 'pro', 'self']);
+});
+
+test('здоровая seam-дверь: манифест-набор == requires спецификации', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['editor', 'pro']])]);
+  assert.deepEqual(checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true }), []);
+});
+
+test('★ манифест врёт про гейт (editor вместо editor+pro) → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /манифест.*спецификаци/i);
+});
+
+test('★ спецификация сменила requires, манифест прежний → красный (та же сверка, другая сторона)', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor']])]); // pro сняли из спеки
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /манифест.*спецификаци/i);
+});
+
+test('★ seam-дверь объявлена СТРОКОЙ, а не набором → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: 'editor+pro' };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /набор|массив/i);
+});
+
+test('★ фиктивная seam-дверь без строки в манифесте → красный', () => {
+  const sources = [seamSrc('trip_widget', 'trip-widget')];
+  const specs = parseResourceSpecs([specText('trip-widget', [['editor']])]);
+  const errors = checkSeamDoors({ sources, doors: {}, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /trip_widget/.test(e) && /манифест|DOORS/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ seam-дверь без спецификации ресурса → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const errors = checkSeamDoors({ sources, doors, specs: new Map(), gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /спецификаци/i);
+});
+
+test('★ действия ресурса требуют РАЗНОЕ → красный (одной строкой не выразить)', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['editor']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /РАЗНОЕ|неоднородн/i.test(e)), JSON.stringify(errors));
+});
+
+// Спецификация с requires НЕ литеральным массивом (переменная/константа) —
+// парсер её не видит; собираем текст вручную.
+const specTextRaw = (slug, actionsBody) => ({
+  name: `${slug}.ts`,
+  text: `export const R = { name: '${slug}', scope: { column: 'trip_id', from: 'tripId' }, actions: {\n${actionsBody}\n} };`,
+});
+
+test('★ P1 датчик слепоты: parseResourceSpecs считает НЕлитеральные requires', () => {
+  const specs = parseResourceSpecs([specTextRaw('trip-budget',
+    "  a0: { op: 'upsert', table: 't', requires: ['editor', 'pro'] },\n" +
+    "  a1: { op: 'upsert', table: 't', requires: EDITOR_PRO },")]);
+  const s = specs.get('trip-budget');
+  assert.equal(s.requiresSets.length, 1, 'литеральный requires ровно один');
+  assert.equal(s.nonLiteralRequires, 1, 'один requires — переменная, датчик обязан её заметить');
+});
+
+test('★ P1: seam-дверь с requires-переменной → красный (сверка не над полным набором)', () => {
+  // Раньше действие с `requires: CONST` МОЛЧА выпадало, и сверка зеленела над
+  // неполным набором. Теперь такой ресурс роняет прогон.
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specTextRaw('trip-budget',
+    "  a0: { op: 'upsert', table: 't', requires: ['editor', 'pro'] },\n" +
+    "  a1: { op: 'upsert', table: 't', requires: EDITOR_PRO },")]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /литеральн|P1/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ P2: манифест того же состава, но ДРУГОГО порядка → красный', () => {
+  // Шов исполняет requires ПО ПОРЯДКУ (editor раньше pro). `['pro','editor']` ≠
+  // `['editor','pro']`: как множества равны (прежний eqSet зеленел — дыра), по
+  // порядку — нет.
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['pro', 'editor'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /порядк/i);
+});
+
+test('★ P2: действия одного состава, но разного ПОРЯДКА → неоднородны (красный)', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'pro'], ['pro', 'editor']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /РАЗНОЕ|неоднородн/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ неизвестный гейт в спецификации (шов его не реализует) → красный', () => {
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'admin'] };
+  const specs = parseResourceSpecs([specText('trip-budget', [['editor', 'admin']])]);
+  const errors = checkSeamDoors({ sources, doors, specs, gateTokens: TOKENS, expectSeam: true });
+  assert.ok(errors.some((e) => /admin/.test(e) && /неизвестн|не реализ/i.test(e)), JSON.stringify(errors));
+});
+
+test('★ ДАТЧИК СЛЕПОТЫ: ждём seam-дверь, а разбор нашёл ноль → красный', () => {
+  // Сломанный парс mutate({slug}) не должен ТИХО пройти seam-сверку.
+  const sources = [src('getTripDetails', 'if (!isCallerParticipant(t,u)) return 403;')];
+  const errors = checkSeamDoors({ sources, doors: {}, specs: new Map(), gateTokens: TOKENS, expectSeam: true });
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /ни одной seam|датчик|разбор/i);
+});
+
+test('★ не-seam функция с массивом-значением в манифесте → красный', () => {
+  // Массив = seam-набор; у обычной функции его быть не должно.
+  const sources = [src('updateTripSettings', 'if (!(await isCallerEditor(t,u))) return 403;')];
+  const doors = { updateTripSettings: ['editor'] };
+  const errors = checkSeamDoors({ sources, doors, specs: new Map(), gateTokens: TOKENS, expectSeam: false });
+  assert.ok(errors.some((e) => /updateTripSettings/.test(e) && /не.*seam|не маршрут/i.test(e)), JSON.stringify(errors));
+});
+
+test('checkDoors НЕ трогает seam-двери (их код зовёт mutate, гейта в index нет)', () => {
+  // Старый страж принял бы это за «проверка снята». Теперь checkDoors их пропускает.
+  const sources = [seamSrc('trip_budget', 'trip-budget')];
+  const doors = { trip_budget: ['editor', 'pro'] };
+  assert.deepEqual(checkDoors(sources, doors), []);
+});
+
+test('обычные двери проверяются как раньше (регресс не ослаблен)', () => {
+  const doors = { telegramStartLink: 'editor' };
+  const sources = [src('telegramStartLink', 'const ok = await isCallerParticipant(t, u);')];
+  const errors = checkDoors(sources, doors);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /не ту ступень/);
+});
+
+// ── checkTableGrants: DML + ось SELECT (TRIP-399) ────────────────────────────
+// Манифест-фикстура формы TABLES: три показательных яруса.
+const GRANTS_MANIFEST = {
+  content_a: { tier: 'A', authDml: true,  authSelect: true  }, // клиент пишет+читает под RLS
+  edge_b:    { tier: 'B', authDml: false, authSelect: false }, // edge-only, дверь чтения закрыта
+  ownrow_b:  { tier: 'B', authDml: false, authSelect: true  }, // service_role пишет, auth читает свою строку
+  // TRIP-400: частичное закрытие двери — UPDATE/DELETE сняты, INSERT оставлен
+  // (регистрация). authDml=true (есть INSERT); per-op уточняет что именно.
+  partial_c: { tier: 'C', authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true },
+};
+// Строка грантов из LIVE_SQL (DML теперь ПОШТУЧНО: authIns/authUpd/authDel).
+const grant = (t, o = {}) => ({ t, anon: false, authIns: false, authUpd: false, authDel: false, anonSel: false, authSel: false, ...o });
+
+test('здоровые гранты (DML+SELECT совпали с манифестом) — ноль ошибок', () => {
+  const live = [
+    grant('content_a', { authIns: true, authUpd: true, authDel: true, authSel: true }),
+    grant('edge_b'),
+    grant('ownrow_b', { authSel: true }),
+    grant('partial_c', { authIns: true, authSel: true }), // INSERT есть, UPDATE/DELETE сняты — как в манифесте
+  ];
+  assert.deepEqual(checkTableGrants(live, GRANTS_MANIFEST), []);
+});
+
+// ── per-op DML (TRIP-400): частичное закрытие двери ──────────────────────────
+test('effectiveAuthOps: явный per-op побеждает, иначе булев разворачивается в тройку', () => {
+  assert.deepEqual(effectiveAuthOps({ authDml: true }),  { insert: true,  update: true,  delete: true });
+  assert.deepEqual(effectiveAuthOps({ authDml: false }), { insert: false, update: false, delete: false });
+  // users: INSERT оставлен, UPDATE/DELETE закрыты.
+  assert.deepEqual(effectiveAuthOps({ authDml: true, authInsert: true, authUpdate: false, authDelete: false }),
+    { insert: true, update: false, delete: false });
+});
+
+test('★ per-op: невыпиленный UPDATE (authUpdate:false) → красный, и ошибка называет ИМЕННО UPDATE', () => {
+  // Ровно дефект, ради которого per-op заведён: REVOKE UPDATE не сработал/забыт.
+  // Ошибка обязана назвать UPDATE (а не абстрактный DML) — иначе гард не
+  // доказывает нужную ось (требование Pavel).
+  const errors = checkTableGrants([grant('partial_c', { authIns: true, authUpd: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /authenticated имеет UPDATE на public\.partial_c/);
+  assert.doesNotMatch(errors[0], /INSERT|DELETE/, 'ошибка должна называть именно UPDATE-ось');
+});
+
+test('★ per-op: невыпиленный DELETE (authDelete:false) → красный (называет DELETE)', () => {
+  const errors = checkTableGrants([grant('partial_c', { authIns: true, authDel: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  assert.match(errors[0], /authenticated имеет DELETE на public\.partial_c/);
+});
+
+test('оставленный INSERT (authInsert:true) — не дрейф: сверка ОДНОСТОРОННЯЯ (ловит лишнее право)', () => {
+  // Дверь закрывается в два захода — INSERT снимет домен регистрации. Гард ловит
+  // ЛИШНЕЕ живое право (fail-open), а не объявленную-но-снятую ось (снять больше — безопасно).
+  assert.deepEqual(checkTableGrants([grant('partial_c', { authIns: true, authSel: true })], GRANTS_MANIFEST), []);
+  assert.deepEqual(checkTableGrants([grant('partial_c', { authSel: true })], GRANTS_MANIFEST), []);
+});
+
+test('обратная совместимость: таблица на булеве authDml ведёт себя как раньше', () => {
+  // authDml:true (ярус A) — все оси открыты, ноль ошибок; authDml:false (ярус B) —
+  // любой живой op = дрейф, теперь с ИМЕНЕМ оси (раньше «DML»).
+  assert.deepEqual(checkTableGrants([grant('content_a', { authIns: true, authUpd: true, authDel: true, authSel: true })], GRANTS_MANIFEST), []);
+  const b = checkTableGrants([grant('edge_b', { authUpd: true })], GRANTS_MANIFEST);
+  assert.equal(b.length, 1);
+  assert.match(b[0], /authenticated имеет UPDATE на public\.edge_b/);
+});
+
+test('★ SELECT-дрейф: edge-only таблица, а authenticated её читает', () => {
+  const errors = checkTableGrants([grant('edge_b', { authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /authenticated SELECT на public\.edge_b = true, манифест authSelect=false/);
+});
+
+test('★ SELECT-дрейф в другую сторону: манифест ждёт чтение, а его сняли', () => {
+  const errors = checkTableGrants([grant('ownrow_b', { authSel: false })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /authenticated SELECT на public\.ownrow_b = false, манифест authSelect=true/);
+});
+
+test('★ edge-only таблица отдаёт SELECT anon — дверь чтения открыта анониму', () => {
+  const errors = checkTableGrants([grant('edge_b', { anonSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /edge_b отдаёт SELECT anon/);
+});
+
+test('anon SELECT при authSelect:true НЕ ошибка (переходная модель: чтение под RLS)', () => {
+  // На таких таблицах контент яруса A ещё читается клиентом напрямую под RLS;
+  // ось закроется на C-шаге домена, когда authSelect станет false.
+  const live = [grant('content_a', { authIns: true, authUpd: true, authDel: true, authSel: true, anonSel: true })];
+  assert.deepEqual(checkTableGrants(live, GRANTS_MANIFEST), []);
+});
+
+test('DML-оси не ослаблены: anon DML → I3a, auth DML на B → запрет', () => {
+  const anon = checkTableGrants([grant('content_a', { anon: true, authIns: true, authUpd: true, authDel: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(anon.length, 1);
+  assert.match(anon[0], /anon имеет DML на public\.content_a/);
+
+  const authB = checkTableGrants([grant('edge_b', { authIns: true })], GRANTS_MANIFEST);
+  assert.equal(authB.length, 1);
+  assert.match(authB[0], /authenticated имеет INSERT на public\.edge_b .*ярус B/);
+});
+
+test('незаклассифицированная таблица с auth DML ловится, а SELECT-ось её не трогает', () => {
+  // Нет в манифесте → только DML-ошибка; SELECT-ось молчит (нечего сверять).
+  const errors = checkTableGrants([grant('mystery', { authIns: true, authSel: true })], GRANTS_MANIFEST);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /public\.mystery не в манифесте/);
 });

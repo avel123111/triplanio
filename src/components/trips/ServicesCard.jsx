@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
+import { Btn, Card } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
 // trip_services rows carry a `kind` (esim | car_rental | insurance). Booked
-// services render as Lumo .bookrow; not-yet-added ones as the dashed .gadd
-// (ghost-add) row. Colours come from the shared SERVICE_KINDS source so the
+// services render as Lumo .bookrow; not-yet-added ones as the dashed
+// placeholder (`Btn variant="dashed" tile`). Colours come from the shared SERVICE_KINDS source so the
 // widget matches the service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
 
-// Dashed "add service" row — Lumo .gadd. `--a` sets the per-service hover accent.
+// Пунктирный ряд «добавить сервис» — та же форма примитива, что у панели города
+// (`Btn variant="dashed"` с плиткой). `--a` объявляет акцент ховера по виду
+// сервиса. Плюс справа больше не красится СВОИМ цветом постоянно: он берёт
+// `--fg` кнопки, то есть в покое серый, а на наведении уезжает в акцент вместе
+// с рамкой и плиткой — один язык на весь плейсхолдер.
 function AddRow({ icon, label, hint, color, onClick }) {
   return (
-    <button className="gadd" style={{ '--a': color }} onClick={onClick}>
-      <span className="gi"><Icon name={icon} size={17} /></span>
-      <span className="gt"><b>{label}</b><span>{hint}</span></span>
-      <Icon name="plus" size={15} style={{ color, flexShrink: 0 }} />
-    </button>
+    <Btn variant="dashed" block tile icon={icon} sub={hint} iconRight="plus" style={{ '--a': color }} onClick={onClick}>
+      {label}
+    </Btn>
   );
 }
 
@@ -34,9 +37,9 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
   moreAddKinds.push('insurance');
 
   return (
-    <div className="wdg ov-wdg">
+    <Card radius="lg" pad="none" className="ov-wdg">
       <div className="wdg-h">
-        <span className="wi wi--primary"><Icon name="folder-bookmark" size={17} /></span>
+        <span className="wi"><Icon name="folder-bookmark" size={17} /></span>
         <h4>{t('trip.sidebar_services')}</h4>
       </div>
       <div className="wdg-b">
@@ -45,8 +48,8 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
             return (
-              <button key={s.id} className="bookrow" onClick={() => onOpenService?.(s)}>
-                <span className="bi" style={{ background: meta?.soft || 'var(--primary-soft)', color: meta?.color || 'var(--brand)' }}>
+              <button key={s.id} className="row bookrow" onClick={() => onOpenService?.(s)}>
+                <span className="bi" style={{ background: meta?.soft || 'var(--brand-soft)', color: meta?.color || 'var(--brand)' }}>
                   <Icon name={meta?.icon || 'ticket'} size={18} />
                 </span>
                 <div className="bt">
@@ -58,7 +61,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
             );
           })}
 
-          {/* Not-yet-added eSIM / car rental — dashed .gadd */}
+          {/* Not-yet-added eSIM / car rental — the dashed placeholder */}
           {topAddKinds.map((k) => (
             <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} color={SERVICE_KIND_META[k].color} label={t(SERVICE_KIND_META[k].labelKey)} hint={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
           ))}
@@ -76,12 +79,12 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               />
             ))
           ) : (
-            <button className="btn btn--soft btn--block" onClick={() => setMoreOpen(true)}>
+            <Btn variant="soft" block onClick={() => setMoreOpen(true)}>
               <Icon name="plus" size={15} />{t('service.more')}
-            </button>
+            </Btn>
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

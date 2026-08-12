@@ -76,7 +76,13 @@ export async function readJson(req: Request): Promise<Record<string, unknown>> {
  * Sentry is a no-op without a DSN anyway).
  */
 const _edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
-function reportInBackground(p: Promise<unknown>): void {
+/**
+ * Run background work that finishes AFTER the response is sent, via Supabase
+ * edge's `EdgeRuntime.waitUntil` (fire-and-forget fallback in local dev). Shared
+ * so callers here (Sentry reporting) and `emit()` (`_shared/emit.ts`) reuse ONE
+ * runtime check and never add a network hop to the user's response.
+ */
+export function runInBackground(p: Promise<unknown>): void {
   if (_edge?.waitUntil) _edge.waitUntil(p);
   else void p;
 }
@@ -145,14 +151,14 @@ export function withHandler(
       // geoLocationiq's 429/502, which carry distinct grouping + upstream status).
       // Without the opt-out those would be reported twice.
       if (res.status >= 400 && res.status !== 401 && res.headers.get('x-sentry-skip') !== '1') {
-        reportInBackground(reportResponseError(fnName, res));
+        runInBackground(reportResponseError(fnName, res));
       }
       return res;
     } catch (e) {
       if (e instanceof HttpError) {
         // A thrown 401 is silenced for the same reason as a returned one.
         if (e.status !== 401) {
-          reportInBackground(captureEdgeError(e, fnName, { status: e.status, code: e.code }));
+          runInBackground(captureEdgeError(e, fnName, { status: e.status, code: e.code }));
         }
         return jsonError(e.status, e.message, e.code, corsHeaders);
       }
@@ -160,7 +166,7 @@ export function withHandler(
       // when Sentry is unset (local dev) or misconfigured. Only the unexpected
       // 5xx path is logged; expected 4xx control flow would just be noise.
       console.error(`${fnName} unhandled:`, e);
-      reportInBackground(captureEdgeError(e, fnName));
+      runInBackground(captureEdgeError(e, fnName));
       return jsonError(500, (e as Error).message, 'INTERNAL', corsHeaders);
     }
   };

@@ -1,13 +1,13 @@
 import React from 'react';
 import {
-  Plus, TriangleAlert, X, ChevronRight, ArrowLeft, MapPin, FileText, Check, Info,
+  Plus, TriangleAlert, X, ChevronRight, ChevronLeft, ArrowLeft, MapPin, FileText, Check, Info,
   Sparkles, Lock, Camera, Wallet, Trash2, ExternalLink, Calendar, BedDouble, Users,
   Pencil, ArrowRight, Sparkle, Ellipsis, Map, Link, Flag, MessageCircle, Bell, User,
   Share2, Send, Search, Plane, Paperclip, Moon, List, LayoutGrid, Globe,
   GripVertical, Crown, ArrowRightLeft, Upload, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus, AtSign,
-  Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair,
+  Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair, SlidersHorizontal,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,7 +105,11 @@ const LUCIDE = {
   paperclip: Paperclip, moon: Moon, list: List, grid: LayoutGrid, globe: Globe,
   drag: GripVertical, crown: Crown, arrowSwap: ArrowRightLeft, arrowRight: ArrowRight,
   upload: Upload, train: TrainFront, sun: Sun, shield: Shield, refresh: RefreshCw,
-  chevron: ChevronRight, chevU: ChevronUp, chevD: ChevronDown, arrow: ArrowRight,
+  // `chevL` заведён в TRIP-344 PR 2 (апрув Pavel). Реестр знал шеврон ВПРАВО,
+  // ВВЕРХ и ВНИЗ, а влево — нет, и навигация календаря из-за этой дыры уехала бы
+  // на СТРЕЛКУ, то есть на другой глиф. Тот же lucide, ноль визуальных
+  // изменений, реестр становится симметричным.
+  chevron: ChevronRight, chevL: ChevronLeft, chevU: ChevronUp, chevD: ChevronDown, arrow: ArrowRight,
   menu: Menu,
   // имена из лендинга (фичи/списки)
   gift: Gift, devices: MonitorSmartphone, timeline: Waypoints, compass: Compass,
@@ -115,6 +119,10 @@ const LUCIDE = {
   // статистика путешествий (2026-06-20)
   buildings: Building2, layers: Layers, suitcase: Luggage, heart: Heart,
   star: Star, expand: Maximize2, crosshair: Crosshair,
+  // Тоггл фильтров форк-панели (TRIP-344): реестр знал глифы карты/списка, а
+  // «ползунки фильтра» жили сырым lucide-импортом на экране. Тот же lucide,
+  // ноль визуальных изменений — форк-кнопка садится на канон `IconBtn`.
+  sliders: SlidersHorizontal,
 };
 
 // ── Легаси-набор (fallback для имён вне LUCIDE/BRAND) ─────────────────────────
@@ -141,6 +149,19 @@ const ICONS = {
 };
 
 // ── Единый компонент Icon ────────────────────────────────────────────────────
+/**
+ * ⚠️ АННОТАЦИЯ ПРОПОВ ОБЯЗАТЕЛЬНА, И ВОТ ПОЧЕМУ (TRIP-388).
+ * Без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ, и каждый проп БЕЗ ДЕФОЛТА
+ * становится ОБЯЗАТЕЛЬНЫМ: `<Icon name="file" size={20} />` даёт TS2739
+ * «missing style, className, color». При `checkJs: false` это невидимо, но
+ * ЛЮБОЙ экран под `// @ts-check` упирается в это сразу — на `DocsLens` вышло
+ * 50 ошибок, все чужие. Тот же запечатанный набор чинил PR 1 у примитивов
+ * раскладки, и он же блокировал их собственное правило «ставь прагму в
+ * пересаживаемый экран».
+ *
+ * @param {{ name: string, size?: number, style?: any, className?: string,
+ *           color?: string, strokeWidth?: number }} p
+ */
 export const Icon = ({ name, size = 18, style, className, color, strokeWidth = 2 }) => {
   const Brand = BRAND[name];
   if (Brand) return <Brand size={size} style={style} className={className} color={color} />;

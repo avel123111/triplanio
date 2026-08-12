@@ -1,6 +1,9 @@
+// @ts-check
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { supabase } from '@/api/supabaseClient';
+import { invokeFn } from '@/lib/invokeFn';
+import { errorText } from '@/lib/errorText';
+import { toast } from '@/components/ui/use-toast';
 import { hasLang, loadLocale } from './dictionary';
 import { LANGUAGES, localeTag } from './translations';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
@@ -17,10 +20,32 @@ import {
 
 const I18nContext = createContext({
   lang: 'en',
+  /** @type {(next: string) => void} */
   setLang: () => {},
   units: 'metric',
+  // ⚠️ Тот же случай, что у `t` ниже, и он ПОВТОРИЛСЯ в этом же объекте: голая
+  // заглушка объявляла функцию без параметров, а живой `setUnits('metric')`
+  // давал TS2554. Аннотируется КАЖДАЯ функция дефолта, а не только та, из-за
+  // которой пришли: соседние молчат ровно до первого вызывателя под прагмой.
+  /** @type {(next: string) => void} */
   setUnits: () => {},
+  // ⚠️ ТИП `t` БЕРЁТСЯ ОТСЮДА, А НЕ С РЕАЛИЗАЦИИ. `createContext` выводит форму
+  // из ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ, поэтому голая заглушка `(key) => key` объявляла
+  // функцию ОДНОГО аргумента, и живой вызов с подстановкой
+  // (`t('doc.upload_formats', { mb })`, реализация ниже принимает `vars`)
+  // давал TS2554 «Expected 0-1 arguments, but got 2» на каждом экране под
+  // `// @ts-check`. Заглушка и реализация разъехались молча — annotation
+  // приводит заглушку к реальной сигнатуре.
+  /** @type {(key: string, vars?: Record<string, any>) => string} */
   t: (key) => key,
+  // ⚠️ Третий случай той же болезни, и он не про сигнатуру, а про ОТСУТСТВИЕ:
+  // провайдер отдаёт `locale` и `languages` (см. `value` ниже), а в дефолте их
+  // не было — значит их не было и в ТИПЕ. Живой `const { locale } = useI18n()`
+  // краснел как «свойства не существует», хотя в рантайме оно есть всегда.
+  // Дефолт обязан перечислять ВСЁ, что отдаёт провайдер, иначе он описывает не
+  // тот объект, который приходит потребителю.
+  locale: localeTag('en'),
+  languages: LANGUAGES,
 });
 
 // Active locale falls back to this one (then to the raw key) for missing strings,
@@ -136,26 +161,9 @@ export function I18nProvider({ children }) {
     if (user) setUnitsState(detectInitialUnits(user));
   }, [user?.unit_system]); // eslint-disable-line
 
-  const setLang = useCallback(async (newLang) => {
-    if (!hasLang(newLang)) return;
-    await activate(newLang);
-    setLangState(newLang);
-    try { localStorage.setItem(STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
-    // Persist on user if signed in
-    if (user) {
-      try { await supabase.from('users').update({ language: newLang }).eq('id', user.id); } catch (e) { /* ignore */ }
-    }
-  }, [user, activate]);
-
-  const setUnits = useCallback(async (newUnits) => {
-    if (!UNIT_SYSTEMS.includes(newUnits)) return;
-    setUnitsState(newUnits);
-    try { localStorage.setItem(UNITS_STORAGE_KEY, newUnits); } catch (e) { /* ignore */ }
-    // Persist on user if signed in
-    if (user) {
-      try { await supabase.from('users').update({ unit_system: newUnits }).eq('id', user.id); } catch (e) { /* ignore */ }
-    }
-  }, [user]);
+  // setLang/setUnits объявлены НИЖЕ, после `t`: их обработчик провала edge-записи
+  // зовёт errorText(t, code) для тоста, а `t` — const, объявленный дальше по телу
+  // (в его dep-массиве до объявления был бы TDZ).
 
   // Conditional resolution:
   //  - In-context editing session (only you, locally): route through Tolgee so the
@@ -183,6 +191,32 @@ export function I18nProvider({ children }) {
     }
     return str;
   }, [lang]);
+
+  // Обе настройки ОПТИМИСТИЧНЫ: экран и localStorage меняются мгновенно, edge-
+  // запись профиля не блокирует UI. Запись идёт единой дверью (шов
+  // account/profile), не прямым REST в users; общий хвост — здесь. Провал edge-
+  // записи обрабатывается ЧЕСТНО — тост через errorText, а не `catch{/*ignore*/}`
+  // (контракт ошибок TRIP-400). Аноним (нет user) — только локально, без двери.
+  const persistProfile = useCallback(async (patch) => {
+    if (!user) return;
+    const { error, code } = await invokeFn('account/profile', { body: patch });
+    if (error || code) toast({ description: errorText(t, code), variant: 'destructive' });
+  }, [user, t]);
+
+  const setLang = useCallback(async (newLang) => {
+    if (!hasLang(newLang)) return;
+    await activate(newLang);
+    setLangState(newLang);
+    try { localStorage.setItem(STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
+    await persistProfile({ language: newLang });
+  }, [activate, persistProfile]);
+
+  const setUnits = useCallback(async (newUnits) => {
+    if (!UNIT_SYSTEMS.includes(newUnits)) return;
+    setUnitsState(newUnits);
+    try { localStorage.setItem(UNITS_STORAGE_KEY, newUnits); } catch (e) { /* ignore */ }
+    await persistProfile({ unit_system: newUnits });
+  }, [persistProfile]);
 
   const value = useMemo(() => ({
     lang,

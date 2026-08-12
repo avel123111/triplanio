@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ChevronDown,
-  Search, RotateCcw, Minus, Plus, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
+  Search, RotateCcw, Hotel, AlertTriangle, SlidersHorizontal, CloudOff, X,
 } from 'lucide-react';
-import { Input, InputGroup } from '@/design/index';
+import { Btn, Input, InputGroup, Stepper } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
@@ -35,13 +35,14 @@ const CLIENT_PAGE_SIZE = 20;
 // Sort cycle over the pool (labels via fork.f_sort_*): pool order / price ↑ / guest score ↓.
 const SORT_ORDER = ['recommended', 'price', 'rating'];
 
-function Stepper({ value, min, onChange, label }) {
+function GuestStepper({ value, min, onChange, label }) {
   return (
-    <div className="s22f-step">
-      <button type="button" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label={`${label} −`}><Minus size={15} /></button>
-      <span className="s22f-val">{value}</span>
-      <button type="button" onClick={() => onChange(value + 1)} aria-label={`${label} +`}><Plus size={15} /></button>
-    </div>
+    <Stepper
+      variant="bare"
+      value={value}
+      onMinus={() => onChange(value - 1)} minusDisabled={value <= min} minusLabel={`${label} −`}
+      onPlus={() => onChange(value + 1)} plusLabel={`${label} +`}
+    />
   );
 }
 
@@ -218,15 +219,15 @@ export default function Stay22HotelList({
           <div className="grid grid--2 grid--g4">
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
-              <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
+              <GuestStepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
             </div>
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_children_t')}</span>
-              <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
+              <GuestStepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
             </div>
             <div className="s22f-gcard">
               <span className="s22f-gcard__l t-ui">{t('fork.f_rooms_t')}</span>
-              <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
+              <GuestStepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
             </div>
           </div>
         </div>
@@ -242,7 +243,7 @@ export default function Stay22HotelList({
           spark={<CloudOff size={13} />}
           title={t('fork.stay22_error_title')}
           body={t('fork.stay22_error_body')}
-          action={<button type="button" className="btn btn--soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.stay22_retry')}</button>}
+          action={<Btn variant="soft" onClick={() => refetch()}><RotateCcw size={15} />{t('fork.stay22_retry')}</Btn>}
           partner={brandPartner}
         />
       )}
@@ -254,7 +255,7 @@ export default function Stay22HotelList({
           spark={<X size={13} />}
           title={t('fork.stay22_no_match_title')}
           body={t('fork.stay22_no_match_body')}
-          action={<button type="button" className="btn btn--soft" onClick={resetAll}><RotateCcw size={15} />{t('fork.f_reset')}</button>}
+          action={<Btn variant="soft" onClick={resetAll}><RotateCcw size={15} />{t('fork.f_reset')}</Btn>}
           partner={brandPartner}
         />
       )}
@@ -292,14 +293,14 @@ export default function Stay22HotelList({
                   </span>
                 ) : null}
                 meta={(h.stars || h.ratingCount) ? (
-                  <div className="pcard__meta">
+                  <div className="row row--a-baseline pcard__meta">
                     {h.stars ? <span className="pcard__stars">{'★'.repeat(h.stars)}</span> : null}
-                    {h.ratingCount ? <span className="pcard__mtx">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
+                    {h.ratingCount ? <span className="trunc pcard__mtx">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
                   </div>
                 ) : null}
-                subline={h.address ? <div className="pcard__addr">{h.address}</div> : null}
+                subline={h.address ? <div className="trunc pcard__addr">{h.address}</div> : null}
                 price={h.price != null ? (
-                  <span className="pcard__price">
+                  <span className="row row--a-baseline pcard__price">
                     <b>{fmtMoney(h.price, h.currency || meta.currency)}</b>
                     {meta.nights ? <span>{t('fork.stay22_for_nights', { count: meta.nights })}</span> : null}
                   </span>
@@ -324,9 +325,9 @@ export default function Stay22HotelList({
 
       <style>{`
         .s22 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-count /
-           .s22-sort on the shared .row primitive), list chrome (.fork-*) and the
-           card (.pcard*) are all SHARED fork primitives — see app.css + forkList.jsx. */
+        /* Search + filter toolbar (.s22f-*), count+sort row (.s22-countrow with
+           .s22-count; sorting is a <Btn variant="link">), list chrome (.fork-*) and
+           the card (.pcard*) are all SHARED fork primitives — see app.css + forkList.jsx. */
       `}</style>
     </div>
   );

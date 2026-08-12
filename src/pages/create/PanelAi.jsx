@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Textarea } from '../../design/index';
+import { Btn, Chip, Textarea } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import { CityAnchorRow } from './anchors';
 
@@ -83,7 +83,7 @@ export default function PanelAi({ ctx }) {
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
               <div className="t-meta" style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
+                <div className="trunc te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
               </div>
               <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
             </div>
@@ -97,7 +97,7 @@ export default function PanelAi({ ctx }) {
       {aiState === 'prompt' && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
-            <button key={p} onClick={() => setPrompt(p)} className="t-meta" style={{ padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', cursor: 'pointer', color: 'var(--ink-2)' }}>{p}</button>
+            <Chip key={p} onClick={() => setPrompt(p)}>{p}</Chip>
           ))}
         </div>
       )}

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ArrowLeft, ChevronRight } from 'lucide-react';
+import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import { Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -94,6 +94,26 @@ const PARTNER_NAME = {
 /**
  * Two-column "Add manually OR pick a partner" dialog.
  * Replaces BookingChoiceDialog with a richer layout and per-type theming.
+ *
+ * ⚠️ АННОТАЦИЯ ОБЯЗАТЕЛЬНА (TRIP-388): без неё TS выводит тип из ДЕСТРУКТУРИЗАЦИИ
+ * и делает ОБЯЗАТЕЛЬНЫМ каждый проп без дефолта. Набор ЗАКРЫТЫЙ - остаток пропов
+ * никуда не уезжает.
+ *
+ * Каждый `?` проверен УСТРОЙСТВОМ КОДА, и ВСЕ ЧЕТЫРЕ узла вилки стоят в ОДНОМ
+ * `useMemo` под одним и тем же разбором по `type` - выделять из них один `visits`
+ * было бы описанием намерения, а не кода:
+ *   стоит под условием   visits `if (type === 'esim') …` · visit `'hotel'`/`'activity'`
+ *                        fromVisit/toVisit `if (type === 'transfer') …`
+ *                        stay22 `{type === 'hotel' && variant === 'panel' && stay22 && …}`
+ *   вызов под гардом     onManual `onManual?.()`
+ * И это не теория: сервисная вилка (`TripView:1168`) не передаёт `visit`/`fromVisit`/
+ * `toVisit`/`stay22`, а вкладка «Найти» (`AddBookingPanel:84`) - `onManual`
+ * (замерено прогоном с `// @ts-check` в обоих файлах: TS2739 и TS2741).
+ * `trip` оставлен обязательным - его передают все три вызывателя.
+ *
+ * @param {{ open: any, onOpenChange: any, type: any, visit?: any, fromVisit?: any,
+ *           toVisit?: any, visits?: any, trip: any, tripId: any, onManual?: any,
+ *           variant?: string, embedded?: boolean, stay22?: any }} p
  */
 export default function ForkPartnerModal({
   open,
@@ -269,9 +289,9 @@ export default function ForkPartnerModal({
 
   if (variant === 'panel') {
     return (
-      <div className="lp lp--wide" style={{ '--ev-soft': meta.colorSoft, '--ev-ink': meta.color }}>
+      <div className="lp lp--wide" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
         <div className="lp-h lp-h--ev">
-          <button className="lp-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft size={16} /></button>
+          <IconBtn icon="back" tone="soft" round onClick={() => onOpenChange(false)} title={t('fork.cancel')} ariaLabel={t('fork.cancel')} />
           <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon size={16} /></span>
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Card } from '@/design/index';
 import { Icon } from '@/design/icons';
 
 // Collapsible section (TRIP-176 event-form redesign). A header row — title +
@@ -10,7 +11,7 @@ import { Icon } from '@/design/icons';
 export default function Accordion({ title, subtitle, badge = 0, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className={'acc' + (open ? ' is-open' : '')}>
+    <Card radius="md" pad="none" className={'acc' + (open ? ' is-open' : '')}>
       <button type="button" className="acc__head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="acc__titles">
           <span className="acc__title t-ui">{title}</span>
@@ -20,6 +21,6 @@ export default function Accordion({ title, subtitle, badge = 0, defaultOpen = fa
         <span className="acc__chev"><Icon name="chev" size={15} /></span>
       </button>
       {open ? <div className="acc__body">{children}</div> : null}
-    </div>
+    </Card>
   );
 }

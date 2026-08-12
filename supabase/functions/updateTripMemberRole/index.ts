@@ -10,7 +10,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
-import { renderRoleChangedNotification } from '../_shared/emailTemplate.ts';
+import { emit } from '../_shared/emit.ts';
 
 Deno.serve(withHandler('updateTripMemberRole', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -40,32 +40,15 @@ Deno.serve(withHandler('updateTripMemberRole', async (req, corsHeaders) => {
     const roleChanged = member.role !== role;
     await supabaseAdmin.from('trip_members').update({ role }).eq('id', member_id);
 
-    // M4 — tell the affected member their role changed (in THEIR language).
-    // Only on an actual change and only for registered members. Best-effort.
+    // M4 — TRIP-356: announce the role change; n8n tells the affected member.
+    // Only on an actual change and only for registered members.
     if (roleChanged && member.user_id) {
-      try {
-        const [tripResult, memberUserResult] = await Promise.all([
-          supabaseAdmin.from('trips').select('title').eq('id', member.trip_id).single(),
-          supabaseAdmin.from('users').select('language').eq('id', member.user_id).limit(1),
-        ]);
-        const tripTitle = tripResult.data?.title ?? '';
-        const lang = memberUserResult.data?.[0]?.language ?? 'en';
-        const texts = renderRoleChangedNotification(lang, { role, title: tripTitle });
-        await supabaseAdmin.from('notifications').insert({
-          user_id: member.user_id,
-          type: 'trip_role_changed',
-          i18n_title_key: 'notif.tpl_role_changed_title',
-          i18n_message_key: role === 'admin' ? 'notif.tpl_role_changed_admin_msg' : 'notif.tpl_role_changed_viewer_msg',
-          i18n_params: { trip: tripTitle },
-          title: texts.title,
-          message: texts.message,
-          trip_id: member.trip_id,
-          read: false,
-          created_by: user.id,
-        });
-      } catch (e) {
-        console.error('updateTripMemberRole: role-change notification failed', e);
-      }
+      emit('role_changed', {
+        trip_id: member.trip_id,
+        recipient_id: member.user_id,
+        actor_id: user.id,
+        member_id: member.id,
+      });
     }
 
     return Response.json({ ok: true }, { headers: corsHeaders });

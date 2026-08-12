@@ -20,6 +20,7 @@
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
+import { emit } from '../_shared/emit.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { isFullyRefunded } from '../_shared/payments/refund.ts';
@@ -259,14 +260,8 @@ Deno.serve(async (req) => {
                 value: (session.amount_total || 0) / 100, currency: session.currency || 'usd',
                 transaction_id: session.id,
               });
-              try {
-                await supabaseAdmin.from('notifications').insert({
-                  user_id, type: 'system',
-                  i18n_title_key: 'notif.tpl_pro_activated_title', i18n_message_key: 'notif.tpl_pro_activated_msg',
-                  i18n_params: {}, title: 'Pro subscription activated',
-                  message: 'Your payment was successful. Thank you!', action_url: '/settings', read: false,
-                });
-              } catch (e) { console.error('Pro-activated notification failed (non-fatal):', (e as Error).message); }
+              // TRIP-356: announce the event; n8n resolves text and delivers the notification.
+              emit('pro_activated', { recipient_id: user_id });
             }
           }
         }
@@ -334,15 +329,8 @@ Deno.serve(async (req) => {
             providerMeta: nextAttemptIso ? { mode: 'set', nextPaymentAttempt: nextAttemptIso } : { mode: 'leave' },
           }), { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
-        try {
-          await supabaseAdmin.from('notifications').insert({
-            user_id: resolved.userId, type: 'system',
-            i18n_title_key: 'notif.tpl_pro_payment_failed_title', i18n_message_key: 'notif.tpl_pro_payment_failed_msg',
-            i18n_params: {}, title: 'Pro payment failed',
-            message: 'We couldn\'t charge your subscription. Update your payment method to keep Pro.',
-            action_url: '/settings', read: false,
-          });
-        } catch (e) { console.error('dunning notification failed (non-fatal):', (e as Error).message); }
+        // TRIP-356: announce the event; n8n resolves text and delivers the notification.
+        emit('pro_payment_failed', { recipient_id: resolved.userId });
         break;
       }
 

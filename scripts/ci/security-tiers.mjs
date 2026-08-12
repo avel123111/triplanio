@@ -32,6 +32,16 @@ export const TIERS = {
 };
 
 // anonDml/authDml/anonSelect/authSelect = ЦЕЛЕВЫЕ привилегии роли на таблице.
+//
+// authDml (bool) — есть ли у authenticated ХОТЬ КАКОЙ-ТО прямой DML (ось ярус-
+// инварианта I3b: разрешён только на A/C). Опциональные authInsert/authUpdate/
+// authDelete (bool) УТОЧНЯЮТ, какой именно op открыт — для случая ЧАСТИЧНОГО
+// закрытия двери (напр. UPDATE/DELETE сняты, INSERT ещё нужен регистрации).
+// Когда per-op поле задано, LIVE-2e сверяет ровно его ЭФФЕКТИВНОЕ право
+// (has_any_column_privilege/has_table_privilege) в ОБЕ стороны (снят → обязан
+// быть снят, оставлен → обязан быть); где per-op не задан — падает на authDml
+// (все 40 прочих таблиц не трогаем). Инвариант: authDml === OR(per-op), иначе
+// манифест сам себе противоречит.
 export const TABLES = {
   // ── Ярус A — контент трипа (Ф1 / TRIP-124 привёл к цели) ────────────────────
   activities:        { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
@@ -39,13 +49,21 @@ export const TABLES = {
   transfers:         { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   city_visits:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   trip_services:     { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  trip_budgets:      { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  budget_categories: { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  budget_expenses:   { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   // роль поверх private-модели TRIP-118: can_edit_trip AND (visibility='shared' OR created_by=self)
-  trip_documents:    { tier: 'A', write: 'can_edit_trip+visibility', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
+  trip_documents:    { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'единый шов записи trip-document + _shared/mutate.ts; удаление построчно (private⇒автор) через guardRow; чтение — getTripDetails под service_role (visibility=shared OR created_by=self, TRIP-118); во фронте ноль .from(trip_documents); гранты authenticated DML/SELECT и anon SELECT сняты, 4 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
 
   // ── Ярус B — авторитетное ───────────────────────────────────────────────────
+  // Бюджет (TRIP-394 Ф2, шаг C) — ПЕРВЫЙ контент-домен, переведённый на единый шов
+  // записи `_shared/mutate.ts`. Пишет только service_role (шов + триггеры авто-трат
+  // и сброса fx); клиентского DML/SELECT нет — читает `getTripDetails` под
+  // service_role, во фронте ноль `.from('budget_*')`. Не ярус A: тот ТРЕБУЕТ
+  // authDml=true и роль-осведомлённую write-политику (I2), а здесь клиент не пишет
+  // вовсе. Гранты authenticated (INSERT/UPDATE/DELETE/SELECT) и остаточный SELECT у
+  // anon сняты; 12 RLS-политик удалены ПОСЛЕ revoke; RLS остаётся включённой
+  // (deny-all без политик), service_role обходит. LIVE-2e сверит, что DML снят.
+  trip_budgets:      { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
+  budget_categories: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
+  budget_expenses:   { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   product:           { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   provider_price:    { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   webhook_event:     { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
@@ -83,8 +101,16 @@ export const TABLES = {
   chat_messages:     { tier: 'B', write: 'send_chat_message (secdef RPC)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop insert/update/delete политик; запись только через RPC' },
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
-  users:              { tier: 'C', write: 'self (id=auth.uid())',      anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (колонки энтайтлмента уже отозваны — TRIP-62/платёжка)' },
-  user_custom_visits: { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
+  users:              { tier: 'C', write: 'edge account/profile (service_role) + INSERT authenticated (регистрация, врем.)', anonDml: false, authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: закрыта дверь ПРАВКИ — REVOKE UPDATE (table+поколоночный) и DELETE у authenticated; правка профиля только через edge account/profile под service_role. INSERT+SELECT ПОКА остаются (снимет домен регистрации — там insert().select() профиля), поэтому ярус остаётся C и authDml=true (частичный клиентский DML). per-op authUpdate/authDelete=false — LIVE-2e сверяет, что сняты ПОШТУЧНО; anon без DML (Ф3)' },
+  // TRIP-402 шаг C: домен статистики закрыт — edge-only. Запись через шов
+  // user-place (service_role, scope user_id=actor), чтение статов через RPC
+  // get_user_travel_stats(p_actor) под service_role (EXECUTE у authenticated снят
+  // в A+B). Клиент таблицу напрямую не пишет/не читает. Полный close в ОДИН заход
+  // (в отличие от users): REVOKE INSERT/UPDATE/DELETE/SELECT у authenticated +
+  // остаточный SELECT у anon; 4 RLS ucv_* удалены ПОСЛЕ revoke; RLS остаётся
+  // deny-all, service_role обходит. Не ярус C: клиент не пишет вовсе. LIVE-2e
+  // сверит, что DML+SELECT сняты (has_*_privilege).
+  user_custom_visits: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
   chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
   partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
@@ -129,7 +155,11 @@ export const FUNCTIONS = {
   authExec: [
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
-    'get_trip_owner_profiles', 'get_trip_participant_profiles', 'get_user_travel_stats',
+    'get_trip_owner_profiles',
+    // get_trip_participant_profiles убрана (TRIP-403 шаг C): DROP, поглощена
+    // get_my_trip_cards (edge getTrips, ярус B) — клиентского вызывателя нет.
+    // get_user_travel_stats убран (TRIP-402): EXECUTE у authenticated отозван,
+    // теперь service_role-only, зовётся edge getTravelStats под service_role.
     // TRIP-296: единственный путь записи в чат. Авторизация в теле —
     // is_trip_participant(trip_id) + автор из auth.uid() (IF4 её видит).
     'send_chat_message',
@@ -224,12 +254,25 @@ export const DECISIONS = [
 //     participant — viewer ПРОХОДИТ (чтение, чат, шеринг, копия к себе)
 //     editor      — меняет план трипа: контент, настройки, участники, каналы
 //   ОБЪЯВИТЕЛЬНЫЕ — страж НЕ проверяет, но требует объявить:
-//     owner   — `trips.created_by === caller`, проверка руками на месте
-//     self    — своя строка / свой аккаунт (`user.id`), трипа не касается
-//     auth    — любой залогиненный, трип не при чём (справочники, прайсы)
-//     token   — владение секретом в запросе (share_token, invite-токен, подпись)
-//     n8n     — Bearer N8N_SECRET, вызов сервер-сервер
-//     public  — без аутентификации вовсе (по замыслу, держится rate-limit)
+//     owner    — `trips.created_by === caller`, проверка руками на месте
+//     self     — своя строка / свой аккаунт (`user.id`), трипа не касается
+//     auth     — любой залогиненный, трип не при чём (справочники, прайсы)
+//     token    — владение секретом в запросе (share_token, invite-токен, подпись)
+//     n8n      — Bearer N8N_SECRET, вызов сервер-сервер
+//     public   — без аутентификации вовсе (по замыслу, держится rate-limit)
+//
+// ★ SEAM-ДВЕРЬ (TRIP-394) — ОТДЕЛЬНАЯ ФОРМА, значение = МАССИВ гейтов, напр.
+//   `['editor', 'pro']`. Такова дверь, чей `index.ts` просто зовёт
+//   `mutate({ slug })`: сам гейт (`isCallerEditor` + `is_trip_pro`) живёт в шве
+//   `_shared/mutate.ts` (`checkRequirement`), а право по действиям — в
+//   спецификации ресурса `_shared/resources/<slug>.ts` (поле `requires`). Страж
+//   грепает ТОЛЬКО `index.ts`, поэтому ступень там невидима ему по построению.
+//   НО значение здесь НЕ объявительное: `check-security-tiers` МАШИННО сверяет
+//   этот массив с `requires` спецификации (все действия обязаны требовать одно
+//   и то же множество, и оно обязано совпасть с массивом). Токены массива — из
+//   словаря `SEAM_GATE_TOKENS`, который сам выведен из `checkRequirement` шва
+//   (spec не может потребовать гейт, которого шов не реализует). Расхождение
+//   манифест↔спецификация↔шов = красный.
 //
 // ★ ЧТО СТРАЖ НЕ ЛОВИТ (граница инструмента, выписана намеренно — у соседних
 // инвариантов IF4 и предикатов бакета она есть, а у дверей не было). Прогон
@@ -253,6 +296,16 @@ export const STEP_VALUES = new Set(['participant', 'editor']);
 /** Весь словарь: проверяемые ступени + объявительные. Вложенность задана
  *  построением — второй рукописный список ступеней разъехался бы с первым. */
 export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 'token', 'n8n', 'public']);
+
+/**
+ * Токены, которые может нести seam-дверь (массив-значение) и `requires` действия
+ * спецификации ресурса. Это ровно то, что реализует `checkRequirement` в
+ * `_shared/mutate.ts` — держим списком здесь, а тест сверяет его с ЖИВЫМ телом
+ * шва (`parseGateTokensFromSeam`), чтобы spec не мог потребовать гейт, которого
+ * шов не знает. `participant` в шве пока не реализован — появится там, появится
+ * и тут (иначе тест сверки покраснеет).
+ */
+export const SEAM_GATE_TOKENS = new Set(['editor', 'self', 'pro']);
 
 export const DOORS = {
   // ── participant: viewer проходит осознанно ──
@@ -279,6 +332,12 @@ export const DOORS = {
   telegramStartLink:     'editor',
   telegramWebhook:       'editor',      // шов ЗАПИСИ привязки, перепроверяет при редиме
 
+  // ── seam-двери: гейт в шве _shared/mutate.ts, сверяется с requires спецификации (TRIP-394) ──
+  trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
+  trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
+  account:               ['self'],            // profile: своя строка users (scope id=actor), Pro нигде (TRIP-400)
+  user_place:            ['self'],            // place + place/delete: свой user_custom_visits (scope user_id=actor), Pro нигде (TRIP-402)
+
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип
   createStripeCheckout:  'owner',       // pro_trip покупает только владелец
@@ -287,6 +346,9 @@ export const DOORS = {
   createBillingPortal:   'self',
   deleteMyAccount:       'self',
   getActiveTrips:        'self',
+  getMe:                 'self',        // читает свою строку users по актору из JWT (TRIP-400)
+  getTravelStats:        'self',        // общий ридер статов (статистика+главная) по актору из JWT (TRIP-402, ярус A)
+  getTrips:              'self',        // композит карточек главной по актору из JWT (TRIP-403, ярус B)
   getUserPlan:           'self',
   respondTripInvite:     'self',        // приглашение адресовано вызывающему
   telegramGetMyIntegrations: 'self',

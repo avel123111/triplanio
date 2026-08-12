@@ -22,42 +22,15 @@
 
 .tcp__swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
-/* gradient swatch — was: relative w-10 h-10 rounded-full transition-transform (+ hover:scale-105) */
-.tcp__sw {
-  position: relative;
-  width: 40px; height: 40px;
-  border: 0; padding: 0;
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  transition: transform .15s var(--ease-out);
-}
-.tcp__sw:hover { transform: scale(1.05); }
-/* active — was: ring-2 ring-white ring-offset-2 ring-offset-background scale-110 */
-.tcp__sw.is-active {
-  transform: scale(1.1);
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #fff;
-}
-/* was: absolute inset-0 m-auto w-4 h-4 text-white drop-shadow */
-.tcp__check {
-  position: absolute; inset: 0; margin: auto;
-  color: #fff;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
-}
+/* Плитка градиента — примитив <Swatch variant="round"> (канон `.swatch`).
+   Прежний `.tcp__sw` держал свой размер (40px), свой ховер (scale) и галочку
+   выбора `.tcp__check`; выбор теперь виден рамкой примитива (TRIP-344). */
 
-/* upload button — was: inline-flex items-center gap-1.5 px-3 py-2 rounded-md border
-   bg-background hover:bg-secondary text-sm disabled:opacity-50 */
-.tcp__upload {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--ink);
-  cursor: pointer;
-  transition: background .15s var(--ease-out);
-}
-.tcp__upload:hover { background: var(--surface-2); }
-.tcp__upload:disabled { opacity: .5; cursor: default; }
+/* `.tcp__upload` удалён: кнопка загрузки обложки — это `<Btn variant="secondary"
+   icon="upload" loading>`. Класс повторял тон secondary своими руками и при этом
+   расходился с ним ДВАЖДЫ: брал радиус со ступени ПОВЕРХНОСТИ (--r-md 16px)
+   вместо ступени контрола (--r-btn 10px) и держал собственную высоту паддингом
+   вместо общего `--ctl-h`. Спиннер и гашение отдаёт проп `loading`. */
 
 .tcp__file { display: none; }                                            /* was hidden */
 

@@ -21,6 +21,11 @@ export const TRIP_CONTENT_KEY = (tripId) => ['trip-content', tripId];
 // and the budget widget stayed blank until a reload). Import, never inline.
 export const TRIP_SHELL_INCLUDE = ['shell'];
 export const TRIP_CONTENT_INCLUDE = ['content', 'budget'];
+// DocsLens fetches only the documents group through the read door (TRIP-399, §6:
+// getTripDetails already applies the shared/private filter). Own cache key
+// (DOCS_KEY), so it does NOT share the trip shell/content entry — but the payload
+// shape stays declared here, never a bare `include: [...]` literal at the screen.
+export const TRIP_DOCUMENTS_INCLUDE = ['documents'];
 
 /**
  * Single source of truth for "did this write actually land?".

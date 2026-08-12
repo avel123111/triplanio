@@ -181,7 +181,12 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   const holeStyle = slot
     ? { left: pct(slot.x, cardW), top: pct(slot.y, cardH), width: pct(slot.w, cardW), height: pct(slot.h, cardH) }
     : { inset: 0 };
-  const btnStyle = { background: 'var(--surface)', boxShadow: 'var(--shadow-1, 0 1px 4px rgba(0,0,0,.2))' };
+  // Фон задаём через КАНАЛ примитива `--bg`, а не инлайновым `background`: канон
+  // «нажато» (`.btn[aria-pressed]`) красит `background` напрямую и перебивает
+  // `var(--bg)`, а инлайновый `background` перебил бы САМ канон (Г22, ревью Codex)
+  // — тогда нажатое состояние карты-тогглов не встаёт. Тень — для читаемости
+  // кнопки поверх карты, к состоянию отношения не имеет.
+  const btnStyle = { '--bg': 'var(--surface)', boxShadow: 'var(--shadow-1, 0 1px 4px rgba(0,0,0,.2))' };
   // The frame SVG comes from the edge function as markup; render it inline (so it
   // uses the app's loaded fonts) and stretch it to fill the box. Its transparent
   // blob hole reveals the live map behind. pointer-events:none lets gestures pass.
@@ -209,8 +214,8 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       )}
       {frameSvg && (
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Btn variant="ghost" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
-          <Btn variant="ghost" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />
+          <Btn variant="secondary" icon={scheme === 'DARK' ? 'sun' : 'moon'} ariaLabel={t('share.map_theme')} ariaPressed={scheme === 'LIGHT'} onClick={toggleTheme} style={btnStyle} />
+          <Btn variant="secondary" icon={projection === 'globe' ? 'map' : 'globe'} ariaLabel={t('share.map_projection')} ariaPressed={projection === 'globe'} onClick={toggleProjection} style={btnStyle} />
         </div>
       )}
     </div>
