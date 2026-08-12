@@ -1698,8 +1698,29 @@ button.app-side__item:hover { background: var(--wash); }
 /* 24 - контент-карточка (тариф Pro, пустой маршрут, pro-плашка). Проводка пропа
    `radius="card"` к СУЩЕСТВУЮЩЕМУ токену --r-card (TRIP-337 объект 2 дозжиг скина
    до layout-only): радиус уходит с приватного класса на канон, значение то же 24. */
-/* floor-exempt: classes +1 — .card--r-card, канон-вариант радиуса карточки на существующем токене --r-card (24), апрув Pavel вариант A */
+/* floor-exempt: classes +2 — +3 канон-варианта Card (.card--r-card радиус, .card--featured рекомендованный тариф, .card--raised приподнятая) на существующих токенах, минус смерть приватного .plan-card--featured (−1) = нетто +2; апрув Pavel */
 .card--r-card { border-radius: var(--r-card); }
+/* Рекомендованный тариф (проп `featured`, TRIP-337 объект 2): --pro-градиент как
+   РАМКА поверх surface-заливки (gradient-border трюк) + мягкое свечение --pro.
+   Токен --pro существует; вид тот же, что нёс приватный `.plan-card--featured`. */
+.card--featured {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--pro-gradient) border-box;
+  box-shadow: 0 26px 54px -32px var(--pro);
+}
+/* Приподнятая карточка (проп `raised`, TRIP-337 объект 2): статическая тень --sh-1,
+   на ховере усиление до --sh-2 (превью карты обзора). База `.card` тени не даёт.
+   Дожиг split-скина 4→0 — radius/тень с приватных классов на пропы, значение то же:
+   visual-diff-move: .choice-card -> card--r-card
+   visual-diff-move: .records -> card--r-card
+   visual-diff-exempt: .ov-mapcard box-shadow — на .card--raised (--sh-1), значение то же
+   visual-diff-exempt: .ov-mapcard:hover box-shadow — hover-тень уехала на .card--raised:hover (--sh-2), канон media-gated
+   visual-diff-exempt: .card--raised box-shadow — новый канон-вариант raised (--sh-1), первый вызыватель ov-mapcard
+   visual-diff-exempt: .card--raised:hover {@media (hover: hover) and (pointer: fine)} box-shadow — новый канон-вариант raised: ховер-усиление --sh-2 (media-gated как .card--interactive) */
+.card--raised { box-shadow: var(--sh-1); }
+@media (hover: hover) and (pointer: fine) { .card--raised:hover { box-shadow: var(--sh-2); } }
 /* TRIP-337 объект 2 дожиг: радиус (и тень eroute) ушли с приватных карточек на
    пропы <Card radius/raised> — класс стал layout-only. Перенос объявлен в блоке
    visual-diff-move у ко-селектора выше (`.X -> card card--r-Y`, eroute тень снята),
@@ -3057,7 +3078,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .choice-card border-radius — 24 (--r-card) восстановлен по документу Pavel (был сведён на lg 20 в PR-4) — объект 2 */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
-  cursor: pointer; text-align: left; border-radius: var(--r-card);
+  cursor: pointer; text-align: left;
 }
 /* Тон плитки - канал --hl* с дефолтом из :root, поэтому «ручной» вариант
    отдельным классом больше не описан: он ЗАПИСЫВАЛ дефолт (04 PR3). Своё имя
@@ -4746,8 +4767,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    (высота, не клип). `padding:0` снят как дубль `.card--flush` — итог тот же
    (каскад отдаёт padding:0 из flush), поэтому 2p его не видит.
    visual-diff-exempt: .ov-mapcard overflow — клип возвращён канону .card--flush (overflow:hidden); было visible → углы карты квадратные — объект 2, канал 4 */
-.ov-mapcard { box-shadow: var(--sh-1); }
-.ov-mapcard:hover { box-shadow: var(--sh-2); }
 .ov-mapcard .wdg-h { padding: 15px 18px 11px; }
 /* ★TRIP-344: подпрыгивание снято и ЗДЕСЬ. Этот класс висит на `<Btn>` (карточка
    маршрута в Обзоре), и после снятия анимации у примитива он остался бы
@@ -5861,15 +5880,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* Featured (Yearly) = the PRO plan → bound to the --pro accent (not --brand):
    a --pro-gradient BORDER over a surface fill (gradient-border trick), matching
    the design's pro-gradient wrapper. */
-.plan-card--featured {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    var(--pro-gradient) border-box;
-  box-shadow: 0 26px 54px -32px var(--pro);
-}
+/* .plan-card--featured УДАЛЁН (TRIP-337 объект 2): облик «рекомендованный тариф»
+   уехал на канон-вариант <Card featured> (.card--featured выше), приватный класс
+   умер. Скин тот же (--pro-градиент-рамка + свечение --pro).
+   visual-diff-move: .plan-card--featured -> card--featured
+   visual-diff-move: .plan-card--featured .plan-feature__check -> card--featured .plan-feature__check */
 /* Featured feature ticks use the --pro accent, not --brand. */
-.plan-card--featured .plan-feature__check { background: var(--pro); }
+.card--featured .plan-feature__check { background: var(--pro); }
 
 /* Save badge — SOLID --pro pill overlapping the top edge of the featured card.
    The 4px --bg ring cuts it cleanly out of the card's --pro-gradient border. */
@@ -6948,7 +6965,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    ПОЗЖЕ `.card--r-lg` и перекрывает ось lg(20) на этом объекте. Источник истины —
    документ, а не «апрув по скрину».
    visual-diff-exempt: .records border-radius — 24 (--r-card) восстановлен по документу Pavel (был сведён на lg 20 в PR-4) — объект 2 */
-.records { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: var(--r-card); }
+.records { display: grid; grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 1040px) { .records { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .records { grid-template-columns: 1fr; } }
 .rec { padding: 20px 22px; display: flex; flex-direction: column; gap: 11px; border-left: 1px solid var(--line); }
@@ -7216,9 +7233,11 @@ a.doc-row__n:hover{ color: var(--brand); }
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
   gap: 6px; padding: 26px 20px 22px; overflow: hidden; isolation: isolate;
   background: radial-gradient(120% 92% at 50% -12%, var(--hl-soft), transparent 62%), var(--surface);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--sh-1);
 }
-[data-theme="dark"] .fork-state { box-shadow: inset 0 1px 0 rgba(255,255,255,.04), var(--sh-1); }
+/* .fork-state box-shadow уехал на проп <Card raised> (--sh-1, TRIP-337 объект 2):
+   стеклянный inset-highlight (inset 0 1px 0) снят — плоская тень как у прочих
+   приподнятых карточек (флет-направление Pavel). Тёмная тень-строка удалена вместе.
+   visual-diff-exempt: .fork-state box-shadow — на .card--raised (--sh-1); стеклянный inset снят (минимальное упрощение, флет-направление) */
 .fork-state::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, transparent, var(--hl), transparent); opacity: .6; }
 .fork-state--err     { --hl: var(--danger);  --hl-soft: var(--danger-soft);  --hl-ink: var(--danger-ink); }
 .fork-state--nomatch { --hl: var(--warning); --hl-soft: var(--warning-soft); --hl-ink: var(--warning-ink); }

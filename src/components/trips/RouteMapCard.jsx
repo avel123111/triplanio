@@ -18,7 +18,7 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
   const hasRoute = (visits || []).some((v) => v?.latitude && v?.longitude);
 
   return (
-    <Card radius="lg" pad="none" className="ov-mapcard">
+    <Card radius="lg" pad="none" raised className="ov-mapcard">
       <div className="wdg-h">
         <span className="wi"><Icon name="map" size={17} /></span>
         <h4>{t('overview.map_title')}</h4>

@@ -64,7 +64,7 @@ function StatsScreenSkeleton() {
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={180} h={22} r={6} /></div>
       <Skeleton w="100%" h={240} r={'var(--r-card)'} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={140} h={22} r={6} /></div>
-      <Card radius="lg" pad="none" className="records">
+      <Card radius="card" pad="none" className="records">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={'var(--r-xl)'} />)}
       </Card>
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={160} h={22} r={6} /></div>

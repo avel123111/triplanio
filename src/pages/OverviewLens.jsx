@@ -46,7 +46,7 @@ export default function OverviewLens({
       <div className="ovwrap" aria-busy="true">
         <div className="ov-col">
           {/* map card */}
-          <Card radius="lg" pad="none" className="ov-mapcard">
+          <Card radius="lg" pad="none" raised className="ov-mapcard">
             <div className="wdg-h">{dot}{bar('38%', 16, 6)}</div>
             <div className="ov-bar" style={{ height: 280, borderRadius: 0 }} />
           </Card>

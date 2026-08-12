@@ -244,8 +244,9 @@ export default function Pro() {
             : cards.map((c) => (
                 <Card
                   radius="card"
+                  featured={c.featured}
                   key={c.key}
-                  className={`plan-card${c.featured ? ' plan-card--featured' : ''}`}
+                  className="plan-card"
                 >
                   {c.featured && c.save != null && (
                     <div className="plan-popular-badge">{t('sub.save_pct', { pct: c.save })}</div>
