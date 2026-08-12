@@ -846,10 +846,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           <Btn> non-owner CTA — so it looks identical to the right-menu plate,
           just horizontal. */}
       <Card>
+        {/* TRIP-343 объект 2 (F): скин brand-плашки апгрейда несёт примитив Card тоном brand (прежде сырая плашка без поверхности); класс pro-up остаётся раскладкой. */}
         {proResolved && !hasPro && (
-          /* TRIP-343 объект 2 (F): скин brand-плашки апгрейда живёт на
-             <Card tone="brand">; была сырым <div className="pro-up"> → без
-             поверхности. `.pro-up` остаётся раскладкой (padding). */
           <Card tone="brand" radius="md" className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
             <Badge variant="pro" icon="pro">PRO</Badge>
             <div className="pu-body">
