@@ -44,13 +44,18 @@ export const TIERS = {
 // манифест сам себе противоречит.
 export const TABLES = {
   // ── Ярус A — контент трипа (Ф1 / TRIP-124 привёл к цели) ────────────────────
-  activities:        { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  hotel_stays:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  transfers:         { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   city_visits:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  trip_services:     { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   // роль поверх private-модели TRIP-118: can_edit_trip AND (visibility='shared' OR created_by=self)
   trip_documents:    { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'единый шов записи trip-document + _shared/mutate.ts; удаление построчно (private⇒автор) через guardRow; чтение — getTripDetails под service_role (visibility=shared OR created_by=self, TRIP-118); во фронте ноль .from(trip_documents); гранты authenticated DML/SELECT и anon SELECT сняты, 4 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
+  // 4 booking-таблицы (TRIP-405 шаг C): единый шов записи trip-booking + _shared/mutate.ts;
+  // роль-гейт editor в TS (зеркало _can_edit_trip), layover через op:'rpc'; чтение —
+  // getTripDetails под service_role, во фронте ноль .from(<таблица>)/прямых SELECT; гранты
+  // authenticated DML+SELECT и anon SELECT сняты, 16 RLS-политик удалены ПОСЛЕ revoke, RLS
+  // остаётся deny-all. Триггеры notify/sync_budget/recompute (SECURITY DEFINER) не тронуты.
+  activities:        { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
+  hotel_stays:       { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
+  transfers:         { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
+  trip_services:     { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
 
   // ── Ярус B — авторитетное ───────────────────────────────────────────────────
   // Бюджет (TRIP-394 Ф2, шаг C) — ПЕРВЫЙ контент-домен, переведённый на единый шов
