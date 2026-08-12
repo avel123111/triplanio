@@ -4,7 +4,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Dialog, Btn, Field, useToast } from '@/design/index';
+import { Dialog, Btn, Card, Field, useToast } from '@/design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import CitySearch from '@/components/cities/CitySearch';
@@ -141,11 +141,13 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
              `required` стоял только на одной ветке, и звёздочка на одном и том же
              поле то появлялась, то исчезала (TRIP-333). */
           <Field label={t('stats.field_city')} required>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-btn)', background: 'var(--surface)' }}>
+            {/* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card;
+                усиленная рамка (--line-strong) остаётся остаточным тинтом инлайном. */}
+            <Card radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderColor: 'var(--line-strong)' }}>
               <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
               <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
               <Btn variant="link" onClick={() => setPicking(true)}>{t('stats.change_city')}</Btn>
-            </div>
+            </Card>
           </Field>
         )}
 

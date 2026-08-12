@@ -1037,13 +1037,20 @@ export default function EditLens({ tripId, shell, content }) {
           </div>
 
           {draggingId != null && ordered[ordered.length - 1]?.kind !== 'end' && (
+            /* TRIP-343 объект 2 (H): НЕ карточка — drop-плейсхолдер DnD (add-аффорданс).
+               Не surface-инлайн (фона нет). Рамка динамически подсвечивается brand при
+               наведении перетаскивания (overGap) — это состояние dragover по ДАННЫМ, а у
+               .card--add канона dragover нет (решение D «только существующий канон»),
+               поэтому остаётся инлайном. */
             <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 'var(--r-sm)', border: '1px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
           {outOfPlanTransfers.length > 0 && (
-            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 'var(--r-sm)', background: 'var(--wash)', border: '1px solid var(--line)' }}>
+            /* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash+рамка+радиус)
+               снята с инлайна на <Card recessed>; остался раскладочный инлайн. */
+            <Card recessed radius="md" pad="none" style={{ marginTop: 14, padding: '11px 13px' }}>
               <div className="eyebrow" style={{ marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {t('tse.transfers_out_of_plan')}
               </div>
@@ -1054,7 +1061,7 @@ export default function EditLens({ tripId, shell, content }) {
                   </Chip>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
           </div>{/* /ts-leftscroll */}
           </>)}
@@ -1106,9 +1113,11 @@ export default function EditLens({ tripId, shell, content }) {
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
           <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
             {showWarn && issues.length > 0 && (
-              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', boxShadow: 'var(--sh-3)', padding: 8 }}>
+              /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
+                 снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
+              <Card radius="md" pad="none" className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', boxShadow: 'var(--sh-3)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
-              </div>
+              </Card>
             )}
             <IconBtn
               size="fab"
@@ -1323,6 +1332,9 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7 }}>
           {POINT_TYPES.map((pt) => {
             const dis = disabledFor(pt.id), active = type === pt.id;
+            /* TRIP-343 объект 2 (H): НЕ карточка — тайл-переключатель ТИПА точки
+               (объект 5, сегмент/пикер). Тон меняется по выбору (brand-soft/surface),
+               это контрол выбора, а не поверхность-карточка; остаётся инлайном с reason. */
             return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 'var(--r-sm)', cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
               <Icon name={pt.icon} size={17} /><span className="t-meta">{t(pt.labelKey)}</span>
             </button>;

@@ -186,7 +186,7 @@ const TripCard = ({ trip, onClick }) => {
   const bg = coverBg(trip);
 
   return (
-    <button className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
+    <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
       {/* background */}
       <div className="tc__bg" style={{ background: bg || undefined }}>
         {trip.cover_image_url && (
@@ -237,7 +237,7 @@ const TripCard = ({ trip, onClick }) => {
           </div>
         )}
       </div>
-    </button>
+    </Card>
   );
 };
 
@@ -375,14 +375,14 @@ function TripSkeleton({ viewMode }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+          <Card key={i} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px' }}>
             <Skeleton w={62} h={46} r={'var(--r-sm)'} />
             <div className="grow">
               <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
               <Skeleton w="32%" h={11} r={4} />
             </div>
             <Skeleton w={80} h={12} r={5} />
-          </div>
+          </Card>
         ))}
       </div>
     );

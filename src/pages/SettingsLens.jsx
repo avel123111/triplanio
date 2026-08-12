@@ -284,7 +284,9 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               divs that inherit it, while the numbered pills keep their own
               .t-meta (mono numerals) because an element's own rule beats
               inheritance. One class instead of two. */}
-          <Col className="t-meta t-sans" style={{ padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
+          {/* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash) снята с
+              инлайна на <Card recessed>; колоночная раскладка сохранена классом .col. */}
+          <Card recessed radius="md" pad="none" className="col t-meta t-sans" style={{ padding: 14 }}>
             <Row align="a-start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
@@ -293,7 +295,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               <span className="badge badge--count">2</span>
               <div>{t('settings.tg_step2')}</div>
             </Row>
-          </Col>
+          </Card>
 
           <Row gap="g4">
             <Btn variant="secondary" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
@@ -402,7 +404,8 @@ function TelegramSection({ tripId }) {
   return (
     <Col gap="g6">
       {accounts.map(a => (
-        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
+        /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
+        <Card key={a.id} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
           {/* inline-style-exempt: цвета бренда Telegram приходят из реестра tgBrand (данные) */}
           <div className="tile" style={TG_TILE}>
             <Icon name="telegram" size={17} />
@@ -413,7 +416,7 @@ function TelegramSection({ tripId }) {
           </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
           <Btn variant="quiet" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
-        </div>
+        </Card>
       ))}
       <Btn variant="secondary" icon="plus" onClick={openConnect}>
         {t('telegram.connect_another')}
@@ -843,8 +846,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           <Btn> non-owner CTA — so it looks identical to the right-menu plate,
           just horizontal. */}
       <Card>
+        {/* TRIP-343 объект 2 (F): скин brand-плашки апгрейда несёт примитив Card тоном brand (прежде сырая плашка без поверхности); класс pro-up остаётся раскладкой. */}
         {proResolved && !hasPro && (
-          <div className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
+          <Card tone="brand" radius="md" className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
             <Badge variant="pro" icon="pro">PRO</Badge>
             <div className="pu-body">
               <div className="pt">{t('trip_menu.free_trip_title')}</div>
@@ -855,7 +859,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             ) : (
               <Btn variant="secondary" icon="lock" onClick={() => openProUpsell({ mode: 'info', ownerName, onUpgrade: openUpgrade })}>{t('trip.pro_by_owner')}</Btn>
             )}
-          </div>
+          </Card>
         )}
         <div className="card-h">
           <Grow><h3>{t('settings.optional_features')}</h3></Grow>

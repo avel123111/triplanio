@@ -374,12 +374,13 @@ export const CARD_VARIANTS = [
  *   locked?: boolean, parsed?: boolean, danger?: boolean, href?: string, onClick?: any,
  *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,
  *   ariaControls?: string, ariaSelected?: boolean, ariaBusy?: boolean, title?: string,
+ *   target?: string, rel?: string, dataDragover?: boolean,
  *   children?: any, className?: string, style?: any }} p
  */
 export const Card = ({
   as = "div", radius, interactive, pad = "default", tone, variant,
   recessed, locked, parsed, danger, href, onClick, disabled, id, ariaLabel,
-  ariaExpanded, ariaControls, ariaSelected, ariaBusy, title,
+  ariaExpanded, ariaControls, ariaSelected, ariaBusy, title, target, rel, dataDragover,
   children, className = "", style,
 }) => {
   const mods = [
@@ -405,8 +406,9 @@ export const Card = ({
       aria-controls={ariaControls}
       aria-selected={ariaSelected}
       aria-busy={ariaBusy}
+      data-dragover={dataDragover ? "" : undefined}
       onClick={onClick}
-      {...(as === "a" ? { href } : null)}
+      {...(as === "a" ? { href, target, rel } : null)}
       {...(as === "button" ? { type: "button", disabled } : null)}
     >
       {children}
@@ -763,7 +765,11 @@ export function StreamEventRow({ e, onClick }) {
     return (
       <div className="tl3-ev tl3-ev--tr">
         <div className="time time--tr"><span>{e.time || "—"}</span><span>{arrive}</span></div>
-        <button className="tl3-card tl3-card--tr" onClick={onClick}>
+        {/* TRIP-343 объект 2 (F): ветка переезда — тот же <Card>, что и эвент.
+            Была сырым <button>, из-за чего скин (переехавший с `.tl3-card` на Card)
+            её не касался — карточка облезала до прозрачного текста. `.tl3-card--tr`
+            остаётся раскладкой коннектора (город→режим→город). */}
+        <Card as="button" radius="lg" interactive className="tl3-card tl3-card--tr" onClick={onClick}>
           <div className="rv-end">
             <b>{e.from || "—"}</b>
             {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
@@ -780,7 +786,7 @@ export function StreamEventRow({ e, onClick }) {
             {e.to_address && e.to_address !== e.to && <span>{e.to_address}</span>}
             <b>{e.to || "—"}</b>
           </div>
-        </button>
+        </Card>
       </div>
     );
   }

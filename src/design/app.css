@@ -3003,22 +3003,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Trip-creation choice card — ONE source, shared by the empty Trips screen and
    the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
 /* TRIP-343 объект 2: скин на `<Card as="button" radius="lg" interactive>`;
-   `.choice-card` — численный раскладочный остаток (padding 20 + flex → 08). РАДИУС
-   r-card 24 → lg 20 (как .records: −1 частный радиус вне канон-5, апрув Pavel).
-   Ховер сведён к канону (подсветка рамки --line-hover без движения): прежний лифт
-   + brand/ai-рамка сняты, включая `--ai:hover` — один язык ховера. `--on` (выбрана),
-   `--stack`, `--sm` остаются вариантами. Апрув облика /kit.
-   visual-diff-exempt: .choice-card background — скин переехал на .card
-   visual-diff-exempt: .choice-card border — скин переехал на .card
-   visual-diff-exempt: .choice-card border-radius — r-card 24 → lg 20 (−1 частный радиус, как .records)
-   visual-diff-exempt: .choice-card transition — interactive несёт свой (без transform)
-   visual-diff-exempt: .choice-card:hover box-shadow — лифт снят (был --sh-2, покой плоский)
-   visual-diff-exempt: .choice-card:hover border-color — brand-рамка → канон .card--interactive:hover (--line-hover)
-   visual-diff-exempt: .choice-card:active transform — нажатие без движения (канон)
-   visual-diff-exempt: .choice-card--ai:hover border-color — ai-рамка ховера снята (один язык ховера, канон) */
+   `.choice-card` — численный раскладочный остаток (padding 20 + flex) со СВОИМ
+   радиусом. РАДИУС 24 (`--r-card`) — то же именованное исключение шкалы, что у
+   `.records` (документ Pavel 20/16/10/24); стоит позже `.card--r-lg` и
+   перекрывает ось lg на объекте. Ховер — канон (подсветка рамки --line-hover без
+   движения). `--on` (выбрана), `--stack`, `--sm` остаются вариантами.
+   visual-diff-exempt: .choice-card border-radius — 24 (--r-card) восстановлен по документу Pavel (был сведён на lg 20 в PR-4) — объект 2 */
 .choice-card {
   display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
-  cursor: pointer; text-align: left;
+  cursor: pointer; text-align: left; border-radius: var(--r-card);
 }
 /* Тон плитки - канал --hl* с дефолтом из :root, поэтому «ручной» вариант
    отдельным классом больше не описан: он ЗАПИСЫВАЛ дефолт (04 PR3). Своё имя
@@ -3924,6 +3917,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   cursor: pointer; z-index: var(--z-dock);
   transition: transform .16s var(--ease-spring), box-shadow .2s;
 }
+/* TRIP-343 объект 2 — исключение по объекту: `.dock` НЕ карточка, это плавающая
+   ОБЁРТКА FAB/оверлея (fixed, z-dock). Лифт+сжатие — язык её объекта (кнопка
+   действия), не поверхности; удержан числом (translateY(-2px) scale(1.04) / .95). */
 .dock:hover { transform: translateY(-2px) scale(1.04); }
 .dock:active { transform: scale(.95); }
 .dock__count {
@@ -4392,9 +4388,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан приватным.
    visual-diff-move: bookrow -> row */
-.bookrow { gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
-.bookrow:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
-.bookrow:active { transform: translateY(0) scale(.99); }
+.bookrow { gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
+/* TRIP-343 объект 2: движение снято — `.bookrow` это карточка-строка (несёт
+   скин роли `.card`). Наведение = подсветка рамки + тень, без лифта/сжатия.
+   visual-diff-exempt: .bookrow transition — transform-переход снят вместе с лифтом — объект 2
+   visual-diff-exempt: .bookrow:hover transform — лифт снят, карточка без движения (канон) — объект 2
+   visual-diff-exempt: .bookrow:active transform — нажатие без движения (канон) — объект 2 */
+.bookrow:hover { box-shadow: var(--sh-2); border-color: var(--line-hover); }
 .bi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
 .bt { flex: 1; min-width: 0; }
 .bt b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -4693,10 +4693,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .ov-invite:active { transform: scale(.985); }
 
 /* ---- route-map card ---- */
-/* The card stays overflow:visible so its box-shadow isn't swallowed by the
-   GPU-composited Mapbox canvas; the canvas is isolated inside .ov-maparea, which
-   clips its OWN bottom corners to keep the rounded card. */
-.ov-mapcard { padding: 0; overflow: visible; box-shadow: var(--sh-1); }
+/* TRIP-343 объект 2 (канал 4 — клиппинг): клип принадлежит Card. `padding`/
+   `overflow` — приватные оверрайды `.card--flush` (`pad="none"` → `padding:0` +
+   `overflow:hidden`, :1637) — сняты; из-за `overflow:visible` углы карты были
+   квадратными (`.ov-maparea` скруглял только низ). Теперь скругление всех углов
+   несёт `.card--flush`, приватная копия клипа мертва. Тень остаётся приватной
+   (высота, не клип). `padding:0` снят как дубль `.card--flush` — итог тот же
+   (каскад отдаёт padding:0 из flush), поэтому 2p его не видит.
+   visual-diff-exempt: .ov-mapcard overflow — клип возвращён канону .card--flush (overflow:hidden); было visible → углы карты квадратные — объект 2, канал 4 */
+.ov-mapcard { box-shadow: var(--sh-1); }
 .ov-mapcard:hover { box-shadow: var(--sh-2); }
 .ov-mapcard .wdg-h { padding: 15px 18px 11px; }
 /* ★TRIP-344: подпрыгивание снято и ЗДЕСЬ. Этот класс висит на `<Btn>` (карточка
@@ -4706,7 +4711,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    молча возвращает язык, снятый у канона. За классом остаётся только его
    раскладочная роль — прижать кнопку к правому краю шапки виджета. */
 .ov-openbtn { margin-left: auto; }
-.ov-maparea { position: relative; height: 280px; background: var(--surface-2); overflow: hidden; border-radius: 0 0 var(--r-xl) var(--r-xl); }
+/* TRIP-343 объект 2: собственный клип области карты снят — все углы скругляет
+   несущий `.card--flush` (канал 4). Прежде область скругляла ТОЛЬКО низ
+   (`0 0 --r-xl --r-xl`) поверх `overflow:visible` карты → верхние углы квадратные.
+   visual-diff-exempt: .ov-maparea overflow — клип поднят на несущий .card--flush (overflow:hidden) — объект 2, канал 4
+   visual-diff-exempt: .ov-maparea border-radius — все углы скругляет .card--flush (был только низ 0 0 --r-xl --r-xl → квадратный верх) — объект 2, канал 4 */
+.ov-maparea { position: relative; height: 280px; background: var(--surface-2); }
 .ov-map-empty {
  position: absolute; inset: 0; display: flex; flex-direction: column;
  align-items: center; justify-content: center; gap: 8px;
@@ -5492,20 +5502,35 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 18px;
 }
+/* TRIP-343 объект 2 (G): постер трипа на `<Card as="button" pad="none" radius="lg">`.
+   Форма ПОСТЕР (контракт «.tc вне ролей, только радиус»): изображение до краёв,
+   из ролей взяты радиус (`.card--r-lg` 20) + клип (`.card--flush` overflow:hidden)
+   + рамка/фон роли `.card` (фон кроет обложка). `.tc` — раскладочный остаток +
+   rest-тень постера (--sh-1, высота, не роль). `.tc--band` (полоса-шапка) остаётся
+   СЫРЫМ <div> — это не карточка (известный не-Card вызыватель, потому `tc` не в
+   card-homed): у неё нет поверхности вовсе.
+   visual-diff-exempt: .tc background — было none, фон роли --surface на .card (обложка кроет) — объект 2
+   visual-diff-exempt: .tc border — рамка роли переехала на .card (тот же 1px --line) — объект 2
+   visual-diff-exempt: .tc border-radius — радиус постера переехал на .card--r-lg (тот же r-xl 20) — объект 2
+   visual-diff-exempt: .tc overflow — клип переехал на .card--flush (pad="none") — объект 2
+   visual-diff-exempt: .tc padding — переехал на .card--flush (pad="none") — объект 2 */
 .tc {
-  position: relative; display: block; border-radius: var(--r-xl);
-  overflow: hidden; cursor: pointer; text-align: left; font-family: inherit;
-  min-height: 256px; border: 1px solid var(--line); box-shadow: var(--sh-1);
-  transition: transform .22s var(--ease-spring), box-shadow .24s var(--ease-out);
-  background: none; padding: 0;
+  position: relative; display: block; cursor: pointer; text-align: left; font-family: inherit;
+  min-height: 256px; box-shadow: var(--sh-1);
+  transition: box-shadow .24s var(--ease-out);
 }
 /* Полоса-обложка: тот же постер внутри карточки, где он не карточка, а шапка
    (превью трипа в планировщике). Ни рамки, ни тени, ни подъёма при наведении -
    он не кликабелен. */
 .tc--band { min-height: 120px; border: 0; border-radius: 0; box-shadow: none; }
 .tc--band .tc__in { min-height: 120px; }
-@media (hover: hover) { .tc:not(.tc--band):hover { transform: translateY(-5px); box-shadow: var(--sh-3); } }
-.tc:active { transform: translateY(-2px) scale(.99); }
+/* TRIP-343 объект 2: движение снято — `.tc` это карточка (постер трипа), а канон
+   карточки = покой без движения. Наведение остаётся ПОДСВЕТКОЙ (тень --sh-1→--sh-3),
+   но без лифта/сжатия; `transition: transform` тоже снят (нечего анимировать).
+   visual-diff-exempt: .tc:hover:not(.tc--band) {@media (hover: hover)} transform — лифт снят, карточка без движения (канон) — объект 2
+   visual-diff-exempt: .tc transition — transform-переход снят вместе с лифтом (осталась только тень) — объект 2
+   visual-diff-exempt: .tc:active transform — нажатие без движения (канон) — объект 2 */
+@media (hover: hover) { .tc:not(.tc--band):hover { box-shadow: var(--sh-3); } }
 
 /* cover background */
 .tc__bg { position: absolute; inset: 0; z-index: 0; }
@@ -6468,6 +6493,10 @@ a.doc-row__n:hover{ color: var(--brand); }
 .s22mk--logo .s22mk__core { padding: 0; width: 26px; height: 26px; justify-content: center; }
 .s22mk__logo { width: 18px; height: 18px; border-radius: 5px; flex: none; object-fit: cover; display: block; }
 .s22mk__price { padding-right: 1px; }
+/* TRIP-343 объект 2 — исключение по объекту: `.s22mk` НЕ карточка, это МАРКЕР на
+   карте (плитка Mapbox). Подъём/масштаб маркера при наведении/выборе — язык его
+   объекта (карта поднимает активную точку), удержан числом (translateY -1px /
+   scale 1.04/1.06/1.1). Карточкам это движение снято, маркеру карты — оставлено. */
 @media (hover: hover) and (pointer: fine) {
   .s22mk:hover .s22mk__core { border-color: var(--brand); transform: translateY(-1px) scale(1.04); }
 }
@@ -6776,8 +6805,12 @@ a.doc-row__n:hover{ color: var(--brand); }
 .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; margin-top: 18px; }
 @media (max-width: 1040px) { .summary { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
-.sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s, transform .16s var(--ease-spring); }
-@media (hover: hover) { .sfig:hover { background: var(--surface); box-shadow: var(--sh-1); transform: translateY(-2px); } }
+.sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s; }
+/* TRIP-343 объект 2: движение снято — `.sfig` это карточка-плитка сводки. Наведение
+   = подсветка (фон + тень), без лифта.
+   visual-diff-exempt: .sfig transition — transform-переход снят вместе с лифтом — объект 2
+   visual-diff-exempt: .sfig:hover {@media (hover: hover)} transform — лифт снят, карточка без движения (канон) — объект 2 */
+@media (hover: hover) { .sfig:hover { background: var(--surface); box-shadow: var(--sh-1); } }
 .sfig .ic { width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
 .sfig .ic svg { width: 17px; height: 17px; }
 .sfig.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
@@ -6833,15 +6866,12 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* — records (4 across) — */
 /* TRIP-343 объект 2: скин на `<Card radius="lg" pad="none">`; `.records` остаётся
-   раскладочным остатком (grid 4col → 08). РАДИУС сведён r-card 24 → lg 20 (решение
-   Pavel: −1 частный радиус, апрув по скрину). Rest-тень --sh-1 снята (канон покой
-   плоский). Overflow → .card--flush. Статичная.
-   visual-diff-exempt: .records background — скин переехал на .card
-   visual-diff-exempt: .records border — скин переехал на .card
-   visual-diff-exempt: .records border-radius — r-card 24 → lg 20 (−1 частный радиус, апрув Pavel)
-   visual-diff-exempt: .records box-shadow — rest-тень --sh-1 снята (канон покой плоский)
-   visual-diff-exempt: .records overflow — переехал на .card--flush (pad="none") */
-.records { display: grid; grid-template-columns: repeat(4, 1fr); }
+   раскладочным остатком (grid 4col) со СВОИМ радиусом. РАДИУС 24 (`--r-card`) —
+   именованное исключение шкалы по документу Pavel (спека 20/16/10/24), стоит
+   ПОЗЖЕ `.card--r-lg` и перекрывает ось lg(20) на этом объекте. Источник истины —
+   документ, а не «апрув по скрину».
+   visual-diff-exempt: .records border-radius — 24 (--r-card) восстановлен по документу Pavel (был сведён на lg 20 в PR-4) — объект 2 */
+.records { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: var(--r-card); }
 @media (max-width: 1040px) { .records { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .records { grid-template-columns: 1fr; } }
 .rec { padding: 20px 22px; display: flex; flex-direction: column; gap: 11px; border-left: 1px solid var(--line); }
