@@ -21,6 +21,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { emitTripReached2 } from '../_shared/analytics.ts';
+import { emit } from '../_shared/emit.ts';
 import { resolveRedeemRole } from './redeemRole.ts';
 
 const supabaseAdmin = createClient(
@@ -133,6 +134,8 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
 
     // Best-effort: notify the trip owner that someone joined.
     if (trip.created_by && trip.created_by !== user.id) {
+      // TRIP-356: announce the event; n8n resolves audience/text and delivers.
+      emit('invite_accepted', { trip_id: trip.id, recipient_id: trip.created_by, actor_id: user.id });
       try {
         await supabaseAdmin.from('notifications').insert({
           user_id: trip.created_by,

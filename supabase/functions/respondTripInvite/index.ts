@@ -12,6 +12,7 @@
 import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { renderJoinedNotification, renderDeclinedNotification } from '../_shared/emailTemplate.ts';
+import { emit } from '../_shared/emit.ts';
 import { emitTripReached2 } from '../_shared/analytics.ts';
 
 Deno.serve(withHandler('respondTripInvite', async (req, corsHeaders) => {
@@ -153,6 +154,15 @@ Deno.serve(withHandler('respondTripInvite', async (req, corsHeaders) => {
           });
         }
       }
+    }
+
+    // TRIP-356: notify the inviter of the response; only when there is one.
+    if (member.invited_by) {
+      emit(action === 'decline' ? 'invite_declined' : 'invite_accepted', {
+        trip_id: member.trip_id,
+        recipient_id: member.invited_by,
+        actor_id: user.id,
+      });
     }
 
     // Mark the original invite notification as read

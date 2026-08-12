@@ -12,6 +12,7 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { renderInviteTemplate, renderInviteNotification } from '../_shared/emailTemplate.ts';
 import { sendEmail } from '../_shared/sendEmail.ts';
+import { emit } from '../_shared/emit.ts';
 
 Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -166,6 +167,9 @@ Deno.serve(withHandler('inviteTripMember', async (req, corsHeaders) => {
     } catch (e) {
       console.error('sendEmail failed (non-fatal):', e);
     }
+
+    // TRIP-356: announce the event; n8n resolves audience/text and delivers.
+    emit('invite_created', { trip_id, actor_id: user.id, member_id: member.id });
 
     return Response.json({ ok: true, member }, { headers: corsHeaders });
 

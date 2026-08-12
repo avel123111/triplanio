@@ -11,6 +11,7 @@ import { withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { renderRoleChangedNotification } from '../_shared/emailTemplate.ts';
+import { emit } from '../_shared/emit.ts';
 
 Deno.serve(withHandler('updateTripMemberRole', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -43,6 +44,13 @@ Deno.serve(withHandler('updateTripMemberRole', async (req, corsHeaders) => {
     // M4 — tell the affected member their role changed (in THEIR language).
     // Only on an actual change and only for registered members. Best-effort.
     if (roleChanged && member.user_id) {
+      // TRIP-356: announce the event; n8n resolves audience/text and delivers.
+      emit('role_changed', {
+        trip_id: member.trip_id,
+        recipient_id: member.user_id,
+        actor_id: user.id,
+        member_id: member.id,
+      });
       try {
         const [tripResult, memberUserResult] = await Promise.all([
           supabaseAdmin.from('trips').select('title').eq('id', member.trip_id).single(),

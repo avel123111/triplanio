@@ -13,6 +13,7 @@ import { isCallerEditor } from '../_shared/tripAccess.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 import { purgePrivateDocsForMember } from '../_shared/personalDocsTeardown.ts';
 import { renderMemberLeftNotification, renderMemberRemovedNotification } from '../_shared/emailTemplate.ts';
+import { emit } from '../_shared/emit.ts';
 
 Deno.serve(withHandler('removeTripMember', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -93,6 +94,9 @@ Deno.serve(withHandler('removeTripMember', async (req, corsHeaders) => {
       const tripTitle = tripRow?.title ?? '';
 
       if (isSelf) {
+        // TRIP-356: announce the event; n8n resolves audience/text and delivers.
+        emit('member_left', { trip_id: member.trip_id, actor_id: member.user_id });
+
         // M2 — member left voluntarily → tell the owner + admins (each in their language).
         const { data: leaverUser } = await supabaseAdmin
           .from('users').select('full_name').eq('id', member.user_id).limit(1);
@@ -136,6 +140,9 @@ Deno.serve(withHandler('removeTripMember', async (req, corsHeaders) => {
           await supabaseAdmin.from('notifications').insert(rows);
         }
       } else if (member.user_id) {
+        // TRIP-356: announce the event; n8n resolves audience/text and delivers.
+        emit('member_removed', { trip_id: member.trip_id, recipient_id: member.user_id, actor_id: user.id });
+
         // M3 — an admin removed a registered member → tell that member.
         // trip_id=null: they can no longer open the trip, so no dead "open trip" link.
         const { data: removedUser } = await supabaseAdmin

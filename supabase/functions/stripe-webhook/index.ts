@@ -20,6 +20,7 @@
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
+import { emit } from '../_shared/emit.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { isFullyRefunded } from '../_shared/payments/refund.ts';
@@ -267,6 +268,8 @@ Deno.serve(async (req) => {
                   message: 'Your payment was successful. Thank you!', action_url: '/settings', read: false,
                 });
               } catch (e) { console.error('Pro-activated notification failed (non-fatal):', (e as Error).message); }
+              // TRIP-356: announce the event; n8n resolves text and delivers.
+              emit('pro_activated', { recipient_id: user_id });
             }
           }
         }
@@ -343,6 +346,8 @@ Deno.serve(async (req) => {
             action_url: '/settings', read: false,
           });
         } catch (e) { console.error('dunning notification failed (non-fatal):', (e as Error).message); }
+        // TRIP-356: announce the event; n8n resolves text and delivers.
+        emit('pro_payment_failed', { recipient_id: resolved.userId });
         break;
       }
 
