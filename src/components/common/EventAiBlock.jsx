@@ -19,7 +19,7 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
-import { Btn, Card, FileRow, IconBtn, InputGroup, Textarea } from '@/design/index';
+import { Btn, Card, FileRow, IconBtn, InputGroup, Textarea, Tile } from '@/design/index';
 import {
   Sparkles, Lock, X,
   ChevronUp, Check,
@@ -188,7 +188,7 @@ export default function EventAiBlock({
     return (
       <Card tone="ai" ariaBusy className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
@@ -203,9 +203,7 @@ export default function EventAiBlock({
     return (
       <Card tone="ai" locked className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic">
-            <Sparkles size={15} />
-          </div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             {/* Заблокировано (Free): замок вместо PRO-бейджа (дизайн-система TRIP-187) */}
             <b>{t('event.ai_fill_title')}<Lock size={12} className="muted" /></b>
@@ -223,7 +221,7 @@ export default function EventAiBlock({
     return (
       <Card as="button" tone="ai" interactive className="ai-blk ai-blk--pill" onClick={() => setState('idle')} style={{ width: '100%', textAlign: 'left' }}>
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
@@ -237,7 +235,7 @@ export default function EventAiBlock({
     return (
       <Card tone="ai" className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_parsing')}<span className="spin spin--ring" /></b>
             {files[0]?.name && <span>{files[0].name}</span>}
@@ -252,7 +250,7 @@ export default function EventAiBlock({
     return (
       <Card tone="ai" parsed className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Check size={15} /></div>
+          <Tile tone="success" solid size="sm"><Check size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</b>
             <span>{t('event.ai_highlighted_hint')}</span>
@@ -278,7 +276,7 @@ export default function EventAiBlock({
   return (
     <Card tone="ai" className="ai-blk">
       <div className="ai-blk-hd" role="button" tabIndex={0} onClick={() => setState('available')} style={{ cursor: 'pointer' }}>
-        <div className="ai-blk-ic"><Sparkles size={15} /></div>
+        <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
         <div className="ai-blk-ti">
           <b>{t('event.ai_fill_title')}</b>
           <span>{state === 'uploaded'

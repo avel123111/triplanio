@@ -571,6 +571,7 @@ const RECIPES = {
         it('round', <Tile icon="star" tone="brand" round />),
         it('solid (+brand)', <Tile icon="star" tone="brand" solid />),
         it('solid (+ai)', <Tile icon="sparkles" tone="ai" solid />),
+        it('solid (+success)', <Tile icon="check" tone="success" solid />),
         it('solid (+warm)', <Tile icon="star" tone="warm" solid />),
         it('children (число вместо иконки)', <Tile tone="quiet" round>3</Tile>),
       ],

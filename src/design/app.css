@@ -2877,6 +2877,16 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tile--solid.tile--brand { background: var(--brand); color: #fff; }
 .tile--solid.tile--ai    { background: var(--ai-gradient); color: #fff; }
 .tile--solid.tile--warm  { background: var(--warm);  color: #fff; }
+/* TRIP-391 объект 3: недостающая залитая форма, заведена с первым вызывателем
+   (плитка AI-блока в состоянии parsed — зелёный чек). Правило то же, что у тонов
+   выше: залитый = сплошной роль-токен + белый значок. Не новый тон (success есть),
+   а комбинация, которую канон разрешает заводить по мере появления вызовов.
+   2p ключует по каждому классу компаунда, поэтому новое правило объявлено под
+   обоими ключами (как было бы у brand/ai/warm, будь они не на базе):
+   visual-diff-exempt: .tile--solid background — новая комбинация solid success (первый вызыватель — plitka AI parsed)
+   visual-diff-exempt: .tile--success background — залитая форма success: сплошной success под solid
+   visual-diff-exempt: .tile--success color — залитая форма success: белый значок под solid */
+.tile--solid.tile--success { background: var(--success); color: #fff; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -5935,8 +5945,24 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .ai-blk border-radius — радиус → .card--tone-ai (r-btn 10) */
 .ai-blk{overflow:hidden;margin-bottom:14px;flex:none;}
 .ai-blk-hd{display:flex;align-items:center;gap:10px;padding:11px 13px;}
-.ai-blk-ic{position:relative;width:30px;height:30px;border-radius:var(--r-sm);background:var(--ai-gradient);display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px var(--ai);}
-.ai-blk-ic svg{width:15px;height:15px;color:#fff;}
+/* .ai-blk-ic УДАЛЁН (TRIP-391 объект 3): значок-плитка AI-блока = <Tile tone="ai"
+   solid size="sm"> (солид-ai градиент + белый значок, канон .tile--solid.tile--ai).
+   Сторона 30→ступень sm 28 (кегль 15→--tile-ic sm 15 точь-в-точь), принято глазом
+   как dl-card 42→40. Свечение box-shadow и position:relative (рудимент, внутри нет
+   абсолютного) СНЯТЫ — осознанное упрощение, апрув Pavel. Ступень sm несёт
+   значение (move не резолвит --tile через ступень), поэтому exempt'ы «значение то же».
+   visual-diff-exempt: .ai-blk-ic width — сторона 30 сведена на ступень sm (28), принято глазом
+   visual-diff-exempt: .ai-blk-ic height — сторона 30 сведена на ступень sm (28), принято глазом
+   visual-diff-exempt: .ai-blk-ic border-radius — радиус --r-sm под каноном .tile (--tile-r fallback), значение то же
+   visual-diff-exempt: .ai-blk-ic background — --ai-gradient даёт solid ai (.tile--solid.tile--ai), значение то же
+   visual-diff-exempt: .ai-blk-ic display — grid под базой .tile, значение то же
+   visual-diff-exempt: .ai-blk-ic place-items — center под базой .tile, значение то же
+   visual-diff-exempt: .ai-blk-ic flex — none под базой .tile, значение то же
+   visual-diff-exempt: .ai-blk-ic box-shadow — свечение снято, осознанное упрощение (апрув Pavel)
+   visual-diff-exempt: .ai-blk-ic position — relative снят как рудимент (внутри нет абсолютного), апрув Pavel
+   visual-diff-exempt: .ai-blk-ic svg width — кегль под каноном .tile > svg (sm --tile-ic 15px), значение то же
+   visual-diff-exempt: .ai-blk-ic svg height — кегль под каноном .tile > svg (sm --tile-ic 15px), значение то же
+   visual-diff-exempt: .ai-blk-ic svg color — белый значок под тоном solid (.tile--solid.tile--ai color #fff), значение то же */
 .ai-blk-ti{flex:1;min-width:0;}
 .ai-blk-ti b{ color:var(--ai-ink);display:flex;align-items:center;gap:6px;}
 /* direct child only — must NOT leak onto the Pro <Badge> span nested in the title */
@@ -6067,7 +6093,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .card--locked {@media (max-width: 640px)} flex — приход hd-кнопки с .ai-blk.locked
    visual-diff-exempt: .card--locked {@media (max-width: 640px)} flex-wrap — приход hd-обёртки с .ai-blk.locked
    visual-diff-exempt: .card--locked {@media (max-width: 640px)} justify-content — приход hd-кнопки с .ai-blk.locked */
-.card--locked .ai-blk-ic{filter:saturate(.55);}
+/* Заблокированная карточка гасит СВОЮ плитку (private→general, TRIP-391 объект 3):
+   приватное правило `.card--locked .ai-blk-ic` обобщено на `.card--locked .tile` —
+   это состояние КАРТОЧКИ, красящее плитку внутри (канон-в-каноне), а не тинт
+   примитива. Значение то же (saturate .55), носитель — теперь общий `.tile`.
+   visual-diff-move: .card--locked .ai-blk-ic -> tile */
+.card--locked .tile{filter:saturate(.55);}
 .card--locked .ai-blk-ti b{color:var(--muted);}
 /* Narrow widths (mobile sheet + narrow side panel): the locked plaque's "Go Pro"
    CTA can't share the row with the icon+title — let the header wrap and drop the
@@ -6084,7 +6115,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .parsed border-color — уход state-класса .ai-blk.parsed на .card--parsed
    visual-diff-exempt: .ai-blk.parsed .ai-blk-ti b color — заголовок parsed на .card--parsed .ai-blk-ti b
    visual-diff-exempt: .card--parsed .ai-blk-ti b color — приход заголовка с .ai-blk.parsed .ai-blk-ti b */
-.card--parsed .ai-blk-ic{background:var(--success);}
+/* .card--parsed .ai-blk-ic УДАЛЁН (TRIP-391 объект 3): тон разобранной плитки
+   едет ДАННЫМИ на call-site — `<Tile tone="success" solid>` (.tile--solid.tile--
+   success, залитый success + белый чек). Потомковый оверрайд состояния на
+   примитиве снят (закон 3/5), тинт задаёт call-site. 2p ключует по каждому классу
+   селектора — объявлены обе стороны ушедшего `.card--parsed .ai-blk-ic{background}`.
+   visual-diff-exempt: .card--parsed background — оверрайд плитки снят, тон едет call-site tone=success solid (.tile--solid.tile--success), значение то же */
 .card--parsed .ai-blk-ti b{color:var(--success-ink);}
 
 /* ─── Document format badge ─────────────────────────────────────────────────
