@@ -376,7 +376,7 @@ const RECIPES = {
     // её ↔ живой CSS в обе стороны). radius/tone эмитятся своими пропами; булевы
     // формы - одноимённым пропом; danger - `danger`; до-края - `pad="none"`.
     const P = {
-      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' },
+      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' }, 'r-card': { radius: 'card' },
       interactive: { as: 'button', radius: 'md', interactive: true },
       'tone-brand': { tone: 'brand', radius: 'md' },
       'tone-ai': { tone: 'ai' },

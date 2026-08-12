@@ -129,6 +129,22 @@ test('сырой host-тег с tile-homed классом мимо <Tile> → к
   assert.match(r.out, /dl-empty__ic/);
 });
 
+test('рост split-скина на card-homed (radius на layout-only классе) → красный (TRIP-337 объект 2)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': regHomed(['wmini']),
+      'src/a.css': '.wmini { padding: 18px; overflow: hidden; }',
+    },
+    head: {
+      'scripts/ci/surface-registry.json': regHomed(['wmini']),
+      'src/a.css': '.wmini { padding: 18px; overflow: hidden; border-radius: 20px; }',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /split-скин/i);
+});
+
 test('рост инлайн-плиток против base → красный (TRIP-391 объект 3)', (t) => {
   const f = fixture(t, {
     base: { 'scripts/ci/surface-registry.json': reg({}), 'src/a.jsx': inlineTile(1) },

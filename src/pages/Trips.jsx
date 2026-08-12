@@ -310,7 +310,7 @@ const _ORB = /** @type {React.CSSProperties} */ ({ position: 'absolute', borderR
 function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <Card className="eroute" style={{ marginTop: 28 }}>
+    <Card radius="card" className="eroute" style={{ marginTop: 28 }}>
       <span style={{ ..._ORB, width: 300, height: 300, background: 'var(--brand-grad)', top: -150, right: -60, opacity: 0.12 }} />
       <span style={{ ..._ORB, width: 170, height: 170, background: 'var(--ai-gradient)', top: -30, right: '26%', opacity: 0.10 }} />
       <div className="eroute__rail">

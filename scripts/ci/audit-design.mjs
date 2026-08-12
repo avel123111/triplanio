@@ -1241,10 +1241,41 @@ for (const o of OBJECTS) {
     rules: hit.length,
     classes: cls.size,
     families: Object.keys(byFamily).length,
+    _cls: cls,
+    _byFamily: byFamily,
     // Распределение - ЭТО и есть то, по чему режутся 05 и 06 (Р11). Круглое
     // число из головы даёт равные PR, распределение - PR по зонам приложения.
     byFamily: Object.fromEntries(Object.entries(byFamily).sort((a, b) => b[1] - a[1])),
   };
+}
+
+// §5 ПАРИТЕТ КО-СЕЛЕКТОРА (TRIP-337 объект 2, дожиг). Скин фон+рамка несёт ОБЩЕЕ
+// (много-классовое) правило, радиус — отдельным: предикат «radius+bg+border в
+// ОДНОМ блоке» их не видит, и «поверхность» занижалась (та же дыра, что закрыл
+// замок 2z check-surface-registry). Догоняем счёт: класс — поверхность, если
+// фон+рамку получает из общего (≥2 класса) блока И радиус есть где угодно.
+{
+  const isTileBlock = (b) => has(b, 'width') && val(b, 'width') === val(b, 'height') && has(b, 'border-radius') && centred(b);
+  const hasRadiusCls = new Set();
+  const coMemberCls = new Set();
+  for (const b of blocks) {
+    const parts = b.sels.map(styledClass).filter(Boolean);
+    if (has(b, 'border-radius')) for (const c of parts) hasRadiusCls.add(c);
+    if (parts.length >= 2 && hasBg(b) && (hasBorder(b) || has(b, 'box-shadow')) && !isTileBlock(b)) {
+      for (const c of parts) coMemberCls.add(c);
+    }
+  }
+  const s = objects.surface;
+  for (const c of coMemberCls) {
+    if (!hasRadiusCls.has(c) || s._cls.has(c)) continue;
+    s._cls.add(c);
+    const fam = familyOf(c);
+    s._byFamily[fam] = (s._byFamily[fam] ?? 0) + 1;
+    s.rules += 1;   // недосчитанный носитель = минимум своё radius-правило
+  }
+  s.classes = s._cls.size;
+  s.families = Object.keys(s._byFamily).length;
+  s.byFamily = Object.fromEntries(Object.entries(s._byFamily).sort((a, b) => b[1] - a[1]));
 }
 
 /** Наборы-дубли: блоки с ПОБАЙТОВО совпадающим набором `свойство:значение`.

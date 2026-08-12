@@ -227,6 +227,7 @@ export default function Pro() {
           {pricesLoading && !prices
             ? Array.from({ length: 3 }).map((_, i) => (
                 <Card
+                  radius="card"
                   key={i}
                   className="plan-card-skel"
                   style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
@@ -242,6 +243,7 @@ export default function Pro() {
               ))
             : cards.map((c) => (
                 <Card
+                  radius="card"
                   key={c.key}
                   className={`plan-card${c.featured ? ' plan-card--featured' : ''}`}
                 >
@@ -304,7 +306,7 @@ export default function Pro() {
             The skeleton mirrors this same slot so the loading layout matches whether
             the banner will show or not. */}
         {!hidePerTrip && pricesLoading && !prices && (
-          <Card className="pro-trip-bar">
+          <Card radius="card" className="pro-trip-bar">
             <Skeleton w={44} h={44} r={'var(--r-sm)'} />
             <div style={{ flex: 1, minWidth: 220 }}>
               <Skeleton w="42%" h={16} />
@@ -317,7 +319,7 @@ export default function Pro() {
           </Card>
         )}
         {!hidePerTrip && !pricesLoading && (
-          <Card className="pro-trip-bar">
+          <Card radius="card" className="pro-trip-bar">
             <span style={{
               width: 44, height: 44, flex: 'none', borderRadius: 'var(--r-sm)',
               background: 'var(--brand-soft)', color: 'var(--brand)',

@@ -360,12 +360,12 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 // распахнута). `compact` не заведён (YAGNI): проп в контракте есть, но CSS-
 // правило и значение появятся с первым живым вызывателем, не впрок.
 /**
- * @typedef {'lg'|'md'} CardRadius
+ * @typedef {'lg'|'md'|'card'} CardRadius
  * @typedef {'brand'|'ai'} CardTone
  */
 /** @type {readonly string[]} */
 export const CARD_VARIANTS = [
-  "r-lg", "r-md", "interactive", "flush",
+  "r-lg", "r-md", "r-card", "interactive", "flush",
   "tone-brand", "tone-ai", "add", "recessed", "locked", "parsed", "danger",
 ];
 

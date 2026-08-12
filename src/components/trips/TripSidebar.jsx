@@ -148,6 +148,7 @@ function SidebarSheetBody({
         {lensItems.map((item) => (
           <Card
             as="button"
+            radius="md"
             key={item.id}
             className={'tm-cell' + (lens === item.id ? ' is-active' : '')}
             onClick={() => onNavigate(item.id)}
@@ -164,7 +165,7 @@ function SidebarSheetBody({
       {manageRows.length > 0 && (
         <>
           <div className="app-side__group-label tm-caption">{t('trip_menu.section_manage')}</div>
-          <Card pad="none" className="tm-manage">
+          <Card pad="none" radius="lg" className="tm-manage">
             {manageRows.map((row) => (
               <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
                 <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>
@@ -177,7 +178,7 @@ function SidebarSheetBody({
       )}
       {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
       {onAccount && (
-        <Card as="button" className="tm-account" onClick={onAccount}>
+        <Card as="button" radius="lg" className="tm-account" onClick={onAccount}>
           <Avatar name={accountName} photo={user?.avatar_url} size="sm" />
           <span className="tm-account__txt">
             <span className="tm-account__name t-label">{t('nav.account')}</span>
