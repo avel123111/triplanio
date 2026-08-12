@@ -44,13 +44,18 @@ export const TIERS = {
 // манифест сам себе противоречит.
 export const TABLES = {
   // ── Ярус A — контент трипа (Ф1 / TRIP-124 привёл к цели) ────────────────────
-  activities:        { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  hotel_stays:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  transfers:         { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   city_visits:       { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
-  trip_services:     { tier: 'A', write: 'can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'aligned' },
   // роль поверх private-модели TRIP-118: can_edit_trip AND (visibility='shared' OR created_by=self)
   trip_documents:    { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'единый шов записи trip-document + _shared/mutate.ts; удаление построчно (private⇒автор) через guardRow; чтение — getTripDetails под service_role (visibility=shared OR created_by=self, TRIP-118); во фронте ноль .from(trip_documents); гранты authenticated DML/SELECT и anon SELECT сняты, 4 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
+  // 4 booking-таблицы (TRIP-405 шаг C): единый шов записи trip-booking + _shared/mutate.ts;
+  // роль-гейт editor в TS (зеркало _can_edit_trip), layover через op:'rpc'; чтение —
+  // getTripDetails под service_role, во фронте ноль .from(<таблица>)/прямых SELECT; гранты
+  // authenticated DML+SELECT и anon SELECT сняты, 16 RLS-политик удалены ПОСЛЕ revoke, RLS
+  // остаётся deny-all. Триггеры notify/sync_budget/recompute (SECURITY DEFINER) не тронуты.
+  activities:        { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
+  hotel_stays:       { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
+  transfers:         { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
+  trip_services:     { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'см. блок «4 booking-таблицы TRIP-405»' },
 
   // ── Ярус B — авторитетное ───────────────────────────────────────────────────
   // Бюджет (TRIP-394 Ф2, шаг C) — ПЕРВЫЙ контент-домен, переведённый на единый шов
@@ -153,9 +158,11 @@ export const FUNCTIONS = {
   // `_trip_file_not_others_private`) — internal, гранта клиенту нет (IF3).
   publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
-    '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
+    '_can_edit_trip', 'add_city', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
     'get_trip_owner_profiles',
+    // add_layover_transfer убран (TRIP-405): EXECUTE у authenticated снят,
+    // теперь service_role-only, зовётся edge trip-booking/transfer-layover (op:'rpc').
     // get_trip_participant_profiles убрана (TRIP-403 шаг C): DROP, поглощена
     // get_my_trip_cards (edge getTrips, ярус B) — клиентского вызывателя нет.
     // get_user_travel_stats убран (TRIP-402): EXECUTE у authenticated отозван,
@@ -335,6 +342,7 @@ export const DOORS = {
   // ── seam-двери: гейт в шве _shared/mutate.ts, сверяется с requires спецификации (TRIP-394) ──
   trip_budget:           ['editor', 'pro'],  // expense/category/settings; авто-траты идут мимо (триггер)
   trip_document:         ['editor'],          // doc create/delete; delete построчно (private ⇒ author), Pro нигде
+  trip_booking:          ['editor'],          // hotel/transfer/activity/service upsert+delete + transfer-layover(rpc); Pro нигде (TRIP-405)
   account:               ['self'],            // profile: своя строка users (scope id=actor), Pro нигде (TRIP-400)
   user_place:            ['self'],            // place + place/delete: свой user_custom_visits (scope user_id=actor), Pro нигде (TRIP-402)
 

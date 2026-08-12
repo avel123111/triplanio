@@ -96,8 +96,12 @@ async function loadTargetRow(
   scopeValue: string,
   targetId: string,
 ): Promise<Record<string, unknown> | null> {
+  // `table` опционален (ради `op:'rpc'`), но `loadTarget` бывает только у table-DML.
+  // Сузить тем же паттерном, что `buildPlan`: отсутствие = конфиг-ошибка, не no-op.
+  const table = action.table;
+  if (!table) throw new Error(`loadTarget requires a table for "${action.op}"`);
   const { data, error } = await supabaseAdmin
-    .from(action.table)
+    .from(table)
     .select('*')
     .eq('id', targetId)
     .eq(scopeCol, scopeValue)
@@ -108,6 +112,13 @@ async function loadTargetRow(
 
 /** Исполняет план записи под service_role. Возвращает строку (insert/update). */
 async function runPlan(plan: WritePlan): Promise<Record<string, unknown> | null> {
+  // `op:'rpc'` — тело действия один атомарный RPC (layover: города+сегменты+
+  // recompute). Идёт через ту же дверь `rpc()`, что и `prepareRpc`, поэтому
+  // инвариант «ошибка БД → throw → 500» держится по построению (TRIP-405).
+  // add_layover_transfer возвращает void → `data` null, шов отдаёт { data: null }.
+  if (plan.op === 'rpc') {
+    return (await rpc(plan.name, plan.args)) as Record<string, unknown> | null;
+  }
   if (plan.op === 'insert') {
     const { data, error } = await supabaseAdmin.from(plan.table).insert(plan.values).select().single();
     if (error) throw error;

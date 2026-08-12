@@ -1046,6 +1046,7 @@ export default function TripView() {
         />
       ) : eventDrawerOpen ? (
         <EventSourcePanel
+          tripId={tripId}
           kind={eventView.kind}
           id={eventView.id}
           warning={eventView.warning}
@@ -1209,6 +1210,7 @@ export default function TripView() {
               modal (TRIP-195 keeps them on modals for now). hotel/transfer/
               activity moved to the global drawer, mounted at .trip-content below. */}
           <SourceViewLoader
+            tripId={tripId}
             kind={eventView.kind}
             id={eventView.id}
             open={serviceViewOpen}

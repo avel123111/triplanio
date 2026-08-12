@@ -2244,6 +2244,7 @@ export type Database = {
       }
       add_layover_transfer: {
         Args: {
+          p_actor: string
           p_from: string
           p_segments: Json
           p_to: string

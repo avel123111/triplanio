@@ -30,8 +30,10 @@ import {
   parseAction,
   REGISTRY,
   unwrapDbResult,
+  validateFields,
   validateInput,
   type ActionSpec,
+  type FieldSpec,
   type ResourceSpec,
 } from './mutateRules.ts';
 
@@ -510,6 +512,256 @@ Deno.test('title обязателен на создании, кэп 300 = CHECK'
   assert('status' in miss, 'без title создание отбивается');
   const over = validateInput(DOC, { title: 'x'.repeat(301) }, { isInsert: true });
   assert('status' in over && over.status === 400, 'title 301 отбивается');
+});
+
+// ── op:'rpc' — транзакция за одной дверью (TRIP-405) ─────────────────────────
+
+/** Фрагмент колонок сегмента — общий для простого transfer И per-segment layover. */
+const SEGMENT_FIELDS: Record<string, FieldSpec> = {
+  transport_type: { type: 'string', enum: ['plane', 'train', 'car'] },
+  price: { type: 'number', min: 0, nullable: true },
+};
+
+/**
+ * RPC-действие-образец: маппит валидированный вход в `p_`-аргументы, per-segment
+ * валидацию делает ТЕМ ЖЕ `validateFields`, что и простой transfer (не копия).
+ */
+const RPC_ACTION: ActionSpec = {
+  op: 'rpc',
+  rpc: 'add_layover_transfer',
+  requires: ['editor'],
+  fields: {
+    from_city_visit_id: { type: 'uuid', required: true },
+    to_city_visit_id: { type: 'uuid', required: true },
+    segments: {
+      type: 'array',
+      required: true,
+      validate: (v) => {
+        if (!Array.isArray(v)) return { status: 400, code: 'INVALID_INPUT', message: 'segments must be a list' };
+        for (const seg of v) {
+          const r = validateFields(SEGMENT_FIELDS, seg as Record<string, unknown>, { insert: true });
+          if ('status' in r) return r;
+        }
+        return null;
+      },
+    },
+  },
+  buildArgs: (values, ctx) => ({
+    p_trip: ctx.scopeValue,
+    p_from: values.from_city_visit_id,
+    p_to: values.to_city_visit_id,
+    p_segments: values.segments,
+  }),
+};
+
+Deno.test('★ op:rpc — buildPlan строит { op:rpc, name, args } с p_actor от ШВА', () => {
+  const validated = validateInput(RPC_ACTION, {
+    from_city_visit_id: '11111111-1111-1111-1111-111111111111',
+    to_city_visit_id: '22222222-2222-2222-2222-222222222222',
+    segments: [{ transport_type: 'train', price: 10 }],
+  }, { isInsert: true });
+  assert(!('status' in validated), 'валидный layover обязан пройти');
+  const plan = buildPlan(SAMPLE, RPC_ACTION, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: null,
+    values: validated.values,
+  });
+  assert(plan.op === 'rpc', `ожидался rpc-план, получили ${plan.op}`);
+  assertEquals(plan.name, 'add_layover_transfer');
+  // p_actor инъектит движок, клиент его не называет; p_trip = скоуп.
+  assertEquals(plan.args.p_actor, ACTOR);
+  assertEquals(plan.args.p_trip, TRIP);
+  assertEquals(plan.args.p_from, '11111111-1111-1111-1111-111111111111');
+  assertEquals((plan.args.p_segments as unknown[]).length, 1);
+});
+
+Deno.test('★ op:rpc — клиент НЕ может подсунуть p_actor (движок перезапишет)', () => {
+  const plan = buildPlan(SAMPLE, RPC_ACTION, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: null,
+    // buildArgs берёт только объявленные values; даже если бы p_actor долетел,
+    // спред `...args, p_actor: ctx.actor` ставит его ПОСЛЕДНИМ.
+    values: { from_city_visit_id: 'x', to_city_visit_id: 'y', segments: [], p_actor: 'someone-else' } as never,
+  });
+  assert(plan.op === 'rpc');
+  assertEquals(plan.args.p_actor, ACTOR);
+});
+
+Deno.test('op:rpc без rpc-имени — ошибка конфигурации (не молчаливый no-op)', () => {
+  const broken: ActionSpec = { op: 'rpc', requires: ['editor'] };
+  assertThrows(() => buildPlan(SAMPLE, broken, { actor: ACTOR, scopeValue: TRIP, targetId: null, values: {} }));
+});
+
+Deno.test('★ op:rpc требует обязательные поля даже при isInsert=false', () => {
+  // Транзакция — всегда «вставка»: пропуск обязательного сегмента = 400, не сырой
+  // 500 от DB. Тот же инвариант, что op:insert.
+  const r = validateInput(RPC_ACTION, {
+    from_city_visit_id: '11111111-1111-1111-1111-111111111111',
+    to_city_visit_id: '22222222-2222-2222-2222-222222222222',
+  }, { isInsert: false });
+  assert('status' in r && r.status === 400, 'без segments layover обязан вернуть 400');
+  assert(r.message.includes('segments'), `в сообщении нет имени поля: ${r.message}`);
+});
+
+Deno.test('★ op:rpc — битый сегмент отбивается per-segment валидацией (не долетает до RPC)', () => {
+  const r = validateInput(RPC_ACTION, {
+    from_city_visit_id: 'a', to_city_visit_id: 'b',
+    segments: [{ transport_type: 'train' }, { transport_type: 'spaceship' }],
+  }, { isInsert: true });
+  assert('status' in r && r.status === 400, 'сегмент вне enum обязан отбиться');
+});
+
+Deno.test('validateFields — переиспользуемый над одним набором (вынесен из validateInput)', () => {
+  const ok = validateFields(SEGMENT_FIELDS, { transport_type: 'car', price: 0 }, { insert: true });
+  assert(!('status' in ok));
+  assertEquals(ok.values, { transport_type: 'car', price: 0 });
+  const bad = validateFields(SEGMENT_FIELDS, { price: -1 }, { insert: true });
+  assert('status' in bad && bad.status === 400, 'price < 0 обязан отбиться');
+});
+
+// ── trip-booking: спецификация домена (TRIP-405) ─────────────────────────────
+
+import { TRIP_BOOKING } from './resources/tripBooking.ts';
+
+const HOTEL = TRIP_BOOKING.actions.hotel;
+const SERVICE = TRIP_BOOKING.actions.service;
+const LAYOVER = TRIP_BOOKING.actions['transfer-layover'];
+
+Deno.test('★ booking upsert: правка by id скоупится трипом {id, trip_id} (IDOR)', () => {
+  const plan = buildPlan(TRIP_BOOKING, HOTEL, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: 'hotel-row-1',
+    values: { name: 'H', currency: 'EUR' },
+  });
+  assert(plan.op === 'update');
+  assertEquals(plan.match, { id: 'hotel-row-1', trip_id: TRIP });
+  // created_by НЕ переписывается на правке.
+  assertEquals(plan.values.created_by, undefined);
+});
+
+Deno.test('★ booking create: created_by ставит СЕРВЕР, trip_id — скоуп', () => {
+  const plan = buildPlan(TRIP_BOOKING, HOTEL, {
+    actor: ACTOR,
+    scopeValue: TRIP,
+    targetId: null,
+    values: { city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR' },
+  });
+  assert(plan.op === 'insert');
+  assertEquals(plan.values.created_by, ACTOR);
+  assertEquals(plan.values.trip_id, TRIP);
+});
+
+Deno.test('hotel: обязательные city_visit_id/name/currency на создании', () => {
+  const miss = validateInput(HOTEL, { name: 'H', currency: 'EUR' }, { isInsert: true });
+  assert('status' in miss, 'без city_visit_id создание отбивается');
+  const ok = validateInput(HOTEL, {
+    city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR',
+  }, { isInsert: true });
+  assert(!('status' in ok), 'полный набор проходит');
+});
+
+Deno.test('★ hotel: payment_status вне enum отбивается (зеркало CHECK)', () => {
+  const r = validateInput(HOTEL, {
+    city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR',
+    payment_status: 'later',
+  }, { isInsert: true });
+  assert('status' in r && r.status === 400);
+});
+
+Deno.test('★ hotel: booking_url без http(s) и битый documents.file_url отбиваются (TRIP-281)', () => {
+  const url = validateInput(HOTEL, {
+    city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR',
+    booking_url: 'javascript:alert(1)',
+  }, { isInsert: true });
+  assert('status' in url && url.status === 400, 'javascript: booking_url обязан отбиться');
+  const doc = validateInput(HOTEL, {
+    city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR',
+    documents: [{ file_url: 'javascript:evil' }],
+  }, { isInsert: true });
+  assert('status' in doc && doc.status === 400, 'кривой file_url обязан отбиться');
+});
+
+Deno.test('★ hotel: free_cancellation НЕ boolean → 400 (строгий тип-гейт, без коэрции)', () => {
+  const r = validateInput(HOTEL, {
+    city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR',
+    free_cancellation: 'true',
+  }, { isInsert: true });
+  assert('status' in r && r.status === 400, "'true' строкой обязана отбиться");
+  const ok = validateInput(HOTEL, {
+    city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR',
+    free_cancellation: true, check_in_datetime: '2026-08-12T10:00:00.000Z',
+  }, { isInsert: true });
+  assert(!('status' in ok), 'boolean + ISO-timestamp проходят');
+});
+
+Deno.test('★ hotel: кривой timestamptz → 400, не сырой 500 БД', () => {
+  const r = validateInput(HOTEL, {
+    city_visit_id: '11111111-1111-1111-1111-111111111111', name: 'H', currency: 'EUR',
+    check_in_datetime: 'not-a-date',
+  }, { isInsert: true });
+  assert('status' in r && r.status === 400);
+});
+
+Deno.test('★ service: documents живут в details, битый file_url отбивается', () => {
+  const bad = validateInput(SERVICE, {
+    name: 'eSIM', currency: 'EUR', kind: 'esim',
+    details: { documents: [{ file_url: 'javascript:evil' }] },
+  }, { isInsert: true });
+  assert('status' in bad && bad.status === 400, 'кривой details.documents.file_url отбивается');
+  const ok = validateInput(SERVICE, {
+    name: 'eSIM', currency: 'EUR', kind: 'esim',
+    details: { documents: [{ file_url: 'https://ok.test/a' }], notes: 'x' },
+  }, { isInsert: true });
+  assert(!('status' in ok), 'валидный details проходит');
+});
+
+Deno.test('★ service: kind вне enum отбивается', () => {
+  const r = validateInput(SERVICE, { name: 'X', currency: 'EUR', kind: 'yacht' }, { isInsert: true });
+  assert('status' in r && r.status === 400);
+});
+
+Deno.test('★ transfer-layover: buildPlan → rpc с p_-аргументами и p_actor от ШВА', () => {
+  const validated = validateInput(LAYOVER, {
+    from_city_visit_id: '11111111-1111-1111-1111-111111111111',
+    to_city_visit_id: '22222222-2222-2222-2222-222222222222',
+    waypoints: [{ city_name_en: 'Paris', country_code: 'FR' }],
+    segments: [
+      { transport_type: 'train', currency: 'EUR', day_change: false },
+      { transport_type: 'bus', currency: 'EUR', day_change: false },
+    ],
+  }, { isInsert: true });
+  assert(!('status' in validated), 'валидный layover обязан пройти');
+  const plan = buildPlan(TRIP_BOOKING, LAYOVER, {
+    actor: ACTOR, scopeValue: TRIP, targetId: null, values: validated.values,
+  });
+  assert(plan.op === 'rpc');
+  assertEquals(plan.name, 'add_layover_transfer');
+  assertEquals(plan.args.p_trip, TRIP);
+  assertEquals(plan.args.p_actor, ACTOR);
+  assertEquals(plan.args.p_from, '11111111-1111-1111-1111-111111111111');
+  assertEquals((plan.args.p_segments as unknown[]).length, 2);
+  assertEquals((plan.args.p_waypoints as unknown[]).length, 1);
+});
+
+Deno.test('★ transfer-layover: сегмент с transport_type вне enum отбивается per-segment', () => {
+  const r = validateInput(LAYOVER, {
+    from_city_visit_id: '11111111-1111-1111-1111-111111111111',
+    to_city_visit_id: '22222222-2222-2222-2222-222222222222',
+    waypoints: [{ city_name_en: 'Paris' }],
+    segments: [{ transport_type: 'spaceship', currency: 'EUR' }],
+  }, { isInsert: true });
+  assert('status' in r && r.status === 400, 'битый сегмент обязан отбиться до RPC');
+});
+
+Deno.test('★ transfer-layover: без segments/waypoints → 400 (обязательны)', () => {
+  const r = validateInput(LAYOVER, {
+    from_city_visit_id: '11111111-1111-1111-1111-111111111111',
+    to_city_visit_id: '22222222-2222-2222-2222-222222222222',
+  }, { isInsert: true });
+  assert('status' in r && r.status === 400);
 });
 
 // ── Сквозная проверка реестра ────────────────────────────────────────────────
