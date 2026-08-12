@@ -70,6 +70,13 @@ const LINES = [
   // это soft И round одновременно, плоский юнион такую пару не выразил бы.
   ['clean', '<IconBtn icon="close" ariaLabel="x" tone="soft" round />'],
   ['clean', '<IconBtn icon="plus" ariaLabel="x" size="sm" tone="danger" onClick={() => {}} />'],
+  // Tile отдаёт остаток на `<div>` — база носитель: `data-*`/`onClick`/`title`
+  // законны (ими экраны вешают состояние и клик). Оси НЕЗАВИСИМЫ (size × tone ×
+  // round × solid), обязательных пропов нет (плитка декоративна). `children` —
+  // для НЕ-иконочного содержимого (номер точки маршрута).
+  ['clean', '<Tile icon="star" tone="brand" size="lg" round data-state="on" onClick={() => {}} title="t" />'],
+  ['clean', '<Tile tone="quiet">3</Tile>'],
+  ['clean', '<Tile tone="warm" solid />'],
   // Степпер отдаёт остаток на `<div>`, значит база — носитель: `onPointerDown`/`title`
   // законны (ими ночи гасят арминг драга). `children` — центр варианта block (дата).
   ['clean', '<Stepper value={3} onMinus={() => {}} onPlus={() => {}} minusLabel="a" plusLabel="b" title="t" onPointerDown={() => {}} />'],
@@ -118,6 +125,11 @@ const LINES = [
   // текста без `aria-label` для скринридера безымянна.
   ['error', '<IconBtn icon="close" ariaLabel="x" tone="compact" />'],
   ['error', '<IconBtn icon="close" />'],
+  // Набор осей плитки закрыт ТИПОМ: тон `compact` и ступень `huge` не существуют
+  // (два разных поведения аннотации, урок TRIP-388). Обязательных пропов у плитки
+  // нет, поэтому «пропущенный обязательный» тут не проверяется.
+  ['error', '<Tile tone="compact" />'],
+  ['error', '<Tile size="huge" />'],
   // Набор вариантов степпера закрыт ТИПОМ: `compact` не существует.
   ['error', '<Stepper variant="compact" />'],
   // Набор вариантов Seg закрыт ТИПОМ: `compact` не существует (auto|fill).
@@ -151,7 +163,7 @@ const LINES = [
 
 const HEAD = [
   '// @ts-check',
-  "import { Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
+  "import { Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, EmptyState, Field, FileRow, IconBtn, PartnerLogo, Seg, Severity, Skeleton, Stepper, StreamEventRow, Tile, Toggle, DialogContent, DialogTitle, Row } from '@/design/index';",
   "import { Input, Textarea, InputGroup } from '@/design/Input';",
   "import { Icon } from '@/design/icons';",
   "import { useI18n } from '@/lib/i18n/I18nContext';",
