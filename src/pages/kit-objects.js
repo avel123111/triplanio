@@ -50,6 +50,7 @@
  * @type {KitObject[]} */
 export const KIT_OBJECTS = [
   // ── Компоненты ──────────────────────────────────────────────────────────
+  { id: 'pagehead', family: 'pagehead', group: 'components', css: false },
   { id: 'btn', family: 'btn', group: 'components', prefix: 'btn', maps: ['BTN_VARIANTS'], extras: ['sm', 'brand'], interactive: true },
   { id: 'icon-btn', family: 'icon', group: 'components', prefix: 'icon-btn', maps: ['ICON_BTN_TONES', 'ICON_BTN_SIZES'], extras: ['round'], interactive: true },
   { id: 'chip', family: 'fpill', group: 'components', prefix: 'fpill', maps: ['CHIP_VARIANTS'], extras: ['square', 'sm', 'avatars'], interactive: true },

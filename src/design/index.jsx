@@ -39,6 +39,7 @@ import { FieldRequired } from './Input';
 // `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
 // (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
 export { Row, Col, Grid, Trunc, Grow } from './Layout';
+export { PageHead } from './PageHead';
 // Кнопка-иконка — своим модулем по той же причине: крестик тоста живёт в
 // `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
 // оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`

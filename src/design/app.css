@@ -463,6 +463,17 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
   border: 1px solid var(--line);
 }
 
+/* ── PageHead: шапка экрана — заголовок (.t-title) + необязательный подзаголовок
+   слева, необязательные действия справа. Схлопывает приватные шапки экранов
+   (bgt-head, dl-head, …) в один канон. Адаптив — на экране (не передаёт actions
+   на мобиле), не здесь: облик шапки один.
+   prefix-exempt: pagehead — новый канон-объект «шапка экрана», апрув Pavel TRIP-413 */
+.pagehead { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-7); }
+.pagehead__titles { min-width: 0; }
+.pagehead__title { margin: 0; }
+.pagehead__sub { color: var(--muted); margin-top: var(--sp-1); }
+.pagehead__actions { margin-left: auto; display: flex; gap: var(--sp-3); flex: none; }
+
 /* Утопленная поверхность (заметки, адрес, плитки отсчёта) СВЕДЕНА к канону
    `<Card recessed>` (TRIP-343 PR-4, объект 2, закрытие). Прежняя приватная
    скин-группа `.addr,.notes,.notes-block,.cdu { --surface-3 + рамка }` снята

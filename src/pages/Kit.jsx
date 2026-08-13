@@ -34,7 +34,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES,
 } from '@/design/index';
@@ -55,7 +55,7 @@ const TX = {
     scale: 'Шкала отступов', type: 'Типографика', tokens: 'Токены :root',
   },
   titles: {
-    'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
+    'pagehead': 'Шапка экрана', 'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
     'seg': 'Сегмент-контрол', 'stepper': 'Степпер', 'swatch': 'Свотч',
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
@@ -108,6 +108,7 @@ const TX = {
     parsed: 'Разобрана', locked: 'Заблокирована (Pro)', dragover: 'Перетаскивание (data-dragover)',
   },
   save: 'Сохранить', close: 'Закрыть', placeholder: 'Введите значение',
+  rates: 'Курсы', add: 'Трата',
   sample: 'Съешь ещё этих мягких булок · Sphinx of black quartz · 0123456789',
   gapDefault: 'по умолчанию', missing: 'ступени нет — молча даёт значение по умолчанию',
   // Текст образцов — данными (правило 2 этого файла): гард 2d ловит узлы `>текст<`
@@ -244,6 +245,11 @@ const it = (name, node, full) => ({ name, node, full });
 const glyph = 'Ag';
 
 const RECIPES = {
+  pagehead: () => [
+    { items: [it('title + actions', <PageHead title="Бюджет" actions={<><Btn variant="secondary" icon="arrowSwap">{TX.rates}</Btn><Btn variant="primary" icon="plus">{TX.add}</Btn></>} />, true)] },
+    { label: 'title + subtitle', items: [it('subtitle', <PageHead title="Бюджет" subtitle="12 трат · 3 категории" />, true)] },
+    { label: 'только title', items: [it('title', <PageHead title="Заголовок" />, true)] },
+  ],
   btn: () => [
     { items: [it('force', <ForceHarness kind="btn" states={['default', 'hover', 'active', 'focus', 'disabled', 'loading']} render={(s) => <Btn variant="primary" disabled={s === 'disabled'} loading={s === 'loading'}>{TX.save}</Btn>} />, true)] },
     { label: 'variant (карта BTN_VARIANTS)', items: BTN_VARIANTS.map((v) => it(`variant="${v}"`, <Btn variant={v}>{v}</Btn>)) },
