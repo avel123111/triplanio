@@ -3,7 +3,7 @@
   "short_name": "Triplanio",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/",
+  "start_url": "/trips",
   "display": "standalone",
   "background_color": "#f7f9fa",
   "theme_color": "#2173c8",
