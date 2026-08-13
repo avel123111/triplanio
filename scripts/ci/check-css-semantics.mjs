@@ -532,6 +532,59 @@ const rootTokensOf = (sem) => {
 const baseTokens = rootTokensOf(base);
 const headTokens = rootTokensOf(head);
 
+/* ── ручки плитки: резолв ВЫЧИСЛЕННОГО в сверке переноса (TRIP-391 объект 3) ────
+ * Канон плитки переводит скин с прямых значений на ступень/канал: `.statbar .ic
+ * { width:42px; background:var(--brand-soft) }` → элемент уезжает на примитив
+ * `<Tile>` (`.tile { width:var(--tile,34px); background:var(--hl-soft) }`), а
+ * контекст задаёт РУЧКУ: `.statbar .tile { --tile:42px }`. Текст объявления при
+ * этом меняется (`42px` → `var(--tile,34px)`, `background`↔`--hl-soft`), а
+ * ВЫЧИСЛЕННОЕ — нет. `resolveVars` знает только `:root`, ручку же ставит КОНТЕКСТ,
+ * поэтому перенос читался «СО СМЕНОЙ значения» и канон-миграция была НЕВОЗМОЖНА.
+ *
+ * ★ Ручка резолвится с ТОЧНОГО правила `<контекст> .tile` (ключ = нормализованный
+ * селектор + media), НЕ по классу: `.statbar .s.c-city .tile` и `.sfig.c-city
+ * .tile` пишут `--hl-soft` под общий класс `.c-city` и по классу склеились бы.
+ * ★★ Безопасность держит САМ перенос, а не пропуск: значение сверяется
+ * ВЫЧИСЛЕННЫМ на обеих сторонах, поэтому правка ручки (`--tile` 42→40, иной тон
+ * `--hl-soft`) даёт ДРУГОЙ результат → перенос отвергается красным (условие Г37:
+ * умнее, не слепее). Ручка-ДЕКЛАРАЦИЯ на цели (`--tile:42px`) снимается с
+ * блокировки ТОЛЬКО когда её употребил состоявшийся перенос — стой она сама по
+ * себе, осталась бы блокирующей (иначе `--tile:99px` втихую менял бы размер). */
+const TILE_HANDLES = new Set(['--tile', '--tile-r', '--tile-ic', '--hl-soft', '--hl-ink']);
+// ★ Длинные имена ПЕРВЫМИ: альтернация жадна по порядку, и `--tile` матчил бы
+// префикс `--tile-r`/`--tile-ic`, оставляя их декларацию неучтённой (найдено
+// мутацией: --tile-r блокировал зелёный перенос).
+const HANDLE_RE = /var\(\s*(--tile-r|--tile-ic|--tile|--hl-soft|--hl-ink)\b/g;
+const handlesBySel = (files) => {
+  const map = new Map();
+  for (const { path, css } of files) {
+    let root;
+    try { root = postcss.parse(css, { from: path }); } catch { continue; }
+    root.walkRules((rule) => {
+      const media = mediaOf(rule);
+      for (const sel of rule.selectors || []) {
+        rule.walkDecls((d) => {
+          if (!TILE_HANDLES.has(d.prop)) return;
+          const k = normSel(sel) + SEP + media;
+          if (!map.has(k)) map.set(k, new Map());
+          map.get(k).set(d.prop, d.value.replace(/\s+/g, ' ').trim());
+        });
+      }
+    });
+  }
+  return map;
+};
+const headHandles = handlesBySel(headFiles);
+/** Целевой контекст переноса плитки = исходный селектор с подлежащим на `.tile`
+ *  (элемент тот же контекст, но уехал на примитив). `.statbar .s.c-city .ic` →
+ *  `.statbar .s.c-city .tile`. Комбинаторы у плитки — только потомок (пробел). */
+const tileTargetSel = (sel) => {
+  const c = compoundsOf(sel);
+  if (!c.length) return null;
+  c[c.length - 1] = '.tile';
+  return c.join(' ');
+};
+
 const reVar = /var\(\s*(--[\w-]+)\s*(?:,([^()]*(?:\([^()]*\)[^()]*)*))?\)/g;
 const resolveVars = (value, tokens) => {
   let out = value;
@@ -781,8 +834,17 @@ for (const mv of moves) {
         winKey = k;
       }
     }
+    // Перенос сходится ВЫЧИСЛЕННЫМ. Если у цели есть контекст-правило <контекст>
+    // .tile с ручками плитки — резолвим СТРОГО через него (не через :root-фолбэк:
+    // тот проглядел бы ctx-override, `var(--tile-r, --r-sm)` при `--tile-r:20px`
+    // вернул бы фолбэк и ослеп). Без ручек-контекста — прежняя сверка sameMovedValue.
+    const tsel = win && c.fromSel && tileTargetSel(c.fromSel);
+    const ctx = tsel && headHandles.get(normSel(tsel) + SEP + (c.media || ''));
+    const ok = win && (ctx
+      ? resolveVars(c.from, baseTokens) === resolveVars(win.value, new Map([...headTokens, ...ctx]))
+      : sameMovedValue(c.from, win.value));
     if (!win) rejected.push(`${fmtId(c)}: ${c.from} — на ${dst} этого объявления нет`);
-    else if (!sameMovedValue(c.from, win.value)) {
+    else if (!ok) {
       rejected.push(`${fmtId(c)}: ${c.from} → ${win.value} — перенос на ${partsOf(winKey).unit} СО СМЕНОЙ значения`);
     } else {
       declared.add(c.key);
@@ -794,6 +856,21 @@ for (const mv of moves) {
       // объявление элементу не достаётся, значит и переносом не объясняется —
       // оно объявляется своей строкой. Это намеренно, а не недосмотр.
       if (byKey.get(winKey)?.from === null) declared.add(winKey);
+      // Ручки, что резолвер УПОТРЕБИЛ (встречаются в значении цели И заданы
+      // контекстом), — их декларация-приобретение (`--tile:42px`) снимается с
+      // блокировки на ВСЕХ классах целевого селектора (`.statbar`+`.tile`+
+      // `.c-city`…): безопасность на сверке ВЫЧИСЛЕННОГО выше, не на декларации.
+      // Ручка без переноса остаётся блокирующей — `--tile:99px` втихую не пройдёт.
+      if (ctx) {
+        const used = [...win.value.matchAll(HANDLE_RE)].map((m) => m[1]).filter((h) => ctx.has(h));
+        const targetClasses = classesOf(tsel).map((cl) => `.${cl}`);
+        for (const h of used) {
+          for (const u of targetClasses) {
+            const hk = [u, c.media, c.state, h].join(SEP);
+            if (byKey.get(hk)?.from === null) declared.add(hk);
+          }
+        }
+      }
     }
   }
   // Число «сошлось через токен» печатается ОТДЕЛЬНО: разворачивание `var()` —
