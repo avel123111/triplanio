@@ -504,6 +504,15 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
   .lrow--raised.lrow--clickable:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
 }
 
+/* ── Donut: кольцевая диаграмма — сегменты по долям + центр, запертый в дырке
+   кольца (inset), поэтому крупное значение не заезжает на дугу.
+   prefix-exempt: donut — новый канон-объект «кольцевая диаграмма», апрув Pavel TRIP-413 */
+.donut { position: relative; width: 210px; height: 210px; flex: none; margin: 0 auto; }
+.donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.donut__seg { transition: stroke-width .2s var(--ease-out), opacity .2s; }
+.donut__seg[data-dim="true"] { opacity: .4; }
+.donut__c { position: absolute; inset: 24%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--sp-1); }
+
 /* Утопленная поверхность (заметки, адрес, плитки отсчёта) СВЕДЕНА к канону
    `<Card recessed>` (TRIP-343 PR-4, объект 2, закрытие). Прежняя приватная
    скин-группа `.addr,.notes,.notes-block,.cdu { --surface-3 + рамка }` снята
