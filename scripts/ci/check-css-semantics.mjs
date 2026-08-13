@@ -575,14 +575,18 @@ const handlesBySel = (files) => {
   return map;
 };
 const headHandles = handlesBySel(headFiles);
-/** Целевой контекст переноса плитки = исходный селектор с подлежащим на `.tile`
- *  (элемент тот же контекст, но уехал на примитив). `.statbar .s.c-city .ic` →
- *  `.statbar .s.c-city .tile`. Комбинаторы у плитки — только потомок (пробел). */
+/** Целевой контекст переноса плитки = исходный селектор, где компаунд `.ic`
+ *  заменён на `.tile`, а всё ПРАВЕЕ него отброшено. `.statbar .s.c-city .ic` →
+ *  `.statbar .s.c-city .tile`; `.statbar .ic svg` → `.statbar .tile` (иконку
+ *  несёт базовое `.tile > svg`, ступень — ручка `--tile-ic` на самом `.tile`,
+ *  поэтому хвост-подлежащее `svg` в контекст ручек не входит). Комбинаторы у
+ *  плитки — только потомок (пробел). */
 const tileTargetSel = (sel) => {
   const c = compoundsOf(sel);
-  if (!c.length) return null;
-  c[c.length - 1] = '.tile';
-  return c.join(' ');
+  let i = -1;
+  for (let k = 0; k < c.length; k += 1) if (classesOf(stripFnPseudo(c[k])).includes('ic')) i = k;
+  if (i < 0) return null;
+  return c.slice(0, i).concat('.tile').join(' ');
 };
 
 const reVar = /var\(\s*(--[\w-]+)\s*(?:,([^()]*(?:\([^()]*\)[^()]*)*))?\)/g;
@@ -879,6 +883,43 @@ for (const mv of moves) {
   notes.push(
     `перенос ${src} → ${dst}: объявлений ${moved}` + (unfolded ? ` (из них ${unfolded} сошлись через токен)` : ''),
   );
+}
+
+/* ── КАНАЛ-move и SVG-ступень плитки (TRIP-391 объект 3, 2-е расширение) ──────
+ * Пересадка `.ic` на `<Tile>` churn'ит 2p там, куда первичный резолвер (по
+ * СВОЙСТВУ) не дотягивается:
+ *   · ТОН живёт на МУЛЬТИКЛАССОВОМ контексте — `.statbar .s.c-city .ic{background:X}`
+ *     → `.statbar .s.c-city .tile{--hl-soft:X}`: свойство СМЕНИЛОСЬ (background↔
+ *     --hl-soft) на классе `.c-city`, перенос-по-свойству его не сматчит;
+ *   · РАЗМЕР ИКОНКИ уезжает с `.ic svg{width:N}` на `.tile{--tile-ic:N}` через
+ *     базовое `.tile>svg` — бесклассовый юнит, ручку никакой перенос по свойству
+ *     не «употребляет», и её декларация висит блокирующей.
+ * Обе формы — тот же метод «резолв→сравнение»: объявление ГАСИТСЯ, только если
+ * контекст `<sel> .tile` задаёт ПАРНУЮ ручку с ТЕМ ЖЕ ВЫЧИСЛЕННЫМ значением
+ * (background↔--hl-soft, color↔--hl-ink, svg width/height↔--tile-ic). Смена тона
+ * или размера иконки даёт другое вычисленное → не гасится → красный (Г37:
+ * резолвит и сравнивает, НЕ «перестаёт проверять»). Гейт — исходный селектор
+ * несёт мигрирующий класс `.ic`: чужой снос background под это не попадёт.
+ * ★ Это ПОСЛЕДНЕЕ расширение 2p для объекта 3 — тон·svg·display-артефакт
+ * покрывают все 8 семей; 4-я форма = пересмотр метода миграции, не третий патч. */
+const CHANNEL = { background: '--hl-soft', 'background-color': '--hl-soft', color: '--hl-ink' };
+const hasIcCompound = (sel) => !!sel && compoundsOf(sel).some((cp) => classesOf(stripFnPseudo(cp)).includes('ic'));
+const bareSubject = (unit) => classesOf(stripFnPseudo(subjectOf(unit))).length === 0;
+for (const c of changes) {
+  if (c.to !== null || declared.has(c.key) || !hasIcCompound(c.fromSel)) continue;
+  const tsel = tileTargetSel(c.fromSel);
+  const ctx = tsel && headHandles.get(normSel(tsel) + SEP + (c.media || ''));
+  if (!ctx) continue;
+  // канал: background/color; svg-ступень: width/height бесклассового svg-юнита
+  const h = CHANNEL[c.prop] || ((c.prop === 'width' || c.prop === 'height') && bareSubject(c.unit) ? '--tile-ic' : null);
+  if (!h || !ctx.has(h)) continue;
+  if (resolveVars(c.from, baseTokens) !== resolveVars(ctx.get(h), headTokens)) continue;
+  declared.add(c.key);
+  // Парная ручка-приобретение — declared на всех классах целевого контекста.
+  for (const u of classesOf(tsel).map((cl) => `.${cl}`)) {
+    const hk = [u, c.media, c.state, h].join(SEP);
+    if (byKey.get(hk)?.from === null) declared.add(hk);
+  }
 }
 
 for (const c of changes) {
