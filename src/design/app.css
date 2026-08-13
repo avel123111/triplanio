@@ -485,6 +485,25 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .stat--activity .tile { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
 .stat--transfer .tile { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 
+/* ── ListRow: строка списка — [лид] заголовок+подпись [трейл]. Скин = variant.
+   Схлопывает bgt-exrow / bgt-fxrow / bgt-glist__row / bgt-dleg__row.
+   prefix-exempt: lrow — новый канон-объект «строка списка», апрув Pavel TRIP-413 */
+.lrow { display: flex; align-items: center; gap: var(--sp-6); padding: var(--sp-6); border-radius: var(--r-btn); }
+.lrow__body { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; flex: 1; }
+.lrow__trail { flex: none; display: flex; align-items: center; gap: var(--sp-3); text-align: right; }
+.lrow--clickable { cursor: pointer; width: 100%; text-align: left; font: inherit; }
+.lrow--raised { background: var(--surface); border: 1px solid var(--line); transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+.lrow--select { border: 1px solid transparent; background: transparent; transition: background .15s, border-color .15s; }
+.lrow--select:hover { background: var(--wash); }
+.lrow--divider { border-radius: 0; padding-left: 0; padding-right: 0; border-bottom: 1px solid var(--line); }
+.lrow--divider:last-child { border-bottom: 0; }
+.lrow--compact { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); transition: background .15s; }
+.lrow--compact:hover { background: var(--wash); }
+.lrow--on { background: var(--brand-soft); border-color: var(--brand-soft-12); }
+@media (hover: hover) {
+  .lrow--raised.lrow--clickable:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
+}
+
 /* Утопленная поверхность (заметки, адрес, плитки отсчёта) СВЕДЕНА к канону
    `<Card recessed>` (TRIP-343 PR-4, объект 2, закрытие). Прежняя приватная
    скин-группа `.addr,.notes,.notes-block,.cdu { --surface-3 + рамка }` снята
