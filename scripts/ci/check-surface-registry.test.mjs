@@ -169,6 +169,30 @@ test('ко-селектор скин (фон+рамка общим правил�
   assert.match(r.out, /foo-card/);
 });
 
+test('btn-homed носитель (.btn на <a>) не в реестре → красный (TRIP-337 объект 1)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': JSON.stringify({ classes: {}, btnHomed: {} }),
+      'src/a.jsx': 'export const C = () => (<a className="btn btn--primary" href="#">go</a>);\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /btnHomed|btn-homed/i);
+});
+
+test('btn-homed носитель (role=button на <div>) не в реестре → красный (TRIP-337 объект 1)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': JSON.stringify({ classes: {}, btnHomed: {} }),
+      'src/a.jsx': 'export const C = () => (<div role="button" tabIndex={0} className="grip">g</div>);\n',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /btnHomed|role=button/i);
+});
+
 /* ── зелёное ─────────────────────────────────────────────────────────────── */
 
 test('тот же ко-селектор скин, но занесён причиной → зелёный (TRIP-337 объект 2)', (t) => {
@@ -195,6 +219,19 @@ test('тот же tile-homed класс НА <Tile> → зелёный (TRIP-391
   assert.equal(run(f).code, 0, run(f).out);
 });
 
+
+test('тот же btn-homed носитель, занесён вердиктом → зелёный (TRIP-337 объект 1)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': JSON.stringify({
+        classes: {},
+        btnHomed: { 'src/a.jsx: <a .btn>': { verdict: 'btn-legit', reason: 'внешний CTA — ссылка обязана быть <a>' } },
+      }),
+      'src/a.jsx': 'export const C = () => (<a className="btn btn--primary" href="#">go</a>);\n',
+    },
+  });
+  assert.equal(run(f).code, 0, run(f).out);
+});
 
 test('тот же card-homed класс НА <Card> → зелёный', (t) => {
   const f = fixture(t, {
