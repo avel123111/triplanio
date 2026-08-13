@@ -6499,8 +6499,10 @@ a.doc-row__n:hover{ color: var(--brand); }
    формы. Объявлено ЗДЕСЬ, у обеих, поэтому разъехаться больше нечему. */
 .lp, .dlg { background: var(--bg); }
 .lp { box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }
-.lp-ic { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.lp-ic svg { width: 17px; height: 17px; }
+/* visual-diff-move: lp-ic -> tile — плитка-иконка левой панели на <Tile> (ступень 36; база БЕЗ тона — тинт приходит контекстом .lp-h--ev{--hl} ИЛИ инлайном call-site каналом --hl; иконка 17 = дефолт .tile>svg)
+   visual-diff-exempt: .lp-ic svg width — иконка на базовое .tile>svg (--tile-ic дефолт 17) — рендер
+   visual-diff-exempt: .lp-ic svg height — то же */
+.lp-ic { --tile: 36px; }
 .lp-ti { min-width: 0; flex: 1; }
 .lp-ti b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-ti span { color: var(--muted); }
@@ -6514,7 +6516,9 @@ a.doc-row__n:hover{ color: var(--brand); }
    у существующего класса инлайн - ошибка КЛАССА, а не образец для копирования,
    поэтому значение переехало сюда. Скоуп именно `.lp-h--ev`: `.lp-ic` носят и
    не-событийные шапки (город, маршрут, партнёр), у них свои тона. */
-.lp-h--ev .lp-ic { background: var(--hl); color: #fff; }
+/* visual-diff-move: .lp-h--ev .lp-ic -> tile — тон события каналом --hl (СОЛИД --hl фон, белый значок): переведён на канал, чтобы инлайн-тинт call-site (CityPanel/EditLens) перебивал по слою --hl-soft, а не проигрывал более специфичному контексту
+   visual-diff-exempt: .lp-h--ev background — bg дочернего .lp-ic был приписан предку .lp-h--ev и выигрывал ключ; убран на канал → всплыл собственный градиент контейнера (не менялся) — рендер */
+.lp-h--ev .lp-ic { --hl-soft: var(--hl); --hl-ink: #fff; }
 /* Эйбрау шапки события - ровно тот же случай, что плитка выше: тон писался
    инлайном в трёх шапках из четырёх, а четвёртая (просмотр в диалоге) держала
    его правилом удалённого семейства и после схлопывания осталась бы с базовым

@@ -97,9 +97,9 @@ export default function CityPanel({
           значения приходят из :root, а они и есть бренд. Инлайн, который писал
           сюда ровно эти три дефолта, снят в 04 PR3 — он ничего не менял. */}
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+        <Tile as="span" className="lp-ic" style={{ '--hl-soft': 'var(--brand-soft)', '--hl-ink': 'var(--brand)' }}>
           {isWaypoint ? <Icon name="arrowSwap" size={17} /> : <b className="t-strong">{cityNo}</b>}
-        </span>
+        </Tile>
         <div className="lp-ti col col--g1">
           <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
           <b>{node.city_name}</b>
