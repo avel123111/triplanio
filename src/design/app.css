@@ -469,7 +469,8 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    на мобиле), не здесь: облик шапки один.
    prefix-exempt: pagehead — новый канон-объект «шапка экрана», апрув Pavel TRIP-413
    floor-exempt: namespaces +3 — 4 новых канон-семьи ДС (pagehead/stat/lrow/donut) минус удалённый bgt; общий словарь, переиспользуется всеми экранами, апрув Pavel TRIP-413
-   floor-exempt: layout +2 — канон-кубики ДС несут свою раскладку (lrow/stat/pagehead __body/__trail), это язык системы, не приватная раскладка экрана, апрув Pavel TRIP-413 */
+   floor-exempt: layout +2 — канон-кубики ДС несут свою раскладку (lrow/stat/pagehead __body/__trail), это язык системы, не приватная раскладка экрана, апрув Pavel TRIP-413
+   floor-exempt: apart +1 — grid--split объявлен apart (адаптивная сетка с @media, не чистая ось колонок), апрув Pavel TRIP-413 */
 .pagehead { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-7); }
 .pagehead__titles { min-width: 0; }
 .pagehead__title { margin: 0; }
