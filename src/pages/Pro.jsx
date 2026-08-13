@@ -7,7 +7,7 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '@/design/icons';
-import { Btn, Skeleton, Severity } from '@/design/index';
+import { Btn, Card, Skeleton, Severity, Tile } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
@@ -226,7 +226,8 @@ export default function Pro() {
         <div className="pro-plans" aria-label={t('sub.choose_plan')}>
           {pricesLoading && !prices
             ? Array.from({ length: 3 }).map((_, i) => (
-                <div
+                <Card
+                  radius="card"
                   key={i}
                   className="plan-card-skel"
                   style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
@@ -238,12 +239,14 @@ export default function Pro() {
                     {[0, 1, 2, 3].map((j) => <Skeleton key={j} w={`${88 - j * 7}%`} h={11} />)}
                   </div>
                   <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={'var(--r-sm)'} /></div>
-                </div>
+                </Card>
               ))
             : cards.map((c) => (
-                <div
+                <Card
+                  radius="card"
+                  featured={c.featured}
                   key={c.key}
-                  className={`plan-card${c.featured ? ' plan-card--featured' : ''}`}
+                  className="plan-card"
                 >
                   {c.featured && c.save != null && (
                     <div className="plan-popular-badge">{t('sub.save_pct', { pct: c.save })}</div>
@@ -295,7 +298,7 @@ export default function Pro() {
                       {c.cta.label}
                     </Btn>
                   </div>
-                </div>
+                </Card>
               ))
           }
         </div>
@@ -304,7 +307,7 @@ export default function Pro() {
             The skeleton mirrors this same slot so the loading layout matches whether
             the banner will show or not. */}
         {!hidePerTrip && pricesLoading && !prices && (
-          <div className="pro-trip-bar">
+          <Card radius="card" className="pro-trip-bar">
             <Skeleton w={44} h={44} r={'var(--r-sm)'} />
             <div style={{ flex: 1, minWidth: 220 }}>
               <Skeleton w="42%" h={16} />
@@ -314,20 +317,16 @@ export default function Pro() {
               <Skeleton w={70} h={22} />
               <Skeleton w={92} h={38} r={'var(--r-sm)'} />
             </div>
-          </div>
+          </Card>
         )}
         {!hidePerTrip && !pricesLoading && (
-          <div className="pro-trip-bar">
-            <span style={{
-              width: 44, height: 44, flex: 'none', borderRadius: 'var(--r-sm)',
-              background: 'var(--brand-soft)', color: 'var(--brand)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+          <Card radius="card" className="pro-trip-bar">
+            <Tile as="span" style={{ '--tile': '44px', '--tile-ic': '21px' }}>
               <Icon name="ticket" size={21} />
-            </span>
+            </Tile>
             <div style={{ flex: 1, minWidth: 220 }}>
               <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
-              <div className="t-meta t-sans" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
+              <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
             </div>
             <div className="pro-trip-bar__actions">
               <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice}</span>
@@ -340,7 +339,7 @@ export default function Pro() {
                 {t('sub.buy_for_trip')}
               </Btn>
             </div>
-          </div>
+          </Card>
         )}
 
         {/* Trust line — small reassurance at the very bottom, below everything. */}

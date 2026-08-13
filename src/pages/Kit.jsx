@@ -34,8 +34,9 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
-  Skeleton, Stepper, Swatch, Textarea, Toggle,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
+  TILE_SIZES, TILE_TONES,
 } from '@/design/index';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
@@ -46,6 +47,7 @@ const TX = {
   title: 'Витрина дизайн-системы',
   lead: 'Тот же код, что и в приложении: /kit импортирует @/design. Один объект — одна страница; образцы генерируются из карт вариантов компонентов и из живых стилей.',
   canon: 'канон', triage: 'на разборе', unknown: 'нет в каталоге',
+  canonsLabel: '10 канонов', modsLabel: 'модификаторы (комбинируются с каноном)',
   back: '← все объекты',
   theme: 'Тема', themeLight: 'светлая', themeDark: 'тёмная',
   groups: {
@@ -101,6 +103,9 @@ const TX = {
   forceStates: {
     default: 'Обычная', hover: 'Наведение', active: 'Нажатие',
     focus: 'Фокус', disabled: 'Недоступна', loading: 'Загрузка',
+    // Ось состояний карточки (объект 2)
+    selected: 'Выбрана (aria-selected)', busy: 'Занята · проверка (aria-busy)',
+    parsed: 'Разобрана', locked: 'Заблокирована (Pro)', dragover: 'Перетаскивание (data-dragover)',
   },
   save: 'Сохранить', close: 'Закрыть', placeholder: 'Введите значение',
   sample: 'Съешь ещё этих мягких булок · Sphinx of black quartz · 0123456789',
@@ -372,12 +377,12 @@ const RECIPES = {
     // её ↔ живой CSS в обе стороны). radius/tone эмитятся своими пропами; булевы
     // формы - одноимённым пропом; danger - `danger`; до-края - `pad="none"`.
     const P = {
-      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' },
+      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' }, 'r-card': { radius: 'card' }, featured: { featured: true }, raised: { raised: true },
       interactive: { as: 'button', radius: 'md', interactive: true },
       'tone-brand': { tone: 'brand', radius: 'md' },
       'tone-ai': { tone: 'ai' },
       add: { as: 'button', variant: 'add', radius: 'md', interactive: true },
-      recessed: { recessed: true }, locked: { locked: true },
+      recessed: { recessed: true }, locked: { locked: true }, parsed: { parsed: true },
       flush: { pad: 'none' }, danger: { danger: true },
     };
     const body = (v) =>
@@ -385,7 +390,39 @@ const RECIPES = {
         : v === 'flush' ? <Skeleton h={64} r={0} />
           : v === 'add' ? <b>{TX.cardHead}</b>
             : <><CardHeader title={TX.cardHead} /><p className="t-body">{TX.cardBody}</p></>;
+    // Ось СОСТОЯНИЙ карточки (TRIP-343 объект 2): невоспроизводимые в статике
+    // состояния под ПЕРЕКЛЮЧАТЕЛЯМИ, как у кнопки (:243). Каждое несёт РЕАЛЬНЫЙ
+    // проп/атрибут (закон 5: состояние = данные, не класс), приёмка — свой
+    // переключатель + подпись именем:
+    //   hover    → data-hovered на обёртке-поведении → канон [data-hovered] > .card--interactive
+    //   selected → aria-selected на обёртке          → канон [aria-selected] > .card--interactive
+    //   focus    → зеркало data-force в Kit.css (:focus-visible не форсится), как у кнопки
+    //   parsed / locked → пропы (свой канон .card--parsed/.card--locked)
+    //   busy     → ariaBusy → aria-busy (несущий атрибут ai-blk «проверяю/занята»; облик — канон покоя, нового скина не заводим)
+    //   dragover → dataDragover → data-dragover (несущий атрибут дропзоны; облик — канон покоя)
+    const cardState = (s) => (
+      <div
+        data-hovered={s === 'hover' ? '' : undefined}
+        aria-selected={s === 'selected' ? 'true' : undefined}
+      >
+        <Card
+          as="button"
+          radius="md"
+          interactive
+          parsed={s === 'parsed'}
+          locked={s === 'locked'}
+          ariaBusy={s === 'busy'}
+          dataDragover={s === 'dragover'}
+        >
+          <CardHeader title={TX.cardHead} />
+          <p className="t-body">{TX.cardBody}</p>
+        </Card>
+      </div>
+    );
     return [
+      {
+        items: [it('force', <ForceHarness kind="card" states={['default', 'hover', 'focus', 'selected', 'busy', 'parsed', 'locked', 'dragover']} render={cardState} />, true)],
+      },
       {
         label: 'слот CardHeader (заголовок · подзаголовок · действие справа)',
         items: [it('CardHeader', <div className="grow"><Card radius="lg"><CardHeader title={TX.cardTitle} subtitle="Подзаголовок" action={<Badge variant="quiet">{TX.canon}</Badge>} /><p className="t-body">{TX.cardBody}</p></Card></div>, true)],
@@ -512,16 +549,55 @@ const RECIPES = {
 
   'readonly-banner': () => [{ items: [it('base', <div className="grow"><ReadOnlyBanner>{TX.readonly}</ReadOnlyBanner></div>, true)] }],
 
-  tile: (ctx) => [{
-    label: 'тон · размер · форма · залитая (CSS-производный список семьи)',
-    items: ctx.declared.map((c) => {
-      const t = tailOf(c);
-      if (t === 'solid') return it('tile--solid (+ai)', <span className="tile tile--solid tile--ai" />);
-      if (t === 'warm') return it('tile--solid + tile--warm', <span className="tile tile--solid tile--warm" />);
-      if (['round', 'sm', 'lg', 'xl', '2xl'].includes(t)) return it(c, <span className={`tile tile--brand ${c}`} />);
-      return it(c, <span className={`tile ${c}`} />);
-    }),
-  }],
+  // TRIP-391 объект 3: витрина рисует ЧЕРЕЗ <Tile>, а не сырым `.tile`, и
+  // итерирует карты примитива (TILE_SIZES/TILE_TONES) — полнота по построению,
+  // тест дрейфа сверяет карты ↔ живой CSS. Размер плитки и кегль иконки — РАЗНЫЕ
+  // оси: ступень несёт и то и другое (--tile / --tile-ic), иконка размера не
+  // задаёт (её бьёт `.tile > svg`).
+  tile: () => [
+    {
+      label: 'размер (ось --tile/--tile-ic): дефолт 34 · sm 28 · lg 40 · xl 46 · 2xl 62',
+      items: [
+        it('base (34)', <Tile icon="star" tone="brand" />),
+        ...TILE_SIZES.map((s) => it(`size="${s}"`, <Tile icon="star" tone="brand" size={s} />)),
+      ],
+    },
+    {
+      label: 'тон (мягкий оттенок цвета значка — роль-токен, Р7)',
+      items: TILE_TONES.map((t) => it(`tone="${t}"`, <Tile icon="sparkles" tone={t} />)),
+    },
+    {
+      label: 'форма и залитая (тон warm — только залитый, канон)',
+      items: [
+        it('round', <Tile icon="star" tone="brand" round />),
+        it('solid (+brand)', <Tile icon="star" tone="brand" solid />),
+        it('solid (+ai)', <Tile icon="sparkles" tone="ai" solid />),
+        it('solid (+success)', <Tile icon="check" tone="success" solid />),
+        it('solid (+warm)', <Tile icon="star" tone="warm" solid />),
+        it('children (число вместо иконки)', <Tile tone="quiet" round>3</Tile>),
+      ],
+    },
+    {
+      // TRIP-391 объект 3: остатки семей плитки, что НЕ сводятся к плоскому <Tile>
+      // (рамка / состояние / контрол / аватар / градиент-глубина). Причины —
+      // surface-registry.json _tileFamilyResidual. Показаны здесь, чтобы каждый
+      // индивидуальный/уникальный элемент был виден в витрине, а не терялся.
+      label: 'вне канона <Tile> — осознанные остатки семей (рамка/состояние/контрол/аватар; не плоская плитка)',
+      items: [
+        it('.fork-si (рич-медальон: градиент+рамка+glow+угловой spark)', (
+          <Card raised className="fork-state fork-state--nomatch">
+            <div className="fork-state__art">
+              <span className="fork-state__glow" aria-hidden="true" />
+              <span className="fork-si"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M5 21V7l7-4 7 4v14" /></svg><span className="fork-state__spark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg></span></span>
+            </div>
+          </Card>
+        )),
+        it('.map-route__marker (pill + рамка 2px + состояние is-active)', <span className="map-route__marker"><span className="num t-meta">3</span></span>),
+        it('.te-step (степпер-контрол, дом <IconBtn>)', <button type="button" className="te-step te-step--del"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg></button>),
+        it('.acct-hero__av (аватар, дом Avatar — bg-image / градиент)', <div className="acct-hero__av" style={{ background: 'linear-gradient(135deg, var(--brand), var(--ai))' }} />), // i18n-ignore: подпись демо-образца витрины /kit (dev-only, не UI-строка); inline-style-exempt: демо-фон-градиент — форма аватара видна в витрине (в проде bg-image из данных)
+      ],
+    },
+  ],
 
   spin: (ctx) => [{
     items: [
@@ -551,10 +627,13 @@ const RECIPES = {
   }],
 
   'ai-blk': (ctx) => [{
+    // TRIP-343 объект 2 (F): скин ai-блока живёт на <Card tone="ai"> (как в проде
+    // EventAiBlock). Витрина рисует ЧЕРЕЗ Card, а не сырым <button> — иначе образец
+    // показывал бы ai-blk без его поверхности (ровно класс дыры, что был у трансфера).
     items: ctx.declared.filter((c) => c.startsWith('ai-blk')).map((c) => it(c, (
-      <button type="button" className={`ai-blk ${c}`}>
+      <Card as="button" tone="ai" className={`ai-blk ${c}`}>
         <div className="ai-blk-hd"><span className="ai-blk-ti"><b>{TX.aiTitle}</b><span>{TX.aiSub}</span></span></div>
-      </button>
+      </Card>
     ), true)),
   }],
 
@@ -663,9 +742,18 @@ function SpacingSection({ ctx }) {
 }
 
 const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-ui', 't-meta', 't-micro', 't-mono'];
+/* Санкционированные орто-модификаторы канона (TRIP-410): комбинируются с любым
+   каноном, НЕ каноны сами по себе. Прежний sans-оверлей удалён (мета-ярус — Geologica).
+   `base` — канон, на котором эффект модификатора виден нагляднее. */
+const TYPE_MODS = [
+  { cls: 't-strong', base: 't-body', sample: 'Съешь ещё · Sphinx of black quartz' },
+  { cls: 't-flush', base: 't-display', sample: '0123456789' },
+  { cls: 'tp-caption', base: 't-mono', sample: 'caption · эйбрау' },
+];
 function TypographySection() {
   return (
     <div className="col col--g6">
+      <span className="t-micro">{TX.canonsLabel}</span>
       {TYPE_CANONS.map((cls) => (
         <div key={cls} className="col col--g2">
           <div className="row row--g3 row--j-center">
@@ -673,6 +761,13 @@ function TypographySection() {
             <StatusTag cls={cls} />
           </div>
           <span className={cls}>{TX.sample}</span>
+        </div>
+      ))}
+      <span className="t-micro">{TX.modsLabel}</span>
+      {TYPE_MODS.map(({ cls, base, sample }) => (
+        <div key={cls} className="col col--g2">
+          <span className="t-mono trunc">{`.${base}.${cls}`}</span>
+          <span className={`${base} ${cls}`}>{sample}</span>
         </div>
       ))}
     </div>

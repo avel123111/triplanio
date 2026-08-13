@@ -12,8 +12,8 @@
      :root would otherwise shift the body's fonts/neutrals/brand. Values mirror
      src/design/app.css — this isolates the Lumo body from the landing palette
      while the shared marketing header/footer keep their landing styling. */
-  --font-display:'Exo 2',ui-sans-serif,system-ui,sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
-  --font-ui:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;      /* TRIP-165 */
+  --font-display:'Geologica',ui-sans-serif,system-ui,sans-serif;                /* TRIP-410 — single-font (пин против landing.css, что грузится после app.css) */
+  --font-ui:'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;       /* TRIP-410 */
   --brand:#2173C8;
   --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
   --ink:#272433; --ink-2:#4A4659; --muted:#7A7689; --muted-2:#ABA7B8;
@@ -24,14 +24,12 @@
   --line:#E6EAEE; --line-strong:#D5DAE0; --line-hover:#C8CED6;
   --primary-hover:#1C66B4; --primary-ring:rgba(33,115,200,.28); --brand-soft:rgba(33,115,200,.10);
 
-  font-family:var(--font-ui);
+  /* база типографики — канон .t-body (co-selector в app.css, TRIP-410) */
   color:var(--ink-2);
   background:var(--bg);
-  font-weight:500;
-  line-height:1.6;
   min-height:100vh;
 }
-.ptrip h1,.ptrip h2,.ptrip h3{font-family:var(--font-display);margin:0;color:var(--ink);letter-spacing:-.02em}
+.ptrip h1,.ptrip h2,.ptrip h3{margin:0;color:var(--ink)}   /* гарнитура/кегль — каноны .t-display/.t-heading/.t-title (co-selector, TRIP-410) */
 .ptrip .tnum{font-variant-numeric:tabular-nums}
 .pt-wide{max-width:1180px;margin:0 auto;padding:0 28px}
 
@@ -48,7 +46,7 @@
    under that divider, beside the cities/stats column. */
 /* TRIP-165 — hero-заголовок на канон t-display; TRIP-203 — адаптив несёт сам
    fluid-токен --fs-display (clamp), ручные @media-ступеньки убраны. */
-.pt-mast h1{font-size:var(--fs-display);letter-spacing:-.035em;margin:18px 0 0}
+.pt-mast h1{margin:18px 0 0}   /* кегль/трекинг — канон .t-display (co-selector, TRIP-410) */
 .pt-mast__by{display:flex;align-items:center;gap:13px;margin-top:24px}
 .pt-mast__av{width:46px;height:46px;border-radius:50%;position:relative;overflow:hidden;flex:none;background:var(--brand-grad);display:grid;place-items:center;color:#fff;box-shadow:var(--sh-1)}
 .pt-mast__av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -95,7 +93,7 @@
 .pt-cstop__num{width:var(--num);height:var(--num);border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;box-shadow:0 8px 18px -8px rgba(0,0,0,.25);transition:background .35s var(--ease-out),box-shadow .35s var(--ease-out)}
 .pt-cstop.is-active .pt-cstop__num{box-shadow:0 10px 22px -8px var(--primary-ring,rgba(33,115,200,.28))}
 .pt-cstop__ht{flex:1;min-width:0}
-.pt-cstop__ht h2{font-size:var(--fs-h2);letter-spacing:-.03em;transition:color .35s var(--ease-out)}   /* 26 — канон t-heading (TRIP-165) */
+.pt-cstop__ht h2{transition:color .35s var(--ease-out)}   /* кегль/трекинг — канон .t-heading (co-selector, TRIP-410) */
 .pt-cstop.is-active .pt-cstop__ht h2{color:var(--brand)}
 .pt-cstop__sub{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;color:var(--muted)}
 .pt-cstop__sub img{width:22px;height:15px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.10)}
@@ -139,7 +137,7 @@
 /* ── participants ── */
 .pt-band{padding:64px 0;border-top:1px solid var(--line);margin-top:30px}
 .pt-eyebrow{color:var(--muted);margin-bottom:8px}
-.pt-h-lead{font-size:var(--fs-h2);letter-spacing:-.025em}   /* канон t-heading; TRIP-203: fluid-токен шринкует сам */
+/* .pt-h-lead — кегль/трекинг/вес держит канон .t-heading (+.t-strong) co-selector'ом (TRIP-410) */
 .pt-people{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:26px}
 .pt-person{display:flex;align-items:center;gap:10px;padding:7px 17px 7px 7px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);box-shadow:var(--sh-1)}
 .pt-person .av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;color:#fff;position:relative}
@@ -150,7 +148,7 @@
 .pt-cta{position:relative;overflow:hidden;padding:80px 0;text-align:center;color:#fff;background:linear-gradient(135deg,#1C66B4 0%,#3E63D6 48%,#7E5BE6 100%)}
 .pt-cta__glow{position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%);top:-230px;left:50%;transform:translateX(-50%);pointer-events:none}
 /* TRIP-165 — CTA-заголовок на канон t-title; TRIP-203: адаптив несёт fluid-токен --fs-h1 */
-.pt-cta h2{color:#fff;font-size:var(--fs-h1);letter-spacing:-.03em;position:relative}
+.pt-cta h2{color:#fff;position:relative}   /* кегль/трекинг — канон .t-title (co-selector, TRIP-410) */
 .pt-cta p{position:relative;margin:14px auto 26px;max-width:520px;color:rgba(255,255,255,.9)}
 .pt-cta__act{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 
@@ -182,7 +180,7 @@
   .pt-scta{display:flex}
   .ptrip{padding-bottom:70px}
   .pt-itin{--num:38px;--gap:13px}
-  .pt-cstop__num{font-size:var(--fs-base)}
+  /* .pt-cstop__num — кегль от канона .t-body (co-selector, TRIP-410) */
   .pt-meta{grid-template-columns:1fr 1fr;gap:20px 18px;margin-top:24px}
 }
 @media (prefers-reduced-motion: reduce){

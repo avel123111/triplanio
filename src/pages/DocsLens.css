@@ -14,33 +14,47 @@
    Ровно так же уже собран `.dl-addcard--mine` в app.css - это его продолжение,
    а не новая идея. */
 
-/* ─── Section header icon tile ────────────────────────────────── */
-.dl-sec-ic {
-  width: 34px; height: 34px; border-radius: var(--r-sm);
-  display: grid; place-items: center; flex: none;
-  background: var(--hl-soft); color: var(--hl-ink);
-}
-.dl-sec-ic svg { width: 17px; height: 17px; }
+/* ─── Section header icon tile → <Tile> (TRIP-391 объект 3) ─────────
+   Скин (34px квадрат, --r-sm, канал --hl) уехал на <Tile> дефолт. Осталась
+   только подстановка тёплого тона личного раздела ВХОДОМ канала --hl — она и
+   есть весь `--mine`, база <Tile> её читает.
+   visual-diff-move: .dl-sec-ic -> tile
+   visual-diff-exempt: .dl-sec-ic svg width — кегль иконки под каноном .tile > svg (--tile-ic 17px), значение то же
+   visual-diff-exempt: .dl-sec-ic svg height — кегль иконки под каноном .tile > svg (--tile-ic 17px), значение то же */
 .dl-sec-ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── Doc card ────────────────────────────────────────────────── */
-/* Layout + base — lift is handled by compound .dz-lift-card */
-/* Зазор 10px = собственный зазор `.col`. Выравнивания у правила нет, у `.col` тоже -
-   дефолт `stretch` сохраняется сам, ничего восстанавливать не нужно.
-   visual-diff-move: dl-card -> col */
-.dl-card { font: inherit; padding: 16px; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--sh-1); cursor: pointer; text-align: left; width: 100%; }
-.dl-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+/* TRIP-343 объект 2: скин карточки документа на `<Card as="button" radius="md"
+   interactive>`; `.dl-card` — численный раскладочный остаток (padding 16 + font/
+   width → 08). Свои bg(--surface)/radius(r-md) переехали на .card/.card--r-md;
+   REST-тень --sh-1 снята (канон покой плоский); лифт-компаньон .dz-lift-card
+   удалён (был только тут), ховер = канон .card--interactive; фокус-кольцо несёт
+   .card--interactive:focus-visible. Апрув облика /kit.
+   visual-diff-exempt: .dl-card background — скин переехал на .card (тот же --surface)
+   visual-diff-exempt: .dl-card border-radius — радиус переехал на .card--r-md
+   visual-diff-exempt: .dl-card box-shadow — rest-тень --sh-1 снята (канон покой плоский)
+   visual-diff-exempt: .dl-card:focus-visible box-shadow — фокус-кольцо → .card--interactive:focus-visible
+   visual-diff-exempt: .dl-card:focus-visible outline — фокус → .card--interactive:focus-visible */
+.dl-card { font: inherit; padding: 16px; cursor: pointer; text-align: left; width: 100%; }
 
 /* ★ОСТАТОК: зазор 11px вне шкалы - удержан.
    visual-diff-move: dl-card__top -> row row--a-start */
 .dl-card__top { gap: 11px; }
 
-.dl-card__ic {
-  width: 42px; height: 42px; border-radius: var(--r-sm);
-  display: grid; place-items: center; flex: none;
-  background: var(--hl-soft); color: var(--hl-ink);
-}
-.dl-card__ic svg { width: 20px; height: 20px; }
+/* Иконка-плитка карточки → <Tile size="lg"> (TRIP-391 объект 3). Скин уехал на
+   канон, осталась подстановка тёплого тона личного дока входом канала --hl.
+   Ступень lg несёт значение, поэтому объявления не переносятся дословно (move
+   не резолвит --tile 40 через ступень), а объявлены exempt'ом «значение то же».
+   visual-diff-exempt: .dl-card__ic width — сторона 42 сведена на ступень lg (40), санкц. коллапс как .acct-chan__ic
+   visual-diff-exempt: .dl-card__ic height — сторона 42 сведена на ступень lg (40), санкц. коллапс как .acct-chan__ic
+   visual-diff-exempt: .dl-card__ic border-radius — радиус --r-sm под каноном .tile (--tile-r fallback), значение то же
+   visual-diff-exempt: .dl-card__ic background — фон-канал --hl-soft под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic color — цвет-канал --hl-ink под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic display — grid под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic place-items — center под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic flex — none под базой .tile, значение то же
+   visual-diff-exempt: .dl-card__ic svg width — кегль под каноном .tile > svg (lg --tile-ic 19px)
+   visual-diff-exempt: .dl-card__ic svg height — кегль под каноном .tile > svg (lg --tile-ic 19px) */
 .dl-card__ic--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 .dl-card__h     { flex: 1; min-width: 0; }
@@ -88,20 +102,30 @@
 .dl-linkrow svg { color: var(--muted); flex-shrink: 0; }
 
 /* ─── Add-card ghost placeholder in grid ─────────────────────── */
-/* ★ОСТАТОК: `align-items: center` удержан приватным - значения `a-center` у оси
+/* TRIP-343 PR-3 объект 2: скин add-плитки на канон `<Card variant="add">`
+   (transparent + пунктир --line-strong + --muted, радиус --r-md — ВСЁ тождественно
+   канону, поэтому перенос, а не смена значения). `.dl-addcard` — раскладочный
+   остаток. Лифт translateY(-2) на ховере СНЯТ (канон add без лифта, решение Pavel);
+   бренд-перекраска ховера теперь у канона `.card--add:hover`. `--mine` (тёплый
+   личный тон) остаётся входом канала --hl* — санкционированная точка расхождения.
+   ★ОСТАТОК: `align-items: center` удержан приватным - значения `a-center` у оси
    «поперёк» КОЛОНКИ в каталоге нет (у колонки дефолт `stretch`, а объявлены
    только a-start и a-end), а каталог правится параллельной задачей 03f.
-   visual-diff-move: dl-addcard -> col col--g4 col--j-center */
-.dl-addcard { font: inherit; align-items: center; min-height: 160px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: transparent; color: var(--muted); cursor: pointer; text-align: center; padding: 18px; transition: border-color .18s, background .18s, color .18s, transform .16s var(--ease-spring); }
+   (Раскладочный перенос dl-addcard→col уже в base — здесь только скин; значения
+   тождественны канону, но move одно-классовой формы загрёб бы и ховер, поэтому точечно.)
+   visual-diff-exempt: .dl-addcard border — на канон card--add (1px dashed --line-strong, тождественно)
+   visual-diff-exempt: .dl-addcard background — на канон card--add (transparent, тождественно)
+   visual-diff-exempt: .dl-addcard color — на канон card--add (--muted, тождественно)
+   visual-diff-exempt: .dl-addcard border-radius — на канон card--r-md (--r-md, тождественно) */
+.dl-addcard { font: inherit; align-items: center; min-height: 160px; cursor: pointer; text-align: center; padding: 18px; transition: border-color .18s, background .18s, color .18s, transform .16s var(--ease-spring); }
 @media (hover: hover) {
-  .dl-addcard:hover {
-    border-color: var(--brand); background: var(--brand-soft); color: var(--brand);
-    transform: translateY(-2px);
-  }
   /* Подсветка - общая (TRIP-321 Ф14.10), цвет берётся из ручек, объявленных
      у .dl-addcard--mine в app.css. Правило остаётся ЗДЕСЬ, потому что оно живёт
      внутри медиа-запроса: вынести его в общий список значило бы включить ховер
-     на всех ширинах. */
+     на всех ширинах.
+     visual-diff-exempt: .dl-addcard:hover {@media (hover: hover)} border-color — ховер на канон card--add:hover (--brand, тождественно)
+     visual-diff-exempt: .dl-addcard:hover {@media (hover: hover)} color — ховер на канон card--add:hover (--brand, тождественно)
+     visual-diff-exempt: .dl-addcard:hover {@media (hover: hover)} transform — лифт translateY(-2) СНЯТ, канон add без лифта (апрув Pavel) */
   .dl-addcard--mine:hover { background: var(--hl-soft); border-color: var(--hl); color: var(--hl-ink); }
   .dl-addcard:hover .dl-addcard__ic { background: var(--surface); }
 }
@@ -110,25 +134,45 @@
   .dl-addcard, .dl-addcard:hover { transform: none; }
 }
 
-.dl-addcard__ic {
-  width: 46px; height: 46px; border-radius: var(--r-btn);
-  background: var(--surface-2); display: grid; place-items: center;
-  transition: background .18s;
-}
-.dl-addcard__ic svg { width: 22px; height: 22px; }
+/* Плитка «добавить документ» → <Tile size="xl" tone="quiet"> (TRIP-391 объект 3).
+   Скин (46px, --r-btn, --surface-2) уехал на канон. Остаётся только `transition`
+   ради ховера `.dl-addcard:hover .tile` ниже (ховер сохранён контекстом).
+   Ступень xl + тон quiet несут значения, поэтому exempt'ы «значение то же».
+   visual-diff-exempt: .dl-addcard__ic width — сторона 46 даёт ступень xl (--tile 46), значение то же
+   visual-diff-exempt: .dl-addcard__ic height — сторона 46 даёт ступень xl (--tile 46), значение то же
+   visual-diff-exempt: .dl-addcard__ic border-radius — радиус --r-btn даёт ступень xl (--tile-r), значение то же
+   visual-diff-exempt: .dl-addcard__ic background — фон --surface-2 даёт тон quiet, значение то же
+   visual-diff-exempt: .dl-addcard__ic display — grid под базой .tile, значение то же
+   visual-diff-exempt: .dl-addcard__ic place-items — center под базой .tile, значение то же
+   visual-diff-exempt: .dl-addcard__ic svg width — кегль под каноном .tile > svg (xl --tile-ic 21px)
+   visual-diff-exempt: .dl-addcard__ic svg height — кегль под каноном .tile > svg (xl --tile-ic 21px) */
+.dl-addcard__ic { transition: background .18s; }
 
 /* ─── Empty state ─────────────────────────────────────────────── */
+/* TRIP-343 объект 2: скин утоплённой поверхности СВЕДЁН к канону
+   `<Card recessed radius="md">` (surface-3 + hairline рамка роли + r-md 16);
+   здесь только раскладка. ВИДИМЫЙ СДВИГ (fork 3, апрув Pavel, скрин было/стало):
+   рамка dashed → solid hairline (recessed-канон = сплошная рамка роли `.card`;
+   второй recessed-вид «с пунктиром» не заводим).
+   visual-diff-exempt: .dl-empty background — скин ушёл на .card--recessed (тот же --surface-3, объект 2)
+   visual-diff-exempt: .dl-empty border — dashed → solid: канон recessed = сплошная рамка роли .card (fork 3, апрув Pavel)
+   visual-diff-exempt: .dl-empty border-radius — → канон .card--r-md (тот же r-md 16, объект 2) */
 .dl-empty {
   text-align: center; padding: 40px 20px;
-  border: 1px dashed var(--line); border-radius: var(--r-md);
-  background: var(--surface-3);
 }
-.dl-empty__ic {
-  width: 62px; height: 62px; border-radius: var(--r-md);
-  display: grid; place-items: center; margin: 0 auto 14px;
-  background: var(--hl-soft); color: var(--hl-ink);
-}
-.dl-empty__ic svg { width: 28px; height: 28px; }
+/* Плитка пустого экрана → <Tile size="2xl"> (TRIP-391 объект 3). Скин уехал на
+   канон, осталась раскладка (центрирующий margin) + тёплый тон личного экрана.
+   Ступень 2xl несёт значение, поэтому exempt'ы «значение то же».
+   visual-diff-exempt: .dl-empty__ic width — сторона 62 даёт ступень 2xl (--tile 62), значение то же
+   visual-diff-exempt: .dl-empty__ic height — сторона 62 даёт ступень 2xl (--tile 62), значение то же
+   visual-diff-exempt: .dl-empty__ic border-radius — радиус --r-md даёт ступень 2xl (--tile-r), значение то же
+   visual-diff-exempt: .dl-empty__ic background — фон-канал --hl-soft под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic color — цвет-канал --hl-ink под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic display — grid под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic place-items — center под базой .tile, значение то же
+   visual-diff-exempt: .dl-empty__ic svg width — кегль под каноном .tile > svg (2xl --tile-ic 28px), значение то же
+   visual-diff-exempt: .dl-empty__ic svg height — кегль под каноном .tile > svg (2xl --tile-ic 28px), значение то же */
+.dl-empty__ic { margin: 0 auto 14px; }
 /* Личный пустой экран берёт --warm-soft-2, а не --warm-soft: пятно тут крупнее
    (62px), и это расхождение осознанное, а не забытая копия соседа. */
 .dl-empty__ic--mine { --hl-soft: var(--warm-soft-2); --hl-ink: var(--warm-ink); }
@@ -141,33 +185,75 @@
 .dl-label svg { width: 13px; height: 13px; }
 
 /* ─── Dialog: visibility toggle ───────────────────────────────── */
-/* Зазор 10px - собственный зазор `.row`.
-   visual-diff-move: dl-visopt -> row */
-.dl-visopt { font: inherit; padding: 12px; border: 1px solid var(--line-strong); border-radius: var(--r-btn); cursor: pointer; background: var(--surface-3); text-align: left; transition: border-color .16s, background .16s; }
-.dl-visopt__ic {
-  width: 34px; height: 34px; border-radius: var(--r-sm);
-  background: var(--surface-2); color: var(--muted);
-  display: grid; place-items: center; flex: none;
-  transition: background .16s, color .16s;
-}
-.dl-visopt__ic svg { width: 17px; height: 17px; }
+/* TRIP-343 объект 2 (fork 2, эталон `pcard`, решение Pavel «скин на Card,
+   поведение вокруг»): скин утоплённой поверхности + интерактив несёт
+   `<Card recessed interactive radius="md">`; ВЫБОР — семантический `aria-selected`
+   на ОБЁРТКЕ-поведении (`role=button`), канон рисует его дочерним комбинатором
+   `[aria-selected] > .card--interactive` (акцент-рамка + кольцо). Приватная
+   `.is-on`-перекраска фона и потомковый `.dl-visopt__ic`-оверрайд (канал 4)
+   СНЯТЫ. Тон (shared=brand / --mine=тёплый) едет ВХОДОМ канала `--hl` на плитку
+   иконки, как у `.dl-empty__ic` (не пара приватных состояний).
+   ВИДИМЫЙ СДВИГ (fork 2, апрув Pavel, скрин было/стало): выбор перестал заливать
+   фон `--brand/--warm-soft` и красить иконку — приходит канон (рамка --brand +
+   кольцо); рамка базы `--line-strong` → `--line` (рамка роли `.card`); радиус
+   r-btn(10) → r-md(16); плитка иконки тонирована каналом --hl всегда, не только
+   в выборе.
+   Зазор 10px - собственный зазор `.row`. Скин утоплённого + радиус несёт Card
+   (.card--recessed --surface-3 · .card--r-md 16); из-за составной атрибуции 2p
+   каждое ушедшее объявление называю отдельной строкой:
+   visual-diff-exempt: .dl-visopt background — заливка ушла, скин на .card--recessed (тот же --surface-3, fork 2)
+   visual-diff-exempt: .dl-visopt border — рамка базы 1px solid line-strong → рамка роли .card (1px solid line, fork 2 апрув Pavel)
+   visual-diff-exempt: .dl-visopt border-color — приватная перекраска выбора снята, выбор на канон aria-selected (fork 2 апрув Pavel)
+   visual-diff-exempt: .dl-visopt border-radius — r-btn(10) → канон .card--r-md(16) (fork 2 апрув Pavel)
+   visual-diff-exempt: .dl-visopt color — рекраска иконки состоянием снята (канал 4), выбор на канон (fork 2)
+   visual-diff-exempt: .dl-visopt font — сброс шрифта кнопки не нужен: обёртка role=button, скин на Card-div (fork 2)
+   visual-diff-exempt: .dl-visopt transition — переход border-color несёт канон .card--interactive (fork 2)
+   visual-diff-exempt: .dl-visopt__ic background — тон плитки на канал --hl-soft (дефолт :root = brand-soft, тон тот же; fork 2)
+   visual-diff-exempt: .dl-visopt__ic color — тон плитки на канал --hl-ink (дефолт :root = brand; fork 2)
+   visual-diff-exempt: .dl-visopt__ic transition — рекраска состоянием снята (канал 4), переход не нужен (fork 2)
+   visual-diff-exempt: .dl-visopt--mine --hl-soft — тёплый тон едет ВХОДОМ канала --hl (как .dl-empty__ic--mine, fork 2)
+   visual-diff-exempt: .dl-visopt--mine --hl-ink — тёплый тон едет ВХОДОМ канала --hl (как .dl-empty__ic--mine, fork 2)
+   visual-diff-exempt: .dl-visopt--mine border-color — тёплый выбор снят, тон едет каналом --hl (fork 2)
+   visual-diff-exempt: .dl-visopt--mine background — тёплый выбор снят, тон едет каналом --hl (fork 2)
+   visual-diff-exempt: .dl-visopt--mine color — тёплая рекраска иконки снята (канал 4), тон каналом --hl (fork 2)
+   visual-diff-exempt: .is-on border-color — приватная перекраска выбора снята, выбор на канон aria-selected (fork 2 апрув Pavel)
+   visual-diff-exempt: .is-on background — приватная заливка выбора снята, выбор на канон aria-selected (fork 2 апрув Pavel)
+   visual-diff-exempt: .is-on color — рекраска иконки состоянием снята (канал 4), выбор на канон (fork 2)
+   visual-diff-exempt: .dl-visopt height — равные высоты грид-ячеек после разделения обёртка(поведение)/Card(скин), fork 2 */
+.dl-visopt { padding: 12px; text-align: left; cursor: pointer; height: 100%; }
+/* Иконка-плитка опции видимости → <Tile> дефолт (TRIP-391 объект 3). Скин уехал
+   на канон; тёплый тон личной видимости ставит контейнер `.dl-visopt--mine`.
+   visual-diff-move: .dl-visopt__ic -> tile
+   visual-diff-exempt: .dl-visopt__ic svg width — кегль под каноном .tile > svg (--tile-ic 17px), значение то же
+   visual-diff-exempt: .dl-visopt__ic svg height — кегль под каноном .tile > svg (--tile-ic 17px), значение то же */
 .dl-visopt__lbl b    { color: var(--ink); display: block; }
 .dl-visopt__lbl span { color: var(--muted); }
-.dl-visopt.is-on               { border-color: var(--brand); background: var(--brand-soft); }
-.dl-visopt.is-on .dl-visopt__ic { background: var(--brand); color: #fff; }
-/* private/warm variant */
-.dl-visopt.is-on.dl-visopt--mine               { border-color: var(--warm);      background: var(--warm-soft); }
-.dl-visopt.is-on.dl-visopt--mine .dl-visopt__ic { background: var(--warm-ink); color: #fff; }
+/* Тёплый тон личной видимости — вход канала --hl (как `.dl-empty__ic--mine`). */
+.dl-visopt--mine { --hl-soft: var(--warm-soft); --hl-ink: var(--warm-ink); }
 
 /* ─── Dialog: dropzone ────────────────────────────────────────── */
-/* ★ОСТАТОК: `align-items: center` удержан - см. .dl-addcard.
-   visual-diff-move: dl-dropzone -> col col--g3 */
-.dl-dropzone { align-items: center; padding: 22px; border-radius: var(--r-sm); border: 1.6px dashed var(--line-strong); background: var(--surface-3); cursor: pointer; text-align: center; transition: border-color .16s, background .16s; }
+/* TRIP-343 PR-3 объект 2: дашед-dropzone СВЕДЁН к канону `<Card variant="add">`
+   (решение Pavel: пунктирный dropzone — это add-аффорданс, а не утопленная
+   поверхность; второй add-с-заливкой не заводим). ВИДИМЫЙ СДВИГ (как empty-note),
+   выведен отдельной строкой + скрин было/стало:
+     • background --surface-3 → transparent (уходит серая заливка «колодца»);
+     • border 1.6px → 1px dashed --line-strong (толщина к канону);
+     • border-radius --r-sm(8) → --r-md(16) (радиус add = md).
+   Ховер (бренд-рамка + --brand-soft) — СОСТОЯНИЕ, несёт канон `.card--add:hover`
+   (закон 5), приватного класса подсветки нет; drag-over в разметке — только
+   preventDefault, своего облика не имел. `.dl-dropzone` — раскладочный остаток.
+   ★ОСТАТОК: `align-items: center` удержан - см. .dl-addcard.
+   (Раскладочный перенос dl-dropzone→col уже в base — здесь только скин.)
+   visual-diff-exempt: .dl-dropzone background — СВЕДЕНО к канону add: --surface-3 → transparent (апрув Pavel)
+   visual-diff-exempt: .dl-dropzone border — СВЕДЕНО к канону add: 1.6px → 1px dashed --line-strong (апрув Pavel)
+   visual-diff-exempt: .dl-dropzone border-radius — СВЕДЕНО к канону add: --r-sm → --r-md (апрув Pavel)
+   visual-diff-exempt: .dl-dropzone:hover {@media (hover: hover)} border-color — ховер на канон card--add:hover (--brand, тождественно)
+   visual-diff-exempt: .dl-dropzone:hover {@media (hover: hover)} background — ховер на канон card--add:hover (--brand-soft, тождественно) */
+.dl-dropzone { align-items: center; padding: 22px; cursor: pointer; text-align: center; transition: border-color .16s, background .16s; }
 .dl-dropzone b     { color: var(--ink-2); }
 .dl-dropzone span  { color: var(--muted); }
 .dl-dropzone svg   { color: var(--muted-2); transition: color .16s; }
 @media (hover: hover) {
-  .dl-dropzone:hover { border-color: var(--brand); background: var(--brand-soft); }
   .dl-dropzone:hover svg { color: var(--brand); }
 }
 .dl-dropzone.is-uploading { cursor: default; pointer-events: none; color: var(--brand); }

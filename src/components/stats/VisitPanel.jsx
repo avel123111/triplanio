@@ -5,7 +5,7 @@ import { coverGradientCss } from '@/lib/trip-gradients';
 import { keepFocusInDialog } from '@/lib/dialogFocus';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { Icon } from '@/design/icons';
-import { IconBtn } from '@/design/index';
+import { IconBtn, Tile } from '@/design/index';
 import { formatDateRange } from '@/lib/trip-dates';
 
 // ≤640px the panel is a bottom sheet — render it through vaul (native swipe +
@@ -133,6 +133,8 @@ function GroupedRow({ row, isCity, trips, t, lang, onOpenTrip, onEditManual }) {
               <i className="dot" style={{ background: color }} />{t(`stats.type_${type}`)}
             </span>
           )}
+          {/* TRIP-391 объект 1 → объект 4: .triplink — чип-ссылка (открыть/редактировать
+              трип), в реестре чипов, не кнопка-примитив. Обе ветки (open + edit). */}
           {!isManual && trip ? (
             <button type="button" className="triplink" onClick={() => onOpenTrip?.(row.trip_id)}>
               <TripDot trip={trip} />
@@ -168,7 +170,7 @@ export default function VisitPanel({
       {/* Visual drag affordance only — vaul drags the whole sheet on mobile. */}
       <div className="vp-grip" aria-hidden />
       <div className={`vp-h${isCity ? ' city' : ''}`}>
-        <div className="ic" style={cc ? { background: 'transparent', borderRadius: '50%' } : undefined}><PanelFlag cc={cc} isCity={isCity} /></div>
+        <Tile as="div" style={cc ? { background: 'transparent', borderRadius: '50%' } : undefined}><PanelFlag cc={cc} isCity={isCity} /></Tile>
         <div style={{ flex: 1, minWidth: 0 }}>
           <Dialog.Title asChild><h3>{name}</h3></Dialog.Title>
           <div className="s">{sub}</div>

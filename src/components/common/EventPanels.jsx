@@ -12,7 +12,7 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { IconBtn } from '@/design/index';
+import { IconBtn, Tile } from '@/design/index';
 import { transferKind } from '@/lib/transport';
 
 const EV = {
@@ -34,7 +34,7 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
   return (
     <div className="lp lp--wide" style={{ '--hl': ev.color, '--hl-soft': ev.soft, '--hl-ink': ev.ink }}>
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic"><Icon name={icon || kindIcon(kind)} size={17} /></span>
+        <Tile as="span" className="lp-ic"><Icon name={icon || kindIcon(kind)} size={17} /></Tile>
         <div className="lp-ti">
           {eyebrow && <div className="eyebrow">{eyebrow}</div>}
           <div className="lp-tirow">

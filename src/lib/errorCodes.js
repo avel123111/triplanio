@@ -35,3 +35,20 @@ export const ERROR_CODES = [
 
 /** Быстрая проверка членства. */
 export const ERROR_CODE_SET = new Set(ERROR_CODES);
+
+// Коды НАМЕРЕННОГО «нет» бизнес-логики (отказ), в отличие от временного сбоя
+// (сеть/relay/500). Потребитель различает трактовку через `classifyError`
+// (`errorText.js`): `PRO_REQUIRED` → апселл (отдельная ветка, здесь его НЕТ);
+// набор ниже → отказ (показать текст причины); всё прочее → общий/временный
+// текст. Читается ТОЛЬКО из `classifyError` — одна дверь трактовки на клиент.
+export const REFUSAL_CODES = new Set([
+  'CATEGORY_SYSTEM',
+  'DOC_PRIVATE_NOT_OWNER',
+  'EXPENSE_NOT_MANUAL',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'RATE_LIMITED',
+  'SUBSCRIPTION_ALREADY_ACTIVE',
+  'TRIP_ALREADY_PRO',
+  'TRIP_LIMIT_REACHED',
+]);

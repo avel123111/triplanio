@@ -1,7 +1,7 @@
 // @ts-check
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, IconBtn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -84,13 +84,9 @@ export default function ProUpsellModal({
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proFeatures.map((feat, i) => (
                   <li key={i} className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--ink-2)' }}>
-                    <span style={{
-                      width: 24, height: 24, borderRadius: 8,
-                      background: 'var(--pro-soft)', color: 'var(--pro-ink)',
-                      display: 'grid', placeItems: 'center', flexShrink: 0,
-                    }}>
+                    <Tile as="span" style={{ '--tile': '24px', '--tile-ic': '13px', '--hl-soft': 'var(--pro-soft)', '--hl-ink': 'var(--pro-ink)' }}>
                       <Icon name="check" size={13} />
-                    </span>
+                    </Tile>
                     {feat}
                   </li>
                 ))}

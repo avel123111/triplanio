@@ -3,6 +3,7 @@ import { searchCities } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
 import { localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../../design/icons';
+import { Card, Tile } from '../../design/index';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
@@ -75,19 +76,19 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
       );
     }
     return (
-      <button type="button" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
-        <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name="plus" size={13} /></span>
+      <Card as="button" variant="add" radius="md" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
+        <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="plus" size={13} /></Tile>
         <div className="te-citycell grow">
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
           <span className="trunc te-cityname muted">{t('planner.add_start')}</span>
         </div>
-      </button>
+      </Card>
     );
   }
 
   return (
-    <div className="row row--g6 te-end">
-      <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name="flag" size={13} /></span>
+    <Card recessed radius="md" pad="none" className="row row--g6 te-end">
+      <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="flag" size={13} /></Tile>
       <div className="te-citycell grow">
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
         <div className="row row--g3 te-cityline">
@@ -95,9 +96,11 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
           {city?.country && <span className="muted t-meta">{city.country}</span>}
         </div>
       </div>
+      {/* TRIP-391 объект 1: .te-step — КОНТРОЛ степпера маршрута (удалить точку),
+          не кнопка-примитив. */}
       {editable && hasCity && (
         <button type="button" className="te-step te-step--del" onClick={() => onPick(null)} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
       )}
-    </div>
+    </Card>
   );
 }

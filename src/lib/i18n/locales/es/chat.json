@@ -1,7 +1,4 @@
 {
-  "ai_err_pro": "El asistente de IA está disponible con la suscripción Pro",
-  "ai_err_rate": "Demasiadas solicitudes al asistente de IA. Inténtalo de nuevo en unos minutos",
-  "ai_failed": "El asistente no respondió",
   "ai_general": "@Triplanio: general",
   "assistant_tag": "asistente",
   "composer_ph": "Escribe un mensaje. @ abre las menciones",

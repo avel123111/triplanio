@@ -54,6 +54,14 @@ export type Refusal = {
   sentrySkip?: boolean;
 };
 
+/**
+ * Актор запроса, каким его знает шов из JWT: id + email. `guardRow` получает его
+ * ЦЕЛИКОМ (не только id), чтобы row-self-проверку можно было выразить по email
+ * (`respond` владеет инвайтом либо по `user_id`, либо по `invite_email`) —
+ * авторизация по строке остаётся в edge, не уезжает в SQL (принцип эпика TRIP-374).
+ */
+export type Actor = { id: string; email: string | null };
+
 /** Объявление колонки, которую МОЖЕТ прислать клиент. Кэпы зеркалят CHECK в БД. */
 export type FieldSpec = {
   /**
@@ -62,7 +70,7 @@ export type FieldSpec = {
    * и массив, `fx_overrides: []` прошёл бы и МОЛЧА сбросил курсы (массив вместо
    * map) — регресс соседнего домена. Тип-гейт держит форму строго.
    */
-  type: 'string' | 'number' | 'uuid' | 'date' | 'json' | 'array';
+  type: 'string' | 'number' | 'boolean' | 'uuid' | 'date' | 'json' | 'array';
   /** Обязательна на ВСТАВКЕ. На обновлении частичная правка законна. */
   required?: boolean;
   /** Кэп длины строки — тот же, что в CHECK (иначе БД отдаст 500 вместо 400). */
@@ -97,10 +105,34 @@ export type ActionSpec = {
    * (create-only): присланный id игнорируется, никакого UPDATE — append-only
    * ресурс (`trip_documents`: редактирования дока с клиента нет, а upsert с
    * чужим id правил бы чужую SHARED-строку, регресс TRIP-118). `delete` =
-   * удаление по id. Универсально: любой append-only ресурс берёт `insert`.
+   * удаление по id. `rpc` = тело действия — ОДИН атомарный RPC (>1 записи в
+   * транзакции: layover пишет waypoint-города + сегменты + recompute). Ветвь
+   * даёт те же авторизацию/кэпы/контракт ошибок/актор, что и table-DML;
+   * пустые RPC-обёртки «для симметрии» запрещены (TRIP-405). Универсально:
+   * любой append-only ресурс берёт `insert`, любая транзакция — `rpc`.
+   *
+   * `none` = действие БЕЗ записи в БД: только побочка (`afterWrite`). Шов
+   * проходит авторизацию/`guardRow`, но пропускает `runPlan`. Заведено под
+   * `resend` (чистое re-emit уведомления, данных нет) — модель «действие-только-
+   * побочка». Не «пустая RPC-обёртка» (TRIP-405): RPC писал бы транзакцию, а
+   * здесь записи нет ВООБЩЕ. Универсально: любое будущее notify-only действие.
    */
-  op: 'upsert' | 'insert' | 'delete';
-  table: string;
+  op: 'upsert' | 'insert' | 'delete' | 'rpc' | 'none';
+  /** Таблица DML. Необязательна ТОЛЬКО для `op:'rpc'` (пишет сам RPC). */
+  table?: string;
+  /** Имя атомарного RPC. Только `op:'rpc'`. */
+  rpc?: string;
+  /**
+   * Только `op:'rpc'`. ЧИСТОЕ отображение уже провалидированного входа (через
+   * `fields`/`validate`, в т.ч. per-segment `TRANSFER_FIELDS`) в аргументы RPC —
+   * без `p_actor`, его инъектит `buildPlan` (клиент актора не называет). Инфалибл:
+   * валидация к этому моменту прошла, здесь только маппинг имён колонок в
+   * `p_`-аргументы.
+   */
+  buildArgs?: (
+    values: Record<string, unknown>,
+    ctx: { actor: string; scopeValue: string; targetId: string | null },
+  ) => Record<string, unknown>;
   /** Имена требований; вычисляет их шов (`mutate.ts`), а не эта половина. */
   requires: readonly string[];
   /**
@@ -127,9 +159,21 @@ export type ActionSpec = {
   loadTarget?: boolean;
   /**
    * Правило, читаемое ТОЛЬКО по существующей строке: «эта трата не ручная»,
-   * «эта категория системная». Право на ресурс к этому моменту уже проверено.
+   * «эта категория системная», «инвайт принадлежит мне (`user_id`/`invite_email`)».
+   * Право на ресурс (гейт `requires`) к этому моменту уже проверено; когда
+   * `requires:[]`, `guardRow` — ЕДИНСТВЕННАЯ авторизация действия (row-self-дверь),
+   * поэтому её обязательность форсит инвариант №7 (`assertGuardedRegistry`).
+   * Получает ПОЛНОГО актора `{id, email}`, а не только id (row-self по email).
    */
-  guardRow?: (row: Record<string, unknown>, actor: string) => Refusal | null;
+  guardRow?: (row: Record<string, unknown>, actor: Actor) => Refusal | null;
+  /**
+   * Только `op:'rpc'`. Переводит ДИСКРИМИНИРОВАННЫЙ результат RPC (`data.outcome`)
+   * в ответ шва: либо бизнес-`Refusal` (409/400 — «уже участник»/self/owner), либо
+   * `{ data }` = успех с полезной нагрузкой. Бизнес-«нет» здесь — это ЗНАЧЕНИЕ
+   * `data`, а НЕ ошибка БД (инвариант `unwrapDbResult`: `unique_violation` дал бы
+   * 500). Чистая функция (как `buildArgs`) — пинится тестом без загрузки клиента.
+   */
+  mapOutcome?: (data: unknown) => Refusal | { data: unknown };
 };
 
 export type ResourceSpec = {
@@ -146,7 +190,10 @@ export type ResourceSpec = {
 export type WritePlan =
   | { op: 'insert'; table: string; values: Record<string, unknown> }
   | { op: 'update'; table: string; values: Record<string, unknown>; match: Record<string, unknown> }
-  | { op: 'delete'; table: string; match: Record<string, unknown> };
+  | { op: 'delete'; table: string; match: Record<string, unknown> }
+  | { op: 'rpc'; name: string; args: Record<string, unknown> }
+  // `none` — записи нет: `runPlan` не вызывается, шов идёт сразу в `afterWrite`.
+  | { op: 'none' };
 
 /** Подстановка актора в объявленные сервером колонки. */
 const ACTOR_TOKEN = '@actor';
@@ -168,15 +215,30 @@ export function parseAction(pathname: string, slug: string): string | null {
   return tail.length ? tail.join('/') : null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * UUID-предикат шва — ОДИН источник паттерна: `typeOk` для `type:'uuid'` и
+ * валидатор массива uuid (`tripRoute.uuidArray`) сверяются с ним же, а не с двумя
+ * копиями regex.
+ */
+export function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
 function typeOk(spec: FieldSpec, value: unknown): boolean {
   switch (spec.type) {
     case 'string':
       return typeof value === 'string';
     case 'number':
       return typeof value === 'number' && Number.isFinite(value);
+    case 'boolean':
+      // Строгий тип-гейт: `free_cancellation`/`day_change` — boolean-колонки БД.
+      // Приведение `'true'`/`1` ЗАПРЕЩЕНО (как число не спутать со строкой): кривой
+      // тип → 400, а не молчаливая коэрция к неверному значению.
+      return typeof value === 'boolean';
     case 'uuid':
-      return typeof value === 'string' &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+      return isUuid(value);
     case 'date':
       return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
     case 'json':
@@ -192,7 +254,9 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
 const bad = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
 
 /**
- * Белый список + кэпы. Возвращает ОЧИЩЕННЫЕ значения либо отказ 400.
+ * Вход действия: выбирает семантику обязательности (вставка/транзакция строгая,
+ * частичная правка — нет) и делегирует проверку `validateFields`. Возвращает
+ * ОЧИЩЕННЫЕ значения либо отказ 400.
  *
  * Кэпы дублируют CHECK в БД НАМЕРЕННО и в одну сторону: без них нарушение
  * приезжает пользователю как 500 с текстом Postgres, а не как внятное «слишком
@@ -204,15 +268,28 @@ export function validateInput(
   input: Record<string, unknown>,
   { isInsert }: { isInsert: boolean },
 ): { values: Record<string, unknown> } | Refusal {
-  const fields = action.fields ?? {};
-  const values: Record<string, unknown> = {};
+  // `op:'insert'`/`op:'rpc'` — ВСЕГДА вставка (create-only / транзакция без id),
+  // поэтому обязательность строгая независимо от `isInsert` из шва: `mutate.ts`
+  // считает `isInsert` по присланному id, а хостовый клиент мог прислать инертный
+  // id — тогда пропущенное обязательное поле проскочило бы к DB NOT NULL и
+  // вернулось сырым 500 вместо 400 (TRIP-399). id остаётся инертным (его
+  // игнорирует `buildPlan`).
+  const insert = isInsert || action.op === 'insert' || action.op === 'rpc';
+  return validateFields(action.fields ?? {}, input, { insert });
+}
 
-  // `op:'insert'` — ВСЕГДА вставка (create-only), поэтому обязательность строгая
-  // независимо от `isInsert` из шва: `mutate.ts` считает `isInsert` по присланному
-  // id, а хостовый клиент мог прислать инертный id — тогда пропущенное
-  // обязательное поле проскочило бы к DB NOT NULL и вернулось сырым 500 вместо
-  // 400 (TRIP-399). id остаётся инертным (его игнорирует `buildPlan`).
-  const insert = isInsert || action.op === 'insert';
+/**
+ * Белый список + кэпы над ОДНИМ набором полей. Вынесен из `validateInput`, чтобы
+ * `op:'rpc'` мог провалидировать вложенные объекты (каждый сегмент layover —
+ * `TRANSFER_FIELDS`) ТЕМ ЖЕ движком, а не копией правил (TRIP-405). Возвращает
+ * очищенные значения либо отказ 400.
+ */
+export function validateFields(
+  fields: Record<string, FieldSpec>,
+  input: Record<string, unknown>,
+  { insert }: { insert: boolean },
+): { values: Record<string, unknown> } | Refusal {
+  const values: Record<string, unknown> = {};
 
   for (const [name, spec] of Object.entries(fields)) {
     if (!Object.prototype.hasOwnProperty.call(input, name)) {
@@ -247,6 +324,26 @@ export function validateInput(
 }
 
 /**
+ * Валидатор jsonb-МАССИВА ОБЪЕКТОВ: каждый элемент проходит ТЕМ ЖЕ движком
+ * (`validateFields`, insert-семантика), что и одиночная запись, — не копия правил
+ * (TRIP-405). Возвращает хук для `FieldSpec.validate`. Переиспользуют booking
+ * (waypoints/segments) и trip.create (cities) — один разбор массива на все.
+ */
+export function validateEach(fields: Record<string, FieldSpec>, label: string) {
+  return (value: unknown): Refusal | null => {
+    if (!Array.isArray(value)) return bad(`Field "${label}" must be a list`);
+    for (const item of value) {
+      if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+        return bad(`Each ${label} entry must be an object`);
+      }
+      const r = validateFields(fields, item as Record<string, unknown>, { insert: true });
+      if ('status' in r) return r;
+    }
+    return null;
+  };
+}
+
+/**
  * ПЛАН ЗАПИСИ. Единственный производитель записей в шве — поэтому скоуп здесь
  * не «не забыт», а невыразим иначе (см. шапку файла).
  */
@@ -260,8 +357,25 @@ export function buildPlan(
     values: Record<string, unknown>;
   },
 ): WritePlan {
+  // `op:'none'` — записи нет (`resend`): плана-записи не существует, шов пропустит
+  // `runPlan` и пойдёт сразу в `afterWrite`. Sweep-тест реестра это пропускает
+  // (план не update/delete), скоуп проверять не на чем.
+  if (action.op === 'none') return { op: 'none' };
+
+  // `op:'rpc'` — тело действия транзакция, а не строка: аргументы даёт чистый
+  // `buildArgs` (валидация уже прошла), `p_actor` инъектит ШОВ, а не клиент —
+  // ровно как `forcedOnInsert:{created_by:'@actor'}` у table-DML.
+  if (action.op === 'rpc') {
+    if (!action.rpc) throw new Error(`${resource.name}: op:'rpc' requires an rpc name`);
+    const args = action.buildArgs
+      ? action.buildArgs(ctx.values, { actor: ctx.actor, scopeValue: ctx.scopeValue, targetId: ctx.targetId })
+      : {};
+    return { op: 'rpc', name: action.rpc, args: { ...args, p_actor: ctx.actor } };
+  }
+
   const scopeCol = resource.scope.column;
-  const { table } = action;
+  const table = action.table;
+  if (!table) throw new Error(`${resource.name}: ${action.op} requires a table`);
   const scoped = { [scopeCol]: ctx.scopeValue };
 
   if (action.op === 'delete') {
@@ -297,8 +411,16 @@ export function buildPlan(
 
 import { TRIP_BUDGET } from './resources/tripBudget.ts';
 import { TRIP_DOCUMENT } from './resources/tripDocument.ts';
+import { TRIP_BOOKING } from './resources/tripBooking.ts';
+import { TRIP_ROUTE } from './resources/tripRoute.ts';
+import { TRIP } from './resources/trip.ts';
 import { ACCOUNT } from './resources/account.ts';
 import { USER_PLACE } from './resources/userPlace.ts';
+import { TRIP_CHAT } from './resources/tripChat.ts';
+import { INBOX } from './resources/inbox.ts';
+import { TRIP_MEMBER } from './resources/tripMember.ts';
+import { TRIP_MEMBER_SELF } from './resources/tripMemberSelf.ts';
+import { TRIP_INVITE_LINK } from './resources/tripInviteLink.ts';
 
 /**
  * Все ресурсы записи. Реестр существует не ради диспетчеризации (её делает сама
@@ -308,6 +430,41 @@ import { USER_PLACE } from './resources/userPlace.ts';
 export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP_BUDGET.name]: TRIP_BUDGET,
   [TRIP_DOCUMENT.name]: TRIP_DOCUMENT,
+  [TRIP_BOOKING.name]: TRIP_BOOKING,
+  [TRIP_ROUTE.name]: TRIP_ROUTE,
+  [TRIP.name]: TRIP,
   [ACCOUNT.name]: ACCOUNT,
   [USER_PLACE.name]: USER_PLACE,
+  [TRIP_CHAT.name]: TRIP_CHAT,
+  [INBOX.name]: INBOX,
+  [TRIP_MEMBER.name]: TRIP_MEMBER,
+  [TRIP_MEMBER_SELF.name]: TRIP_MEMBER_SELF,
+  [TRIP_INVITE_LINK.name]: TRIP_INVITE_LINK,
 };
+
+/**
+ * ИНВАРИАНТ №7 (foot-gun-гард). Действие с ПУСТЫМ гейтом `requires:[]` (row-self-
+ * дверь: авторизация — только по строке через `guardRow`) и с ЗАПИСЬЮ
+ * (`delete`/`update`/`upsert`/`rpc`) ОБЯЗАНО иметь `loadTarget:true` + `guardRow`.
+ * Иначе опечатка (забыли `guardRow`) = запись без какой-либо авторизации — а
+ * гарды скоупа ловят IDOR («чужой id»), не «дверь без замка». `op:'none'` не
+ * пишет → под инвариант не попадает. Возвращает список нарушений (пустой = чисто);
+ * пинится тестом по ВСЕМУ REGISTRY, поэтому новый ресурс проверяется сам, и
+ * зовётся швом на загрузке (`mutate.ts`) как рантайм-ремень.
+ */
+export function findUnguardedRowSelf(
+  registry: Record<string, ResourceSpec> = REGISTRY,
+): string[] {
+  const bad: string[] = [];
+  for (const resource of Object.values(registry)) {
+    for (const [name, action] of Object.entries(resource.actions)) {
+      const writes = action.op === 'delete' || action.op === 'upsert' || action.op === 'rpc';
+      if (action.requires.length === 0 && writes && !(action.loadTarget && action.guardRow)) {
+        bad.push(
+          `${resource.name}/${name}: requires:[] + запись (${action.op}) без loadTarget+guardRow = дверь без замка (инвариант №7)`,
+        );
+      }
+    }
+  }
+  return bad;
+}

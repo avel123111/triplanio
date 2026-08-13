@@ -233,6 +233,8 @@ export default function Autocomplete({
             overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
           }}
         >
+          {/* TRIP-391 объект 1: опция листа ВНУТРИ примитива Autocomplete (объект 5/поле-
+              комбобокс) — часть самого примитива, не отдельная кнопка-объект. */}
           {results.map((r, i) => (
             <button
               key={getKey(r)}

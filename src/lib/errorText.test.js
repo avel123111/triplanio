@@ -9,8 +9,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { errorText } from './errorText.js';
-import { ERROR_CODES } from './errorCodes.js';
+import { errorText, classifyError } from './errorText.js';
+import { ERROR_CODES, REFUSAL_CODES } from './errorCodes.js';
 
 const errDict = JSON.parse(
   readFileSync(new URL('./i18n/locales/en/err.json', import.meta.url), 'utf8'),
@@ -48,5 +48,34 @@ test('★ ни один код реестра не показывает поль
     const out = errorText(fakeT, code);
     assert.notEqual(out, `err.${code}`, `код ${code} утёк сырым адресом`);
     assert.ok(out.length > 0);
+  }
+});
+
+// ── classifyError: единственная карта код→трактовка (upsell/refusal/error) ──
+test('classifyError: PRO_REQUIRED → upsell (открыть апселл, не тост)', () => {
+  const r = classifyError(fakeT, 'PRO_REQUIRED');
+  assert.equal(r.kind, 'upsell');
+  assert.equal(typeof r.text, 'string');
+  assert.ok(r.text.length > 0);
+});
+
+test('classifyError: каждый REFUSAL_CODES → refusal, текст = err.<code> или общий', () => {
+  for (const code of REFUSAL_CODES) {
+    const r = classifyError(fakeT, code);
+    assert.equal(r.kind, 'refusal', `код ${code} должен быть refusal`);
+    assert.equal(r.text, errorText(fakeT, code));
+    assert.notEqual(r.text, `err.${code}`);
+  }
+});
+
+test('classifyError: PRO_REQUIRED НЕ в REFUSAL_CODES (апселл — отдельная ветка)', () => {
+  assert.ok(!REFUSAL_CODES.has('PRO_REQUIRED'));
+});
+
+test('classifyError: неизвестный код и null → error + общий текст', () => {
+  for (const code of ['NO_SUCH_CODE', null, undefined]) {
+    const r = classifyError(fakeT, code);
+    assert.equal(r.kind, 'error');
+    assert.equal(r.text, errDict.temporary);
   }
 });

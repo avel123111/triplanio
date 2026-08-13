@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { sortVisits } from '@/lib/validation';
+import { Card, Tile } from '@/design/index';
 import RouteMapCard from '@/components/trips/RouteMapCard';
 import TripStatRow from '@/components/trips/TripStatRow';
 import BudgetSummaryCard from '@/components/trips/BudgetSummaryCard';
@@ -45,23 +46,23 @@ export default function OverviewLens({
       <div className="ovwrap" aria-busy="true">
         <div className="ov-col">
           {/* map card */}
-          <div className="wdg ov-mapcard">
+          <Card radius="lg" pad="none" raised className="ov-mapcard">
             <div className="wdg-h">{dot}{bar('38%', 16, 6)}</div>
             <div className="ov-bar" style={{ height: 280, borderRadius: 0 }} />
-          </div>
+          </Card>
           {/* stat bar */}
-          <div className="statbar">
+          <Card radius="lg" pad="none" className="statbar">
             {Array.from({ length: 5 }).map((_, i) => (
               <div className="s" key={i}>
-                <span className="ic ov-bar" />
+                <Tile as="span" className="ov-bar" />
                 <div className="grow">{bar('55%', 22, 6)}{bar('80%', 10, 5, 7)}</div>
               </div>
             ))}
-          </div>
+          </Card>
         </div>
         <div className="ov-col">
           {/* budget card */}
-          <div className="wdg">
+          <Card radius="lg" pad="none">
             <div className="wdg-h">{dot}{bar('45%', 16, 6)}</div>
             <div className="wdg-b">
               {bar('55%', 26, 'var(--r-sm)')}
@@ -70,9 +71,9 @@ export default function OverviewLens({
               {bar('100%', 14, 'var(--r-sm)', 8)}
               {bar('100%', 14, 'var(--r-sm)', 8)}
             </div>
-          </div>
+          </Card>
           {/* members card */}
-          <div className="wdg">
+          <Card radius="lg" pad="none">
             <div className="wdg-h">{dot}{bar('45%', 16, 6)}</div>
             <div className="wdg-b">
               {[0, 1, 2].map((i) => (
@@ -83,7 +84,7 @@ export default function OverviewLens({
               ))}
               {bar('100%', 42, 'var(--r-sm)', 14)}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     );

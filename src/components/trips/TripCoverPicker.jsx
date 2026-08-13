@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Btn, Swatch } from '@/design/index';
+import { Btn, Card, Swatch } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '@/lib/storage';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -106,13 +106,15 @@ export default function TripCoverPicker({
   return (
     <div className="col col--g6">
       {showPreview && (
-        <div className="tcp__preview" style={previewStyle}>
+        /* TRIP-343 объект 2 (G): превью обложки — постер-форма <Card pad="none">;
+           скин (рамка+радиус+фон) на примитиве, `.tcp__preview` — раскладка. */
+        <Card pad="none" radius="md" className="tcp__preview" style={previewStyle}>
           {coverImageUrl ? (
             <img src={coverImageUrl} alt="" className="tcp__img" />
           ) : !gradient ? (
             <div className="tcp__ph">🌍</div>
           ) : null}
-        </div>
+        </Card>
       )}
 
       <div className="tcp__swatches">

@@ -6,13 +6,12 @@
  *     through the single write door — edge function `trip-document` + seam
  *     `_shared/mutate.ts` (TRIP-399): право (editor), построчное право удаления
  *     (private ⇒ author), скоуп строки и форматы держит СЕРВЕР, не RLS + фронт.
- *   • an entity's `documents` array (booking domain) and the two-step Storage
- *     upload stay direct front → Supabase (out of this domain), still read via
- *     `writeRows` so a real error or silent 0-row RLS reject can't pass as success.
+ *   • an entity's `documents` array is written through the booking write door
+ *     (`trip-booking/<kind>`, TRIP-405); the two-step Storage upload of the bytes
+ *     stays direct front → Supabase (a declared boundary, handoff §G).
  */
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
-import { writeRows } from '@/lib/trip-data';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
@@ -113,7 +112,7 @@ export function uploadErrorText(error, t) {
 export async function insertTripDocument(body) {
   const { data, error } = await invokeFn('trip-document/doc', { body });
   if (error) throw new Error('write_rejected');
-  return data?.data ?? null; // the seam answers { data: row }
+  return data ?? null; // the seam answers the row payload flat
 }
 
 /**
@@ -137,15 +136,19 @@ export async function deleteTripDocument(tripId, id) {
 }
 
 /**
- * Persist an entity's `documents` array. Hotel/transfer/activity keep it
- * top-level; a service keeps it under `details`. Throws on error or 0-row RLS
- * reject (so the caller can roll back its optimistic UI).
+ * Persist an entity's `documents` array through the single write door (TRIP-405):
+ * `trip-booking/<kind>` UPDATE by {id, trip_id} under service_role. Hotel/transfer/
+ * activity keep documents top-level; a service keeps them under `details`. Throws
+ * on refusal (so the caller can roll back its optimistic UI) — never the raw
+ * server text (TRIP-378), only the generic sentinel.
  */
 export async function persistEntityDocuments(kind, entity, documents) {
-  const table = ENTITY_TABLE_BY_KIND[kind];
-  if (!table || !entity?.id) return;
+  if (!ENTITY_TABLE_BY_KIND[kind] || !entity?.id || !entity?.trip_id) return;
   const payload = kind === 'service'
     ? { details: { ...(entity.details || {}), documents } }
     : { documents };
-  await writeRows(supabase.from(table).update(payload).eq('id', entity.id));
+  const { error, code } = await invokeFn(`trip-booking/${kind}`, {
+    body: { tripId: entity.trip_id, id: entity.id, ...payload },
+  });
+  if (error) throw new Error(code || 'write_rejected');
 }

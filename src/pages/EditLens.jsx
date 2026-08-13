@@ -171,6 +171,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
+import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useIsPhone } from '@/hooks/use-mobile';
@@ -181,7 +182,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, useToast } from '../design/index';
+import { Badge, Btn, IconBtn, Chip, Card, Tile, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -365,7 +366,11 @@ export default function EditLens({ tripId, shell, content }) {
     let result;
     try { result = await rpcFn(); }
     catch (e) {
-      toast({ description: t('tse.err_save') + (e?.message || e), variant: 'destructive' });
+      // Honest refusal: the seam carries a generic `code` → localized line via
+      // errorText (never raw server prose, TRIP-378). A client-side throw without
+      // a code falls back to the generic save-failed copy.
+      const desc = e && 'code' in e ? errorText(t, e.code) : t('tse.err_save');
+      toast({ description: desc, variant: 'destructive' });
       // RPC failed → drop the optimistic patch RIGHT AWAY by rebuilding from the last
       // good server state (cache-backed buildDraft). Don't gate the rollback on a
       // refetch that would also fail offline. If a newer action superseded us it owns
@@ -423,7 +428,7 @@ export default function EditLens({ tripId, shell, content }) {
     for (const [id, handle] of nights) {
       clearTimeout(handle);
       const finalN = nightsTarget.current.get(id);
-      if (finalN != null) pending.push(rpcSetCityNights(id, finalN));
+      if (finalN != null) pending.push(rpcSetCityNights(tripId, id, finalN));
     }
     nights.clear();
     nightsTarget.current.clear();
@@ -586,7 +591,7 @@ export default function EditLens({ tripId, shell, content }) {
       timers.delete(id);
       const finalN = nightsTarget.current.get(id);
       nightsTarget.current.delete(id);
-      runAction(() => rpcSetCityNights(id, finalN), undefined, { content: false });
+      runAction(() => rpcSetCityNights(tripId, id, finalN), undefined, { content: false });
     }, 350));
   };
   const shiftStart = (delta) => {
@@ -643,7 +648,7 @@ export default function EditLens({ tripId, shell, content }) {
       ...liveActivities.filter((a) => a.city_visit_id === id),
       ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
     ].flatMap((e) => collectDocPaths(e.documents));
-    runAction(() => rpcRemoveCity(id), () => removeTripFiles(orphanPaths));
+    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths));
   };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
@@ -791,6 +796,7 @@ export default function EditLens({ tripId, shell, content }) {
   } else if (leftPanel?.type === 'event') {
     leftPanelEl = (
       <EventSourcePanel
+        tripId={tripId}
         kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
         autoEdit={leftPanel.autoEdit} canEdit onClose={closePanelAndSync}
       />
@@ -1036,13 +1042,20 @@ export default function EditLens({ tripId, shell, content }) {
           </div>
 
           {draggingId != null && ordered[ordered.length - 1]?.kind !== 'end' && (
+            /* TRIP-343 объект 2 (H): НЕ карточка — drop-плейсхолдер DnD (add-аффорданс).
+               Не surface-инлайн (фона нет). Рамка динамически подсвечивается brand при
+               наведении перетаскивания (overGap) — это состояние dragover по ДАННЫМ, а у
+               .card--add канона dragover нет (решение D «только существующий канон»),
+               поэтому остаётся инлайном. */
             <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 'var(--r-sm)', border: '1px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
           {outOfPlanTransfers.length > 0 && (
-            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 'var(--r-sm)', background: 'var(--wash)', border: '1px solid var(--line)' }}>
+            /* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash+рамка+радиус)
+               снята с инлайна на <Card recessed>; остался раскладочный инлайн. */
+            <Card recessed radius="md" pad="none" style={{ marginTop: 14, padding: '11px 13px' }}>
               <div className="eyebrow" style={{ marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {t('tse.transfers_out_of_plan')}
               </div>
@@ -1053,7 +1066,7 @@ export default function EditLens({ tripId, shell, content }) {
                   </Chip>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
           </div>{/* /ts-leftscroll */}
           </>)}
@@ -1105,9 +1118,11 @@ export default function EditLens({ tripId, shell, content }) {
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
           <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10 /* design-token-exempt: локальный стек внутри карты редактора */, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
             {showWarn && issues.length > 0 && (
-              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', boxShadow: 'var(--sh-3)', padding: 8 }}>
+              /* TRIP-343 объект 2 (канал 3): скин поверхности (--surface+рамка+радиус)
+                 снят с инлайна на Card; тень поповера (--sh-3) остаётся инлайном (высота). */
+              <Card radius="md" pad="none" className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', boxShadow: 'var(--sh-3)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
-              </div>
+              </Card>
             )}
             <IconBtn
               size="fab"
@@ -1195,7 +1210,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
     return (
       <CityRow variant="editor" dragging={drag.dragging} pressing={drag.pressing} onArm={drag.onArm} onClick={onOpenCity}
         grip={gripEl}
-        lead={<span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>}
+        lead={<Tile as="span" className="te-row__node" style={{ '--hl-soft': 'transparent', '--hl-ink': 'var(--ev-transfer)', border: '1px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></Tile>}
         name={seg.city_name}
         conf={<Conf n={cityConf} />}
         dates={<><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</>}>
@@ -1208,7 +1223,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   return (
     <CityRow variant="editor" dragging={drag.dragging} pressing={drag.pressing} onArm={drag.onArm} onClick={onOpenCity}
       grip={gripEl}
-      lead={<span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>}
+      lead={<Tile as="span" className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</Tile>}
       name={seg.city_name}
       conf={<Conf n={cityConf} />}
       dates={formatDateRange(seg.start_date, seg.end_date, (iso) => fmtD(iso, lang))}>
@@ -1269,8 +1284,8 @@ function GridEndpoint({ node, date, onRemove }) {
   const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
   const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <Row gap="g6" className="te-end">
-      <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
+    <Card recessed radius="md" pad="none" className="row row--g6 te-end">
+      <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></Tile>
       <Grow className="te-citycell">
         <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
         <Row gap="g3" className="te-cityline">
@@ -1281,7 +1296,7 @@ function GridEndpoint({ node, date, onRemove }) {
         </Row>
       </Grow>
       <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>
-    </Row>
+    </Card>
   );
 }
 
@@ -1312,7 +1327,7 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
     <div className="lp lp--wide">
       <div className="lp-h lp-h--ev">
         <IconBtn icon="back" tone="soft" round onClick={onBack} title={t('common.back')} ariaLabel={t('common.back')} />
-        <span className="lp-ic" style={{ background: 'var(--brand)', color: '#fff' }}><Icon name="pin" size={17} /></span>
+        <Tile as="span" className="lp-ic" style={{ '--hl-soft': 'var(--brand)', '--hl-ink': '#fff' }}><Icon name="pin" size={17} /></Tile>
         <div className="lp-ti">
           <b>{t('tse.add_point')}</b>
           <span>{t('tse.add_point_hint')}</span>
@@ -1322,6 +1337,9 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7 }}>
           {POINT_TYPES.map((pt) => {
             const dis = disabledFor(pt.id), active = type === pt.id;
+            /* TRIP-343 объект 2 (H): НЕ карточка — тайл-переключатель ТИПА точки
+               (объект 5, сегмент/пикер). Тон меняется по выбору (brand-soft/surface),
+               это контрол выбора, а не поверхность-карточка; остаётся инлайном с reason. */
             return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 'var(--r-sm)', cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
               <Icon name={pt.icon} size={17} /><span className="t-meta">{t(pt.labelKey)}</span>
             </button>;

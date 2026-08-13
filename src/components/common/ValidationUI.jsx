@@ -6,6 +6,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
 import { validateEntity, issuesToShow, isFieldRequired } from '@/lib/validation';
+import { Card, Tile } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Hybrid display state: inline shows for TOUCHED fields; the summary panel and
@@ -123,6 +124,8 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
         const isErr = it.level === 'error';
         const stripe = isErr ? 'var(--danger)' : 'var(--warning)';
         const bg = isErr ? 'var(--danger-soft)' : 'var(--warning-soft)';
+        // TRIP-391 объект 1 → объект 6: строка-ишью — full-bleed clickable РЯД
+        // (width:100%, text-left, клик = фокус поля), не примитив-кнопка и не чип.
         return (
           <button
             key={`${it.code}-${i}`}
@@ -192,15 +195,21 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
   if (list.length === 0) return null;
   const Chevron = expanded ? ChevronDown : ChevronRight;
   return (
-    <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--surface)', overflow: 'hidden', ...style }}>
+    // TRIP-343 объект 2 (канал 3): инлайн-облик поверхности (--surface + рамка +
+    // r-md + overflow:hidden) снят — скин несёт <Card radius="md" pad="none">; внешний
+    // style пробрасывается (позиционирование вызывателя).
+    <Card radius="md" pad="none" style={style}>
+      {/* TRIP-391 объект 1 → объект 6: заголовок-раскрывашка панели конфликтов
+          (прозрачный full-bleed), не примитив-кнопка. Инлайн-плитка внутри —
+          семья объекта 3, мигрирует ратчетом в PR#3. */}
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
         style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}
       >
-        <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <Tile as="span" style={{ '--tile': '32px', '--hl-soft': 'var(--warning-soft)', '--hl-ink': 'var(--warning)' }}>
           <AlertTriangle size={16} />
-        </span>
+        </Tile>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span className="t-ui" style={{ display: 'block', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
           <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
@@ -213,6 +222,8 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
           {list.map((it, i) => {
             const d = describeIssue(it, ctx, t);
             const stripe = it.level === 'error' ? 'var(--danger)' : d.color;
+            // TRIP-391 объект 1 → объект 6: строка-ишью панели — full-bleed
+            // clickable РЯД, не примитив-кнопка. Инлайн-плитка внутри → объект 3 (PR#3).
             return (
               <button
                 key={`${it.code}-${it.entityId || it.fromId || i}`}
@@ -220,9 +231,9 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                 onClick={() => onOpen?.(it)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer' }}
               >
-                <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: d.soft, color: d.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Tile as="span" style={{ '--hl-soft': d.soft, '--hl-ink': d.color }}>
                   <d.Icon size={16} />
-                </span>
+                </Tile>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="t-ui" style={{ display: 'block', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
                   <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{d.sub}</span>
@@ -233,6 +244,6 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
           })}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

@@ -22,7 +22,7 @@ import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
-import { Btn, Skeleton, IconBtn, Seg } from '@/design/index';
+import { Btn, Card, Skeleton, IconBtn, Seg } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 
@@ -57,16 +57,16 @@ function StatsScreenSkeleton() {
         </div>
       </div>
       <Skeleton w="100%" h={420} r={'var(--r-card)'} style={{ marginTop: 18 }} />
-      <div className="summary" style={{ marginTop: 18 }}>
+      <Card radius="lg" className="summary" style={{ marginTop: 18 }}>
         {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={'var(--r-xl)'} />)}
-      </div>
+      </Card>
       <Skeleton w="100%" h={220} r={'var(--r-card)'} style={{ marginTop: 18 }} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={180} h={22} r={6} /></div>
       <Skeleton w="100%" h={240} r={'var(--r-card)'} />
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={140} h={22} r={6} /></div>
-      <div className="records">
+      <Card radius="card" pad="none" className="records">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={'var(--r-xl)'} />)}
-      </div>
+      </Card>
       <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={160} h={22} r={6} /></div>
       <Skeleton w="100%" h={220} r={'var(--r-card)'} />
     </>
@@ -346,14 +346,14 @@ export default function Statistics() {
 
         {/* empty-state note */}
         {isEmpty && (
-          <div className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
+          <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: 18 }}>
             <span className="en-ic tile tile--lg"><Icon name="globe" /></span>
             <span className="en-tx grow--fit">
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>
             <Btn variant="primary" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
-          </div>
+          </Card>
         )}
 
         {/* map hero */}
@@ -414,14 +414,14 @@ export default function Statistics() {
         <SummaryTiles items={summaryItems} />
 
         {/* world ring + continents */}
-        <div className="panel world">
+        <Card radius="lg" className="panel world">
           <WorldRing
             world={bundle.world}
             label={t('stats.world_label')}
             caption={<><b>{bundle.world.visited}</b> {t('stats.world_cap', { total: bundle.world.total })}</>}
           />
           <ContinentBars title={t('stats.continents_title')} rows={contRows} />
-        </div>
+        </Card>
 
         {/* country / city lists */}
         <div className="sec-head">
@@ -437,13 +437,13 @@ export default function Statistics() {
             ]}
           />
         </div>
-        <div className="panel" style={{ padding: '16px 18px' }}>
+        <Card radius="lg" className="panel" style={{ padding: '16px 18px' }}>
           <VisitList
             rows={listRows}
             emptyText={listMode === 'countries' ? t('stats.list_empty_countries') : t('stats.list_empty_cities')}
             onSelect={onListSelect}
           />
-        </div>
+        </Card>
 
         {/* records */}
         <div className="sec-head"><h2 className="t-subheading">{t('stats.records_title')}</h2></div>

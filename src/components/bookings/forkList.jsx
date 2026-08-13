@@ -1,7 +1,7 @@
 // @ts-check
 import React from 'react';
 import { Search, RotateCcw, ArrowUpDown } from 'lucide-react';
-import { Badge, Btn, Chip, IconBtn, Input, Skeleton } from '@/design/index';
+import { Badge, Btn, Card, Chip, IconBtn, Input, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Shared chrome for the two fork search lists (Stay22 hotels + Viator activities)
@@ -35,7 +35,7 @@ export function ForkListSkeleton({ count = 4 }) {
   return (
     <div className="fork-list" aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
-        <div className="grid pcard pcard--sk" key={i}>
+        <Card radius="md" className="grid pcard pcard--sk" key={i}>
           <div className="pcard__thumb"><Skeleton w="100%" h="100%" r={'var(--r-sm)'} /></div>
           <div className="col col--j-center pcard__body">
             <Skeleton w="70%" h={14} />
@@ -46,7 +46,7 @@ export function ForkListSkeleton({ count = 4 }) {
             <span className="pcard__spacer" />
             <Skeleton w={70} h={30} r={'var(--r-sm)'} />
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -61,7 +61,7 @@ export function ForkListSkeleton({ count = 4 }) {
 export function ForkState({ variant, icon, spark = null, title, body, action = null, partner = null }) {
   const { t } = useI18nFormat();
   return (
-    <div className={`fork-state fork-state--${variant}`}>
+    <Card raised className={`fork-state fork-state--${variant}`}>
       <div className="fork-state__art">
         <span className="fork-state__glow" aria-hidden="true" />
         <span className="fork-si">{icon}{spark ? <span className="fork-state__spark">{spark}</span> : null}</span>
@@ -83,7 +83,7 @@ export function ForkState({ variant, icon, spark = null, title, body, action = n
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -174,7 +174,7 @@ export function ForkToolbar({
 
       {filtersOpen && (
         <>
-          <div className="s22f-panel">{children}</div>
+          <Card radius="lg" className="s22f-panel">{children}</Card>
           {/* Actions live OUTSIDE the filter card (design) */}
           <div className="s22f-panelfoot">
             <Btn variant="quiet" onClick={onReset}>

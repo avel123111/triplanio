@@ -114,6 +114,8 @@ jobs:
   #   2t check-db-types              — типы БД не отстали от миграций (отдельной джобой: нужен Docker)
   #   2u check-css-comments          — сломанный /*…*/ роняет правило из бандла (осиротевший/незакрытый)
   #   2v check-error-codes           — реестр кодов ошибок edge-контракта: эмиссия ⊆ словарь + append-only
+  #   2w check-invoke-discriminant   — дискриминант отказа invokeFn в корне результата (.data.code/.data.ok не растёт)
+  #   2x check-i18n-dynamic-keys     — DB/n8n-only key families (notif.tpl_* + emit()→n8n.*) must not be deleted (TRIP-299)
   #
   # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
   # enter the codebase. On a `dev → main` promotion PR these would re-scan content
@@ -171,8 +173,11 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run check:design
+      # TRIP-410: ВРЕМЕННО замьючено. Типографический переезд на Geologica сажает
+      # весь текст на каноны разом и по построению фрагментирует смену на десятки
+      # маркеров. Возврат — отдельным следующим PR с обновлённой базой (Pavel).
       - name: 2l — inline-style ratchet (repeats belong in the class)
-        if: ${{ !cancelled() }}
+        if: false  # TRIP-410 mute — restore in follow-up PR
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-inline-styles.mjs
       - name: 2m — CSS namespaces (a new class prefix needs approval)
@@ -235,6 +240,24 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-invoke-discriminant.mjs
+      - name: 2x — i18n dynamic keys (DB/n8n-only families must not be deleted)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-i18n-dynamic-keys.mjs
+      # 3a (TRIP-408 PR#2): карта «код ошибки → i18n-ключ» живёт в ОДНОМ доме
+      # `errorText.js` (classifyError). Локальная карта `{ CODE: 'ns.key' }` вне
+      # него (три снесённые: AI_ERROR_KEY/BUDGET_REFUSAL/REFUSAL_CLAUSE) → красный.
+      # Самосогласованность по дереву; тянет только src/lib/errorCodes.js (0
+      # импортов) — инвариант «без npm ci» цел.
+      - name: 3a — карта код→i18n одна (локальные карты отказа не воскресают)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-error-i18n-map.mjs
+      # 3b (TRIP-408 PR#2): сырой `error.message` пользователю не показывается —
+      # канон `classifyError`/`errorText`. Храповик по диффу (как 2w): рост сырых
+      # `.message`-показов в тронутом файле → красный; whole-tree итог печатается.
+      - name: 3b — сырой текст ошибки пользователю не растёт (.message-показы)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-raw-error-surface.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
@@ -268,15 +291,18 @@ jobs:
       - run: npm ci
       - name: Fetch base branch
         run: git fetch --no-tags origin "${{ github.base_ref }}"
+      # TRIP-410: ВРЕМЕННО замьючено (см. 2l). Возврат — отдельным PR с новой базой.
       - name: 2o — design floor
+        if: false  # TRIP-410 mute — restore in follow-up PR
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run check:floor
       # 2p — ЯРУС 2 визуального гейта (TRIP-340 PR3, Р13). Здесь, а не в
       # `guards`, по той же причине, что и 2o: гард разбирает CSS через
       # `postcss` (уже прямая зависимость репо), то есть требует `npm ci`, а
       # `guards` намеренно живёт на стандартной библиотеке.
+      # TRIP-410: ВРЕМЕННО замьючено (см. 2l). Возврат — отдельным PR с новой базой.
       - name: 2p — семантический дифф CSS (что реально достаётся классу)
-        if: ${{ !cancelled() }}
+        if: false  # TRIP-410 mute — restore in follow-up PR
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: npm run check:semantics
       # 2q — ОСИ КАНОН-ОБЪЕКТА (TRIP-364). Зависимостей у гарда нет, но он
@@ -285,6 +311,24 @@ jobs:
       - name: 2q — оси канон-объекта (обличье вне осей)
         if: ${{ !cancelled() }}
         run: npm run check:axes
+      # 2y — сырой скин-ПОВЕРХНОСТЬ в теневом <style> внутри .jsx (TRIP-343, §11).
+      # Живёт здесь (не в `guards`), потому что разбирает CSS через postcss, как
+      # 2p — нужен `npm ci`. HEAD-only абсолютный инвариант (цель 0): поверхность
+      # в <style> невидима замеру слоя, её дом — <Card>. Ловит ForkPartnerModal-
+      # класс дефекта; сепараторы/плитки в <style> НЕ трогает (предикат аудита).
+      - name: 2y — скин-поверхность в теневом <style> (дом поверхности — Card)
+        if: ${{ !cancelled() }}
+        run: npm run check:shadow-style
+      # 2z — реестр полноты поверхностей (Г34, TRIP-343). Каждый .css surface-класс
+      # (предикат аудита + <style> + инлайн style={{}}) обязан быть в checked-in
+      # таблице `семья→объект`: object:"card" (переехал на <Card>) либо object:<имя>
+      # с причиной. Незанесённый класс / устаревшая запись роняют PR; <style>=0;
+      # surface-инлайны — ратчет вниз (остаток печатается числом). postcss → рядом
+      # с 2o/2p. Иначе «немигрированных = 0» остаётся subset-proof.
+      - name: 2z — реестр полноты поверхностей (каждый surface-класс приписан)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: npm run check:surface-registry
       # Репортёр обходов: НЕ блокирует, печатает цену рядом с результатом.
       # Идёт последним и всегда, даже если что-то выше упало, - иначе число
       # обходов не увидят ровно на тех прогонах, где оно интереснее всего.

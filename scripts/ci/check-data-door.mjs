@@ -176,8 +176,13 @@ const EXEMPT = 'door-exempt';
  *  корзина: новый RPC с клиента обязан быть классифицирован осознанно. */
 const RPC = {
   rpcMutating: [
-    'set_city_nights', 'set_trip_start_date', 'add_city', 'remove_city',
-    'reorder_cities', 'add_layover_transfer', 'create_trip', 'send_chat_message',
+    // TRIP-406: add_city/remove_city/reorder_cities/set_city_nights/
+    // set_trip_start_date ушли на edge trip-route (op:'rpc'), create_trip ДРОПНУТА
+    // (заменена create_trip_with_route на edge trip/create) — клиентских .rpc()
+    // вызовов больше нет. add_layover_transfer уже за швом (TRIP-405).
+    // send_chat_message ушла на edge trip-chat (op:'rpc', TRIP-408) — ПОСЛЕДНЯЯ
+    // клиентская мутация репо, rpcMutating 1→0; EXECUTE у authenticated снят.
+    'add_layover_transfer',
   ],
   rpcReading: ['get_user_travel_stats'],
   // Публичный поиск: отказывать нечего, неоднозначности «пусто vs нельзя» не
@@ -187,7 +192,7 @@ const RPC = {
 
 /** Записи, чья ошибка НИКОГДА не показывается пользователю (критерий границы
  *  §4.C). Печатаются отдельной строкой, чтобы граница не была молчаливой. */
-const WRITE_WHITELIST = new Set(['notifications', 'chat_reads', 'partner_clicks']);
+const WRITE_WHITELIST = new Set(['chat_reads', 'partner_clicks']);
 
 /** Чат вне скоупа эпика: Realtime проверяет SELECT-политику подписчика, отзыв
  *  SELECT убил бы подписку (§4.D). */
@@ -555,10 +560,12 @@ function measure(cwd) {
   m.edgeWriteTables = [...edgeWrite].sort();
   m.doubleDoor = m.srcWriteTables.filter((t) => edgeWrite.has(t));
   /** ★ ТАБЛИЦА ИЗ БЕЛОГО СПИСКА В `doubleDoor` НЕ ПОПАДАЕТ, И ЭТО РЕШЕНИЕ, А НЕ
-   *  УПУЩЕНИЕ. `notifications` пишется браузером (флаг `read`) и edge (9 вставок),
-   *  и по §4.C прямая запись флага остаётся НАВСЕГДА — то есть цель 0 была бы
-   *  недостижима по уже принятой причине, а недостижимая цель не метрика.
-   *  Молчаливым это не делается: такие таблицы печатаются отдельной строкой. */
+   *  УПУЩЕНИЕ. `chat_reads` пишется браузером (маркер прочтения) и триггером/edge,
+   *  и по §4.D (realtime-чат-семья) прямая запись остаётся — то есть цель 0 была
+   *  бы недостижима по уже принятой причине, а недостижимая цель не метрика.
+   *  (`notifications` из белого списка убрана: TRIP-408 закрыл её ЦЕЛИКОМ — флаг
+   *  `read` теперь пишет edge inbox, чтение — getInbox.) Молчаливым это не
+   *  делается: такие таблицы печатаются отдельной строкой. */
   m.declaredTwoDoor = [...declared].filter((t) => edgeWrite.has(t)).sort();
   return m;
 }

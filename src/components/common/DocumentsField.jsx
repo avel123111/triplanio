@@ -4,7 +4,7 @@ import { uploadTripFiles, uploadErrorText, MAX_UPLOAD_MB } from '@/lib/documentM
 import { Icon } from '@/design/icons';
 import { UPLOAD_ACCEPT } from '@/lib/fileType';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
-import { FileRow, IconBtn, useToast } from '@/design/index';
+import { Card, FileRow, IconBtn, useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
 
@@ -82,8 +82,13 @@ export default function DocumentsField({
     }
   };
 
+  // Обрамлённый режим (не bare) — поверхность-раздел через `<Card as="section">`;
+  // bare — голый <section> без скина. Носитель динамический (TRIP-343, не-Card
+  // ветка реально без скина).
+  const Frame = bare ? 'section' : Card;
+  const frameProps = bare ? {} : { as: 'section', radius: 'lg', className: 'docfield' };
   return (
-    <section className={bare ? '' : 'docfield'}>
+    <Frame {...frameProps}>
       {!bare && (
         <div className="row row--j-between row--g4 docfield__head">
           <div className="row row--g4 docfield__title">
@@ -118,37 +123,40 @@ export default function DocumentsField({
         </div>
       )}
 
+      {/* Drop zone — поведение (клик/drag) вокруг Card, скин на канон add
+          (Pavel: Card владеет скином, поведение композится вокруг). */}
       {canAddMore && (
         <div
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}
         >
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept={accept}
-            style={{ display: 'none' }}
-            onChange={(e) => uploadFiles(e.target.files)}
-          />
-          {uploading ? (
-            <div className="t-body row row--g4">
-              <span className="spin spin--ring" />
-              {t('common.loading')}
-            </div>
-          ) : (
-            <>
-              <Icon name="upload" size={24} />
-              <b>{docs.length === 0
-                ? t('doc.upload_label')
-                : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
-              <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
-            </>
-          )}
+          <Card variant="add" radius="md" className={`col col--g3 dl-dropzone${uploading ? ' is-uploading' : ''}`}>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept={accept}
+              style={{ display: 'none' }}
+              onChange={(e) => uploadFiles(e.target.files)}
+            />
+            {uploading ? (
+              <div className="t-body row row--g4">
+                <span className="spin spin--ring" />
+                {t('common.loading')}
+              </div>
+            ) : (
+              <>
+                <Icon name="upload" size={24} />
+                <b>{docs.length === 0
+                  ? t('doc.upload_label')
+                  : `${t('doc.add_more_files')}${maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}`}</b>
+                <span>{t('doc.upload_formats', { mb: MAX_UPLOAD_MB })}</span>
+              </>
+            )}
+          </Card>
         </div>
       )}
-    </section>
+    </Frame>
   );
 }

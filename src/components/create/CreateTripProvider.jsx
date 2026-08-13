@@ -5,7 +5,7 @@ import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Dialog, useToast } from '@/design/index';
+import { Card, Dialog, useToast } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
@@ -55,8 +55,10 @@ export const useCreateTrip = () => useContext(CreateTripContext);
 export function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
   const isAi = variant === 'ai';
   return (
-    <button
-      type="button"
+    <Card
+      as="button"
+      radius="card"
+      interactive
       onClick={onClick}
       className={`choice-card${isAi ? ' choice-card--ai' : ''}`}
     >
@@ -68,7 +70,7 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
         <div className="choice-card__sub">{sub}</div>
       </div>
       <span className="choice-card__arr"><Icon name="arrowR" size={20} /></span>
-    </button>
+    </Card>
   );
 }
 

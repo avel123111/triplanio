@@ -1260,3 +1260,105 @@ test('★★ класс внутри :not() не делает подлежаще
   assert.equal(code, 1, out);
   assert.match(out, /\.icon-btn width: 40px → 999px/);
 });
+
+/* ─────────── ручки плитки: резолв ВЫЧИСЛЕННОГО в переносе (TRIP-391 объект 3) ───────────
+ * Канон переводит скин `.ctx .ic{width;bg}` на примитив `.tile` (читает
+ * `var(--tile)`/`var(--hl-soft)`), контекст задаёт РУЧКУ `.ctx .tile{--tile}`.
+ * Перенос обязан сойтись ВЫЧИСЛЕННЫМ (текст меняется, значение — нет) И покраснеть
+ * на смене значения ручки/тона (Г37: умнее, не слепее). */
+const TILE_PRELUDE =
+  ':root { --hl-soft: rgba(1,2,3,.1); --hl-ink: #123; --brand-soft: rgba(1,2,3,.1); --brand: #123;' +
+  ' --act-soft: rgba(170,17,17,.12); --act-ink: #700; --r-sm: 8px; }\n' +
+  '.tile { width: var(--tile, 34px); height: var(--tile, 34px); border-radius: var(--tile-r, var(--r-sm));' +
+  ' background: var(--hl-soft); color: var(--hl-ink); }\n' +
+  '.tile > svg { width: var(--tile-ic, 17px); height: var(--tile-ic, 17px); }\n';
+const TILE_BASE =
+  TILE_PRELUDE +
+  '.statbar .ic { width: 42px; height: 42px; border-radius: 8px; background: var(--brand-soft); color: var(--brand); }\n' +
+  '.statbar .ic svg { width: 20px; height: 20px; }\n' +
+  '.statbar .s.c-city .ic { background: var(--act-soft); color: var(--act-ink); }\n';
+// HEAD: .ic уехал на .tile; тон-вариант БЕЗ пер-вариантного маркера (канал-проход
+// гасит background↔--hl-soft), иконка БЕЗ .ic svg (svg-ступень гасит через --tile-ic).
+const tileHead = ({ tile = '42px', tileIc = '20px', citySoft = 'var(--act-soft)' } = {}) =>
+  TILE_PRELUDE +
+  '/* visual-diff-move: .statbar .ic -> .statbar .tile — плитка на примитив <Tile> */\n' +
+  `.statbar .tile { --tile: ${tile}; --tile-ic: ${tileIc}; --tile-r: 8px; }\n` +
+  `.statbar .s.c-city .tile { --hl-soft: ${citySoft}; --hl-ink: var(--act-ink); }\n`;
+
+test('★ канон-миграция плитки: базовый маркер + канал-move тона + svg-ступень — всё сходится ВЫЧИСЛЕННЫМ → зелёный', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': TILE_BASE }, head: { 'src/design/app.css': tileHead() } });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ мутация: --tile 42px → 40px (реальный сдвиг размера) → КРАСНЫЙ (не ослеп по значению)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': TILE_BASE }, head: { 'src/design/app.css': tileHead({ tile: '40px' }) } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★★ мутация: тон --hl-soft подменён (act → brand) → КРАСНЫЙ (канал-move НЕ гасит смену значения)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': TILE_BASE }, head: { 'src/design/app.css': tileHead({ citySoft: 'var(--brand-soft)' }) } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /c-city|background/);
+});
+
+test('★★ мутация: размер иконки --tile-ic 20px → 18px → КРАСНЫЙ (svg-ступень НЕ гасит смену размера)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': TILE_BASE }, head: { 'src/design/app.css': tileHead({ tileIc: '18px' }) } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /svg/);
+});
+
+// Тон-вариант с модификатором в ТОМ ЖЕ компаунде, что и `ic` (`.rec .ic.r-days`,
+// не отдельным `.rec.c-city`). Канал-move обязан найти цель `.rec .tile.r-days`
+// (tileTargetSel сохраняет сиблинг `.r-days`), иначе тон варианта не сойдётся —
+// баг #821, чинится этим коммитом.
+const REC_BASE =
+  TILE_PRELUDE +
+  '.rec .ic { width: 34px; height: 34px; background: var(--brand-soft); color: var(--brand); }\n' +
+  '.rec .ic.r-days { background: var(--act-soft); color: var(--act-ink); }\n';
+const recHead = (daysSoft = 'var(--act-soft)') =>
+  TILE_PRELUDE +
+  '/* visual-diff-move: .rec .ic -> .rec .tile — плитка на <Tile> */\n' +
+  '.rec .tile { --tile: 34px; --hl-soft: var(--brand-soft); --hl-ink: var(--brand); }\n' +
+  `.rec .tile.r-days { --hl-soft: ${daysSoft}; --hl-ink: var(--act-ink); }\n`;
+
+test('★ канал-move варианта с модификатором в компаунде (.ic.r-days → .tile.r-days) → зелёный (баг #821)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': REC_BASE }, head: { 'src/design/app.css': recHead() } });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ мутация: тон .tile.r-days подменён → КРАСНЫЙ (сиблинг-цель сверяется, не гасится вслепую)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': REC_BASE }, head: { 'src/design/app.css': recHead('var(--brand-soft)') } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /r-days|background/);
+});
+
+// Шаблон «КЛАСС-САМ-ПЛИТКА»: приватный класс не заменяется на .tile, а НЕСЁТ его
+// (`<Tile className="flagchip">` → `.tile.flagchip`), ручка --tile на самом классе.
+// tileCtxOf обязан взять контекст с СЕЛЕКТОРА-КАК-ЕСТЬ (не только .ic→.tile).
+const FLAG_BASE =
+  TILE_PRELUDE +
+  '.flagchip { width: 24px; height: 24px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); }\n';
+const flagHead = (tile = '24px') =>
+  TILE_PRELUDE +
+  '/* visual-diff-move: flagchip -> tile — класс-сам-плитка на <Tile className="flagchip"> */\n' +
+  `.flagchip { --tile: ${tile}; --tile-r: 7px; }\n`;
+
+test('★ класс-сам-плитка (.flagchip несёт .tile, ручка на себе) — перенос сходится ВЫЧИСЛЕННЫМ → зелёный', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': FLAG_BASE }, head: { 'src/design/app.css': flagHead() } });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ мутация: --tile класс-сам-плитки 24px → 20px → КРАСНЫЙ', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': FLAG_BASE }, head: { 'src/design/app.css': flagHead('20px') } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});

@@ -1,8 +1,7 @@
 /**
  * shareCardText — localized strings + formatters baked INTO the share-card PNG
  * (TRIP-193). The card is rendered server-side (resvg), so its text can NOT go
- * through the client `t()` / Tolgee — same reason email/notification copy lives
- * in `_shared/emailTemplate.ts`. This is the single source of truth for the
+ * through the client `t()` / Tolgee. This is the single source of truth for the
  * card's own words. The surrounding client modal (buttons, errors) stays on
  * `t()` + Tolgee. Language is resolved via the shared `_shared/tgLang.ts`.
  *

@@ -19,7 +19,7 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
-import { Btn, FileRow, IconBtn, InputGroup, Textarea } from '@/design/index';
+import { Btn, Card, FileRow, IconBtn, InputGroup, Textarea, Tile } from '@/design/index';
 import {
   Sparkles, Lock, X,
   ChevronUp, Check,
@@ -186,26 +186,24 @@ export default function EventAiBlock({
   // and use the parser before the check lands.
   if (state === 'checking') {
     return (
-      <div className="ai-blk" aria-busy="true">
+      <Card tone="ai" ariaBusy className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
           </div>
           <span className="spin spin--ring" />
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (state === 'locked') {
     return (
-      <div className="ai-blk locked">
+      <Card tone="ai" locked className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic">
-            <Sparkles size={15} />
-          </div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             {/* Заблокировано (Free): замок вместо PRO-бейджа (дизайн-система TRIP-187) */}
             <b>{t('event.ai_fill_title')}<Lock size={12} className="muted" /></b>
@@ -215,44 +213,44 @@ export default function EventAiBlock({
             <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('trips.go_pro')}
           </Btn>
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (state === 'available') {
     return (
-      <button type="button" className="ai-blk ai-blk--pill" onClick={() => setState('idle')} style={{ width: '100%', textAlign: 'left' }}>
+      <Card as="button" tone="ai" interactive className="ai-blk ai-blk--pill" onClick={() => setState('idle')} style={{ width: '100%', textAlign: 'left' }}>
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
           </div>
         </div>
-      </button>
+      </Card>
     );
   }
 
   if (state === 'parsing') {
     return (
-      <div className="ai-blk">
+      <Card tone="ai" className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_parsing')}<span className="spin spin--ring" /></b>
             {files[0]?.name && <span>{files[0].name}</span>}
             <div className="ai-prog"><div className="ai-prog-fill" /></div>
           </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (state === 'parsed') {
     return (
-      <div className="ai-blk parsed">
+      <Card tone="ai" parsed className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Check size={15} /></div>
+          <Tile tone="success" solid size="sm"><Check size={15} /></Tile>
           <div className="ai-blk-ti">
             <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</b>
             <span>{t('event.ai_highlighted_hint')}</span>
@@ -270,15 +268,15 @@ export default function EventAiBlock({
             ariaLabel={t('event.collapse')}
           />
         </div>
-      </div>
+      </Card>
     );
   }
 
   // idle / uploaded — same shell; textarea and files are independent and combine.
   return (
-    <div className="ai-blk">
+    <Card tone="ai" className="ai-blk">
       <div className="ai-blk-hd" role="button" tabIndex={0} onClick={() => setState('available')} style={{ cursor: 'pointer' }}>
-        <div className="ai-blk-ic"><Sparkles size={15} /></div>
+        <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
         <div className="ai-blk-ti">
           <b>{t('event.ai_fill_title')}</b>
           <span>{state === 'uploaded'
@@ -349,7 +347,7 @@ export default function EventAiBlock({
         accept={PARSER_ACCEPT}
         onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
       />
-    </div>
+    </Card>
   );
 }
 

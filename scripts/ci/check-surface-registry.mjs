@@ -1,0 +1,400 @@
+#!/usr/bin/env node
+/**
+ * CI-гард 2z · РЕЕСТР ПОЛНОТЫ ПОВЕРХНОСТЕЙ (Г34, TRIP-343, объект 2).
+ *
+ * ЗАЧЕМ. «Объект собран из системы» доказывается фразой «немигрированных
+ * поверхностей = 0». Пока список поверхностей выводится ad hoc из одного скана,
+ * это subset-proof: скан по .css слеп к инлайну style={{}} и к теневому <style>,
+ * и «= 0» держится, а поверхность живёт мимо <Card>. Так объект 2 «закрывался»
+ * трижды. Реестр делает набор ЯВНЫМ и checked-in: КАЖДЫЙ surface-класс обязан
+ * иметь запись — либо переехал на <Card> (`object: "card"`), либо назван другим
+ * объектом с причиной (`object: <имя>, reason`). Незанесённый класс роняет PR;
+ * запись на класс, переставший быть поверхностью, — тоже (реестр не врёт).
+ *
+ * ПРЕДИКАТ ПОВЕРХНОСТИ — тот же, что у `audit-design.mjs` §5 и гарда 2y:
+ *   border-radius + фон + (рамка | тень),  И НЕ плитка (квадрат + радиус + центр).
+ *
+ * ТРИ НОСИТЕЛЯ (Г34 «обязана покрывать инлайн и <style>, а не только .css»):
+ *   1. .css классы            — БЛОКИРУЮТ: каждый ⊆ реестр, реестр ⊆ живые.
+ *   2. <style> внутри .jsx     — БЛОКИРУЮТ: их быть не должно (дом — <Card>), = 0.
+ *   3. инлайн style={{…}}      — РАТЧЕТ вниз: число surface-инлайнов не растёт
+ *      против BASE_REF, печатается как «остаток числом». Тинт-объекты (warning/
+ *      dashed-плейсхолдер/бренд-градиент) — законные не-Card поверхности, поэтому
+ *      здесь ратчет, а не «= 0»: он держит направление (только вниз), не требуя
+ *      единовременно расклассифицировать каждый инлайн по объекту.
+ *
+ * A CI guard is code: тест — `check-surface-registry.test.mjs`.
+ * Env: BASE_REF (по умолчанию origin/dev) — только для ратчета инлайнов.
+ */
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import postcss from 'postcss';
+import { Parser as AcornParser } from 'acorn';
+import acornJsx from 'acorn-jsx';
+import { inScope } from './perimeter.mjs';
+const JsxParser = AcornParser.extend(acornJsx());
+
+const BASE_REF = process.env.BASE_REF || 'origin/dev';
+// Реестр читается ОТНОСИТЕЛЬНО cwd (как `git ls-files`/`readFileSync` ниже) —
+// и на прогоне из корня репо, и на fixture-репо теста это один и тот же путь.
+const REG_PATH = resolve(process.cwd(), 'scripts/ci/surface-registry.json');
+
+const git = (args) => {
+  try {
+    return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch {
+    return null;
+  }
+};
+const lsSrc = () => (git(['ls-files', 'src']) || '').split('\n').filter(Boolean);
+
+// ── предикат поверхности (общий с 2y / аудитом) ─────────────────────────────
+const BORDER = /^border(-(top|right|bottom|left))?(-(color|width|style))?$/;
+const hasBg = (m) => m.has('background') || m.has('background-color');
+const hasBorder = (m) => [...m.keys()].some((p) => BORDER.test(p));
+const centred = (m) => m.has('place-items') || (m.has('align-items') && m.has('justify-content'));
+const isTile = (m) => m.has('width') && m.get('width') === m.get('height') && m.has('border-radius') && centred(m);
+const isSurface = (m) => m.has('border-radius') && hasBg(m) && (hasBorder(m) || m.has('box-shadow')) && !isTile(m);
+
+const styledClass = (sel) => {
+  const all = [...sel.matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)].map((x) => x[1]);
+  return all.at(-1) ?? null;
+};
+const declsOf = (rule) => {
+  const m = new Map();
+  rule.walkDecls((d) => m.set(d.prop.toLowerCase(), d.value.trim()));
+  return m;
+};
+
+// ── 1. surface-классы в .css ────────────────────────────────────────────────
+// ★ ЗАМОК ОТ КО-СЕЛЕКТОРНОГО СЛЕПОГО ПЯТНА (TRIP-337 объект 2, дозакрытие).
+// Ко-селектор `app.css:425` (`.wmini, .card, … { background; border }`) красит
+// поверхность ФОНОМ+РАМКОЙ одним общим правилом, а радиус живёт ОТДЕЛЬНЫМ
+// правилом у каждого члена. Предикат `radius+bg+border В ОДНОМ правиле` (per-rule
+// выше) такую поверхность НЕ ловит: 34 карточки/панели были невидимы гарду,
+// audit §5 их не считал, реестр не требовал — механизм петли «закрыто, но живо».
+// Лечится ВТОРЫМ проходом: класс = поверхность, если ФОН+РАМКУ он получает из
+// ОБЩЕГО (много-классового) правила, И радиус у него есть где угодно. Одиночные
+// правила (`.checkbox`, свои bg+border) сюда НЕ попадают — только скин, разлитый
+// по общему носителю. Это ЗАМОК ОТ РЕГРЕССА (новый член ко-селектора обязан
+// попасть в реестр), НЕ доказательство полноты — доказательство = разбор реестра.
+const coSelectorSurfaceClasses = () => {
+  const hasRadius = new Set();
+  const coMembers = new Set();
+  for (const f of lsSrc().filter((f) => f.endsWith('.css'))) {
+    let root;
+    try { root = postcss.parse(readFileSync(f, 'utf8')); } catch { continue; }
+    root.walkRules((rule) => {
+      const m = declsOf(rule);
+      const classParts = rule.selector.split(',').map((s) => styledClass(s)).filter(Boolean);
+      if (m.has('border-radius')) for (const c of classParts) hasRadius.add(c);
+      // общий (≥2 класс-носителя) скин фон+рамка → каждый член — кандидат
+      if (classParts.length >= 2 && hasBg(m) && (hasBorder(m) || m.has('box-shadow')) && !isTile(m)) {
+        for (const c of classParts) coMembers.add(c);
+      }
+    });
+  }
+  return new Set([...coMembers].filter((c) => hasRadius.has(c)));
+};
+
+const cssSurfaceClasses = () => {
+  const set = new Set();
+  for (const f of lsSrc().filter((f) => f.endsWith('.css'))) {
+    let root;
+    try { root = postcss.parse(readFileSync(f, 'utf8')); } catch { continue; }
+    root.walkRules((rule) => {
+      const m = declsOf(rule);
+      if (!isSurface(m)) return;
+      for (const sel of rule.selector.split(',')) {
+        const c = styledClass(sel);
+        if (c) set.add(c);
+      }
+    });
+  }
+  for (const c of coSelectorSurfaceClasses()) set.add(c);
+  return set;
+};
+
+// ── 2/3. поверхности в <style> и surface-инлайны в .jsx ─────────────────────
+const STYLE_RE = /<style>\s*\{\s*`([\s\S]*?)`\s*\}\s*<\/style>/g;
+// Литерал style={{ … }} — берём тело до сбалансированной }}. Грубый, но
+// достаточный разбор: считаем ОБЪЕКТ поверхностью, если в его тексте есть
+// background + borderRadius + (border | boxShadow) и НЕ квадрат-плитка.
+const styleObjects = (src) => {
+  const out = [];
+  const re = /style=\{\{/g;
+  let m;
+  while ((m = re.exec(src))) {
+    let i = re.lastIndex, depth = 2, body = '';
+    while (i < src.length && depth > 0) {
+      const ch = src[i];
+      if (ch === '{') depth++;
+      else if (ch === '}') depth--;
+      if (depth > 0) body += ch;
+      i++;
+    }
+    out.push(body);
+  }
+  return out;
+};
+const hasBgInline = (body) => /\bbackground(Color)?\s*:/.test(body) && !/\bbackground(Color)?\s*:\s*['"]?(transparent|none)\b/.test(body);
+const squareInline = (body) => /\bwidth\s*:\s*([^,]+),[\s\S]*?\bheight\s*:\s*\1\b/.test(body);
+const inlineIsSurface = (body) => {
+  const has = (re) => re.test(body);
+  const border = has(/\bborder(Color|Top|Right|Bottom|Left)?\s*:/);
+  const shadow = has(/\bboxShadow\s*:/);
+  return hasBgInline(body) && has(/\bborderRadius\s*:/) && (border || shadow) && !squareInline(body);
+};
+// Инлайн-ПЛИТКА (TRIP-391 объект 3): тот же квадрат-с-тинтом, но руками —
+// `style={{ background:'var(--x-soft)', width:38, height:38 }}`. Дом такой формы
+// — <Tile> (тон ролью или каналом --hl). Ратчет вниз, как у инлайн-поверхностей.
+const inlineIsTile = (body) => hasBgInline(body) && squareInline(body);
+const scanJsx = (readFile) => {
+  let styleSurfaces = 0;
+  let inlineSurfaces = 0;
+  let inlineTiles = 0;
+  for (const f of lsSrc().filter((f) => f.endsWith('.jsx'))) {
+    const src = readFile(f);
+    if (src == null) continue;
+    for (const sm of src.matchAll(STYLE_RE)) {
+      let root;
+      try { root = postcss.parse(sm[1]); } catch { continue; }
+      root.walkRules((rule) => { if (isSurface(declsOf(rule))) styleSurfaces++; });
+    }
+    for (const body of styleObjects(src)) {
+      if (inlineIsSurface(body)) inlineSurfaces++;
+      if (inlineIsTile(body)) inlineTiles++;
+    }
+  }
+  return { styleSurfaces, inlineSurfaces, inlineTiles };
+};
+
+// ── 4. СЫРОЙ ВЫЗЫВАТЕЛЬ card-homed класса (F, TRIP-343) ─────────────────────
+// card-homed класс несёт ТОЛЬКО раскладку — его скин на <Card>. Сырой host-тег
+// (<button>/<div>/<a>…) с таким className мимо <Card> = поверхность потеряна
+// молча (баг трансфера). Три скан-режима выше этого не видят: в .css поверхности
+// нет, инлайна нет, <style> нет. Ловим AST-обходом JSX.
+const classAttrTokens = (attr) => {
+  const out = [];
+  const walk = (n) => {
+    if (!n) return;
+    if (n.type === 'Literal' && typeof n.value === 'string') out.push(...n.value.split(/\s+/));
+    else if (n.type === 'JSXExpressionContainer') walk(n.expression);
+    else if (n.type === 'TemplateLiteral') n.quasis.forEach((q) => out.push(...(q.value.cooked || '').split(/\s+/)));
+    else if (n.type === 'ConditionalExpression') { walk(n.consequent); walk(n.alternate); }
+    else if (n.type === 'LogicalExpression') { walk(n.left); walk(n.right); }
+    else if (n.type === 'BinaryExpression') { walk(n.left); walk(n.right); }
+  };
+  walk(attr && attr.value);
+  return out.filter(Boolean);
+};
+// Общий обход: сырой host-тег (строчное имя) с homed-классом = скин потерян
+// (его дом — компонент `wrapper`). `<Card>`/`<Tile>` — заглавные, под фильтр
+// `/^[a-z]/` не попадают, поэтому законная обёртка не краснеет.
+const rawHomedCallers = (homed, wrapper) => {
+  const hits = [];
+  for (const f of lsSrc().filter((f) => f.endsWith('.jsx'))) {
+    let ast;
+    try { ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }); } catch { continue; }
+    const stack = [ast];
+    while (stack.length) {
+      const n = stack.pop();
+      if (!n || typeof n !== 'object') continue;
+      if (n.type === 'JSXOpeningElement' && n.name && n.name.type === 'JSXIdentifier' && /^[a-z]/.test(n.name.name)) {
+        const cls = n.attributes.find((a) => a.type === 'JSXAttribute' && a.name.name === 'className');
+        const hit = classAttrTokens(cls).filter((t) => homed.has(t));
+        if (hit.length) hits.push(`${f}: <${n.name.name} className=[${hit.join(' ')}]> мимо <${wrapper}>`);
+      }
+      for (const k in n) {
+        const v = n[k];
+        if (Array.isArray(v)) stack.push(...v);
+        else if (v && typeof v === 'object' && v.type) stack.push(v);
+      }
+    }
+  }
+  return hits;
+};
+
+// ── btn-homed: НОСИТЕЛЬ кнопки-объекта В ДРУГОЙ ФОРМЕ, чем <button> ──────────
+// (TRIP-337 объект 1, вариант A). Команда-истина grep `<button>` СЛЕПА к кнопке-
+// объекту, живущему как `.btn`/`.icon-btn` на <a>/<div> (ссылка-CTA) или
+// `role="button"` на <div>/<span> (грип, кликабельная карта): их не видит ни
+// .css-скан, ни <style>, ни grep. Именно эта слепота переоткрывала объект 1.
+// AST-обход перечисляет ВСЕ такие носители в ПЕРИМЕТРЕ эпика (inScope); каждый
+// обязан иметь запись в реестре `btnHomed` — либо `btn-legit`+причина (не может
+// быть <Btn>: внешняя ссылка обязана быть <a>, ARIA-грип не примитив), либо
+// `object:<имя>` кросс-ссылкой на замок другого объекта (карта→2, аватар,
+// заголовок→6). Незанесённый носитель роняет PR: потолок ВНИЗ, новый носитель
+// не пройдёт молча. Сам <button> (форма 1) в реестр НЕ входит — он
+// классифицирован маркерами по call-site (#817), это отдельный канал.
+// `<Btn>`/`<IconBtn>` заглавные → фильтр `/^[a-z]/` их не берёт (примитив чист).
+// role берётся ЛИТЕРАЛОМ: `role={cond?'button':x}` намеренно не ловим (сегодня
+// таких нет; появится — добавить разбор выражения, как в classAttrTokens).
+const BTN_PRIMITIVE = new Set(['btn', 'icon-btn']);
+const attrIsButtonRole = (attr) =>
+  !!attr && attr.value && attr.value.type === 'Literal' && attr.value.value === 'button';
+const btnHomedCarriers = () => {
+  const out = [];
+  // `src/design/**` — ДОМ примитивов: `<Btn>` собран из `<button className="btn">`,
+  // `<IconBtn>` из `<button className="icon-btn">` — это СИСТЕМА, а не носитель-обход
+  // (тот же вычет `:!src/design/**`, что у команды-истины объекта 1).
+  for (const f of lsSrc().filter((ff) => ff.endsWith('.jsx') && inScope(ff) && !ff.startsWith('src/design/'))) {
+    let ast;
+    try { ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }); } catch { continue; }
+    const stack = [ast];
+    while (stack.length) {
+      const n = stack.pop();
+      if (!n || typeof n !== 'object') continue;
+      if (n.type === 'JSXOpeningElement' && n.name && n.name.type === 'JSXIdentifier' && /^[a-z]/.test(n.name.name)) {
+        const clsAttr = n.attributes.find((a) => a.type === 'JSXAttribute' && a.name.name === 'className');
+        const roleAttr = n.attributes.find((a) => a.type === 'JSXAttribute' && a.name.name === 'role');
+        const tokens = classAttrTokens(clsAttr);
+        const role = attrIsButtonRole(roleAttr);
+        if (tokens.some((tk) => BTN_PRIMITIVE.has(tk)) || role) {
+          // сигнатура без номера строки (переживает сдвиг): файл + тег + role +
+          // БАЗОВЫЕ классы (модификаторы `--*` отброшены, чтобы правка модификатора
+          // не считалась новым носителем). Уникальна по файлу для всех 9.
+          const base = [...new Set(tokens.filter((tk) => tk && !tk.includes('--')))].sort();
+          out.push(`${f}: <${n.name.name}${role ? ' role=button' : ''}${base.length ? ' .' + base.join('.') : ''}>`);
+        }
+      }
+      for (const k in n) {
+        const v = n[k];
+        if (Array.isArray(v)) stack.push(...v);
+        else if (v && typeof v === 'object' && v.type) stack.push(v);
+      }
+    }
+  }
+  return out;
+};
+
+// ── SPLIT-СКИН на card-homed (TRIP-337 объект 2 дожиг) ──────────────────────
+// card-homed класс несёт ТОЛЬКО раскладку — скин (в т.ч. радиус и тень) живёт на
+// примитиве <Card> (проп `radius`/`raised`). Если приватный класс объявляет
+// `border-radius` или `box-shadow` в СВОЁМ базовом правиле (голый `.class`) —
+// это split-скин: bg+border на <Card>, а радиус/тень на классе, и радиус-only
+// класс невидим предикату поверхности (следующее слепое пятно). Ратчет вниз:
+// число не растёт против BASE — новый split-скин на card-homed краснеет.
+const splitSkinCount = (readFile, homed) => {
+  let n = 0;
+  const hits = [];
+  for (const f of lsSrc().filter((ff) => ff.endsWith('.css'))) {
+    const src = readFile(f);
+    if (src == null) continue;
+    let root;
+    try { root = postcss.parse(src); } catch { continue; }
+    root.walkRules((rule) => {
+      for (const sel of rule.selector.split(',')) {
+        const s = sel.trim();
+        if (!/^\.[-\w]+$/.test(s)) continue;   // только ГОЛЫЙ .class (не :hover/потомок/pseudo)
+        const c = s.slice(1);
+        if (!homed.has(c)) continue;
+        let split = false;
+        rule.walkDecls((d) => { const p = d.prop.toLowerCase(); if (p === 'border-radius' || p === 'box-shadow') split = true; });
+        if (split) { n++; hits.push(`.${c}`); }
+      }
+    });
+  }
+  return { n, hits };
+};
+
+// ── реестр ──────────────────────────────────────────────────────────────────
+const registry = JSON.parse(readFileSync(REG_PATH, 'utf8'));
+const known = new Set(Object.keys(registry.classes || {}));
+const cardHomed = new Set(registry.cardHomed || []);
+const tileHomed = new Set(registry.tileHomed || []);
+const btnHomed = registry.btnHomed || {};
+const btnKnown = new Set(Object.keys(btnHomed));
+
+const live = cssSurfaceClasses();
+const unregistered = [...live].filter((c) => !known.has(c)).sort();
+const stale = [...known].filter((c) => !live.has(c)).sort();
+
+const head = scanJsx((f) => { try { return readFileSync(f, 'utf8'); } catch { return null; } });
+const base = scanJsx((f) => git(['show', `${BASE_REF}:${f}`]));
+const baseKnown = git(['rev-parse', BASE_REF]) !== null;
+const rawCallers = rawHomedCallers(cardHomed, 'Card');
+const rawTileCallers = rawHomedCallers(tileHomed, 'Tile');
+const btnCarriers = [...new Set(btnHomedCarriers())].sort();
+const btnUnregistered = btnCarriers.filter((s) => !btnKnown.has(s));
+const btnStale = [...btnKnown].filter((s) => !btnCarriers.includes(s)).sort();
+const splitHead = splitSkinCount((f) => { try { return readFileSync(f, 'utf8'); } catch { return null; } }, cardHomed);
+const splitBase = splitSkinCount((f) => git(['show', `${BASE_REF}:${f}`]), cardHomed);
+
+console.log(`check-surface-registry (2z): реестр полноты поверхностей`);
+console.log(`  .css surface-классов: ${live.size} · в реестре: ${known.size}`);
+console.log(`  <style> поверхностей: ${head.styleSurfaces} (цель 0)`);
+console.log(
+  `  инлайн-поверхностей:  ${head.inlineSurfaces}` +
+    (baseKnown ? ` (BASE ${base.inlineSurfaces}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
+);
+console.log(
+  `  инлайн-плиток:        ${head.inlineTiles}` +
+    (baseKnown ? ` (BASE ${base.inlineTiles}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
+);
+console.log(`  сырых вызывателей card-homed классов мимо <Card>: ${rawCallers.length} (цель 0)`);
+console.log(`  сырых вызывателей tile-homed классов мимо <Tile>: ${rawTileCallers.length} (цель 0)`);
+console.log(`  btn-homed носителей (форма ≠ <button>: .btn/.icon-btn на <a>/<div> · role=button): ${btnCarriers.length} · в реестре: ${btnKnown.size} (незанесённых 0 = потолок вниз)`);
+console.log(
+  `  split-скин на card-homed (radius/shadow на классе): ${splitHead.n}` +
+    (baseKnown ? ` (BASE ${splitBase.n}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
+);
+
+let bad = false;
+if (unregistered.length) {
+  bad = true;
+  console.log('');
+  console.log('  НЕ В РЕЕСТРЕ (каждый surface-класс обязан быть приписан объекту):');
+  unregistered.forEach((c) => console.log(`    .${c}`));
+}
+if (stale.length) {
+  bad = true;
+  console.log('');
+  console.log('  СТАРЫЕ ЗАПИСИ (класс больше не поверхность — реестр обязан отражать живое):');
+  stale.forEach((c) => console.log(`    .${c}`));
+}
+if (head.styleSurfaces > 0) {
+  bad = true;
+  console.log('\n  ПОВЕРХНОСТЬ В <style> (дом поверхности — <Card>, см. гард 2y).');
+}
+if (baseKnown && head.inlineSurfaces > base.inlineSurfaces) {
+  bad = true;
+  console.log(`\n  РОСТ surface-инлайнов: ${base.inlineSurfaces} → ${head.inlineSurfaces} (ратчет только вниз — переноси на <Card>).`);
+}
+if (baseKnown && head.inlineTiles > base.inlineTiles) {
+  bad = true;
+  console.log(`\n  РОСТ инлайн-плиток: ${base.inlineTiles} → ${head.inlineTiles} (ратчет только вниз — переноси на <Tile>).`);
+}
+if (baseKnown && splitHead.n > splitBase.n) {
+  bad = true;
+  console.log(`\n  РОСТ split-скина на card-homed: ${splitBase.n} → ${splitHead.n} (radius/shadow на приватном классе — уводи на проп <Card radius/raised>):`);
+  splitHead.hits.forEach((h) => console.log(`    ${h}`));
+}
+if (rawCallers.length) {
+  bad = true;
+  console.log('\n  СЫРОЙ ВЫЗЫВАТЕЛЬ card-homed класса (скин потерян — оберни в <Card>):');
+  rawCallers.forEach((h) => console.log(`    ${h}`));
+}
+if (rawTileCallers.length) {
+  bad = true;
+  console.log('\n  СЫРОЙ ВЫЗЫВАТЕЛЬ tile-homed класса (скин плитки потерян — оберни в <Tile>):');
+  rawTileCallers.forEach((h) => console.log(`    ${h}`));
+}
+if (btnUnregistered.length) {
+  bad = true;
+  console.log('\n  НЕ В РЕЕСТРЕ btnHomed (носитель кнопки-объекта мимо <Btn> — занеси с вердиктом btn-legit+причина ЛИБО object:<имя>):');
+  btnUnregistered.forEach((s) => console.log(`    ${s}`));
+}
+if (btnStale.length) {
+  bad = true;
+  console.log('\n  СТАРАЯ ЗАПИСЬ btnHomed (носителя больше нет — реестр обязан отражать живое):');
+  btnStale.forEach((s) => console.log(`    ${s}`));
+}
+
+if (bad) {
+  console.error('::error::check-surface-registry: реестр полноты не сошёлся. Занеси surface-класс (object:"card"/object:<имя>+reason) или btn-homed носитель (btnHomed: verdict+reason), убери старую запись, вынеси скин из <style>/инлайна на <Card>.');
+  process.exit(1);
+}
+console.log('\n  реестр полон: каждая .css-поверхность приписана, в <style> поверхностей нет, инлайн не вырос.');
+process.exit(0);

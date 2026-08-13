@@ -11,7 +11,7 @@ import React from 'react';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
-import { Btn, IconBtn, Stepper } from '@/design/index';
+import { Btn, IconBtn, Stepper, Tile } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -43,6 +43,7 @@ function GhostAdd({ icon, label, sub, accent, onClick }) {
 function BookRow({ tone = 'hotel', icon, title, sub, warn, onClick }) {
   const bg = warn ? 'var(--warning-soft)' : `var(--ev-${tone}-soft)`;
   const fg = warn ? 'var(--warning-ink)' : `var(--ev-${tone}-ink)`;
+  // TRIP-391 объект 1 → объект 6: .bookrow — clickable РЯД брони (.row), не кнопка-примитив.
   return (
     <button className="row bookrow" onClick={onClick}>
       <span className="bi" style={{ background: bg, color: fg }}><Icon name={icon} size={18} /></span>
@@ -96,9 +97,9 @@ export default function CityPanel({
           значения приходят из :root, а они и есть бренд. Инлайн, который писал
           сюда ровно эти три дефолта, снят в 04 PR3 — он ничего не менял. */}
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+        <Tile as="span" className="lp-ic" style={{ '--hl-soft': 'var(--brand-soft)', '--hl-ink': 'var(--brand)' }}>
           {isWaypoint ? <Icon name="arrowSwap" size={17} /> : <b className="t-strong">{cityNo}</b>}
-        </span>
+        </Tile>
         <div className="lp-ti col col--g1">
           <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
           <b>{node.city_name}</b>
@@ -110,7 +111,7 @@ export default function CityPanel({
       <div className="lp-b scrollbar-thin">
       {/* Nights card — иконка · (заголовок + даты) · степпер (макет CityView). */}
       <div className="lp-stepper" style={{ marginBottom: 6 }}>
-        <span className="lp-stepper__ic"><Icon name="moon" size={17} /></span>
+        <Tile as="span" className="lp-stepper__ic"><Icon name="moon" size={17} /></Tile>
         <div className="lp-stepper__tx">
           <b className="t-strong">{t('tse.nights_in_city')}</b>
           <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>

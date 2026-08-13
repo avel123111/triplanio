@@ -12,7 +12,7 @@ const LOGO_URL = '/triplanio-logo.png';
 
 const STYLES = `
 .jt-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  font-family:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
+  font-family:'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
   background:radial-gradient(900px 480px at 50% -8%,rgba(33,115,200,.12),transparent 62%),radial-gradient(700px 420px at 100% 110%,rgba(98,166,240,.10),transparent 60%),#F4F7FC;}
 .jt-card{width:100%;max-width:440px;background:#fff;border:1px solid #E9E8F2;border-radius:var(--r-card);
   box-shadow:0 18px 50px -20px rgba(22,41,74,.28);padding:48px 40px 40px;text-align:center;}
@@ -57,7 +57,7 @@ export default function JoinTrip() {
         return;
       }
 
-      const { data, error } = await invokeFn('redeemTripInviteLink', { body: { token } });
+      const { data, error, code } = await invokeFn('redeemTripInviteLink', { body: { token } });
       if (cancelled) return;
 
       if (!error && data?.ok && data?.tripId) {
@@ -69,11 +69,13 @@ export default function JoinTrip() {
         return;
       }
 
-      const reason = data?.reason;
+      // The invite-link edge function emits a machine `code` in its `{ error, code }`
+      // body; supabase-js leaves `data` null on a non-2xx, so read the `code` that
+      // invokeFn parsed off the error response (not `data`, which is null here).
       setErrKey(
-        reason === 'expired' ? 'member.join_error_expired'
-        : reason === 'revoked' ? 'member.join_error_revoked'
-        : reason === 'blocked' ? 'member.join_error_blocked'
+        code === 'expired' ? 'member.join_error_expired'
+        : code === 'revoked' ? 'member.join_error_revoked'
+        : code === 'blocked' ? 'member.join_error_blocked'
         : 'member.join_error_invalid',
       );
       setState('error');

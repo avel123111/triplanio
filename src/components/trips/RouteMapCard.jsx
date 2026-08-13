@@ -1,6 +1,6 @@
 // @ts-check
 import React from 'react';
-import { Btn } from '@/design/index';
+import { Btn, Card } from '@/design/index';
 import { Icon } from '@/design/icons';
 import MapView from '@/components/views/MapView';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -18,7 +18,7 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
   const hasRoute = (visits || []).some((v) => v?.latitude && v?.longitude);
 
   return (
-    <div className="wdg ov-mapcard">
+    <Card radius="lg" pad="none" raised className="ov-mapcard">
       <div className="wdg-h">
         <span className="wi"><Icon name="map" size={17} /></span>
         <h4>{t('overview.map_title')}</h4>
@@ -45,6 +45,6 @@ export default function RouteMapCard({ visits = [], transfers = [], active = tru
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

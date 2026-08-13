@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import { Btn, IconBtn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Card, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -188,8 +188,10 @@ export default function ForkPartnerModal({
         {/* Manual add — redesigned horizontal CTA, ev-colored. Dropped in
             embedded (tab) mode: the "I have a booking" tab replaces it. */}
         {!embedded && (
-        <button
-          type="button"
+        <Card
+          as="button"
+          radius="md"
+          pad="none"
           className="fork-manual"
           onClick={handleManual}
           style={{ '--fk': meta.color, '--fk-soft': meta.colorSoft }}
@@ -200,7 +202,7 @@ export default function ForkPartnerModal({
             <span>{t(meta.manualSubKey)}</span>
           </span>
           <ChevronRight size={16} className="fork-manual__chev" />
-        </button>
+        </Card>
         )}
 
         {count > 0 && (
@@ -210,8 +212,12 @@ export default function ForkPartnerModal({
               : <div className="fork-or"><span>{t('fork.or_find')}</span></div>}
             <div className="fork-partners">
               {platforms.map((p) => (
-                <a
+                <Card
                   key={p.key}
+                  as="a"
+                  radius="md"
+                  interactive
+                  pad="none"
                   href={p.url}
                   target="_blank"
                   rel="noreferrer"
@@ -226,7 +232,7 @@ export default function ForkPartnerModal({
                   <span className="fork-partner__mid">
                     <b>{PARTNER_NAME[p.key] || p.label}</b>
                   </span>
-                </a>
+                </Card>
               ))}
             </div>
           </>
@@ -249,12 +255,16 @@ export default function ForkPartnerModal({
 
   const styleTag = (
     <style>{`
-      /* TRIP-186: блок оголён — контейнерная рамка/фон/паддинг убраны, плитки
-         партнёров и manual-CTA лежат прямо на поверхности панели. */
+      /* TRIP-343 объект 2: ПОВЕРХНОСТЬ (фон+рамка+радиус) и лифт УБРАНЫ из этого
+         теневого style — их несёт Card radius=md (manual + партнёр). Здесь остаётся
+         ТОЛЬКО раскладка и АКЦЕНТ вилки (--fk рамка/кольцо, тинт по типу брони
+         поверх нейтральной рамки Card) — не поверхность (нет фона/радиуса), поэтому
+         под замер поверхности не попадает и гардом скина-в-style не краснеет. Ховер
+         manual = подсветка кольцом без движения; ховер партнёра = канон
+         card--interactive (Card interactive). */
       .fork-addzone { display: flex; flex-direction: column; gap: 11px; }
-      .fork-manual { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--fk); box-shadow: 0 0 0 3px var(--fk-soft); font-family: var(--font-ui); transition: transform .16s var(--ease-spring), box-shadow .18s; }
-      .fork-manual:hover { transform: translateY(-1px); box-shadow: 0 0 0 3px var(--fk-soft), var(--sh-1); }
-      .fork-manual:active { transform: scale(.99); }
+      .fork-manual { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 10px 12px; border-color: var(--fk); box-shadow: 0 0 0 3px var(--fk-soft); font-family: var(--font-ui); }
+      .fork-manual:hover { box-shadow: 0 0 0 3px var(--fk-soft), var(--sh-1); }
       .fork-manual__ic { width: 38px; height: 38px; border-radius: var(--r-sm); background: var(--fk); color: #fff; display: grid; place-items: center; flex: none; box-shadow: 0 5px 13px -6px var(--fk); }
       .fork-manual__tx { flex: 1; min-width: 0; }
       .fork-manual__tx b { display: block; color: var(--ink); }
@@ -265,9 +275,7 @@ export default function ForkPartnerModal({
       .fork-searchon { color: var(--muted); margin-bottom: 1px; }
       /* TRIP-176: compact partner chips — logo + single-line name, auto-fill grid. */
       .fork-partners { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-      .fork-partner { display: flex; align-items: center; gap: 9px; padding: 8px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
-      .fork-partner:hover { transform: translateY(-1px); border-color: var(--line-hover); box-shadow: var(--sh-1); }
-      .fork-partner:active { transform: scale(.99); }
+      .fork-partner { display: flex; align-items: center; gap: 9px; padding: 8px 11px; text-decoration: none; color: inherit; min-width: 0; }
       .fork-partner__logo { width: 24px; height: 24px; border-radius: 6px; flex: none; background: transparent; object-fit: contain; }
       .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); }
       .fork-partner__mid { flex: 1; min-width: 0; }
@@ -292,7 +300,7 @@ export default function ForkPartnerModal({
       <div className="lp lp--wide" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
         <div className="lp-h lp-h--ev">
           <IconBtn icon="back" tone="soft" round onClick={() => onOpenChange(false)} title={t('fork.cancel')} ariaLabel={t('fork.cancel')} />
-          <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon size={16} /></span>
+          <Tile as="span" className="lp-ic" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}><ManualIcon size={16} /></Tile>
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
         <div className="lp-b scrollbar-thin">{body}</div>
@@ -306,9 +314,9 @@ export default function ForkPartnerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
         <div className="dlg__head">
-          <span style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <Tile as="span" style={{ '--tile': '36px', '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
             <ManualIcon style={{ width: 17, height: 17 }} />
-          </span>
+          </Tile>
           <DialogTitle asChild><h2>{t(meta.titleKey)}</h2></DialogTitle>
         </div>
         <div className="dlg__body">{body}</div>

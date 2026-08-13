@@ -2239,11 +2239,17 @@ export type Database = {
         }[]
       }
       add_city: {
-        Args: { p_city: Json; p_index?: number; p_trip: string }
+        Args: {
+          p_actor: string
+          p_city: Json
+          p_index?: number
+          p_trip: string
+        }
         Returns: string
       }
       add_layover_transfer: {
         Args: {
+          p_actor: string
           p_from: string
           p_segments: Json
           p_to: string
@@ -2262,6 +2268,7 @@ export type Database = {
           is_confirmed: boolean
         }[]
       }
+      can_create_trip: { Args: { p_uid: string }; Returns: boolean }
       chat_ai_run_watchdog: { Args: never; Returns: number }
       claim_ai_run: {
         Args: { p_message_id: string }
@@ -2291,8 +2298,17 @@ export type Database = {
         }
       }
       count_active_owned_trips: { Args: { p_uid: string }; Returns: number }
-      create_trip: {
-        Args: { p_description?: string; p_title: string }
+      create_trip_invite_link: {
+        Args: { p_actor: string; p_role: string; p_trip: string }
+        Returns: Json
+      }
+      create_trip_with_route: {
+        Args: {
+          p_actor: string
+          p_cities: Json
+          p_start_date: string
+          p_title: string
+        }
         Returns: string
       }
       daitch_mokotoff: { Args: { "": string }; Returns: string[] }
@@ -2327,6 +2343,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_inbox: { Args: { p_actor: string }; Returns: Json }
       get_my_trip_cards: { Args: { p_actor: string }; Returns: Json }
       get_pending_reminders: {
         Args: { window_minutes?: number }
@@ -2350,10 +2367,27 @@ export type Database = {
         }[]
       }
       get_user_travel_stats: { Args: { p_actor: string }; Returns: Json }
+      invite_trip_member: {
+        Args: {
+          p_actor: string
+          p_email: string
+          p_role: string
+          p_trip: string
+        }
+        Returns: Json
+      }
       is_trip_creator: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_participant: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_pro: { Args: { p_trip_id: string }; Returns: boolean }
       is_user_pro: { Args: { p_uid: string }; Returns: boolean }
+      mark_all_notifications_read: {
+        Args: { p_actor: string }
+        Returns: undefined
+      }
+      mark_notification_read: {
+        Args: { p_actor: string; p_id: string }
+        Returns: undefined
+      }
       mentions_assistant: { Args: { p_text: string }; Returns: boolean }
       nearest_cities: {
         Args: { _lang?: string; _lat: number; _lim?: number; _lng: number }
@@ -2398,10 +2432,26 @@ export type Database = {
         Args: { ts: string; tz: string }
         Returns: string
       }
-      remove_city: { Args: { p_city: string }; Returns: undefined }
-      reorder_cities: {
-        Args: { p_order: string[]; p_trip: string }
+      remove_city: {
+        Args: { p_actor: string; p_city: string; p_trip: string }
         Returns: undefined
+      }
+      remove_trip_member: {
+        Args: { p_actor: string; p_member: string; p_trip: string }
+        Returns: undefined
+      }
+      reorder_cities: {
+        Args: { p_actor: string; p_order: string[]; p_trip: string }
+        Returns: undefined
+      }
+      respond_trip_invite: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_member: string
+          p_trip: string
+        }
+        Returns: Json
       }
       revoke_trip_pro_addons: {
         Args: { p_trip_id: string }
@@ -2459,7 +2509,12 @@ export type Database = {
         }[]
       }
       send_chat_message: {
-        Args: { p_chat_id: string; p_client_msg_id?: string; p_text: string }
+        Args: {
+          p_actor: string
+          p_client_msg_id?: string
+          p_text: string
+          p_trip: string
+        }
         Returns: {
           ai_attempts: number
           ai_error: string | null
@@ -2486,11 +2541,16 @@ export type Database = {
         }
       }
       set_city_nights: {
-        Args: { p_city: string; p_nights: number }
+        Args: {
+          p_actor: string
+          p_city: string
+          p_nights: number
+          p_trip: string
+        }
         Returns: undefined
       }
       set_trip_start_date: {
-        Args: { p_date: string; p_trip: string }
+        Args: { p_actor: string; p_date: string; p_trip: string }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }

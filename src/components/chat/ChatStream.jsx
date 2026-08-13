@@ -6,6 +6,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
 import { aiRunFailed } from '@/lib/chat';
+import { classifyError } from '@/lib/errorText';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import ChatMarkdown from './ChatMarkdown';
 import ChatReply from './ChatReply';
@@ -53,22 +54,18 @@ function sameRun(a, b) {
 }
 
 // A refused / failed assistant run explains itself in the reader's language: the
-// edge function used to POST its refusal into the chat as a message from the bot
-// (with its own ru/en/es table), i.e. it faked an assistant reply to clear a UI
-// indicator. Now it writes a machine code on the row and the copy lives here.
-const AI_ERROR_KEY = {
-  PRO_REQUIRED: 'chat.ai_err_pro',
-  RATE_LIMITED: 'chat.ai_err_rate',
-};
+// edge writes a machine code on the row (`ai_error`, e.g. PRO_REQUIRED /
+// RATE_LIMITED) and the copy comes from the ONE client error map — `classifyError`
+// → `err.*` — exactly like every other refusal. No chat-local table anymore.
 
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 // ONE message inside a run. The author's avatar is NOT here: it belongs to the
 // run (see ChatStream), so it can stay sticky across the whole block.
-function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErrorKey, onRetry, t }) {
+function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErrorText, onRetry, t }) {
   const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
   // One foot row, two reasons: the message never left (failed), or the ANSWER
-  // never came (aiErrorKey). Same markup, so both read as one pattern.
-  const footKey = failed ? 'chat.not_sent' : aiErrorKey;
+  // never came (aiErrorText). Same markup, so both read as one pattern.
+  const footText = failed ? t('chat.not_sent') : aiErrorText;
 
   return (
     <div className={'col col--a-start chat-msg' + (grouped ? ' chat-msg--grouped' : '')}>
@@ -88,11 +85,11 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErr
           linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
         />
       </div>
-      {footKey ? (
+      {footText ? (
         <div className="row row--g3 chat-msg__foot">
           <span className="chat-msg__err">
             <Icon name="warning" size={12} />
-            {t(footKey)}
+            {footText}
           </span>
           <Btn variant="secondary" onClick={onRetry}>{t('sys.retry')}</Btn>
         </div>
@@ -163,7 +160,7 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
               lastOfRun={k === run.length - 1}
               pending={m.__pending}
               failed={m.__failed}
-              aiErrorKey={aiRunFailed(m) ? (AI_ERROR_KEY[m.ai_error] || 'chat.ai_failed') : null}
+              aiErrorText={aiRunFailed(m) ? classifyError(t, m.ai_error).text : null}
               onRetry={onRetry ? () => onRetry(m) : undefined}
               t={t}
             />

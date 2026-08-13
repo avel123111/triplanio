@@ -41,7 +41,7 @@ export default class AppErrorBoundary extends React.Component {
       return (
         <div style={{
           minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexDirection: 'column', gap: 16, padding: 32, fontFamily: 'sans-serif',
+          flexDirection: 'column', gap: 16, padding: 32, fontFamily: 'sans-serif', /* design-token-exempt: crash-safe fallback — нельзя зависеть от загрузки Geologica при краше, TRIP-410 */
           background: '#f6f7f9', color: '#374257',
         }}>
           <div style={{

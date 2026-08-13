@@ -1222,6 +1222,11 @@ const OBJECTS = [
 ];
 
 const objects = {};
+// §5 (ниже) догоняет счёт surface живыми множествами класса/семейства, а не
+// пересортированным снимком `byFamily`, - держим их в стороне ТОЛЬКО для surface,
+// чтобы не таскать Set по всем объектам и не течь им в --json.
+let surfaceCls = new Set();
+let surfaceByFamily = {};
 for (const o of OBJECTS) {
   const hit = blocks.filter(o.pred);
   const cls = new Set();
@@ -1235,6 +1240,7 @@ for (const o of OBJECTS) {
       byFamily[fam] = (byFamily[fam] ?? 0) + 1;
     }
   }
+  if (o.key === 'surface') { surfaceCls = cls; surfaceByFamily = byFamily; }
   objects[o.key] = {
     label: o.label,
     why: o.why,
@@ -1245,6 +1251,35 @@ for (const o of OBJECTS) {
     // число из головы даёт равные PR, распределение - PR по зонам приложения.
     byFamily: Object.fromEntries(Object.entries(byFamily).sort((a, b) => b[1] - a[1])),
   };
+}
+
+// §5 ПАРИТЕТ КО-СЕЛЕКТОРА (TRIP-337 объект 2, дожиг). Скин фон+рамка несёт ОБЩЕЕ
+// (много-классовое) правило, радиус — отдельным: предикат «radius+bg+border в
+// ОДНОМ блоке» их не видит, и «поверхность» занижалась (та же дыра, что закрыл
+// замок 2z check-surface-registry). Догоняем счёт: класс — поверхность, если
+// фон+рамку получает из общего (≥2 класса) блока И радиус есть где угодно.
+{
+  const isTileBlock = OBJECTS.find((o) => o.key === 'tile').pred;
+  const hasRadiusCls = new Set();
+  const coMemberCls = new Set();
+  for (const b of blocks) {
+    const parts = b.sels.map(styledClass).filter(Boolean);
+    if (has(b, 'border-radius')) for (const c of parts) hasRadiusCls.add(c);
+    if (parts.length >= 2 && hasBg(b) && (hasBorder(b) || has(b, 'box-shadow')) && !isTileBlock(b)) {
+      for (const c of parts) coMemberCls.add(c);
+    }
+  }
+  const s = objects.surface;
+  for (const c of coMemberCls) {
+    if (!hasRadiusCls.has(c) || surfaceCls.has(c)) continue;
+    surfaceCls.add(c);
+    const fam = familyOf(c);
+    surfaceByFamily[fam] = (surfaceByFamily[fam] ?? 0) + 1;
+    s.rules += 1;   // недосчитанный носитель = минимум своё radius-правило
+  }
+  s.classes = surfaceCls.size;
+  s.families = Object.keys(surfaceByFamily).length;
+  s.byFamily = Object.fromEntries(Object.entries(surfaceByFamily).sort((a, b) => b[1] - a[1]));
 }
 
 /** Наборы-дубли: блоки с ПОБАЙТОВО совпадающим набором `свойство:значение`.

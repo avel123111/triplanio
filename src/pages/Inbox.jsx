@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/lib/ThemeContext';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { useNotificationList, useUnreadNotificationCount, useNotificationActions } from '@/lib/useNotifications';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton, EmptyState, Chip } from '../design/index';
+import { Btn, Badge, Skeleton, EmptyState, Chip, Tile } from '../design/index';
 import AppHeader from '@/components/AppHeader';
 import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
 import { useQueryGate } from '@/lib/useQueryGate';
@@ -149,7 +147,7 @@ export default function Inbox() {
                     pending={respondInvite.isPending}
                     onRespond={(action) => {
                       if (!n.read) markOneRead.mutate(n.id);
-                      respondInvite.mutate({ memberId: n.trip_member_id, action });
+                      respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
                     }}
                     onMarkRead={() => { if (!n.read) markOneRead.mutate(n.id); }}
                   />
@@ -187,13 +185,9 @@ function InboxEmpty({ onCollection }) {
                   borderBottom: i < rows.length - 1 ? '1px solid var(--line)' : 'none',
                 }}
               >
-                <span style={{
-                  width: 34, height: 34, borderRadius: 'var(--r-sm)', flex: 'none',
-                  background: 'var(--brand-soft)', color: 'var(--brand)',
-                  display: 'grid', placeItems: 'center',
-                }}>
+                <Tile as="span">
                   <Icon name={r.icon} size={16} />
-                </span>
+                </Tile>
                 <span style={{ textAlign: 'left' }}>
                   <div className="t-ui" style={{ color: 'var(--ink-2)' }}>{r.title}</div>
                   <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 1 }}>{r.sub}</div>
@@ -210,15 +204,9 @@ function InboxEmpty({ onCollection }) {
 
 function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
-  const { data: member } = useQuery({
-    queryKey: ['trip-member', n.trip_member_id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('trip_members').select('*').eq('id', n.trip_member_id).single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!isInvite,
-  });
+  // Invite status comes with the row now (getInbox joins trip_members) — no
+  // per-row `.from('trip_members')` waterfall (TRIP-408).
+  const memberStatus = n.member_status;
 
   const time = fmtRelative(n.created_at);
   const renderParams = (params = {}) => {
@@ -232,7 +220,7 @@ function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
   const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */, color: 'var(--brand)' } }]) : titleText;
   const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } }]) : messageText;
   const meta = notifMeta(n.type);
-  const showPending = isInvite && member?.status === 'pending';
+  const showPending = isInvite && memberStatus === 'pending';
 
   return (
     <div
@@ -247,7 +235,7 @@ function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
         {messageText && <div className="nrow__msg">{messageNode}</div>}
         <div className="nrow__meta">
           <span>{time}</span>
-          {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
+          {n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite') && (
             <Link to={`/trip/${n.trip_id}`} className="nrow__link">
               <Icon name="pin" size={11} />{t('notif.view_trip')}
             </Link>
@@ -260,9 +248,9 @@ function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
             <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
             <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </>
-        ) : isInvite && member?.status === 'active' ? (
+        ) : isInvite && memberStatus === 'active' ? (
           <Badge variant="success" icon="check">{t('notif.accepted')}</Badge>
-        ) : isInvite && member?.status === 'declined' ? (
+        ) : isInvite && memberStatus === 'declined' ? (
           <Badge variant="quiet">{t('notif.declined')}</Badge>
         ) : null}
       </div>

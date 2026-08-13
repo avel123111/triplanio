@@ -1,7 +1,7 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Avatar, Badge, Btn, Sheet } from '@/design/index';
+import { Avatar, Badge, Btn, Card, Sheet } from '@/design/index';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { canShareTrip } from '@/lib/members';
 import { displayName } from '@/lib/displayName';
@@ -39,6 +39,7 @@ function SidebarBody({
     <>
       <div className="app-side__group">
         <div className="app-side__group-label">{t('trip.sections_title')}</div>
+        {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
         {lensItems.map((item) => (
           <button
             key={item.id}
@@ -58,6 +59,7 @@ function SidebarBody({
       {(mgmtItems.length > 0 || canShare) && (
         <div className="app-side__group">
           <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
+          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (управление), не кнопка-примитив. */}
           {mgmtItems.map((item) => (
             <button
               key={item.id}
@@ -68,6 +70,7 @@ function SidebarBody({
               <span className="app-side__label">{t(item.labelKey)}</span>
             </button>
           ))}
+          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (шеринг), не кнопка-примитив. */}
           {canShare && onShare && (
             <button className="app-side__item" onClick={onShare}>
               <Icon name="share" size={15} />
@@ -86,7 +89,7 @@ function SidebarBody({
 function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
   const { t } = useI18n();
   return (
-    <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
+    <Card tone="brand" radius="md" className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
       <div className="ph">
         <Badge variant="pro" icon="pro">PRO</Badge>
       </div>
@@ -97,7 +100,7 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
       ) : (
         <Btn variant="secondary" icon="lock" block onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -146,24 +149,27 @@ function SidebarSheetBody({
     <>
       <div className="tm-grid">
         {lensItems.map((item) => (
-          <button
+          <Card
+            as="button"
+            radius="md"
             key={item.id}
             className={'tm-cell' + (lens === item.id ? ' is-active' : '')}
             onClick={() => onNavigate(item.id)}
-            aria-current={lens === item.id ? 'page' : undefined}
+            ariaCurrent={lens === item.id ? 'page' : undefined}
           >
             <span className="tm-cell__ico"><Icon name={item.icon} size={18} /></span>
             <span className="tm-cell__lbl t-label">{t(item.labelKey)}</span>
             {item.id === 'chat' && chatUnread > 0 && (
               <span className="tm-cell__badge t-meta">{chatUnread > 99 ? '99+' : chatUnread}</span>
             )}
-          </button>
+          </Card>
         ))}
       </div>
       {manageRows.length > 0 && (
         <>
           <div className="app-side__group-label tm-caption">{t('trip_menu.section_manage')}</div>
-          <div className="tm-manage">
+          <Card pad="none" radius="lg" className="tm-manage">
+            {/* TRIP-391 объект 1 → объект 6: .tm-manage__row — РЯД меню управления, не кнопка-примитив. */}
             {manageRows.map((row) => (
               <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
                 <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>
@@ -171,19 +177,19 @@ function SidebarSheetBody({
                 <Icon name="chevron" size={16} className="tm-manage__chev" />
               </button>
             ))}
-          </div>
+          </Card>
         </>
       )}
       {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
       {onAccount && (
-        <button className="tm-account" onClick={onAccount}>
+        <Card as="button" radius="lg" className="tm-account" onClick={onAccount}>
           <Avatar name={accountName} photo={user?.avatar_url} size="sm" />
           <span className="tm-account__txt">
             <span className="tm-account__name t-label">{t('nav.account')}</span>
             <span className="tm-account__sub t-meta">{accountName}</span>
           </span>
           <Icon name="chevron" size={16} className="tm-manage__chev" />
-        </button>
+        </Card>
       )}
     </>
   );

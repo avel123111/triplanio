@@ -1,7 +1,7 @@
 // @ts-check
 import React from 'react';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Badge, Btn, Card, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -44,14 +44,9 @@ export default function PaymentResultDialog({
             <div className="dlg__body" style={{ textAlign: 'center', padding: '32px 24px 8px' }}>
 
               {/* Status icon — 52px per P5 spec */}
-              <div style={{
-                width: 52, height: 52, borderRadius: 'var(--r-btn)',
-                background: isSuccess ? 'var(--success-soft)' : 'var(--danger-soft)',
-                color: isSuccess ? 'var(--success-ink)' : 'var(--danger-ink)',
-                display: 'grid', placeItems: 'center', margin: '0 auto 16px',
-              }}>
+              <Tile as="div" style={{ '--tile': '52px', '--tile-r': 'var(--r-btn)', '--tile-ic': '26px', '--hl-soft': isSuccess ? 'var(--success-soft)' : 'var(--danger-soft)', '--hl-ink': isSuccess ? 'var(--success-ink)' : 'var(--danger-ink)', margin: '0 auto 16px' }}>
                 <Icon name={isSuccess ? 'check' : 'error'} size={26} />
-              </div>
+              </Tile>
 
               <DialogTitle asChild>
                 <h2 className="t-subheading" style={{ marginBottom: 8 }}>
@@ -75,9 +70,12 @@ export default function PaymentResultDialog({
 
               {/* Fail: help note */}
               {!isSuccess && (
-                <div className="t-meta" style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 'var(--r-sm)', color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
+                /* TRIP-343 объект 2 (канал 3): утоплённая заметка → <Card recessed>;
+                   бокс внутри оболочки диалога (объект 6). Примечание: канон recessed
+                   несёт рамку роли .card (1px --line) — у инлайна её не было. */
+                <Card recessed radius="md" pad="none" className="t-meta" style={{ padding: '9px 12px', color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
                   {t('sub.fail_help')}
-                </div>
+                </Card>
               )}
             </div>
 

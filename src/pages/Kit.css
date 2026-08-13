@@ -80,3 +80,17 @@
   box-shadow: 0 0 0 3px var(--primary-ring);
 }
 /* visual-diff-exempt: [data-kit=chip][data-force=focus] button box-shadow — зеркалит .fpill:focus-visible, только Kit.css, прод не тронут, апрув Pavel */
+
+/* Card — ФОКУС образца карточки (TRIP-343 объект 2). :focus-visible указателем
+   не форсится, поэтому зеркалим кольцо канона [data-card-btn]:focus-visible >
+   .card--interactive на ГОЛЫЙ button (единственный в оболочке карточки), НЕ на
+   .card--interactive — иначе 2p приписал бы правку самому канону (ложь в опасную
+   сторону, см. шапку). Остальные состояния показаны РЕАЛЬНЫМИ носителями:
+   hover=[data-hovered], selected=[aria-selected], busy=aria-busy,
+   dragover=data-dragover — им зеркало не нужно, канон рисует их сам. */
+[data-kit="card"][data-force="focus"] button {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+/* visual-diff-exempt: [data-kit=card][data-force=focus] button outline — зеркалит [data-card-btn]:focus-visible > .card--interactive (outline снят), только Kit.css, прод не тронут — объект 2 */
+/* visual-diff-exempt: [data-kit=card][data-force=focus] button box-shadow — зеркалит фокус-кольцо канона (--primary-ring), только Kit.css, прод не тронут — объект 2 */

@@ -20,8 +20,9 @@ import { useToast } from '@/design/index';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
+import { errorText } from '@/lib/errorText';
 
-export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null, subEvent = null, onEditInEditor = null }) {
+export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange, canEdit = false, warning = null, subEvent = null, onEditInEditor = null }) {
   const t = useT();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -32,7 +33,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
 
   // Shared loader (same fetch used by the editor's left-panel shell).
   const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, {
-    open, onError: () => onOpenChange(false),
+    tripId, open, onError: () => onOpenChange(false),
   });
 
   if (!open || !data) return null;
@@ -84,9 +85,9 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     // Capture attachment object keys before delete; deleteSourceEntity sweeps
     // best-effort only after the row is actually gone (TRIP-117).
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
-    const { error, deleted } = await deleteSourceEntity(kind, data.id, orphanPaths);
+    const { error, deleted, code } = await deleteSourceEntity(kind, data.id, data.trip_id, orphanPaths);
     if (error || !deleted) {
-      toast({ description: t('event.delete_failed') + (error ? ': ' + error.message : ''), variant: 'destructive' });
+      toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' });
       if (error) throw error;
       return; // 0-row reject: don't close as success, refetch reconciles
     }

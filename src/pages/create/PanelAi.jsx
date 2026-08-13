@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Chip, Textarea } from '../../design/index';
+import { Btn, Card, Chip, Textarea, Tile } from '../../design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import { CityAnchorRow } from './anchors';
 
@@ -65,7 +65,7 @@ export default function PanelAi({ ctx }) {
       {/* Assistant status reply */}
       <div className="t-body" style={{ padding: 14, background: 'var(--ai-soft)', borderRadius: 'var(--r-sm)', color: 'var(--ink-2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ai-gradient)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="sparkles" size={11} /></span>
+          <Tile as="span" round style={{ '--tile': '22px', '--tile-ic': '11px', '--hl-soft': 'var(--ai-gradient)', '--hl-ink': '#fff' }}><Icon name="sparkles" size={11} /></Tile>
           <b className="t-meta" style={{ color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</b>
           {aiState === 'generating' && <span className="ai-dots" style={{ color: 'var(--ai)', marginLeft: 'auto' }}><span /><span /><span /></span>}
         </div>
@@ -80,13 +80,14 @@ export default function PanelAi({ ctx }) {
               can be added right here or skipped (same add-start control as step 2). */}
           <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
           {cities.map((c, i) => (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' }}>
-              <div className="t-meta" style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{i + 1}</div>
+            /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
+            <Card key={c.id} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px' }}>
+              <Tile as="div" round className="t-meta" style={{ '--tile': '24px', '--hl-soft': 'var(--ai)', '--hl-ink': '#fff' }}>{i + 1}</Tile>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="trunc te-cityname">{c.city_name} <span className="muted t-meta">{c.country}</span></div>
               </div>
               <span className="muted num t-meta">{c.nights} {t('ai_plan.unit_nights_short')}</span>
-            </div>
+            </Card>
           ))}
           {/* Return/finish — shown only for a round-trip (finish == origin). */}
           {returnCity?.city_name && <CityAnchorRow label={t('ai_plan.end')} city={returnCity} />}

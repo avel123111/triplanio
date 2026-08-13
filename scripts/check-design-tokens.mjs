@@ -145,12 +145,14 @@ const TYPO_WHITELIST = [
   'src/index.css', 'src/pages/login.css', // --fs-* token defs / Tailwind-preflight 1em/1rem resets only
 ];
 
-// Files allowed to contain raw font-weight / line-height / letter-spacing (TRIP-165).
-// Everywhere else emphasis is the .t-strong modifier and flush-centering is
-// .t-flush — weight/line-height/tracking legally live ONLY in canon (.t-*), the two
-// sanctioned modifiers (.t-strong/.t-flush) and base root rules. (letter-spacing
-// added to this tier in the TRIP-165 audit 2026-07-02: tracking is a canon axis.)
-//   • app.css   — home of the 10 canons + .t-strong/.t-flush + base `body`.
+// Files allowed to contain raw font-weight / line-height / letter-spacing (TRIP-165/410).
+// Система Geologica (single-font): 10 канонов .t-* + РОВНО три санкционированных
+// модификатора — .t-strong (вес), .t-flush (line-height:1), .tp-caption (CAPS +
+// трекинг, поверх канона). Модификатор .t-sans УДАЛЁН (мета-ярус — Geologica, не
+// моно). Weight/line-height/tracking legally live ONLY in canon (.t-*), these
+// modifiers and base root rules. (letter-spacing added to this tier in the TRIP-165
+// audit 2026-07-02: tracking is a canon axis.)
+//   • app.css   — home of the 10 canons + .t-strong/.t-flush/.tp-caption + base `body`.
 //   • index.css — Tailwind preflight / reset base.
 //   • login.css — isolated auth base (pending Lumo; also a base/reset home).
 //   • landing.css — STANDALONE marketing/legal stylesheet loaded WITHOUT app.css

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
+import { Tile } from './Tile';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -45,6 +46,7 @@ export { Row, Col, Grid, Trunc, Grow } from './Layout';
 // Карты осей примитивов реэкспортятся тем же барралем, что и сами компоненты —
 // точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
 export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
+export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
@@ -359,25 +361,28 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 // распахнута). `compact` не заведён (YAGNI): проп в контракте есть, но CSS-
 // правило и значение появятся с первым живым вызывателем, не впрок.
 /**
- * @typedef {'lg'|'md'} CardRadius
+ * @typedef {'lg'|'md'|'card'} CardRadius
  * @typedef {'brand'|'ai'} CardTone
  */
 /** @type {readonly string[]} */
 export const CARD_VARIANTS = [
-  "r-lg", "r-md", "interactive", "flush",
-  "tone-brand", "tone-ai", "add", "recessed", "locked", "danger",
+  "r-lg", "r-md", "r-card", "interactive", "flush", "featured", "raised",
+  "tone-brand", "tone-ai", "add", "recessed", "locked", "parsed", "danger",
 ];
 
 /**
  * @param {{ as?: 'div'|'button'|'a', radius?: CardRadius, interactive?: boolean,
  *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
- *   locked?: boolean, danger?: boolean, href?: string, onClick?: any,
- *   disabled?: boolean, id?: string, ariaLabel?: string, title?: string,
+ *   locked?: boolean, parsed?: boolean, danger?: boolean, featured?: boolean, raised?: boolean, href?: string, onClick?: any,
+ *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,
+ *   ariaControls?: string, ariaSelected?: boolean, ariaBusy?: boolean, ariaCurrent?: string,
+ *   title?: string, target?: string, rel?: string, dataDragover?: boolean,
  *   children?: any, className?: string, style?: any }} p
  */
 export const Card = ({
   as = "div", radius, interactive, pad = "default", tone, variant,
-  recessed, locked, danger, href, onClick, disabled, id, ariaLabel, title,
+  recessed, locked, parsed, danger, featured, raised, href, onClick, disabled, id, ariaLabel,
+  ariaExpanded, ariaControls, ariaSelected, ariaBusy, ariaCurrent, title, target, rel, dataDragover,
   children, className = "", style,
 }) => {
   const mods = [
@@ -388,7 +393,10 @@ export const Card = ({
     variant === "add" && "add",
     recessed && "recessed",
     locked && "locked",
+    parsed && "parsed",
     danger && "danger",
+    featured && "featured",
+    raised && "raised",
   ].filter(Boolean);
   const El = as;
   return (
@@ -398,8 +406,14 @@ export const Card = ({
       id={id}
       title={title}
       aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      aria-selected={ariaSelected}
+      aria-busy={ariaBusy}
+      aria-current={ariaCurrent}
+      data-dragover={dataDragover ? "" : undefined}
       onClick={onClick}
-      {...(as === "a" ? { href } : null)}
+      {...(as === "a" ? { href, target, rel } : null)}
       {...(as === "button" ? { type: "button", disabled } : null)}
     >
       {children}
@@ -613,12 +627,12 @@ export const PartnerLogo = ({ url, size = 18 }) => {
     );
   }
   if (!p) return (
-    <div style={{ ...glyph, background: "var(--line)", color: "var(--muted)", fontSize: size * 0.55, fontWeight: 700 }}>
+    <div style={{ ...glyph, background: "var(--line)", color: "var(--muted)", fontSize: size * 0.55, fontWeight: 700 /* design-token-exempt: динамический кегль глифа аватара от диаметра, TRIP-410 */ }}>
       <Icon name="link" size={size * 0.6} />
     </div>
   );
   return (
-    <div style={{ ...glyph, background: p.color, color: "white", fontSize: size * 0.5, fontWeight: 700 }}>
+    <div style={{ ...glyph, background: p.color, color: "white", fontSize: size * 0.5, fontWeight: 700 /* design-token-exempt: динамический кегль глифа аватара от диаметра, TRIP-410 */ }}>
       {p.short}
     </div>
   );
@@ -756,7 +770,11 @@ export function StreamEventRow({ e, onClick }) {
     return (
       <div className="tl3-ev tl3-ev--tr">
         <div className="time time--tr"><span>{e.time || "—"}</span><span>{arrive}</span></div>
-        <button className="tl3-card tl3-card--tr" onClick={onClick}>
+        {/* TRIP-343 объект 2 (F): ветка переезда — тот же <Card>, что и эвент.
+            Была сырым <button>, из-за чего скин (переехавший с `.tl3-card` на Card)
+            её не касался — карточка облезала до прозрачного текста. `.tl3-card--tr`
+            остаётся раскладкой коннектора (город→режим→город). */}
+        <Card as="button" radius="lg" interactive className="tl3-card tl3-card--tr" onClick={onClick}>
           <div className="rv-end">
             <b>{e.from || "—"}</b>
             {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
@@ -764,7 +782,7 @@ export function StreamEventRow({ e, onClick }) {
           <div className="rv-conn">
             <span className="dline" />
             <span className="rv-mode">
-              <span className="ic"><Icon name={meta.icon} size={16} /></span>
+              <Tile as="span"><Icon name={meta.icon} /></Tile>
               {t(meta.labelKey)}{small && <small> · {small}</small>}
             </span>
             <span className="dline" />
@@ -773,7 +791,7 @@ export function StreamEventRow({ e, onClick }) {
             {e.to_address && e.to_address !== e.to && <span>{e.to_address}</span>}
             <b>{e.to || "—"}</b>
           </div>
-        </button>
+        </Card>
       </div>
     );
   }
@@ -783,7 +801,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <button className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
+      <Card as="button" radius="lg" interactive className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>
@@ -795,7 +813,7 @@ export function StreamEventRow({ e, onClick }) {
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
           </span>
         )}
-      </button>
+      </Card>
     </div>
   );
 }

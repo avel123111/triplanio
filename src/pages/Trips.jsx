@@ -11,7 +11,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, EmptyState, Input, Seg, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, Card, EmptyState, Input, Seg, Skeleton, Tile } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -109,7 +109,7 @@ function NextTripCard({ trip, onClick, t }) {
   const bg = coverBg(trip);
   const cd = trip.countdown;
   return (
-    <button type="button" className="nextcard" onClick={onClick}>
+    <Card as="button" radius="lg" interactive className="nextcard" onClick={onClick}>
       <span className="nextcard__cover" style={{ background: bg || undefined }}>
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
@@ -119,21 +119,23 @@ function NextTripCard({ trip, onClick, t }) {
         <span className="rt">{trip.scope}</span>
         <span className="badge badge--sm nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
         <span className="nextcard__cd">
-          <span className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></span>
-          <span className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></span>
-          <span className="cdu"><b>{cd.m}</b><span>{t('stats.cd_min')}</span></span>
+          {/* Утоплённые плитки отсчёта — скин на канон `<Card recessed>`, раскладку/
+              типографику держит `.cdu` (TRIP-343 объект 2). */}
+          <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></Card>
+          <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></Card>
+          <Card as="div" recessed radius="md" pad="none" className="cdu"><b>{cd.m}</b><span>{t('stats.cd_min')}</span></Card>
         </span>
       </span>
       <span className="nextcard__chev"><Icon name="chev" /></span>
-    </button>
+    </Card>
   );
 }
 
 function NoNextCard({ variant, onPlan, t }) {
   const isEmpty = variant === 'empty';
   return (
-    <div className="nonext">
-      <span className="ic"><Icon name="calendar" /></span>
+    <Card radius="lg" className="nonext">
+      <Tile as="span"><Icon name="calendar" /></Tile>
       <div>
         <b>{t('stats.next_trip')}</b>
         <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
@@ -141,7 +143,7 @@ function NoNextCard({ variant, onPlan, t }) {
       {!isEmpty && (
         <Btn variant="primary" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -184,7 +186,7 @@ const TripCard = ({ trip, onClick }) => {
   const bg = coverBg(trip);
 
   return (
-    <button className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
+    <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
       {/* background */}
       <div className="tc__bg" style={{ background: bg || undefined }}>
         {trip.cover_image_url && (
@@ -235,7 +237,7 @@ const TripCard = ({ trip, onClick }) => {
           </div>
         )}
       </div>
-    </button>
+    </Card>
   );
 };
 
@@ -245,7 +247,10 @@ const TripRow = ({ trip, onClick }) => {
   const bg = coverBg(trip);
 
   return (
-    <button
+    <Card
+      as="button"
+      radius="lg"
+      interactive
       onClick={onClick}
       className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
     >
@@ -294,7 +299,7 @@ const TripRow = ({ trip, onClick }) => {
         )}
         <span className="tr__chev"><Icon name="chev" /></span>
       </div>
-    </button>
+    </Card>
   );
 };
 
@@ -305,7 +310,7 @@ const _ORB = /** @type {React.CSSProperties} */ ({ position: 'absolute', borderR
 function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div className="eroute" style={{ marginTop: 28 }}>
+    <Card radius="card" className="eroute" style={{ marginTop: 28 }}>
       <span style={{ ..._ORB, width: 300, height: 300, background: 'var(--brand-grad)', top: -150, right: -60, opacity: 0.12 }} />
       <span style={{ ..._ORB, width: 170, height: 170, background: 'var(--ai-gradient)', top: -30, right: '26%', opacity: 0.10 }} />
       <div className="eroute__rail">
@@ -325,7 +330,7 @@ function EmptyRoute({ onManual, onAi }) {
         <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
         <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -370,14 +375,14 @@ function TripSkeleton({ viewMode }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+          <Card key={i} radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px' }}>
             <Skeleton w={62} h={46} r={'var(--r-sm)'} />
             <div className="grow">
               <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
               <Skeleton w="32%" h={11} r={4} />
             </div>
             <Skeleton w={80} h={12} r={5} />
-          </div>
+          </Card>
         ))}
       </div>
     );
@@ -718,7 +723,7 @@ export default function Trips() {
                 бренд-акцент, PRO-пилюля (звезда) даёт акцент, CTA — бренд-кнопка.
                 Shown only when owned active trips reach/exceed the free cap (1). */}
             {filterMode === 'active' && limitReached && (
-              <div className="limitcard">
+              <Card tone="brand" radius="md" className="limitcard">
                 <Badge variant="pro" icon="pro">PRO</Badge>
                 <div className="limitcard__body">
                   <div className="limitcard__top">
@@ -727,7 +732,7 @@ export default function Trips() {
                   <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
                 </div>
                 <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
-              </div>
+              </Card>
             )}
 
             {/* Trip list */}
@@ -737,8 +742,8 @@ export default function Trips() {
               // Active tab with no upcoming/active trips (past ones exist) → invite,
               // not a generic empty. A real search miss still shows empty_search.
               (filterMode === 'active' && !search.trim()) ? (
-                <div className="row invite">
-                  <span className="invite__ic"><Icon name="sparkles" size={28} /></span>
+                <Card radius="lg" className="row invite">
+                  <Tile as="span" className="invite__ic"><Icon name="sparkles" size={28} /></Tile>
                   <div className="invite__tx">
                     <h3>{t('trips.invite_title')}</h3>
                     <p>{t('trips.invite_desc')}</p>
@@ -747,7 +752,7 @@ export default function Trips() {
                     <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
                     <Btn variant="secondary" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
                   </div>
-                </div>
+                </Card>
               ) : (
                 <EmptyState
                   icon={filterMode === 'past' ? 'calendar' : 'search'}
@@ -761,13 +766,13 @@ export default function Trips() {
                   <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <button className="tc-add" onClick={() => openChoice()}>
+                  <Card as="button" variant="add" radius="md" className="tc-add" onClick={() => openChoice()}>
                     <div className="tc-add__ic">
                       <Icon name="plus" size={24} />
                     </div>
                     <b>{t('trips.add_trip')}</b>
                     <small>{t('trips.add_trip_sub')}</small>
-                  </button>
+                  </Card>
                 )}
               </div>
             ) : (
@@ -776,13 +781,13 @@ export default function Trips() {
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <button className="tr tr--add" onClick={() => openChoice()}>
+                  <Card as="button" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
                     <span className="tr__addic"><Icon name="plus" size={20} /></span>
                     <span className="tr__main">
                       <b>{t('trips.add_trip')}</b>
                       <small>{t('trips.add_trip_sub')}</small>
                     </span>
-                  </button>
+                  </Card>
                 )}
               </div>
             )}

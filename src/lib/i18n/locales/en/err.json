@@ -1,12 +1,14 @@
 {
-  "temporary": "Something went wrong. Please try again.",
-  "INVALID_INPUT": "Some of the entered data is invalid.",
-  "INVALID_BODY": "Some of the entered data is invalid.",
-  "FORBIDDEN": "You don't have permission to do that.",
-  "UNAUTHORIZED": "You don't have permission to do that.",
-  "NOT_FOUND": "We couldn't find that.",
-  "UNAUTHENTICATED": "Please sign in again.",
   "AUTH_UNAVAILABLE": "The sign-in service is temporarily unavailable.",
+  "FORBIDDEN": "You don't have permission to do that.",
+  "INTERNAL": "Something went wrong on our side. Please try again.",
+  "INVALID_BODY": "Some of the entered data is invalid.",
+  "INVALID_INPUT": "Some of the entered data is invalid.",
+  "NOT_FOUND": "We couldn't find that.",
+  "PRO_REQUIRED": "This needs a Pro trip. Upgrade to continue.",
   "RATE_LIMITED": "Too many attempts. Please try again in a moment.",
-  "INTERNAL": "Something went wrong on our side. Please try again."
+  "TRIP_LIMIT_REACHED": "You've reached your active-trip limit. Wait for the current one to end or upgrade to Pro.",
+  "UNAUTHENTICATED": "Please sign in again.",
+  "UNAUTHORIZED": "You don't have permission to do that.",
+  "temporary": "Something went wrong. Please try again."
 }

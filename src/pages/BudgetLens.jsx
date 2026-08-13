@@ -21,8 +21,12 @@
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
+import { useAuth } from '@/lib/AuthContext';
+import { useProUpsell } from '@/components/common/ProUpsellProvider';
+import { classifyError } from '@/lib/errorText';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
@@ -33,7 +37,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -50,13 +54,19 @@ import './BudgetLens.css';
 // теле у КАЖДОГО вызова — по нему сервер и проверяет право, и скоупит строку.
 const budgetMutate = (action, body) => invokeFn(`trip-budget/${action}`, { body });
 
-// Отказ → локализованный текст. Из UI достижим только PRO_REQUIRED (аддон
-// бюджета включали на Pro-трипе, трип мог потерять Pro — редактор всё ещё видит
-// экран, но новая запись отбивается 402). FORBIDDEN/NOT_FOUND/*_NOT_MANUAL/
-// *_SYSTEM из гейтованного UI не приходят → общий «не удалось сохранить».
-const BUDGET_REFUSAL = { PRO_REQUIRED: 'sub.locked_desc' };
-const budgetErrText = (t, code) =>
-  t(code && Object.hasOwn(BUDGET_REFUSAL, code) ? BUDGET_REFUSAL[code] : 'common.write_failed');
+// Единая обработка отказа записи бюджета — локальной карты кодов больше нет,
+// трактовку даёт общий `classifyError`. Из UI достижим прежде всего PRO_REQUIRED
+// (аддон бюджета включали на Pro-трипе, трип мог потерять Pro — редактор всё ещё
+// видит экран, но новая запись отбивается 402): он открывает Pro-апселл (модалку
+// закрываем — ProUpsell живёт в корне и не должна висеть над диалогом), как в
+// SettingsLens. Остальные коды (FORBIDDEN/NOT_FOUND/*_NOT_MANUAL/*_SYSTEM) —
+// инлайн-текст `err.*`. `onProRefusal` приходит от родителя, у которого есть
+// контекст владельца (isOwner/ownerName/upgrade); нет его → безопасный текст.
+function handleBudgetWriteError(t, code, { setErr, close, onProRefusal }) {
+  const { kind, text } = classifyError(t, code);
+  if (kind === 'upsell' && onProRefusal) { onProRefusal(); close(); return; }
+  setErr(text);
+}
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
 
@@ -149,7 +159,7 @@ const ORPHAN_CITY = '__orphan_city__';
 // `cities` — the trip's city_visits (already localized). The picker stores the
 // VISIT, not its label: a label frozen at save time is stuck in whatever language
 // the UI was in, and the two writers disagreed on that (TRIP-230).
-export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
+export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange, onProRefusal }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -195,7 +205,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       isEdit ? { tripId, id: existing.id, ...row } : { tripId, ...row });
     if (error) {
       setSaving(false);
-      setErr(budgetErrText(t, code));
+      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
       return;
     }
     setSaving(false);
@@ -212,7 +222,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
     const { error, code } = await budgetMutate('expense/delete', { tripId, id: existing.id });
     if (error) {
       setDeleting(false);
-      setErr(budgetErrText(t, code));
+      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
       return;
     }
     setDeleting(false);
@@ -288,7 +298,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
 
 // ─── Delete confirm (manual expense, inline trash) ─────────────────────────────
 
-function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
+function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange, onProRefusal }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const [deleting, setDeleting] = useState(false);
@@ -301,7 +311,7 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
     });
     if (error) {
       setDeleting(false);
-      setErr(budgetErrText(t, code));
+      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
       return;
     }
     setDeleting(false);
@@ -335,7 +345,7 @@ function liveRateToMain(fx, code) {
   return 1 / Number(r);
 }
 
-function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved, open, onOpenChange }) {
+function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved, open, onOpenChange, onProRefusal }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const others = currencies.filter(c => c && c !== mainCurrency);
@@ -371,7 +381,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
     const { error, code } = await budgetMutate('settings', { tripId, fx_overrides: next });
     if (error) {
       setSaving(false);
-      setErr(budgetErrText(t, code));
+      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
       return;
     }
     setSaving(false);
@@ -431,7 +441,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
 const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'ticket', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
-function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
+function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange, onProRefusal }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -462,7 +472,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
       : { tripId, name: name.trim(), icon, color });
     if (error) {
       setSaving(false);
-      setErr(budgetErrText(t, code));
+      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
       return;
     }
     setSaving(false);
@@ -567,6 +577,20 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
   // UI прячет мутации, чтобы прямые записи не падали молчаливым 403.
   const readOnly = !roleCanEdit(role);
+  // Pro-отказ записи открывает единый app-level апселл (как SettingsLens): владелец
+  // видит апгрейд, участник — «подключает владелец». Контекст владельца есть только
+  // здесь (у диалогов его нет), поэтому хендлер даём вниз пропом `onProRefusal`.
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const { openProUpsell } = useProUpsell();
+  const isOwner = !!user?.id && user.id === trip?.created_by;
+  const ownerName = members.find(m => m.user_id === trip?.created_by)?.user_full_name || '';
+  const onProRefusal = () => openProUpsell({
+    mode: isOwner ? 'upgrade' : 'info',
+    feature: t('budget.title'),
+    ownerName,
+    onUpgrade: () => nav(`/pro?tripId=${tripId}`),
+  });
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
   const [hoveredSeg, setHoveredSeg] = useState(null);
@@ -816,14 +840,14 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {noExpenses && (
         // inline-style-exempt: отступ сверху зависит от того, стоит ли выше
         // плашка «нет курса» — это состояние данных, а не вёрстка.
-        <div className="empty-note row row--g7 row--wrap" style={{ marginTop: missingCurrencies.length > 0 ? 16 : 4 }}>
+        <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: missingCurrencies.length > 0 ? 16 : 4 }}>
           <span className="en-ic tile tile--lg"><Icon name="wallet" /></span>
           <span className="en-tx grow--fit">
             <b>{t('budget.no_expenses')}</b>
             <span>{t('budget.no_expenses_desc')}</span>
           </span>
           {!readOnly && <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>}
-        </div>
+        </Card>
       )}
 
       {/* ░ CONTROLS ░ */}
@@ -930,10 +954,10 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           expensesPlural={expensesPlural} onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
 
-      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onSaved={refresh} />}
-      {deleteExpense && <DeleteExpenseDialog open={true} onOpenChange={(o) => { if (!o) setDeleteExpense(null); }} expense={deleteExpense} onSaved={refresh} />}
-      {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onSaved={refresh} />}
-      <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onSaved={refresh} />
+      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onSaved={refresh} onProRefusal={onProRefusal} />}
+      {deleteExpense && <DeleteExpenseDialog open={true} onOpenChange={(o) => { if (!o) setDeleteExpense(null); }} expense={deleteExpense} onSaved={refresh} onProRefusal={onProRefusal} />}
+      {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onSaved={refresh} onProRefusal={onProRefusal} />}
+      <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onSaved={refresh} onProRefusal={onProRefusal} />
     </div>
   );
 }

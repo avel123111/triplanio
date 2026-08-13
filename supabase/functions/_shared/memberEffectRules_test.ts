@@ -1,0 +1,30 @@
+// Тесты чистых решателей побочек участников (TRIP-409). Пинят решение afterWrite
+// БЕЗ загрузки I/O (emit/teardown): mutateEffects.ts env-free тестом не грузится.
+import { assertEquals } from 'jsr:@std/assert@^1.0.8';
+import { respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
+
+Deno.test('★ respond accept → North-Star + invite_accepted пригласившему', () => {
+  assertEquals(respondEffectPlan('accepted'), { reached2: true, emit: 'invite_accepted' });
+});
+
+Deno.test('★ respond decline → БЕЗ North-Star, invite_declined', () => {
+  assertEquals(respondEffectPlan('declined'), { reached2: false, emit: 'invite_declined' });
+});
+
+Deno.test('★ respond owner_stray → ни North-Star, ни emit (стрэй удалён)', () => {
+  assertEquals(respondEffectPlan('owner_stray'), { reached2: false, emit: null });
+});
+
+Deno.test('respond неизвестный исход → безопасно ничего', () => {
+  assertEquals(respondEffectPlan('???'), { reached2: false, emit: null });
+});
+
+Deno.test('★ role: уведомляем только при реальной смене И для юзера с аккаунтом', () => {
+  // Сменилась + есть аккаунт → уведомляем.
+  assertEquals(roleChangeNotifies('viewer', 'admin', 'user-1'), true);
+  // Роль та же → молчим (лишний шум).
+  assertEquals(roleChangeNotifies('admin', 'admin', 'user-1'), false);
+  // Сменилась, но offline-участник (user_id пуст) → слать некуда.
+  assertEquals(roleChangeNotifies('viewer', 'admin', null), false);
+  assertEquals(roleChangeNotifies('viewer', 'admin', undefined), false);
+});

@@ -33,10 +33,21 @@
  */
 
 import { supabaseAdmin, getRequestUser } from './supabaseAdmin.ts';
-import { HttpError, jsonError } from './http.ts';
-import { isCallerEditor } from './tripAccess.ts';
-import { buildPlan, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
-import type { ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
+import { HttpError, jsonError, refusalResponse } from './http.ts';
+import { isCallerEditor, isCallerParticipant } from './tripAccess.ts';
+import { proRefusal } from './proGate.ts';
+import { mutateSuccess } from './mutateResponse.ts';
+import { buildPlan, findUnguardedRowSelf, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
+import type { Actor, ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
+import { AFTER_WRITE } from './mutateEffects.ts';
+
+// ИНВАРИАНТ №7 (fail-fast на загрузке): ни одно действие с `requires:[]` и записью
+// не смеет быть без `loadTarget`+`guardRow` (дверь без замка). Ловит опечатку до
+// первого запроса — весь seam-деплой падает, а не молча пускает запись без auth.
+const rowSelfViolations = findUnguardedRowSelf();
+if (rowSelfViolations.length) {
+  throw new Error(`mutate: инвариант №7 нарушен:\n  ${rowSelfViolations.join('\n  ')}`);
+}
 
 /**
  * Единственная дверь DB-вызовов шва: инвариант `unwrapDbResult` (ошибка БД →
@@ -46,9 +57,6 @@ import type { ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules
 async function rpc(name: string, args: Record<string, unknown>): Promise<unknown> {
   return unwrapDbResult(await supabaseAdmin.rpc(name, args));
 }
-
-/** Ответ шва: успех несёт строку (или null для delete), отказ — статус+код. */
-type MutateOk = { data: Record<string, unknown> | null };
 
 /**
  * Требования действия (`requires`) вычисляются ЗДЕСЬ и одинаково для всех
@@ -63,6 +71,13 @@ async function checkRequirement(
   ctx: { actor: string; scopeValue: string },
 ): Promise<Refusal | null> {
   switch (name) {
+    case 'participant':
+      // Viewer ПРОХОДИТ (чат коллаборативный). Бросает TripAccessError на инфра-
+      // сбое → 5xx, НЕ ложный 403 (TRIP-208). Порядок в `requires` важен: для чата
+      // `['participant','pro']` — не-участник получает 403 и не узнаёт Pro-детали.
+      return (await isCallerParticipant(ctx.scopeValue, ctx.actor))
+        ? null
+        : { status: 403, code: 'FORBIDDEN', message: 'Forbidden' };
     case 'editor':
       // Бросает TripAccessError на инфра-сбое → 5xx, НЕ ложный 403 (TRIP-208).
       return (await isCallerEditor(ctx.scopeValue, ctx.actor))
@@ -73,15 +88,22 @@ async function checkRequirement(
       return ctx.scopeValue === ctx.actor
         ? null
         : { status: 403, code: 'FORBIDDEN', message: 'Forbidden' };
-    case 'pro': {
-      // Сбой БД брошен внутри `rpc()` → 500 INTERNAL (ретраится), как editor-ветка
-      // (TripAccessError). Сюда доезжает только настоящее `data`, поэтому не-true —
-      // это бизнес-«нет» (не Pro), а не спрятанный под x-sentry-skip инцидент.
-      const isPro = await rpc('is_trip_pro', { p_trip_id: ctx.scopeValue });
-      // Бизнес-«нет», не инцидент: помечаем sentrySkip, шов повесит x-sentry-skip.
-      return isPro === true
+    case 'pro':
+      // ОДИН источник Pro-отказа (`proRefusal`, предикат `is_trip_pro`) — тот же,
+      // что зовут не-шовные функции через `requireTripPro` (TRIP-408). Сбой RPC
+      // бросается внутри → 500 (не ложный 402); не-Pro → 402 PRO_REQUIRED+skip.
+      return await proRefusal(supabaseAdmin, ctx.scopeValue);
+    case 'trip_quota': {
+      // Авторитетный гейт лимита free/Pro на ЗАПИСИ (создание трипа) — ОДИН булев
+      // предикат `can_create_trip` (is_pro OR active<1), ровно как `pro`-ветка зовёт
+      // `is_trip_pro`. Порог и комбинация живут в самом предикате; триггер
+      // `enforce_trip_limit` (backstop) зовёт ТОТ ЖЕ предикат — не две формулы.
+      // Сбой БД брошен внутри `rpc()` → 500 (как editor/pro); сюда доезжает только
+      // настоящее `data` → `false` = бизнес-«нет» (лимит), не спрятанный инцидент.
+      const ok = await rpc('can_create_trip', { p_uid: ctx.actor });
+      return ok === true
         ? null
-        : { status: 402, code: 'PRO_REQUIRED', message: 'Pro required', sentrySkip: true };
+        : { status: 402, code: 'TRIP_LIMIT_REACHED', message: 'Trip limit reached', sentrySkip: true };
     }
     default:
       // Незнакомое требование — сбой конфигурации, а не отказ юзеру: 500.
@@ -96,8 +118,12 @@ async function loadTargetRow(
   scopeValue: string,
   targetId: string,
 ): Promise<Record<string, unknown> | null> {
+  // `table` опционален (ради `op:'rpc'`), но `loadTarget` бывает только у table-DML.
+  // Сузить тем же паттерном, что `buildPlan`: отсутствие = конфиг-ошибка, не no-op.
+  const table = action.table;
+  if (!table) throw new Error(`loadTarget requires a table for "${action.op}"`);
   const { data, error } = await supabaseAdmin
-    .from(action.table)
+    .from(table)
     .select('*')
     .eq('id', targetId)
     .eq(scopeCol, scopeValue)
@@ -106,8 +132,18 @@ async function loadTargetRow(
   return data?.[0] ?? null;
 }
 
-/** Исполняет план записи под service_role. Возвращает строку (insert/update). */
-async function runPlan(plan: WritePlan): Promise<Record<string, unknown> | null> {
+/** Исполняет план записи под service_role. Возвращает payload записи: строку
+ *  insert/update, uuid-строку (create_trip), либо null (delete/void-RPC). */
+async function runPlan(plan: WritePlan): Promise<unknown> {
+  // `op:'none'` — записи нет (`resend`): шов идёт сразу в `afterWrite`, данных нет.
+  if (plan.op === 'none') return null;
+  // `op:'rpc'` — тело действия один атомарный RPC (layover: города+сегменты+
+  // recompute). Идёт через ту же дверь `rpc()`, что и `prepareRpc`, поэтому
+  // инвариант «ошибка БД → throw → 500» держится по построению (TRIP-405).
+  // add_layover_transfer возвращает void → шов отдаёт null.
+  if (plan.op === 'rpc') {
+    return await rpc(plan.name, plan.args);
+  }
   if (plan.op === 'insert') {
     const { data, error } = await supabaseAdmin.from(plan.table).insert(plan.values).select().single();
     if (error) throw error;
@@ -165,16 +201,26 @@ export async function mutate(
   const actor = await getRequestUser(req); // throws 503 on Auth outage
   if (!actor) return jsonError(401, 'Unauthorized', undefined, corsHeaders);
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError(400, 'Request body must be valid JSON', 'INVALID_BODY', corsHeaders);
-  }
-  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-    return jsonError(400, 'Request body must be a JSON object', 'INVALID_BODY', corsHeaders);
+  // Райдер #6 (TRIP-409): пустое/отсутствующее тело → `{}`. Клиент no-arg
+  // действия (`inbox/read-all`) зовёт `invokeFn` без body → `req.json()` бросал →
+  // 400 INVALID_BODY, «прочитать всё» не работало. Обязательные поля всё равно
+  // добьёт `validateInput`; чинит read-all и любое будущее no-arg действие.
+  const rawBody = await req.text();
+  let body: Record<string, unknown> = {};
+  if (rawBody.trim()) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch {
+      return jsonError(400, 'Request body must be valid JSON', 'INVALID_BODY', corsHeaders);
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return jsonError(400, 'Request body must be a JSON object', 'INVALID_BODY', corsHeaders);
+    }
+    body = parsed as Record<string, unknown>;
   }
 
+  const actorFull: Actor = { id: actor.id, email: actor.email ?? null };
   const scope = resolveScope(resource, actor.id, body);
   if (typeof scope !== 'string') return refuse(scope, corsHeaders);
 
@@ -188,13 +234,15 @@ export async function mutate(
 
   const targetId = typeof body.id === 'string' && body.id ? body.id : null;
 
-  // guardRow читается ТОЛЬКО по существующей строке (update/delete), на вставке
-  // строки ещё нет. Загружаем строго со скоупом, поэтому промах = 404, а не
-  // «нашли чужую и отказали».
+  // guardRow читается ТОЛЬКО по существующей строке (update/delete/rpc/none по id),
+  // на вставке строки ещё нет. Загружаем строго со скоупом, поэтому промах = 404,
+  // а не «нашли чужую и отказали». `loadedRow` дальше едет в `afterWrite` (teardown
+  // по member). guardRow получает ПОЛНОГО актора `{id,email}` (row-self по email).
+  let loadedRow: Record<string, unknown> | null = null;
   if (action.loadTarget && targetId) {
-    const row = await loadTargetRow(action, resource.scope.column, scope, targetId);
-    if (!row) return jsonError(404, 'Not found', 'NOT_FOUND', corsHeaders);
-    const rowRefusal = action.guardRow?.(row, actor.id);
+    loadedRow = await loadTargetRow(action, resource.scope.column, scope, targetId);
+    if (!loadedRow) return jsonError(404, 'Not found', 'NOT_FOUND', corsHeaders);
+    const rowRefusal = action.guardRow?.(loadedRow, actorFull);
     if (rowRefusal) return refuse(rowRefusal, corsHeaders);
   }
 
@@ -215,17 +263,40 @@ export async function mutate(
     targetId,
     values: validated.values,
   });
-  const data = await runPlan(plan);
-  return jsonResult({ data }, corsHeaders);
+  let data = await runPlan(plan);
+
+  // Дискриминант исхода RPC (`data.outcome`): едет в `afterWrite` (respond решает
+  // accept/decline/owner-stray) И, если действие объявило `mapOutcome`, переводится
+  // в бизнес-Refusal (invite: already_member/self/owner) через СУЩЕСТВУЮЩИЙ канон
+  // `refusalResponse`. Бизнес-«нет» здесь — ЗНАЧЕНИЕ data, не ошибка БД (та → 500).
+  let outcome: unknown = null;
+  if (plan.op === 'rpc') {
+    outcome = data && typeof data === 'object' ? (data as Record<string, unknown>).outcome ?? null : null;
+    if (action.mapOutcome) {
+      const mapped = action.mapOutcome(data);
+      if ('status' in mapped) return refuse(mapped, corsHeaders);
+      data = mapped.data;
+    }
+  }
+
+  // afterWrite — единственный шаг побочки (emit/teardown/mark-read), best-effort:
+  // её сбой НЕ роняет действие и не пользовательская ошибка (эффекты уже совершены
+  // на данных БД, откатывать нечего). Сама побочка описана в файле ресурса
+  // (`mutateEffects.ts`), дверь лишь зовёт её по ключу `slug/action`.
+  const effect = AFTER_WRITE[`${slug}/${actionName}`];
+  if (effect) {
+    try {
+      await effect({ actor: actorFull, loadedRow, result: data, outcome, scopeValue: scope, db: supabaseAdmin });
+    } catch (e) {
+      console.error(`mutate: afterWrite ${slug}/${actionName} failed:`, e);
+    }
+  }
+
+  return mutateSuccess(data, corsHeaders);
 }
 
-/** Отказ по канону. `sentrySkip` вешает заголовок (бизнес-«нет» не шумит). */
+/** Отказ по канону — ОДНА логика заголовка `x-sentry-skip` живёт в
+ *  `refusalResponse` (`http.ts`), общая со шва и `requireTripPro` (TRIP-408). */
 function refuse(r: Refusal, corsHeaders: HeadersInit): Response {
-  const headers = r.sentrySkip ? { ...corsHeaders, 'x-sentry-skip': '1' } : corsHeaders;
-  return jsonError(r.status, r.message, r.code, headers);
-}
-
-/** Успех: `{ data }`, дополняемый по правилу совместимости (поля не убираем). */
-function jsonResult(ok: MutateOk, corsHeaders: HeadersInit): Response {
-  return Response.json(ok, { headers: corsHeaders });
+  return refusalResponse(r, corsHeaders);
 }

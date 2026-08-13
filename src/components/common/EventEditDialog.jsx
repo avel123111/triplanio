@@ -19,7 +19,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, IconBtn, Seg, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
   Plane, Car as CarIcon, Moon, ShieldCheck,
@@ -74,7 +74,7 @@ function Textarea({ className = '', ...p }) {
 function SwitchRow({ on, onChange, title, hint, children }) {
   const flip = () => onChange(!on);
   return (
-    <div className="eed-fcbox">
+    <Card radius="md" className="eed-fcbox">
       <div className="row row--a-start row--g4 eed-fclabel">
         <Toggle on={on} onChange={onChange} label={title} />
         <div className="eed-fcbody">
@@ -83,7 +83,7 @@ function SwitchRow({ on, onChange, title, hint, children }) {
           {children}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -127,8 +127,9 @@ function makeSegment(defCur = 'EUR') {
   };
 }
 
-import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { errorText } from '@/lib/errorText';
+import { refusalError } from '@/lib/refusalError';
 import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -139,9 +140,9 @@ import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
 import { aiField } from '@/lib/ai-values';
-import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
+import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY, writeRows } from '@/lib/trip-data';
+import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -845,7 +846,6 @@ export default function EventEditDialog({
     // creates keep the awaited mutation (avoids the view-panel read race / multi-row).
     const optimistic = !entity && tripId && OPT_CACHE[currentKind] && !isComplexTransferCreate;
     if (!optimistic) { saveMut.mutate(); return; }
-    const table = ENTITY_TABLE_BY_KIND[currentKind];
     const cacheKind = OPT_CACHE[currentKind];
     const payload = buildCurrentPayload();
     const tempId = 'tmp-' + Math.random().toString(36).slice(2);
@@ -859,7 +859,8 @@ export default function EventEditDialog({
     onOpenChange(false);
     (async () => {
       try {
-        await writeRows(supabase.from(table).insert({ ...payload, created_by: user?.id }));
+        // Same single door as the awaited path — create through `trip-booking`.
+        await upsert(currentKind, null, payload, tripId);
         invalidateTripData(qc, tripId);
         // Same commit point as saveMut below (see removeOrphanedFiles).
         removeOrphanedFiles(seenDocPaths.current, form.documents);
@@ -867,7 +868,8 @@ export default function EventEditDialog({
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
         invalidateTripData(qc, tripId);
         removeTripFiles(collectDocPaths(form.documents));
-        toast({ title: t('event.save_failed'), description: err?.message || String(err), variant: 'destructive' });
+        // Honest refusal: generic code → localized line, never raw server text (TRIP-378).
+        toast({ title: t('event.save_failed'), description: errorText(t, err?.code), variant: 'destructive' });
       }
     })();
   };
@@ -877,25 +879,25 @@ export default function EventEditDialog({
     mutationFn: async () => {
       if (currentKind === 'hotel') {
         const payload = buildHotelPayload(form, visit, tz);
-        return upsert('hotel_stays', entity, payload, user);
+        return upsert('hotel', entity, payload, tripId);
       }
       if (currentKind === 'transfer') {
         // Layover transfer (create mode): build a chain of separate transfer
         // rows through waypoint city_visits (TRIP_EDIT_MODE_TZ §11).
         if (!entity && form.hasLayovers && Array.isArray(form.segments) && form.segments.length >= 2) {
-          return saveLayoverChain(form, fromVisit, toVisit, tripId, user, t);
+          return saveLayoverChain(form, fromVisit, toVisit, tripId, t);
         }
         const payload = buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz);
-        const created = await upsert('transfers', entity, payload, user);
+        const created = await upsert('transfer', entity, payload, tripId);
         return created;
       }
       if (currentKind === 'activity') {
         const payload = buildActivityPayload(form, visit, tz);
-        return upsert('activities', entity, payload, user);
+        return upsert('activity', entity, payload, tripId);
       }
       // service / car_rental
       const payload = buildServicePayload(form, tripId, t);
-      return upsert('trip_services', entity, payload, user);
+      return upsert('service', entity, payload, tripId);
     },
     onSuccess: () => {
       // Commit point: every file staged this session that the saved form no
@@ -909,9 +911,12 @@ export default function EventEditDialog({
       onOpenChange(false);
     },
     onError: (err) => {
+      // Seam refusal carries a generic `code` → localized line (never raw server
+      // prose, TRIP-378); a client-side throw (e.g. err_layover_city) keeps its
+      // own localized message.
       toast({
         title: t('event.save_failed'),
-        description: err?.message || String(err),
+        description: err && 'code' in err ? errorText(t, err.code) : err?.message,
         variant: 'destructive',
       });
     },
@@ -923,11 +928,11 @@ export default function EventEditDialog({
       // Entity gone → every file it referenced (originals + any staged this
       // session) is orphaned. deleteSourceEntity sweeps best-effort on success
       // (TRIP-117); seenDocPaths is the dialog's broader set (originals + staged).
-      const { error, deleted } = await deleteSourceEntity(currentKind, entity.id, [...seenDocPaths.current]);
-      if (error) throw error;
-      // 0 rows removed = RLS hid the row (session expired / not permitted) or it
-      // was already gone → surface (onError), don't close as a phantom success.
-      if (!deleted) throw new Error('write_rejected');
+      const { error, deleted, code } = await deleteSourceEntity(currentKind, entity.id, tripId, [...seenDocPaths.current]);
+      if (error) throw refusalError(code);
+      // deleted:false = the row is already gone (seam answered 404) → surface,
+      // don't close as a phantom success; refetch reconciles the cache.
+      if (!deleted) { const e = new Error('write_rejected'); e.code = 'NOT_FOUND'; throw e; }
     },
     onSuccess: () => {
       committedRef.current = true;
@@ -937,7 +942,7 @@ export default function EventEditDialog({
     onError: (err) => {
       toast({
         title: t('event.delete_failed'),
-        description: err?.message && err.message !== 'write_rejected' ? err.message : undefined,
+        description: err && 'code' in err ? errorText(t, err.code) : undefined,
         variant: 'destructive',
       });
     },
@@ -1203,7 +1208,7 @@ export default function EventEditDialog({
               «назад», из модалки - «отмена»). */}
           {embedded ? null : (
             <div className="lp-h lp-h--ev">
-              <span className="lp-ic"><meta.Icon /></span>
+              <Tile as="span" className="lp-ic"><meta.Icon /></Tile>
               <div className="lp-ti">
                 <div className="eyebrow">{hdr.eyebrow}</div>
                 <div className="lp-tirow">
@@ -1412,15 +1417,17 @@ export default function EventEditDialog({
 //  the new lat/lng + flight_number additions.
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function upsert(table, entity, payload, user) {
-  // Single write contract (writeRows): throws on error AND on a silent 0-row
-  // RLS reject. By-id update / insert always affects exactly one row, so we
-  // return the first (was .select().single()).
-  const builder = entity
-    ? supabase.from(table).update(payload).eq('id', entity.id)
-    : supabase.from(table).insert({ ...payload, created_by: user?.id });
-  const [row] = await writeRows(builder);
-  return row;
+// One booking write through the single door (TRIP-405): `trip-booking/<action>`.
+// The seam gates the editor role + trip scope on the SERVER (service_role) and
+// stamps `created_by` from the JWT — the client never sends it. `id` present →
+// UPDATE by {id, trip_id} (edit); absent → INSERT. A refusal comes back as a
+// generic `code` (never raw server prose, TRIP-378): we rethrow it as an Error
+// carrying `.code`, so the mutation's onError words it via `errorText`.
+async function upsert(action, entity, payload, tripId) {
+  const body = entity ? { tripId, id: entity.id, ...payload } : { tripId, ...payload };
+  const { data, error, code } = await invokeFn(`trip-booking/${action}`, { body });
+  if (error) throw refusalError(code);
+  return data ?? null; // the seam answers the row payload flat
 }
 
 function buildHotelPayload(form, visit, tz) {
@@ -1487,7 +1494,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
 // chain order, then runs a final recompute_trip. This replaces the old client
 // insert→trigger→renumber sequence, which raced the trigger (waypoint at provisional
 // position 0 was laid first and its date/order got corrupted).
-async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
+async function saveLayoverChain(form, fromVisit, toVisit, tripId, t) {
   const segs = form.segments;
   const N = segs.length;
 
@@ -1530,14 +1537,18 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     notes: i === 0 ? (form.notes || null) : null,
   }));
 
-  const { error } = await supabase.rpc('add_layover_transfer', {
-    p_trip: tripId,
-    p_from: fromVisit?.id,
-    p_to: toVisit?.id,
-    p_waypoints: waypoints,
-    p_segments: segments,
+  // Atomic layover write through the single door (TRIP-405): op:'rpc' →
+  // add_layover_transfer under service_role, with p_actor injected from the JWT.
+  const { error, code } = await invokeFn('trip-booking/transfer-layover', {
+    body: {
+      tripId,
+      from_city_visit_id: fromVisit?.id,
+      to_city_visit_id: toVisit?.id,
+      waypoints,
+      segments,
+    },
   });
-  if (error) throw error;
+  if (error) throw refusalError(code);
   return null;
 }
 
@@ -1871,21 +1882,24 @@ function TransferLegCard({
   // same "minutes between two ISO locals, non-negative or null" as the layover gap.
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
   const isOpen = collapsible ? open : true;
+  // TRIP-186/343: сегмент «с пересадками» (isMulti) — поверхность-аккордеон, идёт
+  // через `<Card radius="md" pad="none" className="acc">` (рамку/заливку/скругление/
+  // обрезку держит Card + класс-остаток .acc). Одиночный (direct) трансфер оголён —
+  // обычный div без скина. Носитель поэтому ДИНАМИЧЕСКИЙ (не-Card ветка без скина).
+  const Seg = isMulti ? Card : 'div';
+  const segProps = isMulti ? { radius: 'md', pad: 'none', className: 'acc' } : {};
   return (
-    // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
-    // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
-    // TRIP-333 §5: сегмент — это сворачиваемый раздел с шапкой и телом, то есть
-    // тот же объект, что «Детали брони» и «Документы и заметки» в этом же окне.
-    // Он рисовался инлайном и сидел на СВОЕЙ ступени скругления; теперь идёт
-    // через `.acc`, и рамку, заливку, скругление и обрезку углов держит класс.
-    <div className={isMulti ? 'acc' : undefined}>
+    <Seg {...segProps}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
+        {/* TRIP-391 объект 1: кнопка-обёртка = ЗАГОЛОВОК аккордеона-сегмента
+            (прозрачный full-bleed, раскрывает/сворачивает) → объект 6, не примитив
+            Btn. Значок внутри — плитка 34×34, тон каналом --hl → <Tile> (объект 3). */}
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
           style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
-            <TIcon size={16} />
-          </span>
+          <Tile as="span" style={{ '--hl-soft': TYPE_META.transfer.soft, '--hl-ink': color }}>
+            <TIcon />
+          </Tile>
           <span style={{ minWidth: 0, flex: 1 }}>
             <span className="eyebrow" style={{ color, display: 'block' }}>{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
             <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
@@ -1972,12 +1986,12 @@ function TransferLegCard({
             reads to add the +1 arrival-day gap, so it must always equal the actual
             dates. Shown as a passive badge the moment the arrival date is a later day. */}
         {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <div className="row eed-nightrow">
+          <Card radius="md" className="row eed-nightrow">
             <span className="row row--g4 eed-nightrow__l">
               <Moon size={16} />
               <span className="t-ui">{t('event.overnight_label')}</span>
             </span>
-          </div>
+          </Card>
         )}
 
         {/* Carrier / flight no. */}
@@ -2018,7 +2032,7 @@ function TransferLegCard({
           </div>
         </div>
       </div>
-    </div>
+    </Seg>
   );
 }
 
@@ -2135,6 +2149,8 @@ function SegTransportGrid({ value, onChange, color }) {
     <div className="grid grid--g4 eed-typegrid">
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
+        // TRIP-343 объект 2 (H): НЕ карточка — тайл-переключатель ВИДА транспорта
+        // (объект 5, сегмент/пикер); тон по выбору = контрол, не поверхность. Инлайн с reason.
         return (
           <button key={k.id} type="button" className="t-meta" onClick={() => onChange(k.id)}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1px solid ' + (active ? color : 'var(--line)'), color: active ? color : 'var(--ink)', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>

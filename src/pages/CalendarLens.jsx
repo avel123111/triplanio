@@ -512,7 +512,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
                 : `${baseDate.startOf('week').plus({ weeks: weekOffset }).year}`
               }
               {view === 'week' && week.label && (
-                <span className="t-meta t-sans" style={{ marginLeft: 10, color: 'var(--muted-2)' }}>
+                <span className="t-meta" style={{ marginLeft: 10, color: 'var(--muted-2)' }}>
                   · {t('calendar.week_word')} {week.label}
                 </span>
               )}

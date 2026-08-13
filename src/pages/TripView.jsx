@@ -18,7 +18,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
-import { Btn, Dialog, EmptyState, IconBtn, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
@@ -263,14 +263,15 @@ function SkeletonTimeline() {
           <Skeleton w={120} h={14} r={6} style={{ marginBottom: 12 }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[1, 2].map(i => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '12px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
+              /* TRIP-343 объект 2 (канал 3): скин поверхности снят с инлайна на Card. */
+              <Card key={i} radius="md" pad="none" style={{ padding: '12px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
                 <Skeleton w={52} h={16} r={4} />
                 <Skeleton w={32} h={32} r={'var(--r-sm)'} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <Skeleton w="60%" h={13} r={4} />
                   <Skeleton w="40%" h={11} r={4} />
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -307,9 +308,9 @@ function buildDayList(startIso, endIso) {
 function StreamAnchor({ label, sub, color, icon }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '16px 0', paddingLeft: 8 }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', background: color, color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+      <Tile as="div" round style={{ '--tile': '28px', '--tile-ic': '13px', '--hl-soft': color, '--hl-ink': 'white' }}>
         <Icon name={icon} size={13} />
-      </div>
+      </Tile>
       <div>
         <div className="t-ui">{label}</div>
         {sub && <div className="muted t-meta">{sub}</div>}
@@ -1046,6 +1047,7 @@ export default function TripView() {
         />
       ) : eventDrawerOpen ? (
         <EventSourcePanel
+          tripId={tripId}
           kind={eventView.kind}
           id={eventView.id}
           warning={eventView.warning}
@@ -1100,6 +1102,12 @@ export default function TripView() {
         mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
         cities={visits.filter((v) => v.city_name)}
         onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
+        onProRefusal={() => openProUpsell({
+          mode: isOwner ? 'upgrade' : 'info',
+          feature: t('budget.title'),
+          ownerName: members.find((m) => m.user_id === trip?.created_by)?.user_full_name || '',
+          onUpgrade: openUpgrade,
+        })}
       />
     )}
     {addModal === 'docs' && (
@@ -1209,6 +1217,7 @@ export default function TripView() {
               modal (TRIP-195 keeps them on modals for now). hotel/transfer/
               activity moved to the global drawer, mounted at .trip-content below. */}
           <SourceViewLoader
+            tripId={tripId}
             kind={eventView.kind}
             id={eventView.id}
             open={serviceViewOpen}

@@ -5,61 +5,52 @@
  *
  * Auth: any authenticated user. Validates the invite token (exists, not
  * revoked, not expired), then adds the caller to the trip as an ACTIVE member
- * with the role stored on the link. Mirrors respondTripInvite's activation
- * logic. Never downgrades an existing admin to viewer.
+ * with the role stored on the link. Mirrors the accept branch of the
+ * `respond_trip_invite` RPC. Never downgrades an existing admin to viewer.
  *
  * Block list: if the user was removed from this trip by an admin
- * (trip_member_blocks), the link refuses them (reason 'blocked') UNLESS there
+ * (trip_member_blocks), the link refuses them (code 'blocked') UNLESS there
  * is a pending invite waiting for them (an admin explicitly re-invited them,
  * which lifts the block). A successful join clears any stale block.
  *
- * Returns: { ok: true, tripId, alreadyMember }
- *   reasons on failure: not_found | revoked | expired | trip_missing | blocked
+ * Stays a standalone function (token flow, no trip-scope actor), but normalized
+ * like the rest of the door: caller resolved via the shared `getRequestUser`
+ * (a real Auth outage surfaces as 503 `AUTH_UNAVAILABLE`, never a null-swallowed
+ * 401), errors emitted through the canon `jsonError` / `refusalResponse` seam.
  *
- * Self-contained (shared helpers inlined) so it deploys cleanly on its own.
+ * Returns: { ok: true, tripId, alreadyMember }
+ *   error `code` on failure: not_found | revoked | expired | trip_missing | blocked
  */
-import { withHandler } from '../_shared/http.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { jsonError, readJson, refusalResponse, withHandler } from '../_shared/http.ts';
+import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { emitTripReached2 } from '../_shared/analytics.ts';
+import { emit } from '../_shared/emit.ts';
 import { resolveRedeemRole } from './redeemRole.ts';
-
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
-
-async function getRequestUser(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return null;
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-  if (error || !user) return null;
-  return user;
-}
 
 Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    if (!user) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', corsHeaders);
 
-    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    const body = await readJson(req);
     const token = String(body.token ?? '').trim();
-    if (!token) return Response.json({ error: 'token is required' }, { status: 400, headers: corsHeaders });
+    if (!token) return jsonError(400, 'token is required', 'INVALID_INPUT', corsHeaders);
 
     const { data: link } = await supabaseAdmin
       .from('trip_invite_links').select('*').eq('token', token).maybeSingle();
 
-    if (!link) return Response.json({ error: 'invalid', reason: 'not_found' }, { status: 404, headers: corsHeaders });
-    // x-sentry-skip: an expired/revoked link is a NORMAL business outcome (users
-    // click old links), not an error — the frontend shows a designed message. Don't
-    // let withHandler alert on it (high-frequency, non-actionable noise).
-    if (link.revoked_at) return Response.json({ error: 'revoked', reason: 'revoked' }, { status: 410, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
+    if (!link) return jsonError(404, 'invalid', 'not_found', corsHeaders);
+    // sentrySkip: an expired/revoked link is a NORMAL business outcome (users
+    // click old links), not an error — the frontend shows a designed message.
+    // `refusalResponse` sets `x-sentry-skip` so withHandler stays silent
+    // (high-frequency, non-actionable noise).
+    if (link.revoked_at) return refusalResponse({ status: 410, code: 'revoked', message: 'revoked', sentrySkip: true }, corsHeaders);
     if (new Date(link.expires_at).getTime() < Date.now()) {
-      return Response.json({ error: 'expired', reason: 'expired' }, { status: 410, headers: { ...corsHeaders, 'x-sentry-skip': '1' } });
+      return refusalResponse({ status: 410, code: 'expired', message: 'expired', sentrySkip: true }, corsHeaders);
     }
 
     const { data: trip } = await supabaseAdmin
-      .from('trips').select('id, title, created_by').eq('id', link.trip_id).maybeSingle();
-    if (!trip) return Response.json({ error: 'Trip not found', reason: 'trip_missing' }, { status: 404, headers: corsHeaders });
+      .from('trips').select('id, created_by').eq('id', link.trip_id).maybeSingle();
+    if (!trip) return jsonError(404, 'Trip not found', 'trip_missing', corsHeaders);
 
     // Owner already has full access.
     if (trip.created_by === user.id) {
@@ -94,7 +85,7 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
         .from('trip_member_blocks')
         .select('user_id').eq('trip_id', trip.id).eq('user_id', user.id).maybeSingle();
       if (block) {
-        return Response.json({ error: 'blocked', reason: 'blocked' }, { status: 403, headers: corsHeaders });
+        return jsonError(403, 'blocked', 'blocked', corsHeaders);
       }
     }
 
@@ -131,24 +122,9 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     // North Star: did this join make the trip collaborative (owner + 1st member = 2)?
     await emitTripReached2(supabaseAdmin, trip.id, user.id);
 
-    // Best-effort: notify the trip owner that someone joined.
+    // TRIP-356: announce the join; n8n notifies the trip owner.
     if (trip.created_by && trip.created_by !== user.id) {
-      try {
-        await supabaseAdmin.from('notifications').insert({
-          user_id: trip.created_by,
-          type: 'trip_member_joined',
-          i18n_title_key: 'notif.tpl_joined_title',
-          i18n_message_key: 'notif.tpl_joined_msg',
-          i18n_params: { name: callerName, trip: trip.title },
-          title: 'New member joined',
-          message: `${callerName} joined \"${trip.title}\"`,
-          trip_id: trip.id,
-          read: false,
-          created_by: user.id,
-        });
-      } catch (e) {
-        console.error('join notification failed (non-fatal):', e);
-      }
+      emit('invite_accepted', { trip_id: trip.id, recipient_id: trip.created_by, actor_id: user.id });
     }
 
     return Response.json({ ok: true, tripId: trip.id, alreadyMember: false }, { headers: corsHeaders });

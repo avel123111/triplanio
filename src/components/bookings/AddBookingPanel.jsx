@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, FileText, BedDouble, Plane, Ticket } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-import { IconBtn, Seg } from '@/design/index';
+import { IconBtn, Seg, Tile } from '@/design/index';
 import { eventHeader } from '@/components/common/EventViewBody';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -55,7 +55,7 @@ export default function AddBookingPanel({
     <div className="lp lp--wide abp" style={{ '--hl': meta.color, '--hl-soft': meta.soft, '--hl-ink': meta.color }}>
       {/* Shared contextual header (× closes the panel). */}
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic"><HeaderIcon size={18} /></span>
+        <Tile as="span" className="lp-ic"><HeaderIcon size={18} /></Tile>
         <div className="lp-ti">
           <div className="eyebrow">{eyebrow}</div>
           <div className="lp-tirow">
