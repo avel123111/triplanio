@@ -115,6 +115,8 @@ export default function DateTimeInput({
   // пропадало; через этот же канал едет состояние валидации
   // (`{...fieldState(...)}`), TRIP-333.
   const isCell = variant === 'cell';
+  // TRIP-391 объект 1 → объект 5: поле-триггер date-picker'а — облик поля (.input/.sd-cell),
+  // открывает пикер даты, не кнопка-примитив.
   const trigger = (
     <button
       type="button"

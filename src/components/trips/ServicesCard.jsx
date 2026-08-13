@@ -47,6 +47,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
           {/* Booked services — Lumo .bookrow */}
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
+            // TRIP-391 объект 1 → объект 6: .bookrow — clickable РЯД сервиса (.row), не кнопка-примитив.
             return (
               <button key={s.id} className="row bookrow" onClick={() => onOpenService?.(s)}>
                 <span className="bi" style={{ background: meta?.soft || 'var(--brand-soft)', color: meta?.color || 'var(--brand)' }}>

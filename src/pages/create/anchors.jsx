@@ -96,6 +96,8 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
           {city?.country && <span className="muted t-meta">{city.country}</span>}
         </div>
       </div>
+      {/* TRIP-391 объект 1: .te-step — КОНТРОЛ степпера маршрута (удалить точку),
+          не кнопка-примитив. */}
       {editable && hasCity && (
         <button type="button" className="te-step te-step--del" onClick={() => onPick(null)} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
       )}

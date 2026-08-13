@@ -892,6 +892,8 @@ function EventActions({ bookingUrl, mapAddress, platformLabel, platformLogo }) {
           <ExternalLink />
         </a>
       )}
+      {/* TRIP-391 объект 1: .bk-link — контрол-ссылка (ко-селектор 425), открывает карту;
+          контрол/чип, не кнопка-примитив. */}
       {mapAddress && (
         <button
           type="button"

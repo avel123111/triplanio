@@ -133,6 +133,8 @@ function GroupedRow({ row, isCity, trips, t, lang, onOpenTrip, onEditManual }) {
               <i className="dot" style={{ background: color }} />{t(`stats.type_${type}`)}
             </span>
           )}
+          {/* TRIP-391 объект 1 → объект 4: .triplink — чип-ссылка (открыть/редактировать
+              трип), в реестре чипов, не кнопка-примитив. Обе ветки (open + edit). */}
           {!isManual && trip ? (
             <button type="button" className="triplink" onClick={() => onOpenTrip?.(row.trip_id)}>
               <TripDot trip={trip} />

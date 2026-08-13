@@ -43,6 +43,7 @@ function GhostAdd({ icon, label, sub, accent, onClick }) {
 function BookRow({ tone = 'hotel', icon, title, sub, warn, onClick }) {
   const bg = warn ? 'var(--warning-soft)' : `var(--ev-${tone}-soft)`;
   const fg = warn ? 'var(--warning-ink)' : `var(--ev-${tone}-ink)`;
+  // TRIP-391 объект 1 → объект 6: .bookrow — clickable РЯД брони (.row), не кнопка-примитив.
   return (
     <button className="row bookrow" onClick={onClick}>
       <span className="bi" style={{ background: bg, color: fg }}><Icon name={icon} size={18} /></span>

@@ -23,6 +23,8 @@ export default function StartCalendar({ value, onPick, lang = 'ru', withTime = f
   return (
     <div className="ts-cal">
       <div className="ts-cal__head">
+        {/* TRIP-391 объект 1: .ts-step — КОНТРОЛ степпера календаря (‹ › смена месяца),
+            не кнопка-примитив. Обе стрелки. */}
         <button type="button" className="ts-step" onClick={() => setView(view.minus({ months: 1 }))} aria-label="←"><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
         <span className="ts-cal__title">{view.setLocale(lang).toFormat('LLLL yyyy')}</span>
         <button type="button" className="ts-step" onClick={() => setView(view.plus({ months: 1 }))} aria-label="→"><Icon name="chev" size={13} /></button>
@@ -33,6 +35,8 @@ export default function StartCalendar({ value, onPick, lang = 'ru', withTime = f
         ))}
       </div>
       <div className="ts-cal__grid">
+        {/* TRIP-391 объект 1: .ts-cal__day — ДЕНЬ календаря (объект «календарь»/пикер),
+            выбор даты, не кнопка-примитив. */}
         {cells.map((d, i) => (d === null
           ? <span key={`e${i}`} />
           : <button
