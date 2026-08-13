@@ -576,6 +576,26 @@ const RECIPES = {
         it('children (число вместо иконки)', <Tile tone="quiet" round>3</Tile>),
       ],
     },
+    {
+      // TRIP-391 объект 3: остатки семей плитки, что НЕ сводятся к плоскому <Tile>
+      // (рамка / состояние / контрол / аватар / градиент-глубина). Причины —
+      // surface-registry.json _tileFamilyResidual. Показаны здесь, чтобы каждый
+      // индивидуальный/уникальный элемент был виден в витрине, а не терялся.
+      label: 'вне канона <Tile> — осознанные остатки семей (рамка/состояние/контрол/аватар; не плоская плитка)',
+      items: [
+        it('.fork-si (рич-медальон: градиент+рамка+glow+угловой spark)', (
+          <Card raised className="fork-state fork-state--nomatch">
+            <div className="fork-state__art">
+              <span className="fork-state__glow" aria-hidden="true" />
+              <span className="fork-si"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M5 21V7l7-4 7 4v14" /></svg><span className="fork-state__spark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg></span></span>
+            </div>
+          </Card>
+        )),
+        it('.map-route__marker (pill + рамка 2px + состояние is-active)', <span className="map-route__marker"><span className="num t-meta">3</span></span>),
+        it('.te-step (степпер-контрол, дом <IconBtn>)', <button type="button" className="te-step te-step--del"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg></button>),
+        it('.acct-hero__av (аватар, дом <Avatar> — bg-image/градиент)', <div className="acct-hero__av" style={{ background: 'linear-gradient(135deg, var(--brand), var(--ai))' }} />),
+      ],
+    },
   ],
 
   spin: (ctx) => [{
