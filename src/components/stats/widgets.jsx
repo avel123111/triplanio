@@ -49,7 +49,7 @@ export function WorldMini({ world, title, subCaption }) {
   const C = 2 * Math.PI * R;
   const frac = world.total ? Math.min(1, world.visited / world.total) : 0;
   return (
-    <div className="wmini">
+    <Card className="wmini">
       <div className="top">
         <div className="wring" style={{ width: 108, height: 108 }}>
           <svg viewBox="0 0 108 108" width="108" height="108">
@@ -68,7 +68,7 @@ export function WorldMini({ world, title, subCaption }) {
           <div className="t-meta muted" style={{ marginTop: 8 }}>{subCaption}</div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 

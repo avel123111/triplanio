@@ -24,8 +24,10 @@ import { runInBackground } from './http.ts';
 import { signN8nJwt } from './n8nAuth.ts';
 import { captureEdgeError } from './sentry.ts';
 
-// n8n receiver for backend communication events (§1).
-const N8N_NOTIFY_URL = 'https://n8n-production-d1214.up.railway.app/webhook/notify';
+// n8n receiver base for backend communication events; the event name is the
+// last path segment, e.g. .../webhook/notify/invite_created (§1). One webhook
+// per event in n8n — no Switch, the URL routes.
+const N8N_NOTIFY_BASE = 'https://n8n-production-d1214.up.railway.app/webhook/notify';
 
 /** Id-only slots (§2). Every field optional; the backend fills only what applies. */
 export type EmitIds = {
@@ -61,7 +63,7 @@ async function deliver(event: string, ids: EmitIds): Promise<void> {
     }
     const body = buildEnvelope(event, ids);
     const jwt = await signN8nJwt(secret);
-    const res = await fetch(N8N_NOTIFY_URL, {
+    const res = await fetch(`${N8N_NOTIFY_BASE}/${encodeURIComponent(event)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
       body: JSON.stringify(body),

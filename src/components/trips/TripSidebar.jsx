@@ -146,24 +146,25 @@ function SidebarSheetBody({
     <>
       <div className="tm-grid">
         {lensItems.map((item) => (
-          <button
+          <Card
+            as="button"
             key={item.id}
             className={'tm-cell' + (lens === item.id ? ' is-active' : '')}
             onClick={() => onNavigate(item.id)}
-            aria-current={lens === item.id ? 'page' : undefined}
+            ariaCurrent={lens === item.id ? 'page' : undefined}
           >
             <span className="tm-cell__ico"><Icon name={item.icon} size={18} /></span>
             <span className="tm-cell__lbl t-label">{t(item.labelKey)}</span>
             {item.id === 'chat' && chatUnread > 0 && (
               <span className="tm-cell__badge t-meta">{chatUnread > 99 ? '99+' : chatUnread}</span>
             )}
-          </button>
+          </Card>
         ))}
       </div>
       {manageRows.length > 0 && (
         <>
           <div className="app-side__group-label tm-caption">{t('trip_menu.section_manage')}</div>
-          <div className="tm-manage">
+          <Card pad="none" className="tm-manage">
             {manageRows.map((row) => (
               <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
                 <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>
@@ -171,19 +172,19 @@ function SidebarSheetBody({
                 <Icon name="chevron" size={16} className="tm-manage__chev" />
               </button>
             ))}
-          </div>
+          </Card>
         </>
       )}
       {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
       {onAccount && (
-        <button className="tm-account" onClick={onAccount}>
+        <Card as="button" className="tm-account" onClick={onAccount}>
           <Avatar name={accountName} photo={user?.avatar_url} size="sm" />
           <span className="tm-account__txt">
             <span className="tm-account__name t-label">{t('nav.account')}</span>
             <span className="tm-account__sub t-meta">{accountName}</span>
           </span>
           <Icon name="chevron" size={16} className="tm-manage__chev" />
-        </button>
+        </Card>
       )}
     </>
   );

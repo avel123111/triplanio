@@ -139,7 +139,35 @@ test('рост инлайн-плиток против base → красный (T
   assert.match(r.out, /инлайн-плит/i);
 });
 
+test('ко-селектор скин (фон+рамка общим правилом, радиус отдельно) незанесён → красный (TRIP-337 объект 2 замок)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': reg({}),
+      // фон+рамку несёт ОБЩЕЕ (много-классовое) правило, радиус — отдельным:
+      // per-rule предикат такое НЕ ловит, ко-селекторный замок ОБЯЗАН.
+      'src/a.css': '.foo-card, .bar-card { background: var(--surface); border: 1px solid var(--line); }\n.foo-card { border-radius: 16px; }',
+    },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /foo-card/);
+});
+
 /* ── зелёное ─────────────────────────────────────────────────────────────── */
+
+test('тот же ко-селектор скин, но занесён причиной → зелёный (TRIP-337 объект 2)', (t) => {
+  const f = fixture(t, {
+    base: {
+      'scripts/ci/surface-registry.json': reg({
+        'foo-card': { object: 'card-backlog', reason: 'на общем скине, ждёт <Card>' },
+        'bar-card': { object: 'card-backlog', reason: 'на общем скине, ждёт <Card>' },
+      }),
+      'src/a.css': '.foo-card, .bar-card { background: var(--surface); border: 1px solid var(--line); }\n.foo-card { border-radius: 16px; }\n.bar-card { border-radius: 16px; }',
+    },
+  });
+  assert.equal(run(f).code, 0, run(f).out);
+});
+
 
 test('тот же tile-homed класс НА <Tile> → зелёный (TRIP-391 объект 3)', (t) => {
   const f = fixture(t, {

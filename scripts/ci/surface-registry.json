@@ -1,5 +1,5 @@
 {
-  "_note": "Г34 (TRIP-343, объект 2). Реестр полноты поверхностей: КАЖДЫЙ .css surface-класс (предикат аудита §5: радиус+фон+рамка/тень, кроме плиток) обязан быть здесь. object:\"card\" = скин несёт примитив <Card>. object:<имя>+reason = законная не-Card поверхность другого объекта. object:\"card-backlog\" = карточка, ещё на приватном скине, ждёт пересадки на <Card> (это и есть остаток объекта 2, видимый числом). Гард 2z check-surface-registry.mjs: незанесённый класс или устаревшая запись роняют PR.",
+  "_note": "Г34 (TRIP-343, объект 2). Реестр полноты поверхностей: КАЖДЫЙ .css surface-класс (предикат аудита §5: радиус+фон+рамка/тень, кроме плиток) обязан быть здесь. object:\"card\" = скин несёт примитив <Card>. object:<имя>+reason = законная не-Card поверхность другого объекта. Настоящие карточки несут скин примитивом <Card> (список cardHomed) — остаток объекта 2 сведён к нулю. Гард 2z check-surface-registry.mjs: незанесённый класс или устаревшая запись роняют PR.",
   "_cardHomedNote": "card-homed = приватный класс-остаток, чей СКИН переехал на <Card> (сам класс несёт только раскладку). Такой класс ОБЯЗАН рендериться внутри <Card>: сырой host-тег (<button>/<div>/<a>) с этим className мимо <Card> = поверхность потеряна МОЛЧА (баг трансфера F). AST-скан гарда 2z ловит это — три .css/<style>/inline-скан-режима такого не видят по построению.",
   "cardHomed": [
     "tl3-card", "records", "choice-card", "pcard", "fork-manual", "fork-partner", "ov-mapcard",
@@ -7,12 +7,15 @@
     "acc", "acct-chan", "acct-hero", "addon-card", "ai-blk", "cdu", "dz-lift-card", "eed-fcbox",
     "eed-nightrow", "empty-note", "ev-sec", "fork-state", "hv-card", "hv-namecard", "hv-rows",
     "invite", "limitcard", "nextcard", "nonext", "pl-lastcard", "pro-up", "statbar", "summary",
-    "te-end", "tr", "tv-card", "wdg"
+    "te-end", "tr", "tv-card", "wdg",
+    "wmini", "chat-reply__card", "plan-card", "plan-card-skel", "pro-trip-bar",
+    "tm-manage", "tm-account", "tm-cell", "eroute", "s22f-panel", "hv-notes"
   ],
   "_tileHomedNote": "TRIP-391 объект 3 (плитка). tile-homed = приватный класс-остаток, чей СКИН квадрата-иконки уехал на примитив <Tile> (сам класс несёт только раскладку/канал --hl). Такой класс ОБЯЗАН рендериться внутри <Tile>: сырой host-тег (<div>/<span>) с этим className мимо <Tile> = плитка потеряна МОЛЧА (та же дыра, что облысила трансфер-карточку в объекте 2). AST-скан гарда 2z ловит это; три .css/<style>/inline-режима такого не видят по построению.",
   "tileHomed": [
     "dl-empty__ic", "dl-addcard__ic"
   ],
+  "_coSelectorNote": "TRIP-337 объект 2 дозакрытие: члены ко-селектора app.css:425 (и родственных 509/515) — фон+рамку несёт ОБЩЕЕ правило, радиус отдельным, поэтому предикат radius+bg+border-в-одном-правиле их не видел (слепое пятно, «закрыто но живо»). Замок 2z coSelectorSurfaceClasses теперь их ловит; каждый обязан быть в classes или cardHomed. Настоящие карточки сведены на <Card> (cardHomed), не-карточки приписаны объектом с причиной — остаток объекта 2 = 0.",
   "classes": {
     "card--locked": { "object": "card", "reason": "канон <Card> — модификатор locked (Pro-гейт ai)" },
     "card--parsed": { "object": "card", "reason": "канон <Card> — модификатор parsed (ai success)" },
@@ -85,6 +88,38 @@
     "bgt-glist__row": { "object": "6", "reason": "строка-список бюджета (*-row) — объект 6 (лист/строка), НЕ карточка" },
     "chat-mention__row": { "object": "6", "reason": "строка-список упоминаний чата (*-row) — объект 6 (лист/строка), НЕ карточка" },
     "chat-thinking": { "object": "6", "reason": "пилюля «Triplanio печатает» (r-pill) — объект 6 (чат), НЕ карточка" },
-    "vrow": { "object": "6", "reason": "строка-список (*-row) — объект 6 (лист/строка), НЕ карточка" }
+    "vrow": { "object": "6", "reason": "строка-список (*-row) — объект 6 (лист/строка), НЕ карточка" },
+
+    "card": { "object": "card", "reason": "канон <Card> — базовый surface-класс, скин ко-селектора 425 = скин примитива" },
+    "s22f-gcard": { "object": "6", "reason": "строка галереи отеля Stay22 (field-role: --line-strong, --r-btn, dark --bg, flex space-between) — объект 6 (лист/строка-контрол), НЕ контент-карточка; ко-селектор 509" },
+
+    "dlg": { "object": "overlay", "reason": "диалог — объект 6 (оболочка), рамку берёт из ко-селектора 425" },
+    "toast": { "object": "overlay", "reason": "тост — объект 6 (оболочка)" },
+    "dock-panel": { "object": "overlay", "reason": "док-панель — объект 6 (оболочка)" },
+    "bell-dd-pop": { "object": "overlay", "reason": "поповер колокольчика — объект 6 (оболочка)" },
+    "chat-mention": { "object": "overlay", "reason": "поповер упоминаний чата — объект 6 (оболочка)" },
+    "consent": { "object": "overlay", "reason": "плашка согласия cookie — объект 6 (оболочка)" },
+
+    "nrow": { "object": "6", "reason": "строка уведомления (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "mbrow": { "object": "6", "reason": "строка участника (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "bookrow": { "object": "6", "reason": "строка брони (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "doc-row": { "object": "6", "reason": "строка документа (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "addsheet__row": { "object": "6", "reason": "строка листа добавления (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "te-row": { "object": "6", "reason": "строка редактора маршрута (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "te-row--plan": { "object": "6", "reason": "строка плана редактора маршрута (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "acct-tgrow": { "object": "6", "reason": "строка Telegram-канала аккаунта (*-row) — объект 6 (лист/строка), НЕ карточка" },
+    "bgt-exrow": { "object": "6", "reason": "строка расхода бюджета (*-row) — объект 6 (лист/строка), НЕ карточка" },
+
+    "cbadge": { "object": "control", "reason": "счётчик-бейдж на контроле — объект «контрол»" },
+    "ts-startctl": { "object": "control", "reason": "контрол даты старта — объект «контрол»" },
+    "bk-link": { "object": "control", "reason": "чип-ссылка брони — объект «контрол» (bk-link, ко-селектор 425)" },
+    "map-ctl": { "object": "control", "reason": "контейнер-плашка контролов карты — объект «контрол» (кнопки внутри quiet)" },
+    "icon-btn": { "object": "control", "reason": "кнопка-иконка — объект «контрол» (родственный ко-селектор фон+рамка+радиус)" },
+    "lp-stepper": { "object": "control", "reason": "степпер (ко-селектор 509) — объект «контрол»" },
+    "s22f-sel": { "object": "control", "reason": "селект форк-листа Stay22 (ко-селектор 509) — объект «контрол»" },
+    "hv-plat": { "object": "badge", "reason": "пилюля партнёра отеля (r-pill, ко-селектор 515) — объект «чип/бейдж», НЕ карточка" },
+
+    "ncal-wdc": { "object": "calendar", "reason": "ячейка дня недели календаря — объект «календарь»" },
+    "c": { "object": "map", "reason": "образец цвета легенды карты (.map-legend .c) — объект «карта»" }
   }
 }
