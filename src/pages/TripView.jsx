@@ -18,7 +18,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
@@ -308,9 +308,9 @@ function buildDayList(startIso, endIso) {
 function StreamAnchor({ label, sub, color, icon }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '16px 0', paddingLeft: 8 }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', background: color, color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+      <Tile as="div" round style={{ '--tile': '28px', '--tile-ic': '13px', '--hl-soft': color, '--hl-ink': 'white' }}>
         <Icon name={icon} size={13} />
-      </div>
+      </Tile>
       <div>
         <div className="t-ui">{label}</div>
         {sub && <div className="muted t-meta">{sub}</div>}

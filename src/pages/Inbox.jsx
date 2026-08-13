@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton, EmptyState, Chip } from '../design/index';
+import { Btn, Badge, Skeleton, EmptyState, Chip, Tile } from '../design/index';
 import AppHeader from '@/components/AppHeader';
 import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
 import { useQueryGate } from '@/lib/useQueryGate';
@@ -185,13 +185,9 @@ function InboxEmpty({ onCollection }) {
                   borderBottom: i < rows.length - 1 ? '1px solid var(--line)' : 'none',
                 }}
               >
-                <span style={{
-                  width: 34, height: 34, borderRadius: 'var(--r-sm)', flex: 'none',
-                  background: 'var(--brand-soft)', color: 'var(--brand)',
-                  display: 'grid', placeItems: 'center',
-                }}>
+                <Tile as="span">
                   <Icon name={r.icon} size={16} />
-                </span>
+                </Tile>
                 <span style={{ textAlign: 'left' }}>
                   <div className="t-ui" style={{ color: 'var(--ink-2)' }}>{r.title}</div>
                   <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 1 }}>{r.sub}</div>
