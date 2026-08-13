@@ -47,6 +47,7 @@ const TX = {
   title: 'Витрина дизайн-системы',
   lead: 'Тот же код, что и в приложении: /kit импортирует @/design. Один объект — одна страница; образцы генерируются из карт вариантов компонентов и из живых стилей.',
   canon: 'канон', triage: 'на разборе', unknown: 'нет в каталоге',
+  canonsLabel: '10 канонов', modsLabel: 'модификаторы (комбинируются с каноном)',
   back: '← все объекты',
   theme: 'Тема', themeLight: 'светлая', themeDark: 'тёмная',
   groups: {
@@ -721,9 +722,18 @@ function SpacingSection({ ctx }) {
 }
 
 const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-ui', 't-meta', 't-micro', 't-mono'];
+/* Санкционированные орто-модификаторы канона (TRIP-410): комбинируются с любым
+   каноном, НЕ каноны сами по себе. `.t-sans` удалён (мета-ярус — Geologica).
+   `base` — канон, на котором эффект модификатора виден нагляднее. */
+const TYPE_MODS = [
+  { cls: 't-strong', base: 't-body', sample: 'Съешь ещё · Sphinx of black quartz' },
+  { cls: 't-flush', base: 't-display', sample: '0123456789' },
+  { cls: 'tp-caption', base: 't-mono', sample: 'caption · эйбрау' },
+];
 function TypographySection() {
   return (
     <div className="col col--g6">
+      <span className="t-micro">{TX.canonsLabel}</span>
       {TYPE_CANONS.map((cls) => (
         <div key={cls} className="col col--g2">
           <div className="row row--g3 row--j-center">
@@ -731,6 +741,13 @@ function TypographySection() {
             <StatusTag cls={cls} />
           </div>
           <span className={cls}>{TX.sample}</span>
+        </div>
+      ))}
+      <span className="t-micro">{TX.modsLabel}</span>
+      {TYPE_MODS.map(({ cls, base, sample }) => (
+        <div key={cls} className="col col--g2">
+          <span className="t-mono trunc">{`.${base}.${cls}`}</span>
+          <span className={`${base} ${cls}`}>{sample}</span>
         </div>
       ))}
     </div>

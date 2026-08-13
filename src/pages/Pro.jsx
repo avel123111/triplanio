@@ -330,7 +330,7 @@ export default function Pro() {
             </span>
             <div style={{ flex: 1, minWidth: 220 }}>
               <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
-              <div className="t-meta t-sans" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
+              <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>
             </div>
             <div className="pro-trip-bar__actions">
               <span className="t-title" style={{ color: 'var(--ink)' }}>{tripPrice}</span>
