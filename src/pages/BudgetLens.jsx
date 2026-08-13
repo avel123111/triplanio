@@ -144,7 +144,7 @@ function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
         {/* TRIP-225: центр кольца — компактный формат (₽1,3 млн), переиспуем общий
             fmtMoneyActive({compact}); детализация/легенда ниже остаются полными. */}
         <span className="v">{fmtMoneyActive(total, mainCurrency, { compact: true })}</span>
-        <span className="l">{centerLabel}</span>
+        <span className="l muted">{centerLabel}</span>
       </div>
     </div>
   );
@@ -539,7 +539,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
       </div>
       <div className="grow--fit">
         <div className="bgt-exrow__t trunc">{expense.title || '-'}</div>
-        <div className="bgt-exrow__s row row--g4 row--wrap">
+        <div className="bgt-exrow__s row row--g4 row--wrap muted">
           {mode === 'city' && catName && <span className="badge badge--xs bgt-tagx--cat">{catName}</span>}
           {mode !== 'city' && cityName && <span>{cityName}</span>}
           {dateStr && <><span className="sep" />{dateStr}</>}
@@ -768,7 +768,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                     <span className="bgt-dleg__d" style={{ background: s.color }} />
                     <span className="bgt-dleg__n grow--fit trunc">{s.name}</span>
                     <span className="bgt-dleg__v">{money(s.value, mainCurrency)}</span>
-                    <span className="bgt-dleg__p">{pct}%</span>
+                    <span className="bgt-dleg__p muted-2">{pct}%</span>
                   </div>
                 );
               })}
@@ -781,9 +781,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <div className="card bgt-stat bgt-stat--total row row--g7">
             <div className="bgt-stat__ic tile tile--xl"><Icon name="wallet" size={21} /></div>
             <div className="grow--fit">
-              <div className="bgt-stat__l">{t('budget.total_spent')}</div>
+              <div className="muted">{t('budget.total_spent')}</div>
               <div className="bgt-stat__v">{money(totalSpent, mainCurrency)}</div>
-              <div className="bgt-stat__s">
+              <div className="bgt-stat__s muted">
                 {noExpenses ? t('trip.budget_empty')
                   : <>{budgetExpenses.length} {expensesPlural(budgetExpenses.length)}{missingTotal > 0 && <> · {t('budget.no_rate_count', { n: missingTotal })}</>}</>}
               </div>
@@ -794,9 +794,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <div className="card bgt-stat bgt-stat--ppl row row--g7">
             <div className="bgt-stat__ic tile tile--xl"><Icon name="user" size={21} /></div>
             <div className="grow--fit">
-              <div className="bgt-stat__l">{t('budget.per_person_label')}</div>
+              <div className="muted">{t('budget.per_person_label')}</div>
               <div className="bgt-stat__v">{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
-              <div className="bgt-stat__s">
+              <div className="bgt-stat__s muted">
                 <b>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')}</b> · {t('budget.split_evenly')}
               </div>
             </div>
@@ -806,9 +806,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <button type="button" className="card bgt-stat bgt-stat--fx row row--g7" onClick={readOnly ? undefined : openFxDialog}>
             <div className="bgt-stat__ic tile tile--xl"><Icon name="arrowSwap" size={21} /></div>
             <div className="grow--fit">
-              <div className="bgt-stat__l">{t('budget.fx_button')}</div>
+              <div className="muted">{t('budget.fx_button')}</div>
               {foreignCurrencies.length === 0 ? (
-                <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_empty')}</div>
+                <div className="bgt-stat__s muted" style={{ marginTop: 4 }}>{t('budget.fx_empty')}</div>
               ) : (
                 <>
                   <div className="bgt-fxlist row row--wrap">
@@ -820,7 +820,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                         : <span key={cur} className="miss">1 {cur} — {t('budget.fx_rate_unset')}</span>;
                     })}
                   </div>
-                  {!readOnly && <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_tap_edit')}</div>}
+                  {!readOnly && <div className="bgt-stat__s muted" style={{ marginTop: 4 }}>{t('budget.fx_tap_edit')}</div>}
                 </>
               )}
             </div>
@@ -886,7 +886,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                       <span className="t trunc">{c.displayName}</span>
                       {c.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
                     </span>
-                    <span className="bgt-glist__c">
+                    <span className="bgt-glist__c muted">
                       {empty ? t('budget.empty_word') : `${c.itemCount} ${expensesPlural(c.itemCount)}`}
                       {c.missingCount > 0 && <> · <span className="miss">{t('budget.no_rate_count', { n: c.missingCount })}</span></>}
                     </span>
@@ -914,15 +914,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   <Icon name={catIcon(activeCat)} size={22} />
                 </div>
                 <div className="grow--fit">
-                  <div className="bgt-detail__n row row--g4">
+                  <div className="row row--g4">
                     {activeCat.displayName}
                     {activeCat.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
                   </div>
-                  <div className="bgt-detail__s">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
+                  <div className="bgt-detail__s muted">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
                 </div>
                 <div className="bgt-detail__amt">
                   <div className="v">{money(activeCat.spent, mainCurrency)}</div>
-                  <div className="l">{t('budget.spent_label')}</div>
+                  <div className="l muted">{t('budget.spent_label')}</div>
                 </div>
               </div>
               {activeCat.kind === 'custom' && !readOnly && (
@@ -1005,7 +1005,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
             <Icon name="pin" size={22} />
           </div>
           <div className="grow--fit">
-            <div className="bgt-detail__n row row--g4">{cityLabel(cur)}</div>
+            <div className="row row--g4">{cityLabel(cur)}</div>
             <div className="bgt-detail__s">{cur.items.length} {expensesPlural(cur.items.length)}</div>
           </div>
           <div className="bgt-detail__amt">
