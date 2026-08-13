@@ -44,9 +44,9 @@ import { AFTER_WRITE } from './mutateEffects.ts';
 // ИНВАРИАНТ №7 (fail-fast на загрузке): ни одно действие с `requires:[]` и записью
 // не смеет быть без `loadTarget`+`guardRow` (дверь без замка). Ловит опечатку до
 // первого запроса — весь seam-деплой падает, а не молча пускает запись без auth.
-const _rowSelfViolations = findUnguardedRowSelf();
-if (_rowSelfViolations.length) {
-  throw new Error(`mutate: инвариант №7 нарушен:\n  ${_rowSelfViolations.join('\n  ')}`);
+const rowSelfViolations = findUnguardedRowSelf();
+if (rowSelfViolations.length) {
+  throw new Error(`mutate: инвариант №7 нарушен:\n  ${rowSelfViolations.join('\n  ')}`);
 }
 
 /**
