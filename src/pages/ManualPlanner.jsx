@@ -293,7 +293,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
           title={t('planner.suggest_nearby')}
           action={<Btn variant="primary" onClick={requestGeo}>{t('planner.allow')}</Btn>}
         >
-          <div className="muted t-meta t-sans">{t('planner.geo_hint')}</div>
+          <div className="muted t-meta">{t('planner.geo_hint')}</div>
         </Severity>
       )}
 
@@ -324,7 +324,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
                 </div>
                 <div className="grow--fit">
                   <div className="t-subheading">{c.city_name}</div>
-                  <div className="muted t-meta t-sans"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
+                  <div className="muted t-meta"><CountryFlag code={c.country_code} /> {c.country} · {distLabel}</div>
                 </div>
                 {selected && (
                   <span className="tile tile--sm tile--solid tile--brand tile--round">
@@ -345,7 +345,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
           title={t('planner.geo_off')}
           action={<Btn variant="secondary" onClick={requestGeo}>{t('planner.retry_request')}</Btn>}
         >
-          <div className="muted t-meta t-sans">{t('planner.geo_off_hint')}</div>
+          <div className="muted t-meta">{t('planner.geo_off_hint')}</div>
         </Severity>
       )}
 
@@ -490,7 +490,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
               </div>
               <div className="t-subheading">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
             </div>
-            <div className="muted t-meta t-sans">
+            <div className="muted t-meta">
               {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
             </div>
           </Card>
@@ -509,7 +509,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             </div>
             <div className="t-subheading">{t('planner.return_other')}</div>
           </div>
-          <div className="muted t-meta t-sans">
+          <div className="muted t-meta">
             {t('planner.return_other_desc')}
           </div>
         </Card>

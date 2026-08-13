@@ -1,5 +1,6 @@
-// TRIP-165/183 · Canon inspector — canon registry + live detection.
-// TRIP-183: каноны «Экзо» (см. mockup-имена + поканонные CANON_MODS ниже); числа пробятся из app.css.
+// TRIP-165/410 · Canon inspector — canon registry + live detection.
+// TRIP-410 V2: система Geologica (single-font). 10 канонов + РОВНО три санкц. модификатора
+// (t-strong/t-flush/tp-caption); прежние макет-имена и sans-оверлей убраны. Числа пробятся из app.css.
 //
 // The 10 typography canons are defined ONCE, in src/design/app.css (the .t-*
 // co-selector rules). This module does NOT re-hardcode their numeric specs —
@@ -14,114 +15,38 @@
 //
 // Only the human-facing labels/roles live here (the tool's own copy).
 
-// `mockup` — имя стиля из файла типографики «Экзо» (TRIP-183), присланного Павлом.
-// Каноны у себя мы НЕ переименовывали (наши имена = cls / name), но по именам файла
-// ориентироваться удобнее — показываем их рядом («макет: …»). Гарнитуры те же
-// (Exo 2 / Golos Text / JetBrains Mono); TRIP-183 переставил параметры и перевёл
-// мета-ярус (meta/label/meta-md) в моно. Числа инспектор берёт из ЖИВОГО app.css.
+// TRIP-410 · система Geologica (single-font). Один дом числовых спеков — src/design/
+// app.css (.t-* co-selector); инспектор их ПРОБИВАЕТ из живого CSS (getComputedStyle),
+// здесь только человекочитаемые роли. Все каноны на Geologica, кроме .t-mono (JetBrains
+// Mono — только коды/email/kbd; числа — Geologica tabular). Прежние макет-имена убраны.
 export const CANONS = [
-  { id: 1,  cls: 't-display',    name: 'Display',    mockup: 'hero',     role: 'Герой, 1 на экран (Exo 2)' },
-  { id: 2,  cls: 't-title',      name: 'Title',      mockup: 'h1',       role: 'Заголовок страницы (Exo 2)' },
-  { id: 3,  cls: 't-heading',    name: 'Heading',    mockup: 'h2',       role: 'Заголовок экрана / секции (Exo 2)' },
-  { id: 4,  cls: 't-subheading', name: 'Subheading', mockup: 'h3',       role: 'Заголовок панели / карточки (Exo 2)' },
-  { id: 5,  cls: 't-label',      name: 'Label',      mockup: 'title',    role: 'Кнопки, крупные лейблы (Golos 700)' },
-  { id: 6,  cls: 't-body',       name: 'Body',       mockup: 'body',     role: 'Основной текст, абзацы (Golos 400)' },
-  { id: 7,  cls: 't-ui',         name: 'UI',         mockup: 'body-med', role: 'Плотный интерфейсный текст (Golos 600)' },
-  { id: 8,  cls: 't-meta',       name: 'Meta',       mockup: 'meta',     role: 'Даты, вторичная инфо, подписи booking (JetBrains Mono 500)' },
-  { id: 9,  cls: 't-micro',      name: 'Micro',      mockup: 'label',    role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono 600, UPPER)' },
-  { id: 10, cls: 't-mono',       name: 'Mono',       mockup: 'meta-md',  role: 'Рейтинги, счётчики, коды/идентификаторы (JetBrains Mono 700)' },
-  // TRIP-183: мета-ярус (t-meta/t-micro/t-mono) — на JetBrains Mono (каноны «Экзо»).
-  // Прозаичный код/email при желании переносится .t-mono → .t-meta канон-аудитором.
+  { id: 1,  cls: 't-display',    name: 'Display',    role: 'Герой, 1 на экран · Geologica 800 tabular' },
+  { id: 2,  cls: 't-title',      name: 'Title',      role: 'Заголовок страницы · Geologica 700 tabular' },
+  { id: 3,  cls: 't-heading',    name: 'Heading',    role: 'Заголовок экрана / секции · Geologica 700 tabular' },
+  { id: 4,  cls: 't-subheading', name: 'Subheading', role: 'Заголовок панели / карточки · Geologica 600' },
+  { id: 5,  cls: 't-label',      name: 'Label',      role: 'Кнопки, крупные лейблы · Geologica 13/600' },
+  { id: 6,  cls: 't-body',       name: 'Body',       role: 'Основной текст, абзацы · Geologica 400' },
+  { id: 7,  cls: 't-ui',         name: 'UI',         role: 'Плотный интерфейсный текст · алиас .t-label (13/600)' },
+  { id: 8,  cls: 't-meta',       name: 'Meta',       role: 'Даты/времена, вторичная инфо · Geologica 500 tabular' },
+  { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, эйбрау · Geologica 700 UPPER' },
+  { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Коды/брони/рейсы/полисы/email/kbd · JetBrains Mono 13/500' },
 ];
 
-// Поканонные МОДИФИКАТОРЫ из присланного файла типографики «Экзо» (TRIP-183).
-// В файле у каждого канона свой набор вариантов применения (цвет .c-*, компаньоны
-// .t-mono/.u-ell, капс/трекинг). Здесь они переключаются в инспекторе как эфемерное
-// превью на выбранном элементе (в worklist НЕ сохраняются; цвет сохраняется отдельной
-// осью «Цвет текста»). Ключ = id канона. css = дельта поверх базового канона; цвета
-// .c-* смаплены на наши токены (c-text→--ink, c-dim→--ink-2, c-mute→--muted, c-acc→--brand).
-const PILL_ON  = { color: 'var(--brand)', background: 'var(--brand-soft)', padding: '4px 11px', borderRadius: 'var(--r-pill)', display: 'inline-block' };
-const PILL_OFF = { color: 'var(--muted)', border: '1px dashed var(--line-strong)', padding: '4px 11px', borderRadius: 'var(--r-pill)', display: 'inline-block' };
-const CAPS     = { textTransform: 'uppercase', letterSpacing: '0.2em' };
-export const CANON_MODS = {
-  1: [ // t-display ← hero
-    { label: '.c-text · заголовок страницы',       css: { color: 'var(--ink)' } },
-    { label: '.c-acc · акцент-спан в hero',         css: { color: 'var(--brand)' } },
-  ],
-  2: [ // t-title ← h1
-    { label: '.c-text · экран/drawer/модалка',      css: { color: 'var(--ink)' } },
-    { label: '#fff · на градиентной обложке',       css: { color: '#fff', background: 'linear-gradient(135deg,#FF7A59,#FF2D78)', padding: '4px 12px', borderRadius: 'var(--r-md)', display: 'inline-block' } },
-  ],
-  3: [ // t-heading ← h2
-    { label: '.c-text · карточки/списки',           css: { color: 'var(--ink)' } },
-    { label: '.tph__total · цена (акцент)',          css: { color: 'var(--brand)' } },
-    { label: '+ .t-mono · время рейса/метрики',      css: { fontFamily: 'var(--font-mono)' } },
-  ],
-  4: [ // t-subheading ← h3
-    { label: '.c-text · строки/подзаголовки',       css: { color: 'var(--ink)' } },
-    { label: '+ .u-ell · обрезка (узкая колонка)',   css: { display: 'inline-block', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' } },
-  ],
-  5: [ // t-label ← title (Golos)
-    { label: '.c-text · строки/поповеры',           css: { color: 'var(--ink)' } },
-    { label: '.tp-btn--primary · кнопка',            css: { color: '#fff', background: 'var(--brand)', padding: '10px 18px', borderRadius: 'var(--r-btn)', display: 'inline-block' } },
-    { label: '.c-acc · ссылки',                     css: { color: 'var(--brand)' } },
-    { label: '.c-dim · secondary-кнопки',           css: { color: 'var(--ink-2)' } },
-  ],
-  6: [ // t-body ← body
-    { label: '.c-mute · базовый',                   css: { color: 'var(--muted)' } },
-    { label: '.c-dim · заметки',                    css: { color: 'var(--ink-2)' } },
-    { label: '.c-text · важный абзац',              css: { color: 'var(--ink)' } },
-  ],
-  7: [ // t-ui ← body-med
-    { label: '.c-text · значения/инпуты',           css: { color: 'var(--ink)' } },
-    { label: '.c-dim · вторичное',                  css: { color: 'var(--ink-2)' } },
-    { label: '.tp-chip--active · активный чип',      css: PILL_ON },
-    { label: '.tp-chip--idle · чип',                css: PILL_OFF },
-  ],
-  8: [ // t-meta ← meta
-    { label: '.c-mute · базовый',                   css: { color: 'var(--muted)' } },
-    { label: '.c-dim · значения дат/времени',        css: { color: 'var(--ink-2)' } },
-    // TRIP-203: «+ Golos (не моно)» переехал из эфемерного превью в санкционированный
-    // СОХРАНЯЕМЫЙ модификатор `.t-sans` (см. MODIFIERS ниже + app.css `.t-sans`).
-  ],
-  9: [ // t-micro ← label
-    { label: 'базовый · track-2',                   css: { letterSpacing: '0.14em' } },
-    { label: '--tight · track-1',                   css: { letterSpacing: '0.08em' } },
-    { label: '.tp-pill · статус',                   css: { ...PILL_ON, letterSpacing: '0.08em' } },
-    { label: 'на медиа (приглушённый)',             css: { color: 'var(--muted)' } },
-  ],
-  10: [ // t-mono ← meta-md
-    { label: '.c-mute · координаты/код',            css: { color: 'var(--muted)' } },
-    { label: '.tp-caption · капс track-3',           css: { ...CAPS, color: 'var(--brand)' } },
-    { label: '.tp-caption--mute · капс',             css: { ...CAPS, color: 'var(--muted)' } },
-    { label: '.c-acc · счётчики',                   css: { color: 'var(--brand)' } },
-  ],
-};
-
-// The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
-// canon; the only legal place (besides canons) where font-weight / line-height
-// is set. Used for live detection (probe canon × modifier subsets).
-// TRIP-183: strong/flush больше НЕ показываются в UI (их заменили поканонные
-// CANON_MODS из файла) — остаются только для ДЕТЕКЦИИ уже-применённых стилей.
-export const MODIFIERS = [
-  { key: 'strong',  cls: 't-strong',   label: 'strong'  },
-  { key: 'flush',   cls: 't-flush',    label: 'flush'   },
-  // TRIP-203: ось «шрифт» — Golos поверх любого канона (снимает моно у t-meta/
-  // t-mono/t-micro). В ОТЛИЧИЕ от strong/flush/caption (detection-only), этот
-  // модификатор ПОКАЗЫВАЕТСЯ в UI (секция «Шрифт») и СОХРАНЯЕТСЯ в mods → в экспорт.
-  { key: 'sans',    cls: 't-sans',     label: 'Golos'   },
-  // TRIP-188: caption-пресет `.tp-caption` (канон 10 t-mono + CAPS + track .2em +
-  // var(--brand)) теперь ПОСТОЯННЫЙ класс в коде (эйбрау /trips, «Маршрут»,
-  // «Мир исследован»), а не только эфемерное превью. Добавлен сюда, чтобы детекция
-  // probe(canon × modifiers) распознавала t-mono+tp-caption как «Mono + caption»
-  // (зелёный), а не помечала off-canon (красный). Цвет — отдельная ось (COLORS).
-  { key: 'caption', cls: 'tp-caption', label: 'caption' },
+// TRIP-410 · РОВНО три санкционированных орто-модификатора канона (из ТЗ).
+// Комбинируются с ЛЮБЫМ каноном (не каноны сами по себе). css = дельта поверх
+// базового канона для эфемерного превью в секции «Модификаторы»; те же три —
+// список ДЕТЕКЦИИ (probe canon × modifier subsets распознаёт «канон + модификатор»).
+// Прежний sans-оверлей (не-моно поверх меты) УДАЛЁН — мета-ярус теперь Geologica;
+// удалён и весь легаси-набор поканонных вариантов (.c-*/.tp-pill/track-N).
+const CAPS = { textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--brand)' };
+export const SANCTIONED_MODS = [
+  { key: 'strong',  cls: 't-strong',   label: '.t-strong · вес (эмфаза)',        css: { fontWeight: 700 } },
+  { key: 'flush',   cls: 't-flush',    label: '.t-flush · line-height 1 (флеш)', css: { lineHeight: 1 } },
+  { key: 'caption', cls: 'tp-caption', label: '.tp-caption · CAPS + трекинг',     css: CAPS },
 ];
 
-// TRIP-183: старый генерик-набор состояний (strong/caps/track/mono/flush/mute)
-// УДАЛЁН — вместо него поканонные модификаторы из файла типографики (CANON_MODS
-// выше). strong/flush остаются как MODIFIERS выше — только для ДЕТЕКЦИИ (probe
-// canon × modifier), в UI не показываются.
+// Detection list = те же три санкционированных модификатора (probe canon × subset).
+export const MODIFIERS = SANCTIONED_MODS.map(({ key, cls, label }) => ({ key, cls, label }));
 
 // Every subset of the modifier list, smallest-first: [], [strong], [flush], …
 function modifierSubsets() {

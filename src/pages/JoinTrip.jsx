@@ -12,7 +12,7 @@ const LOGO_URL = '/triplanio-logo.png';
 
 const STYLES = `
 .jt-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  font-family:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
+  font-family:'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
   background:radial-gradient(900px 480px at 50% -8%,rgba(33,115,200,.12),transparent 62%),radial-gradient(700px 420px at 100% 110%,rgba(98,166,240,.10),transparent 60%),#F4F7FC;}
 .jt-card{width:100%;max-width:440px;background:#fff;border:1px solid #E9E8F2;border-radius:var(--r-card);
   box-shadow:0 18px 50px -20px rgba(22,41,74,.28);padding:48px 40px 40px;text-align:center;}
