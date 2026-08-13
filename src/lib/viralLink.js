@@ -37,10 +37,6 @@ export const VIRAL_MARKS = {
   public_link: { utm_source: 'trip_share', utm_medium: 'viral' },
   // Invite link the member copies out of the dialog, /join/:token
   invite_link: { utm_source: 'trip_invite', utm_medium: 'viral' },
-  // The links inside the invite EMAIL. Same source, own medium: an invite that
-  // was mailed and one that was pasted into a chat are the same channel but not
-  // the same delivery, and only the medium can tell them apart afterwards.
-  invite_email: { utm_source: 'trip_invite', utm_medium: 'viral_email' },
   // QR on the social share card → the landing page.
   share_card: { utm_source: 'share_card', utm_medium: 'viral' },
 };

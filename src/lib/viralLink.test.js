@@ -29,11 +29,6 @@ test('a link without a query gets the marks behind a question mark', () => {
   );
 });
 
-test('the mailed invite shares the source of the copied one but not the medium', () => {
-  assert.equal(VIRAL_MARKS.invite_email.utm_source, VIRAL_MARKS.invite_link.utm_source);
-  assert.equal(VIRAL_MARKS.invite_email.utm_medium, 'viral_email');
-});
-
 test('the share card puts its format in utm_content, the trip id in the campaign', () => {
   assert.equal(
     withViralMarks('https://www.triplanio.com/', 'share_card', TRIP, 'story'),
