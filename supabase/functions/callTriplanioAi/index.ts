@@ -1,5 +1,6 @@
-import { HttpError, readJson, withHandler } from '../_shared/http.ts';
+import { HttpError, readJson, refusalResponse, withHandler } from '../_shared/http.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { PRO_REQUIRED, requireTripPro } from '../_shared/proGate.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { aiFlowLimited } from '../_shared/rateLimit.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
@@ -70,15 +71,21 @@ Deno.serve(withHandler('callTriplanioAi', async (req, corsHeaders) => {
     // Групповой ИИ-чат — Pro-фича. Доступен ⇔ трип Pro (is_trip_pro: is_pro_trip
     // ИЛИ активная подписка владельца) И включён аддон chat. Без гейта любой
     // участник free-трипа дёргал платный n8n/LLM напрямую.
-    const { data: tripPro, error: proErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: msg.trip_id });
-    if (proErr) {
-      console.error('is_trip_pro rpc error:', proErr);
-      return Response.json({ error: 'Pro check failed' }, { status: 500, headers: corsHeaders });
-    }
-    const chatAddonOn = Boolean(trip.details?.addons?.chat);
-    if (!tripPro || !chatAddonOn) {
+    //
+    // Pro — ОДИН источник отказа `requireTripPro` (тот же `proRefusal`, что и дверь
+    // send `trip-chat`): 402 PRO_REQUIRED + x-sentry-skip; сбой RPC бросается → 500
+    // (не ложный «не Pro»). Исход по-прежнему пишется на строку (`failRun` — async,
+    // индикатор снимается им), а HTTP-эмиссия — через канон (nudge её игнорирует).
+    const proResp = await requireTripPro(supabaseAdmin, msg.trip_id, corsHeaders);
+    if (proResp) {
       await failRun(messageId, 'PRO_REQUIRED');
-      return Response.json({ ok: false, code: 'PRO_REQUIRED' }, { headers: corsHeaders });
+      return proResp;
+    }
+    // Аддон chat — отдельный от Pro тумблер (может быть выключен на Pro-трипе);
+    // фича выключена → та же форма отказа (`PRO_REQUIRED`) через канон, не копия.
+    if (!trip.details?.addons?.chat) {
+      await failRun(messageId, 'PRO_REQUIRED');
+      return refusalResponse(PRO_REQUIRED, corsHeaders);
     }
 
     // ── Rate-limit (TRIP-111): 30/час на трип, ПЕРЕД дорогим LLM-вызовом ──

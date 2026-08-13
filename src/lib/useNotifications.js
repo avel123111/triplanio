@@ -1,127 +1,111 @@
 // @ts-check
 /**
- * One seam for the in-app notifications inbox (TRIP-282).
+ * One seam for the in-app notifications inbox (TRIP-282 → TRIP-408).
  *
- * Three screens read the same table — the bell in every AppHeader, the Inbox
- * page and the account screen. Two queries serve all three:
+ * The client no longer touches `notifications` directly — the table is closed.
+ * A single edge reader `getInbox` returns `{ list, unreadCount }` in one call,
+ * and both consumers (the bell in every AppHeader, the Inbox page) share it:
  *
- *   the LIST   one query, one row budget, shared by everyone who needs rows.
- *   the COUNT  one number, `head`-only, for the badge.
+ *   the LIST         `list`, newest-first, capped, enriched per-row with the
+ *                    invite's `member_status` (joined in the RPC — this replaced
+ *                    a per-invite `trip_members` waterfall the rows used to run).
+ *   the COUNT        `unreadCount`, the real total of unread rows, not "however
+ *                    many fit in the list".
  *
- * Both halves are deliberate. Before this seam all three screens hand-rolled a
- * useQuery under the SAME key `['notifications', email]` but with different
- * limits (30/100/30); React Query coalesces on the key, so one request served
- * all three and whoever mounted first decided how many rows the others saw.
- * Putting the limit IN the key fixes the lying, but splits one request into
- * two — so instead there is one limit for everybody and the bell renders the
- * head of the same list. Same data by construction, not by convention.
+ * Both hooks below read the SAME react-query key (`['inbox', userId]`), so one
+ * request serves the badge and the list — each hook just `select`s its slice,
+ * exactly like getTrips fans one composite into cards + badge (TRIP-403). The
+ * badge is needed on every screen, so the reader runs whenever a session exists;
+ * the list rides the same cached response.
  *
- * The count is not derived from the list: a badge computed off `limit N` tops
- * out at N, so the account screen's "99+" branch could never render.
- *
- * The bell does NOT fetch rows until its popover opens (`enabled`). It is
- * mounted in the AppHeader of every screen, so a list it fetches "just in case"
- * is a `SELECT *` on every page the user visits, for a panel most of them never
- * open. Closed bell = one number.
- *
- * `read IS NOT TRUE` (not `= false`) mirrors the JS predicate `!n.read` the
- * screens used: the column is nullable, so an explicit `= false` would skip a
- * NULL row that the UI counts as unread.
- *
- * Invalidation stays prefix-based on `['notifications']`, so one invalidate
- * still refreshes the list AND the count.
+ * Writes go through the write-seam edge `inbox` (the flag `read` is behind the
+ * door now): `inbox/read` marks one row, `inbox/read-all` marks every unread row
+ * of the caller by predicate — marking only the loaded page would leave the
+ * (now honest) badge non-zero right after "mark all read".
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { useAuth } from '@/lib/AuthContext';
-
-/** One row budget for every consumer — the deepest page (the Inbox) sets it. */
-const LIST_LIMIT = 100;
 
 /** Rows the bell popover renders: the head of that same list. */
 export const BELL_ROWS = 30;
 
+const INBOX_KEY = (userId) => ['inbox', userId];
+
+/** @typedef {{ list: any[], unreadCount: number }} Inbox */
+
+/** Empty inbox shape — keeps `select`s total even before the first fetch lands.
+ *  @type {Inbox} */
+const EMPTY_INBOX = { list: [], unreadCount: 0 };
+
 /**
- * The notification list, newest first. Rows are scoped to the caller by RLS
- * (`user_id = auth.uid()`). `enabled: false` keeps a mounted-but-closed
- * consumer off the wire without unsharing the cache entry.
+ * Shared reader. Both hooks call this with the same key, so react-query dedupes
+ * to ONE request; each passes a stable `select` for its slice. The badge hook is
+ * always enabled and drives the fetch; the list hook can stay lazy (bell closed)
+ * and still read the cached response.
+ * @param {(inbox: Inbox) => any} select
+ * @param {{ enabled?: boolean }} [opts]
  */
-export function useNotificationList({ enabled = true } = {}) {
+function useInboxQuery(select, { enabled = true } = {}) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['notifications', user?.email, 'list'],
+    queryKey: INBOX_KEY(user?.id),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(LIST_LIMIT);
+      const { data, error } = await invokeFn('getInbox');
       if (error) throw error;
-      return data || [];
+      return /** @type {Inbox} */ (data ?? EMPTY_INBOX);
     },
-    enabled: enabled && !!user?.email,
-    // Override the global refetchOnWindowFocus:false (TRIP-208 Ф2-2a): there is
-    // no polling and no realtime, so a tab the user returns to would otherwise
-    // sit on stale rows until they navigated.
+    enabled: enabled && !!user?.id,
+    select,
+    // No polling and no realtime — a tab the user returns to would otherwise sit
+    // on stale rows/badge until they navigated (TRIP-208 Ф2-2a override).
     refetchOnWindowFocus: true,
   });
 }
 
-/** Unread badge count — the real total, not "however many fit in the list". */
+// Stable `select` references (module scope) so react-query doesn't re-run them
+// every render.
+/** @param {Inbox} inbox */
+const selectList = (inbox) => inbox.list ?? [];
+/** @param {Inbox} inbox */
+const selectCount = (inbox) => inbox.unreadCount ?? 0;
+
+/**
+ * The notification list, newest first. `enabled: false` keeps a mounted-but-
+ * closed consumer (the bell) from driving a fetch itself; the badge hook still
+ * populates the shared cache, so the list is there when the popover opens.
+ */
+export function useNotificationList({ enabled = true } = {}) {
+  return useInboxQuery(selectList, { enabled });
+}
+
+/** Unread badge count — the real total from the reader, not "however many fit". */
 export function useUnreadNotificationCount() {
-  const { user } = useAuth();
-  const { data = 0 } = useQuery({
-    queryKey: ['notifications', user?.email, 'unread-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .not('read', 'is', true);
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: !!user?.email,
-    refetchOnWindowFocus: true,
-  });
+  const { data = 0 } = useInboxQuery(selectCount);
   return data;
 }
 
 /**
- * Writes. `markAllRead` updates by predicate rather than by the ids currently
- * on screen — marking only the loaded page would leave the (now honest) badge
- * non-zero right after the user pressed "mark all read".
+ * Writes. `read` / `read-all` go through the write-seam edge `inbox`; the seam
+ * scopes both to the caller (`user_id = p_actor`) inside the RPC. `markAllRead`
+ * marks by predicate (not the ids on screen) so the honest badge reaches zero.
  */
 export function useNotificationActions() {
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['notifications'] });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['inbox'] });
 
-  // Both writes state `user_id` even though RLS already scopes them to
-  // auth.uid(). A write whose blast radius rests entirely on a policy staying
-  // correct is how TRIP-124 happened; the predicate costs nothing and says out
-  // loud what the row set is.
   const markAllRead = useMutation({
     mutationFn: async () => {
-      if (!user?.id) return; // no session: nothing to mark, and .eq(undefined) would 400
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', user.id)
-        .not('read', 'is', true);
+      const { error } = await invokeFn('inbox/read-all');
       if (error) throw error;
     },
     onSuccess: invalidate,
   });
 
   const markOneRead = useMutation({
+    /** @param {string} notifId */
     mutationFn: async (notifId) => {
-      if (!user?.id) return;
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', user.id)
-        .eq('id', notifId);
+      const { error } = await invokeFn('inbox/read', { body: { id: notifId } });
       if (error) throw error;
     },
     onSuccess: invalidate,
@@ -134,23 +118,19 @@ export function useNotificationActions() {
     /** @param {{ memberId: string, action: string }} vars */
     mutationFn: async ({ memberId, action }) => {
       // Edge function: sets user_id on the member (so the accepter is a
-      // recognized participant under RLS), notifies the inviter, and marks the
-      // invite read — none of which a raw update does.
+      // recognized participant), notifies the inviter, and marks the invite read.
       const { data, error } = await invokeFn('respondTripInvite', {
         body: { member_id: memberId, action },
       });
       // Re-throw the ORIGINAL error (invokeFn stamped it __seamHandled) so the
-      // global MutationCache.onError seam doesn't capture it twice — the edge/
-      // invoke seam already reported it. new Error(...) would drop the stamp.
+      // global MutationCache.onError seam doesn't capture it twice.
       if (error || data?.error) throw error || new Error(data?.error || 'Failed');
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: () => {
+      // Refetch the inbox — the row's `member_status` (now carried by getInbox)
+      // flips accepted/declined; the trips list gains/loses the joined trip.
       invalidate();
       qc.invalidateQueries({ queryKey: ['trips'] });
-      // ['trip-member', id] — the per-row member query both inboxes render.
-      // (The bell also invalidated a plural ['trip-members']; no query in the
-      // app registers that key, so it was a no-op.)
-      qc.invalidateQueries({ queryKey: ['trip-member', vars?.memberId] });
     },
   });
 

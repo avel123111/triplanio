@@ -23,6 +23,7 @@
  */
 import { corsFor } from './cors.ts';
 import { captureEdgeError } from './sentry.ts';
+import type { Refusal } from './mutateRules.ts';
 
 export type ErrorBody = { error: string; code?: string };
 
@@ -47,6 +48,22 @@ export function jsonError(
 ): Response {
   const body: ErrorBody = code ? { error: message, code } : { error: message };
   return Response.json(body, { status, headers });
+}
+
+/**
+ * Отказ (`Refusal`) → канонический `Response`. ЕДИНСТВЕННЫЙ, кто решает, как
+ * бизнес-«нет» превращается в ответ: `jsonError` по контракту `{ error, code }`
+ * плюс `x-sentry-skip` на `sentrySkip` (бизнес-«нет» не шумит в Sentry —
+ * `withHandler` уважает этот заголовок). Вынесен из приватного `refuse()` шва
+ * (`_shared/mutate.ts`), чтобы дверь записи И не-шовные Pro-хелперы
+ * (`_shared/proGate.ts#requireTripPro`) вешали заголовок ОДНОЙ логикой, а не
+ * руками копией `{ ...cors, 'x-sentry-skip': '1' }` в каждой функции (TRIP-408).
+ */
+export function refusalResponse(refusal: Refusal, corsHeaders: HeadersInit): Response {
+  const headers = refusal.sentrySkip
+    ? { ...corsHeaders, 'x-sentry-skip': '1' }
+    : corsHeaders;
+  return jsonError(refusal.status, refusal.message, refusal.code, headers);
 }
 
 /**

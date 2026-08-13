@@ -2339,6 +2339,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_inbox: { Args: { p_actor: string }; Returns: Json }
       get_my_trip_cards: { Args: { p_actor: string }; Returns: Json }
       get_pending_reminders: {
         Args: { window_minutes?: number }
@@ -2366,6 +2367,14 @@ export type Database = {
       is_trip_participant: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_pro: { Args: { p_trip_id: string }; Returns: boolean }
       is_user_pro: { Args: { p_uid: string }; Returns: boolean }
+      mark_all_notifications_read: {
+        Args: { p_actor: string }
+        Returns: undefined
+      }
+      mark_notification_read: {
+        Args: { p_actor: string; p_id: string }
+        Returns: undefined
+      }
       mentions_assistant: { Args: { p_text: string }; Returns: boolean }
       nearest_cities: {
         Args: { _lang?: string; _lat: number; _lim?: number; _lng: number }
@@ -2474,7 +2483,12 @@ export type Database = {
         }[]
       }
       send_chat_message: {
-        Args: { p_chat_id: string; p_client_msg_id?: string; p_text: string }
+        Args: {
+          p_actor?: string
+          p_client_msg_id?: string
+          p_text: string
+          p_trip: string
+        }
         Returns: {
           ai_attempts: number
           ai_error: string | null

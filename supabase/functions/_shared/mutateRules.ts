@@ -383,6 +383,8 @@ import { TRIP_ROUTE } from './resources/tripRoute.ts';
 import { TRIP } from './resources/trip.ts';
 import { ACCOUNT } from './resources/account.ts';
 import { USER_PLACE } from './resources/userPlace.ts';
+import { TRIP_CHAT } from './resources/tripChat.ts';
+import { INBOX } from './resources/inbox.ts';
 
 /**
  * Все ресурсы записи. Реестр существует не ради диспетчеризации (её делает сама
@@ -397,4 +399,6 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP.name]: TRIP,
   [ACCOUNT.name]: ACCOUNT,
   [USER_PLACE.name]: USER_PLACE,
+  [TRIP_CHAT.name]: TRIP_CHAT,
+  [INBOX.name]: INBOX,
 };
