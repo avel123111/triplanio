@@ -12,32 +12,11 @@
    тон-варианты и адаптив. Все отступы — ступени шкалы `--sp-*`.
    ============================================================ */
 
-/* TRIP-337 · цвет текста ушёл с приватных классов на СУЩЕСТВУЮЩИЕ цвет-утилиты
-   .muted / .muted-2 (в разметке), новых классов не заведено. Приватные классы
-   удалены или оставлены только с отступом/раскладкой. --ink-2 и --danger(.miss)
-   оставлены приватным остатком: плоской цвет-утилиты под них в ДС нет (.err — это
-   флекс-компонент инлайн-ошибки, не роль-цвет). Объявляю каждое изменение:
-   — перенос на .muted/.muted-2: значение НЕ меняется; 2p видит ложную цель
-     .bgt-glist__v.muted (=--muted-2), но на этих элементах .bgt-glist__v нет:
-   visual-diff-exempt: .bgt-stat__l color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-stat__s color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-detail__s color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-detail__amt color — цвет на утилите .muted (.l), значение --muted
-   visual-diff-exempt: .bgt-exrow__s color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-donut__c color — цвет на утилите .muted (.l), значение --muted
-   visual-diff-exempt: .bgt-glist__c color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-dleg__p color — цвет на утилите .muted-2, значение --muted-2
-   — снятие избыточного ink (= дефолт body, вид не меняется):
-   visual-diff-exempt: .bgt-stat__v color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-detail__n color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-dleg__n color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-dleg__v color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-donutcard__h b color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-exrow__t color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-fxlist span color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-glist__n color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-glist__v color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-exrow__amt color — избыточный ink = дефолт body */
+/* TRIP-337 · цвет текста ушёл с приватных классов на существующие цвет-утилиты
+   .muted / .muted-2 (в разметке); избыточный color:var(--ink) (=дефолт body) снят.
+   Новых классов не заведено. --ink-2 и --danger(.miss) оставлены приватным
+   остатком: плоской цвет-утилиты под них в ДС нет. Снятие color маркера не требует
+   (2p, TRIP-337). */
 .bgt { overflow-x: hidden; }
 
 /* ════════ SUMMARY BAND ════════ */
