@@ -124,6 +124,8 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
         const isErr = it.level === 'error';
         const stripe = isErr ? 'var(--danger)' : 'var(--warning)';
         const bg = isErr ? 'var(--danger-soft)' : 'var(--warning-soft)';
+        // TRIP-391 объект 1 → объект 6: строка-ишью — full-bleed clickable РЯД
+        // (width:100%, text-left, клик = фокус поля), не примитив-кнопка и не чип.
         return (
           <button
             key={`${it.code}-${i}`}
@@ -197,6 +199,9 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
     // r-md + overflow:hidden) снят — скин несёт <Card radius="md" pad="none">; внешний
     // style пробрасывается (позиционирование вызывателя).
     <Card radius="md" pad="none" style={style}>
+      {/* TRIP-391 объект 1 → объект 6: заголовок-раскрывашка панели конфликтов
+          (прозрачный full-bleed), не примитив-кнопка. Инлайн-плитка внутри —
+          семья объекта 3, мигрирует ратчетом в PR#3. */}
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
@@ -217,6 +222,8 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
           {list.map((it, i) => {
             const d = describeIssue(it, ctx, t);
             const stripe = it.level === 'error' ? 'var(--danger)' : d.color;
+            // TRIP-391 объект 1 → объект 6: строка-ишью панели — full-bleed
+            // clickable РЯД, не примитив-кнопка. Инлайн-плитка внутри → объект 3 (PR#3).
             return (
               <button
                 key={`${it.code}-${it.entityId || it.fromId || i}`}

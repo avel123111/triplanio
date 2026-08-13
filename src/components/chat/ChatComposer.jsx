@@ -121,6 +121,7 @@ const ChatComposer = forwardRef(
             <div className="chat-mention__lbl">{t('chat.mention')}</div>
             {/* Only @Triplanio is actionable - members aren't mentionable, so the
                 popup lists just the assistant. */}
+            {/* TRIP-391 объект 1 → объект 6: .chat-mention__row — РЯД-подсказка упоминания (.row), не кнопка-примитив. */}
             <button
               onMouseDown={(e) => { e.preventDefault(); insertMention(); }}
               className="row chat-mention__row"

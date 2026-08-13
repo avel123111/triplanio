@@ -42,6 +42,7 @@ export function ActionMenu({ trigger, items = [], align = 'end', side = 'bottom'
       <>
         {triggerEl}
         <Sheet open={open} onOpenChange={setOpen} title={title}>
+          {/* TRIP-391 объект 1 → объект 6: .sheet-row — ПУНКТ меню-шита, не кнопка-примитив. */}
           {list.map((it, i) => (it.separator ? (
             <div key={i} className="sheet-sep" />
           ) : (
