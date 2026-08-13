@@ -594,6 +594,23 @@ const tileTargetSel = (sel) => {
   return c.slice(0, i).concat(c[i].replace(/\.ic\b/, '.tile')).join(' ');
 };
 
+/** Контекст ручек плитки для переноса из `fromSel` — два шаблона миграции:
+ *  · КОНТЕКСТ-ПОТОМОК (`.statbar .ic` → `<Tile>` заменяет `.ic`): ручки живут на
+ *    `.statbar .tile` (подлежащее→.tile, `tileTargetSel`);
+ *  · КЛАСС-САМ-ПЛИТКА (`.acct-lang__flag` → `<Tile className="acct-lang__flag">`):
+ *    ручки на САМОМ классе (`.acct-lang__flag{--tile}`), селектор не меняется.
+ *  Пробуем оба кандидата, берём тот, у кого в HEAD реально заданы ручки. Так один
+ *  резолвер покрывает обе формы миграции плитки без пер-семейных маркеров. */
+const tileCtxOf = (fromSel, media) => {
+  const m = media || '';
+  for (const cand of [fromSel && normSel(fromSel), tileTargetSel(fromSel || '')]) {
+    if (!cand) continue;
+    const ctx = headHandles.get(cand + SEP + m);
+    if (ctx) return { ctx, tsel: cand };
+  }
+  return { ctx: null, tsel: null };
+};
+
 const reVar = /var\(\s*(--[\w-]+)\s*(?:,([^()]*(?:\([^()]*\)[^()]*)*))?\)/g;
 const resolveVars = (value, tokens) => {
   let out = value;
@@ -847,8 +864,7 @@ for (const mv of moves) {
     // .tile с ручками плитки — резолвим СТРОГО через него (не через :root-фолбэк:
     // тот проглядел бы ctx-override, `var(--tile-r, --r-sm)` при `--tile-r:20px`
     // вернул бы фолбэк и ослеп). Без ручек-контекста — прежняя сверка sameMovedValue.
-    const tsel = win && c.fromSel && tileTargetSel(c.fromSel);
-    const ctx = tsel && headHandles.get(normSel(tsel) + SEP + (c.media || ''));
+    const { ctx, tsel } = win && c.fromSel ? tileCtxOf(c.fromSel, c.media) : { ctx: null, tsel: null };
     const ok = win && (ctx
       ? resolveVars(c.from, baseTokens) === resolveVars(win.value, new Map([...headTokens, ...ctx]))
       : sameMovedValue(c.from, win.value));
@@ -908,12 +924,13 @@ for (const mv of moves) {
  * ★ Это ПОСЛЕДНЕЕ расширение 2p для объекта 3 — тон·svg·display-артефакт
  * покрывают все 8 семей; 4-я форма = пересмотр метода миграции, не третий патч. */
 const CHANNEL = { background: '--hl-soft', 'background-color': '--hl-soft', color: '--hl-ink' };
-const hasIcCompound = (sel) => !!sel && compoundsOf(sel).some((cp) => classesOf(stripFnPseudo(cp)).includes('ic'));
 const bareSubject = (unit) => classesOf(stripFnPseudo(subjectOf(unit))).length === 0;
 for (const c of changes) {
-  if (c.to !== null || declared.has(c.key) || !hasIcCompound(c.fromSel)) continue;
-  const tsel = tileTargetSel(c.fromSel);
-  const ctx = tsel && headHandles.get(normSel(tsel) + SEP + (c.media || ''));
+  if (c.to !== null || declared.has(c.key)) continue;
+  // Гейт — САМ факт, что у миграции этого селектора есть контекст-ручки в HEAD
+  // (обе формы: контекст-потомок И класс-сам-плитка). Не по «.ic в селекторе» —
+  // иначе класс-сам-плитка (`.acct-lang__flag`) под резолвер не попадал бы.
+  const { ctx, tsel } = tileCtxOf(c.fromSel, c.media);
   if (!ctx) continue;
   // канал: background/color; svg-ступень: width/height бесклассового svg-юнита
   const h = CHANNEL[c.prop] || ((c.prop === 'width' || c.prop === 'height') && bareSubject(c.unit) ? '--tile-ic' : null);
