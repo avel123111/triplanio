@@ -1,4 +1,4 @@
-@import './design/fonts.css';   /* self-hosted Geologica (UI+заголовки) + JetBrains Mono (числа/коды); Golos/Exo — легаси, TRIP-410 */
+@import './design/fonts.css';   /* self-hosted Geologica (UI+заголовки) + JetBrains Mono (коды); Golos — легаси, TRIP-410 */
 
 /* ===================================================================
    Reset — was Tailwind's `@tailwind base` (Preflight). Inlined verbatim
@@ -206,7 +206,7 @@ button,
   user-select: none;
   -webkit-user-select: none;
 }
-/* TRIP-410: голые h1..h4 (второй движок заголовков — Exo/600, конфликтовал с
+/* TRIP-410: голые h1..h4 (второй движок заголовков — прежняя гарнитура/600, конфликтовал с
    канонами Geologica 800/700) убраны. Единственный источник типографики
    заголовков — канон-блок .t-* в src/design/app.css; заголовки носят .t-* класс. */
 

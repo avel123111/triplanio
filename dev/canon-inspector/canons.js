@@ -1,6 +1,6 @@
 // TRIP-165/410 · Canon inspector — canon registry + live detection.
-// TRIP-410: система Geologica (single-font). 10 канонов + РОВНО три санкц. модификатора
-// (t-strong/t-flush/tp-caption); Экзо-mockup-имена и прежний sans-оверлей убраны. Числа пробятся из app.css.
+// TRIP-410 V2: система Geologica (single-font). 10 канонов + РОВНО три санкц. модификатора
+// (t-strong/t-flush/tp-caption); прежние макет-имена и sans-оверлей убраны. Числа пробятся из app.css.
 //
 // The 10 typography canons are defined ONCE, in src/design/app.css (the .t-*
 // co-selector rules). This module does NOT re-hardcode their numeric specs —
@@ -18,26 +18,26 @@
 // TRIP-410 · система Geologica (single-font). Один дом числовых спеков — src/design/
 // app.css (.t-* co-selector); инспектор их ПРОБИВАЕТ из живого CSS (getComputedStyle),
 // здесь только человекочитаемые роли. Все каноны на Geologica, кроме .t-mono (JetBrains
-// Mono — только числа/коды/email). Старые Экзо-mockup-имена убраны как лишние.
+// Mono — только коды/email/kbd; числа — Geologica tabular). Прежние макет-имена убраны.
 export const CANONS = [
-  { id: 1,  cls: 't-display',    name: 'Display',    role: 'Герой, 1 на экран · Geologica 700 tabular' },
+  { id: 1,  cls: 't-display',    name: 'Display',    role: 'Герой, 1 на экран · Geologica 800 tabular' },
   { id: 2,  cls: 't-title',      name: 'Title',      role: 'Заголовок страницы · Geologica 700 tabular' },
-  { id: 3,  cls: 't-heading',    name: 'Heading',    role: 'Заголовок экрана / секции · Geologica 600 tabular' },
+  { id: 3,  cls: 't-heading',    name: 'Heading',    role: 'Заголовок экрана / секции · Geologica 700 tabular' },
   { id: 4,  cls: 't-subheading', name: 'Subheading', role: 'Заголовок панели / карточки · Geologica 600' },
-  { id: 5,  cls: 't-label',      name: 'Label',      role: 'Кнопки, крупные лейблы · Geologica 600' },
+  { id: 5,  cls: 't-label',      name: 'Label',      role: 'Кнопки, крупные лейблы · Geologica 13/600' },
   { id: 6,  cls: 't-body',       name: 'Body',       role: 'Основной текст, абзацы · Geologica 400' },
-  { id: 7,  cls: 't-ui',         name: 'UI',         role: 'Плотный интерфейсный текст · Geologica 500' },
-  { id: 8,  cls: 't-meta',       name: 'Meta',       role: 'Даты, вторичная инфо, подписи · Geologica 500 tabular' },
-  { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, эйбрау · Geologica 500 UPPER' },
-  { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Числа, суммы, счётчики · Geologica tabular (код/email/kbd → JetBrains)' },
+  { id: 7,  cls: 't-ui',         name: 'UI',         role: 'Плотный интерфейсный текст · алиас .t-label (13/600)' },
+  { id: 8,  cls: 't-meta',       name: 'Meta',       role: 'Даты/времена, вторичная инфо · Geologica 500 tabular' },
+  { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, эйбрау · Geologica 700 UPPER' },
+  { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Коды/брони/рейсы/полисы/email/kbd · JetBrains Mono 13/500' },
 ];
 
 // TRIP-410 · РОВНО три санкционированных орто-модификатора канона (из ТЗ).
 // Комбинируются с ЛЮБЫМ каноном (не каноны сами по себе). css = дельта поверх
 // базового канона для эфемерного превью в секции «Модификаторы»; те же три —
 // список ДЕТЕКЦИИ (probe canon × modifier subsets распознаёт «канон + модификатор»).
-// Прежний sans-оверлей (Golos поверх меты) УДАЛЁН — мета-ярус теперь Geologica;
-// удалён и весь легаси-набор поканонных Экзо-вариантов (.c-*/.tp-pill/track-N).
+// Прежний sans-оверлей (не-моно поверх меты) УДАЛЁН — мета-ярус теперь Geologica;
+// удалён и весь легаси-набор поканонных вариантов (.c-*/.tp-pill/track-N).
 const CAPS = { textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--brand)' };
 export const SANCTIONED_MODS = [
   { key: 'strong',  cls: 't-strong',   label: '.t-strong · вес (эмфаза)',        css: { fontWeight: 700 } },
