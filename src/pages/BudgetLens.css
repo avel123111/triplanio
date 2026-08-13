@@ -12,32 +12,6 @@
    тон-варианты и адаптив. Все отступы — ступени шкалы `--sp-*`.
    ============================================================ */
 
-/* TRIP-337 · цвет текста ушёл с приватных классов на СУЩЕСТВУЮЩИЕ цвет-утилиты
-   .muted / .muted-2 (в разметке), новых классов не заведено. Приватные классы
-   удалены или оставлены только с отступом/раскладкой. --ink-2 и --danger(.miss)
-   оставлены приватным остатком: плоской цвет-утилиты под них в ДС нет (.err — это
-   флекс-компонент инлайн-ошибки, не роль-цвет). Объявляю каждое изменение:
-   — перенос на .muted/.muted-2: значение НЕ меняется; 2p видит ложную цель
-     .bgt-glist__v.muted (=--muted-2), но на этих элементах .bgt-glist__v нет:
-   visual-diff-exempt: .bgt-stat__l color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-stat__s color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-detail__s color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-detail__amt color — цвет на утилите .muted (.l), значение --muted
-   visual-diff-exempt: .bgt-exrow__s color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-donut__c color — цвет на утилите .muted (.l), значение --muted
-   visual-diff-exempt: .bgt-glist__c color — цвет на утилите .muted, значение --muted
-   visual-diff-exempt: .bgt-dleg__p color — цвет на утилите .muted-2, значение --muted-2
-   — снятие избыточного ink (= дефолт body, вид не меняется):
-   visual-diff-exempt: .bgt-stat__v color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-detail__n color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-dleg__n color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-dleg__v color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-donutcard__h b color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-exrow__t color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-fxlist span color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-glist__n color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-glist__v color — избыточный ink = дефолт body
-   visual-diff-exempt: .bgt-exrow__amt color — избыточный ink = дефолт body */
 .bgt { overflow-x: hidden; }
 
 /* ════════ SUMMARY BAND ════════ */
@@ -49,23 +23,28 @@
    под действие справа. Примитив .row даёт ряд, распределение по ширине остаётся
    объявленным здесь, иначе первое же добавленное действие прилипнет к заголовку. */
 .bgt-donutcard__h { justify-content: space-between; margin-bottom: var(--sp-7); }
+.bgt-donutcard__h b { color: var(--ink); }
 /* Донат — единственная по-настоящему своя геометрия экрана: квадрат под SVG,
    повёрнутый на -90° (чтобы дуга начиналась сверху), и абсолютный центр поверх. */
 .bgt-donut { position: relative; width: 168px; height: 168px; flex: none; margin: 0 auto; }
 .bgt-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .bgt-donseg { transition: stroke-width .2s var(--ease-out), opacity .2s; }
 .bgt-donut__c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.bgt-donut__c .l { margin-top: var(--sp-2); }
+.bgt-donut__c .v { color: var(--ink); }
+.bgt-donut__c .l { color: var(--muted); margin-top: var(--sp-2); }
 
 .bgt-dleg__row { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); cursor: default; transition: background .15s; }
 .bgt-dleg__row:hover { background: var(--wash); }
 .bgt-dleg__d { width: 10px; height: 10px; border-radius: 4px; flex: none; }
-.bgt-dleg__p { width: 40px; text-align: right; }
+.bgt-dleg__n { color: var(--ink); }
+.bgt-dleg__v { color: var(--ink); }
+.bgt-dleg__p { color: var(--muted-2); width: 40px; text-align: right; }
 
 /* stat stack */
 .bgt-stat { padding: var(--sp-7); }
-.bgt-stat__v { margin-top: var(--sp-1); }
-.bgt-stat__s { margin-top: var(--sp-1); }
+.bgt-stat__l { color: var(--muted); }
+.bgt-stat__v { color: var(--ink); margin-top: var(--sp-1); }
+.bgt-stat__s { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-stat__s b { color: var(--ink-2); }
 .bgt-stat--total .bgt-stat__ic { background: var(--brand-soft); color: var(--brand); }
 .bgt-stat--ppl .bgt-stat__ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
@@ -73,6 +52,7 @@
 .bgt-stat--fx { cursor: pointer; transition: border-color .18s, box-shadow .2s; width: 100%; text-align: left; }
 .bgt-stat--fx:hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
 .bgt-fxlist { gap: var(--sp-2) var(--sp-6); margin-top: var(--sp-2); }
+.bgt-fxlist span { color: var(--ink); }
 .bgt-fxlist .miss { color: var(--danger); }
 
 /* ════════ CONTROLS ROW ════════ */
@@ -87,10 +67,11 @@
 .bgt-glist__row { width: 100%; text-align: left; padding: var(--sp-6); border-radius: var(--r-btn); border: 1px solid transparent; background: transparent; cursor: pointer; font: inherit; transition: background .15s, border-color .15s; }
 .bgt-glist__row:hover { background: var(--wash); }
 .bgt-glist__row.on { background: var(--brand-soft); border-color: var(--brand-soft-12); }
-.bgt-glist__n { min-width: 0; }
-.bgt-glist__c { margin-top: var(--sp-1); }
+.bgt-glist__n { color: var(--ink); min-width: 0; }
+.bgt-glist__c { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-glist__c .miss { color: var(--danger); }
 .bgt-glist__r { text-align: right; flex: none; }
+.bgt-glist__v { color: var(--ink); }
 .bgt-glist__v.muted { color: var(--muted-2); }
 /* `.bgt-glist__add` удалён: «добавить категорию» — `<Btn variant="dashed" block>`
    (TRIP-344 PR 3). Список раскладывается своим зазором, отдельного отступа у
@@ -99,19 +80,23 @@
 /* detail pane */
 .bgt-detail { padding: var(--sp-8); min-height: 280px; }
 .bgt-detail__h { padding-bottom: var(--sp-7); border-bottom: 1px solid var(--line); }
-.bgt-detail__s { margin-top: var(--sp-1); }
+.bgt-detail__n { color: var(--ink); }
+.bgt-detail__s { color: var(--muted); margin-top: var(--sp-1); }
 .bgt-detail__amt { text-align: right; flex: none; }
+.bgt-detail__amt .v { color: var(--ink); }
+.bgt-detail__amt .l { color: var(--muted); }
 
 /* expense rows */
 .bgt-exlist { padding-top: var(--sp-7); }
 .bgt-exrow { padding: var(--sp-6); border-radius: var(--r-btn); cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
-.bgt-exrow__s { margin-top: var(--sp-2); }
+.bgt-exrow__t { color: var(--ink); }
+.bgt-exrow__s { color: var(--muted); margin-top: var(--sp-2); }
 .bgt-exrow__s .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-2); flex: none; }
 /* .bgt-tagx: форма ушла на .badge .badge--xs (TRIP-321 Ф14.8); ниже только тона. */
 .bgt-tagx--link { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
 .bgt-tagx--manual { background: var(--wash); color: var(--muted); }
 .bgt-tagx--cat { background: transparent; border: 1.2px solid var(--line-strong); color: var(--ink-2); }
-.bgt-exrow__amt { text-align: right; flex: none; }
+.bgt-exrow__amt { text-align: right; flex: none; color: var(--ink); }
 .bgt-exrow__amt.miss { color: var(--danger); }
 .bgt-exrow__chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 .bgt-exrow__acts { flex: none; }
