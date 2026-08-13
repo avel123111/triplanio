@@ -18,6 +18,7 @@ import { emit } from './emit.ts';
 import { purgePrivateDocsForMember } from './personalDocsTeardown.ts';
 import { disconnectTripTelegram } from './telegramTeardown.ts';
 import { emitTripReached2 } from './analytics.ts';
+import { respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
 
 /** Контекст побочки: актор, загруженная ДО записи строка, результат записи,
  *  дискриминант исхода RPC, скоуп (trip_id) и service_role-клиент. */
@@ -71,7 +72,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
   'trip-member/role': async ({ loadedRow, result, actor }) => {
     const before = asRow(loadedRow);
     const after = asRow(result);
-    if (before.role !== after.role && before.user_id) {
+    if (roleChangeNotifies(before.role, after.role, before.user_id)) {
       emit('role_changed', {
         trip_id: before.trip_id as string,
         recipient_id: before.user_id as string,
@@ -106,17 +107,11 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const member = asRow(loadedRow);
     await db.from('notifications').update({ read: true })
       .eq('user_id', actor.id).eq('trip_member_id', member.id);
-    if (outcome === 'owner_stray') return;
-    if (outcome === 'accepted') {
-      // North Star: сделал ли accept трип коллаборативным (владелец + 1-й участник = 2)?
-      await emitTripReached2(db, scopeValue, actor.id);
-    }
-    if (member.invited_by && (outcome === 'accepted' || outcome === 'declined')) {
-      emit(outcome === 'accepted' ? 'invite_accepted' : 'invite_declined', {
-        trip_id: scopeValue,
-        recipient_id: member.invited_by as string,
-        actor_id: actor.id,
-      });
+    const plan = respondEffectPlan(outcome);
+    // North Star: сделал ли accept трип коллаборативным (владелец + 1-й участник = 2)?
+    if (plan.reached2) await emitTripReached2(db, scopeValue, actor.id);
+    if (plan.emit && member.invited_by) {
+      emit(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id });
     }
   },
 };
