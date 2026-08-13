@@ -115,12 +115,13 @@ export function useNotificationActions() {
     // Аннотация нужна ВЫЗЫВАЮЩЕМУ, а не этой строке: без неё `useMutation`
     // выводит тип переменных как `void`, и живой `respondInvite.mutate({...})`
     // краснеет под `// @ts-check` на стороне колокольчика.
-    /** @param {{ memberId: string, action: string }} vars */
-    mutationFn: async ({ memberId, action }) => {
-      // Edge function: sets user_id on the member (so the accepter is a
-      // recognized participant), notifies the inviter, and marks the invite read.
-      const { data, error } = await invokeFn('respondTripInvite', {
-        body: { member_id: memberId, action },
+    /** @param {{ memberId: string, tripId: string, action: string }} vars */
+    mutationFn: async ({ memberId, tripId, action }) => {
+      // Edge seam trip-member-self/respond: sets user_id on the member (so the
+      // accepter is a recognized participant), notifies the inviter, marks read.
+      // Скоуп по trip_id (гейт guardRow row-self грузит строку под ним), id — строки.
+      const { data, error } = await invokeFn('trip-member-self/respond', {
+        body: { id: memberId, trip_id: tripId, action },
       });
       // Re-throw the ORIGINAL error (invokeFn stamped it __seamHandled) so the
       // global MutationCache.onError seam doesn't capture it twice.
