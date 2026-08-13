@@ -260,21 +260,17 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             level="quiet" align="mid" icon="telegram" iconStyle={TG_TILE}
             title={t('settings.tg_waiting')}
           >
-            {/* t-sans: prose on the meta tier is Golos, not JetBrains — the
-                countdown itself keeps the mono numerals via .num. */}
-            <div className="muted t-meta t-sans">
+            {/* TRIP-410: t-meta теперь Geologica (single-font); отдельный отменяющий
+                модификатор больше не нужен — числа держат моно через .num. */}
+            <div className="muted t-meta">
               <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
               {t('settings.tg_link_valid')} <span className="num">{mmss}</span>
             </div>
           </Severity>
 
-          {/* t-sans on the box, not on each step: the two step texts are bare
-              divs that inherit it, while the numbered pills keep their own
-              .t-meta (mono numerals) because an element's own rule beats
-              inheritance. One class instead of two. */}
           {/* TRIP-343 объект 2 (канал 3): утоплённая поверхность (--wash) снята с
               инлайна на <Card recessed>; колоночная раскладка сохранена классом .col. */}
-          <Card recessed radius="md" pad="none" className="col t-meta t-sans" style={{ padding: 14 }}>
+          <Card recessed radius="md" pad="none" className="col t-meta" style={{ padding: 14 }}>
             <Row align="a-start">
               <span className="badge badge--count">1</span>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
