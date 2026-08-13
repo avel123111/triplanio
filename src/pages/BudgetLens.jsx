@@ -40,7 +40,6 @@ import { Icon } from '../design/icons';
 import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
-import './BudgetLens.css';
 
 // ─── запись бюджета: клиентская половина единой двери (TRIP-394) ──────────────
 //
@@ -214,7 +213,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
               половина того, что читается как одно поле. */}
           <InputGroup {...st('amount')} data-vfield="amount">
             <Input num type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
-            <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur input-unit num" />
+            <CurrencyCombobox value={currency} onChange={setCurrency} className="input-unit num" />
           </InputGroup>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
@@ -369,15 +368,15 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
                 ? t('budget.fx_auto', { cur: mainCurrency })
                 : t('budget.fx_not_found', { cur: mainCurrency });
             return (
-              <div key={code} className="bgt-fxrow row row--g6" data-vfield={`rate.${code}`}>
-                <div className={`bgt-fxrow__cur tile tile--xl ${known ? '' : 'miss'}`}>{currencySymbol(code) || code}</div>
-                <div className="grow--fit">
-                  <div className="bgt-fxrow__eq">1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</div>
-                  <div className={`bgt-fxrow__hint ${hintCls}`}>{hint}</div>
-                </div>
-                <input className="input num" {...st(`rate.${code}`)} type="number" step="0.0001" value={values[code] ?? ''}
-                  onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" aria-label={`${code} → ${mainCurrency}`} />
-              </div>
+              <ListRow key={code} variant="divider" data-vfield={`rate.${code}`}
+                lead={<span className={known ? 'tile tile--xl' : 'tile tile--xl tile--danger'}>{currencySymbol(code) || code}</span>}
+                title={<>1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</>}
+                sub={<span className={hintCls === 'miss' ? 'miss' : undefined}>{hint}</span>}
+                trail={
+                  <input className="input num" {...st(`rate.${code}`)} type="number" step="0.0001" value={values[code] ?? ''}
+                    onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" aria-label={`${code} → ${mainCurrency}`} />
+                }
+              />
             );
           })}
         </div>
@@ -571,10 +570,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     if (readOnly) return;
     setExpenseModal({ existing: expense });
   }
-  function openDeleteExpense(expense) {
-    if (readOnly) return;
-    setDeleteExpense(expense);
-  }
   function openAddCategory() {
     if (readOnly) return;
     setCategoryModal({});
@@ -676,8 +671,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   // Skeleton
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0' }}>
-        {[1, 2, 3].map(i => <Skeleton key={i} style={{ height: 80, borderRadius: 'var(--r-sm)' }} />)}
+      <div className="col col--g6">
+        {[1, 2, 3].map(i => <Skeleton key={i} h={80} r="var(--r-sm)" />)}
       </div>
     );
   }
@@ -685,7 +680,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const noExpenses = budgetExpenses.length === 0;
 
   return (
-    <div className="bgt ov-anim">
+    <div className="col col--g7 ov-anim">
       {readOnly && (
         <ReadOnlyBanner>{t('budget.readonly_banner_desc')}</ReadOnlyBanner>
       )}
@@ -803,89 +798,72 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
       {/* ░ DRILLDOWN ░ */}
       {grouping === 'category' ? (
-        <div className="bgt-drill">
+        <div className="grid grid--split grid--g7">
           {/* categories */}
-          <div className="card bgt-glist" role="tablist" aria-label={t('budget.group_by_category')}>
-            {cats.map(c => {
-              const active = activeCat?.id === c.id;
-              const empty = c.itemCount === 0;
-              return (
-                <button key={c.id} type="button" role="tab" aria-selected={active}
-                  className={`bgt-glist__row row row--g6 ${active ? 'on' : ''}`} onClick={() => setActiveCatId(c.id)}>
-                  <span className="tile" style={{ background: c.color + '22', color: c.color }}>
-                    <Icon name={catIcon(c)} size={17} />
-                  </span>
-                  <span className="grow--fit">
-                    <span className="bgt-glist__n row row--g4">
-                      <span className="t trunc">{c.displayName}</span>
-                      {c.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
-                    </span>
-                    <span className="bgt-glist__c">
-                      {empty ? t('budget.empty_word') : `${c.itemCount} ${expensesPlural(c.itemCount)}`}
-                      {c.missingCount > 0 && <> · <span className="miss">{t('budget.no_rate_count', { n: c.missingCount })}</span></>}
-                    </span>
-                  </span>
-                  <span className="bgt-glist__r">
-                    <span className={`bgt-glist__v ${empty ? 'muted' : ''}`}>{money(c.spent, mainCurrency)}</span>
-                  </span>
-                </button>
-              );
-            })}
-            {/* Тот же плейсхолдер «добавить», что в планировщике: пунктир и
-                ховер держит `btn--dashed`, свой класс экрану больше не нужен. */}
-            {!readOnly && (
-              <Btn variant="dashed" block icon="plus" onClick={openAddCategory}>
-                {t('budget.add_category')}
-              </Btn>
-            )}
-          </div>
+          <Card>
+            <div className="col col--g2">
+              {cats.map(c => {
+                const active = activeCat?.id === c.id;
+                const empty = c.itemCount === 0;
+                return (
+                  <ListRow key={c.id} variant="select" selected={active}
+                    role="tab" aria-selected={active} onClick={() => setActiveCatId(c.id)}
+                    lead={<span className="tile" style={{ background: c.color + '22', color: c.color }}><Icon name={catIcon(c)} size={17} /></span>}
+                    title={<span className="row row--g4"><span className="trunc">{c.displayName}</span>{c.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</span>}
+                    sub={<>{empty ? t('budget.empty_word') : `${c.itemCount} ${expensesPlural(c.itemCount)}`}{c.missingCount > 0 && <> · <span className="miss">{t('budget.no_rate_count', { n: c.missingCount })}</span></>}</>}
+                    trail={<span className={empty ? 't-strong muted' : 't-strong'}>{money(c.spent, mainCurrency)}</span>}
+                  />
+                );
+              })}
+              {!readOnly && (
+                <Btn variant="dashed" block icon="plus" onClick={openAddCategory}>
+                  {t('budget.add_category')}
+                </Btn>
+              )}
+            </div>
+          </Card>
 
           {/* detail */}
           {activeCat && (
-            <div className="card bgt-detail">
-              <div className="bgt-detail__h row row--g6">
-                <div className="tile tile--xl" style={{ background: activeCat.color + '22', color: activeCat.color }}>
-                  <Icon name={catIcon(activeCat)} size={22} />
-                </div>
-                <div className="grow--fit">
-                  <div className="bgt-detail__n row row--g4">
-                    {activeCat.displayName}
-                    {activeCat.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
+            <Card>
+              <div className="col col--g6">
+                <div className="row row--g6">
+                  <span className="tile tile--xl" style={{ background: activeCat.color + '22', color: activeCat.color }}><Icon name={catIcon(activeCat)} size={22} /></span>
+                  <div className="grow--fit">
+                    <div className="t-title row row--g4">{activeCat.displayName}{activeCat.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</div>
+                    <div className="t-meta muted">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
                   </div>
-                  <div className="bgt-detail__s">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
+                  <div className="col col--g1">
+                    <div className="t-title">{money(activeCat.spent, mainCurrency)}</div>
+                    <div className="t-meta muted">{t('budget.spent_label')}</div>
+                  </div>
+                  {activeCat.kind === 'custom' && !readOnly && (
+                    <Btn variant="secondary" size="sm" icon="edit" ariaLabel={t('visit.change')} onClick={() => openEditCategory(activeCat)} />
+                  )}
                 </div>
-                <div className="bgt-detail__amt">
-                  <div className="v">{money(activeCat.spent, mainCurrency)}</div>
-                  <div className="l">{t('budget.spent_label')}</div>
-                </div>
+                {activeCat.items.length === 0 ? (
+                  <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
+                    action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
+                ) : (
+                  <div className="col col--g4">
+                    {activeCat.items.map(exp => {
+                      const r = conv(exp);
+                      return (
+                        <ExpenseRow key={exp.id} expense={exp} catColor={activeCat.color} catIcon={catIcon(activeCat)}
+                          cityName={cityLabelOf(exp)}
+                          mode="category" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
+                          onOpen={openExpense} />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {activeCat.kind === 'custom' && !readOnly && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
-                  <Btn variant="secondary" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
-                </div>
-              )}
-              {activeCat.items.length === 0 ? (
-                <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
-                  action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
-              ) : (
-                <div className="bgt-exlist col col--g4">
-                  {activeCat.items.map(exp => {
-                    const r = conv(exp);
-                    return (
-                      <ExpenseRow key={exp.id} expense={exp} catColor={activeCat.color} catIcon={catIcon(activeCat)}
-                        cityName={cityLabelOf(exp)}
-                        mode="category" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
-                        onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} readOnly={readOnly} />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            </Card>
           )}
         </div>
       ) : (
         <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc}
-          expensesPlural={expensesPlural} onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} onAdd={openAddExpense} readOnly={readOnly} />
+          expensesPlural={expensesPlural} onOpen={openExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
 
       {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onSaved={refresh} onProRefusal={onProRefusal} />}
@@ -898,7 +876,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
 // ─── CityGrouping ─────────────────────────────────────────────────────────────
 
-function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onEdit, onDelete, onAdd, readOnly }) {
+function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onAdd, readOnly }) {
   const { t } = useI18n();
   // A group is keyed by city identity (`id`); `label` is what to show.
   const [activeCityId, setActiveCityId] = useState(cityGroups[0]?.id || '');
@@ -914,50 +892,48 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
   const cityLabel = (g) => g.label || t('budget.no_city');
 
   return (
-    <div className="bgt-drill">
-      <div className="card bgt-glist" role="tablist" aria-label={t('budget.group_by_city')}>
-        {cityGroups.map(g => {
-          const active = g.id === activeCityId;
-          return (
-            <button key={g.id} type="button" role="tab" aria-selected={active}
-              className={`bgt-glist__row row row--g6 ${active ? 'on' : ''}`} onClick={() => setActiveCityId(g.id)}>
-              <span className="tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
-                <Icon name="pin" size={17} />
-              </span>
-              <span className="grow--fit">
-                <span className="bgt-glist__n row row--g4"><span className="t trunc">{cityLabel(g)}</span></span>
-                <span className="bgt-glist__c">{g.items.length} {expensesPlural(g.items.length)}</span>
-              </span>
-              <span className="bgt-glist__r"><span className="bgt-glist__v">{money(g.total, mainCurrency)}</span></span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="card bgt-detail">
-        <div className="bgt-detail__h row row--g6">
-          <div className="tile tile--xl" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
-            <Icon name="pin" size={22} />
-          </div>
-          <div className="grow--fit">
-            <div className="bgt-detail__n row row--g4">{cityLabel(cur)}</div>
-            <div className="bgt-detail__s">{cur.items.length} {expensesPlural(cur.items.length)}</div>
-          </div>
-          <div className="bgt-detail__amt">
-            <div className="v">{money(cur.total, mainCurrency)}</div>
-            <div className="l">{t('budget.spent_label')}</div>
-          </div>
-        </div>
-        <div className="bgt-exlist col col--g4">
-          {cur.items.map(it => {
-            const r = conv(it);
+    <div className="grid grid--split grid--g7">
+      <Card>
+        <div className="col col--g2">
+          {cityGroups.map(g => {
+            const active = g.id === activeCityId;
             return (
-              <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName} readOnly={readOnly}
-                mode="city" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
-                onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
+              <ListRow key={g.id} variant="select" selected={active}
+                role="tab" aria-selected={active} onClick={() => setActiveCityId(g.id)}
+                lead={<span className="tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={17} /></span>}
+                title={<span className="trunc">{cityLabel(g)}</span>}
+                sub={`${g.items.length} ${expensesPlural(g.items.length)}`}
+                trail={<span className="t-strong">{money(g.total, mainCurrency)}</span>}
+              />
             );
           })}
         </div>
-      </div>
+      </Card>
+      <Card>
+        <div className="col col--g6">
+          <div className="row row--g6">
+            <span className="tile tile--xl" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={22} /></span>
+            <div className="grow--fit">
+              <div className="t-title">{cityLabel(cur)}</div>
+              <div className="t-meta muted">{cur.items.length} {expensesPlural(cur.items.length)}</div>
+            </div>
+            <div className="col col--g1">
+              <div className="t-title">{money(cur.total, mainCurrency)}</div>
+              <div className="t-meta muted">{t('budget.spent_label')}</div>
+            </div>
+          </div>
+          <div className="col col--g4">
+            {cur.items.map(it => {
+              const r = conv(it);
+              return (
+                <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName}
+                  mode="city" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
+                  onOpen={onOpen} />
+              );
+            })}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

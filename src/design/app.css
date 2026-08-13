@@ -451,7 +451,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
 .te-row.te-row--plan, .acct-tgrow,
 /* держали эту пару своей копией, а не именем в роли */
-.bgt-exrow, .ncal-wdc,
+.ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
 /* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
    несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
@@ -467,7 +467,9 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    слева, необязательные действия справа. Схлопывает приватные шапки экранов
    (bgt-head, dl-head, …) в один канон. Адаптив — на экране (не передаёт actions
    на мобиле), не здесь: облик шапки один.
-   prefix-exempt: pagehead — новый канон-объект «шапка экрана», апрув Pavel TRIP-413 */
+   prefix-exempt: pagehead — новый канон-объект «шапка экрана», апрув Pavel TRIP-413
+   floor-exempt: namespaces +3 — 4 новых канон-семьи ДС (pagehead/stat/lrow/donut) минус удалённый bgt; общий словарь, переиспользуется всеми экранами, апрув Pavel TRIP-413
+   floor-exempt: layout +2 — канон-кубики ДС несут свою раскладку (lrow/stat/pagehead __body/__trail), это язык системы, не приватная раскладка экрана, апрув Pavel TRIP-413 */
 .pagehead { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-7); }
 .pagehead__titles { min-width: 0; }
 .pagehead__title { margin: 0; }
@@ -634,7 +636,6 @@ h1,
 .auth__h1,
 .bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
-.bgt-donut__c .v,  /* TRIP-175 инсп.: Heading→Title (центр доната бюджета; .t-flush сохранён) */
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
 .ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
@@ -653,9 +654,6 @@ h2,
 .acct-hero__name,
 .acct-plan__v,
 .sec-head h2,
-.bgt-stat__v,
-.bgt-detail__amt .v,
-.bgt-detail__n,   /* TRIP-243 инсп.: Subheading→Heading (название категории в детали бюджета) */
 .tcp__ph,
 .ncal-wdc-num,
 .pt-mm .n,
@@ -663,7 +661,6 @@ h2,
 .dlg__head h2,     /* TRIP-175 инсп.: Subheading→Heading (заголовки модалок .dlg__head) */
 .addon-card__title,/* TRIP-175 инсп.: Label→Heading (тайтл карточки аддона) */
 .card h3,          /* TRIP-175 инсп.: Subheading→Heading (заголовок карточки) */
-.bgt-head__title,  /* TRIP-175 инсп.: Subheading→Heading (заголовок экрана бюджета) */
 .visit .when .yr,  /* TRIP-175 инсп.: Label→Heading (год визита) */
 .cbar .yr,         /* TRIP-175 инсп.: Meta→Heading (год столбца графика) */
 .app-header__trip-title, /* TRIP-175 инсп.: Subheading→Heading (заголовок трипа в шапке) */
@@ -684,11 +681,6 @@ h3,
 .sheet-h h3,
 .head__av,
 .vp-h h3,
-.bgt-dleg__v,      /* TRIP-243 инсп.: Meta→Subheading (сумма легенды доната) */
-.bgt-glist__v,     /* TRIP-243 инсп.: UI→Subheading (сумма строки списка категорий/городов) */
-.bgt-exrow__t,     /* TRIP-243 инсп.: UI→Subheading (название траты) */
-.bgt-exrow__amt,   /* TRIP-243 инсп.: UI→Subheading (сумма траты) */
-.bgt-fxrow__eq,    /* TRIP-243 инсп.: Meta→Subheading (курс в модалке валют) */
 .pt-cstop__num,
 .auth__brand-link,
 .brand-col__logo,
@@ -723,7 +715,6 @@ h4,
    это осталось бы единственное поле в приложении с жирным текстом. */
 .plan-card__name,
 .nonext b,
-.bgt-donutcard__h b,
 .dl-card__title,
 .dl-empty b,
 .pt-mast__av,
@@ -810,10 +801,6 @@ h4,
 .cbar .val,
 .empty-note .en-tx b,
 .visit .info .dt,
-.bgt-glist__n,
-.bgt-dleg__n,      /* TRIP-243 инсп.: Meta→UI (название категории легенды доната) */
-.bgt-fxlist span,  /* TRIP-243 инсп.: Meta→UI (строки курсов в FX-карточке) */
-.bgt-fxrow__cur,
 .dl-addcard b,
 .eed-fctitle,
 .docfield__title,
@@ -958,14 +945,6 @@ h4,
 .visit .info .rng,
 .triplink,
 .vmanual,
-.bgt-donut__c .l,
-.bgt-dleg__p,
-.bgt-stat__s,
-.bgt-glist__c,
-.bgt-detail__s,
-.bgt-detail__amt .l,
-.bgt-exrow__s,
-.bgt-fxrow__hint,
 .dl-card__sub,
 .dl-card__notes,
 .dl-card__foot-who,
@@ -1073,7 +1052,6 @@ h4,
 .rec .k,
 .visit .when .mo,
 .eed-fromto,
-.bgt-stat__l,
 .ncal-wd,          /* инсп.: Micro (дни недели над сеткой месяца) */
 .ncal-wdc-wd,      /* TRIP-280: близнец .ncal-wd — день недели в карточке вида «Неделя» */
 .pt-mast__kick,
@@ -1127,7 +1105,6 @@ h4,
 .tl3-card--tr .rv-mode small,
 .acct-plan__line b,
 .s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
-.bgt-stat__s b,
 .ptrip h1, .ptrip h2, .ptrip h3,
 .pt-mast__l1 b,
 .pt-cstop__sub b,
@@ -1145,7 +1122,6 @@ h4,
 .t-flush,
 .tmk,
 .s22mk,
-.bgt-donut__c .v,
 .ncal-title-row,
 .ncal-dn,
 .ncal-wdc-num,
@@ -2100,6 +2076,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .err, .wrn { display: flex; align-items: center; gap: 5px; }
 .err { color: var(--danger-ink); }
 .wrn { color: var(--warning-ink); }
+/* Значение с проблемой (нет курса, несведённая сумма) — danger-цветом. Был приватно
+   под bgt-scope, сведён в общую утилиту при переезде Бюджета на ДС (TRIP-413). */
+.miss { color: var(--danger); }
 .err svg, .wrn svg { width: 13px; height: 13px; flex: none; }
 
 /* Canonical checkbox — the app's only one. `appearance: none` because the box
@@ -5078,7 +5057,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    даёт `.settings-lens` gap; docs/budget не раскладывают детей через gap → задаём
    отступ снизу здесь, чтобы баннер не прилипал к тулбару/контенту (как на settings). */
 .dl-root > .readonly-banner,
-.bgt > .readonly-banner { margin-bottom: 16px; }
 
 /* Identity card: live cover preview + name/description/currency/notes. */
 /* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
@@ -7490,9 +7468,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .badge--on-arrival color — класс удалён, тон уехал на базу через канал --hl - значение то же
    visual-diff-exempt: .bell-dd__mark background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .bell-dd__more:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
-   visual-diff-exempt: .bgt-glist__row background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
-   visual-diff-exempt: .bgt-glist__row border-color — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
-   visual-diff-exempt: .bgt-stat--total background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .bk-link:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .brow--unread:hover {@media (hover: hover)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .brow--unread background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
