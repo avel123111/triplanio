@@ -57,7 +57,7 @@ export default function JoinTrip() {
         return;
       }
 
-      const { data, error } = await invokeFn('redeemTripInviteLink', { body: { token } });
+      const { data, error, code } = await invokeFn('redeemTripInviteLink', { body: { token } });
       if (cancelled) return;
 
       if (!error && data?.ok && data?.tripId) {
@@ -69,11 +69,13 @@ export default function JoinTrip() {
         return;
       }
 
-      const reason = data?.reason;
+      // The invite-link edge function emits a machine `code` in its `{ error, code }`
+      // body; supabase-js leaves `data` null on a non-2xx, so read the `code` that
+      // invokeFn parsed off the error response (not `data`, which is null here).
       setErrKey(
-        reason === 'expired' ? 'member.join_error_expired'
-        : reason === 'revoked' ? 'member.join_error_revoked'
-        : reason === 'blocked' ? 'member.join_error_blocked'
+        code === 'expired' ? 'member.join_error_expired'
+        : code === 'revoked' ? 'member.join_error_revoked'
+        : code === 'blocked' ? 'member.join_error_blocked'
         : 'member.join_error_invalid',
       );
       setState('error');

@@ -2298,6 +2298,10 @@ export type Database = {
         }
       }
       count_active_owned_trips: { Args: { p_uid: string }; Returns: number }
+      create_trip_invite_link: {
+        Args: { p_actor: string; p_role: string; p_trip: string }
+        Returns: Json
+      }
       create_trip_with_route: {
         Args: {
           p_actor: string
@@ -2363,6 +2367,15 @@ export type Database = {
         }[]
       }
       get_user_travel_stats: { Args: { p_actor: string }; Returns: Json }
+      invite_trip_member: {
+        Args: {
+          p_actor: string
+          p_email: string
+          p_role: string
+          p_trip: string
+        }
+        Returns: Json
+      }
       is_trip_creator: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_participant: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_pro: { Args: { p_trip_id: string }; Returns: boolean }
@@ -2423,9 +2436,22 @@ export type Database = {
         Args: { p_actor: string; p_city: string; p_trip: string }
         Returns: undefined
       }
+      remove_trip_member: {
+        Args: { p_actor: string; p_member: string; p_trip: string }
+        Returns: undefined
+      }
       reorder_cities: {
         Args: { p_actor: string; p_order: string[]; p_trip: string }
         Returns: undefined
+      }
+      respond_trip_invite: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_member: string
+          p_trip: string
+        }
+        Returns: Json
       }
       revoke_trip_pro_addons: {
         Args: { p_trip_id: string }
@@ -2484,7 +2510,7 @@ export type Database = {
       }
       send_chat_message: {
         Args: {
-          p_actor?: string
+          p_actor: string
           p_client_msg_id?: string
           p_text: string
           p_trip: string

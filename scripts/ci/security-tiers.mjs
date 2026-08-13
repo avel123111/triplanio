@@ -332,12 +332,6 @@ export const DOORS = {
   checkSubscriptionStatus: 'participant', // Pro-статус трипа видит всякий, кто трип открывает
 
   // ── editor: меняет план трипа ──
-  addOfflineTripMember:  'editor',
-  createTripInviteLink:  'editor',
-  inviteTripMember:      'editor',
-  removeTripMember:      'editor',      // ИЛИ своя строка — вторая ось, см. код
-  resendTripInvite:      'editor',
-  updateTripMemberRole:  'editor',
   updateTripSettings:    'editor',
   telegramDisconnect:    'editor',      // ИЛИ своя строка — вторая ось, см. код
   telegramSetActive:     'editor',
@@ -354,6 +348,9 @@ export const DOORS = {
   user_place:            ['self'],            // place + place/delete: свой user_custom_visits (scope user_id=actor), Pro нигде (TRIP-402)
   trip_chat:             ['participant', 'pro'], // send: viewer пишет (participant), чат=Pro-аддон (pro); порядок = 403 раньше 402; закрыл дыру энфорса (TRIP-408)
   inbox:                 ['self'],            // read/read-all: своя строка notifications (scope user_id=actor); полное закрытие notifications (TRIP-408)
+  trip_member:           ['editor'],          // TRIP-409: invite/add-offline/resend/role/remove — единый гейт editor; RPC-тела скоупят p_trip+p_actor
+  trip_member_self:      [],                  // TRIP-409: leave/respond — авторизация row-self через guardRow (requires:[]); инвариант №7 форсит loadTarget+guardRow
+  trip_invite_link:      ['editor'],          // TRIP-409: create — общая ссылка (find-or-create), гейт editor
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
   deleteTrip:            'owner',       // удалить трип
@@ -368,7 +365,6 @@ export const DOORS = {
   getTravelStats:        'self',        // общий ридер статов (статистика+главная) по актору из JWT (TRIP-402, ярус A)
   getTrips:              'self',        // композит карточек главной по актору из JWT (TRIP-403, ярус B)
   getUserPlan:           'self',
-  respondTripInvite:     'self',        // приглашение адресовано вызывающему
   telegramGetMyIntegrations: 'self',
 
   // ── auth: любой залогиненный, трип не при чём ──

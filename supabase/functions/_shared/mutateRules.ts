@@ -54,6 +54,14 @@ export type Refusal = {
   sentrySkip?: boolean;
 };
 
+/**
+ * Актор запроса, каким его знает шов из JWT: id + email. `guardRow` получает его
+ * ЦЕЛИКОМ (не только id), чтобы row-self-проверку можно было выразить по email
+ * (`respond` владеет инвайтом либо по `user_id`, либо по `invite_email`) —
+ * авторизация по строке остаётся в edge, не уезжает в SQL (принцип эпика TRIP-374).
+ */
+export type Actor = { id: string; email: string | null };
+
 /** Объявление колонки, которую МОЖЕТ прислать клиент. Кэпы зеркалят CHECK в БД. */
 export type FieldSpec = {
   /**
@@ -102,8 +110,14 @@ export type ActionSpec = {
    * даёт те же авторизацию/кэпы/контракт ошибок/актор, что и table-DML;
    * пустые RPC-обёртки «для симметрии» запрещены (TRIP-405). Универсально:
    * любой append-only ресурс берёт `insert`, любая транзакция — `rpc`.
+   *
+   * `none` = действие БЕЗ записи в БД: только побочка (`afterWrite`). Шов
+   * проходит авторизацию/`guardRow`, но пропускает `runPlan`. Заведено под
+   * `resend` (чистое re-emit уведомления, данных нет) — модель «действие-только-
+   * побочка». Не «пустая RPC-обёртка» (TRIP-405): RPC писал бы транзакцию, а
+   * здесь записи нет ВООБЩЕ. Универсально: любое будущее notify-only действие.
    */
-  op: 'upsert' | 'insert' | 'delete' | 'rpc';
+  op: 'upsert' | 'insert' | 'delete' | 'rpc' | 'none';
   /** Таблица DML. Необязательна ТОЛЬКО для `op:'rpc'` (пишет сам RPC). */
   table?: string;
   /** Имя атомарного RPC. Только `op:'rpc'`. */
@@ -117,7 +131,7 @@ export type ActionSpec = {
    */
   buildArgs?: (
     values: Record<string, unknown>,
-    ctx: { actor: string; scopeValue: string },
+    ctx: { actor: string; scopeValue: string; targetId: string | null },
   ) => Record<string, unknown>;
   /** Имена требований; вычисляет их шов (`mutate.ts`), а не эта половина. */
   requires: readonly string[];
@@ -145,9 +159,21 @@ export type ActionSpec = {
   loadTarget?: boolean;
   /**
    * Правило, читаемое ТОЛЬКО по существующей строке: «эта трата не ручная»,
-   * «эта категория системная». Право на ресурс к этому моменту уже проверено.
+   * «эта категория системная», «инвайт принадлежит мне (`user_id`/`invite_email`)».
+   * Право на ресурс (гейт `requires`) к этому моменту уже проверено; когда
+   * `requires:[]`, `guardRow` — ЕДИНСТВЕННАЯ авторизация действия (row-self-дверь),
+   * поэтому её обязательность форсит инвариант №7 (`assertGuardedRegistry`).
+   * Получает ПОЛНОГО актора `{id, email}`, а не только id (row-self по email).
    */
-  guardRow?: (row: Record<string, unknown>, actor: string) => Refusal | null;
+  guardRow?: (row: Record<string, unknown>, actor: Actor) => Refusal | null;
+  /**
+   * Только `op:'rpc'`. Переводит ДИСКРИМИНИРОВАННЫЙ результат RPC (`data.outcome`)
+   * в ответ шва: либо бизнес-`Refusal` (409/400 — «уже участник»/self/owner), либо
+   * `{ data }` = успех с полезной нагрузкой. Бизнес-«нет» здесь — это ЗНАЧЕНИЕ
+   * `data`, а НЕ ошибка БД (инвариант `unwrapDbResult`: `unique_violation` дал бы
+   * 500). Чистая функция (как `buildArgs`) — пинится тестом без загрузки клиента.
+   */
+  mapOutcome?: (data: unknown) => Refusal | { data: unknown };
 };
 
 export type ResourceSpec = {
@@ -165,7 +191,9 @@ export type WritePlan =
   | { op: 'insert'; table: string; values: Record<string, unknown> }
   | { op: 'update'; table: string; values: Record<string, unknown>; match: Record<string, unknown> }
   | { op: 'delete'; table: string; match: Record<string, unknown> }
-  | { op: 'rpc'; name: string; args: Record<string, unknown> };
+  | { op: 'rpc'; name: string; args: Record<string, unknown> }
+  // `none` — записи нет: `runPlan` не вызывается, шов идёт сразу в `afterWrite`.
+  | { op: 'none' };
 
 /** Подстановка актора в объявленные сервером колонки. */
 const ACTOR_TOKEN = '@actor';
@@ -329,13 +357,18 @@ export function buildPlan(
     values: Record<string, unknown>;
   },
 ): WritePlan {
+  // `op:'none'` — записи нет (`resend`): плана-записи не существует, шов пропустит
+  // `runPlan` и пойдёт сразу в `afterWrite`. Sweep-тест реестра это пропускает
+  // (план не update/delete), скоуп проверять не на чем.
+  if (action.op === 'none') return { op: 'none' };
+
   // `op:'rpc'` — тело действия транзакция, а не строка: аргументы даёт чистый
   // `buildArgs` (валидация уже прошла), `p_actor` инъектит ШОВ, а не клиент —
   // ровно как `forcedOnInsert:{created_by:'@actor'}` у table-DML.
   if (action.op === 'rpc') {
     if (!action.rpc) throw new Error(`${resource.name}: op:'rpc' requires an rpc name`);
     const args = action.buildArgs
-      ? action.buildArgs(ctx.values, { actor: ctx.actor, scopeValue: ctx.scopeValue })
+      ? action.buildArgs(ctx.values, { actor: ctx.actor, scopeValue: ctx.scopeValue, targetId: ctx.targetId })
       : {};
     return { op: 'rpc', name: action.rpc, args: { ...args, p_actor: ctx.actor } };
   }
@@ -385,6 +418,9 @@ import { ACCOUNT } from './resources/account.ts';
 import { USER_PLACE } from './resources/userPlace.ts';
 import { TRIP_CHAT } from './resources/tripChat.ts';
 import { INBOX } from './resources/inbox.ts';
+import { TRIP_MEMBER } from './resources/tripMember.ts';
+import { TRIP_MEMBER_SELF } from './resources/tripMemberSelf.ts';
+import { TRIP_INVITE_LINK } from './resources/tripInviteLink.ts';
 
 /**
  * Все ресурсы записи. Реестр существует не ради диспетчеризации (её делает сама
@@ -401,4 +437,34 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   [USER_PLACE.name]: USER_PLACE,
   [TRIP_CHAT.name]: TRIP_CHAT,
   [INBOX.name]: INBOX,
+  [TRIP_MEMBER.name]: TRIP_MEMBER,
+  [TRIP_MEMBER_SELF.name]: TRIP_MEMBER_SELF,
+  [TRIP_INVITE_LINK.name]: TRIP_INVITE_LINK,
 };
+
+/**
+ * ИНВАРИАНТ №7 (foot-gun-гард). Действие с ПУСТЫМ гейтом `requires:[]` (row-self-
+ * дверь: авторизация — только по строке через `guardRow`) и с ЗАПИСЬЮ
+ * (`delete`/`update`/`upsert`/`rpc`) ОБЯЗАНО иметь `loadTarget:true` + `guardRow`.
+ * Иначе опечатка (забыли `guardRow`) = запись без какой-либо авторизации — а
+ * гарды скоупа ловят IDOR («чужой id»), не «дверь без замка». `op:'none'` не
+ * пишет → под инвариант не попадает. Возвращает список нарушений (пустой = чисто);
+ * пинится тестом по ВСЕМУ REGISTRY, поэтому новый ресурс проверяется сам, и
+ * зовётся швом на загрузке (`mutate.ts`) как рантайм-ремень.
+ */
+export function findUnguardedRowSelf(
+  registry: Record<string, ResourceSpec> = REGISTRY,
+): string[] {
+  const bad: string[] = [];
+  for (const resource of Object.values(registry)) {
+    for (const [name, action] of Object.entries(resource.actions)) {
+      const writes = action.op === 'delete' || action.op === 'upsert' || action.op === 'rpc';
+      if (action.requires.length === 0 && writes && !(action.loadTarget && action.guardRow)) {
+        bad.push(
+          `${resource.name}/${name}: requires:[] + запись (${action.op}) без loadTarget+guardRow = дверь без замка (инвариант №7)`,
+        );
+      }
+    }
+  }
+  return bad;
+}

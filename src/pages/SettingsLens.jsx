@@ -682,13 +682,14 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       variant: 'destructive',
       onConfirm: async () => {
         // Only leave (navigate away) once the backend actually removed the row.
-        // removeTripMember now returns a non-2xx with the reason on failure, so we
-        // must read the response - navigating on a silent failure left the user
-        // still in the trip ("выход" перебрасывал на /trips, но не выходил).
-        const { data, error, message } = await invokeFn('removeTripMember', {
-          body: { member_id: myMember.id },
+        // The leave action (trip-member-self/leave) now returns a non-2xx with the
+        // reason on failure, so we must read the response - navigating on a silent
+        // failure left the user still in the trip ("выход" перебрасывал на /trips,
+        // но не выходил).
+        const { error, message } = await invokeFn('trip-member-self/leave', {
+          body: { id: myMember.id, trip_id: tripId },
         });
-        if (error || !data?.ok) {
+        if (error) {
           // invokeFn already parsed the body (read error.context once — a Response
           // can only be read one time), so use its message; don't re-read.
           const msg = message || t('settings.leave_error');
