@@ -7232,7 +7232,24 @@ a.doc-row__n:hover{ color: var(--brand); }
   --hl: var(--ev-hotel); --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink);
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
   gap: 6px; padding: 26px 20px 22px; overflow: hidden; isolation: isolate;
-  background: radial-gradient(120% 92% at 50% -12%, var(--hl-soft), transparent 62%), var(--surface);
+}
+/* Амбиентный тинт-вош (радиал канала --hl, заякорен сверху) — ДЕКОРАЦИЯ поверх
+   подложки Card (`--surface`), не плоский скин: уехал с базового `background`
+   класса на псевдо `::after` (z-index:-1, под контентом, над фоном Card). Слой
+   `var(--surface)` снят - подложку несёт сам `<Card>`. Так база `.fork-state` не
+   держит НИ radius/shadow (объект 2 split-skin), НИ background-скин: card-homed
+   чист по команде-истине. Визуал тождествен (проверено рендером обеих тем).
+   Псевдо `::after` — носитель ПЕРЕНЕСЁННОЙ тинт-декорации (не новая поверхность);
+   его объявления объявлены переносом фона с базы, визуал тождествен (рендер).
+   visual-diff-exempt: .fork-state background — радиал-тинт уехал на .fork-state::after (декорация над Card-подложкой), слой var(--surface) снят: подложку несёт Card, визуал тождествен
+   visual-diff-exempt: .fork-state::after background — перенос радиал-тинта с базы .fork-state (тот же градиент канала --hl), визуал тождествен
+   visual-diff-exempt: .fork-state::after content — скаффолд псевдо-носителя перенесённой тинт-декорации
+   visual-diff-exempt: .fork-state::after position — скаффолд псевдо-носителя перенесённой тинт-декорации
+   visual-diff-exempt: .fork-state::after inset — скаффолд псевдо-носителя перенесённой тинт-декорации
+   visual-diff-exempt: .fork-state::after z-index — псевдо под контентом, над фоном Card (перенос декорации) */
+.fork-state::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(120% 92% at 50% -12%, var(--hl-soft), transparent 62%);
 }
 /* .fork-state box-shadow уехал на проп <Card raised> (--sh-1, TRIP-337 объект 2):
    стеклянный inset-highlight (inset 0 1px 0) снят — плоская тень как у прочих
