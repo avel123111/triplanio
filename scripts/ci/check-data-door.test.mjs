@@ -147,13 +147,16 @@ test('a new literal write is caught', (t) => {
 
 /* ───────────── mutation 1: the whitelist is load-bearing ────────────────── */
 
-test('mutation 1 — a whitelisted write does not count (notifications / chat_reads / partner_clicks)', (t) => {
+test('mutation 1 — a whitelisted write does not count (chat_reads / partner_clicks)', (t) => {
+  // `notifications` USED to sit here as a whitelisted write; TRIP-408 closed it
+  // entirely (the `read` flag went behind the `inbox/read` door, SELECT+DML
+  // REVOKEd), so it is no longer whitelisted — the two survivors are the
+  // realtime read-marker (`chat_reads`, §4.D) and the affiliate ledger.
   const f = fixture(t, {
     base: { 'src/a.js': writes(1) },
     head: {
       'src/a.js':
         writes(1) +
-        `await supabase.from('notifications').update({ read: true }).eq('id', id);\n` +
         `await supabase.from('chat_reads').upsert(row);\n` +
         `await supabase.from('partner_clicks').insert(payload);\n`,
     },
@@ -475,22 +478,24 @@ test('a table written from BOTH the browser and edge is reported, with its NAME'
 });
 
 test('mutation 15 — a DECLARED two-door table is reported apart from the ratchet', (t) => {
-  // The starred decision in `measure()`: `notifications` is written by the
-  // browser (the `read` flag) AND by edge, and by §4.C that stays forever — so
-  // it must not sit on the metric whose target is 0, because an unreachable
-  // target is not a metric. Folding the whitelist back into `doubleDoor` left
-  // every test green while turning the live repo red for a reason nobody could
-  // act on. Not silent, though: it gets its own printed line.
+  // The starred decision in `measure()`: `chat_reads` is written by the browser
+  // (the realtime read-marker) AND by the trigger/edge, and by §4.D that stays
+  // forever — so it must not sit on the metric whose target is 0, because an
+  // unreachable target is not a metric. Folding the whitelist back into
+  // `doubleDoor` left every test green while turning the live repo red for a
+  // reason nobody could act on. Not silent, though: it gets its own printed
+  // line. (`notifications` used to be this fixture; TRIP-408 closed it, so the
+  // surviving declared two-door table is `chat_reads`.)
   const f = fixture(t, {
     base: { 'src/a.js': '', 'supabase/functions/f/index.ts': '' },
     head: {
-      'src/a.js': `await supabase.from('notifications').update({ read: true }).eq('id', id);\n`,
-      'supabase/functions/f/index.ts': edgeWrite('notifications'),
+      'src/a.js': `await supabase.from('chat_reads').upsert({ trip_id, last_read_at });\n`,
+      'supabase/functions/f/index.ts': edgeWrite('chat_reads'),
     },
   });
   const r = run(f);
   assert.equal(r.code, 0, `объявленное исключение попало в ратчет с недостижимой целью:\n${r.out}`);
-  assert.match(r.out, /две двери ПО ОБЪЯВЛЕНИЮ.*notifications/, `граница молчит — а молчащая граница хуже дыры:\n${r.out}`);
+  assert.match(r.out, /две двери ПО ОБЪЯВЛЕНИЮ.*chat_reads/, `граница молчит — а молчащая граница хуже дыры:\n${r.out}`);
   assert.doesNotMatch(r.out, /две двери записи/, `объявленная таблица напечатана как нарушение:\n${r.out}`);
 });
 
@@ -564,7 +569,7 @@ test('mutation 12 — home-screen calls are COUNTED, printed, and not ratcheted'
     base: { 'src/pages/Trips.jsx': '' },
     head: {
       'src/pages/Trips.jsx':
-        `await supabase.from('notifications').update({ read: true }).eq('id', id);\n` +
+        `await supabase.from('chat_reads').upsert({ trip_id, last_read_at });\n` +
         `const { trips } = await invokeFn('getHomeScreen', {});\n` +
         `const skeleton = Array.from({ length: 6 }).map((_, i) => i);\n`,
     },
@@ -608,7 +613,7 @@ test('mutation 13 — the three RPC buckets get one call EACH, not three in one'
   const f = fixture(t, {
     base: {
       'src/a.js':
-        `await supabase.rpc('send_chat_message', {});\n` +
+        `await supabase.rpc('add_layover_transfer', {});\n` +
         `await supabase.rpc('get_user_travel_stats');\n` +
         `await supabase.rpc('search_gazetteer', {});\n`,
     },
@@ -622,8 +627,8 @@ test('mutation 13 — the three RPC buckets get one call EACH, not three in one'
 
 test('a reading RPC moving behind edge lowers its own bucket, not the mutating one', (t) => {
   const f = fixture(t, {
-    base: { 'src/a.js': `await supabase.rpc('get_user_travel_stats');\nawait supabase.rpc('send_chat_message', {});\n` },
-    head: { 'src/a.js': `await supabase.rpc('send_chat_message', {});\n` },
+    base: { 'src/a.js': `await supabase.rpc('get_user_travel_stats');\nawait supabase.rpc('add_layover_transfer', {});\n` },
+    head: { 'src/a.js': `await supabase.rpc('add_layover_transfer', {});\n` },
   });
   const r = run(f);
   assert.equal(r.code, 0, r.out);
