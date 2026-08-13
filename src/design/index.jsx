@@ -360,19 +360,19 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 // распахнута). `compact` не заведён (YAGNI): проп в контракте есть, но CSS-
 // правило и значение появятся с первым живым вызывателем, не впрок.
 /**
- * @typedef {'lg'|'md'} CardRadius
+ * @typedef {'lg'|'md'|'card'} CardRadius
  * @typedef {'brand'|'ai'} CardTone
  */
 /** @type {readonly string[]} */
 export const CARD_VARIANTS = [
-  "r-lg", "r-md", "interactive", "flush",
+  "r-lg", "r-md", "r-card", "interactive", "flush", "featured", "raised",
   "tone-brand", "tone-ai", "add", "recessed", "locked", "parsed", "danger",
 ];
 
 /**
  * @param {{ as?: 'div'|'button'|'a', radius?: CardRadius, interactive?: boolean,
  *   pad?: 'default'|'none', tone?: CardTone, variant?: 'add', recessed?: boolean,
- *   locked?: boolean, parsed?: boolean, danger?: boolean, href?: string, onClick?: any,
+ *   locked?: boolean, parsed?: boolean, danger?: boolean, featured?: boolean, raised?: boolean, href?: string, onClick?: any,
  *   disabled?: boolean, id?: string, ariaLabel?: string, ariaExpanded?: boolean,
  *   ariaControls?: string, ariaSelected?: boolean, ariaBusy?: boolean, ariaCurrent?: string,
  *   title?: string, target?: string, rel?: string, dataDragover?: boolean,
@@ -380,7 +380,7 @@ export const CARD_VARIANTS = [
  */
 export const Card = ({
   as = "div", radius, interactive, pad = "default", tone, variant,
-  recessed, locked, parsed, danger, href, onClick, disabled, id, ariaLabel,
+  recessed, locked, parsed, danger, featured, raised, href, onClick, disabled, id, ariaLabel,
   ariaExpanded, ariaControls, ariaSelected, ariaBusy, ariaCurrent, title, target, rel, dataDragover,
   children, className = "", style,
 }) => {
@@ -394,6 +394,8 @@ export const Card = ({
     locked && "locked",
     parsed && "parsed",
     danger && "danger",
+    featured && "featured",
+    raised && "raised",
   ].filter(Boolean);
   const El = as;
   return (

@@ -61,7 +61,7 @@ export function ForkListSkeleton({ count = 4 }) {
 export function ForkState({ variant, icon, spark = null, title, body, action = null, partner = null }) {
   const { t } = useI18nFormat();
   return (
-    <Card className={`fork-state fork-state--${variant}`}>
+    <Card raised className={`fork-state fork-state--${variant}`}>
       <div className="fork-state__art">
         <span className="fork-state__glow" aria-hidden="true" />
         <span className="fork-si">{icon}{spark ? <span className="fork-state__spark">{spark}</span> : null}</span>
@@ -174,7 +174,7 @@ export function ForkToolbar({
 
       {filtersOpen && (
         <>
-          <Card className="s22f-panel">{children}</Card>
+          <Card radius="lg" className="s22f-panel">{children}</Card>
           {/* Actions live OUTSIDE the filter card (design) */}
           <div className="s22f-panelfoot">
             <Btn variant="quiet" onClick={onReset}>

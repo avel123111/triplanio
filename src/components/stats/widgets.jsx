@@ -138,7 +138,7 @@ export function ContinentBars({ title, rows = [] }) {
 // Records grid. items = [{ key, iconClass, icon, label, value, sub }].
 export function Records({ items = [] }) {
   return (
-    <Card radius="lg" pad="none" className="records">
+    <Card radius="card" pad="none" className="records">
       {items.map((it) => (
         <div key={it.key} className="rec">
           <span className={`ic ${it.iconClass}`}>{it.icon}</span>

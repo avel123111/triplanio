@@ -313,7 +313,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             return (
               <Card
                 as="button"
-                radius="lg"
+                radius="card"
                 interactive
                 key={c.external_city_id}
                 onClick={() => setHome(c)}
@@ -479,7 +479,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         {canHome && (
           <Card
             as="button"
-            radius="lg"
+            radius="card"
             interactive
             onClick={() => setReturnMode('home')}
             className={`choice-card choice-card--stack choice-card--sm${returnMode === 'home' ? ' choice-card--on' : ''}`}
@@ -498,7 +498,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
         <Card
           as="button"
-          radius="lg"
+          radius="card"
           interactive
           onClick={() => setReturnMode('other')}
           className={`choice-card choice-card--stack choice-card--sm${returnMode === 'other' ? ' choice-card--on' : ''}`}
