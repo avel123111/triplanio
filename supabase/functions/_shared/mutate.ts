@@ -37,8 +37,17 @@ import { HttpError, jsonError, refusalResponse } from './http.ts';
 import { isCallerEditor, isCallerParticipant } from './tripAccess.ts';
 import { proRefusal } from './proGate.ts';
 import { mutateSuccess } from './mutateResponse.ts';
-import { buildPlan, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
-import type { ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
+import { buildPlan, findUnguardedRowSelf, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
+import type { Actor, ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
+import { AFTER_WRITE } from './mutateEffects.ts';
+
+// ИНВАРИАНТ №7 (fail-fast на загрузке): ни одно действие с `requires:[]` и записью
+// не смеет быть без `loadTarget`+`guardRow` (дверь без замка). Ловит опечатку до
+// первого запроса — весь seam-деплой падает, а не молча пускает запись без auth.
+const _rowSelfViolations = findUnguardedRowSelf();
+if (_rowSelfViolations.length) {
+  throw new Error(`mutate: инвариант №7 нарушен:\n  ${_rowSelfViolations.join('\n  ')}`);
+}
 
 /**
  * Единственная дверь DB-вызовов шва: инвариант `unwrapDbResult` (ошибка БД →
@@ -126,6 +135,8 @@ async function loadTargetRow(
 /** Исполняет план записи под service_role. Возвращает payload записи: строку
  *  insert/update, uuid-строку (create_trip), либо null (delete/void-RPC). */
 async function runPlan(plan: WritePlan): Promise<unknown> {
+  // `op:'none'` — записи нет (`resend`): шов идёт сразу в `afterWrite`, данных нет.
+  if (plan.op === 'none') return null;
   // `op:'rpc'` — тело действия один атомарный RPC (layover: города+сегменты+
   // recompute). Идёт через ту же дверь `rpc()`, что и `prepareRpc`, поэтому
   // инвариант «ошибка БД → throw → 500» держится по построению (TRIP-405).
@@ -190,16 +201,26 @@ export async function mutate(
   const actor = await getRequestUser(req); // throws 503 on Auth outage
   if (!actor) return jsonError(401, 'Unauthorized', undefined, corsHeaders);
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError(400, 'Request body must be valid JSON', 'INVALID_BODY', corsHeaders);
-  }
-  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-    return jsonError(400, 'Request body must be a JSON object', 'INVALID_BODY', corsHeaders);
+  // Райдер #6 (TRIP-409): пустое/отсутствующее тело → `{}`. Клиент no-arg
+  // действия (`inbox/read-all`) зовёт `invokeFn` без body → `req.json()` бросал →
+  // 400 INVALID_BODY, «прочитать всё» не работало. Обязательные поля всё равно
+  // добьёт `validateInput`; чинит read-all и любое будущее no-arg действие.
+  const rawBody = await req.text();
+  let body: Record<string, unknown> = {};
+  if (rawBody.trim()) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch {
+      return jsonError(400, 'Request body must be valid JSON', 'INVALID_BODY', corsHeaders);
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return jsonError(400, 'Request body must be a JSON object', 'INVALID_BODY', corsHeaders);
+    }
+    body = parsed as Record<string, unknown>;
   }
 
+  const actorFull: Actor = { id: actor.id, email: actor.email ?? null };
   const scope = resolveScope(resource, actor.id, body);
   if (typeof scope !== 'string') return refuse(scope, corsHeaders);
 
@@ -213,13 +234,15 @@ export async function mutate(
 
   const targetId = typeof body.id === 'string' && body.id ? body.id : null;
 
-  // guardRow читается ТОЛЬКО по существующей строке (update/delete), на вставке
-  // строки ещё нет. Загружаем строго со скоупом, поэтому промах = 404, а не
-  // «нашли чужую и отказали».
+  // guardRow читается ТОЛЬКО по существующей строке (update/delete/rpc/none по id),
+  // на вставке строки ещё нет. Загружаем строго со скоупом, поэтому промах = 404,
+  // а не «нашли чужую и отказали». `loadedRow` дальше едет в `afterWrite` (teardown
+  // по member). guardRow получает ПОЛНОГО актора `{id,email}` (row-self по email).
+  let loadedRow: Record<string, unknown> | null = null;
   if (action.loadTarget && targetId) {
-    const row = await loadTargetRow(action, resource.scope.column, scope, targetId);
-    if (!row) return jsonError(404, 'Not found', 'NOT_FOUND', corsHeaders);
-    const rowRefusal = action.guardRow?.(row, actor.id);
+    loadedRow = await loadTargetRow(action, resource.scope.column, scope, targetId);
+    if (!loadedRow) return jsonError(404, 'Not found', 'NOT_FOUND', corsHeaders);
+    const rowRefusal = action.guardRow?.(loadedRow, actorFull);
     if (rowRefusal) return refuse(rowRefusal, corsHeaders);
   }
 
@@ -240,7 +263,35 @@ export async function mutate(
     targetId,
     values: validated.values,
   });
-  const data = await runPlan(plan);
+  let data = await runPlan(plan);
+
+  // Дискриминант исхода RPC (`data.outcome`): едет в `afterWrite` (respond решает
+  // accept/decline/owner-stray) И, если действие объявило `mapOutcome`, переводится
+  // в бизнес-Refusal (invite: already_member/self/owner) через СУЩЕСТВУЮЩИЙ канон
+  // `refusalResponse`. Бизнес-«нет» здесь — ЗНАЧЕНИЕ data, не ошибка БД (та → 500).
+  let outcome: unknown = null;
+  if (plan.op === 'rpc') {
+    outcome = data && typeof data === 'object' ? (data as Record<string, unknown>).outcome ?? null : null;
+    if (action.mapOutcome) {
+      const mapped = action.mapOutcome(data);
+      if ('status' in mapped) return refuse(mapped, corsHeaders);
+      data = mapped.data;
+    }
+  }
+
+  // afterWrite — единственный шаг побочки (emit/teardown/mark-read), best-effort:
+  // её сбой НЕ роняет действие и не пользовательская ошибка (эффекты уже совершены
+  // на данных БД, откатывать нечего). Сама побочка описана в файле ресурса
+  // (`mutateEffects.ts`), дверь лишь зовёт её по ключу `slug/action`.
+  const effect = AFTER_WRITE[`${slug}/${actionName}`];
+  if (effect) {
+    try {
+      await effect({ actor: actorFull, loadedRow, result: data, outcome, scopeValue: scope, db: supabaseAdmin });
+    } catch (e) {
+      console.error(`mutate: afterWrite ${slug}/${actionName} failed:`, e);
+    }
+  }
+
   return mutateSuccess(data, corsHeaders);
 }
 

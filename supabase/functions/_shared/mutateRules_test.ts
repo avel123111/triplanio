@@ -27,6 +27,7 @@
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@^1.0.8';
 import {
   buildPlan,
+  findUnguardedRowSelf,
   parseAction,
   REGISTRY,
   unwrapDbResult,
@@ -469,17 +470,20 @@ Deno.test('★ doc — create-only: присланный id игнорирует
   assertEquals(plan.values.trip_id, TRIP);
 });
 
+// guardRow получает ПОЛНОГО актора `{id,email}` (TRIP-409), владение — по `actor.id`.
+const ACTOR_OBJ = { id: ACTOR, email: 'actor@example.com' };
+
 Deno.test('★ guardRow: чужой ЛИЧНЫЙ док удалить нельзя', () => {
-  const r = DOC_DELETE.guardRow!({ visibility: 'private', created_by: 'someone-else' }, ACTOR);
+  const r = DOC_DELETE.guardRow!({ visibility: 'private', created_by: 'someone-else' }, ACTOR_OBJ);
   assert(r && r.status === 403 && r.code === 'DOC_PRIVATE_NOT_OWNER', `ожидался 403, ${JSON.stringify(r)}`);
 });
 
 Deno.test('guardRow: СВОЙ личный док удалить можно', () => {
-  assertEquals(DOC_DELETE.guardRow!({ visibility: 'private', created_by: ACTOR }, ACTOR), null);
+  assertEquals(DOC_DELETE.guardRow!({ visibility: 'private', created_by: ACTOR }, ACTOR_OBJ), null);
 });
 
 Deno.test('guardRow: ОБЩИЙ док удаляет любой редактор', () => {
-  assertEquals(DOC_DELETE.guardRow!({ visibility: 'shared', created_by: 'someone-else' }, ACTOR), null);
+  assertEquals(DOC_DELETE.guardRow!({ visibility: 'shared', created_by: 'someone-else' }, ACTOR_OBJ), null);
 });
 
 Deno.test('★ link_url без http(s)-схемы отвергается (зеркало CHECK td_link_url_scheme)', () => {
@@ -853,4 +857,159 @@ Deno.test('★ inbox/read + read-all: p_actor от шва, p_id из тела (s
   assert(all.op === 'rpc');
   assertEquals(all.name, 'mark_all_notifications_read');
   assertEquals(all.args, { p_actor: ACTOR });
+});
+
+// ── TRIP-409: домен участников — способности движка + спеки по-действию ──────
+
+const M_ACTOR = { id: 'me-uuid', email: 'me@example.com' };
+
+Deno.test('★ op:none (resend): buildPlan даёт план-пустышку, записи нет', () => {
+  const resource = REGISTRY['trip-member'];
+  const plan = buildPlan(resource, resource.actions.resend, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: 'member-1', values: {},
+  });
+  assertEquals(plan, { op: 'none' });
+});
+
+Deno.test('resend: guardRow пускает только pending, иначе 400', () => {
+  const resend = REGISTRY['trip-member'].actions.resend;
+  assertEquals(resend.guardRow!({ status: 'pending' }, M_ACTOR), null);
+  const r = resend.guardRow!({ status: 'active' }, M_ACTOR);
+  assert(r && r.status === 400, `ожидался 400, ${JSON.stringify(r)}`);
+});
+
+Deno.test('★ invite: mapOutcome переводит дискриминант в Refusal/успех', () => {
+  const invite = REGISTRY['trip-member'].actions.invite;
+  const map = invite.mapOutcome!;
+  const already = map({ outcome: 'already_member', member: null });
+  assert('status' in already && already.status === 409 && already.code === 'ALREADY_MEMBER');
+  const self = map({ outcome: 'self' });
+  assert('status' in self && self.status === 400 && self.code === 'INVITE_SELF');
+  const owner = map({ outcome: 'owner' });
+  assert('status' in owner && owner.status === 400 && owner.code === 'invite_owner');
+  // Успех: created/reactivated → { data: member } (не Refusal).
+  const ok = map({ outcome: 'created', member: { id: 'm1' } });
+  assert(!('status' in ok) && (ok as { data: unknown }).data && ((ok as { data: { id: string } }).data).id === 'm1');
+  const react = map({ outcome: 'reactivated', member: { id: 'm2' } });
+  assert(!('status' in react));
+});
+
+Deno.test('★ invite: buildPlan → rpc с p_trip/p_email/p_role/p_actor', () => {
+  const resource = REGISTRY['trip-member'];
+  const plan = buildPlan(resource, resource.actions.invite, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: null,
+    values: { email: 'a@b.co', role: 'admin' },
+  });
+  assert(plan.op === 'rpc');
+  assertEquals(plan.name, 'invite_trip_member');
+  assertEquals(plan.args, { p_trip: TRIP, p_email: 'a@b.co', p_role: 'admin', p_actor: M_ACTOR.id });
+});
+
+Deno.test('invite: email/role обязательны на вставке (rpc = строгая обязательность)', () => {
+  const invite = REGISTRY['trip-member'].actions.invite;
+  const r = validateInput(invite, { email: 'a@b.co' }, { isInsert: false });
+  assert('status' in r && r.status === 400, 'без role — 400');
+});
+
+Deno.test('add-offline: пустое имя отвергается (validate непустоты)', () => {
+  const addOffline = REGISTRY['trip-member'].actions['add-offline'];
+  const blank = validateInput(addOffline, { user_full_name: '   ' }, { isInsert: true });
+  assert('status' in blank && blank.status === 400, 'пробелы — 400');
+  const ok = validateInput(addOffline, { user_full_name: 'Гость' }, { isInsert: true });
+  assert(!('status' in ok));
+});
+
+Deno.test('role: guardRow держит владельца неизменным', () => {
+  const role = REGISTRY['trip-member'].actions.role;
+  const r = role.guardRow!({ role: 'owner' }, M_ACTOR);
+  assert(r && r.status === 400 && r.code === 'OWNER_IMMUTABLE');
+  assertEquals(role.guardRow!({ role: 'viewer' }, M_ACTOR), null);
+});
+
+Deno.test('★ remove: guardRow — не владелец и не сам; buildArgs скоупит p_trip (IDOR)', () => {
+  const resource = REGISTRY['trip-member'];
+  const remove = resource.actions.remove;
+  assert(remove.guardRow!({ role: 'owner', user_id: 'x' }, M_ACTOR)?.code === 'OWNER_IMMUTABLE');
+  assert(remove.guardRow!({ role: 'viewer', user_id: M_ACTOR.id }, M_ACTOR)?.code === 'REMOVE_SELF');
+  assertEquals(remove.guardRow!({ role: 'viewer', user_id: 'other' }, M_ACTOR), null);
+  const plan = buildPlan(resource, remove, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: 'member-1', values: {},
+  });
+  assert(plan.op === 'rpc' && plan.name === 'remove_trip_member');
+  // IDOR: скоуп трипа + id участника в теле RPC (реестровый sweep rpc НЕ покрывает).
+  assertEquals(plan.args, { p_member: 'member-1', p_trip: TRIP, p_actor: M_ACTOR.id });
+});
+
+Deno.test('★ leave: guardRow row-self (только своя строка членства)', () => {
+  const leave = REGISTRY['trip-member-self'].actions.leave;
+  assertEquals(leave.guardRow!({ user_id: M_ACTOR.id }, M_ACTOR), null);
+  const r = leave.guardRow!({ user_id: 'other' }, M_ACTOR);
+  assert(r && r.status === 403);
+});
+
+Deno.test('★ respond: guardRow row-self по user_id ЛИБО по email (actor.email)', () => {
+  const respond = REGISTRY['trip-member-self'].actions.respond;
+  // Владение по user_id:
+  assertEquals(respond.guardRow!({ user_id: M_ACTOR.id, invite_email: null, status: 'pending' }, M_ACTOR), null);
+  // Владение по email (user_id ещё пуст — приглашён до регистрации), регистр не важен:
+  assertEquals(respond.guardRow!({ user_id: null, invite_email: 'ME@Example.com', status: 'pending' }, M_ACTOR), null);
+  // Чужой инвайт → 403:
+  const notMine = respond.guardRow!({ user_id: 'x', invite_email: 'x@y.z', status: 'pending' }, M_ACTOR);
+  assert(notMine && notMine.status === 403);
+  // Уже отвечено → 409:
+  const answered = respond.guardRow!({ user_id: M_ACTOR.id, status: 'active' }, M_ACTOR);
+  assert(answered && answered.status === 409 && answered.code === 'ALREADY_RESPONDED');
+});
+
+Deno.test('respond: buildArgs → p_member/p_trip/p_action/p_actor', () => {
+  const resource = REGISTRY['trip-member-self'];
+  const plan = buildPlan(resource, resource.actions.respond, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: 'member-1', values: { action: 'accept' },
+  });
+  assert(plan.op === 'rpc' && plan.name === 'respond_trip_invite');
+  assertEquals(plan.args, { p_member: 'member-1', p_trip: TRIP, p_action: 'accept', p_actor: M_ACTOR.id });
+});
+
+Deno.test('invite-link/create: роль по умолчанию viewer, p_trip из скоупа', () => {
+  const resource = REGISTRY['trip-invite-link'];
+  const dflt = buildPlan(resource, resource.actions.create, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: null, values: {},
+  });
+  assert(dflt.op === 'rpc' && dflt.name === 'create_trip_invite_link');
+  assertEquals(dflt.args, { p_trip: TRIP, p_role: 'viewer', p_actor: M_ACTOR.id });
+  const admin = buildPlan(resource, resource.actions.create, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: null, values: { role: 'admin' },
+  });
+  assertEquals((admin.args as Record<string, unknown>).p_role, 'admin');
+});
+
+// ── Инвариант №7: requires:[] + запись ⇒ loadTarget+guardRow ──────────────────
+
+Deno.test('★ инвариант №7: живой REGISTRY чист (нет дверей без замка)', () => {
+  assertEquals(findUnguardedRowSelf(), []);
+});
+
+Deno.test('★ инвариант №7 ловит дыру: requires:[] + rpc без guardRow (красный под мутацией)', () => {
+  const holed: Record<string, ResourceSpec> = {
+    hole: {
+      name: 'hole',
+      scope: { column: 'trip_id', from: 'tripId' },
+      actions: {
+        // requires:[] + запись (rpc), но БЕЗ loadTarget/guardRow = дверь без замка.
+        danger: { op: 'rpc', rpc: 'x', requires: [] },
+      },
+    },
+  };
+  const bad = findUnguardedRowSelf(holed);
+  assert(bad.length === 1 && bad[0].includes('hole/danger'), `должен поймать дыру: ${JSON.stringify(bad)}`);
+});
+
+Deno.test('инвариант №7: op:none под requires:[] дырой НЕ считается (записи нет)', () => {
+  const okReg: Record<string, ResourceSpec> = {
+    ok: {
+      name: 'ok', scope: { column: 'trip_id', from: 'tripId' },
+      actions: { ping: { op: 'none', requires: [] } },
+    },
+  };
+  assertEquals(findUnguardedRowSelf(okReg), []);
 });
