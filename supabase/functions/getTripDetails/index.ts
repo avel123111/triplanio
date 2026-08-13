@@ -165,13 +165,14 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
                        response.services           = pick('services');
                        response.members            = pick('members');
       // Names + avatars ride ALONG with the members (TRIP-230). They used to
-      // need a THIRD sequential client hop (shell → content → resolveProfiles),
+      // need a THIRD sequential client hop (shell → content → a profile fetch),
       // so rows appeared at different moments — and the OWNER, who has no member
       // row and therefore no cached trip_members.user_full_name to fall back on,
       // was always last. The ids are already in hand here, so it costs one
-      // in-datacentre query instead of a client round trip.
-      // Scope rule is shared with resolveProfiles (tripProfileScope): a profile
-      // for EVERY member row we ship, whatever its status — see TRIP-334.
+      // in-datacentre query instead of a client round trip. This bundle is now
+      // the ONLY profile door the front-end reads (TRIP-409).
+      // Scope rule = tripProfileScope: a profile for EVERY member row we ship,
+      // whatever its status — see TRIP-334.
                        response.profiles           = await fetchTripProfiles(supabaseAdmin, {
                          members: response.members as any[],
                          ownerId: trip.created_by as string | null,

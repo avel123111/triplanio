@@ -1,10 +1,10 @@
 // Unified author identity for trip CONTENT (chat messages, documents, …).
 //
 // Why this exists: a trip's content outlives its authors. When a member leaves
-// the trip their `trip_members` row is hard-deleted, so the live profile
-// resolver (resolveProfiles, scoped to active participants) no longer returns
-// them — their past messages/docs would otherwise fall back to "?" with a
-// blank avatar.
+// the trip their `trip_members` row is hard-deleted, so the profile bundle
+// shipped with the trip content (getTripDetails, scoped to current members +
+// owner) no longer returns them — their past messages/docs would otherwise fall
+// back to "?" with a blank avatar.
 //
 // The cheap fix, shared by chat and docs: every content row carries a
 // denormalized author-name snapshot taken at creation time
@@ -25,6 +25,31 @@
 // Relative, not '@/lib/…': this module is unit-tested and `node --test` does
 // not resolve the Vite alias (same convention as geo.js → ./geo-cities.js).
 import { displayName } from './displayName.js';
+
+/**
+ * The trip owner's display name, resolved through the SAME identity ladder as
+ * everyone else (live profile → invite snapshot). Collapses the copy that sat
+ * inline in TripView/BudgetLens/SettingsLens as
+ * `members.find(m => m.user_id === trip.created_by)?.user_full_name || ''`.
+ * `profiles` is optional: without it the ladder falls back to the name snapshot
+ * — exactly the previous behaviour. Empty string when there is no owner name to
+ * show (it feeds the "PRO by {owner}" upsell copy, which reads fine without one).
+ * @param {{ trip?: any, members?: any, profiles?: any, selfUser?: any, deletedLabel?: any }} a
+ */
+export function resolveOwnerName({ trip, members, profiles, selfUser, deletedLabel } = {}) {
+  const ownerId = trip?.created_by;
+  if (!ownerId) return '';
+  const owner = (members || []).find((m) => m.user_id === ownerId);
+  return resolveAuthor({
+    userId: ownerId,
+    nameSnapshot: owner?.user_full_name,
+    member: owner,
+    profiles,
+    selfUser,
+    deletedLabel,
+    fallback: '',
+  }).name;
+}
 
 /**
  * Same resolution for a list of PARTICIPANT rows (member list, avatar stacks).
@@ -53,7 +78,8 @@ export function resolveMembers(members, { profiles, selfUser, deletedLabel } = {
  *  краснел TS2345 на экране под `// @ts-check`. Тот же запечатанный набор, что
  *  у компонентов ДС, только у функции.
  *  @param {{ userId?: any, nameSnapshot?: any, member?: any, profiles?: any,
- *            members?: any, selfUser?: any, deletedLabel?: any, fallback?: string }} a */
+ *            members?: any, selfUser?: any, deletedLabel?: any, fallback?: string,
+ *            botId?: any, botName?: string }} a */
 export function resolveAuthor({
   userId,
   nameSnapshot,
@@ -63,7 +89,18 @@ export function resolveAuthor({
   selfUser,
   deletedLabel,
   fallback = '?',
+  botId,
+  botName,
 }) {
+  // 0) The AI assistant. It is NOT a trip member, so it never rides in the
+  //    profile bundle (getTripDetails scopes to members + owner) — resolving it
+  //    by a constant branch here means no lookup and no fetch. `kind:'ai'` tells
+  //    <Avatar> to draw the branded robot instead of initials. The id is passed
+  //    in (not imported) so this module stays env-free for `node --test`.
+  if (botId && userId === botId) {
+    return { name: botName || fallback, email: '', photo: null, deleted: false, kind: 'ai' };
+  }
+
   // 1) Live profile — reflects the current name/photo, and the anonymized state.
   //    An anonymized account has no name and no address to show: the scrubbed
   //    columns must NOT fall through to a stale snapshot further down.

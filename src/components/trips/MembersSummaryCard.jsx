@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Avatar, Btn, Card, IconBtn } from '@/design/index';
+import { Avatar, Btn, Card, IconBtn, RoleBadge } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -103,23 +103,6 @@ export default function MembersSummaryCard({
             // address the resolver decided is worth showing.
             const sub = isPending ? t('trip.member_pending') : who.email;
 
-            const badgeClass = isPending || isOffline
-              ? 'badge--quiet'
-              : m.role === 'owner'
-                ? 'badge--warning'
-                : m.role === 'admin'
-                  ? 'badge--brand'
-                  : 'badge--outline';
-            const roleLabel = isPending
-              ? t('trip.member_pending')
-              : isOffline
-                ? t('trip.member_offline')
-                : m.role === 'owner'
-                  ? t('members.role_owner')
-                  : m.role === 'admin'
-                    ? t('trips.role_admin')
-                    : t('trips.role_viewer');
-
             return (
               <div className="mrow" key={m.id || i} style={{ opacity: isPending || isOffline ? 0.7 : 1 }}>
                 <Avatar
@@ -132,10 +115,16 @@ export default function MembersSummaryCard({
                   <div className="mn trunc">{who.name}</div>
                   {sub && <div className="me trunc">{sub}</div>}
                 </div>
-                <span className={`badge ${badgeClass}`}>
-                  {isPending && <span className="dot" style={{ background: 'var(--warning)' }} />}
-                  {roleLabel}
-                </span>
+                {/* Invite STATE (pending/offline) is not a role — it keeps the quiet
+                    status chip; an actual role goes through the shared RoleBadge. */}
+                {isPending || isOffline
+                  ? (
+                    <span className="badge badge--quiet">
+                      {isPending && <span className="dot" style={{ background: 'var(--warning)' }} />}
+                      {isPending ? t('trip.member_pending') : t('trip.member_offline')}
+                    </span>
+                  )
+                  : <RoleBadge role={m.role} />}
               </div>
             );
           })}

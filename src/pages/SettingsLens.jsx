@@ -19,11 +19,10 @@ import { classifyError } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
-import { resolveAuthor } from '@/lib/resolveAuthor';
+import { resolveAuthor, resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -451,8 +450,9 @@ function ApproverRow({ member, profiles, locked }) {
 
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient }) {
-  const memberProfiles = useUserProfiles((members || []).map(m => m.user_id), tripId);
+export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient, profiles = {} }) {
+  // Profiles ride in the trip content bundle (getTripDetails), handed down by
+  // TripView — no separate profile-fetch hop for the approver list.
   const { t } = useI18n();
   const confirm = useConfirm();
   const { user } = useAuth();
@@ -486,7 +486,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
   // Pro-апселл — единый app-level хост (TRIP-225), открывается императивно.
   const { openProUpsell } = useProUpsell();
-  const ownerName = members.find(m => m.user_id === trip?.created_by)?.user_full_name || '';
+  const ownerName = resolveOwnerName({ trip, members, profiles, selfUser: user, deletedLabel: t('common.deleted_user') });
   // Owner upgrade from Settings shows the SAME 3 offers as the sidebar / AI-block
   // (per-trip + monthly + yearly). No hidePerTrip here: Pro.jsx already hides the
   // per-trip offer for non-owners (tripOwner check), so the flag only created an
@@ -917,8 +917,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Card>
               <CardHeader title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} />
               <Col gap="g4">
-                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked />)}
-                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked={false} />)}
+                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked />)}
+                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked={false} />)}
                 {members.length === 0 && (
                   <div className="muted t-body">{t('settings.members_loading')}</div>
                 )}

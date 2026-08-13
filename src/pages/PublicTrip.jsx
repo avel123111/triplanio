@@ -13,6 +13,7 @@ import { tripStats, tripDateSpan } from '@/lib/trip-stats';
 import { transferKind } from '@/lib/transport';
 import { formatDuration } from '@/lib/time';
 import { formatDateRange } from '@/lib/trip-dates';
+import { Avatar } from '@/design/index';
 import './PublicTrip.css';
 
 // Where the marketing chrome's section anchors / brand should point when this
@@ -33,9 +34,6 @@ import './PublicTrip.css';
 const SITE = withVisitCampaign(`${window.location.origin}/`);
 // Per-city accent cycle — all existing Lumo event/accent tokens (no new tokens).
 const ACCENTS = ['var(--brand)', 'var(--ev-activity)', 'var(--ev-car)', 'var(--ai)', 'var(--pro)', 'var(--ev-transfer)'];
-
-const initials = (name = '') =>
-  name.split(' ').map((w) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
 
 // Role badge glyph for the anchors / waypoint — the SAME paths the map markers
 // use (src/lib/map/markers.js), so the timeline badge and the map pin read as the
@@ -281,10 +279,7 @@ export default function PublicTrip() {
 
           {ownerName && (
             <div className="pt-mast__by">
-              <span className="pt-mast__av">
-                {initials(ownerName)}
-                {owner.avatar_url && <img src={owner.avatar_url} alt="" onError={(e) => e.currentTarget.remove()} />}
-              </span>
+              <Avatar name={ownerName} photo={owner.avatar_url} className="pt-mast__av" />
               <span className="pt-mast__tx">
                 <span className="pt-mast__l1">{t('public.shared_by')} <b>{ownerName}</b></span>
                 <span className="pt-mast__l2">{t('public.shared_sub')}</span>
@@ -438,10 +433,7 @@ export default function PublicTrip() {
           <div className="pt-people">
             {people.map((m, i) => (
               <div className="pt-person" key={i}>
-                <span className="av" style={{ background: ACCENTS[i % ACCENTS.length] }}>
-                  {initials(m.display_name)}
-                  {m.avatar_url && <img src={m.avatar_url} alt="" onError={(e) => e.currentTarget.remove()} />}
-                </span>
+                <Avatar name={m.display_name} photo={m.avatar_url} className="av" />
                 <span className="nm">{m.display_name}</span>
               </div>
             ))}
