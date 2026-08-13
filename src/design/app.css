@@ -4892,7 +4892,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .tl3-card--tr .rv-conn { display: flex; flex-direction: column; gap: 5px; padding: 7px 0; }
 .tl3-card--tr .dline { width: 2px; height: 12px; margin-left: 13px; border-radius: 2px; background: repeating-linear-gradient(var(--ev-transfer) 0 3px, transparent 3px 6px); }
 .tl3-card--tr .rv-mode { display: inline-flex; align-items: center; gap: 10px; color: var(--ev-transfer-ink); }
-.tl3-card--tr .rv-mode .ic { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); display: grid; place-items: center; flex: none; }
+/* visual-diff-move: .tl3-card--tr .rv-mode .ic -> tile — плитка-иконка на <Tile>, тон transfer каналом --hl.
+   Карточный мультикласс .tl3-card--tr соседствует с .dline (пунктир 2px) и .rv-mode
+   (inline-flex): при сносе .ic победитель ключей .tl3-card--tr/.rv-mode всплывает
+   на них (огрубление 2p). Значение элемента верно (рендер сегмента-переезда).
+   visual-diff-exempt: .rv-mode display — grid .ic всплыл как inline-flex ряда (.rv-mode .tile держит grid базы — рендер)
+   visual-diff-exempt: .tl3-card--tr display — то же на юните-предке
+   visual-diff-exempt: .tl3-card--tr width — 28px .ic всплыл на .dline 2px (пунктир) — рендер
+   visual-diff-exempt: .tl3-card--tr height — 28px .ic всплыл на .dline 12px — рендер
+   visual-diff-exempt: .tl3-card--tr border-radius — r-sm .ic всплыл на .dline 2px — рендер
+   visual-diff-exempt: .tl3-card--tr background — transfer-soft .ic всплыл на .dline пунктир-градиент — рендер
+   visual-diff-exempt: .tl3-card--tr --hl-ink — приобретение тона на предке (карточный мультикласс) — рендер
+   visual-diff-exempt: .rv-mode --hl-ink — то же на .rv-mode — рендер */
+.tl3-card--tr .rv-mode .tile { --tile: 28px; --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
 .tl3-card--tr .rv-mode small { color: var(--muted); }
 
 /* City scroll-rail — right column of the timeline (namespaced .cr-*) */
@@ -6760,16 +6772,36 @@ a.doc-row__n:hover{ color: var(--brand); }
    Ячейки тут без плитки-иконки, поэтому шаг плотнее. */
 .statbar--inset { margin-top: 0; border-bottom: 1px solid var(--line); }
 .statbar--inset .s { padding: 12px 16px; }
-.statbar .ic { width: 42px; height: 42px; border-radius: var(--r-btn); display: grid; place-items: center; flex: none; background: var(--brand-soft); color: var(--brand); }
-.statbar .ic svg { width: 20px; height: 20px; }
-/* Loading chip borrows the real .ic so it tracks the same size the container
-   rules give it — otherwise the row height pops when the data lands. */
-.statbar .ic.ov-bar { background: var(--surface-2); }
-.statbar .s.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.statbar .s.c-trip .ic { background: var(--ev-car-soft); color: var(--ev-car-ink); }
-.statbar .s.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
-.statbar .s.c-distance .ic { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
-.statbar .s.c-duration .ic { background: var(--warning-soft); color: var(--warning-ink); }
+/* visual-diff-move: .statbar .ic -> tile — плитка-иконка статбара на примитив <Tile>:
+   квадрат/радиус/центр/тинт несёт .tile, контекст задаёт ступень + тон каналом --hl
+   (TRIP-391 объект 3, семья ic). Тон-варианты (.c-*) и размер иконки (--tile-ic ↔
+   .ic svg) гасит 2p канал-move/svg-ступень вычисленным. */
+.statbar .tile { --tile: 42px; --tile-ic: 20px; --tile-r: var(--r-btn); }
+/* Loading chip borrows the real .tile so it tracks the same size the container
+   rules give it — otherwise the row height pops when the data lands.
+   visual-diff-exempt: .ov-bar --hl-soft — приобретение (фон skeleton через канал); фон тот же surface-2 — рендер
+   ── Остаток семьи .ic (объект 3), все проверены рендером тронутых экранов: ──
+   PublicTrip делит класс .ic (.pt-center .ic, ПЕРИМЕТР, своя ДС — не мигрируем);
+   снос app.css-контекстов .ic сдвигает победителя плоской карты юнита .ic на
+   периметр. Экран PublicTrip визуально не тронут (подтверждено рендером):
+   visual-diff-exempt: .ic width — победитель юнита .ic сдвинулся на .pt-center .ic (56px, периметр PublicTrip, не менялся)
+   visual-diff-exempt: .ic height — то же
+   visual-diff-exempt: .ic background — то же
+   visual-diff-exempt: .ic border-radius — то же
+   visual-diff-exempt: .ic color — то же
+   ── примитив .tile схлопывает per-context ручки в один ключ (победитель сдвигается); каждый элемент несёт свою ступень — рендер верен: ──
+   visual-diff-exempt: .tile --tile — примитивный юнит .tile схлопывает --tile всех контекстов; per-element ступень верна
+   visual-diff-exempt: .tile --tile-ic — то же для --tile-ic
+   ── мультикласс: снос дочернего .ic всплывает победителем на предке (огрубление 2p) — рендер: ──
+   visual-diff-exempt: .sfig color — color .ic всплыл как muted подписи .sfig .k
+   visual-diff-exempt: .statbar background — bg .ic всплыл на .statbar .s::before (--line)
+   visual-diff-exempt: .statbar color — color .ic всплыл как muted .statbar .k */
+.statbar .tile.ov-bar { --hl-soft: var(--surface-2); }
+.statbar .s.c-city .tile { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
+.statbar .s.c-trip .tile { --hl-soft: var(--ev-car-soft); --hl-ink: var(--ev-car-ink); }
+.statbar .s.c-transfer .tile { --hl-soft: var(--info-soft); --hl-ink: var(--info-ink); }
+.statbar .s.c-distance .tile { --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
+.statbar .s.c-duration .tile { --hl-soft: var(--warning-soft); --hl-ink: var(--warning-ink); }
 .statbar .s > div { min-width: 0; }  /* text block shrinks instead of forcing overflow */
 /* Wide bar restores the mockup's desktop order (… transfers · km · days) — the DOM
    carries the wrapped order so the 2-col layout below needs no re-ordering. */
@@ -6808,8 +6840,19 @@ a.doc-row__n:hover{ color: var(--brand); }
    already uses (.wdg-h .wi). */
 @container (600px <= width <= 880px) {
   .ov-col .statbar .s { padding-inline: 10px; gap: 8px; }
-  .ov-col .statbar .ic { width: 32px; height: 32px; }
-  .ov-col .statbar .ic svg { width: 17px; height: 17px; }
+  /* Ступень контейнера на <Tile>. Переносом НЕ объявляется: @container-размер
+     двинуть на базовое .tile (media='') 2p не может структурно — поэтому точечные
+     exempt ниже (значение то же, проверено рендером ov-col в контейнере 600-880).
+     visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} width — ступень на --tile:32, база .tile на media=''
+     visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} height — то же
+     visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} width — то же (ключ на классе-предке)
+     visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} height — то же
+     visual-diff-exempt: .ic {@container (600px <= width <= 880px)} width — то же (ключ на .ic)
+     visual-diff-exempt: .ic {@container (600px <= width <= 880px)} height — то же
+     visual-diff-exempt: .ov-col {@container (600px <= width <= 880px)} --tile — приобретение ступени в контейнере
+     visual-diff-exempt: .statbar {@container (600px <= width <= 880px)} --tile — то же
+     visual-diff-exempt: .tile {@container (600px <= width <= 880px)} --tile — то же */
+  .ov-col .statbar .tile { --tile: 32px; --tile-ic: 17px; }
 }
 /* Below 600px even the compressed cell clips a label, so the row gives way to the
    same 2-col shape the /trips bar takes — mirrors the @media block above, keep the
@@ -6880,8 +6923,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 /* visual-diff-move: nonext -> card card--r-lg */
 .nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
-.nonext .ic { width: 46px; height: 46px; border-radius: var(--r-btn); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
-.nonext .ic svg { width: 23px; height: 23px; }
+/* visual-diff-move: .nonext .ic -> tile — плитка-иконка на <Tile> (ступень+тон brand по дефолту)
+   visual-diff-exempt: .nonext display — grid дочернего .ic всплыл как flex карточки (огрубление 2p: .nonext .tile держит grid базы, иконка центрируется — проверено рендером) */
+.nonext .tile { --tile: 46px; --tile-ic: 23px; --tile-r: var(--r-btn); }
 .nonext b { color: var(--ink); }
 .nonext p { color: var(--muted); margin: 0; }
 
@@ -6905,13 +6949,15 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .sfig transition — transform-переход снят вместе с лифтом — объект 2
    visual-diff-exempt: .sfig:hover {@media (hover: hover)} transform — лифт снят, карточка без движения (канон) — объект 2 */
 @media (hover: hover) { .sfig:hover { background: var(--surface); box-shadow: var(--sh-1); } }
-.sfig .ic { width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
-.sfig .ic svg { width: 17px; height: 17px; }
-.sfig.c-city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.sfig.c-cont .ic { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
-.sfig.c-trip .ic { background: var(--ev-car-soft); color: var(--ev-car-ink); }
-.sfig.c-flight .ic { background: var(--ev-hotel-soft); color: var(--ev-hotel-ink); }
-.sfig.c-transfer .ic { background: var(--info-soft); color: var(--info-ink); }
+/* visual-diff-move: .sfig .ic -> tile — плитка-иконка сводки на <Tile> (ступень+канал --hl)
+   visual-diff-exempt: .sfig display — grid дочернего .ic всплыл как flex карточки (огрубление 2p: .sfig .tile держит grid базы — проверено рендером)
+   visual-diff-exempt: .sfig border-radius — r-sm дочернего .ic всплыл как r-md карточки .sfig (огрубление 2p — рендер) */
+.sfig .tile { --tile: 30px; --tile-ic: 17px; }
+.sfig.c-city .tile { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
+.sfig.c-cont .tile { --hl-soft: var(--ev-transfer-soft); --hl-ink: var(--ev-transfer-ink); }
+.sfig.c-trip .tile { --hl-soft: var(--ev-car-soft); --hl-ink: var(--ev-car-ink); }
+.sfig.c-flight .tile { --hl-soft: var(--ev-hotel-soft); --hl-ink: var(--ev-hotel-ink); }
+.sfig.c-transfer .tile { --hl-soft: var(--info-soft); --hl-ink: var(--info-ink); }
 .sfig .v { color: var(--ink); }
 .sfig .k { color: var(--muted); }
 
@@ -6972,12 +7018,14 @@ a.doc-row__n:hover{ color: var(--brand); }
 .rec:first-child { border-left: 0; }
 @media (max-width: 1040px) { .rec:nth-child(2n+1) { border-left: 0; } .rec:nth-child(n+3) { border-top: 1px solid var(--line); } }
 @media (max-width: 640px) { .rec { border-left: 0; } .rec + .rec { border-top: 1px solid var(--line); } }
-.rec .ic { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--pro-soft); color: var(--pro-ink); }
-.rec .ic svg { width: 18px; height: 18px; }
-.rec .ic.r-days { background: var(--success-soft); color: var(--success-ink); }
-.rec .ic.r-fav { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.rec .ic.r-star { background: var(--pro-soft); color: var(--pro-ink); }
-.rec .ic.r-route { background: var(--info-soft); color: var(--info-ink); }
+/* visual-diff-move: .rec .ic -> tile — плитка-рекорд на <Tile>; грунт pro каналом --hl, варианты r-* тоном (компаунд-цель .tile.r-* — багфикс #822)
+   visual-diff-exempt: .rec display — grid дочернего .ic всплыл как flex карточки (огрубление 2p: .rec .tile держит grid базы — рендер)
+   visual-diff-exempt: .rec color — color дочернего .ic всплыл как muted подписи .rec .s (огрубление 2p — рендер) */
+.rec .tile { --tile: 34px; --tile-ic: 18px; --hl-soft: var(--pro-soft); --hl-ink: var(--pro-ink); }
+.rec .tile.r-days { --hl-soft: var(--success-soft); --hl-ink: var(--success-ink); }
+.rec .tile.r-fav { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
+.rec .tile.r-star { --hl-soft: var(--pro-soft); --hl-ink: var(--pro-ink); }
+.rec .tile.r-route { --hl-soft: var(--info-soft); --hl-ink: var(--info-ink); }
 .rec .k { color: var(--muted); }
 .rec .v { color: var(--ink); }
 .rec .s { color: var(--muted); }
@@ -7095,9 +7143,12 @@ a.doc-row__n:hover{ color: var(--brand); }
 .vp-grip { display: none; }
 @media (max-width: 640px) { .vp-grip { display: block; width: 42px; height: 5px; border-radius: var(--r-pill); background: var(--line-strong); margin: 10px auto 2px; } }
 .vp-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
-.vp-h .ic { width: 44px; height: 44px; border-radius: var(--r-btn); display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
-.vp-h .ic svg { width: 22px; height: 22px; }
-.vp-h.city .ic { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+/* visual-diff-move: .vp-h .ic -> tile — плитка-иконка шапки визита на <Tile> (ступень+тон)
+   visual-diff-exempt: .vp-h display — grid дочернего .ic всплыл как flex шапки (огрубление 2p: .vp-h .tile держит grid базы — рендер)
+   visual-diff-exempt: .vp-h color — color дочернего .ic всплыл как muted подписи .vp-h .s (огрубление 2p — рендер)
+   visual-diff-exempt: .s color — то же на юните .s (.vp-h .s, огрубление 2p — рендер) */
+.vp-h .tile { --tile: 44px; --tile-ic: 22px; --tile-r: var(--r-btn); }
+.vp-h.city .tile { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .vp-h h3 { color: var(--ink); margin: 0; }
 .vp-h .s { color: var(--muted); margin-top: 3px; }
 /* .vp-x УДАЛЁН (TRIP-344 PR 2): уехал на <IconBtn tone="soft">.

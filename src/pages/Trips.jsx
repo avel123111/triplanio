@@ -11,7 +11,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, Card, EmptyState, Input, Seg, Skeleton } from '../design/index';
+import { AvatarStack, Badge, Btn, Card, EmptyState, Input, Seg, Skeleton, Tile } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -135,7 +135,7 @@ function NoNextCard({ variant, onPlan, t }) {
   const isEmpty = variant === 'empty';
   return (
     <Card radius="lg" className="nonext">
-      <span className="ic"><Icon name="calendar" /></span>
+      <Tile as="span"><Icon name="calendar" /></Tile>
       <div>
         <b>{t('stats.next_trip')}</b>
         <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
