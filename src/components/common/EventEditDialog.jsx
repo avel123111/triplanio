@@ -19,7 +19,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Card, IconBtn, Seg, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
 import {
   Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
   Plane, Car as CarIcon, Moon, ShieldCheck,
@@ -1892,11 +1892,14 @@ function TransferLegCard({
     <Seg {...segProps}>
       {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
+        {/* TRIP-391 объект 1: кнопка-обёртка = ЗАГОЛОВОК аккордеона-сегмента
+            (прозрачный full-bleed, раскрывает/сворачивает) → объект 6, не примитив
+            Btn. Значок внутри — плитка 34×34, тон каналом --hl → <Tile> (объект 3). */}
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
           style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
-            <TIcon size={16} />
-          </span>
+          <Tile as="span" style={{ '--hl-soft': TYPE_META.transfer.soft, '--hl-ink': color }}>
+            <TIcon />
+          </Tile>
           <span style={{ minWidth: 0, flex: 1 }}>
             <span className="eyebrow" style={{ color, display: 'block' }}>{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
             <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>

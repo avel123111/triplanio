@@ -39,6 +39,7 @@ function SidebarBody({
     <>
       <div className="app-side__group">
         <div className="app-side__group-label">{t('trip.sections_title')}</div>
+        {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (лензы), не кнопка-примитив. */}
         {lensItems.map((item) => (
           <button
             key={item.id}
@@ -58,6 +59,7 @@ function SidebarBody({
       {(mgmtItems.length > 0 || canShare) && (
         <div className="app-side__group">
           <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
+          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (управление), не кнопка-примитив. */}
           {mgmtItems.map((item) => (
             <button
               key={item.id}
@@ -68,6 +70,7 @@ function SidebarBody({
               <span className="app-side__label">{t(item.labelKey)}</span>
             </button>
           ))}
+          {/* TRIP-391 объект 1: .app-side__item — пункт НАВИГАЦИИ шелла (шеринг), не кнопка-примитив. */}
           {canShare && onShare && (
             <button className="app-side__item" onClick={onShare}>
               <Icon name="share" size={15} />
@@ -166,6 +169,7 @@ function SidebarSheetBody({
         <>
           <div className="app-side__group-label tm-caption">{t('trip_menu.section_manage')}</div>
           <Card pad="none" radius="lg" className="tm-manage">
+            {/* TRIP-391 объект 1 → объект 6: .tm-manage__row — РЯД меню управления, не кнопка-примитив. */}
             {manageRows.map((row) => (
               <button key={row.id} className={'tm-manage__row' + (row.active ? ' is-active' : '')} onClick={row.onClick} aria-current={row.active ? 'page' : undefined}>
                 <span className="tm-manage__ico"><Icon name={row.icon} size={16} /></span>

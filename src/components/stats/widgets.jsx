@@ -177,6 +177,8 @@ export function VisitList({ rows = [], emptyText, onSelect }) {
   }
   return (
     <div className="vlist">
+      {/* TRIP-391 объект 1 → объект 6: .vrow — clickable РЯД списка (полноширинный,
+          выбор строки), не примитив-кнопка. */}
       {rows.map((r) => (
         <button
           key={r.key}

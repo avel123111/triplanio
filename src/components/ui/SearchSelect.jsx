@@ -55,6 +55,8 @@ export default function SearchSelect({
   const pick = (o) => { onChange(getKey(o)); close(); };
   const onOpenChange = (o) => (o ? setOpen(true) : close());
 
+  // TRIP-391 объект 1 → объект 5: контрол-триггер комбобокса (поле) — className задаёт
+  // вызыватель (triggerClassName), открывает лист, не кнопка-примитив.
   const trigger = (extra = {}) => (
     <button
       type="button"
@@ -92,6 +94,7 @@ export default function SearchSelect({
         ) : (
           filtered.map((o) => {
             const selected = getKey(o) === value;
+            // TRIP-391 объект 1 → объект 5: опция листа комбобокса (поле), не кнопка-примитив.
             return (
               <button
                 key={getKey(o)}
