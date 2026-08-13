@@ -432,7 +432,7 @@ function ApproverRow({ member, profiles, locked }) {
     deletedLabel: t('common.deleted_user'),
     fallback: t('common.deleted_user'),
   });
-  const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
+  const roleLabel = member.role === 'owner' ? t('trips.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
     <Row>

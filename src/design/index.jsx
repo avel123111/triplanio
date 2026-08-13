@@ -85,7 +85,7 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "sm" ? 12 : 15} /></div>;
   }
   if (kind === "ai") {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp} aria-label="Triplanio">{AI_ROBOT}</div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp} aria-label="Triplanio">{AI_ROBOT}</div>; // i18n-ignore — «Triplanio» бренд, не переводится
   }
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
@@ -362,7 +362,7 @@ export const Badge = ({ variant = "", icon, children, style }) => (
 /** @param {{ role?: string }} p */
 export const RoleBadge = ({ role }) => {
   const t = useT();
-  if (role === "owner")  return <Badge variant="warning">{t("members.role_owner")}</Badge>;
+  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>;
   if (role === "viewer") return <Badge variant="outline" icon="eye">{t("trips.role_viewer")}</Badge>;
   return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
 };
