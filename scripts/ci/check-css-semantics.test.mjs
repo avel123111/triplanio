@@ -1311,3 +1311,30 @@ test('★★ мутация: размер иконки --tile-ic 20px → 18px �
   assert.equal(code, 1, out);
   assert.match(out, /svg/);
 });
+
+// Тон-вариант с модификатором в ТОМ ЖЕ компаунде, что и `ic` (`.rec .ic.r-days`,
+// не отдельным `.rec.c-city`). Канал-move обязан найти цель `.rec .tile.r-days`
+// (tileTargetSel сохраняет сиблинг `.r-days`), иначе тон варианта не сойдётся —
+// баг #821, чинится этим коммитом.
+const REC_BASE =
+  TILE_PRELUDE +
+  '.rec .ic { width: 34px; height: 34px; background: var(--brand-soft); color: var(--brand); }\n' +
+  '.rec .ic.r-days { background: var(--act-soft); color: var(--act-ink); }\n';
+const recHead = (daysSoft = 'var(--act-soft)') =>
+  TILE_PRELUDE +
+  '/* visual-diff-move: .rec .ic -> .rec .tile — плитка на <Tile> */\n' +
+  '.rec .tile { --tile: 34px; --hl-soft: var(--brand-soft); --hl-ink: var(--brand); }\n' +
+  `.rec .tile.r-days { --hl-soft: ${daysSoft}; --hl-ink: var(--act-ink); }\n`;
+
+test('★ канал-move варианта с модификатором в компаунде (.ic.r-days → .tile.r-days) → зелёный (баг #821)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': REC_BASE }, head: { 'src/design/app.css': recHead() } });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ мутация: тон .tile.r-days подменён → КРАСНЫЙ (сиблинг-цель сверяется, не гасится вслепую)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': REC_BASE }, head: { 'src/design/app.css': recHead('var(--brand-soft)') } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /r-days|background/);
+});

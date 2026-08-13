@@ -586,7 +586,12 @@ const tileTargetSel = (sel) => {
   let i = -1;
   for (let k = 0; k < c.length; k += 1) if (classesOf(stripFnPseudo(c[k])).includes('ic')) i = k;
   if (i < 0) return null;
-  return c.slice(0, i).concat('.tile').join(' ');
+  // Заменяем ТОЛЬКО класс `ic` на `tile` в его компаунде, СОХРАНЯЯ сиблинги-
+  // модификаторы и псевдо: `.ic.r-days` → `.tile.r-days` (иначе тон `.rec
+  // .tile.r-days` терялся, и канал-move вариантов с модификатором в ТОМ ЖЕ
+  // компаунде не сходился). Всё ПРАВЕЕ компаунда отбрасываем — хвост-подлежащее
+  // `svg` (`.ic svg`) в контекст ручек не входит: иконку несёт базовое `.tile>svg`.
+  return c.slice(0, i).concat(c[i].replace(/\.ic\b/, '.tile')).join(' ');
 };
 
 const reVar = /var\(\s*(--[\w-]+)\s*(?:,([^()]*(?:\([^()]*\)[^()]*)*))?\)/g;
