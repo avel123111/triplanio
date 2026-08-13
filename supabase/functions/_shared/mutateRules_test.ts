@@ -980,7 +980,8 @@ Deno.test('invite-link/create: роль по умолчанию viewer, p_trip �
   const admin = buildPlan(resource, resource.actions.create, {
     actor: M_ACTOR.id, scopeValue: TRIP, targetId: null, values: { role: 'admin' },
   });
-  assertEquals((admin.args as Record<string, unknown>).p_role, 'admin');
+  assert(admin.op === 'rpc' && admin.name === 'create_trip_invite_link');
+  assertEquals(admin.args.p_role, 'admin');
 });
 
 // ── Инвариант №7: requires:[] + запись ⇒ loadTarget+guardRow ──────────────────
