@@ -36,6 +36,7 @@ import { supabaseAdmin, getRequestUser } from './supabaseAdmin.ts';
 import { HttpError, jsonError, refusalResponse } from './http.ts';
 import { isCallerEditor, isCallerParticipant } from './tripAccess.ts';
 import { proRefusal } from './proGate.ts';
+import { mutateSuccess } from './mutateResponse.ts';
 import { buildPlan, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
 import type { ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
 
@@ -47,9 +48,6 @@ import type { ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules
 async function rpc(name: string, args: Record<string, unknown>): Promise<unknown> {
   return unwrapDbResult(await supabaseAdmin.rpc(name, args));
 }
-
-/** Ответ шва: успех несёт строку (или null для delete), отказ — статус+код. */
-type MutateOk = { data: Record<string, unknown> | null };
 
 /**
  * Требования действия (`requires`) вычисляются ЗДЕСЬ и одинаково для всех
@@ -125,14 +123,15 @@ async function loadTargetRow(
   return data?.[0] ?? null;
 }
 
-/** Исполняет план записи под service_role. Возвращает строку (insert/update). */
-async function runPlan(plan: WritePlan): Promise<Record<string, unknown> | null> {
+/** Исполняет план записи под service_role. Возвращает payload записи: строку
+ *  insert/update, uuid-строку (create_trip), либо null (delete/void-RPC). */
+async function runPlan(plan: WritePlan): Promise<unknown> {
   // `op:'rpc'` — тело действия один атомарный RPC (layover: города+сегменты+
   // recompute). Идёт через ту же дверь `rpc()`, что и `prepareRpc`, поэтому
   // инвариант «ошибка БД → throw → 500» держится по построению (TRIP-405).
-  // add_layover_transfer возвращает void → `data` null, шов отдаёт { data: null }.
+  // add_layover_transfer возвращает void → шов отдаёт null.
   if (plan.op === 'rpc') {
-    return (await rpc(plan.name, plan.args)) as Record<string, unknown> | null;
+    return await rpc(plan.name, plan.args);
   }
   if (plan.op === 'insert') {
     const { data, error } = await supabaseAdmin.from(plan.table).insert(plan.values).select().single();
@@ -242,16 +241,11 @@ export async function mutate(
     values: validated.values,
   });
   const data = await runPlan(plan);
-  return jsonResult({ data }, corsHeaders);
+  return mutateSuccess(data, corsHeaders);
 }
 
 /** Отказ по канону — ОДНА логика заголовка `x-sentry-skip` живёт в
  *  `refusalResponse` (`http.ts`), общая со шва и `requireTripPro` (TRIP-408). */
 function refuse(r: Refusal, corsHeaders: HeadersInit): Response {
   return refusalResponse(r, corsHeaders);
-}
-
-/** Успех: `{ data }`, дополняемый по правилу совместимости (поля не убираем). */
-function jsonResult(ok: MutateOk, corsHeaders: HeadersInit): Response {
-  return Response.json(ok, { headers: corsHeaders });
 }

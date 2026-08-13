@@ -12,6 +12,8 @@
 // падает, если у известного кода нет строки в `err.json` (DoD «errorText
 // покрывает реестр»).
 
+import { REFUSAL_CODES } from './errorCodes.js';
+
 const FALLBACK_KEY = 'err.temporary';
 
 /**
@@ -29,4 +31,25 @@ export function errorText(t, code) {
     if (msg !== key) return msg;
   }
   return t(FALLBACK_KEY);
+}
+
+/**
+ * Трактовка отказа для показа — ЕДИНСТВЕННАЯ карта код→трактовка на клиенте.
+ * Потребитель ветвится по `kind`, а не по литералу кода: локальные карты
+ * (`AI_ERROR_KEY`/`BUDGET_REFUSAL`/`REFUSAL_CLAUSE`) схлопнуты сюда.
+ *   - `upsell`  — `PRO_REQUIRED`: открыть Pro-апселл (модалку), а не тост.
+ *   - `refusal` — намеренное «нет» бизнес-логики (`REFUSAL_CODES`): показать текст.
+ *   - `error`   — временный/неизвестный сбой: тот же безопасный текст, семантика
+ *                 «повторяемо».
+ * `text` ВСЕГДА через `errorText` — серверная проза пользователю не течёт.
+ *
+ * @param {(key: string, vars?: Record<string, any>) => string} t  из `useI18n()`
+ * @param {string|null|undefined} code  машинный `code` из `invokeFn` (не `data.code`)
+ * @returns {{ kind: 'upsell'|'refusal'|'error', text: string }}
+ */
+export function classifyError(t, code) {
+  let kind = 'error';
+  if (code === 'PRO_REQUIRED') kind = 'upsell';
+  else if (code && REFUSAL_CODES.has(code)) kind = 'refusal';
+  return { kind, text: errorText(t, code) };
 }

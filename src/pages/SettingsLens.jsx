@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { Row, Col, Grid, Grow } from '../design/Layout';
 import { invokeFn } from '@/lib/invokeFn';
 import { track } from '@/lib/analytics';
+import { classifyError } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
@@ -62,32 +63,19 @@ const TG_TILE = { background: tgBrand.bg, color: tgBrand.fg };
 
 // ─── Отказы edge-функций ──────────────────────────────────────────────────────
 // `updateTripSettings` и `deleteTrip` отвечают на отказ НАСТОЯЩИМ статусом
-// (403 / 402 / 404; сбой - 500) и машинным `code` (TRIP-378). Следствие для
-// КЛИЕНТА, а не для сервера: у не-2xx `data` равен null, поэтому ветка по
-// `data.code` молча перестаёт совпадать, а `error.message` - это строка SDK
-// "Edge Function returned a non-2xx status code", то есть сырой английский текст
-// в тосте. Читать надо `code`/`message` от `invokeFn`: он уже снял их с тела ОДИН
-// раз (тело Response читается единожды). Форма - как у `AI_ERROR_KEY` в
-// ChatStream: код → ключ копии.
+// (403 / 402 / 404; сбой - 500) и машинным `code` (TRIP-378). Читать надо
+// `code` от `invokeFn` (не `data.code`: у не-2xx `data` равен null). Текст
+// причины даёт общий `classifyError`/`err.*` — локальной карты клауз здесь
+// больше НЕТ (FORBIDDEN на правке и удалении сведён к одному нейтральному
+// `err.FORBIDDEN`: «нет прав менять настройки» про удаление всё равно врало).
+// Клауза подставляется в обёртку `settings.save_error*` ("Не удалось
+// сохранить: {message}"). PRO_REQUIRED — единственный код, что НЕ идёт в тост,
+// а открывает Pro-апселл (ветка в `toggleFeature`).
 //
-// Клауза, а не предложение: подставляется в `settings.save_error*` ("Не удалось
-// сохранить: {message}"). Незнакомый код (500, сеть, платформенный отказ) - это
-// «попробуй ещё раз», и НИКОГДА не текст ошибки с сервера.
-//
-// ⚠️ Правило действует В ЭТИХ вызывателях, а не по всему файлу, и это долг, а не
-// умысел: `telegramSetActive` (~:354), `telegramDisconnect` (~:364) и
-// `removeTripMember` (~:708) всё ещё печатают в тост `error?.message`, то есть на
-// не-2xx - ту самую строку SDK. Не тронуто здесь намеренно: TRIP-378 ограничен
-// двумя функциями (§3 ТЗ), а это смена пользовательской копии на чужих путях.
-// ⚠️ Карта НЕ общерепная и общей пока быть не может: `code` при отказе несут
-// ровно эти две функции, а, например, `getTripDetails` отдаёт 404/403 БЕЗ кода.
-// Прежде чем выносить карту в общий модуль - проверить, что источник её заполняет.
-const REFUSAL_CLAUSE = {
-  FORBIDDEN: 'settings.err_forbidden',
-  NOT_FOUND: 'settings.err_trip_gone',
-};
-// У удаления своя клауза отказа: «нет прав менять настройки» про удаление врёт.
-const DELETE_REFUSAL_CLAUSE = { ...REFUSAL_CLAUSE, FORBIDDEN: 'settings.err_delete_forbidden' };
+// ⚠️ Долг (не этот PR): `telegramSetActive` (~:354), `telegramDisconnect`
+// (~:364) и `removeTripMember` (~:708) всё ещё печатают в тост `error?.message`
+// (сырую строку SDK). Их источник кода не заполняет — ратчет сырых клиентских
+// ошибок (гард 3b) держит это число и не даёт ему расти.
 
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
 // with every optional/pro feature off - they never auto-enable for anyone.
@@ -537,23 +525,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     coverGradient   !== (trip?.cover_gradient || '') ||
     currency        !== persistedCurrency;
 
-  // ЕДИНСТВЕННОЕ место, где отказ edge-функции превращается в текст: обёртка
-  // (`save_error` "Не удалось сохранить: …" / `save_error2` "Ошибка: …") плюс
-  // клауза причины по `code`. Одна точка - потому что инвариант тут ровно один:
-  // серверный текст пользователю не показывается НИКОГДА (см. REFUSAL_CLAUSE).
+  // ЕДИНСТВЕННОЕ место, где отказ edge-функции превращается в текст тоста:
+  // обёртка (`save_error` "Не удалось сохранить: …" / `save_error2` "Ошибка: …")
+  // плюс текст причины из общего `classifyError` (одна карта код→текст на весь
+  // клиент). Инвариант: серверная проза пользователю не показывается НИКОГДА.
   /**
    * @param {string|null} code машинный `code` от `invokeFn`, не `data.code`
    * @param {string} [wrapKey] обёртка: `save_error` | `save_error2`
-   * @param {Record<string,string>} [clauses] карта код → ключ клаузы
    */
-  const refusalToast = (code, wrapKey = 'settings.save_error', clauses = REFUSAL_CLAUSE) =>
+  const refusalToast = (code, wrapKey = 'settings.save_error') =>
     toast({
-      // `hasOwn`, а не `clauses[code]`: код приезжает СТРОКОЙ ИЗ ТЕЛА ОТВЕТА, и
-      // `'toString'` достал бы функцию из прототипа, а `t(fn)` отрисовал бы мусор.
-      // Тот же приём и по той же причине, что у `pickSignupMarks`.
-      description: t(wrapKey, {
-        message: t((code && Object.hasOwn(clauses, code) && clauses[code]) || 'settings.err_temporary'),
-      }),
+      description: t(wrapKey, { message: classifyError(t, code).text }),
       variant: 'destructive',
     });
 
@@ -677,8 +659,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
     if (error || !data?.ok) {
       // Единственная ветка, ЗАВИСЯЩАЯ от кода: Pro-отказ открывает апселл, а не
-      // тост. Читается `code` от invokeFn, не `data.code` - 402 оставляет `data`
-      // пустым, и прежняя ветка перестала бы совпадать МОЛЧА (см. REFUSAL_CLAUSE).
+      // тост (kind==='upsell' у classifyError). Читается `code` от invokeFn, не
+      // `data.code` - 402 оставляет `data` пустым.
       if (code === 'PRO_REQUIRED') {
         openProUpsell({ mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '', ownerName, onUpgrade: openUpgrade });
       } else {
@@ -733,10 +715,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const runDelete = async () => {
       const { data, error, code } = await invokeFn('deleteTrip', { body: { tripId } });
       if (error || !data?.ok) {
-        // Своя карта клауз: у удаления «нельзя» значит «ты не владелец». Раньше
-        // сюда уходил серверный `message` - сырое английское 'Not found' /
-        // 'Forbidden', а с 500 - ещё и текст ошибки БД.
-        refusalToast(code, 'settings.save_error2', DELETE_REFUSAL_CLAUSE);
+        // Нейтральный `err.FORBIDDEN` покрывает и «не владелец» на удалении, и
+        // отказ правки — отдельной клаузы удаления больше нет (серверный
+        // `message` пользователю не показываем НИКОГДА).
+        refusalToast(code, 'settings.save_error2');
         return;
       }
       // Deleting an owned trip lowers the active-trip count — drop the gate cache

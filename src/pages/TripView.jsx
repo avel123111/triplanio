@@ -1102,6 +1102,12 @@ export default function TripView() {
         mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
         cities={visits.filter((v) => v.city_name)}
         onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
+        onProRefusal={() => openProUpsell({
+          mode: isOwner ? 'upgrade' : 'info',
+          feature: t('budget.title'),
+          ownerName: members.find((m) => m.user_id === trip?.created_by)?.user_full_name || '',
+          onUpgrade: openUpgrade,
+        })}
       />
     )}
     {addModal === 'docs' && (

@@ -112,7 +112,7 @@ export function uploadErrorText(error, t) {
 export async function insertTripDocument(body) {
   const { data, error } = await invokeFn('trip-document/doc', { body });
   if (error) throw new Error('write_rejected');
-  return data?.data ?? null; // the seam answers { data: row }
+  return data ?? null; // the seam answers the row payload flat
 }
 
 /**

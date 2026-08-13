@@ -240,6 +240,21 @@ jobs:
       - name: 2x — i18n dynamic keys (DB/n8n-only families must not be deleted)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-i18n-dynamic-keys.mjs
+      # 3a (TRIP-408 PR#2): карта «код ошибки → i18n-ключ» живёт в ОДНОМ доме
+      # `errorText.js` (classifyError). Локальная карта `{ CODE: 'ns.key' }` вне
+      # него (три снесённые: AI_ERROR_KEY/BUDGET_REFUSAL/REFUSAL_CLAUSE) → красный.
+      # Самосогласованность по дереву; тянет только src/lib/errorCodes.js (0
+      # импортов) — инвариант «без npm ci» цел.
+      - name: 3a — карта код→i18n одна (локальные карты отказа не воскресают)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-error-i18n-map.mjs
+      # 3b (TRIP-408 PR#2): сырой `error.message` пользователю не показывается —
+      # канон `classifyError`/`errorText`. Храповик по диффу (как 2w): рост сырых
+      # `.message`-показов в тронутом файле → красный; whole-tree итог печатается.
+      - name: 3b — сырой текст ошибки пользователю не растёт (.message-показы)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-raw-error-surface.mjs
       # TRIP-321 Ф13: репортёр `audit:design` переехал отсюда в джобу `frontend`.
       # Здесь он требовал бы `npm ci` (разбирает JSX парсером), а эта джоба
       # намеренно обходится стандартной библиотекой - и остаётся такой.
