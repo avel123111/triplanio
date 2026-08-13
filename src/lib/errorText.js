@@ -48,8 +48,8 @@ export function errorText(t, code) {
  * @returns {{ kind: 'upsell'|'refusal'|'error', text: string }}
  */
 export function classifyError(t, code) {
-  const kind = code === 'PRO_REQUIRED' ? 'upsell'
-    : (code && REFUSAL_CODES.has(code)) ? 'refusal'
-    : 'error';
+  let kind = 'error';
+  if (code === 'PRO_REQUIRED') kind = 'upsell';
+  else if (code && REFUSAL_CODES.has(code)) kind = 'refusal';
   return { kind, text: errorText(t, code) };
 }

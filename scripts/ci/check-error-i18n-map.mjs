@@ -50,6 +50,7 @@ function blankComments(src) {
       const end = src.indexOf('*/', i + 2);
       const stop = end === -1 ? src.length : end + 2;
       for (; i < stop; i++) if (src[i] !== '\n') out[i] = ' ';
+      i--; // перечитать символ на `stop` — вдруг там начинается новый комментарий
     }
   }
   return out.join('');
