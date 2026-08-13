@@ -5262,8 +5262,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 /* `.acct-linktext` удалён: «Отменить до конца года» — текстовая кнопка системы
    (`<Btn variant="link">`, TRIP-344 PR 3). */
 
-/* language flag chip (reused by the language SearchSelect trigger + options) */
-.acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+/* language flag chip (reused by the language SearchSelect trigger + options).
+   visual-diff-move: acct-lang__flag -> tile — плитка-флаг на примитив <Tile
+   className="acct-lang__flag">: скин (квадрат/тинт brand-дефолт/центр) несёт .tile,
+   класс держит только внелестничную ступень 24px + радиус 7px ручками (TRIP-391
+   объект 3, семья acct). Класс-сам-плитка → tile-homed (реестр 2z). */
+.acct-lang__flag { --tile: 24px; --tile-r: 7px; }
 
 /* CountryFlag — SVG country flag (from /public/flags/<iso2>.svg), the single
    flag primitive that replaced emoji flags. Height ties to the surrounding
