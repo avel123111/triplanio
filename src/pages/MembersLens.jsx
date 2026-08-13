@@ -298,8 +298,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   }
 
   // Re-invite a member who declined: restart the invite flow on the SAME row.
-  // inviteTripMember resets a declined row back to pending and re-sends the
-  // notification + email (reusing the existing role).
+  // The invite action (trip-member/invite) resets a declined row back to pending
+  // and re-sends the notification + email (reusing the existing role).
   async function reinvite(member) {
     setRemoving(member.id);
     const { data, error, message } = await invokeFn('trip-member/invite', {
@@ -311,7 +311,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   }
 
   // Confirmed via the async confirm so the dialog's button spins while
-  // removeTripMember runs (the kebab menu can't host a spinner; the dialog can).
+  // the remove action (trip-member/remove) runs (the kebab menu can't host a
+  // spinner; the dialog can).
   async function removeMember(memberId) {
     await confirm({
       title: t('member.remove_confirm'),
@@ -324,9 +325,9 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
     });
   }
 
-  // Leaving the trip = self-removal. removeTripMember allows a member to remove
-  // their own row (isSelf path). Once gone the user loses access, so navigate
-  // back to the trips collection rather than refreshing the now-forbidden lens.
+  // Leaving the trip = self-removal via trip-member-self/leave (a member removes
+  // their own row). Once gone the user loses access, so navigate back to the
+  // trips collection rather than refreshing the now-forbidden lens.
   async function leaveTrip(member) {
     await confirm({
       title: t('settings.leave_confirm'),

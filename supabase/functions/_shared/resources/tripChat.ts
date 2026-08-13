@@ -30,7 +30,7 @@ export const TRIP_CHAT: ResourceSpec = {
   name: 'trip-chat',
   scope: { column: 'trip_id', from: 'tripId' },
   actions: {
-    // send_chat_message(p_trip, p_text, p_client_msg_id, p_actor) → строка chat_messages.
+    // send_chat_message(p_trip, p_text, p_actor, p_client_msg_id) → строка chat_messages.
     send: {
       op: 'rpc',
       rpc: 'send_chat_message',

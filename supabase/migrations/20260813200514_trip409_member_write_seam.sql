@@ -139,7 +139,7 @@ begin
   select full_name into v_name from public.users where id = p_actor;
   update public.trip_members set
     status = 'active', accepted_at = now(), user_id = p_actor,
-    user_full_name = coalesce(v_name, (select email from public.users where id = p_actor)), updated_at = now()
+    user_full_name = coalesce(nullif(btrim(v_name), ''), (select email from public.users where id = p_actor)), updated_at = now()
   where id = p_member and trip_id = p_trip;
   return jsonb_build_object('outcome', 'accepted');
 end;
