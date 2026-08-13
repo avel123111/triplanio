@@ -214,7 +214,7 @@ export function useChatSend(chatId, tripId) {
     });
     if (!retryOf) setSending(false);
 
-    const row = data?.data ?? null; // шов отвечает { data: row }
+    const row = data ?? null; // шов отвечает payload плоско
     if (error || !row) {
       // Keep the message ON SCREEN, marked "not sent" with a retry action: the
       // composer has already been cleared, so dropping the row would lose the

@@ -1427,7 +1427,7 @@ async function upsert(action, entity, payload, tripId) {
   const body = entity ? { tripId, id: entity.id, ...payload } : { tripId, ...payload };
   const { data, error, code } = await invokeFn(`trip-booking/${action}`, { body });
   if (error) throw refusalError(code);
-  return data?.data ?? null; // the seam answers { data: row }
+  return data ?? null; // the seam answers the row payload flat
 }
 
 function buildHotelPayload(form, visit, tz) {

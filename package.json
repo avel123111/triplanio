@@ -25,7 +25,9 @@
     "check:invoke": "node scripts/ci/check-invoke-discriminant.mjs",
     "check:css-comments": "node scripts/ci/check-css-comments.mjs",
     "check:shadow-style": "node scripts/ci/check-shadow-style-skin.mjs",
-    "check:surface-registry": "node scripts/ci/check-surface-registry.mjs"
+    "check:surface-registry": "node scripts/ci/check-surface-registry.mjs",
+    "check:error-map": "node scripts/ci/check-error-i18n-map.mjs",
+    "check:raw-errors": "node scripts/ci/check-raw-error-surface.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",
