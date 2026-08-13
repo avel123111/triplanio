@@ -37,7 +37,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, Dialog, IconBtn, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, Dialog, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, ListRow } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -526,46 +526,44 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange, onPr
 // `cityName` is resolved by the caller from the expense's visit (falling back to
 // the frozen string), so the row shows the city in the current language.
 /** @param {{ expense: any, catColor?: any, catIcon?: any, mode?: string, catName?: any, cityName?: any, loc?: any, mainCurrency?: any, mainAmount?: any, ok?: boolean, onOpen?: any, onEdit?: any, onDelete?: any, readOnly?: boolean }} p */
-function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete, readOnly }) {
+// Строка списка = канон <ListRow variant="raised">. Правка/удаление больше НЕ
+// инлайн-кнопками строки: тап открывает трату (у ручной — диалог с «Изменить» и
+// «Удалить», у брони — её событие). `mainAmount` — сконвертированное значение;
+// `ok=false` = курса нет. `mode` решает мету: категория показывает город+дату,
+// город — чип категории + дату.
+/** @param {{ expense: any, catColor?: any, catIcon?: any, mode?: string, catName?: any, cityName?: any, loc?: any, mainCurrency?: any, mainAmount?: any, ok?: boolean, onOpen?: any }} p */
+function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName, loc, mainCurrency, mainAmount, ok, onOpen }) {
   const { t } = useI18n();
   const src = expense.source_kind || 'manual';
   const isManual = src === 'manual';
   const dateStr = expense.spent_on ? fmtDate(expense.spent_on, loc) : '';
   const color = catColor || 'var(--brand)';
+  const metaText = [mode !== 'city' ? cityName : null, dateStr].filter(Boolean).join(' · ');
   return (
-    <div className="bgt-exrow row row--g6" onClick={() => onOpen?.(expense)}>
-      <div className="tile tile--lg" style={{ background: color + '22', color }}>
-        <Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={18} />
-      </div>
-      <div className="grow--fit">
-        <div className="bgt-exrow__t trunc">{expense.title || '-'}</div>
-        <div className="bgt-exrow__s row row--g4 row--wrap">
-          {mode === 'city' && catName && <span className="badge badge--xs bgt-tagx--cat">{catName}</span>}
-          {mode !== 'city' && cityName && <span>{cityName}</span>}
-          {dateStr && <><span className="sep" />{dateStr}</>}
+    <ListRow
+      variant="raised"
+      onClick={() => onOpen?.(expense)}
+      lead={<span className="tile tile--lg" style={{ background: color + '22', color }}><Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={18} /></span>}
+      title={expense.title || '-'}
+      sub={
+        <span className="row row--g4 row--wrap">
+          {mode === 'city' && catName && <Badge variant="outline" size="xs">{catName}</Badge>}
+          {metaText && <span>{metaText}</span>}
           {isManual
-            ? <span className="badge badge--xs bgt-tagx--manual">{t('budget.manual_badge')}</span>
-            : <span className="badge badge--xs bgt-tagx--link"><Icon name="link" />{t('budget.booking_badge')}</span>}
-        </div>
-      </div>
-      <div className={`bgt-exrow__amt ${ok ? '' : 'miss'}`}>
-        {ok ? money(mainAmount, mainCurrency)
-          : <span title={t('budget.rate_missing')}>{money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?</span>}
-      </div>
-      {isManual ? (
-        !readOnly && (
-          <div className="bgt-exrow__acts row row--g2">
-            {/* ★TRIP-344: `tile--sm` был ТРЕТЬЕЙ стороной (28px) — ступень
-                ПЛИТКИ на контроле, мимо обеих ступеней кнопки. Опасный ховер
-                больше не экранное имя: тон `danger` теперь есть в каноне. */}
-            <IconBtn icon="edit" size="sm" ariaLabel={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }} />
-            <IconBtn icon="trash" size="sm" tone="danger" ariaLabel={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }} />
-          </div>
-        )
-      ) : (
-        <svg className="bgt-exrow__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
-      )}
-    </div>
+            ? <Badge variant="quiet" size="xs">{t('budget.manual_badge')}</Badge>
+            : <Badge variant="brand" size="xs" icon="link">{t('budget.booking_badge')}</Badge>}
+        </span>
+      }
+      trail={
+        <>
+          <span className={ok ? 't-strong' : 't-strong miss'}>
+            {ok ? money(mainAmount, mainCurrency)
+              : <span title={t('budget.rate_missing')}>{money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?</span>}
+          </span>
+          {!isManual && <Icon name="chevronRight" size={16} />}
+        </>
+      }
+    />
   );
 }
 
@@ -574,6 +572,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
 export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, role, queryClient, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
+  const isMobile = useIsMobile();
   // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
   // UI прячет мутации, чтобы прямые записи не падали молчаливым 403.
   const readOnly = !roleCanEdit(role);
@@ -739,16 +738,17 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {/* ░ HEADER: screen title + primary actions relocated from the removed
           per-screen bar. On phones the buttons hide (see BudgetLens.css): "add
           expense" becomes the FAB below and "rates" is the FX stat card. ░ */}
-      <div className="bgt-head row">
-        <h2 className="bgt-head__title">{t('trip.sidebar_budget')}</h2>
-        <span className="grow" />
-        {!readOnly && (
+      {/* На мобиле действия шапки скрыты (как было): «трата» живёт в «+» нижней
+          навигации, «курсы» — в стат-плитке FX. */}
+      <PageHead
+        title={t('trip.sidebar_budget')}
+        actions={!readOnly && !isMobile && (
           <>
             <Btn variant="secondary" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
             <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
           </>
         )}
-      </div>
+      />
       {/* ░ SUMMARY BAND ░ */}
       <div className="bgt-sumband">
         <div className="card bgt-donutcard">

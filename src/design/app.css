@@ -2608,6 +2608,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    примитива, иначе шкала снова расползётся по трём именам. */
 .grid { display: grid; gap: var(--sp-5); }
 .grid--2 { grid-template-columns: 1fr 1fr; }
+/* Две колонки, что стекаются в одну на планшете (брейкпоинт 880, R2). Общая
+   раскладка «список + деталь» / «виз + сводка» — вместо приватных сеток экранов. */
+.grid--split { grid-template-columns: 1fr 1fr; }
+@media (max-width: 880px) { .grid--split { grid-template-columns: 1fr; } }
 /* Кнопка в ячейке сетки переносит строку. `.btn` по умолчанию nowrap, а трек
    сетки задаёт ей ширину извне - значит длинная локаль («Solo las necesarias»)
    не сжимается, а вылезает. Свойство принадлежит паре «кнопка в сетке», а не
