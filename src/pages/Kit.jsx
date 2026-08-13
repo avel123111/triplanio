@@ -723,7 +723,7 @@ function SpacingSection({ ctx }) {
 
 const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-ui', 't-meta', 't-micro', 't-mono'];
 /* Санкционированные орто-модификаторы канона (TRIP-410): комбинируются с любым
-   каноном, НЕ каноны сами по себе. `.t-sans` удалён (мета-ярус — Geologica).
+   каноном, НЕ каноны сами по себе. Прежний sans-оверлей удалён (мета-ярус — Geologica).
    `base` — канон, на котором эффект модификатора виден нагляднее. */
 const TYPE_MODS = [
   { cls: 't-strong', base: 't-body', sample: 'Съешь ещё · Sphinx of black quartz' },

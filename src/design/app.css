@@ -197,17 +197,18 @@
   --header-bg:    var(--surface);
 
   /* Гарнитуры (TRIP-410 — единственный дом токенов шрифтов). Single-font:
-     Geologica несёт и текст, и заголовки; JetBrains Mono — только числа/коды/email. */
+     Geologica несёт и текст, и заголовки (числа — tabular-nums); JetBrains Mono —
+     ТОЛЬКО код/email/kbd (V1). */
   --font-display: 'Geologica',ui-sans-serif,system-ui,sans-serif;                   /* заголовки — та же гарнитура, что и текст */
   --font-ui:      'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;     /* единая гарнитура апп (текст+заголовки) */
   --font-sans:    'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;     /* алиас --font-ui (читается index.css body) */
-  --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* только числа/коды/email */
+  --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* ТОЛЬКО код/email/kbd (числа — Geologica tabular) */
 
   /* Трекинг канонов (живёт в канон-блоке .t-*). Geologica — чистая шкала:
      отрицательный трек только на крупном дисплее, капс-лейблы держат положительный. */
   --track-hero: -0.02em;         /* трекинг .t-display */
   --track-h:    -0.01em;         /* трекинг .t-title/.t-heading */
-  --track-caps: 0.08em;          /* трекинг капс-лейблов .t-micro */
+  --track-caps: 0.045em;         /* трекинг капс-лейблов .t-micro (V1: тише, было 0.08) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press. */
@@ -404,7 +405,11 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    объявление не дубль наследования от body (см. ловушку `font: inherit` выше).
    На обычном div/span класс не нужен: там табличные цифры уже наследуются. */
 .num { font-variant-numeric: tabular-nums; }
-.mono { font-family: var(--font-mono); }
+/* TRIP-410 V1: утилита `.mono` больше НЕ переключает гарнитуру (JetBrains остаётся только
+   на .cm-code/.confirm__email/kbd). Её живые сайты — коды/номера рейсов/брони, share-URL —
+   должны выравнивать цифры, поэтому `.mono` теперь = табличные цифры в Geologica
+   (эквивалент `.num`; без смены font-family, DoD «моно только 3 селектора» соблюдён). */
+.mono { font-variant-numeric: tabular-nums; }
 
 /* =================================================================
    ПОВЕРХНОСТЬ — единственное место, где живёт заливка+граница (TRIP-326)
@@ -555,24 +560,24 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    JSX. Свой тип у такого класса удалён; в его правиле остаются только
    раскладка и цвет. (TRIP-165 Фаза 2)
 
-   ★TRIP-410 — система Geologica (single-font). Имена канонов сохранены; ниже
+   ★TRIP-410 V1 — система Geologica (single-font). Имена канонов сохранены; ниже
    карта имя ↔ гарнитура · кегль(токен) · вес · line-height · [трекинг]:
-     .t-display     Geologica  clamp(28–40) (--fs-display) · 800 · 1.05 · --track-hero
-     .t-title       Geologica  clamp(20–24) (--fs-h1)      · 700 · 1.15 · --track-h
-     .t-heading     Geologica  18 (--fs-h2)                · 700 · 1.25 · --track-h
+     .t-display     Geologica  clamp(28–40) (--fs-display) · 700 · 1.12 · --track-hero · tabular
+     .t-title       Geologica  clamp(20–24) (--fs-h1)      · 700 · 1.15 · --track-h · tabular
+     .t-heading     Geologica  18 (--fs-h2)                · 600 · 1.25 · --track-h · tabular
      .t-subheading  Geologica  16 (--fs-h3)                · 600 · 1.3
      .t-label       Geologica  14 (--fs-label)             · 600 · 1.35
-     .t-body        Geologica  15 (--fs-base)              · 400 · 1.5
+     .t-body        Geologica  15 (--fs-base)              · 400 · 1.55
      .t-ui          Geologica  13 (--fs-meta)              · 500 · 1.4
-     .t-meta        Geologica  12.5 (--fs-micro)           · 500 · 1.35   (де-моно)
-     .t-micro       Geologica  11 (--fs-nano)              · 600 · 1.3 · UPPER/--track-caps
-     .t-mono        JetBrains  12.5 (--fs-micro)           · 500 · 1.3   (только числа/коды/email)
+     .t-meta        Geologica  12.5 (--fs-micro)           · 500 · 1.4 · tabular   (де-моно)
+     .t-micro       Geologica  11 (--fs-nano)              · 500 · 1.3 · UPPER/--track-caps
+     .t-mono        Geologica  12.5 (--fs-micro)           · 500 · 1.3 · tabular   (числа; код/email/kbd → JetBrains отд. правилом)
    ================================================================= */
 .t-display,
 .pro-hero__title,      /* TRIP-229: инспектор канонов — заголовок Pro-страницы Heading→Display (hero макета) */
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
 .pt-mast h1,           /* TRIP-410: hero публичного трипа → Display (был локальный --fs-display/-.035em) */
-.head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); }   /* TRIP-410: .t-display — Geologica clamp(28–40)/800/1.05 (карьер .head h1) */
+.head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.12; letter-spacing: var(--track-hero); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-display — Geologica clamp(28–40)/700/1.12, tabular (карьер .head h1) */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
 .nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
@@ -589,7 +594,7 @@ h1,
 .ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
 .brand-col__tag,   /* TRIP-410: бренд-строка логина → Title (был локальный --fs-h1/600/-0.032em) */
 .pt-cta h2,        /* TRIP-410: заголовок CTA публичного трипа → Title (был локальный --fs-h1/-.03em; color:#fff остаётся локально) */
-.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); }   /* TRIP-410: .t-title — Geologica clamp(20–24)/700/1.15 */
+.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-title — Geologica clamp(20–24)/700/1.15, tabular */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
@@ -622,7 +627,7 @@ h2,
 .flow-lp-b .section-sub, /* TRIP-222: инспектор канонов — саб-заголовки шагов планирования Subheading→Heading */
 .pt-cstop__ht h2,  /* TRIP-410: заголовок остановки публичного трипа → Heading (был локальный --fs-h2/-.03em) */
 .pt-h-lead,        /* TRIP-410: лид-заголовок публичного трипа → Heading (был локальный --fs-h2/-.025em; вес держит .t-strong) */
-.acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-410: .t-heading — Geologica 18/700/1.25 (карьер .acct-sectitle) */
+.acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 600; line-height: 1.25; letter-spacing: var(--track-h); font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-heading — Geologica 18/600/1.25, tabular (карьер .acct-sectitle) */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
@@ -722,7 +727,7 @@ h4,
 .stay-dates__lbl,  /* они же в просмотре события */
 .auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
 .ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
-.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.5;  letter-spacing: 0; }   /* TRIP-410: .t-body — Geologica 15/400/1.5 (основной текст) */
+.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
 .t-ui,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
 .hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
@@ -983,13 +988,13 @@ h4,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
 .addon-card__desc, /* инсп.: Meta (описание аддона) */
 /* TRIP-410 моно-аудит: календарь уходит с JetBrains на Geologica — управляющие
-   пилюли, плашки городов, чипы событий (были в .t-mono, поверх .t-sans). Кегли
+   пилюли, плашки городов, чипы событий (были в .t-mono, поверх sans-оверлея). Кегли
    уточняет CalendarLens.css @media; .ncal-leg/.ncal-legend-lbl якорят каноны. */
 .ncal-nav-txt, .ncal-nav-trip,
 .ncal-cstrip, .ncal-cstrip-seg,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
-.ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.35;  letter-spacing: 0; }   /* TRIP-410: .t-meta — Geologica 12.5/500/1.35 (де-моно) */
+.ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-meta — Geologica 12.5/500/1.4, tabular (де-моно) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
    `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
    `.field__label` вне диалога оставался на `.t-ui` - одна и та же подпись
@@ -1038,7 +1043,7 @@ h4,
 .fork-partner__mid span,
 .mbrow .badge--warning, /* TRIP-410 моно-аудит: бейдж роли «Владелец» → Geologica CAPS (был .t-mono; эйбрау/бейджи = t-micro) */
 .mbrow .badge--brand,   /* TRIP-410 моно-аудит: бейдж роли «Админ» → Geologica CAPS */
-.ncal-legend-lbl { font-family: var(--font-ui);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.3;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-410: .t-micro — Geologica 11/600 CAPS/1.3 (де-моно; эйбрау/бейджи) */
+.ncal-legend-lbl { font-family: var(--font-ui);    font-size: var(--fs-nano);   font-weight: 500; line-height: 1.3;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-410 V1: .t-micro — Geologica 11/500 CAPS/1.3 (де-моно; эйбрау/бейджи; капс тише) */
 .t-mono,
 .cm-code,
 .te-dts,
@@ -1046,7 +1051,9 @@ h4,
 .tl3-ev .time,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
-.confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 500; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-410: .t-mono — JetBrains 12.5/500/1.3 (только числа/коды/email: время, суммы, счётчики, .cm-code, kbd) */
+.confirm__email { font-family: var(--font-ui);    font-size: var(--fs-micro);    font-weight: 500; line-height: 1.3;  letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-mono — Geologica 12.5/500/1.3, ЦИФРЫ tabular (время/даты/суммы/счётчики выравниваются, НЕ моно) */
+/* JetBrains Mono — ТОЛЬКО код/email/kbd (числа держит Geologica tabular выше). */
+.cm-code, .confirm__email, kbd { font-family: var(--font-mono); }
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
    Применяется как class="t-mono tp-caption" — база из канона, дельта из модификатора,
@@ -1097,9 +1104,9 @@ h4,
 .ncal-wdc-num,
 .pt-mm .n,
 .pt-cstop__ht h2 { line-height: 1; }     /* флеш-центровка крупных цифр/глифов */
-/* TRIP-410: орто-модификатор `.t-sans` УДАЛЁН. После де-моно мета-яруса (t-meta/
-   t-micro/t-mono теперь Geologica, кроме числового .t-mono→JetBrains) слой-отмена
-   font-family больше не нужен — его члены наследуют канон = Geologica. */
+/* TRIP-410: прежний орто-модификатор sans-оверлея УДАЛЁН. После де-моно мета-яруса
+   (t-meta/t-micro/t-mono теперь Geologica; число-tabular, код/email/kbd → JetBrains
+   отдельным правилом) слой-отмена font-family не нужен — члены наследуют канон = Geologica. */
 
 /* =================================================================
    THE APP ITSELF — global shell
@@ -3887,7 +3894,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .chat-at:hover { background: var(--ai-soft-2); color: var(--ai-ink); }
 /* раскладка уехала: chat-composer__hint -> row */
 .chat-composer__hint { color: var(--muted-2); padding: 0 4px; }
-.chat-composer__hint kbd { font-family: var(--font-mono); font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }
+.chat-composer__hint kbd { font-size: var(--fs-nano); background: var(--wash); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; color: var(--muted); }   /* гарнитуру (JetBrains) держит глоб. правило kbd, TRIP-410 V1 */
 @media (max-width: 640px) { .chat-composer__hint { display: none; } }
 
 /* ── Mention popover (shared) ── */
