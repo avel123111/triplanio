@@ -16,7 +16,7 @@ import { haversineKm } from '@/lib/trip-stats';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, Card, EmptyState, Severity, Toggle, useToast } from '../design/index';
+import { Btn, Card, EmptyState, Severity, Toggle, Tile, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -165,7 +165,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       <Icon name="drag" size={14} />
     </span>
   );
-  const lead = <span className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</span>;
+  const lead = <Tile as="span" className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</Tile>;
   const dates = isFinalAnchor
     ? t('planner.final_point')
     : (startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null);

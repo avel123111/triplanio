@@ -17,7 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Seg, Severity, Skeleton, Textarea, ActionMenu, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -463,9 +463,9 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
       {/* Invite banner */}
       {canManage && (
         <div className="row row--wrap invite-banner">
-          <div className="invite-banner__ic">
+          <Tile as="div" className="invite-banner__ic">
             <Icon name="users" size={20} />
-          </div>
+          </Tile>
           <div className="invite-banner__txt">
             <div className="invite-banner__title">{t('member.invite_more_title')}</div>
             <div className="invite-banner__desc">{t('member.invite_more_desc')}</div>

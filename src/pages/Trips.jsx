@@ -743,7 +743,7 @@ export default function Trips() {
               // not a generic empty. A real search miss still shows empty_search.
               (filterMode === 'active' && !search.trim()) ? (
                 <Card radius="lg" className="row invite">
-                  <span className="invite__ic"><Icon name="sparkles" size={28} /></span>
+                  <Tile as="span" className="invite__ic"><Icon name="sparkles" size={28} /></Tile>
                   <div className="invite__tx">
                     <h3>{t('trips.invite_title')}</h3>
                     <p>{t('trips.invite_desc')}</p>

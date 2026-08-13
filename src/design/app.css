@@ -3142,7 +3142,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Card паддинг не берёт → сводится в фазе 08). Баннер не кликается — статичен.
    visual-diff-move: invite -> card card--r-lg */
 .invite { position: relative; overflow: hidden; gap: 22px; padding: 26px 30px; }
-.invite__ic { width: 58px; height: 58px; border-radius: var(--r-md); flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
+/* visual-diff-move: invite__ic -> tile — плитка-иконка инвайта на <Tile> (ступень 58, r-md, тон ai каналом; position/z-index — декор-слой, не скин)
+   visual-diff-exempt: .invite__ic --tile-ic — иконка 28px закреплена ступенью (в оригинале size-проп <Icon size=28>, CSS-правила не было) — рендер */
+.invite__ic { --tile: 58px; --tile-r: var(--r-md); --tile-ic: 28px; --hl-soft: var(--ai-soft); --hl-ink: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
 .invite__tx h3 { color: var(--ink); }
 .invite__tx p { margin: 6px 0 0; color: var(--muted); max-width: 52ch; }
@@ -4225,7 +4227,9 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* ★ОСТАТОК: зазор 14px вне шкалы (--sp даёт 12 и 16) - удержан.
    visual-diff-move: invite-banner -> row row--wrap */
 .invite-banner { margin-top: 24px; padding: 18px; background: var(--brand-soft); border-radius: var(--r-btn); gap: 14px; }
-.invite-banner__ic { width: 44px; height: 44px; border-radius: var(--r-sm); background: var(--brand); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+/* visual-diff-move: invite-banner__ic -> tile — плитка-иконка баннера на <Tile> (ступень 44, r-sm сохранён — не r-btn; СОЛИД brand каналом --hl-soft)
+   visual-diff-exempt: .invite-banner__ic --tile-ic — иконка 20px закреплена ступенью (в оригинале size-проп) — рендер */
+.invite-banner__ic { --tile: 44px; --tile-ic: 20px; --hl-soft: var(--brand); --hl-ink: #fff; flex-shrink: 0; }
 .invite-banner__txt { flex: 1; min-width: 200px; }
 .invite-banner__title { margin-bottom: 2px; }
 .invite-banner__desc { color: var(--muted); }
@@ -4292,8 +4296,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        the scale pop. The JS-driven inline transform during follow stays — that's the
        drag itself, not decorative motion. */
     @media (prefers-reduced-motion: reduce) { .te-row.is-dragging { transform: none; } }
-    .te-row__num { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
-    .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
+    /* visual-diff-move: te-row__num -> tile — плитка-номер точки маршрута на <Tile> (ступень 28 = дефолт, тон brand дефолтом; is-warn — тон каналом --hl, багфикс #822)
+       visual-diff-exempt: .is-warn --hl-ink — общий класс .is-warn схлопывает --hl-ink моего te-row__num.is-warn (=--warning, тождественно оригинальному color) с сиблинг-контекстом (--warning-ink); per-element верно — рендер */
+    .te-row__num { --tile: 28px; }
+    .te-row__num.is-warn { --hl-soft: var(--warning-soft); --hl-ink: var(--warning); }
     /* visual-diff-move: te-warnbadge -> row row--inline row--g1 */
     .te-warnbadge { color: var(--warning-ink); }
     /* A11y: keyboard-visible focus rings on editor controls. Заполненные ячейки
@@ -4362,7 +4368,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .te-end border — рамка на роль .card (1px solid --line, тождественно)
    visual-diff-exempt: .te-end border-radius — fork: r-sm(10) → канон .card--r-md(16), скрин */
     .te-end { padding: 9px 12px; }
-    .te-row__node { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
+    /* visual-diff-move: te-row__node -> tile — плитка-узел маршрута на <Tile> (ступень 28, тон каналом из инлайна call-site) */
+    .te-row__node { --tile: 28px; flex-shrink: 0; }
     .te-endlabel { display: block; margin-bottom: 1px; }
     .te-wptag { color: var(--ev-transfer-ink); padding: 2px 7px; border-radius: var(--r-pill); background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
     /* Transfer badge: ONE symmetric transition drives both directions — it melts
@@ -4595,7 +4602,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-md); }
-.lp-stepper__ic { width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+/* visual-diff-move: lp-stepper__ic -> tile — плитка-иконка степпера ночёвки на <Tile> (34/r-sm/brand — всё дефолт .tile) */
+.lp-stepper__ic { --tile: 34px; }
 .lp-stepper__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .lp-stepper__tx b { color: var(--ink); }
 .lp-stepper__tx span { color: var(--muted); }

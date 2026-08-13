@@ -11,7 +11,7 @@ import React from 'react';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
-import { Btn, IconBtn, Stepper } from '@/design/index';
+import { Btn, IconBtn, Stepper, Tile } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -111,7 +111,7 @@ export default function CityPanel({
       <div className="lp-b scrollbar-thin">
       {/* Nights card — иконка · (заголовок + даты) · степпер (макет CityView). */}
       <div className="lp-stepper" style={{ marginBottom: 6 }}>
-        <span className="lp-stepper__ic"><Icon name="moon" size={17} /></span>
+        <Tile as="span" className="lp-stepper__ic"><Icon name="moon" size={17} /></Tile>
         <div className="lp-stepper__tx">
           <b className="t-strong">{t('tse.nights_in_city')}</b>
           <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>
