@@ -626,12 +626,12 @@ export const PartnerLogo = ({ url, size = 18 }) => {
     );
   }
   if (!p) return (
-    <div style={{ ...glyph, background: "var(--line)", color: "var(--muted)", fontSize: size * 0.55, fontWeight: 700 }}>
+    <div style={{ ...glyph, background: "var(--line)", color: "var(--muted)", fontSize: size * 0.55, fontWeight: 700 /* design-token-exempt: динамический кегль глифа аватара от диаметра, TRIP-410 */ }}>
       <Icon name="link" size={size * 0.6} />
     </div>
   );
   return (
-    <div style={{ ...glyph, background: p.color, color: "white", fontSize: size * 0.5, fontWeight: 700 }}>
+    <div style={{ ...glyph, background: p.color, color: "white", fontSize: size * 0.5, fontWeight: 700 /* design-token-exempt: динамический кегль глифа аватара от диаметра, TRIP-410 */ }}>
       {p.short}
     </div>
   );

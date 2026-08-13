@@ -51,8 +51,9 @@
   --danger:       #c4364c;
   --danger-soft:  rgba(196,54,76,.10);
 
-  --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
-  --font-body:    'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 */
+  /* TRIP-410: локальные --font-display/--font-body удалены. Гарнитуры берутся из
+     единственного дома src/design/app.css :root (Geologica); типографику .auth
+     держит канон .t-body (co-selector), заголовки — .t-title/.t-display. */
 
   --banner-photo: url("https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=70");
 }
@@ -63,8 +64,7 @@
   display: grid;
   grid-template-columns: minmax(0,1fr) minmax(0,1.05fr);
   background: #fcfcfc;
-  font-family: var(--font-body);
-  font-size: var(--fs-base);
+  /* типографика — канон .t-body (co-selector в app.css, TRIP-410) */
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
@@ -102,8 +102,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  font-size: var(--fs-base);
-  color: var(--muted);
+  color: var(--muted);   /* кегль наследуется от .auth (канон .t-body, TRIP-410) */
   flex-wrap: wrap;
 }
 .auth__foot a:hover { color: var(--brand); }
@@ -201,8 +200,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-btn);
-  font-family: var(--font-body);
-  font-size: var(--fs-base);
+  /* типографика — канон .t-body (co-selector в app.css, TRIP-410) */
   color: var(--ink);
   transition: border-color .15s ease, box-shadow .15s ease;
   box-sizing: border-box;
@@ -329,7 +327,7 @@
   padding: 10px 14px;
   margin-bottom: 14px;
 }
-.auth-error__icon { flex: 0 0 auto; margin-top: 1px; line-height: 0; }
+.auth-error__icon { flex: 0 0 auto; margin-top: 1px; line-height: 0; /* design-token-exempt: сброс строчного бокса вокруг SVG-иконки, не текст */ }
 .auth-error__icon svg { display: block; }
 .auth__resend-wait { opacity: .55; }
 
@@ -440,10 +438,7 @@
   background: color-mix(in oklab, var(--warm) 70%, white 30%);
 }
 .brand-col__tag {
-  font-family: var(--font-display);
-  font-size: var(--fs-h1);
-  letter-spacing: -0.032em;
-  font-weight: 600;
+  /* типографика — канон .t-title (co-selector в app.css, TRIP-410) */
   color: #fff;
   margin: 0;
   max-width: 16ch;
@@ -551,7 +546,7 @@
 .trip-tl__row .ico--warm { background: var(--warm-tint); color: var(--warm); }
 .trip-tl__row .ico--green { background: var(--success-soft); color: var(--success); }
 .trip-tl__row .lbl { display: flex; flex-direction: column; min-width: 0; }
-.trip-tl__row .lbl strong { font-weight: 600; color: var(--ink); }
+.trip-tl__row .lbl strong { color: var(--ink); }   /* вес — канон .t-strong (co-selector в app.css, TRIP-410) */
 .trip-tl__row .lbl .sub { color: var(--muted); }
 .trip-tl__row .tag { background: var(--brand-soft); color: var(--brand); padding: 2px 8px; border-radius: var(--r-pill); }
 .trip-tl__row .tag--warm { background: var(--warm-tint); color: var(--warm); }
@@ -585,7 +580,7 @@
   width: 26px; height: 26px; border-radius: 50%;
   background: linear-gradient(135deg, var(--brand), #5b8fff);
   color: #fff;
-  font-size: var(--fs-micro); font-weight: 700;
+  font-size: var(--fs-micro); font-weight: 700; /* design-token-exempt: инициал в кружке-аватаре, глиф не текст */
   display: inline-flex; align-items: center; justify-content: center;
   flex: 0 0 auto;
 }

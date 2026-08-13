@@ -196,20 +196,18 @@
      его в списке «НЕ ТРОГАТЬ» и падает тестом, если правило ослабить. */
   --header-bg:    var(--surface);
 
-  --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
-  --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
-  --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* TRIP-165 — коды/идентификаторы */
+  /* Гарнитуры (TRIP-410 — единственный дом токенов шрифтов). Single-font:
+     Geologica несёт и текст, и заголовки; JetBrains Mono — только числа/коды/email. */
+  --font-display: 'Geologica',ui-sans-serif,system-ui,sans-serif;                   /* заголовки — та же гарнитура, что и текст */
+  --font-ui:      'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;     /* единая гарнитура апп (текст+заголовки) */
+  --font-sans:    'Geologica',ui-sans-serif,system-ui,-apple-system,sans-serif;     /* алиас --font-ui (читается index.css body) */
+  --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* только числа/коды/email */
 
-  /* Дисплейные «ручки» (модификаторы) канона «Экзо» (TRIP-183) — параметры
-     дисплейной гарнитуры в одной точке, как в файле типографики. Правишь тут —
-     двигается везде. Имена: наши ↔ из файла (--fd-w=вес заголовков, --fd-w3=вес h3,
-     --fd-k=масштаб кегля, --track-hero/--track-h=трекинг). */
-  --fd-w:  800;                  /* вес hero/h1/h2 (t-display/t-title/t-heading) */
-  --fd-w3: 700;                  /* вес h3 (t-subheading) */
-  --fd-k:  1;                    /* глобальный множитель дисплейного кегля (регулятор) */
-  --track-hero: -0.02em;         /* трекинг hero (t-display) */
-  --track-h:    -0.01em;         /* трекинг h1/h2/h3 (t-title/t-heading/t-subheading) */
-  --track-caps: 0.14em;          /* трекинг капс-лейблов (канон .t-micro ← label макета; было .12, макет .14) */
+  /* Трекинг канонов (живёт в канон-блоке .t-*). Geologica — чистая шкала:
+     отрицательный трек только на крупном дисплее, капс-лейблы держат положительный. */
+  --track-hero: -0.02em;         /* трекинг .t-display */
+  --track-h:    -0.01em;         /* трекинг .t-title/.t-heading */
+  --track-caps: 0.08em;          /* трекинг капс-лейблов .t-micro */
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press. */
@@ -235,18 +233,24 @@
   --z-blocking: 400;   /* блокирующий прогресс (копирование трипа) — самый верх */
 
   /* Type scale — единственная санкционированная лесенка (var(--fs-*), не сырой px).
-     ★TRIP-183 — плотная шкала канона «Экзо» (из приложенного файла типографики).
-     Дисплейный ярус (h3/h2/h1/hero) множится на --fd-k (регулятор кегля); hero/h1
-     адаптивны через clamp. Гард не ловит эти defs (нет префикса `font-size:`). */
-  --fs-nano:    9.5px;   /* label макета → канон .t-micro (капс-лейблы); было 10 */
-  --fs-micro:   11px;    /* meta/meta-md макета → каноны .t-meta / .t-mono (моно 11) */
-  --fs-meta:    12.5px;  /* body-med макета → канон .t-ui */
-  --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
-  --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
-  --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; фикс (мельче не опускаем) */
-  --fs-h2:      calc(clamp(15px, 2.1vw, 16.5px) * var(--fd-k));   /* h2 макета → канон .t-heading; TRIP-203: fluid (16.5 деск → 15 фон), заменяет ручные @media-понижения */
-  --fs-h1:      calc(clamp(19px, 2.6vw, 26px) * var(--fd-k)); /* h1 макета → канон .t-title; TRIP-203: min 21→19 (единое понижение на фоне) */
-  --fs-display: calc(clamp(26px, 4vw, 44px) * var(--fd-k));   /* hero макета → канон .t-display; TRIP-203: min 30→26 (герои шринкуются токеном, а не оверрайдами) */
+     ★TRIP-410 — чистая шкала Geologica. Имена токенов историчны (тир — по канону,
+     схлоп имён 10→6 отдельной задачей); соответствие токен → канон:
+       --fs-nano  → .t-micro (11, CAPS)      --fs-h3      → .t-subheading (16)
+       --fs-micro → .t-meta / .t-mono (12.5)  --fs-h2      → .t-heading (18)
+       --fs-meta  → .t-ui (13)                --fs-h1      → .t-title (clamp 20–24)
+       --fs-label → .t-label (14)             --fs-display → .t-display (clamp 28–40)
+       --fs-base  → .t-body / body (15)       --ctl-fs     → пол контролов (16)
+     Гард не ловит эти defs (нет префикса `font-size:`). */
+  --fs-nano:    11px;    /* .t-micro (капс-лейблы) */
+  --fs-micro:   12.5px;  /* .t-meta / .t-mono */
+  --fs-meta:    13px;    /* .t-ui */
+  --fs-label:   14px;    /* .t-label */
+  --fs-base:    15px;    /* .t-body / глобальный body */
+  --ctl-fs:     16px;    /* пол контролов: textarea/select/chat ≥16px (анти-iOS-zoom), .btn--lg, шапка — переименован из --fs-h4 (TRIP-410) */
+  --fs-h3:      16px;    /* .t-subheading */
+  --fs-h2:      18px;    /* .t-heading */
+  --fs-h1:      clamp(20px, 2.6vw, 24px); /* .t-title */
+  --fs-display: clamp(28px, 4vw, 40px);   /* .t-display */
 }
 
 /* На телефоне контрол крупнее: 44px - минимальная цель нажатия (WCAG 2.5.5).
@@ -551,24 +555,24 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    JSX. Свой тип у такого класса удалён; в его правиле остаются только
    раскладка и цвет. (TRIP-165 Фаза 2)
 
-   ★TRIP-183 — каноны «Экзо» (из приложенного файла типографики). Наши имена
-   сохранены; ниже карта наше-имя ↔ имя-в-файле ↔ параметры (гарнитуры те же:
-   Exo 2 / Golos Text / JetBrains Mono; веса дисплея — «ручки» --fd-w/--fd-w3/--fd-k):
-     .t-display     ← hero      Exo    --fd-w /clamp→44/1.08/--track-hero
-     .t-title       ← h1        Exo    --fd-w /clamp→26/1.14/--track-h
-     .t-heading     ← h2        Exo    --fd-w /16.5/1.2/--track-h
-     .t-subheading  ← h3        Exo    --fd-w3/14.5/1.25/--track-h
-     .t-label       ← title     Golos  700/13/1.3
-     .t-body        ← body      Golos  400/13/1.55
-     .t-ui          ← body-med  Golos  600/12.5/1.4
-     .t-meta        ← meta      JetBrains 500/11/1.4       (моно-мета-ярус)
-     .t-micro       ← label     JetBrains 600/9.5/1.25/UPPER/--track-caps
-     .t-mono        ← meta-md   JetBrains 700/11/1.25
+   ★TRIP-410 — система Geologica (single-font). Имена канонов сохранены; ниже
+   карта имя ↔ гарнитура · кегль(токен) · вес · line-height · [трекинг]:
+     .t-display     Geologica  clamp(28–40) (--fs-display) · 800 · 1.05 · --track-hero
+     .t-title       Geologica  clamp(20–24) (--fs-h1)      · 700 · 1.15 · --track-h
+     .t-heading     Geologica  18 (--fs-h2)                · 700 · 1.25 · --track-h
+     .t-subheading  Geologica  16 (--fs-h3)                · 600 · 1.3
+     .t-label       Geologica  14 (--fs-label)             · 600 · 1.35
+     .t-body        Geologica  15 (--fs-base)              · 400 · 1.5
+     .t-ui          Geologica  13 (--fs-meta)              · 500 · 1.4
+     .t-meta        Geologica  12.5 (--fs-micro)           · 500 · 1.35   (де-моно)
+     .t-micro       Geologica  11 (--fs-nano)              · 600 · 1.3 · UPPER/--track-caps
+     .t-mono        JetBrains  12.5 (--fs-micro)           · 500 · 1.3   (только числа/коды/email)
    ================================================================= */
 .t-display,
 .pro-hero__title,      /* TRIP-229: инспектор канонов — заголовок Pro-страницы Heading→Display (hero макета) */
 .plan-price__amount,   /* TRIP-229: инспектор канонов — цена тарифа Title→Display (hero макета) */
-.head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fd-w); line-height: 1.08; letter-spacing: var(--track-hero); }   /* .t-display ← hero (карьер .head h1); TRIP-175 инсп.: .ncal-month-lbl → Title */
+.pt-mast h1,           /* TRIP-410: hero публичного трипа → Display (был локальный --fs-display/-.035em) */
+.head h1 { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: var(--track-hero); }   /* TRIP-410: .t-display — Geologica clamp(28–40)/800/1.05 (карьер .head h1) */
 .t-title,
 .tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
 .nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
@@ -583,7 +587,9 @@ h1,
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
 .ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
-.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: var(--fd-w); line-height: 1.14;  letter-spacing: var(--track-h); }   /* TRIP-183: .t-title ← h1 макета (Exo --fd-w/26/1.14/--track-h) */
+.brand-col__tag,   /* TRIP-410: бренд-строка логина → Title (был локальный --fs-h1/600/-0.032em) */
+.pt-cta h2,        /* TRIP-410: заголовок CTA публичного трипа → Title (был локальный --fs-h1/-.03em; color:#fff остаётся локально) */
+.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.15;  letter-spacing: var(--track-h); }   /* TRIP-410: .t-title — Geologica clamp(20–24)/700/1.15 */
 .t-heading,
 .pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 .limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
@@ -614,7 +620,9 @@ h2,
 .chat-head h3,     /* TRIP-175 инсп.: Label→Heading (заголовок «Групповой чат») */
 .choice-card__ttl, /* TRIP-222: инспектор канонов — названия способов создания Label→Heading */
 .flow-lp-b .section-sub, /* TRIP-222: инспектор канонов — саб-заголовки шагов планирования Subheading→Heading */
-.acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* .t-heading ← h2 (карьер .acct-sectitle); TRIP-175 инсп.: .ncal-year-lbl → Subheading */
+.pt-cstop__ht h2,  /* TRIP-410: заголовок остановки публичного трипа → Heading (был локальный --fs-h2/-.03em) */
+.pt-h-lead,        /* TRIP-410: лид-заголовок публичного трипа → Heading (был локальный --fs-h2/-.025em; вес держит .t-strong) */
+.acct-sectitle { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-410: .t-heading — Geologica 18/700/1.25 (карьер .acct-sectitle) */
 .t-subheading,
 .tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
@@ -654,7 +662,7 @@ h3,
 .ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
 .dl-visopt__lbl b,   /* TRIP-275 инсп.: Meta→Subheading (заголовок опции видимости «Общий»/«Личный») */
-.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
+.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.3; letter-spacing: 0; }   /* TRIP-410: .t-subheading — Geologica 16/600/1.3 */
 .t-label,
 h4,
 .te-step,
@@ -676,7 +684,7 @@ h4,
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
 .readonly-banner .t-ui, /* TRIP-275 инсп.: UI→Label (заголовок «Только чтение» баннера наблюдателя; перебивает класс .t-ui) */
-.cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
+.cm-h { font-family: var(--font-ui);      font-size: var(--fs-label);    font-weight: 600; line-height: 1.35;  letter-spacing: 0; }   /* TRIP-410: .t-label — Geologica 14/600/1.35 */
 .t-body,
 .fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
@@ -712,7 +720,9 @@ h4,
 .input, .select, .textarea,
 .sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
 .stay-dates__lbl,  /* они же в просмотре события */
-.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-183: .t-body ← body макета (Golos 400/13/1.55); был --fs-strong 15/lh1.6 */
+.auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
+.ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
+.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.5;  letter-spacing: 0; }   /* TRIP-410: .t-body — Geologica 15/400/1.5 (основной текст) */
 .t-ui,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
 .hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
@@ -790,7 +800,7 @@ h4,
 .pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
 .dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
 .dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
-.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
+.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410: .t-ui — Geologica 13/500/1.4 (плотный UI) */
 .t-meta,
 .field__hint,
 .app-header__trip-meta,
@@ -972,7 +982,14 @@ h4,
 .s22-count,
 .fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
 .addon-card__desc, /* TRIP-175 инсп.: Mono→Meta (описание аддона; возврат из #446-Mono, +Golos ниже) */
-.ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
+/* TRIP-410 моно-аудит: календарь уходит с JetBrains на Geologica — управляющие
+   пилюли, плашки городов, чипы событий (были в .t-mono, поверх .t-sans). Кегли
+   уточняет CalendarLens.css @media; .ncal-leg/.ncal-legend-lbl якорят каноны. */
+.ncal-nav-txt, .ncal-nav-trip,
+.ncal-cstrip, .ncal-cstrip-seg,
+.ncal-ev .tm, .ncal-ev .t,
+.ncal-aev .atm, .ncal-aev .atl,
+.ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.35;  letter-spacing: 0; }   /* TRIP-410: .t-meta — Geologica 12.5/500/1.35 (де-моно) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
    `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
    `.field__label` вне диалога оставался на `.t-ui` - одна и та же подпись
@@ -1019,7 +1036,9 @@ h4,
 .app-sidebar__group,
 .mbnav__lbl,
 .fork-partner__mid span,
-.ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.25;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-183: .t-micro ← label макета (JetBrains 600/9.5/caps/--track-caps .14); был 700/11 */
+.mbrow .badge--warning, /* TRIP-410 моно-аудит: бейдж роли «Владелец» → Geologica CAPS (был .t-mono; эйбрау/бейджи = t-micro) */
+.mbrow .badge--brand,   /* TRIP-410 моно-аудит: бейдж роли «Админ» → Geologica CAPS */
+.ncal-legend-lbl { font-family: var(--font-ui);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.3;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-410: .t-micro — Geologica 11/600 CAPS/1.3 (де-моно; эйбрау/бейджи) */
 .t-mono,
 .cm-code,
 .te-dts,
@@ -1027,17 +1046,7 @@ h4,
 .tl3-ev .time,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
-.mbrow .badge--warning, /* TRIP-175 инсп.: Micro→Mono (бейдж роли «Владелец»; Pro-бейдж .badge--pro НЕ затронут) */
-.mbrow .badge--brand,   /* TRIP-175 инсп.: Micro→Mono (бейдж роли «Админ») */
-/* TRIP-280 инсп.: календарь — управляющие пилюли (Meta→Mono), плашки городов
-   (Micro→Mono) и чипы событий (off-canon→Mono). Гарнитура — Golos, см. .t-sans ниже.
-   Близнецы вида «Неделя» (.ncal-aev .atm/.atl) едут вместе с месячными,
-   иначе одно и то же событие рендерится двумя шрифтами. */
-.ncal-nav-txt, .ncal-nav-trip,
-.ncal-cstrip, .ncal-cstrip-seg,
-.ncal-ev .tm, .ncal-ev .t,
-.ncal-aev .atm, .ncal-aev .atl,
-.confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
+.confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 500; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-410: .t-mono — JetBrains 12.5/500/1.3 (только числа/коды/email: время, суммы, счётчики, .cm-code, kbd) */
 /* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
    пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
    Применяется как class="t-mono tp-caption" — база из канона, дельта из модификатора,
@@ -1077,6 +1086,7 @@ h4,
 .fork-partner__mid span,
 .fork-or span,
 .s22-count, .pcard__score,
+.trip-tl__row .lbl strong, /* TRIP-410: <strong> в строке лога логина → Strong (был локальный font-weight:600) */
 .s22f-dash { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
 .t-flush,
 .tmk,
@@ -1087,57 +1097,9 @@ h4,
 .ncal-wdc-num,
 .pt-mm .n,
 .pt-cstop__ht h2 { line-height: 1; }     /* флеш-центровка крупных цифр/глифов */
-/* Ось «шрифт» (TRIP-203): Golos поверх ЛЮБОГО канона — снимает моно у mono-ярусов
-   (t-meta/t-mono/t-micro), когда мета-текст должен быть Golos, а не JetBrains.
-   Санкционированный орто-модификатор (комбинируется с каноном, как strong/flush);
-   единственное легальное место, кроме канонов, где переопределяется font-family.
-   Применяется классом `t-sans` рядом с каноном ИЛИ co-selector'ом в этом правиле.
-   Заводится/детектится канон-инспектором (ось mods='sans'). */
-.t-sans,
-.pro-hero__note,         /* TRIP-229: инспектор канонов — trust-строка Pro Meta+Golos */
-.mrow .me,               /* TRIP-175 инсп.: Meta+Golos (email участника) */
-.mbrow__email,           /* TRIP-175 инсп.: Meta+Golos (email участника) */
-.invite-banner__desc,    /* TRIP-175 инсп.: Meta+Golos (описание инвайт-баннера) */
-.ov-empty-line,          /* TRIP-175 инсп.: Meta+Golos (пустая строка обзора) */
-.gt span,                /* TRIP-175 инсп.: Meta+Golos (вторая строка пунктирного плейсхолдера; носитель переименован с `.gadd span` вместе со сносом `.gadd`) */
-.acct-hero__mail,        /* TRIP-175 инсп.: Meta+Golos (email в шапке аккаунта) */
-.acct-note span,         /* TRIP-175 инсп.: Meta+Golos (примечание аккаунта) */
-.row__s,         /* TRIP-175 инсп.: Meta+Golos (подпись строки аккаунта) */
-.acct-chan__s,           /* TRIP-175 инсп.: Meta+Golos (подпись канала уведомлений) */
-.addon-card__desc,       /* TRIP-175 инсп.: Meta+Golos (описание аддона; канон meta выше) */
-.settings-col .muted.t-meta, /* TRIP-175 инсп.: Meta+Golos (описания в настройках; из #446-Mono) */
-.app-header__trip-meta,  /* TRIP-175 инсп.: Meta+Golos (мета трипа в шапке) */
-.fork-manual__tx span,   /* TRIP-175 инсп.: Meta+Golos (подпись ручного добавления) */
-.chat-member__rl,        /* TRIP-175 инсп.: Meta+Golos (роль участника в рейле чата) */
-.pcard__mtx, .pcard__addr, .pcard__score, .pcard__price span,  /* TRIP-287: Meta+Golos (отзывы/адрес/оценка/сноска цены карточки) */
-.s22mk__price, .s22mk__count,  /* TRIP-287: инспектор канонов — цена/счётчик маркера карты → Meta+Golos */
-.ai-blk-ti > span,       /* TRIP-175 инсп.: Meta+Golos (описания AI-блока) */
-.pro-up p,               /* TRIP-225 инсп.: Meta+Golos (проза pro-up панели) */
-.field__sub,             /* TRIP-225 инсп.: Meta+Golos (под-подсказка поля — всегда проза) */
-.bgt-dleg__p,            /* TRIP-243 инсп.: Meta+Golos (процент легенды доната) */
-.bgt-donut__c .l,        /* TRIP-243 инсп.: Meta+Golos (подпись «всего» под числом доната) */
-.bgt-exrow__s,           /* TRIP-243 инсп.: Meta+Golos (подзаголовок траты: город+дата; чипы .bgt-tagx держат моно сами) */
-.bgt-glist__c,           /* TRIP-243 инсп.: Meta+Golos (счётчик трат строки списка) */
-.bgt-detail__s,          /* TRIP-243 инсп.: Meta+Golos (счётчик трат в шапке детали) */
-.bgt-stat__s,            /* TRIP-243 инсп.: Meta+Golos (подпись стат-карточки) */
-.bgt-fxrow__hint,        /* TRIP-243 инсп.: Meta+Golos (хинт строки курса в модалке) */
-.sev,                    /* TRIP-275 инсп.: Meta+Golos (проза сообщений severity/баннера наблюдателя) */
-.field__label .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (подсказка-hint поля «· свободный текст») */
-.dlg__body > .muted.t-meta, /* TRIP-275 инсп.: Meta+Golos (прозовые примечания в теле диалога) */
-.dl-root .muted.t-meta,  /* TRIP-275 инсп.: Meta+Golos (подписи секций документов «Видят все участники») */
-.dl-empty span,          /* TRIP-275 инсп.: Meta+Golos (описания пустых состояний доков) */
-.dl-visopt__lbl span,    /* TRIP-275 инсп.: Meta+Golos (подпись опции видимости «Виден всем участникам») */
-.dl-dropzone span,       /* TRIP-275 инсп.: Meta+Golos (подпись dropzone «PDF · DOC · XLS…») */
-/* TRIP-280 инсп.: экран календаря целиком уходит с JetBrains на Golos.
-   Mono-ярус — пилюли навигации/переключателя, плашки городов, чипы событий: */
-.ncal-nav-txt, .ncal-nav-trip,
-.ncal-cstrip, .ncal-cstrip-seg,
-.ncal-ev .tm, .ncal-ev .t,
-.ncal-aev .atm, .ncal-aev .atl,
-/* Meta-ярус — легенда и «Свободный день»; Micro-ярус — дни недели и лейблы легенды: */
-.ncal-leg, .ncal-wdc-empty,
-.ncal-wd, .ncal-wdc-wd, .ncal-legend-lbl,
-.card .muted.t-meta { font-family: var(--font-ui); }   /* TRIP-175 инсп.: Meta+Golos (описания в карточках; из #446-Mono) */
+/* TRIP-410: орто-модификатор `.t-sans` УДАЛЁН. После де-моно мета-яруса (t-meta/
+   t-micro/t-mono теперь Geologica, кроме числового .t-mono→JetBrains) слой-отмена
+   font-family больше не нужен — его члены наследуют канон = Geologica. */
 
 /* =================================================================
    THE APP ITSELF — global shell
@@ -2267,6 +2229,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .badge .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
+/* orphan-exempt: badge--pro — динамический класс <Badge> (`"badge--" + variant`, index.jsx:328), литералом не пишется; templateHeads гарда ловит только `${}`, не конкатенацию (TRIP-410) */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
 
 /* Pro upgrade plate — sidebar / inline gate. Дизайн-система TRIP-187:
@@ -2952,7 +2915,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .app-header--trip .app-header__vdiv { display: none; }
   .app-header__menu { display: grid; }                /* mobile burger appears */
   .app-header__trip-meta { display: none; }
-  .app-header__trip-title { font-size: var(--fs-h4); }
+  .app-header__trip-title { font-size: var(--ctl-fs); }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
   /* NB: the trip / editor sidebars go off-canvas via their OWN shells
@@ -3853,7 +3816,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Overlay (visible text) and textarea (transparent, caret source) MUST share
    identical glyph advance widths or the caret drifts ahead of the text. On iOS
    Safari a `font: inherit` <textarea> can fall back to the system font (wider
-   than Golos Text) while this <div> overlay keeps Golos Text — the textarea text then
+   than Geologica) while this <div> overlay keeps Geologica — the textarea text then
    runs wider and the caret ends up far ahead of the visible glyphs (mobile
    only, most visible around @triplanio). Pin BOTH layers to the SAME explicit
    family/size/weight/letter-spacing, and disable iOS text inflation, so their
@@ -3893,7 +3856,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    <div>, not a .textarea, so it stayed 14px → 16-vs-14 advance mismatch pushed
    the caret ahead of the visible text at narrow widths. Keep BOTH layers at
    16px on mobile so their glyph advances stay identical. */
-@media (max-width: 640px) { .chat-ov, .chat-ta { font-size: var(--fs-h4); } }
+@media (max-width: 640px) { .chat-ov, .chat-ta { font-size: var(--ctl-fs); } }
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
    the border + focus ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }
@@ -6454,7 +6417,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    safe. */
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
-  textarea, select { font-size: var(--fs-h4) !important; }
+  textarea, select { font-size: var(--ctl-fs) !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

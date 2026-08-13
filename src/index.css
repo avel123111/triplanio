@@ -1,4 +1,4 @@
-@import './design/fonts.css';   /* self-hosted Golos Text + JetBrains Mono (TRIP-165) */
+@import './design/fonts.css';   /* self-hosted Geologica (UI+заголовки) + JetBrains Mono (числа/коды); Golos/Exo — легаси, TRIP-410 */
 
 /* ===================================================================
    Reset — was Tailwind's `@tailwind base` (Preflight). Inlined verbatim
@@ -185,10 +185,8 @@ img, video {
    next to [data-theme="dark"]), so every theme change had to be made twice
    or it half-applied silently.
    =================================================================== */
-:root {
-  --font-sans: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* TRIP-165 — единая суперсемья */
-  --font-display: 'Exo 2', ui-sans-serif, system-ui, sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
-}
+/* Токены шрифтов (--font-sans / --font-display / --font-ui / --font-mono) живут
+   единственным домом в src/design/app.css :root (TRIP-410). Здесь не дублируем. */
 
 /* Base element styles — was @layer base { } with @apply (now plain CSS). */
 * {
@@ -208,15 +206,9 @@ button,
   user-select: none;
   -webkit-user-select: none;
 }
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-h1 { font-size: var(--fs-h1); line-height: 1.08; }
-h2 { font-size: var(--fs-h2); line-height: 1.15; }
-h3 { font-size: var(--fs-h3); line-height: 1.25; }
-h4 { font-size: var(--fs-h4); line-height: 1.3; }
+/* TRIP-410: голые h1..h4 (второй движок заголовков — Exo/600, конфликтовал с
+   канонами Geologica 800/700) убраны. Единственный источник типографики
+   заголовков — канон-блок .t-* в src/design/app.css; заголовки носят .t-* класс. */
 
 /* AI-filled field: violet tint on the inner input/select trigger - var(--ai-soft)
    fill + soft violet border. The app's only AI-filled look; the unused
