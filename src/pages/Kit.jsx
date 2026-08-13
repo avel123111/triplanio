@@ -593,7 +593,7 @@ const RECIPES = {
         )),
         it('.map-route__marker (pill + рамка 2px + состояние is-active)', <span className="map-route__marker"><span className="num t-meta">3</span></span>),
         it('.te-step (степпер-контрол, дом <IconBtn>)', <button type="button" className="te-step te-step--del"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg></button>),
-        it('.acct-hero__av (аватар, дом <Avatar> — bg-image/градиент)', <div className="acct-hero__av" style={{ background: 'linear-gradient(135deg, var(--brand), var(--ai))' }} />),
+        it('.acct-hero__av (аватар, дом Avatar — bg-image / градиент)', <div className="acct-hero__av" style={{ background: 'linear-gradient(135deg, var(--brand), var(--ai))' }} />), // i18n-ignore: подпись демо-образца витрины /kit (dev-only, не UI-строка); inline-style-exempt: демо-фон-градиент — форма аватара видна в витрине (в проде bg-image из данных)
       ],
     },
   ],
