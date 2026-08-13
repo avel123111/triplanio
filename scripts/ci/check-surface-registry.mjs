@@ -32,6 +32,7 @@ import { resolve } from 'node:path';
 import postcss from 'postcss';
 import { Parser as AcornParser } from 'acorn';
 import acornJsx from 'acorn-jsx';
+import { inScope } from './perimeter.mjs';
 const JsxParser = AcornParser.extend(acornJsx());
 
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
@@ -215,6 +216,59 @@ const rawHomedCallers = (homed, wrapper) => {
   return hits;
 };
 
+// ── btn-homed: НОСИТЕЛЬ кнопки-объекта В ДРУГОЙ ФОРМЕ, чем <button> ──────────
+// (TRIP-337 объект 1, вариант A). Команда-истина grep `<button>` СЛЕПА к кнопке-
+// объекту, живущему как `.btn`/`.icon-btn` на <a>/<div> (ссылка-CTA) или
+// `role="button"` на <div>/<span> (грип, кликабельная карта): их не видит ни
+// .css-скан, ни <style>, ни grep. Именно эта слепота переоткрывала объект 1.
+// AST-обход перечисляет ВСЕ такие носители в ПЕРИМЕТРЕ эпика (inScope); каждый
+// обязан иметь запись в реестре `btnHomed` — либо `btn-legit`+причина (не может
+// быть <Btn>: внешняя ссылка обязана быть <a>, ARIA-грип не примитив), либо
+// `object:<имя>` кросс-ссылкой на замок другого объекта (карта→2, аватар,
+// заголовок→6). Незанесённый носитель роняет PR: потолок ВНИЗ, новый носитель
+// не пройдёт молча. Сам <button> (форма 1) в реестр НЕ входит — он
+// классифицирован маркерами по call-site (#817), это отдельный канал.
+// `<Btn>`/`<IconBtn>` заглавные → фильтр `/^[a-z]/` их не берёт (примитив чист).
+// role берётся ЛИТЕРАЛОМ: `role={cond?'button':x}` намеренно не ловим (сегодня
+// таких нет; появится — добавить разбор выражения, как в classAttrTokens).
+const BTN_PRIMITIVE = new Set(['btn', 'icon-btn']);
+const attrIsButtonRole = (attr) =>
+  !!attr && attr.value && attr.value.type === 'Literal' && attr.value.value === 'button';
+const btnHomedCarriers = () => {
+  const out = [];
+  // `src/design/**` — ДОМ примитивов: `<Btn>` собран из `<button className="btn">`,
+  // `<IconBtn>` из `<button className="icon-btn">` — это СИСТЕМА, а не носитель-обход
+  // (тот же вычет `:!src/design/**`, что у команды-истины объекта 1).
+  for (const f of lsSrc().filter((ff) => ff.endsWith('.jsx') && inScope(ff) && !ff.startsWith('src/design/'))) {
+    let ast;
+    try { ast = JsxParser.parse(readFileSync(f, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }); } catch { continue; }
+    const stack = [ast];
+    while (stack.length) {
+      const n = stack.pop();
+      if (!n || typeof n !== 'object') continue;
+      if (n.type === 'JSXOpeningElement' && n.name && n.name.type === 'JSXIdentifier' && /^[a-z]/.test(n.name.name)) {
+        const clsAttr = n.attributes.find((a) => a.type === 'JSXAttribute' && a.name.name === 'className');
+        const roleAttr = n.attributes.find((a) => a.type === 'JSXAttribute' && a.name.name === 'role');
+        const tokens = classAttrTokens(clsAttr);
+        const role = attrIsButtonRole(roleAttr);
+        if (tokens.some((tk) => BTN_PRIMITIVE.has(tk)) || role) {
+          // сигнатура без номера строки (переживает сдвиг): файл + тег + role +
+          // БАЗОВЫЕ классы (модификаторы `--*` отброшены, чтобы правка модификатора
+          // не считалась новым носителем). Уникальна по файлу для всех 9.
+          const base = [...new Set(tokens.filter((tk) => tk && !tk.includes('--')))].sort();
+          out.push(`${f}: <${n.name.name}${role ? ' role=button' : ''}${base.length ? ' .' + base.join('.') : ''}>`);
+        }
+      }
+      for (const k in n) {
+        const v = n[k];
+        if (Array.isArray(v)) stack.push(...v);
+        else if (v && typeof v === 'object' && v.type) stack.push(v);
+      }
+    }
+  }
+  return out;
+};
+
 // ── SPLIT-СКИН на card-homed (TRIP-337 объект 2 дожиг) ──────────────────────
 // card-homed класс несёт ТОЛЬКО раскладку — скин (в т.ч. радиус и тень) живёт на
 // примитиве <Card> (проп `radius`/`raised`). Если приватный класс объявляет
@@ -250,6 +304,8 @@ const registry = JSON.parse(readFileSync(REG_PATH, 'utf8'));
 const known = new Set(Object.keys(registry.classes || {}));
 const cardHomed = new Set(registry.cardHomed || []);
 const tileHomed = new Set(registry.tileHomed || []);
+const btnHomed = registry.btnHomed || {};
+const btnKnown = new Set(Object.keys(btnHomed));
 
 const live = cssSurfaceClasses();
 const unregistered = [...live].filter((c) => !known.has(c)).sort();
@@ -260,6 +316,9 @@ const base = scanJsx((f) => git(['show', `${BASE_REF}:${f}`]));
 const baseKnown = git(['rev-parse', BASE_REF]) !== null;
 const rawCallers = rawHomedCallers(cardHomed, 'Card');
 const rawTileCallers = rawHomedCallers(tileHomed, 'Tile');
+const btnCarriers = [...new Set(btnHomedCarriers())].sort();
+const btnUnregistered = btnCarriers.filter((s) => !btnKnown.has(s));
+const btnStale = [...btnKnown].filter((s) => !btnCarriers.includes(s)).sort();
 const splitHead = splitSkinCount((f) => { try { return readFileSync(f, 'utf8'); } catch { return null; } }, cardHomed);
 const splitBase = splitSkinCount((f) => git(['show', `${BASE_REF}:${f}`]), cardHomed);
 
@@ -276,6 +335,7 @@ console.log(
 );
 console.log(`  сырых вызывателей card-homed классов мимо <Card>: ${rawCallers.length} (цель 0)`);
 console.log(`  сырых вызывателей tile-homed классов мимо <Tile>: ${rawTileCallers.length} (цель 0)`);
+console.log(`  btn-homed носителей (форма ≠ <button>: .btn/.icon-btn на <a>/<div> · role=button): ${btnCarriers.length} · в реестре: ${btnKnown.size} (незанесённых 0 = потолок вниз)`);
 console.log(
   `  split-скин на card-homed (radius/shadow на классе): ${splitHead.n}` +
     (baseKnown ? ` (BASE ${splitBase.n}) — остаток числом, ратчет вниз` : ' (BASE недостижим — ратчет пропущен)'),
@@ -321,9 +381,19 @@ if (rawTileCallers.length) {
   console.log('\n  СЫРОЙ ВЫЗЫВАТЕЛЬ tile-homed класса (скин плитки потерян — оберни в <Tile>):');
   rawTileCallers.forEach((h) => console.log(`    ${h}`));
 }
+if (btnUnregistered.length) {
+  bad = true;
+  console.log('\n  НЕ В РЕЕСТРЕ btnHomed (носитель кнопки-объекта мимо <Btn> — занеси с вердиктом btn-legit+причина ЛИБО object:<имя>):');
+  btnUnregistered.forEach((s) => console.log(`    ${s}`));
+}
+if (btnStale.length) {
+  bad = true;
+  console.log('\n  СТАРАЯ ЗАПИСЬ btnHomed (носителя больше нет — реестр обязан отражать живое):');
+  btnStale.forEach((s) => console.log(`    ${s}`));
+}
 
 if (bad) {
-  console.error('::error::check-surface-registry: реестр полноты не сошёлся. Занеси класс в surface-registry.json (object:"card" или object:<имя>+reason), убери старую запись, вынеси скин из <style>/инлайна на <Card>.');
+  console.error('::error::check-surface-registry: реестр полноты не сошёлся. Занеси surface-класс (object:"card"/object:<имя>+reason) или btn-homed носитель (btnHomed: verdict+reason), убери старую запись, вынеси скин из <style>/инлайна на <Card>.');
   process.exit(1);
 }
 console.log('\n  реестр полон: каждая .css-поверхность приписана, в <style> поверхностей нет, инлайн не вырос.');
