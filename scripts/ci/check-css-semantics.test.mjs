@@ -1260,3 +1260,44 @@ test('★★ класс внутри :not() не делает подлежаще
   assert.equal(code, 1, out);
   assert.match(out, /\.icon-btn width: 40px → 999px/);
 });
+
+/* ─────────── ручки плитки: резолв ВЫЧИСЛЕННОГО в переносе (TRIP-391 объект 3) ───────────
+ * Канон переводит скин `.ctx .ic{width;bg}` на примитив `.tile` (читает
+ * `var(--tile)`/`var(--hl-soft)`), контекст задаёт РУЧКУ `.ctx .tile{--tile}`.
+ * Перенос обязан сойтись ВЫЧИСЛЕННЫМ (текст меняется, значение — нет) И покраснеть
+ * на смене значения ручки/тона (Г37: умнее, не слепее). */
+const TILE_PRELUDE =
+  ':root { --hl-soft: rgba(1,2,3,.1); --hl-ink: #123; --brand-soft: rgba(1,2,3,.1); --brand: #123;' +
+  ' --act-soft: rgba(170,17,17,.12); --act-ink: #700; --r-sm: 8px; }\n' +
+  '.tile { width: var(--tile, 34px); height: var(--tile, 34px); border-radius: var(--tile-r, var(--r-sm));' +
+  ' background: var(--hl-soft); color: var(--hl-ink); }\n';
+const TILE_BASE =
+  TILE_PRELUDE +
+  '.statbar .ic { width: 42px; height: 42px; border-radius: 8px; background: var(--brand-soft); color: var(--brand); }\n' +
+  '.statbar .s.c-city .ic { background: var(--act-soft); color: var(--act-ink); }\n';
+const tileHead = ({ tile = '42px', citySoft = 'var(--act-soft)' } = {}) =>
+  TILE_PRELUDE +
+  '/* visual-diff-move: .statbar .ic -> .statbar .tile — плитка на примитив <Tile> */\n' +
+  `.statbar .tile { --tile: ${tile}; --tile-r: 8px; }\n` +
+  '/* visual-diff-move: .statbar .s.c-city .ic -> .statbar .s.c-city .tile — тон каналом --hl */\n' +
+  `.statbar .s.c-city .tile { --hl-soft: ${citySoft}; --hl-ink: var(--act-ink); }\n`;
+
+test('★ канон-миграция плитки через ручки (--tile / тон каналом --hl) — перенос сходится ВЫЧИСЛЕННЫМ → зелёный', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': TILE_BASE }, head: { 'src/design/app.css': tileHead() } });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ мутация: --tile 42px → 40px (реальный сдвиг размера) → КРАСНЫЙ (не ослеп по значению)', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': TILE_BASE }, head: { 'src/design/app.css': tileHead({ tile: '40px' }) } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
+
+test('★★ мутация: тон контекста --hl-soft подменён (act → brand) → КРАСНЫЙ', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': TILE_BASE }, head: { 'src/design/app.css': tileHead({ citySoft: 'var(--brand-soft)' }) } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});
