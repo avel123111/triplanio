@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { sortVisits } from '@/lib/validation';
-import { Card } from '@/design/index';
+import { Card, Tile } from '@/design/index';
 import RouteMapCard from '@/components/trips/RouteMapCard';
 import TripStatRow from '@/components/trips/TripStatRow';
 import BudgetSummaryCard from '@/components/trips/BudgetSummaryCard';
@@ -54,7 +54,7 @@ export default function OverviewLens({
           <Card radius="lg" pad="none" className="statbar">
             {Array.from({ length: 5 }).map((_, i) => (
               <div className="s" key={i}>
-                <span className="ic ov-bar" />
+                <Tile as="span" className="ov-bar" />
                 <div className="grow">{bar('55%', 22, 6)}{bar('80%', 10, 5, 7)}</div>
               </div>
             ))}

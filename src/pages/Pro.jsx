@@ -7,7 +7,7 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '@/design/icons';
-import { Btn, Card, Skeleton, Severity } from '@/design/index';
+import { Btn, Card, Skeleton, Severity, Tile } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
@@ -321,13 +321,9 @@ export default function Pro() {
         )}
         {!hidePerTrip && !pricesLoading && (
           <Card radius="card" className="pro-trip-bar">
-            <span style={{
-              width: 44, height: 44, flex: 'none', borderRadius: 'var(--r-sm)',
-              background: 'var(--brand-soft)', color: 'var(--brand)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <Tile as="span" style={{ '--tile': '44px', '--tile-ic': '21px' }}>
               <Icon name="ticket" size={21} />
-            </span>
+            </Tile>
             <div style={{ flex: 1, minWidth: 220 }}>
               <div className="t-heading" style={{ color: 'var(--ink)' }}>{t('sub.plan_trip_title')}</div>
               <div className="t-meta t-sans" style={{ color: 'var(--muted)', marginTop: 3 }}>{t('sub.plan_trip_subtitle')}</div>

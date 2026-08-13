@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
+import { Tile } from './Tile';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -781,7 +782,7 @@ export function StreamEventRow({ e, onClick }) {
           <div className="rv-conn">
             <span className="dline" />
             <span className="rv-mode">
-              <span className="ic"><Icon name={meta.icon} size={16} /></span>
+              <Tile as="span"><Icon name={meta.icon} /></Tile>
               {t(meta.labelKey)}{small && <small> · {small}</small>}
             </span>
             <span className="dline" />

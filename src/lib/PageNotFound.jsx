@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Btn } from '@/design/index';
+import { Btn, Tile } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 
 // Shared system-stub layout - one visual family with the no-access page
@@ -19,12 +19,9 @@ export function SystemStub({ icon, tone = 'brand', title, body, primary, seconda
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       minHeight: 'calc(100vh - 120px)', padding: 32, textAlign: 'center',
     }}>
-      <div style={{
-        width: 96, height: 96, borderRadius: 'var(--r-card)', background: bg, color: fg,
-        display: 'grid', placeItems: 'center', marginBottom: 28,
-      }}>
+      <Tile as="div" style={{ '--tile': '96px', '--tile-r': 'var(--r-card)', '--tile-ic': '42px', '--hl-soft': bg, '--hl-ink': fg, marginBottom: 28 }}>
         <Icon name={icon} size={42} />
-      </div>
+      </Tile>
       <h1 className="t-title" style={{ marginBottom: 12, maxWidth: 520 }}>{title}</h1>
       <div className="muted t-ui" style={{ maxWidth: 480, marginBottom: 24 }}>{body}</div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>

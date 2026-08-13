@@ -1208,7 +1208,7 @@ export default function EventEditDialog({
               «назад», из модалки - «отмена»). */}
           {embedded ? null : (
             <div className="lp-h lp-h--ev">
-              <span className="lp-ic"><meta.Icon /></span>
+              <Tile as="span" className="lp-ic"><meta.Icon /></Tile>
               <div className="lp-ti">
                 <div className="eyebrow">{hdr.eyebrow}</div>
                 <div className="lp-tirow">

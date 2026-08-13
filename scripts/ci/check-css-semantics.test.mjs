@@ -1338,3 +1338,27 @@ test('★★ мутация: тон .tile.r-days подменён → КРАСН
   assert.equal(code, 1, out);
   assert.match(out, /r-days|background/);
 });
+
+// Шаблон «КЛАСС-САМ-ПЛИТКА»: приватный класс не заменяется на .tile, а НЕСЁТ его
+// (`<Tile className="flagchip">` → `.tile.flagchip`), ручка --tile на самом классе.
+// tileCtxOf обязан взять контекст с СЕЛЕКТОРА-КАК-ЕСТЬ (не только .ic→.tile).
+const FLAG_BASE =
+  TILE_PRELUDE +
+  '.flagchip { width: 24px; height: 24px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); }\n';
+const flagHead = (tile = '24px') =>
+  TILE_PRELUDE +
+  '/* visual-diff-move: flagchip -> tile — класс-сам-плитка на <Tile className="flagchip"> */\n' +
+  `.flagchip { --tile: ${tile}; --tile-r: 7px; }\n`;
+
+test('★ класс-сам-плитка (.flagchip несёт .tile, ручка на себе) — перенос сходится ВЫЧИСЛЕННЫМ → зелёный', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': FLAG_BASE }, head: { 'src/design/app.css': flagHead() } });
+  const { code, out } = run(f);
+  assert.equal(code, 0, out);
+});
+
+test('★★ мутация: --tile класс-сам-плитки 24px → 20px → КРАСНЫЙ', (t) => {
+  const f = fixture(t, { base: { 'src/design/app.css': FLAG_BASE }, head: { 'src/design/app.css': flagHead('20px') } });
+  const { code, out } = run(f);
+  assert.equal(code, 1, out);
+  assert.match(out, /СО СМЕНОЙ значения/);
+});

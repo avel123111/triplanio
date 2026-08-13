@@ -163,13 +163,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
         {/* ── Header ── */}
         <div className="dlg__head">
-          <span style={{
-            width: 36, height: 36, borderRadius: 'var(--r-sm)',
-            background: 'var(--brand-soft)', color: 'var(--brand)',
-            display: 'grid', placeItems: 'center', flexShrink: 0,
-          }}>
+          <Tile as="span" style={{ '--tile': '36px' }}>
             <Icon name="file" size={17} />
-          </span>
+          </Tile>
           <h2>{t('doc.dialog_new')}</h2>
           <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>
@@ -384,13 +380,9 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
 
         {/* ── Header ── */}
         <div className="dlg__head">
-          <span style={{
-            width: 36, height: 36, borderRadius: 'var(--r-sm)',
-            background: 'var(--brand-soft)', color: 'var(--brand)',
-            display: 'grid', placeItems: 'center', flexShrink: 0,
-          }}>
+          <Tile as="span" style={{ '--tile': '36px' }}>
             <Icon name="file" size={17} />
-          </span>
+          </Tile>
           <h2>{doc.title}</h2>
           <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
         </div>

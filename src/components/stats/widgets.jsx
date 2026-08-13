@@ -1,5 +1,5 @@
 import React from 'react';
-import { Btn, Avatar, Card } from '@/design/index';
+import { Btn, Avatar, Card, Tile } from '@/design/index';
 import { Icon } from '@/design/icons';
 
 // Shared presentational widgets for the travel-stats screens (Trips home +
@@ -33,7 +33,7 @@ export function StatBar({ items = [], cta = null, className = '' }) {
     <Card radius="lg" pad="none" className={`statbar${className ? ` ${className}` : ''}`}>
       {items.map((it) => (
         <div key={it.key} className={`s${it.tone ? ` c-${it.tone}` : ''}`}>
-          <span className="ic">{it.icon}</span>
+          <Tile as="span">{it.icon}</Tile>
           <div><div className="v">{it.value}</div><div className="k">{it.label}</div></div>
         </div>
       ))}
@@ -88,7 +88,7 @@ export function SummaryTiles({ items = [] }) {
     <Card radius="lg" className="summary">
       {items.map((it) => (
         <div key={it.key} className={`sfig${it.tone ? ` c-${it.tone}` : ''}`}>
-          <span className="ic">{it.icon}</span>
+          <Tile as="span">{it.icon}</Tile>
           <div className="v">{it.value}</div>
           <div className="k">{it.label}</div>
         </div>
@@ -141,7 +141,7 @@ export function Records({ items = [] }) {
     <Card radius="card" pad="none" className="records">
       {items.map((it) => (
         <div key={it.key} className="rec">
-          <span className={`ic ${it.iconClass}`}>{it.icon}</span>
+          <Tile as="span" className={it.iconClass}>{it.icon}</Tile>
           <div className="k">{it.label}</div>
           <div className="v">{it.value}</div>
           <div className="s">{it.sub}</div>

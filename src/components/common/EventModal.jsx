@@ -20,7 +20,7 @@
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn, IconBtn, Severity, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Severity, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   Trash2,
 } from 'lucide-react';
@@ -107,7 +107,7 @@ export default function EventModal(props) {
             Содержимое второй строки у оболочек РАЗНОЕ и таким остаётся: панель
             просмотра ставит туда даты проживания, диалог - цену. */}
         <div className="lp-h lp-h--ev">
-          <span className="lp-ic"><theme.Icon /></span>
+          <Tile as="span" className="lp-ic"><theme.Icon /></Tile>
           <div className="lp-ti">
             <div className="eyebrow">{eyebrow}</div>
             <div className="lp-tirow">

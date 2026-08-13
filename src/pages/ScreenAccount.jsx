@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, Seg, Severity, SearchSelect, useToast,
+  Badge, Btn, Card, Seg, Severity, SearchSelect, Tile, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -776,12 +776,12 @@ export default function ScreenAccount() {
                     matches={(l, q) => l.native.toLowerCase().includes(q) || l.sub.toLowerCase().includes(q) || l.code.includes(q)}
                     renderValue={(l) => (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <span className="acct-lang__flag">{l.flag}</span>{l.native}
+                        <Tile as="span" className="acct-lang__flag">{l.flag}</Tile>{l.native}
                       </span>
                     )}
                     renderOption={(l) => (
                       <>
-                        <span className="acct-lang__flag">{l.flag}</span>
+                        <Tile as="span" className="acct-lang__flag">{l.flag}</Tile>
                         <span>{l.native}</span>
                         <span className="t-meta muted">{l.sub}</span>
                       </>

@@ -6,7 +6,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
 import { validateEntity, issuesToShow, isFieldRequired } from '@/lib/validation';
-import { Card } from '@/design/index';
+import { Card, Tile } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 // Hybrid display state: inline shows for TOUCHED fields; the summary panel and
@@ -207,9 +207,9 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
         onClick={() => setExpanded((e) => !e)}
         style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}
       >
-        <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <Tile as="span" style={{ '--tile': '32px', '--hl-soft': 'var(--warning-soft)', '--hl-ink': 'var(--warning)' }}>
           <AlertTriangle size={16} />
-        </span>
+        </Tile>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span className="t-ui" style={{ display: 'block', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
           <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
@@ -231,9 +231,9 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                 onClick={() => onOpen?.(it)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer' }}
               >
-                <span style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', background: d.soft, color: d.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Tile as="span" style={{ '--hl-soft': d.soft, '--hl-ink': d.color }}>
                   <d.Icon size={16} />
-                </span>
+                </Tile>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="t-ui" style={{ display: 'block', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
                   <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{d.sub}</span>

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import { Btn, IconBtn, Card, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Card, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -300,7 +300,7 @@ export default function ForkPartnerModal({
       <div className="lp lp--wide" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
         <div className="lp-h lp-h--ev">
           <IconBtn icon="back" tone="soft" round onClick={() => onOpenChange(false)} title={t('fork.cancel')} ariaLabel={t('fork.cancel')} />
-          <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon size={16} /></span>
+          <Tile as="span" className="lp-ic" style={{ '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}><ManualIcon size={16} /></Tile>
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
         <div className="lp-b scrollbar-thin">{body}</div>
@@ -314,9 +314,9 @@ export default function ForkPartnerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
         <div className="dlg__head">
-          <span style={{ width: 36, height: 36, borderRadius: 'var(--r-sm)', background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <Tile as="span" style={{ '--tile': '36px', '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
             <ManualIcon style={{ width: 17, height: 17 }} />
-          </span>
+          </Tile>
           <DialogTitle asChild><h2>{t(meta.titleKey)}</h2></DialogTitle>
         </div>
         <div className="dlg__body">{body}</div>

@@ -3,7 +3,7 @@ import { searchCities } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
 import { localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../../design/icons';
-import { Card } from '../../design/index';
+import { Card, Tile } from '../../design/index';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
@@ -77,7 +77,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
     }
     return (
       <Card as="button" variant="add" radius="md" pad="none" className="row row--g6 te-end te-end--add" onClick={() => setAdding(true)}>
-        <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name="plus" size={13} /></span>
+        <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="plus" size={13} /></Tile>
         <div className="te-citycell grow">
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
           <span className="trunc te-cityname muted">{t('planner.add_start')}</span>
@@ -88,7 +88,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
 
   return (
     <Card recessed radius="md" pad="none" className="row row--g6 te-end">
-      <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name="flag" size={13} /></span>
+      <Tile as="span" className="te-row__node" style={{ '--hl-soft': soft, '--hl-ink': accent }}><Icon name="flag" size={13} /></Tile>
       <div className="te-citycell grow">
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
         <div className="row row--g3 te-cityline">
