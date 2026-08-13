@@ -781,7 +781,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <div className="card bgt-stat bgt-stat--total row row--g7">
             <div className="bgt-stat__ic tile tile--xl"><Icon name="wallet" size={21} /></div>
             <div className="grow--fit">
-              <div className="muted">{t('budget.total_spent')}</div>
+              <div className="bgt-stat__l muted">{t('budget.total_spent')}</div>
               <div className="bgt-stat__v">{money(totalSpent, mainCurrency)}</div>
               <div className="bgt-stat__s muted">
                 {noExpenses ? t('trip.budget_empty')
@@ -794,7 +794,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <div className="card bgt-stat bgt-stat--ppl row row--g7">
             <div className="bgt-stat__ic tile tile--xl"><Icon name="user" size={21} /></div>
             <div className="grow--fit">
-              <div className="muted">{t('budget.per_person_label')}</div>
+              <div className="bgt-stat__l muted">{t('budget.per_person_label')}</div>
               <div className="bgt-stat__v">{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
               <div className="bgt-stat__s muted">
                 <b>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')}</b> · {t('budget.split_evenly')}
@@ -806,7 +806,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <button type="button" className="card bgt-stat bgt-stat--fx row row--g7" onClick={readOnly ? undefined : openFxDialog}>
             <div className="bgt-stat__ic tile tile--xl"><Icon name="arrowSwap" size={21} /></div>
             <div className="grow--fit">
-              <div className="muted">{t('budget.fx_button')}</div>
+              <div className="bgt-stat__l muted">{t('budget.fx_button')}</div>
               {foreignCurrencies.length === 0 ? (
                 <div className="bgt-stat__s muted" style={{ marginTop: 4 }}>{t('budget.fx_empty')}</div>
               ) : (
@@ -914,7 +914,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   <Icon name={catIcon(activeCat)} size={22} />
                 </div>
                 <div className="grow--fit">
-                  <div className="row row--g4">
+                  <div className="bgt-detail__n row row--g4">
                     {activeCat.displayName}
                     {activeCat.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
                   </div>
@@ -1005,7 +1005,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
             <Icon name="pin" size={22} />
           </div>
           <div className="grow--fit">
-            <div className="row row--g4">{cityLabel(cur)}</div>
+            <div className="bgt-detail__n row row--g4">{cityLabel(cur)}</div>
             <div className="bgt-detail__s">{cur.items.length} {expensesPlural(cur.items.length)}</div>
           </div>
           <div className="bgt-detail__amt">
