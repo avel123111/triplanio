@@ -37,7 +37,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, Dialog, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, ListRow } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -103,52 +103,6 @@ const money = (value, cur) => {
   const grouped = new Intl.NumberFormat(getActiveLocale() || undefined, { maximumFractionDigits: 0 }).format(n);
   return sym ? `${sym}${grouped}` : `${grouped}${cur ? ' ' + cur : ''}`;
 };
-
-// ─── DonutChart ─────────────────────────────────────────────────────────────
-// Pure-SVG ring driven by real category spend. `segments` = [{id,color,value}].
-// Hovered segment thickens; the rest dim, kept in sync with the legend.
-
-const DONUT_R = 40;
-const DONUT_C = 2 * Math.PI * DONUT_R; // ≈ 251.33
-
-function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
-  let acc = 0;
-  const arcs = segments.map(s => {
-    const frac = total > 0 ? s.value / total : 0;
-    const arc = frac * DONUT_C;
-    const out = { ...s, arc, offset: -acc };
-    acc += arc;
-    return out;
-  });
-  return (
-    <div className="bgt-donut">
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="50" cy="50" r={DONUT_R} fill="none" stroke="var(--surface-2)" strokeWidth="14" />
-        {total > 0 && arcs.map(s => {
-          const dim = hoveredId && hoveredId !== s.id;
-          const hot = hoveredId === s.id;
-          return (
-            <circle
-              key={s.id}
-              className="bgt-donseg"
-              cx="50" cy="50" r={DONUT_R} fill="none"
-              stroke={s.color} strokeWidth={hot ? 20 : 16}
-              strokeDasharray={`${s.arc} ${DONUT_C - s.arc}`}
-              strokeDashoffset={s.offset}
-              style={{ opacity: dim ? 0.4 : 1 }}
-            />
-          );
-        })}
-      </svg>
-      <div className="bgt-donut__c">
-        {/* TRIP-225: центр кольца — компактный формат (₽1,3 млн), переиспуем общий
-            fmtMoneyActive({compact}); детализация/легенда ниже остаются полными. */}
-        <span className="v">{fmtMoneyActive(total, mainCurrency, { compact: true })}</span>
-        <span className="l">{centerLabel}</span>
-      </div>
-    </div>
-  );
-}
 
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
@@ -750,81 +704,61 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         )}
       />
       {/* ░ SUMMARY BAND ░ */}
-      <div className="bgt-sumband">
-        <div className="card bgt-donutcard">
-          <div className="bgt-donutcard__h row"><b>{t('budget.by_category_title')}</b></div>
-          <div className="bgt-donutwrap row row--g8">
-            <DonutChart segments={donutSegments} total={totalSpent} mainCurrency={mainCurrency}
-              hoveredId={hoveredSeg} centerLabel={t('budget.donut_total')} />
+      <div className="grid grid--split grid--g7">
+        <Card>
+          <CardHeader title={t('budget.by_category_title')} />
+          <div className="row row--g8 row--wrap">
+            <Donut
+              segments={donutSegments}
+              total={totalSpent}
+              hoveredId={hoveredSeg}
+              onHover={setHoveredSeg}
+              center={fmtMoneyActive(totalSpent, mainCurrency, { compact: true })}
+              label={t('budget.donut_total')}
+            />
             <div className="col col--g1 grow--fit">
               {donutSegments.length === 0 && (
-                <div className="muted t-meta" style={{ padding: '6px 8px' }}>{t('budget.no_expenses')}</div>
+                <div className="muted t-meta">{t('budget.no_expenses')}</div>
               )}
               {donutSegments.map(s => {
                 const pct = totalSpent > 0 ? Math.round((s.value / totalSpent) * 100) : 0;
                 return (
-                  <div key={s.id} className="bgt-dleg__row row row--g4"
-                    onMouseEnter={() => setHoveredSeg(s.id)} onMouseLeave={() => setHoveredSeg(null)}>
-                    <span className="bgt-dleg__d" style={{ background: s.color }} />
-                    <span className="bgt-dleg__n grow--fit trunc">{s.name}</span>
-                    <span className="bgt-dleg__v">{money(s.value, mainCurrency)}</span>
-                    <span className="bgt-dleg__p">{pct}%</span>
-                  </div>
+                  <ListRow key={s.id} variant="compact"
+                    onMouseEnter={() => setHoveredSeg(s.id)} onMouseLeave={() => setHoveredSeg(null)}
+                    lead={<span style={{ width: 10, height: 10, borderRadius: 4, background: s.color, flexShrink: 0 }} />} /* inline-style-exempt: цветная точка легенды — динамический цвет категории из данных */
+                    title={s.name}
+                    trail={<><span className="t-strong">{money(s.value, mainCurrency)}</span><span className="muted">{pct}%</span></>}
+                  />
                 );
               })}
             </div>
           </div>
-        </div>
+        </Card>
 
         <div className="col col--g6">
-          {/* Всего потрачено */}
-          <div className="card bgt-stat bgt-stat--total row row--g7">
-            <div className="bgt-stat__ic tile tile--xl"><Icon name="wallet" size={21} /></div>
-            <div className="grow--fit">
-              <div className="bgt-stat__l">{t('budget.total_spent')}</div>
-              <div className="bgt-stat__v">{money(totalSpent, mainCurrency)}</div>
-              <div className="bgt-stat__s">
-                {noExpenses ? t('trip.budget_empty')
-                  : <>{budgetExpenses.length} {expensesPlural(budgetExpenses.length)}{missingTotal > 0 && <> · {t('budget.no_rate_count', { n: missingTotal })}</>}</>}
-              </div>
-            </div>
-          </div>
+          <Stat tone="brand" icon="wallet" label={t('budget.total_spent')} value={money(totalSpent, mainCurrency)}
+            sub={noExpenses ? t('trip.budget_empty')
+              : <>{budgetExpenses.length} {expensesPlural(budgetExpenses.length)}{missingTotal > 0 && <> · {t('budget.no_rate_count', { n: missingTotal })}</>}</>} />
 
-          {/* На одного */}
-          <div className="card bgt-stat bgt-stat--ppl row row--g7">
-            <div className="bgt-stat__ic tile tile--xl"><Icon name="user" size={21} /></div>
-            <div className="grow--fit">
-              <div className="bgt-stat__l">{t('budget.per_person_label')}</div>
-              <div className="bgt-stat__v">{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
-              <div className="bgt-stat__s">
-                <b>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')}</b> · {t('budget.split_evenly')}
-              </div>
-            </div>
-          </div>
+          <Stat tone="activity" icon="user" label={t('budget.per_person_label')}
+            value={money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}
+            sub={<><b>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')}</b> · {t('budget.split_evenly')}</>} />
 
-          {/* Курсы валют */}
-          <button type="button" className="card bgt-stat bgt-stat--fx row row--g7" onClick={readOnly ? undefined : openFxDialog}>
-            <div className="bgt-stat__ic tile tile--xl"><Icon name="arrowSwap" size={21} /></div>
-            <div className="grow--fit">
-              <div className="bgt-stat__l">{t('budget.fx_button')}</div>
-              {foreignCurrencies.length === 0 ? (
-                <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_empty')}</div>
-              ) : (
-                <>
-                  <div className="bgt-fxlist row row--wrap">
-                    {foreignCurrencies.map(cur => {
-                      const ov = overrides[cur];
-                      const rate = ov != null ? Number(ov) : liveRateToMain(fx, cur);
-                      return rate != null
-                        ? <span key={cur} >1 {cur} ≈ {Number(rate.toFixed(4))} {mainCurrency}</span>
-                        : <span key={cur} className="miss">1 {cur} — {t('budget.fx_rate_unset')}</span>;
-                    })}
-                  </div>
-                  {!readOnly && <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_tap_edit')}</div>}
-                </>
-              )}
-            </div>
-          </button>
+          <Stat tone="transfer" icon="arrowSwap" label={t('budget.fx_button')} onClick={readOnly ? undefined : openFxDialog}
+            sub={foreignCurrencies.length === 0 ? t('budget.fx_empty') : (
+              <span className="col col--g1">
+                <span className="row row--wrap row--g6">
+                  {foreignCurrencies.map(cur => {
+                    const ov = overrides[cur];
+                    const rate = ov != null ? Number(ov) : liveRateToMain(fx, cur);
+                    return rate != null
+                      ? <span key={cur}>1 {cur} ≈ {Number(rate.toFixed(4))} {mainCurrency}</span>
+                      : <span key={cur} className="miss">1 {cur} — {t('budget.fx_rate_unset')}</span>;
+                  })}
+                </span>
+                {!readOnly && <span>{t('budget.fx_tap_edit')}</span>}
+              </span>
+            )} />
         </div>
       </div>
 
@@ -851,7 +785,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       )}
 
       {/* ░ CONTROLS ░ */}
-      <div className="bgt-ctl row row--g6 row--wrap">
+      <div className="row row--g6 row--wrap">
         <Seg
           ariaLabel={t('budget.group_by_category')}
           value={grouping}
@@ -862,7 +796,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           ]}
         />
         <div className="grow" />
-        {grouping === 'category' && !readOnly && (
+        {grouping === 'category' && !readOnly && !isMobile && (
           <Btn variant="soft" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
       </div>
