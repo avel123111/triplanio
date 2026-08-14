@@ -93,8 +93,20 @@ test('сокращение → pass', (t) => {
 
 /* ──────────────────── чего гард НЕ должен ловить ─────────────────────────── */
 
-test('голый data?.ok (легаси-контракт updateTripSettings) НЕ ловится', (t) => {
+test('голый data?.ok (флаг успеха из деструктуризации) → fail (TRIP-416)', (t) => {
   const body = `export const C = async () => { const { data, code } = await invokeFn('x'); return data?.ok ? code : null; };\n`;
+  const f = fixture(t, { base: {}, head: { 'src/A.jsx': body } });
+  assert.equal(run(f).code, 1, run(f).out);
+});
+
+test('голый !data?.ok (форма SettingsLens) тоже ловится', (t) => {
+  const body = `export const C = async () => { const { data, error, code } = await invokeFn('x'); if (error || !data?.ok) return code; };\n`;
+  const f = fixture(t, { base: {}, head: { 'src/A.jsx': body } });
+  assert.equal(run(f).code, 1, run(f).out);
+});
+
+test('metadata.ok / чужой object.ok НЕ ловится (lookbehind)', (t) => {
+  const body = `export const C = (metadata, resp) => (metadata.ok || resp.status.ok) ? 1 : 0;\n`;
   const f = fixture(t, { base: {}, head: { 'src/A.jsx': body } });
   assert.equal(run(f).code, 0, run(f).out);
 });

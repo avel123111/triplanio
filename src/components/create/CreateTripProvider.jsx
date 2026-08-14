@@ -150,7 +150,7 @@ export function CreateTripProvider({ children }) {
   const doCopy = useCallback(async (tripId) => {
     setCopying(true);
     try {
-      const { data, error, message } = await invokeFn('copyTrip', { body: { tripId } });
+      const { data, error, message } = await invokeFn('trip-share/copy', { body: { tripId } });
       // `message` is already parsed by invokeFn (it read error.context once — a
       // Response body can only be read one time, so we must NOT re-read it). This
       // keeps the real server reason (e.g. TRIP_LIMIT_REACHED) out of a generic toast.
