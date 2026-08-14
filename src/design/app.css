@@ -3545,6 +3545,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .dlg-backdrop, .sheet-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .dlg-modal, .sheet { will-change: transform; }
 
+  /* Клавиатура открыта → прячем футер с кнопками, пока пользователь печатает.
+     На мобиле поле у низа шита + подъём над клавиатурой заставляли футер
+     «подлетать» и наезжать на панель автозаполнения Chrome/iOS. Пока в шите
+     сфокусировано поле — action-футер убирается целиком, тело получает всю
+     высоту; по blur он возвращается. Нативно, без JS: `:has(:focus)` на самой
+     оболочке шита (`.dlg-modal .dlg` — диалоги-формы, `.lp-sheet .lp` — панели
+     редактора), поэтому десктопный `.dlg`/`.lp` и inline-`.lp` редактора не
+     затронуты. Оба футера — прямые потомки своей оболочки. */
+  .dlg-modal .dlg:has(:is(input, textarea, [contenteditable="true"]):focus) .dlg__foot,
+  .lp-sheet .lp:has(:is(input, textarea, [contenteditable="true"]):focus) .lp-f {
+    display: none;
+  }
+
 
   /* Editor side panels become FULL-SCREEN panels on phones (a standalone screen
      over the previous one), rendered as a vaul Drawer whose Content is
