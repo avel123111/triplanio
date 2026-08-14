@@ -21,6 +21,8 @@
   "invite_created.email_signup_link": "Sign up here",
   "invite_created.email_subject": "Invitation to trip",
   "invite_created.title": "You have been invited to trip",
+  "invite_linked.body": "invites you as",
+  "invite_linked.title": "You have been invited to trip",
   "invite_declined.body": "To the trip",
   "invite_declined.title": "declined the invitation",
   "invite_resent.email_subject": "Reminder: invitation to trip",

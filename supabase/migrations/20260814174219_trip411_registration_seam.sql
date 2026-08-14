@@ -66,8 +66,9 @@ begin
   v_name   := coalesce(v_auth.raw_user_meta_data->>'full_name', v_auth.raw_user_meta_data->>'name', '');
   v_avatar := nullif(v_auth.raw_user_meta_data->>'avatar_url', '');
 
-  -- Язык лендинга авторитетен (enum ru/en/es); мимо enum — дефолт схемы 'ru'.
-  v_lang := case when p_language in ('ru', 'en', 'es') then p_language else 'ru' end;
+  -- Язык лендинга авторитетен (enum ru/en/es); мимо enum — дефолт схемы 'en'
+  -- (users.language DEFAULT 'en', TRIP-400c): один дефолт на понятие, не третий.
+  v_lang := case when p_language in ('ru', 'en', 'es') then p_language else 'en' end;
 
   -- Whitelist марок на СЕРВЕРЕ: только 4 колонки, оба написания (param и column —
   -- старые письма-подтверждения несут column-имена), усечение до кэпа short_text(300).
