@@ -160,7 +160,7 @@ export function Section({ title, accent, count, children }) {
     <Card radius="md" className="ev-sec" style={accent ? { '--hl': accent } : undefined}>
       {/* Канон тот же, что у заголовка раздела в форме (`.acc__title`) — раздел
           один объект, и подпись на нём одна. Тип события несёт планка-акцент. */}
-      <div className="ev-sec-lbl t-ui">
+      <div className="ev-sec-lbl t-label">
         {title}{count != null && count > 0 ? ` · ${count}` : ''}
       </div>
       {children}

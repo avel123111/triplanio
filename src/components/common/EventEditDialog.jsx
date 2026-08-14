@@ -1902,7 +1902,7 @@ function TransferLegCard({
           </Tile>
           <span style={{ minWidth: 0, flex: 1 }}>
             <span className="eyebrow" style={{ color, display: 'block' }}>{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
-            <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
+            <span className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
               <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
@@ -1989,7 +1989,7 @@ function TransferLegCard({
           <Card radius="md" className="row eed-nightrow">
             <span className="row row--g4 eed-nightrow__l">
               <Moon size={16} />
-              <span className="t-ui">{t('event.overnight_label')}</span>
+              <span className="t-label">{t('event.overnight_label')}</span>
             </span>
           </Card>
         )}

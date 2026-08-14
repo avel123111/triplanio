@@ -238,13 +238,13 @@
      схлоп имён 10→6 отдельной задачей); соответствие токен → канон:
        --fs-nano  → .t-micro (11, CAPS)            --fs-h3      → .t-subheading (16)
        --fs-micro → .t-meta (12.5)                 --fs-h2      → .t-heading (18)
-       --fs-meta  → .t-label / .t-ui / .t-mono (13) --fs-h1     → .t-title (clamp 20–24)
+       --fs-meta  → .t-label / .t-mono (13)         --fs-h1     → .t-title (clamp 20–24)
        --fs-base  → .t-body / body (15)            --fs-display → .t-display (clamp 28–40)
                                                    --ctl-fs     → пол контролов (16)
      Гард не ловит эти defs (нет префикса `font-size:`). */
   --fs-nano:    11px;    /* .t-micro (капс-лейблы) */
   --fs-micro:   12.5px;  /* .t-meta */
-  --fs-meta:    13px;    /* .t-label / .t-ui / .t-mono */
+  --fs-meta:    13px;    /* .t-label / .t-mono */
   --fs-base:    15px;    /* .t-body / глобальный body */
   --ctl-fs:     16px;    /* пол контролов: textarea/select/chat ≥16px (анти-iOS-zoom), .btn--lg, шапка — переименован из --fs-h4 (TRIP-410) */
   --fs-h3:      16px;    /* .t-subheading */
@@ -595,7 +595,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    visual-diff-exempt: .hv-notes border-radius — радиус → канон .card--r-md (--r-md, тождественно) */
 
 /* =================================================================
-   ТИПОГРАФИКА — 10 канонических текст-стилей.
+   ТИПОГРАФИКА — 9 канонических текст-стилей.
    Единственный санкционированный набор на всё приложение. Каждый
    класс полностью фиксирует гарнитуру+размер+вес+интерлиньяж+трекинг.
    ЦВЕТ сюда НЕ входит — отдельная ось (цвет-токены/утилиты).
@@ -615,9 +615,8 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
      .t-title       Geologica  clamp(20–24) (--fs-h1)      · 700 · 1.15 · --track-h · tabular
      .t-heading     Geologica  18 (--fs-h2)                · 700 · 1.25 · --track-h · tabular
      .t-subheading  Geologica  16 (--fs-h3)                · 600 · 1.3
-     .t-label       Geologica  13 (--fs-meta)              · 600 · 1.4
+     .t-label       Geologica  13 (--fs-meta)              · 600 · 1.4   (единственный утилити-канон: подписи/кнопки/статусы)
      .t-body        Geologica  15 (--fs-base)              · 400 · 1.55
-     .t-ui          =АЛИАС .t-label  13 (--fs-meta)        · 600 · 1.4
      .t-meta        Geologica  12.5 (--fs-micro)           · 500 · 1.4 · tabular   (де-моно; +времена/даты)
      .t-micro       Geologica  11 (--fs-nano)              · 700 · 1.3 · UPPER/--track-caps
      .t-mono        JetBrains  13 (--fs-meta)              · 500 · 1.4 · -0.01em · tabular   (ТОЛЬКО коды/email/kbd; числа→Geologica)
@@ -697,12 +696,10 @@ h3,
 .tl3-card .body b, /* TRIP-175 инсп.: UI→Subheading (акцент в теле карточки события) */
 .tl3-card--tr .rv-end b, /* TRIP-175 инсп.: UI→Subheading (город назначения переезда) */
 .mbrow__name,      /* TRIP-175 инсп.: UI→Subheading (имя участника) */
-.map-route__name.t-ui, /* TRIP-175 инсп.: UI→Subheading (город в списке карты; перебивает класс .t-ui) */
 .vrow .nm,         /* TRIP-175 инсп.: UI→Subheading (страна/город в списке) */
 .visit .dt,        /* TRIP-175 инсп.: UI→Subheading (город визита) */
 .acct-subhead,     /* TRIP-175 инсп.: UI→Subheading (подзаголовок карточки аккаунта) */
 .invite-banner__title, /* TRIP-175 инсп.: off-canon→Subheading (заголовок инвайт-баннера) */
-.bell-dd__head .t-ui, /* TRIP-175 инсп.: UI→Subheading (заголовок «Уведомления» в колокольчике; перебивает класс .t-ui) */
 .ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
 .dl-visopt__lbl b,   /* TRIP-275 инсп.: Meta→Subheading (заголовок опции видимости «Общий»/«Личный») */
@@ -726,50 +723,10 @@ h4,
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
-.readonly-banner .t-ui, /* TRIP-275 инсп.: UI→Label (заголовок «Только чтение» баннера наблюдателя; перебивает класс .t-ui) */
-.cm-h { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410 V2: .t-label — Geologica 13/600/1.4 (+ co-селекторы .t-ui влиты ниже) */
-.t-body,
-.fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
-.head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
-.limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
-.app-header .app-header__avatar,
-.avatar--lg,
-.chat-bubble,
-.chat-ov, .chat-ta,
-.pro-hero__sub,
-.notes-block,
-.dl-dview-note,
-/* `.tcp__upload` снят из этого списка вместе с классом: кнопка загрузки обложки
-   стала обычной `.btn`, а та берёт типографику канона `.t-ui` строкой ниже —
-   подпись кнопки и не должна была стоять в теле текста. */
-.check,
-.checkbox,
-.auth__switch,
-.auth-error,
-.nav a,
-.footer,
-.bubble,
-.card p,
-.step p,
-.deep__highlights li,
-.trust__item,
-.langdd__item,
-.brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
-.nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
-/* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
-   `.t-ui` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
-   как надпись НА кнопке (канон .t-ui, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
-   её держит `min-height: var(--ctl-h)` при нулевом вертикальном паддинге. */
-.input, .select, .textarea,
-.sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
-.stay-dates__lbl,  /* они же в просмотре события */
-.auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
-.ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
-.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
-.t-ui,
+.cm-h,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
 .hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
-.trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
+.trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → Label (спецификее .seg button{font:inherit}) */
 .btn,
 .field__label,
 .app-side__item,
@@ -826,20 +783,58 @@ h4,
 .faq__a-inner,
 .input-unit,
 .fork-manual__tx b,
-.bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
-.bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
-.visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
-.fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
-.chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
-.chat-name b,         /* TRIP-296 инсп.: Meta→UI (автор сообщения) */
-.chat-thinking,       /* TRIP-296 инсп.: Meta→UI («Triplanio печатает») */
+.bud-leg .nm,      /* TRIP-175 инсп.: Meta→Label (легенда бюджета; .t-strong сохранён) */
+.bud-leg .v,       /* TRIP-175 инсп.: Meta→Label (сумма легенды бюджета; .t-strong сохранён) */
+.visit .triplink,  /* TRIP-175 инсп.: off-canon→Label (ссылка на трип в визите) */
+.fork-partner__mid b, /* TRIP-175 инсп.: Meta→Label (название партнёра GetRentacar/Omio) */
+.chat-member__nm,     /* TRIP-175 инсп.: Meta→Label (имя участника в списке чата) */
+.chat-name b,         /* TRIP-296 инсп.: Meta→Label (автор сообщения) */
+.chat-thinking,       /* TRIP-296 инсп.: Meta→Label («Triplanio печатает») */
 .chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
-.chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
+.chat-reply__who b,   /* TRIP-296 инсп.: Meta→Label (автор ответа ассистента) */
 .dock-panel__id b,    /* TRIP-296: заголовок виджета */
-.pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
-.dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
-.dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
-.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410 V2: .t-ui — АЛИАС .t-label (Geologica 13/600/1.4); был 13/500, снят near-dup с .t-meta (12.5/500) */
+.pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→Label (body-med макета) */
+.dl-label,            /* TRIP-275 инсп.: Meta→Label (лейблы «Доступ»/«Файлы» диалога документа) */
+.dl-dropzone b,       /* TRIP-275 инсп.: Meta→Label (CTA dropzone «Загрузить файлы…») */
+.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410 Ф3: .t-label — Geologica 13/600/1.4 · единственный утилити-канон (кегль подписи/кнопки/статуса); сюда влиты компонентные co-селекторы бывшей утилиты + чат-якоря .cm-h/.cm-h3 */
+.t-body,
+.fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
+.head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
+.limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
+.app-header .app-header__avatar,
+.avatar--lg,
+.chat-bubble,
+.chat-ov, .chat-ta,
+.pro-hero__sub,
+.notes-block,
+.dl-dview-note,
+/* `.tcp__upload` снят из этого списка вместе с классом: кнопка загрузки обложки
+   стала обычной `.btn`, а та берёт типографику канона `.t-label` (co-selector выше) —
+   подпись кнопки и не должна была стоять в теле текста. */
+.check,
+.checkbox,
+.auth__switch,
+.auth-error,
+.nav a,
+.footer,
+.bubble,
+.card p,
+.step p,
+.deep__highlights li,
+.trust__item,
+.langdd__item,
+.brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
+.nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
+/* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
+   `.t-label` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
+   как надпись НА кнопке (канон .t-label, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
+   её держит `min-height: var(--ctl-h)` при нулевом вертикальном паддинге. */
+.input, .select, .textarea,
+.sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
+.stay-dates__lbl,  /* они же в просмотре события */
+.auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
+.ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
+.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
 .t-meta,
 .field__hint,
 .app-header__trip-meta,
@@ -1025,7 +1020,7 @@ h4,
 .ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-meta — Geologica 12.5/500/1.4, tabular (де-моно) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
    `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
-   `.field__label` вне диалога оставался на `.t-ui` - одна и та же подпись
+   `.field__label` вне диалога оставался на `.t-label` - одна и та же подпись
    выглядела по-разному в зависимости от ОБОЛОЧКИ. Резать надо было именно
    поимённо: сам канон трогать нельзя, его носят ещё 44 объекта (бейджи,
    эйбрау шапок, дни недели календаря, футер лендинга). */
@@ -1356,7 +1351,7 @@ button.app-side__item:hover { background: var(--wash); }
 .btn {
   --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  /* тип — из канона .t-ui (co-selector, TRIP-165) */
+  /* тип — из канона .t-label (co-selector, TRIP-165) */
   /* Высота - общий токен контрола, поэтому вертикального паддинга нет: кнопка
      обязана вставать в один рост с полем рядом (была 37.5 против 41.5). */
   min-height: var(--ctl-h); padding: 0 15px; border-radius: var(--r-btn);
@@ -1781,8 +1776,8 @@ button.app-side__item:hover { background: var(--wash); }
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 7px; }
 /* Подпись поля - ink-2, чтобы не спорить с самим значением. Размер/вес тут НЕ
-   объявлены: их держит канон .t-ui (Geologica 13/500), см. co-selector выше. */
-.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-ui (co-selector, TRIP-165) */
+   объявлены: их держит канон .t-label (Geologica 13/600), см. co-selector выше. */
+.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-label (co-selector, TRIP-165) */
 /* Звёздочка обязательного поля - одна на всё приложение (TRIP-333). Знак и цвет
    объявлены здесь; КОМУ ставить `data-required`, отвечает валидатор
    (`isFieldRequired`), а не автор лейбла.
@@ -1800,7 +1795,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
-   on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
+   on .t-subheading/.t-meta canons (set in the JSX); here only layout/colour. */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 /* Свой `margin-bottom: 12px` снят: родитель аккордеона (`.lp-b`) уже
    раскладывает детей зазором, поэтому отступ был ДОБАВОЧНЫМ - между двумя
@@ -5350,7 +5345,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
 /* .acct-tgrow__t УДАЛЁН (TRIP-321): тот же заголовок строки, что .row__t, но жил
    с зазором 7 (мимо шкалы, ближайшая ступень 8) и ярусом ниже на полшага
-   (t-ui 12.5/600 против t-label 13/700). Обе правки ВИДНЫ на экране - как и
+   (утилита-подпись 12.5/600 против t-label 13/700). Обе правки ВИДНЫ на экране - как и
    переход колец загрузки на ступень 18 (см. .spin--ring), поэтому оба места
    сняты скриншотом до и после. */
 /* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
@@ -6315,9 +6310,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ev-sec{padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
 /* Заголовок раздела - ОДИН на просмотр и на форму (TRIP-333). Раньше это были
    два разных объекта: тут мелкая метка канона `.t-micro` цветом типа события, а
-   в форме (`.acc__title`) - `.t-ui` цветом `--ink`. Один и тот же «Детали
+   в форме (`.acc__title`) - `.t-label` цветом `--ink`. Один и тот же «Детали
    брони» читался как подпись в одном месте и как заголовок в другом.
-   Канон и цвет теперь общие (`.t-ui` ставится в разметке, цвет `--ink`), а
+   Канон и цвет теперь общие (`.t-label` ставится в разметке, цвет `--ink`), а
    тип события несёт ПЛАНКА-АКЦЕНТ ниже - это вариация чтения, как шеврон и
    бейдж - вариация формы. */
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ink);}
@@ -7277,7 +7272,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
    рамка, тон, подчёркивание И ТИПОГРАФИКА) уехал в `btn--link`; два следствия
    названы, потому что видны глазом: подчёркивание перестало быть постоянным и
-   приходит на ховере, а кегль пришёл из канона `.t-ui` кнопки — класс стоял в
+   приходит на ховере, а кегль пришёл из канона `.t-label` кнопки — класс стоял в
    мета-ярусе `.t-meta` (тогда моно) и снят оттуда. То же
    касается соседней кнопки сортировки ниже. */
 .s22f-resetall { margin-left: auto; }

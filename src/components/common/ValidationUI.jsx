@@ -211,7 +211,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
           <AlertTriangle size={16} />
         </Tile>
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span className="t-ui" style={{ display: 'block', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
+          <span className="t-subheading" style={{ display: 'block', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
           <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
         </span>
         <span className="t-meta" style={{ minWidth: 24, height: 24, padding: '0 7px', borderRadius: 'var(--r-pill)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{list.length}</span>
@@ -235,7 +235,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                   <d.Icon size={16} />
                 </Tile>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span className="t-ui" style={{ display: 'block', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
+                  <span className="t-subheading" style={{ display: 'block', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
                   <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{d.sub}</span>
                 </span>
                 <ChevronRight size={16} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />

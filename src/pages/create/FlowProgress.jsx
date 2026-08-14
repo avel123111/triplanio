@@ -16,7 +16,7 @@ export default function FlowProgress({ steps, current = 0, accent = 'var(--brand
         <span className="t-micro" style={{ color: accent }}>
           {t('planner.step_word')} {current + 1} <span className="muted">{t('planner.of')} {steps.length}</span>
         </span>
-        <span className="t-ui" style={{ color: 'var(--ink)' }}>{steps[current]?.label}</span>
+        <span className="t-label" style={{ color: 'var(--ink)' }}>{steps[current]?.label}</span>
         {current < steps.length - 1 && (
           <span className="t-meta" style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
             {t('planner.next_label')}: {nextLabel || steps[current + 1]?.label}

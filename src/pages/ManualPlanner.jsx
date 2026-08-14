@@ -211,7 +211,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
         <Icon name="flag" size={13} className="muted" />
         <div className="t-meta grow--fit">
-          <span className="t-ui">{t('planner.final_point')}</span>{' '}
+          <span className="t-label">{t('planner.final_point')}</span>{' '}
           <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
       </div>

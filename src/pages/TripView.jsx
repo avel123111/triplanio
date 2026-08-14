@@ -313,7 +313,7 @@ function StreamAnchor({ label, sub, color, icon }) {
         <Icon name={icon} size={13} />
       </Tile>
       <div>
-        <div className="t-ui">{label}</div>
+        <div className="t-label">{label}</div>
         {sub && <div className="muted t-meta">{sub}</div>}
       </div>
     </div>
@@ -334,7 +334,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div className="t-ui grow">
+      <div className="t-label grow">
         {t('trip.no_transfer', { from, to })}
       </div>
       <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
