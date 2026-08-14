@@ -213,7 +213,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
               половина того, что читается как одно поле. */}
           <InputGroup {...st('amount')} data-vfield="amount">
             <Input num type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
-            <CurrencyCombobox value={currency} onChange={setCurrency} className="input-unit num" />
+            <CurrencyCombobox value={currency} onChange={setCurrency} className="input-unit input-unit--ccy num" />
           </InputGroup>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
@@ -462,13 +462,10 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
         </span>
       }
       trail={
-        <>
-          <span className={ok ? 't-strong' : 't-strong miss'}>
-            {ok ? money(mainAmount, mainCurrency)
-              : <span title={t('budget.rate_missing')}>{money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?</span>}
-          </span>
-          {!isManual && <Icon name="chevronRight" size={16} />}
-        </>
+        <span className={ok ? 't-strong' : 't-strong miss'}>
+          {ok ? money(mainAmount, mainCurrency)
+            : <span title={t('budget.rate_missing')}>{money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?</span>}
+        </span>
       }
     />
   );
@@ -656,7 +653,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       <div className="grid grid--split grid--g7">
         <Card>
           <CardHeader title={t('budget.by_category_title')} />
-          <div className="row row--g8 row--wrap">
+          {/* мобиль: донат сверху, легенда под ним (колонка) — иначе легенда режется */}
+          <div className={isMobile ? 'col col--g6' : 'row row--g8 row--wrap'}>
             <Donut
               segments={donutSegments}
               total={totalSpent}

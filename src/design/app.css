@@ -495,7 +495,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .lrow__body { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; flex: 1; }
 .lrow__trail { flex: none; display: flex; align-items: center; gap: var(--sp-3); text-align: right; }
 .lrow--clickable { cursor: pointer; width: 100%; text-align: left; font: inherit; }
-.lrow--raised { background: var(--surface); border: 1px solid var(--line); transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+.lrow--raised { background: var(--surface); border: 1px solid var(--line); transition: box-shadow .2s, border-color .2s; }
 .lrow--select { border: 1px solid transparent; background: transparent; transition: background .15s, border-color .15s; }
 .lrow--select:hover { background: var(--wash); }
 .lrow--divider { border-radius: 0; padding-left: 0; padding-right: 0; border-bottom: 1px solid var(--line); }
@@ -504,7 +504,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .lrow--compact:hover { background: var(--wash); }
 .lrow--on { background: var(--brand-soft); border-color: var(--brand-soft-12); }
 @media (hover: hover) {
-  .lrow--raised.lrow--clickable:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); }
+  .lrow--raised.lrow--clickable:hover { box-shadow: var(--sh-2); border-color: var(--line-hover); }
 }
 
 /* ── Donut: кольцевая диаграмма — сегменты по долям + центр, запертый в дырке
@@ -2071,6 +2071,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   padding-inline: 0 12px;
   border-inline-start: none; border-inline-end: 1px solid var(--line);
 }
+/* Ширина ячейки валюты в поле «сумма + валюта»: триггер CurrencyCombobox без
+   ширины растягивается и накрывает ввод суммы. Фикс под длину кода+символа.
+   Модификатор канон-семьи input (не приватное имя экрана). */
+.input-group .input-unit--ccy { width: 122px; }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
