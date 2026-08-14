@@ -43,7 +43,7 @@ export const Donut = React.forwardRef(
               data-dim={hoveredId && hoveredId !== s.id ? "true" : undefined}
               cx="50" cy="50" r={R} fill="none"
               stroke={s.color}
-              strokeWidth={hoveredId === s.id ? thickness - 3 : thickness}
+              strokeWidth={hoveredId === s.id ? thickness + 3 : thickness}
               strokeDasharray={`${s.arc} ${C - s.arc}`}
               strokeDashoffset={s.offset}
               onMouseEnter={onHover ? () => onHover(s.id) : undefined}

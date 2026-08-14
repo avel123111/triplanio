@@ -745,7 +745,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             { value: 'city', label: <><Icon name="pin" size={14} />{t('budget.group_by_city')}</> },
           ]}
         />
-        <div className="grow" />
+        {/* Распорка нужна только десктопу — толкает кнопку «Категория» вправо. На
+            мобиле кнопки нет, а второй `grow` делил бы ширину с сегментом пополам. */}
+        {!isMobile && <div className="grow" />}
         {grouping === 'category' && !readOnly && !isMobile && (
           <Btn variant="soft" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
