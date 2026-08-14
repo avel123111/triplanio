@@ -249,45 +249,6 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
   );
 }
 
-// ─── Delete confirm (manual expense, inline trash) ─────────────────────────────
-
-function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange, onProRefusal }) {
-  const { t } = useI18n();
-  const close = () => onOpenChange?.(false);
-  const [deleting, setDeleting] = useState(false);
-  const [err, setErr] = useState('');
-  async function remove() {
-    setDeleting(true);
-    // tripId — из строки (её FK на трип), сервер по нему скоупит удаление.
-    const { error, code } = await budgetMutate('expense/delete', {
-      tripId: expense.trip_id, id: expense.id,
-    });
-    if (error) {
-      setDeleting(false);
-      handleBudgetWriteError(t, code, { setErr, close, onProRefusal });
-      return;
-    }
-    setDeleting(false);
-    onSaved?.();
-    close();
-  }
-  return (
-    <Dialog title={t('trip.delete')} icon="trash" size="sm" open={open} onOpenChange={onOpenChange}
-      foot={<>
-        <div className="grow" />
-        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
-      </>}>
-      <div className="col col--g7">
-        <div className="t-body" style={{ color: 'var(--ink-2)' }}>
-          {t('trip.delete')} «<b style={{ color: 'var(--ink)' }}>{expense.title || '-'}</b>»?
-        </div>
-        {err && <Severity level="error">{err}</Severity>}
-      </div>
-    </Dialog>
-  );
-}
-
 // ─── FxRatesDialog ──────────────────────────────────────────────────────────────
 // Lists every non-main currency present in expenses. Input prefilled with the
 // override (or the live rate). On "Применить" writes the override map.
@@ -361,7 +322,6 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
             const hasOverride = currentOverrides?.[code] != null;
             const known = hasOverride || live != null;
             const shown = hasOverride ? Number(currentOverrides[code]) : live;
-            const hintCls = hasOverride ? 'man' : (live == null ? 'miss' : '');
             const hint = hasOverride
               ? t('budget.fx_manual', { cur: mainCurrency })
               : live != null
@@ -371,7 +331,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
               <ListRow key={code} variant="divider" data-vfield={`rate.${code}`}
                 lead={<span className={known ? 'tile tile--xl' : 'tile tile--xl tile--danger'}>{currencySymbol(code) || code}</span>}
                 title={<>1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</>}
-                sub={<span className={hintCls === 'miss' ? 'miss' : undefined}>{hint}</span>}
+                sub={<span className={known ? undefined : 'miss'}>{hint}</span>}
                 trail={
                   <input className="input num" {...st(`rate.${code}`)} type="number" step="0.0001" value={values[code] ?? ''}
                     onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" aria-label={`${code} → ${mainCurrency}`} />
@@ -471,14 +431,8 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange, onPr
 }
 
 // ─── ExpenseRow ───────────────────────────────────────────────────────────────
-// `mainAmount` is the converted value; `ok=false` means no rate was available.
-// `mode` decides the meta line: in category view we show city + date; in city
-// view we show the category chip + date. Manual rows expose inline edit/delete;
-// booking-linked rows open their source event (chevron).
-
 // `cityName` is resolved by the caller from the expense's visit (falling back to
 // the frozen string), so the row shows the city in the current language.
-/** @param {{ expense: any, catColor?: any, catIcon?: any, mode?: string, catName?: any, cityName?: any, loc?: any, mainCurrency?: any, mainAmount?: any, ok?: boolean, onOpen?: any, onEdit?: any, onDelete?: any, readOnly?: boolean }} p */
 // Строка списка = канон <ListRow variant="raised">. Правка/удаление больше НЕ
 // инлайн-кнопками строки: тап открывает трату (у ручной — диалог с «Изменить» и
 // «Удалить», у брони — её событие). `mainAmount` — сконвертированное значение;
@@ -547,7 +501,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const [activeCatId, setActiveCatId] = useState(null);
   const [hoveredSeg, setHoveredSeg] = useState(null);
   const [expenseModal, setExpenseModal] = useState(null); // null | { existing?: row }
-  const [deleteExpense, setDeleteExpense] = useState(null); // null | expense row
   const [categoryModal, setCategoryModal] = useState(null); // null | { existing?: row }
   const [fxOpen, setFxOpen] = useState(false);
   const [catSheet, setCatSheet] = useState(false); // мобиль: деталь категории в боттом-шите (#4)
@@ -876,7 +829,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       )}
 
       {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityOptions} existing={expenseModal.existing ?? null} onSaved={refresh} onProRefusal={onProRefusal} />}
-      {deleteExpense && <DeleteExpenseDialog open={true} onOpenChange={(o) => { if (!o) setDeleteExpense(null); }} expense={deleteExpense} onSaved={refresh} onProRefusal={onProRefusal} />}
       {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onSaved={refresh} onProRefusal={onProRefusal} />}
       <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onSaved={refresh} onProRefusal={onProRefusal} />
     </div>
