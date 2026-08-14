@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
                 transaction_id: session.id,
               });
               // TRIP-356: announce the event; n8n resolves text and delivers the notification.
-              emit('pro_activated', { recipient_id: user_id });
+              emit('pro_activated', { recipient_id: user_id }, { db: supabaseAdmin });
             }
           }
         }
@@ -330,7 +330,7 @@ Deno.serve(async (req) => {
           }), { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
         // TRIP-356: announce the event; n8n resolves text and delivers the notification.
-        emit('pro_payment_failed', { recipient_id: resolved.userId });
+        emit('pro_payment_failed', { recipient_id: resolved.userId }, { db: supabaseAdmin });
         break;
       }
 
