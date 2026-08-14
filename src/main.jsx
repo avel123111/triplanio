@@ -67,7 +67,7 @@ if (!isProdHost) {
     .catch(() => { /* dev tool is best-effort; never break the app */ })
 }
 
-// Flag `kb-open` on <html> while the soft keyboard is up (mobile) so CSS can
+// Flag `has-keyboard` on <html> while the soft keyboard is up (mobile) so CSS can
 // hide the bottom nav / sheet footer above it. Geometry-based, not focus-based.
 startKeyboardOpenWatch()
 

@@ -1,5 +1,5 @@
 // @ts-check
-// Toggles `kb-open` on <html> while the on-screen keyboard is up, so CSS can
+// Toggles `has-keyboard` on <html> while the on-screen keyboard is up, so CSS can
 // hide bottom chrome that would otherwise rise above the keyboard and collide
 // with the Chrome/iOS autofill bar: the floating mobile nav (`.mbnav`) and the
 // sheet action-footer (`.dlg__foot` / `.lp-f`).
@@ -10,8 +10,9 @@
 // seen in the current orientation. Focus (`:has(:focus)`) was the first attempt
 // and it was racy: on mobile, tapping the bottom nav can restore focus to the
 // last field, which re-hid the nav the instant it was pressed. Geometry does not
-// move when you tap a button, so the nav stays put. Same html-class idiom the
-// nav already uses for `has-bottom-dock`.
+// move when you tap a button, so the nav stays put. Reuses the `has-` html-class
+// state namespace the nav already uses for `has-bottom-dock` (rule #6: no new
+// prefix) — a document-level boolean flag, same shape.
 //
 // ponytail: a minimal DOM-level watcher (no lib) — the one honest signal for a
 // keyboard that resizes content is the resize itself. Upgrade path: the
@@ -36,14 +37,14 @@ export function startKeyboardOpenWatch() {
   const update = () => {
     const h = vv.height;
     if (h > baseline) baseline = h;          // grow baseline (URL bar hides, rotate)
-    root.classList.toggle('kb-open', baseline - h > OPEN_DELTA);
+    root.classList.toggle('has-keyboard', baseline - h > OPEN_DELTA);
   };
 
   vv.addEventListener('resize', update);
   // Orientation flips the height; drop the flag and re-seat the baseline once
   // the new size settles so a rotate doesn't read as a keyboard.
   window.addEventListener('orientationchange', () => {
-    root.classList.remove('kb-open');
+    root.classList.remove('has-keyboard');
     setTimeout(() => { baseline = vv.height; update(); }, 300);
   });
   update();
