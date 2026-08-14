@@ -59,7 +59,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     let cancelled = false;
     setLoading(true);
     setError('');
-    invokeFn('ensureShareToken', { body: { tripId: trip.id } })
+    invokeFn('trip-share/share', { body: { tripId: trip.id } })
       .then(({ data, error: invokeErr }) => {
         if (cancelled) return;
         if (invokeErr) { console.error('ensureShareToken error:', invokeErr); setError(t('trip.link_error')); return; }

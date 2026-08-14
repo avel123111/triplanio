@@ -1014,3 +1014,60 @@ Deno.test('инвариант №7: op:none под requires:[] дырой НЕ �
   };
   assertEquals(findUnguardedRowSelf(okReg), []);
 });
+
+// ── TRIP-416: домен «трип» (trip-settings / trip-owner / trip-share) ─────────
+
+Deno.test('★ TRIP-416 settings: mapOutcome переводит pro_required → 402, ok → {ok:true}', () => {
+  const settings = REGISTRY['trip-settings'].actions.settings;
+  const map = settings.mapOutcome!;
+  const pro = map({ outcome: 'pro_required' });
+  assert('status' in pro && pro.status === 402 && pro.code === 'PRO_REQUIRED', 'pro_required → 402 PRO_REQUIRED');
+  const ok = map({ outcome: 'ok' });
+  assert(!('status' in ok) && (ok as { data: { ok?: boolean } }).data.ok === true, 'ok → { data: { ok: true } }');
+});
+
+Deno.test('★ TRIP-416 settings: buildArgs делит вход на p_fields и p_details_patch', () => {
+  const settings = REGISTRY['trip-settings'].actions.settings;
+  const args = settings.buildArgs!(
+    { fields: { title: 'T' }, main_currency: 'USD', display: { chat_widget: true } },
+    { actor: ACTOR, scopeValue: TRIP, targetId: null },
+  );
+  assertEquals(args.p_trip, TRIP);
+  assertEquals(args.p_fields, { title: 'T' });
+  // addons не прислан → в патч НЕ попадает (частичный merge).
+  assertEquals(args.p_details_patch, { main_currency: 'USD', display: { chat_widget: true } });
+});
+
+Deno.test('★ TRIP-416 settings: вложенный fields валидируется (title≤300)', () => {
+  const spec = REGISTRY['trip-settings'].actions.settings.fields!.fields;
+  const tooLong = spec.validate!({ title: 'x'.repeat(301) });
+  assert(tooLong && tooLong.status === 400, 'title>300 → 400');
+  assertEquals(spec.validate!({ title: 'ok', description: null }), null, 'валидные колонки → пропуск');
+});
+
+Deno.test('★ TRIP-416 owner/delete: план — удаление по СКОУПУ (targetBy:scope), гейт owner', () => {
+  const resource = REGISTRY['trip-owner'];
+  const del = resource.actions.delete;
+  assertEquals(del.requires, ['owner']);
+  const plan = buildPlan(resource, del, { actor: ACTOR, scopeValue: TRIP, targetId: 'ignored', values: {} });
+  // Адресуется САМ трип (`trips` по `id`), targetId игнорируется — симметрия с upsert-by-scope.
+  assertEquals(plan, { op: 'delete', table: 'trips', match: { id: TRIP } });
+});
+
+Deno.test('★ TRIP-416 share: copy mapOutcome (limit/not_found/ok) + buildArgs', () => {
+  const copy = REGISTRY['trip-share'].actions.copy;
+  const map = copy.mapOutcome!;
+  const lim = map({ outcome: 'limit' });
+  assert('status' in lim && lim.status === 402 && lim.code === 'TRIP_LIMIT_REACHED', 'limit → 402 TRIP_LIMIT_REACHED');
+  const nf = map({ outcome: 'not_found' });
+  assert('status' in nf && nf.status === 404, 'not_found → 404');
+  const ok = map({ outcome: 'ok', tripId: 'new-1' });
+  assert(!('status' in ok) && (ok as { data: { tripId?: string } }).data.tripId === 'new-1', 'ok → { data: { tripId } }');
+  assertEquals(copy.buildArgs!({}, { actor: ACTOR, scopeValue: TRIP, targetId: null }), { p_source: TRIP });
+});
+
+Deno.test('★ TRIP-416 share: share buildArgs = { p_trip } (участник)', () => {
+  const share = REGISTRY['trip-share'].actions.share;
+  assertEquals(share.requires, ['participant']);
+  assertEquals(share.buildArgs!({}, { actor: ACTOR, scopeValue: TRIP, targetId: null }), { p_trip: TRIP });
+});

@@ -121,6 +121,24 @@ export async function isCallerParticipant(tripId: string, userId: string): Promi
   return clearsStep(await resolveStep(tripId, userId), 'participant');
 }
 
+/**
+ * Step `owner`: true if `userId` is the trip CREATOR (`trips.created_by`). The
+ * top rung of the ladder — deleting the trip, billing. It reads nothing but
+ * `trips.created_by`, so it does NOT touch `trip_members` and needs no role
+ * lookup: ownership is a column, not a membership row.
+ *
+ * Historically this lived inline in `deleteTrip` as "the third step has no
+ * helper" (see the ladder note at the top of this file). It gets one now because
+ * the write seam (`mutate.ts#checkRequirement`) needs a uniform `owner` gate,
+ * exactly as `editor`/`participant` are gated — one predicate, no per-function
+ * copy. A genuinely absent trip returns false (→ 403 at the seam, same as
+ * editor/participant on a missing trip); an infra failure throws TripAccessError
+ * (→ 5xx), never a false "not owner".
+ */
+export async function isCallerOwner(tripId: string, userId: string): Promise<boolean> {
+  return (await fetchTripCreator(tripId)) === userId;
+}
+
 /** I/O-половина: достаёт факты и отдаёт их правилу. Решение — в `stepFromFacts`. */
 async function resolveStep(tripId: string, userId: string): Promise<TripStep> {
   return callerStep(tripId, userId, await fetchTripCreator(tripId));

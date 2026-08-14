@@ -1050,7 +1050,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         const finalCoverUrl = cover.cover_image_url
           ? await finalizeDraftCover(trip.id, cover.cover_image_url)
           : null;
-        const { error: coverErr } = await invokeFn('updateTripSettings', {
+        const { error: coverErr } = await invokeFn('trip-settings/settings', {
           body: {
             tripId: trip.id,
             fields: {

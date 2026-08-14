@@ -542,7 +542,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !bookingWarnings;
     setBusyToggle('booking_warnings');
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, display: { booking_warnings: next } },
     });
     if (error || !data?.ok) {
@@ -563,7 +563,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !chatWidget;
     setBusyToggle('chat_widget');
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, display: { chat_widget: next } },
     });
     if (error || !data?.ok) {
@@ -597,7 +597,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
     // валюты). Сброс делает СЕРВЕР в той же транзакции — второй клиентской
     // до-записи в trip_budgets больше нет (единая дверь, TRIP-394).
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, fields, main_currency: currency },
     });
     setSaving(false);
@@ -650,7 +650,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { data, error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, addons: nextAddons },
     });
     if (error || !data?.ok) {
@@ -710,7 +710,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // button carries the spinner while deleteTrip (Telegram teardown + Storage
     // purge + DELETE) runs.
     const runDelete = async () => {
-      const { data, error, code } = await invokeFn('deleteTrip', { body: { tripId } });
+      const { data, error, code } = await invokeFn('trip-owner/delete', { body: { tripId } });
       if (error || !data?.ok) {
         // Нейтральный `err.FORBIDDEN` покрывает и «не владелец» на удалении, и
         // отказ правки — отдельной клаузы удаления больше нет (серверный

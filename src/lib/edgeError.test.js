@@ -2,10 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseEdgeError } from './edgeError.js';
 
-// Что тут пиньтся (TRIP-378). Две edge-функции перестали отвечать 200 на отказ:
-// `updateTripSettings` шлёт 403 `FORBIDDEN` / 402 `PRO_REQUIRED`, `deleteTrip` -
-// 403 / 404, обе - 500 `INTERNAL` на сбой запроса. У поведения клиента после
-// такого флипа НЕТ ни скриншота, ни гарда: единственный гейт - этот тест.
+// Что тут пиньтся (TRIP-378, перенос на шов TRIP-416). Настройки/удаление/копия
+// трипа отвечают отказом ЧЕРЕЗ HTTP-статус, не 200: `trip-settings/settings` шлёт
+// 403 `FORBIDDEN` / 402 `PRO_REQUIRED`, `trip-owner/delete` - 403, `trip-share/copy`
+// - 402 `TRIP_LIMIT_REACHED`, seam update по id - 404 `NOT_FOUND`, всё - 500
+// `INTERNAL` на сбой запроса. Коды НЕ переименованы при переносе на шов (Sentry-
+// группировка). У поведения клиента после флипа НЕТ ни скриншота, ни гарда:
+// единственный гейт - этот тест.
 //
 // ГЛАВНОЕ, что он держит: `код отказа обязан пережить не-2xx`. supabase-js на
 // не-2xx оставляет `data` пустым и кладёт тело в `error.context` (Response),
@@ -25,14 +28,14 @@ const httpErr = (status, body) => Object.assign(new Error(SDK_NON_2XX), {
 });
 
 // ── код переживает не-2xx ─────────────────────────────────────────────────────
-// Ровно те ответы, которые теперь отдают обе функции.
+// Ровно те ответы, которые теперь отдаёт шов записи (TRIP-416).
 for (const [name, status, body, wantCode] of [
-  ['updateTripSettings · нет прав',   403, { error: 'Forbidden', code: 'FORBIDDEN' }, 'FORBIDDEN'],
-  ['updateTripSettings · нужен Pro',  402, { error: 'Pro required', code: 'PRO_REQUIRED' }, 'PRO_REQUIRED'],
-  ['updateTripSettings · нет трипа',  404, { error: 'Trip not found', code: 'NOT_FOUND' }, 'NOT_FOUND'],
-  ['deleteTrip · не владелец',        403, { error: 'Forbidden', code: 'FORBIDDEN' }, 'FORBIDDEN'],
-  ['deleteTrip · трипа нет',          404, { error: 'Not found', code: 'NOT_FOUND' }, 'NOT_FOUND'],
-  ['сбой запроса → 500',              500, { error: 'canceling statement due to statement timeout', code: 'INTERNAL' }, 'INTERNAL'],
+  ['trip-settings/settings · не редактор',  403, { error: 'Forbidden', code: 'FORBIDDEN' }, 'FORBIDDEN'],
+  ['trip-settings/settings · Pro-аддон',    402, { error: 'Pro required', code: 'PRO_REQUIRED' }, 'PRO_REQUIRED'],
+  ['seam update по id · строки нет',         404, { error: 'Not found', code: 'NOT_FOUND' }, 'NOT_FOUND'],
+  ['trip-owner/delete · не владелец',        403, { error: 'Forbidden', code: 'FORBIDDEN' }, 'FORBIDDEN'],
+  ['trip-share/copy · лимит',                402, { error: 'Trip limit reached', code: 'TRIP_LIMIT_REACHED' }, 'TRIP_LIMIT_REACHED'],
+  ['сбой запроса → 500',                     500, { error: 'canceling statement due to statement timeout', code: 'INTERNAL' }, 'INTERNAL'],
 ]) {
   test(`parseEdgeError: код доезжает через не-2xx — ${name}`, async () => {
     const { code, message } = await parseEdgeError(httpErr(status, body), null);
