@@ -12,15 +12,15 @@ import React from 'react';
 //
 // ★ ЦЕНТР ЗАПЕРТ внутри дырки (`.donut__c { inset }`), а не поверх кольца —
 // поэтому крупное значение не заезжает на дугу (баг старого bgt-donut на 168px).
-/**
- * @param {{
- *   segments?: Array<{ id: string, color: string, value: number }>,
- *   total?: number, center?: any, label?: any,
- *   hoveredId?: string|null, onHover?: (id: string|null) => void,
- *   thickness?: number, className?: string,
- * } & Record<string, any>} p
- */
 export const Donut = React.forwardRef(
+  /**
+   * @param {{
+   *   segments?: Array<{ id: string, color: string, value: number }>,
+   *   total?: number, center?: any, label?: any,
+   *   hoveredId?: string|null, onHover?: (id: string|null) => void,
+   *   thickness?: number, className?: string,
+   * } & Record<string, any>} p
+   */
   ({ segments = [], total = 0, center, label, hoveredId, onHover, thickness = 10, className = "", ...rest }, ref) => {
     const R = 40;
     const C = 2 * Math.PI * R;
