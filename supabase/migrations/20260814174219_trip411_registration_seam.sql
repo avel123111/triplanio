@@ -30,6 +30,7 @@ create unique index if not exists trip_members_trip_user_uidx
 -- unique-индекс заменяет прежний констрейнт по сырому email. `email` NOT NULL, так
 -- что `lower(email)` не бывает null. Ничто в коде не ссылается на имя
 -- `users_email_key` и не делает `ON CONFLICT (email)` (сверено).
+-- ddl-guard: allow-destructive - TRIP-411, contract, users_email_key -> unique(lower(email)) (Р3): уникальность email не снята, а ужесточена до регистронезависимой
 alter table public.users drop constraint if exists users_email_key;
 create unique index if not exists users_email_lower_uidx on public.users (lower(email));
 
