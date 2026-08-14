@@ -38,6 +38,7 @@ function subscribe(cb) {
   return () => subscribers.delete(cb);
 }
 const getSnapshot = () => open;
+const notify = () => subscribers.forEach((cb) => cb());
 
 /** React hook: true while the soft keyboard is up. For a canon primitive that
  *  must hide its own chrome (e.g. <Dialog>'s footer) rather than be reached
@@ -62,7 +63,7 @@ export function startKeyboardOpenWatch() {
     const h = vv.height;
     if (h > baseline) baseline = h;          // grow baseline (URL bar hides, rotate)
     const next = baseline - h > OPEN_DELTA;
-    if (next !== open) { open = next; subscribers.forEach((cb) => cb()); }
+    if (next !== open) { open = next; notify(); }
     root.toggleAttribute('data-keyboard', next);
   };
 
@@ -71,7 +72,7 @@ export function startKeyboardOpenWatch() {
   // the new size settles so a rotate doesn't read as a keyboard.
   window.addEventListener('orientationchange', () => {
     root.removeAttribute('data-keyboard');
-    if (open) { open = false; subscribers.forEach((cb) => cb()); }
+    if (open) { open = false; notify(); }
     setTimeout(() => { baseline = vv.height; update(); }, 300);
   });
   update();
