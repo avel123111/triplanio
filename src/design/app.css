@@ -3583,6 +3583,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .dlg-backdrop, .sheet-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .dlg-modal, .sheet { will-change: transform; }
 
+  /* Клавиатура открыта → убираем нижнюю «хромированную» полосу, пока
+     пользователь печатает: (1) action-футер шита и (2) плавающий боттом-нав.
+     На мобиле поле у низа + подъём над клавиатурой заставляли эти полосы
+     «подлетать» и наезжать на панель автозаполнения Chrome/iOS.
+
+     Сигнал — АТРИБУТ `[data-keyboard]` на <html> (src/lib/keyboardOpen.js), по
+     ГЕОМЕТРИИ вьюпорта (клавиатура сжимает `visualViewport` при `interactive-
+     widget=resizes-content`), а НЕ по фокусу поля. Фокус на мобиле мигает: тап
+     по наву возвращал фокус в последнее поле и прятал нав в момент нажатия —
+     геометрия на тап по кнопке не реагирует. Атрибут, а не класс: новый класс
+     состояния растил бы число классов дизайн-пола (гард 2o), а root-состояние —
+     это data-атрибут (как `data-theme`).
+
+     Здесь скрываем только НЕ-канон элементы: плавающий нав `.mbnav` и футер
+     панелей редактора `.lp-f`. Футер шита `.dlg__foot` — канон-примитив, и его
+     прячет САМ компонент <Dialog> через useKeyboardOpen (реагировать снаружи на
+     канон-примитив = reach, гард 2o). */
+  [data-keyboard] .lp-sheet .lp-f { display: none; }
+  [data-keyboard] .mbnav { display: none; }
+
 
   /* Editor side panels become FULL-SCREEN panels on phones (a standalone screen
      over the previous one), rendered as a vaul Drawer whose Content is
