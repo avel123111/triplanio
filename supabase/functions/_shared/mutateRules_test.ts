@@ -1017,13 +1017,14 @@ Deno.test('инвариант №7: op:none под requires:[] дырой НЕ �
 
 // ── TRIP-416: домен «трип» (trip-settings / trip-owner / trip-share) ─────────
 
-Deno.test('★ TRIP-416 settings: mapOutcome переводит pro_required → 402, ok → {ok:true}', () => {
+Deno.test('★ TRIP-416 settings: mapOutcome переводит pro_required → 402, ok → { data: null }', () => {
   const settings = REGISTRY['trip-settings'].actions.settings;
   const map = settings.mapOutcome!;
   const pro = map({ outcome: 'pro_required' });
   assert('status' in pro && pro.status === 402 && pro.code === 'PRO_REQUIRED', 'pro_required → 402 PRO_REQUIRED');
   const ok = map({ outcome: 'ok' });
-  assert(!('status' in ok) && (ok as { data: { ok?: boolean } }).data.ok === true, 'ok → { data: { ok: true } }');
+  // Успех НЕ фабрикует флаг в data — дискриминант в корне (TRIP-400).
+  assert(!('status' in ok) && (ok as { data: unknown }).data === null, 'ok → { data: null }');
 });
 
 Deno.test('★ TRIP-416 settings: buildArgs делит вход на p_fields и p_details_patch', () => {

@@ -242,9 +242,10 @@ revoke execute on function public.copy_trip(uuid, uuid) from public, anon, authe
 grant  execute on function public.copy_trip(uuid, uuid) to service_role;
 
 -- ── ensure_trip_share_token — find-or-create токена (ресурс trip-share) ────────
--- Возвращает существующий share_token либо генерит новый (32 hex, без новых
--- зависимостей — uuid_generate_v4 уже используется дефолтом trips.id). Токен
--- открывает read-only публичный вид (getPublicTrip), который участник и так видит.
+-- Возвращает существующий share_token либо генерит новый (32 hex). Генерация — та
+-- же конвенция, что invite-токен (`create_trip_invite_link`): `gen_random_bytes`
+-- из pgcrypto. Токен открывает read-only публичный вид (getPublicTrip), который
+-- участник и так видит.
 create or replace function public.ensure_trip_share_token(p_trip uuid, p_actor uuid)
 returns jsonb
 language plpgsql
@@ -256,7 +257,7 @@ declare
 begin
   select share_token into v_token from public.trips where id = p_trip;
   if v_token is null then
-    v_token := replace(extensions.uuid_generate_v4()::text, '-', '');
+    v_token := encode(extensions.gen_random_bytes(16), 'hex');
     update public.trips set share_token = v_token where id = p_trip;
   end if;
   return jsonb_build_object('shareToken', v_token);

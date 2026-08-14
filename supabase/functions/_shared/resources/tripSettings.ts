@@ -62,17 +62,22 @@ export const TRIP_SETTINGS: ResourceSpec = {
       },
       buildArgs: (values, ctx) => {
         const patch: Record<string, unknown> = {};
-        if (values.main_currency !== undefined) patch.main_currency = values.main_currency;
+        // Пустую валюту не пишем (зеркалит оригинальный `typeof === 'string' && main_currency`).
+        if (values.main_currency) patch.main_currency = values.main_currency;
         if (values.display !== undefined) patch.display = values.display;
         if (values.addons !== undefined) patch.addons = values.addons;
         return { p_trip: ctx.scopeValue, p_fields: values.fields ?? {}, p_details_patch: patch };
       },
       // Бизнес-«нет» = ЗНАЧЕНИЕ outcome, не ошибка БД. Канон PRO_REQUIRED (402+skip)
       // — тот же литерал, что дверь proRefusal (единый источник, mutateRules.ts).
+      // Успех = `{ data: null }`, как любое другое действие шва: дискриминант
+      // успеха/отказа живёт в КОРНЕ ответа (error/code), НЕ флагом в data (TRIP-400).
+      // Искусственный `{ ok: true }` фабриковал бы «флаг успеха в data» — ровно тот
+      // анти-паттерн, что ловит гард 2w.
       mapOutcome: (data) => {
         const outcome = (data as { outcome?: string } | null)?.outcome;
         if (outcome === 'pro_required') return PRO_REQUIRED;
-        return { data: { ok: true } };
+        return { data: null };
       },
     },
   },

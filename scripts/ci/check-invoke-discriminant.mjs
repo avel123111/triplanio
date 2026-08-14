@@ -18,12 +18,18 @@
  * существующие вхождения грандфазерятся, краснеет лишь РОСТ (в т.ч. новый файл =
  * база 0 — новый код не рождается грязным).
  *
- * ЕДИНИЦА СЧЁТА: `.data.code` / `.data?.code` / `.data.ok` / `.data?.ok` —
- * двухуровневый доступ через `.data`. Голый `data?.ok` (деструктуризация
- * результата) НЕ ловится намеренно: это ДРУГОЙ, легаси-контракт (`updateTripSettings`
- * отдаёт `{ ok }` телом), его свод к корню — отдельный доменный заход.
- * Комментарии гасятся (иначе строка-пример в шапке `invokeFn.js` считалась бы
- * эмиссией).
+ * ЕДИНИЦА СЧЁТА, ДВЕ формы одного анти-паттерна «дискриминант в data»:
+ *   1. `.data.code` / `.data?.code` / `.data.ok` / `.data?.ok` — двухуровневый
+ *      доступ через `.data` (`res.data.ok`);
+ *   2. ГОЛЫЙ `data.ok` / `data?.ok` — флаг успеха, прочитанный из
+ *      ДЕСТРУКТУРИЗАЦИИ результата (`const { data } = await invokeFn(…)`).
+ * Форму 2 раньше не ловили как «легаси-контракт `updateTripSettings` отдаёт
+ * `{ ok }` телом»; TRIP-416 свёл его к корню (успех = `{ data: null }`), поэтому
+ * теперь ловится тоже — иначе анти-паттерн заводится заново. Голый `data.code`
+ * НЕ ловим (у не-2xx он и так undefined, а `edgeError.test` ЦИТИРУЕТ его как
+ * демонстрацию промаха). Lookbehind у формы 2 не бьёт `.data.ok` (её ловит форма
+ * 1) и `metadata.ok`. Комментарии гасятся (иначе строка-пример в шапке
+ * `invokeFn.js` считалась бы эмиссией).
  *
  * Escape: `// invoke-discriminant-exempt: <причина>` на строке доступа или
  * следующей — для законного `.data.code`-поля (как QR у шаринга), видимо в диффе.
@@ -37,8 +43,10 @@ import { readFileSync, existsSync } from 'node:fs';
 const BASE_REF = process.env.BASE_REF || 'origin/dev';
 const EXEMPT = 'invoke-discriminant-exempt';
 const SCANNED = /\.(jsx|tsx|js)$/;
-// `.data.ok` / `.data?.code` — доступ к дискриминанту ЧЕРЕЗ `.data`.
-const PATTERN = /\.data\??\.(?:code|ok)\b/g;
+// Форма 1: `.data.ok` / `.data?.code` — доступ к дискриминанту ЧЕРЕЗ `.data`.
+// Форма 2: голый `data.ok` / `data?.ok` из деструктуризации результата. Отрицательный
+// lookbehind `(?<![.\w$])` отсекает `.data.ok` (её ловит форма 1) и `metadata.ok`.
+const PATTERNS = [/\.data\??\.(?:code|ok)\b/g, /(?<![.\w$])data\??\.ok\b/g];
 
 const unknown = process.argv.slice(2).filter((a) => a !== '--');
 if (unknown.length) {
@@ -65,18 +73,20 @@ function blankComments(src) {
   return out.join('');
 }
 
-/** Число НЕ-освобождённых `.data.(code|ok)` в файле (комментарии погашены). */
+/** Число НЕ-освобождённых дискриминантов-в-data в файле (комментарии погашены). */
 function scan(src) {
   if (!src) return 0;
   const masked = blankComments(src);
   const lines = src.split('\n');
   const lineOf = (idx) => src.slice(0, idx).split('\n').length - 1;
   let count = 0;
-  for (const m of masked.matchAll(PATTERN)) {
-    const from = lineOf(m.index);
-    const to = lineOf(m.index + m[0].length);
-    if (lines.slice(from, to + 2).some((l) => l.includes(EXEMPT))) continue;
-    count++;
+  for (const pattern of PATTERNS) {
+    for (const m of masked.matchAll(pattern)) {
+      const from = lineOf(m.index);
+      const to = lineOf(m.index + m[0].length);
+      if (lines.slice(from, to + 2).some((l) => l.includes(EXEMPT))) continue;
+      count++;
+    }
   }
   return count;
 }
