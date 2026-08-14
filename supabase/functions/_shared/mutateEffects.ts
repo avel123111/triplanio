@@ -76,6 +76,20 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     }
   },
 
+  // Регистрация связала pending-инвайты (TRIP-411): по каждому связанному — n8n
+  // уведомляет приглашённого (получатель = сам новый юзер). Заменяет слепой
+  // `INSERT notifications` из удалённого триггера `link_pending_invites`. Только
+  // при created (повтор из двух вкладок уже связал на 1-м вызове). Best-effort.
+  'account/register': async ({ result, actor }) => {
+    const data = asRow(result);
+    if (!data.created) return;
+    const linked = Array.isArray(data.linked) ? data.linked : [];
+    for (const inv of linked) {
+      const m = asRow(inv);
+      emit('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id });
+    }
+  },
+
   // Приглашение создано/реактивировано (declined→pending) — n8n шлёт нотиф+email.
   'trip-member/invite': async ({ result, scopeValue, actor }) => {
     const member = asRow(result);

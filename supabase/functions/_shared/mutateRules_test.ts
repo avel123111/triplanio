@@ -1072,3 +1072,45 @@ Deno.test('★ TRIP-416 share: share buildArgs = { p_trip } (участник)',
   assertEquals(share.requires, ['participant']);
   assertEquals(share.buildArgs!({}, { actor: ACTOR, scopeValue: TRIP, targetId: null }), { p_trip: TRIP });
 });
+
+// ── TRIP-411: домен регистрации — register за швом (self-скоуп, op:'rpc') ─────
+
+Deno.test('★ register: self-скоуп, buildPlan → rpc create_user_profile, p_actor от шва', () => {
+  const resource = REGISTRY['account'];
+  const register = resource.actions.register;
+  // requires:['self'] (гомогенен с profile; инвариант №7 не применяется — гейт не пуст).
+  assertEquals([...register.requires], ['self']);
+  const plan = buildPlan(resource, register, {
+    actor: ACTOR,
+    scopeValue: ACTOR, // self-скоуп: значение = актор (scope.from:'actor')
+    targetId: null,
+    values: { language: 'es', marks: { utm_source: 'google' } },
+  });
+  assert(plan.op === 'rpc');
+  assertEquals(plan.name, 'create_user_profile');
+  // Клиент шлёт ТОЛЬКО language+marks; p_actor инъектит шов (id/email/имя/аватар — из auth).
+  assertEquals(plan.args, { p_language: 'es', p_marks: { utm_source: 'google' }, p_actor: ACTOR });
+});
+
+Deno.test('★ register: язык/марки необязательны → p_language/p_marks = null', () => {
+  const resource = REGISTRY['account'];
+  const register = resource.actions.register;
+  // Пустое тело законно (оба поля nullable, не required): язык мимо → дефолт в RPC.
+  const validated = validateInput(register, {}, { isInsert: true });
+  assert(!('status' in validated));
+  const plan = buildPlan(resource, register, {
+    actor: ACTOR, scopeValue: ACTOR, targetId: null, values: (validated as { values: Record<string, unknown> }).values,
+  });
+  assert(plan.op === 'rpc');
+  assertEquals(plan.args, { p_language: null, p_marks: null, p_actor: ACTOR });
+});
+
+Deno.test('register: язык вне enum и марки не-объект отбиваются 400 (зеркало CHECK/типа)', () => {
+  const register = REGISTRY['account'].actions.register;
+  const badLang = validateInput(register, { language: 'de' }, { isInsert: true });
+  assert('status' in badLang && badLang.status === 400, 'язык вне ru/en/es — 400');
+  const badMarks = validateInput(register, { marks: ['utm_source'] }, { isInsert: true });
+  assert('status' in badMarks && badMarks.status === 400, 'марки-массив (не jsonb-объект) — 400');
+  const okNull = validateInput(register, { language: null, marks: null }, { isInsert: true });
+  assert(!('status' in okNull), 'null законен для обоих (nullable)');
+});

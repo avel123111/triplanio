@@ -21,6 +21,8 @@
   "invite_created.email_signup_link": "Зарегистрируйся здесь",
   "invite_created.email_subject": "Приглашение в путешествие",
   "invite_created.title": "Тебя пригласили в путешествие",
+  "invite_linked.body": "приглашает тебя как",
+  "invite_linked.title": "Тебя пригласили в путешествие",
   "invite_declined.body": "В путешествие",
   "invite_declined.title": "отклонил приглашение",
   "invite_resent.email_subject": "Напоминание: приглашение в путешествие",
