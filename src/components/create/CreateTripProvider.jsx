@@ -214,7 +214,7 @@ export function CreateTripProvider({ children }) {
         >
           <div className="dlg dlg--sm" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 28, textAlign: 'center' }}>
             <div className="spin spin--ring spin--xl spin--ink" />
-            <div className="t-ui">{t('trip.copying')}</div>
+            <div className="t-label">{t('trip.copying')}</div>
           </div>
         </div>
       )}

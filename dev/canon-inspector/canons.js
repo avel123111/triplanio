@@ -1,8 +1,8 @@
 // TRIP-165/410 · Canon inspector — canon registry + live detection.
-// TRIP-410 V2: система Geologica (single-font). 10 канонов + РОВНО три санкц. модификатора
+// TRIP-410 Ф3: система Geologica (single-font). 9 канонов + РОВНО три санкц. модификатора
 // (t-strong/t-flush/tp-caption); прежние макет-имена и sans-оверлей убраны. Числа пробятся из app.css.
 //
-// The 10 typography canons are defined ONCE, in src/design/app.css (the .t-*
+// The 9 typography canons are defined ONCE, in src/design/app.css (the .t-*
 // co-selector rules). This module does NOT re-hardcode their numeric specs —
 // it PROBES the live stylesheet: it renders a hidden element per canon class
 // and reads getComputedStyle. So the reference values always come straight
@@ -23,13 +23,12 @@ export const CANONS = [
   { id: 1,  cls: 't-display',    name: 'Display',    role: 'Герой, 1 на экран · Geologica 800 tabular' },
   { id: 2,  cls: 't-title',      name: 'Title',      role: 'Заголовок страницы · Geologica 700 tabular' },
   { id: 3,  cls: 't-heading',    name: 'Heading',    role: 'Заголовок экрана / секции · Geologica 700 tabular' },
-  { id: 4,  cls: 't-subheading', name: 'Subheading', role: 'Заголовок панели / карточки · Geologica 600' },
-  { id: 5,  cls: 't-label',      name: 'Label',      role: 'Кнопки, крупные лейблы · Geologica 13/600' },
+  { id: 4,  cls: 't-subheading', name: 'Subheading', role: 'Имя объекта (город/участник/заголовок пункта или панели) · Geologica 16/600' },
+  { id: 5,  cls: 't-label',      name: 'Label',      role: 'Утилита-подпись: поле / кнопка / шаг / секц-лейбл / статус · Geologica 13/600' },
   { id: 6,  cls: 't-body',       name: 'Body',       role: 'Основной текст, абзацы · Geologica 400' },
-  { id: 7,  cls: 't-ui',         name: 'UI',         role: 'Плотный интерфейсный текст · алиас .t-label (13/600)' },
-  { id: 8,  cls: 't-meta',       name: 'Meta',       role: 'Даты/времена, вторичная инфо · Geologica 500 tabular' },
-  { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, эйбрау · Geologica 700 UPPER' },
-  { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Коды/брони/рейсы/полисы/email/kbd · JetBrains Mono 13/500' },
+  { id: 7,  cls: 't-meta',       name: 'Meta',       role: 'Даты/времена, вторичная инфо · Geologica 500 tabular' },
+  { id: 8,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, эйбрау · Geologica 700 UPPER' },
+  { id: 9,  cls: 't-mono',       name: 'Mono',       role: 'Коды/брони/рейсы/полисы/email/kbd · JetBrains Mono 13/500' },
 ];
 
 // TRIP-410 · РОВНО три санкционированных орто-модификатора канона (из ТЗ).

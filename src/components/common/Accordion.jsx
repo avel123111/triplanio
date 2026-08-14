@@ -16,7 +16,7 @@ export default function Accordion({ title, subtitle, badge = 0, defaultOpen = fa
           раскрывашка), не примитив-кнопка. */}
       <button type="button" className="acc__head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="acc__titles">
-          <span className="acc__title t-ui">{title}</span>
+          <span className="acc__title t-label">{title}</span>
           {subtitle ? <span className="acc__sub t-meta">{subtitle}</span> : null}
         </span>
         {badge > 0 ? <span className="acc__badge t-meta">{badge}</span> : null}

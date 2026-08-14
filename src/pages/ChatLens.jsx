@@ -254,7 +254,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId, profil
   const renderMembersBtn = (onClick) => (
     <Chip avatars onClick={onClick} aria-label={t('chat.members_title')}>
       <AvatarStack people={people} />
-      <span className="chat-members-btn__lbl t-ui">{t('trip.sidebar_members')}</span>
+      <span className="chat-members-btn__lbl t-label">{t('trip.sidebar_members')}</span>
     </Chip>
   );
 

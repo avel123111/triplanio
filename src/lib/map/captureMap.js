@@ -48,7 +48,7 @@ const SC_BADGE_PAD = 5; // padding around the content (room for the halo)
 const SC_BADGE_FLAG_GAP = 7; // gap between flag and name
 const SC_BADGE_HALO = 2.6; // halo stroke half-width (lineWidth = 2×)
 const SC_BADGE_DPR = 2; // raster scale so the baked text stays crisp
-const SC_BADGE_FONT = `700 ${SC_LABEL_PX}px "Montserrat", "Golos Text", system-ui, sans-serif`;
+const SC_BADGE_FONT = `700 ${SC_LABEL_PX}px "Geologica", "Montserrat", system-ui, sans-serif`;
 // Gap (icon-units) from the dot centre to the nearest badge edge — clears the red
 // dot + halo. In icon space, so it scales with the badge when the preview shrinks.
 const SC_DOT_GAP_UNITS = SC_WEIGHTS.halo + 7;

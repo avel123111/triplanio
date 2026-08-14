@@ -394,7 +394,7 @@ function TelegramSection({ tripId }) {
             <Icon name="telegram" size={17} />
           </div>
           <Grow fit>
-            <div className="t-ui">{tgName(a)}</div>
+            <div className="t-subheading">{tgName(a)}</div>
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
@@ -438,7 +438,7 @@ function ApproverRow({ member, profiles, locked }) {
     <Row>
       <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
       <Grow>
-        <div className="t-ui">{who.name}</div>
+        <div className="t-subheading">{who.name}</div>
         <div className="muted t-meta">{roleLabel}</div>
       </Grow>
       {locked
@@ -864,7 +864,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <CardHeader title={t('settings.chat_widget_title')} />
               <Row gap="g7">
                 <Grow fit>
-                  <div className="t-ui">{t('settings.chat_widget_label')}</div>
+                  <div className="t-label">{t('settings.chat_widget_label')}</div>
                   <div className="muted t-meta">
                     {t('settings.chat_widget_desc')}
                   </div>

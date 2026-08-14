@@ -311,7 +311,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
       <div className="col col--g4">
-      <div className="t-ui">
+      <div className="t-body">
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (

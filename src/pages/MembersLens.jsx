@@ -157,7 +157,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
             onChange={setRole}
             options={[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) => ({
               value: k,
-              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-ui">{lab}</span><span className="muted t-meta">{sub}</span></span>,
+              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-subheading">{lab}</span><span className="muted t-meta">{sub}</span></span>,
             }))}
           />
         </Field>

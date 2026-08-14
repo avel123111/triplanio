@@ -189,7 +189,7 @@ function InboxEmpty({ onCollection }) {
                   <Icon name={r.icon} size={16} />
                 </Tile>
                 <span style={{ textAlign: 'left' }}>
-                  <div className="t-ui" style={{ color: 'var(--ink-2)' }}>{r.title}</div>
+                  <div className="t-subheading" style={{ color: 'var(--ink-2)' }}>{r.title}</div>
                   <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 1 }}>{r.sub}</div>
                 </span>
               </div>
