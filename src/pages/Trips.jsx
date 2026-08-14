@@ -7,11 +7,12 @@ import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
+import { resolveAuthor } from '@/lib/resolveAuthor';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { pluralize, localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
-import { AvatarStack, Badge, Btn, Card, EmptyState, Input, Seg, Skeleton, Tile } from '../design/index';
+import { AvatarStack, Badge, Btn, Card, EmptyState, Input, RoleBadge, Seg, Skeleton, Tile } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -83,26 +84,17 @@ function coverBg(trip) {
 // with its own `.av-stack` CSS twin of `.avatar-stack`.
 const TripAvatars = ({ members, maxShow = 3, white = false }) => {
   if (!members || members.length === 0) return null;
+  // `members` are already resolved to the <Avatar> shape (name/photo/deleted) by
+  // the shared identity ladder in getTrips (see participantsByTrip) — no per-card
+  // copy of displayName()/is_deleted here.
   return (
     <AvatarStack
       max={maxShow}
       className={white ? 'avatar-stack--white' : ''}
-      people={members.map((m) => ({
-        name: displayName(m.email, m.full_name),
-        photo: m.avatar_url || '',
-        deleted: m.is_deleted,
-      }))}
+      people={members}
     />
   );
 };
-
-// ─── Role label ─────────────────────────────────────────────────────────────
-function roleLabel(t, role) {
-  if (role === 'owner')  return t('trips.role_owner');
-  if (role === 'admin')  return t('trips.role_admin');
-  if (role === 'viewer') return t('trips.role_viewer');
-  return t('trips.role_admin'); // safe fallback — 'member' role doesn't exist in schema
-}
 
 // ─── Next-trip rail card / empty states ────────────────────────────────────────
 function NextTripCard({ trip, onClick, t }) {
@@ -230,9 +222,7 @@ const TripCard = ({ trip, onClick }) => {
             <span className="tc__glass">
               <Icon name="users" /> {t('trips.shared_badge')}
             </span>
-            <span className="tc__glass">
-              {roleLabel(t, trip.role)}
-            </span>
+            <RoleBadge role={trip.role} />
             <TripAvatars members={trip.members} maxShow={3} white />
           </div>
         )}
@@ -284,12 +274,7 @@ const TripRow = ({ trip, onClick }) => {
         )}
         {trip.isShared && (
           <span className="tr-hideS">
-            {trip.role === 'viewer'
-              ? <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>
-              : trip.role === 'owner'
-                ? <Badge>{t('trips.role_owner')}</Badge>
-                : <Badge>{roleLabel(t, trip.role)}</Badge>
-            }
+            <RoleBadge role={trip.role} />
           </span>
         )}
         {trip.pro && (
@@ -479,15 +464,17 @@ export default function Trips() {
   const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
 
   // Participants (owner + active members, owner первым) приходят В карточке из
-  // getTrips (get_my_trip_cards поглотил профили участников, TRIP-403).
-  // Здесь только локализуем метку обезличенного (soft-deleted) участника — вместо
-  // выскобленного пустого имени (заодно один ровный градиент аватара на всех).
+  // getTrips (get_my_trip_cards поглотил профили участников, TRIP-403). Резолвим
+  // каждого ЕДИНОЙ лестницей resolveAuthor в форму <Avatar> ({name/photo/deleted})
+  // — метка обезличенного аккаунта и ровный градиент живут ТАМ, не инлайном здесь.
   const participantsByTrip = useMemo(() => {
     const m = {};
     for (const tr of allTrips) {
-      m[tr.id] = (tr.participants || []).map(p =>
-        p.is_deleted ? { ...p, full_name: t('common.deleted_user') } : p,
-      );
+      m[tr.id] = (tr.participants || []).map((p) => resolveAuthor({
+        userId: p.user_id,
+        profiles: { [p.user_id]: { id: p.user_id, full_name: p.full_name, avatar_url: p.avatar_url, email: p.email, is_deleted: p.is_deleted } },
+        deletedLabel: t('common.deleted_user'),
+      }));
     }
     return m;
   }, [allTrips, t]);

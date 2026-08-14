@@ -325,7 +325,6 @@ export const DOORS = {
   callTriplanioAi:       'participant', // обращение к ассистенту = сообщение в чат
   copyTrip:              'participant', // копия создаётся как СВОЙ трип
   ensureShareToken:      'participant', // ссылка открывает то, что зритель и так видит (TRIP-202)
-  resolveProfiles:       'participant', // чтение профилей участников
   render_share_card:     'participant', // рендер карточки, только чтение
   telegramGetIntegration:'participant', // чтение статуса привязки
   parseBookingWithAi:    'participant', // распознавание брони, в БД не пишет

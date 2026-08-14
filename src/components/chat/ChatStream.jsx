@@ -4,7 +4,7 @@ import { Avatar, Btn } from '@/design/index';
 import { Icon } from '@/design/icons';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { getActiveLocale } from '@/lib/i18n/format';
-import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { aiRunFailed } from '@/lib/chat';
 import { classifyError } from '@/lib/errorText';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -139,13 +139,15 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
       members,
       selfUser,
       deletedLabel: t('common.deleted_user'),
+      botId: TRIPLANIO_BOT_USER_ID,
+      botName: TRIPLANIO_BOT_NAME,
     });
 
     rows.push(
       <div key={'run-' + first.id} className={'row row--a-start row--g6 chat-run' + (isMe ? ' chat-run--me' : '')}>
         {!isMe && (
           <div className="chat-run__av">
-            <Avatar name={author.name} photo={author.photo || ''} deleted={author.deleted} />
+            <Avatar name={author.name} photo={author.photo || ''} deleted={author.deleted} kind={author.kind} />
           </div>
         )}
         <div className="col col--g2 chat-run__col">

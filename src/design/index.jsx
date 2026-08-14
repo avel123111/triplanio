@@ -58,6 +58,25 @@ import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — �
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
+// The Triplanio AI assistant's face. It used to live in its own component
+// (TriplanioAvatar) so the bot's avatar drifted from every other avatar; now it
+// is the `kind="ai"` variant, one robot for the stream, the assistant reply, the
+// mention popup and the "typing" pill. Sized in % so it fills whatever the
+// container hands `.avatar` (32 in a chat run, 22 at size="sm").
+const AI_ROBOT = (
+  <svg width="62%" height="62%" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    {/* antenna */}
+    <path d="M24 7V12" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    <circle cx="24" cy="6" r="2.6" fill="white" />
+    {/* head */}
+    <rect x="9" y="13" width="30" height="26" rx="9" fill="white" />
+    {/* eyes */}
+    <circle cx="18.5" cy="25" r="3" fill="var(--ai)" />
+    <circle cx="29.5" cy="25" r="3" fill="var(--ai)" />
+    {/* smile */}
+    <path d="M19 32 Q24 35.5 29 32" stroke="var(--ai)" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+  </svg>
+);
 /** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, className?: string, style?: any }} p */
 export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
   const t = useT();
@@ -66,7 +85,7 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "sm" ? 12 : 15} /></div>;
   }
   if (kind === "ai") {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp} aria-label="Triplanio">{AI_ROBOT}</div>; // i18n-ignore — «Triplanio» бренд, не переводится
   }
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
@@ -331,6 +350,22 @@ export const Badge = ({ variant = "", icon, children, style }) => (
     {children}
   </span>
 );
+
+// ----- RoleBadge ----- (TRIP-409, апрув Pavel)
+// ОДИН перевод роли участника → бейдж. До него пять поверхностей рисовали его
+// по-своему: список участников — цветными <Badge>, «Кто едет» в Обзоре —
+// руками собранными классами, чат — простой текстовой строкой, карточки
+// трипов — то quiet+eye, то голым <Badge>. Канон — облик списка участников:
+// owner=warning, admin=brand, viewer=outline+eye. `viewer` — единственная явная
+// ветка; всё остальное (admin и несуществующая в схеме роль `member`) читается
+// как admin, повторяя прежний fallback карточек трипов.
+/** @param {{ role?: string }} p */
+export const RoleBadge = ({ role }) => {
+  const t = useT();
+  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>;
+  if (role === "viewer") return <Badge variant="outline" icon="eye">{t("trips.role_viewer")}</Badge>;
+  return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
+};
 
 // ----- Card -----
 // ★ ГОЛАЯ ПОВЕРХНОСТЬ (TRIP-343, объект 2). Прежний `Card` жёстко рисовал шапку

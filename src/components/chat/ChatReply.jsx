@@ -1,10 +1,9 @@
 // @ts-check
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { Btn, Card } from '@/design/index';
+import { Avatar, Btn, Card } from '@/design/index';
 import { Icon } from '@/design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
 
 /**
@@ -60,7 +59,7 @@ export default function ChatReply({ text, time, onAsk }) {
           of the "Copy / Ask again" buttons. */}
       <div className="row row--g6">
         <div className="chat-run__av">
-          <TriplanioAvatar />
+          <Avatar kind="ai" />
         </div>
         <div className="col col--g4 grow--fit">
           <div className="row row--g4 chat-reply__who">

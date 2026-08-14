@@ -78,7 +78,6 @@ const COLOR_WHITELIST = [
   'src/pages/login.css',                               // isolated; pending Lumo
   'src/index.css', 'src/design/app.css',               // token DEFINITIONS
   'src/lib/map/captureMap.js',                         // canvas map-capture (share image) needs concrete hex
-  'src/components/chat/TriplanioAvatar.jsx',           // SVG illustration fills
   'src/components/AppErrorBoundary.jsx',               // crash screen — must not depend on tokens/CSS
   // — Added with the Lumo colour finale (TRIP-53): raw-by-nature sources —
   'src/lib/trip-gradients.js',                         // trip-cover gradient presets (colour data)
@@ -95,7 +94,7 @@ const COLOR_WHITELIST = [
 
 // Ratchet ceiling — the length of COLOR_WHITELIST above. Retiring an entry means
 // lowering this number in the same commit; nothing may ever raise it.
-const WHITELIST_LIMIT = 17;
+const WHITELIST_LIMIT = 16;
 
 // The ceiling on the PR base, so raising it cannot be self-approved by editing
 // this file. null = base not resolvable (no such ref, or the base predates this

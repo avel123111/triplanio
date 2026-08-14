@@ -41,7 +41,8 @@ import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
-import { useProfileMap } from '@/lib/useUserProfiles';
+import { useProfileMap } from '@/lib/useProfileMap';
+import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
@@ -888,7 +889,7 @@ export default function TripView() {
 
   const { openProUpsell } = useProUpsell();
   // Участник (не владелец) → инфо-апселл «подключает владелец» (app-level, TRIP-225).
-  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: members.find(m => m.user_id === trip?.created_by)?.user_full_name || '' });
+  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }) });
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
   // Открытие бокового меню и мобильный док теперь на TripShell — она владеет
@@ -1105,7 +1106,7 @@ export default function TripView() {
         onProRefusal={() => openProUpsell({
           mode: isOwner ? 'upgrade' : 'info',
           feature: t('budget.title'),
-          ownerName: members.find((m) => m.user_id === trip?.created_by)?.user_full_name || '',
+          ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
         })}
       />
@@ -1142,7 +1143,7 @@ export default function TripView() {
         "chat widget" display toggle (default ON). The full Chat lens stays
         reachable from the sidebar regardless of this toggle. */}
     {!isPhone && isSectionAvailable('chat', trip, myRole) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
-      <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
+      <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} ownerId={trip?.created_by} />
     )}
     </>
   );
@@ -1331,6 +1332,7 @@ export default function TripView() {
               tripId={tripId}
               isLoading={loadingContent}
               members={members}
+              profiles={memberProfiles}
               myRole={myRole}
             />
           )}
@@ -1360,6 +1362,7 @@ export default function TripView() {
               tripId={tripId}
               trip={trip}
               members={members}
+              profiles={memberProfiles}
               myRole={myRole}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
@@ -1371,6 +1374,7 @@ export default function TripView() {
             <ChatLens
               tripId={tripId}
               members={members}
+              profiles={memberProfiles}
               myRole={myRole}
               ownerId={trip?.created_by}
             />
