@@ -80,40 +80,41 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
   // уведомляет приглашённого (получатель = сам новый юзер). Заменяет слепой
   // `INSERT notifications` из удалённого триггера `link_pending_invites`. Только
   // при created (повтор из двух вкладок уже связал на 1-м вызове). Best-effort.
-  'account/register': async ({ result, actor }) => {
+  'account/register': async ({ result, actor, db }) => {
     const data = asRow(result);
     if (!data.created) return;
     const linked = Array.isArray(data.linked) ? data.linked : [];
     for (const inv of linked) {
       const m = asRow(inv);
-      emit('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id });
+      emit('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id }, { db });
     }
   },
 
   // Приглашение создано/реактивировано (declined→pending) — n8n шлёт нотиф+email.
-  'trip-member/invite': async ({ result, scopeValue, actor }) => {
+  'trip-member/invite': async ({ result, scopeValue, actor, db }) => {
     const member = asRow(result);
-    emit('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string });
+    emit('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Приглашение переслано (записи не было — re-emit по загруженной строке).
-  'trip-member/resend': async ({ loadedRow, actor }) => {
+  'trip-member/resend': async ({ loadedRow, actor, db }) => {
     const member = asRow(loadedRow);
-    emit('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string });
+    emit('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Роль изменена — уведомляем участника ТОЛЬКО при реальной смене и для юзера с
   // аккаунтом (сравниваем старую роль из loadedRow с новой из результата UPDATE).
-  'trip-member/role': async ({ loadedRow, result, actor }) => {
+  'trip-member/role': async ({ loadedRow, result, actor, db }) => {
     const before = asRow(loadedRow);
     const after = asRow(result);
     if (roleChangeNotifies(before.role, after.role, before.user_id)) {
+      // Снимок = полная строка (before) с НОВОЙ ролью (after) — резолвер отдаёт member с актуальной ролью.
       emit('role_changed', {
         trip_id: before.trip_id as string,
         recipient_id: before.user_id as string,
         actor_id: actor.id,
         member_id: before.id as string,
-      });
+      }, { db, snapshot: { ...before, ...after } });
     }
   },
 
@@ -123,7 +124,8 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
     if (member.user_id) {
-      emit('member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id });
+      // Строка членства уже удалена → member ТОЛЬКО из снимка (дочитать нечего).
+      emit('member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 
@@ -132,7 +134,8 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
   'trip-member-self/leave': async ({ loadedRow, db }) => {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
-    if (member.user_id) emit('member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string });
+    // Строка членства уже удалена → member ТОЛЬКО из снимка.
+    if (member.user_id) emit('member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
   },
 
   // Ответ на приглашение. По исходу RPC: accept → North-Star + уведомить пригласившего;
@@ -146,7 +149,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     // North Star: сделал ли accept трип коллаборативным (владелец + 1-й участник = 2)?
     if (plan.reached2) await emitTripReached2(db, scopeValue, actor.id);
     if (plan.emit && member.invited_by) {
-      emit(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id });
+      emit(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 };
