@@ -17,7 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -27,15 +27,6 @@ import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/comp
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
 // is never selectable here. There is no "editor" role on the backend.
-
-// Role badge colours unified with the Overview "who's going" card
-// (MembersSummaryCard): owner=warning, admin=brand, viewer=outline.
-function RoleBadge({ role }) {
-  const { t } = useI18n();
-  if (role === 'owner') return <Badge variant="warning">{t('members.role_owner')}</Badge>;
-  if (role === 'admin') return <Badge variant="brand">{t('trips.role_admin')}</Badge>;
-  return <Badge variant="outline" icon="eye">{t('trips.role_viewer')}</Badge>;
-}
 
 // Status column. Active members show no status text (the role badge already
 // conveys they're in the trip). Offline placeholders show nothing here (the
@@ -82,7 +73,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     setLinkLoading(true);
     setLinkErr('');
     setLinkUrl('');
-    invokeFn('createTripInviteLink', { body: { trip_id: tripId, role } })
+    invokeFn('trip-invite-link/create', { body: { trip_id: tripId, role } })
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error || data?.error || !data?.token) { setLinkErr(t('trip.link_error')); return; }
@@ -108,7 +99,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const trimmed = email.trim().toLowerCase();
     setSaving(true);
     setErr('');
-    const { data, error, code, message } = await invokeFn('inviteTripMember', {
+    const { data, error, code, message } = await invokeFn('trip-member/invite', {
       body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
@@ -118,7 +109,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     }
     // Promoting an offline placeholder → remove it now that a real invite exists.
     if (promoteMember?.id) {
-      await invokeFn('removeTripMember', { body: { member_id: promoteMember.id } });
+      await invokeFn('trip-member/remove', { body: { id: promoteMember.id, trip_id: tripId } });
     }
     track('email_invited', { role, trip_id: tripId });
     onSaved?.();
@@ -129,8 +120,8 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const name = offlineName.trim();
     setSaving(true);
     setErr('');
-    const { data, error, message } = await invokeFn('addOfflineTripMember', {
-      body: { tripId, name },
+    const { data, error, message } = await invokeFn('trip-member/add-offline', {
+      body: { trip_id: tripId, user_full_name: name },
     });
     setSaving(false);
     if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
@@ -240,8 +231,8 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
   async function save() {
     setSaving(true);
     setErr('');
-    const { data, error, message } = await invokeFn('updateTripMemberRole', {
-      body: { member_id: member.id, role },
+    const { data, error, message } = await invokeFn('trip-member/role', {
+      body: { id: member.id, trip_id: tripId, role },
     });
     setSaving(false);
     if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
@@ -292,17 +283,17 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // can't host a spinner, so the row shows the busy state (mbrow--busy) instead.
   async function resend(memberId) {
     setRemoving(memberId);
-    const { data, error, message } = await invokeFn('resendTripInvite', { body: { member_id: memberId } });
+    const { data, error, message } = await invokeFn('trip-member/resend', { body: { id: memberId, trip_id: tripId } });
     setRemoving(null);
     if (error || data?.error) { toast({ description: message || t('member.err_send_invite'), variant: 'destructive' }); return; }
   }
 
   // Re-invite a member who declined: restart the invite flow on the SAME row.
-  // inviteTripMember resets a declined row back to pending and re-sends the
-  // notification + email (reusing the existing role).
+  // The invite action (trip-member/invite) resets a declined row back to pending
+  // and re-sends the notification + email (reusing the existing role).
   async function reinvite(member) {
     setRemoving(member.id);
-    const { data, error, message } = await invokeFn('inviteTripMember', {
+    const { data, error, message } = await invokeFn('trip-member/invite', {
       body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
     });
     setRemoving(null);
@@ -311,30 +302,31 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   }
 
   // Confirmed via the async confirm so the dialog's button spins while
-  // removeTripMember runs (the kebab menu can't host a spinner; the dialog can).
+  // the remove action (trip-member/remove) runs (the kebab menu can't host a
+  // spinner; the dialog can).
   async function removeMember(memberId) {
     await confirm({
       title: t('member.remove_confirm'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { data, error, message } = await invokeFn('removeTripMember', { body: { member_id: memberId } });
-        if (error || !data?.ok) { toast({ description: message || t('member.err_remove'), variant: 'destructive' }); return; }
+        const { error, message } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
+        if (error) { toast({ description: message || t('member.err_remove'), variant: 'destructive' }); return; }
         refresh();
       },
     });
   }
 
-  // Leaving the trip = self-removal. removeTripMember allows a member to remove
-  // their own row (isSelf path). Once gone the user loses access, so navigate
-  // back to the trips collection rather than refreshing the now-forbidden lens.
+  // Leaving the trip = self-removal via trip-member-self/leave (a member removes
+  // their own row). Once gone the user loses access, so navigate back to the
+  // trips collection rather than refreshing the now-forbidden lens.
   async function leaveTrip(member) {
     await confirm({
       title: t('settings.leave_confirm'),
       description: t('confirm.leave_trip.body'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { data, error, message } = await invokeFn('removeTripMember', { body: { member_id: member.id } });
-        if (error || !data?.ok) { toast({ description: message || t('settings.leave_error'), variant: 'destructive' }); return; }
+        const { error, message } = await invokeFn('trip-member-self/leave', { body: { id: member.id, trip_id: tripId } });
+        if (error) { toast({ description: message || t('settings.leave_error'), variant: 'destructive' }); return; }
         nav('/trips');
       },
     });

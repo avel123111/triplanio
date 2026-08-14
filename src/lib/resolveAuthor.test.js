@@ -8,7 +8,7 @@
 // anonymized accounts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAuthor, resolveMembers } from './resolveAuthor.js';
+import { resolveAuthor, resolveMembers, resolveOwnerName } from './resolveAuthor.js';
 
 const DELETED = 'Удалённый аккаунт';
 const opts = { deletedLabel: DELETED, fallback: DELETED };
@@ -152,6 +152,67 @@ test('unresolvable row falls back to the caller label, not "?" or "-"', () => {
   const who = resolveAuthor({ userId: 'ghost', profiles: {}, members: [], ...opts });
   assert.equal(who.name, DELETED);
   assert.equal(who.email, '');
+});
+
+// ── the AI assistant — a constant branch, never a fetched profile ────────────
+
+test('bot id resolves to the bot name + kind:ai, with no fetch', () => {
+  const who = resolveAuthor({
+    userId: 'bot-uuid',
+    botId: 'bot-uuid',
+    botName: 'Triplanio',
+    // Even if a stale row or profile leaked in, the bot branch wins first.
+    nameSnapshot: 'stale',
+    profiles: { 'bot-uuid': { id: 'bot-uuid', full_name: 'X', is_deleted: true } },
+    ...opts,
+  });
+  assert.equal(who.name, 'Triplanio');
+  assert.equal(who.kind, 'ai');
+  assert.equal(who.photo, null);
+  assert.equal(who.deleted, false);
+});
+
+test('bot branch is inert for a non-bot author', () => {
+  const who = resolveAuthor({
+    userId: 'u1',
+    botId: 'bot-uuid',
+    botName: 'Triplanio',
+    profiles: { u1: { id: 'u1', full_name: 'Pavel', avatar_url: 'a.png', email: 'p@e.com', is_deleted: false } },
+    ...opts,
+  });
+  assert.equal(who.name, 'Pavel');
+  assert.equal(who.kind, undefined);
+});
+
+test('no botId means the bot branch never fires', () => {
+  const who = resolveAuthor({ userId: 'bot-uuid', botName: 'Triplanio', profiles: {}, members: [], ...opts });
+  assert.equal(who.name, DELETED); // falls through to the caller fallback
+  assert.notEqual(who.kind, 'ai');
+});
+
+// ── resolveOwnerName — one helper for the "PRO by {owner}" copy ───────────────
+
+test('resolveOwnerName resolves the owner through the live profile', () => {
+  const name = resolveOwnerName({
+    trip: { created_by: 'o1' },
+    members: [{ id: 'm1', user_id: 'o1', role: 'owner', user_full_name: 'Snapshot' }],
+    profiles: { o1: { id: 'o1', full_name: 'Live Owner', email: 'o@e.com', is_deleted: false } },
+    ...opts,
+  });
+  assert.equal(name, 'Live Owner');
+});
+
+test('resolveOwnerName falls back to the snapshot with no profiles', () => {
+  const name = resolveOwnerName({
+    trip: { created_by: 'o1' },
+    members: [{ id: 'm1', user_id: 'o1', role: 'owner', user_full_name: 'Snapshot Owner' }],
+  });
+  assert.equal(name, 'Snapshot Owner');
+});
+
+test('resolveOwnerName returns empty string when there is no owner', () => {
+  assert.equal(resolveOwnerName({ trip: {}, members: [] }), '');
+  assert.equal(resolveOwnerName(), '');
 });
 
 test('resolveMembers keeps id + role and carries the resolved identity', () => {

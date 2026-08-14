@@ -1,6 +1,6 @@
 // Deterministic string hash (h*31 + charCode, 32-bit). Used for stable
 // color/avatar assignment from a seed. Previously duplicated identically in
-// design/index.jsx (hashStr) and components/UserAvatar.jsx (hashString).
+// design/index.jsx (hashStr) and a former UserAvatar component (hashString).
 export function hashStr(s) {
   let h = 0;
   const str = String(s || '');

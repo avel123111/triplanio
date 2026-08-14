@@ -27,6 +27,7 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { classifyError } from '@/lib/errorText';
+import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
@@ -487,7 +488,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const nav = useNavigate();
   const { openProUpsell } = useProUpsell();
   const isOwner = !!user?.id && user.id === trip?.created_by;
-  const ownerName = members.find(m => m.user_id === trip?.created_by)?.user_full_name || '';
+  const ownerName = resolveOwnerName({ trip, members, selfUser: user, deletedLabel: t('common.deleted_user') });
   const onProRefusal = () => openProUpsell({
     mode: isOwner ? 'upgrade' : 'info',
     feature: t('budget.title'),

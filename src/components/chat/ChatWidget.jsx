@@ -20,9 +20,8 @@ import { AvatarStack, EmptyState, IconBtn } from '@/design/index';
 import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from './ChatStream';
 import ChatComposer from './ChatComposer';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 
-export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {
+export default function ChatWidget({ tripId, members = [], tripTitle, ownerId, profiles = {} }) {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
@@ -71,10 +70,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
   }, [open, chatId, user?.id]);
 
-  // ── Display names ── include the owner: they usually have NO trip_members
-  // row, so without this the owner's name/avatar never resolve in the chat.
-  const profileIds = [...members.map((m) => m.user_id), ownerId].filter(Boolean);
-  const profiles = useUserProfiles(profileIds, tripId);
+  // ── Display names ── from the ONE profile bundle shipped with the trip
+  // content (getTripDetails, owner included), handed down by TripView — same
+  // source the full chat lens uses, so the two never drift.
 
   // ── Thinking state ── server state, same as the lens (see useChatSend).
   const isThinking = isAiThinking(msgs);

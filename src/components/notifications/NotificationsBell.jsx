@@ -110,7 +110,7 @@ export default function NotificationsBell() {
                 pending={respondInvite.isPending}
                 onRespond={(action) => {
                   if (!n.read) markOneRead.mutate(n.id);
-                  respondInvite.mutate({ memberId: n.trip_member_id, action });
+                  respondInvite.mutate({ memberId: n.trip_member_id, tripId: n.trip_id, action });
                 }}
                 onMarkRead={() => { if (!n.read) markOneRead.mutate(n.id); }}
                 onOpenTrip={() => { setOpen(false); }}

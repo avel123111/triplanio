@@ -95,8 +95,9 @@ export const TRIP_DOCUMENT: ResourceSpec = {
       requires: ['editor'],
       loadTarget: true,
       // Построчно: личный док удаляет только его автор; общий — любой редактор.
+      // `actor` теперь ПОЛНЫЙ `{id,email}` (TRIP-409) — владение сверяем по `actor.id`.
       guardRow: (row, actor) =>
-        row.visibility === 'private' && row.created_by !== actor
+        row.visibility === 'private' && row.created_by !== actor.id
           ? forbid('DOC_PRIVATE_NOT_OWNER', 'A private document can be removed only by its owner')
           : null,
     },

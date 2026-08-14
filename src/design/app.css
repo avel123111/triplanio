@@ -2361,10 +2361,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .pro-up--inline .btn { width: 100%; }
 }
 .badge--success { background: var(--success-soft); color: var(--success); }
+/* orphan-exempt: badge--warning — эмитится <Badge variant="warning"> композицией
+   badge--${variant} (RoleBadge, роль «Владелец»); литерала в разметке нет по построению (TRIP-409) */
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--brand-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
+/* orphan-exempt: badge--outline — эмитится <Badge variant="outline"> композицией
+   badge--${variant} (RoleBadge, роль «Наблюдатель»); литерала в разметке нет по построению (TRIP-409) */
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 
 /* Severity (Lumo .sev — soft plate with a tinted icon chip) */
@@ -2428,7 +2432,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 .avatar--lg { width: 36px; height: 36px; }
 .avatar--sm { width: 22px; height: 22px; }
-.avatar--ai { background: var(--ai-gradient) !important; }
+/* visual-diff-exempt: .avatar--ai background — перенос робота ассистента из
+   TriplanioAvatar в <Avatar kind="ai">: сохраняем ЖИВОЙ вид бота (он рисовался
+   на --assistant-grad), а не прежний неиспользованный --ai-gradient. Апрув Pavel. */
+.avatar--ai { background: var(--assistant-grad) !important; }
 /* Аватар БЕЗ картинки - один скин на оба случая (инициалы и удалённый
    аккаунт), объявлен один раз. Два имени тут не дубль, а настоящая вариация:
    различает их ровно пунктирная рамка, и она объявлена отдельной строкой -
