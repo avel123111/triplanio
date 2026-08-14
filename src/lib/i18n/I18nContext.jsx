@@ -5,7 +5,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { toast } from '@/components/ui/use-toast';
 import { hasLang, loadLocale } from './dictionary';
-import { LANGUAGES, localeTag } from './translations';
+import { LANGUAGES, LANG_STORAGE_KEY, detectLandingLang, localeTag } from './translations';
 import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
@@ -68,18 +68,14 @@ function lookup(nsDict, key) {
   return rec ? rec[key.slice(dot + 1)] : undefined;
 }
 
-const STORAGE_KEY = 'travel-planner-lang';
 const UNITS_STORAGE_KEY = 'travel-planner-units';
 const UNIT_SYSTEMS = ['metric', 'imperial'];
 
 function detectInitialLang(user) {
+  // A signed-in user's saved language wins; otherwise the landing language
+  // (stored choice → browser → 'en'), shared with AuthContext via translations.js.
   if (user?.language && hasLang(user.language)) return user.language;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && hasLang(stored)) return stored;
-  } catch (e) { /* ignore */ }
-  const browser = (typeof navigator !== 'undefined' ? navigator.language : 'ru').slice(0, 2);
-  return hasLang(browser) ? browser : 'en';
+  return detectLandingLang();
 }
 
 // Distance unit system. Authoritative source = users.unit_system once signed in,
@@ -207,7 +203,7 @@ export function I18nProvider({ children }) {
     if (!hasLang(newLang)) return;
     await activate(newLang);
     setLangState(newLang);
-    try { localStorage.setItem(STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(LANG_STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
     await persistProfile({ language: newLang });
   }, [activate, persistProfile]);
 

@@ -2312,6 +2312,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_user_profile: {
+        Args: { p_actor: string; p_language: string; p_marks: Json }
+        Returns: Json
+      }
       daitch_mokotoff: { Args: { "": string }; Returns: string[] }
       dmetaphone: { Args: { "": string }; Returns: string }
       dmetaphone_alt: { Args: { "": string }; Returns: string }

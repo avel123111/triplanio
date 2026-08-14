@@ -89,30 +89,38 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
       }
     }
 
-    if (existing) {
-      // Activate a pending/declined/offline row. The "a link never downgrades an
-      // existing invite" rule lives in ./redeemRole.ts as a pure function, so a
-      // test can pin it (TRIP-274 Ф1.4).
-      const keepRole = resolveRedeemRole(existing.role, link.role);
-      await supabaseAdmin.from('trip_members').update({
-        status: 'active',
-        role: keepRole,
-        accepted_at: new Date().toISOString(),
-        user_full_name: callerName,
-        user_id: user.id,
-      }).eq('id', existing.id);
-    } else {
-      await supabaseAdmin.from('trip_members').insert({
-        trip_id: trip.id,
-        invite_email: user.email ?? null,
-        user_id: user.id,
-        user_full_name: callerName,
-        role: link.role,
-        status: 'active',
-        accepted_at: new Date().toISOString(),
-        invited_by: link.created_by,
-        created_by: link.created_by,
-      });
+    // Активация/вставка ставит `user_id` — четвёртый писатель под membership-UNIQUE
+    // (trip_id,user_id) (TRIP-411). Find-order (сначала по user_id) обычно не даёт
+    // дубль, но гонка мимо снапшота SELECT дала бы `unique_violation`. Ошибку
+    // ПРОВЕРЯЕМ явно (раньше молча глоталась): 23505 = актор уже участник (не
+    // ошибка, он в трипе) → alreadyMember; прочее — инфра-сбой наверх (500).
+    const write = existing
+      ? await supabaseAdmin.from('trip_members').update({
+          // Activate a pending/declined/offline row. The "a link never downgrades
+          // an existing invite" rule lives in ./redeemRole.ts as a pure function,
+          // so a test can pin it (TRIP-274 Ф1.4).
+          status: 'active',
+          role: resolveRedeemRole(existing.role, link.role),
+          accepted_at: new Date().toISOString(),
+          user_full_name: callerName,
+          user_id: user.id,
+        }).eq('id', existing.id)
+      : await supabaseAdmin.from('trip_members').insert({
+          trip_id: trip.id,
+          invite_email: user.email ?? null,
+          user_id: user.id,
+          user_full_name: callerName,
+          role: link.role,
+          status: 'active',
+          accepted_at: new Date().toISOString(),
+          invited_by: link.created_by,
+          created_by: link.created_by,
+        });
+    if (write.error) {
+      if (write.error.code === '23505') {
+        return Response.json({ ok: true, tripId: trip.id, alreadyMember: true }, { headers: corsHeaders });
+      }
+      throw write.error;
     }
 
     // Joined successfully -> drop any stale block for this user on this trip.
