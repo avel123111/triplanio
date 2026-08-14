@@ -16,13 +16,13 @@ import React from 'react';
 //
 // ★ ЗАГОЛОВОК/ПОДПИСЬ — канон текста (.t-strong/.t-meta + .muted), не свои классы.
 /** @typedef {'raised'|'select'|'divider'|'compact'} ListRowVariant */
-/**
- * @param {{
- *   lead?: any, title?: any, sub?: any, trail?: any, variant?: ListRowVariant,
- *   onClick?: any, selected?: boolean, className?: string, children?: any,
- * } & Record<string, any>} p
- */
 export const ListRow = React.forwardRef(
+  /**
+   * @param {{
+   *   lead?: any, title?: any, sub?: any, trail?: any, variant?: ListRowVariant,
+   *   onClick?: any, selected?: boolean, className?: string, children?: any,
+   * } & Record<string, any>} p
+   */
   ({ lead, title, sub, trail, variant, onClick, selected, className = "", children, ...rest }, ref) => {
     const clickable = !!onClick;
     const El = /** @type {any} */ (clickable ? "button" : "div");

@@ -347,7 +347,7 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
 );
 
 // ----- Badge -----
-/** @param {{ variant?: string, icon?: string, children?: any, style?: any }} p */
+/** @param {{ variant?: string, size?: string, icon?: string, children?: any, style?: any }} p */
 export const Badge = ({ variant = "", size, icon, children, style }) => (
   <span className={`badge${variant ? " badge--" + variant : ""}${size ? " badge--" + size : ""}`} style={style}>
     {icon && <Icon name={icon} size={11} />}

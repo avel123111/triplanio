@@ -15,15 +15,15 @@ import React from 'react';
 // переиспользуем, а не заточен под один экран.
 //
 // ★ БАЗА = `<div>`: остаток пропов (`data-*`/`aria-*`/`id`) уезжает на носитель.
-/**
- * @param {React.ComponentPropsWithoutRef<'div'> & {
- *   title?: any,
- *   subtitle?: any,
- *   actions?: any,
- *   children?: any,
- * }} p
- */
 export const PageHead = React.forwardRef(
+  /**
+   * @param {React.ComponentPropsWithoutRef<'div'> & {
+   *   title?: any,
+   *   subtitle?: any,
+   *   actions?: any,
+   *   children?: any,
+   * }} p
+   */
   ({ title, subtitle, actions, className = "", children, ...rest }, ref) => (
     <div
       ref={ref}

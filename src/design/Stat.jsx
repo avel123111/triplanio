@@ -16,13 +16,13 @@ import { Tile } from './Tile';
 // ★ ПОДПИСИ — канон текста (`.t-label`/`.t-meta` + утилита `.muted`), не свои
 // классы: своё у stat только раскладка и тон.
 /** @typedef {'brand'|'activity'|'transfer'} StatTone */
-/**
- * @param {{
- *   icon?: string, tone?: StatTone, label?: any, value?: any, sub?: any,
- *   onClick?: any, className?: string, children?: any,
- * } & Record<string, any>} p
- */
 export const Stat = React.forwardRef(
+  /**
+   * @param {{
+   *   icon?: string, tone?: StatTone, label?: any, value?: any, sub?: any,
+   *   onClick?: any, className?: string, children?: any,
+   * } & Record<string, any>} p
+   */
   ({ icon, tone, label, value, sub, onClick, className = "", children, ...rest }, ref) => {
     const clickable = !!onClick;
     const El = /** @type {any} */ (clickable ? "button" : "div");
