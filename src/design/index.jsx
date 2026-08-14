@@ -586,16 +586,14 @@ export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 //      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +
 //      window.__openModal stack has been removed; every modal in the app now
 //      runs on the same `ui/dialog` Dialog/DialogContent. ----
-// iconTone swaps the header-icon tint to an existing Lumo event token set
-// (default = brand). Add tones here as needed — no new tokens introduced.
-const DLG_ICON_TONES = {
-  activity: { bg: 'var(--ev-activity-soft)', fg: 'var(--ev-activity-ink)' },
-};
+// iconTone swaps the header-icon tint to an existing tile tone (default = brand).
+// Whitelist the tones the header supports — an unknown value falls back to brand.
+const DLG_ICON_TONES = { activity: 'activity' };
 /** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
   const t = useT();
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
-  const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
+  const toneClass = `tile--${DLG_ICON_TONES[iconTone] || 'brand'}`;
   return (
     <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       {/* a11y contract lives HERE — the one wrapper every app dialog uses. The
@@ -607,11 +605,10 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
         <div className="dlg__head">
           {icon && (
             /* Геометрия - примитив .tile (34px, значок 17px = дефолт лестницы;
-               было 36px руками, а ступень --md и есть полоса 32-36). Тон пока
-               остаётся данными на элементе, как у Severity/EmptyState выше:
-               системным классом он станет, когда у .tile--* появится тон
-               события - сегодняшний набор тонов цветов события не знает. */
-            <div className="tile" style={{ background: tone.bg, color: tone.fg }}>
+               было 36px руками, а ступень --md и есть полоса 32-36). Тон - класс
+               союза тонов плитки: `.tile--activity` завёлся в TRIP-350, инлайн
+               ушёл. */
+            <div className={`tile ${toneClass}`}>
               <Icon name={icon} size={17} />
             </div>
           )}

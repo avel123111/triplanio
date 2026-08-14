@@ -2297,6 +2297,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      copy_trip: { Args: { p_actor: string; p_source: string }; Returns: Json }
       count_active_owned_trips: { Args: { p_uid: string }; Returns: number }
       create_trip_invite_link: {
         Args: { p_actor: string; p_role: string; p_trip: string }
@@ -2315,6 +2316,10 @@ export type Database = {
       dmetaphone: { Args: { "": string }; Returns: string }
       dmetaphone_alt: { Args: { "": string }; Returns: string }
       ensure_trip_budget: { Args: { p_trip_id: string }; Returns: undefined }
+      ensure_trip_share_token: {
+        Args: { p_actor: string; p_trip: string }
+        Returns: Json
+      }
       finish_ai_run: {
         Args: {
           p_bot_user_id?: string
@@ -2376,6 +2381,7 @@ export type Database = {
         }
         Returns: Json
       }
+      is_pro_addon: { Args: { p_key: string }; Returns: boolean }
       is_trip_creator: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_participant: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_pro: { Args: { p_trip_id: string }; Returns: boolean }
@@ -2564,6 +2570,15 @@ export type Database = {
       tg_reminders_undelivered_watchdog: { Args: never; Returns: undefined }
       translit_ru_lat: { Args: { s: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
+      update_trip_settings: {
+        Args: {
+          p_actor: string
+          p_details_patch: Json
+          p_fields: Json
+          p_trip: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

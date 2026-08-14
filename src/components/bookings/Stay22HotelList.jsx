@@ -218,15 +218,15 @@ export default function Stay22HotelList({
           <div className="field__label">{t('fork.f_guests_rooms')}</div>
           <div className="grid grid--2 grid--g4">
             <div className="s22f-gcard">
-              <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
+              <span className="s22f-gcard__l t-label">{t('fork.f_adults_t')}</span>
               <GuestStepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
             </div>
             <div className="s22f-gcard">
-              <span className="s22f-gcard__l t-ui">{t('fork.f_children_t')}</span>
+              <span className="s22f-gcard__l t-label">{t('fork.f_children_t')}</span>
               <GuestStepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
             </div>
             <div className="s22f-gcard">
-              <span className="s22f-gcard__l t-ui">{t('fork.f_rooms_t')}</span>
+              <span className="s22f-gcard__l t-label">{t('fork.f_rooms_t')}</span>
               <GuestStepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
             </div>
           </div>

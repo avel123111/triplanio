@@ -85,7 +85,7 @@ export default function NotificationsBell() {
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
-          <div className="t-ui grow">{t('notif.title')}</div>
+          <div className="t-subheading grow">{t('notif.title')}</div>
           {unread > 0 && (
             <Btn variant="link" onClick={() => markAllRead.mutate()}>
               {t('notif.mark_all_read')}

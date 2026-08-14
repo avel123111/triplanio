@@ -394,7 +394,7 @@ function TelegramSection({ tripId }) {
             <Icon name="telegram" size={17} />
           </div>
           <Grow fit>
-            <div className="t-ui">{tgName(a)}</div>
+            <div className="t-subheading">{tgName(a)}</div>
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
@@ -438,7 +438,7 @@ function ApproverRow({ member, profiles, locked }) {
     <Row>
       <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
       <Grow>
-        <div className="t-ui">{who.name}</div>
+        <div className="t-subheading">{who.name}</div>
         <div className="muted t-meta">{roleLabel}</div>
       </Grow>
       {locked
@@ -542,10 +542,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !bookingWarnings;
     setBusyToggle('booking_warnings');
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, display: { booking_warnings: next } },
     });
-    if (error || !data?.ok) {
+    if (error) {
       refusalToast(code);
     } else {
       setBookingWarnings(next); // reflect only after the server confirms
@@ -563,10 +563,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !chatWidget;
     setBusyToggle('chat_widget');
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, display: { chat_widget: next } },
     });
-    if (error || !data?.ok) {
+    if (error) {
       refusalToast(code);
     } else {
       setChatWidget(next); // reflect only after the server confirms
@@ -576,7 +576,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   }
 
   // Save identity settings: title, description, notes, cover (gradient/image)
-  // and main currency. All these columns are whitelisted by updateTripSettings
+  // and main currency. All these columns are whitelisted by trip-settings/settings
   // (title/description/cover_image_url/cover_gradient/notes); currency lives
   // under details.main_currency.
   async function saveSettings() {
@@ -597,11 +597,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
     // валюты). Сброс делает СЕРВЕР в той же транзакции — второй клиентской
     // до-записи в trip_budgets больше нет (единая дверь, TRIP-394).
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, fields, main_currency: currency },
     });
     setSaving(false);
-    if (error || !data?.ok) { refusalToast(code, 'settings.save_error2'); return; }
+    if (error) { refusalToast(code, 'settings.save_error2'); return; }
     // Cover replaced/cleared → the previously persisted object is now orphaned.
     // Delete it best-effort, comparing object KEYS (signed-URL tokens differ but
     // the key is stable) so we never delete the key the new cover still uses (TRIP-117).
@@ -650,10 +650,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, addons: nextAddons },
     });
-    if (error || !data?.ok) {
+    if (error) {
       // Единственная ветка, ЗАВИСЯЩАЯ от кода: Pro-отказ открывает апселл, а не
       // тост (kind==='upsell' у classifyError). Читается `code` от invokeFn, не
       // `data.code` - 402 оставляет `data` пустым.
@@ -701,17 +701,18 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
   }
 
-  // Delete trip (owner only). Routed through the deleteTrip edge function so
-  // Telegram teardown + Storage purge run before the irreversible DELETE.
+  // Delete trip (owner only). Routed through the trip-owner/delete seam action;
+  // FK cascade wipes child rows, then Telegram teardown + Storage purge run
+  // best-effort in afterWrite (post-delete).
   async function deleteTrip() {
     if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
 
     // The actual irreversible delete; attached to the LAST confirm shown so its
-    // button carries the spinner while deleteTrip (Telegram teardown + Storage
-    // purge + DELETE) runs.
+    // button carries the spinner while trip-owner/delete (DELETE + best-effort
+    // Telegram teardown + Storage purge) runs.
     const runDelete = async () => {
-      const { data, error, code } = await invokeFn('deleteTrip', { body: { tripId } });
-      if (error || !data?.ok) {
+      const { error, code } = await invokeFn('trip-owner/delete', { body: { tripId } });
+      if (error) {
         // Нейтральный `err.FORBIDDEN` покрывает и «не владелец» на удалении, и
         // отказ правки — отдельной клаузы удаления больше нет (серверный
         // `message` пользователю не показываем НИКОГДА).
@@ -864,7 +865,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <CardHeader title={t('settings.chat_widget_title')} />
               <Row gap="g7">
                 <Grow fit>
-                  <div className="t-ui">{t('settings.chat_widget_label')}</div>
+                  <div className="t-label">{t('settings.chat_widget_label')}</div>
                   <div className="muted t-meta">
                     {t('settings.chat_widget_desc')}
                   </div>

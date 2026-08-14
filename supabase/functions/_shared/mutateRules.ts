@@ -55,6 +55,32 @@ export type Refusal = {
 };
 
 /**
+ * ЕДИНСТВЕННАЯ форма отказа «нет, нужен Pro» — 402 + `sentrySkip` (бизнес-«нет»
+ * не шумит в Sentry). Живёт в ЧИСТОМ модуле, чтобы её мог взять и I/O-гейт
+ * (`proGate.ts` ре-экспортит для `proRefusal`/не-шовных функций), и `mapOutcome`
+ * ресурса-спеки (`tripSettings.ts`) — БЕЗ импорта `proGate.ts` (тот тянет
+ * `http.ts`→`sentry.ts`, а `deno test` идёт без `--allow-env`). Один литерал
+ * 402/PRO_REQUIRED/skip на все рантаймы отказа (анти-дубль TRIP-408). */
+export const PRO_REQUIRED: Refusal = {
+  status: 402,
+  code: 'PRO_REQUIRED',
+  message: 'Pro required',
+  sentrySkip: true,
+};
+
+/**
+ * ЕДИНСТВЕННАЯ форма отказа «лимит трипов исчерпан» — 402 + `sentrySkip` (штатный
+ * бизнес-«нет», вход в апселл, не инцидент). Живёт тут по той же причине, что
+ * `PRO_REQUIRED`: её берёт и I/O-гейт (`checkRequirement('trip_quota')`), и
+ * `mapOutcome` ресурса (`tripShare.copy`) — БЕЗ дубля литерала 402/кода/skip. */
+export const TRIP_LIMIT_REACHED: Refusal = {
+  status: 402,
+  code: 'TRIP_LIMIT_REACHED',
+  message: 'Trip limit reached',
+  sentrySkip: true,
+};
+
+/**
  * Актор запроса, каким его знает шов из JWT: id + email. `guardRow` получает его
  * ЦЕЛИКОМ (не только id), чтобы row-self-проверку можно было выразить по email
  * (`respond` владеет инвайтом либо по `user_id`, либо по `invite_email`) —
@@ -379,6 +405,10 @@ export function buildPlan(
   const scoped = { [scopeCol]: ctx.scopeValue };
 
   if (action.op === 'delete') {
+    // Синглтон на скоуп: строку адресует сам скоуп (`trips` по `id`), id не нужен
+    // и не принимается — симметрия с upsert+`targetBy:'scope'` ниже. Любой
+    // «удали строку-по-скоупу» (trip-owner/delete: удаление самого трипа, TRIP-416).
+    if (action.targetBy === 'scope') return { op: 'delete', table, match: { ...scoped } };
     if (!ctx.targetId) throw new Error(`${resource.name}: delete requires a target id`);
     return { op: 'delete', table, match: { id: ctx.targetId, ...scoped } };
   }
@@ -421,6 +451,9 @@ import { INBOX } from './resources/inbox.ts';
 import { TRIP_MEMBER } from './resources/tripMember.ts';
 import { TRIP_MEMBER_SELF } from './resources/tripMemberSelf.ts';
 import { TRIP_INVITE_LINK } from './resources/tripInviteLink.ts';
+import { TRIP_SETTINGS } from './resources/tripSettings.ts';
+import { TRIP_OWNER } from './resources/tripOwner.ts';
+import { TRIP_SHARE } from './resources/tripShare.ts';
 
 /**
  * Все ресурсы записи. Реестр существует не ради диспетчеризации (её делает сама
@@ -440,6 +473,9 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   [TRIP_MEMBER.name]: TRIP_MEMBER,
   [TRIP_MEMBER_SELF.name]: TRIP_MEMBER_SELF,
   [TRIP_INVITE_LINK.name]: TRIP_INVITE_LINK,
+  [TRIP_SETTINGS.name]: TRIP_SETTINGS,
+  [TRIP_OWNER.name]: TRIP_OWNER,
+  [TRIP_SHARE.name]: TRIP_SHARE,
 };
 
 /**

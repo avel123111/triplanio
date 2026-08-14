@@ -159,7 +159,7 @@ function Problem() {
               ))}
             </div>
             <div className="collage__card collage__card--notes">
-              <div className="t-ui" style={{marginBottom:8}}>{t('landing.problem.notes_title')}</div>
+              <div className="t-label" style={{marginBottom:8}}>{t('landing.problem.notes_title')}</div>
               <div className="t-body" style={{color:'#7c6b3a'}} dangerouslySetInnerHTML={{__html:t('landing.problem.notes_body_html')}}/>
             </div>
             <div className="collage__card collage__card--tabs">

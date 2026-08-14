@@ -17,6 +17,7 @@ import type { Actor } from './mutateRules.ts';
 import { emit } from './emit.ts';
 import { purgePrivateDocsForMember } from './personalDocsTeardown.ts';
 import { disconnectTripTelegram } from './telegramTeardown.ts';
+import { purgeTripBucket } from './tripStoragePurge.ts';
 import { emitTripReached2 } from './analytics.ts';
 import { respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
 
@@ -55,6 +56,26 @@ async function teardownMember(db: SupabaseClient, tripId: unknown, userId: unkno
  * afterWrite» (декларация — здесь, в файле ресурса-эффектов, не на чистом спеке).
  */
 export const AFTER_WRITE: Record<string, AfterWrite> = {
+  // Трип удалён владельцем (TRIP-416). Внешняя побочка, которую FK-каскад не
+  // достаёт, ПОСЛЕ удаления строки — обе best-effort:
+  //   1. Telegram-teardown: FK `trip_telegram_integrations.trip_id` = ON DELETE
+  //      CASCADE, поэтому строки привязок каскад снял сам; вызов оставлен
+  //      forward-домом под будущий шаг вызова Telegram API (снимет 0 строк — no-op).
+  //   2. Storage-purge префикса `<tripId>/` в бакете `trips` (обложка включительно).
+  // scopeValue = tripId (resolveScope по body.tripId).
+  'trip-owner/delete': async ({ scopeValue, db }) => {
+    try {
+      await disconnectTripTelegram(db, { tripId: scopeValue });
+    } catch (e) {
+      console.error('afterWrite: trip-owner/delete telegram teardown failed', e);
+    }
+    try {
+      await purgeTripBucket(db, scopeValue);
+    } catch (e) {
+      console.error('afterWrite: trip-owner/delete storage purge failed', e);
+    }
+  },
+
   // Приглашение создано/реактивировано (declined→pending) — n8n шлёт нотиф+email.
   'trip-member/invite': async ({ result, scopeValue, actor }) => {
     const member = asRow(result);

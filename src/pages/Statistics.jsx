@@ -19,6 +19,9 @@ import {
 import StatsMap from '@/components/views/StatsMap';
 import VisitPanel from '@/components/stats/VisitPanel';
 import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
+import { useMobileNav } from '@/components/MobileBottomNav';
+import { useCreateTrip } from '@/components/create/CreateTripProvider';
+import { useIsPhone } from '@/hooks/use-mobile';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
@@ -146,6 +149,21 @@ export default function Statistics() {
   const [editingPoint, setEditingPoint] = useState(null);
   const openAdd = useCallback(() => { setEditingPoint(null); setAddOpen(true); }, []);
   const openEditManual = useCallback((p) => { setPanel(null); setEditingPoint(p); setAddOpen(true); }, []);
+
+  // «+»-меню боттом-нава на этом экране (не-трип, app-вариант дока): добавить
+  // посещение или создать трип. Дескрипторы едут в общий канал `addActions`,
+  // диалог AddPlaceDialog остаётся на экране; создание трипа — общий openChoice.
+  const { setAddActions } = useMobileNav();
+  const { openChoice } = useCreateTrip();
+  const isPhone = useIsPhone();
+  const addActions = useMemo(() => [
+    { id: 'place', icon: 'pin', tone: 'success', labelKey: 'stats.add_place', onSelect: openAdd },
+    { id: 'newtrip', icon: 'plane', tone: 'ai', labelKey: 'trips.new', onSelect: openChoice },
+  ], [openAdd, openChoice]);
+  useEffect(() => {
+    setAddActions(addActions);
+    return () => setAddActions(null);
+  }, [setAddActions, addActions]);
 
   // Dominant visit type per country — drives the map legend tally only (the
   // country/city lists show real flags, no tone tint).
@@ -339,7 +357,9 @@ export default function Statistics() {
                   ]}
                 />
               )}
-              <Btn variant="soft" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
+              {/* На телефоне «Добавить место» уезжает в боттом-нав «+»; десктоп
+                  держит кнопку в шапке (там дока нет). */}
+              {!isPhone && <Btn variant="soft" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>}
             </div>
           </div>
         </div>

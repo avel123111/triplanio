@@ -145,7 +145,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
                 усиленная рамка (--line-strong) остаётся остаточным тинтом инлайном. */}
             <Card radius="md" pad="none" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderColor: 'var(--line-strong)' }}>
               <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
-              <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
+              <b className="t-subheading" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
               <Btn variant="link" onClick={() => setPicking(true)}>{t('stats.change_city')}</Btn>
             </Card>
           </Field>

@@ -19,7 +19,7 @@
 .cm-ul > li + li, .cm-ol > li + li { margin-top: 2px; }
 
 /* headings — was: font-semibold text-base/text-sm mt-1 mb-0.5.
-   Typography now on the .t-label (.cm-h) / .t-ui (.cm-h3) canons (co-selectors in app.css). */
+   Typography now on the .t-label canon (.cm-h / .cm-h3 co-selectors in app.css). */
 .cm-h { margin: 4px 0 2px; }
 .cm-h3 { margin: 4px 0 2px; }
 

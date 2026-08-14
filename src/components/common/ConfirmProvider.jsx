@@ -17,7 +17,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
  *   // Use this whenever the confirmed action calls a slow edge function so the
  *   // user gets in-flight feedback instead of a silently-closing dialog:
  *   await confirm({ title: t('…'), variant: 'destructive', onConfirm: async () => {
- *     const { error } = await supabase.functions.invoke('deleteTrip', { body });
+ *     const { error } = await invokeFn('trip-owner/delete', { body });
  *     if (error) { toast(…); return; }  // surface your own error; then it closes
  *     nav('/trips');
  *   }});

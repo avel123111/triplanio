@@ -126,7 +126,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId, stat
           {/* A checkbox, not a Toggle: a draft filter that only takes effect on
               "Apply" (applyDraft), so it must not look like a flipped setting. */}
           <Checkbox
-            className="t-ui"
+            className="t-label"
             checked={pending.freeCancel}
             onChange={(v) => setDraft('freeCancel', v)}
             label={t('fork.activities_free_cancel')}

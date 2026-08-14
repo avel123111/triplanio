@@ -2,6 +2,7 @@
 import React from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Icon } from '@/design/icons';
+import { Tile } from '@/design/Tile';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet } from '@/components/ui/Sheet';
 
@@ -14,9 +15,14 @@ import { Sheet } from '@/components/ui/Sheet';
  * once. Closes on Esc / outside-click; keyboard-navigable on desktop.
  *
  * items: array of
- *   { icon?, label, danger?, disabled?, onSelect }  — an action row
- *   { separator: true }                              — a divider
+ *   { icon?, label, tone?, danger?, disabled?, onSelect }  — an action row
+ *   { separator: true }                                    — a divider
  * Falsy entries are ignored, so callers can build the list conditionally.
+ *
+ * `tone` (an event/role tile tone) upgrades the mobile-sheet row to a colored
+ * leading `<Tile>` + trailing chevron (`.sheet-row--tile`) — used by the bottom-nav
+ * "+" add menu. Without `tone` the row stays the bare icon+label form. Desktop
+ * (`.mi`) ignores `tone`; the "+" menu only ever renders on mobile.
  *
  *   <ActionMenu
  *     title="Actions"
@@ -49,12 +55,15 @@ export function ActionMenu({ trigger, items = [], align = 'end', side = 'bottom'
             <button
               key={i}
               type="button"
-              className={'sheet-row' + (it.danger ? ' sheet-row--danger' : '')}
+              className={'sheet-row' + (it.tone ? ' sheet-row--tile' : '') + (it.danger ? ' sheet-row--danger' : '')}
               disabled={it.disabled}
               onClick={() => { setOpen(false); it.onSelect?.(); }}
             >
-              {it.icon ? <Icon name={it.icon} size={18} /> : null}
+              {it.tone
+                ? <Tile tone={it.tone} icon={it.icon} />
+                : (it.icon ? <Icon name={it.icon} size={18} /> : null)}
               <span className="grow">{it.label}</span>
+              {it.tone ? <Icon name="chev" size={18} /> : null}
             </button>
           )))}
         </Sheet>

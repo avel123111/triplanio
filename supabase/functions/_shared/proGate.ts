@@ -19,29 +19,20 @@
  * 0055): новую формулу Pro здесь не заводим.
  */
 
-import { unwrapDbResult } from './mutateRules.ts';
+import { PRO_REQUIRED, unwrapDbResult } from './mutateRules.ts';
 import type { Refusal } from './mutateRules.ts';
 import { refusalResponse } from './http.ts';
+
+// PRO_REQUIRED переехал в чистый `mutateRules.ts` (его берут и import-free
+// ресурсы-спеки), здесь — ре-экспорт, чтобы прежние импортёры (`callTriplanioAi`,
+// `parseBookingWithAi`) не менялись. Единый литерал 402/skip на все рантаймы.
+export { PRO_REQUIRED };
 
 /** Минимальная структурная форма клиента БД: только `rpc`, что нужно гейту.
  *  `PromiseLike`, не `Promise`: `supabase-js` возвращает thenable-билдер (есть
  *  `.then`, но не полный Promise), и он структурно подходит под `PromiseLike`. */
 type Admin = {
   rpc: (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
-};
-
-/**
- * ЕДИНСТВЕННАЯ форма отказа «нет, нужен Pro» — 402 + `sentrySkip` (бизнес-«нет»
- * не шумит в Sentry). Отсюда её берёт и `proRefusal` (гейт по `is_trip_pro`), и
- * addon-условные ветки (`callTriplanioAi`/`updateTripSettings`: трип Pro, но
- * конкретный Pro-аддон выключен) — чтобы литерал 402/PRO_REQUIRED/skip не
- * размножался (анти-дубль инвариант TRIP-408). Отдаётся в `refusalResponse`.
- */
-export const PRO_REQUIRED: Refusal = {
-  status: 402,
-  code: 'PRO_REQUIRED',
-  message: 'Pro required',
-  sentrySkip: true,
 };
 
 /**

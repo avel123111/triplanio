@@ -38,6 +38,7 @@ import {
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS,
 } from '@/design/index';
+import { Icon } from '@/design/icons';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
 import './Kit.css';
@@ -47,7 +48,7 @@ const TX = {
   title: 'Витрина дизайн-системы',
   lead: 'Тот же код, что и в приложении: /kit импортирует @/design. Один объект — одна страница; образцы генерируются из карт вариантов компонентов и из живых стилей.',
   canon: 'канон', triage: 'на разборе', unknown: 'нет в каталоге',
-  canonsLabel: '10 канонов', modsLabel: 'модификаторы (комбинируются с каноном)',
+  canonsLabel: '9 канонов', modsLabel: 'модификаторы (комбинируются с каноном)',
   back: '← все объекты',
   theme: 'Тема', themeLight: 'светлая', themeDark: 'тёмная',
   groups: {
@@ -96,7 +97,7 @@ const TX = {
     'col': 'Флекс-колонка: зазор и оси.',
     'grid': 'Сетка: зазор и колонки.',
     'spacing': 'Ступени токена --sp-N линейками (замер из живых стилей).',
-    'typography': '10 текст-стилей .t-* живым текстом.',
+    'typography': '9 текст-стилей .t-* живым текстом.',
     'tokens': 'Имена, объявленные в :root текущей темы (замер).',
   },
   forceLabel: 'Состояние образца (наведение/нажатие/фокус — зеркало под data-force)',
@@ -642,7 +643,12 @@ const RECIPES = {
   'sheet-row': (ctx) => [{
     items: [
       it('sheet-row (база)', <button type="button" className="sheet-row">{TX.sheetNormal}</button>, true),
-      ...ctx.declared.filter((c) => c.startsWith('sheet-row')).map((c) => it(c, <button type="button" className={`sheet-row ${c}`}>{TX.sheetDanger}</button>, true)),
+      ...ctx.declared.filter((c) => c.startsWith('sheet-row') && c !== 'sheet-row--tile').map((c) => it(c, <button type="button" className={`sheet-row ${c}`}>{TX.sheetDanger}</button>, true)),
+      // TRIP-350: строка «+»-меню — ведущая цветная плитка (тон события) + шеврон.
+      // Тон, обычное и disabled состояния (hover/active — CSS-псевдо на самой строке).
+      it('--tile (tone=hotel)', <button type="button" className="sheet-row sheet-row--tile"><Tile tone="hotel" icon="file" /><span className="grow">{TX.sheetNormal}</span><Icon name="chev" size={18} /></button>, true),
+      it('--tile (tone=activity)', <button type="button" className="sheet-row sheet-row--tile"><Tile tone="activity" icon="users" /><span className="grow">{TX.sheetNormal}</span><Icon name="chev" size={18} /></button>, true),
+      it('--tile (disabled)', <button type="button" disabled className="sheet-row sheet-row--tile"><Tile tone="brand" icon="wallet" /><span className="grow">{TX.sheetNormal}</span><Icon name="chev" size={18} /></button>, true),
     ],
   }],
 
@@ -761,7 +767,7 @@ function SpacingSection({ ctx }) {
   );
 }
 
-const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-ui', 't-meta', 't-micro', 't-mono'];
+const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-meta', 't-micro', 't-mono'];
 /* Санкционированные орто-модификаторы канона (TRIP-410): комбинируются с любым
    каноном, НЕ каноны сами по себе. Прежний sans-оверлей удалён (мета-ярус — Geologica).
    `base` — канон, на котором эффект модификатора виден нагляднее. */

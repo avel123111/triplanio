@@ -82,7 +82,6 @@ export default function TripShell({
   onShare,
   onUpgrade,
   onProInfo,
-  onAdd,
   bodyRef,
   loading = false,
   children,
@@ -110,13 +109,13 @@ export default function TripShell({
   // работу, один из них мутируемый глобал. Регистрирует оболочка: у неё на
   // руках и текущая секция, и переход, и открытие меню.
   //
-  // Колбэки держим в ref, а зависимости - только по ЗНАЧЕНИЯМ: вызыватель даёт
-  // свежие стрелки на каждый рендер, и эффект на них перерегистрировал бы док
-  // каждый раз. Сегодня цикла нет (TripView сам этот контекст не читает), но
-  // держаться это будет ровно до первого, кто его прочитает.
-  const navCbs = useRef({ onNavigate, onAdd });
-  navCbs.current = { onNavigate, onAdd };
-  const hasAdd = !!onAdd;
+  // Колбэк держим в ref, а зависимости - только по ЗНАЧЕНИЯМ: вызыватель даёт
+  // свежую стрелку на каждый рендер, и эффект на ней перерегистрировал бы док
+  // каждый раз. «+» ехал этим же каналом (`openAdd`), но с TRIP-350 «+»-меню
+  // питается отдельным `addActions` (экран регистрирует его сам), поэтому здесь
+  // остался только переход между секциями.
+  const navCbs = useRef({ onNavigate });
+  navCbs.current = { onNavigate };
   // Значение флага — ПРИЧИНА (строка), поэтому приводим к булеву, а не сверяем
   // с true: `=== true` тихо вернул бы false на любой живой причине.
   const hidesDock = !!sectionById(section)?.hidesDock;
@@ -129,7 +128,6 @@ export default function TripShell({
       current: section,
       onNavigate: (id) => navCbs.current.onNavigate?.(id),
       openMenu: () => setSideOpen(true),
-      openAdd: hasAdd ? () => navCbs.current.onAdd?.() : null,
       hidesDock,
     };
     setTripNav(mine);
@@ -137,7 +135,7 @@ export default function TripShell({
     // (редактор во втором PR), порядок «размонтировался старый после того, как
     // смонтировался новый» иначе оставил бы док в общем варианте при живом трипе.
     return () => setTripNav((cur) => (cur === mine ? null : cur));
-  }, [setTripNav, section, hasAdd, hidesDock]);
+  }, [setTripNav, section, hidesDock]);
 
   // Дефолтная секция - «вверх» из трипа, любая другая - «вверх» в трип.
   const backTo = section === DEFAULT_SECTION ? '/trips' : `/trip/${tripId}`;
