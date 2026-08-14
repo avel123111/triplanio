@@ -21,7 +21,7 @@ import React from 'react';
  * } & Record<string, any>} p
  */
 export const Donut = React.forwardRef(
-  ({ segments = [], total = 0, center, label, hoveredId, onHover, thickness = 16, className = "", ...rest }, ref) => {
+  ({ segments = [], total = 0, center, label, hoveredId, onHover, thickness = 10, className = "", ...rest }, ref) => {
     const R = 40;
     const C = 2 * Math.PI * R;
     let acc = 0;
@@ -43,7 +43,7 @@ export const Donut = React.forwardRef(
               data-dim={hoveredId && hoveredId !== s.id ? "true" : undefined}
               cx="50" cy="50" r={R} fill="none"
               stroke={s.color}
-              strokeWidth={hoveredId === s.id ? thickness + 4 : thickness}
+              strokeWidth={hoveredId === s.id ? thickness - 3 : thickness}
               strokeDasharray={`${s.arc} ${C - s.arc}`}
               strokeDashoffset={s.offset}
               onMouseEnter={onHover ? () => onHover(s.id) : undefined}
