@@ -34,9 +34,9 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
-  TILE_SIZES, TILE_TONES,
+  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS,
 } from '@/design/index';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
@@ -55,7 +55,7 @@ const TX = {
     scale: 'Шкала отступов', type: 'Типографика', tokens: 'Токены :root',
   },
   titles: {
-    'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
+    'pagehead': 'Шапка экрана', 'stat': 'Плитка-показатель', 'list-row': 'Строка списка', 'donut': 'Диаграмма-кольцо', 'btn': 'Кнопка', 'icon-btn': 'Кнопка-иконка', 'chip': 'Пилюля (Chip)',
     'seg': 'Сегмент-контрол', 'stepper': 'Степпер', 'swatch': 'Свотч',
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
@@ -108,6 +108,10 @@ const TX = {
     parsed: 'Разобрана', locked: 'Заблокирована (Pro)', dragover: 'Перетаскивание (data-dragover)',
   },
   save: 'Сохранить', close: 'Закрыть', placeholder: 'Введите значение',
+  rates: 'Курсы', add: 'Трата',
+  statLabel: 'Всего потрачено', statSub: '10 трат', statTap: 'нажми, чтобы задать',
+  rowTitle: 'Проживание', rowSub: 'Будва · 10 трат',
+  donutTotal: 'всего',
   sample: 'Съешь ещё этих мягких булок · Sphinx of black quartz · 0123456789',
   gapDefault: 'по умолчанию', missing: 'ступени нет — молча даёт значение по умолчанию',
   // Текст образцов — данными (правило 2 этого файла): гард 2d ловит узлы `>текст<`
@@ -244,6 +248,22 @@ const it = (name, node, full) => ({ name, node, full });
 const glyph = 'Ag';
 
 const RECIPES = {
+  pagehead: () => [
+    { items: [it('title + actions', <PageHead title="Бюджет" actions={<><Btn variant="secondary" icon="arrowSwap">{TX.rates}</Btn><Btn variant="primary" icon="plus">{TX.add}</Btn></>} />, true)] },
+    { label: 'title + subtitle', items: [it('subtitle', <PageHead title="Бюджет" subtitle="12 трат · 3 категории" />, true)] },
+    { label: 'только title', items: [it('title', <PageHead title="Заголовок" />, true)] },
+  ],
+  stat: () => [
+    { label: 'tone (карта STAT_TONES)', items: STAT_TONES.map((t) => it(`tone="${t}"`, <Stat tone={t} icon={t === 'transfer' ? 'arrowSwap' : t === 'activity' ? 'user' : 'wallet'} label={TX.statLabel} value="724,9 тыс ₽" sub={TX.statSub} />, true)) },
+    { items: [it('clickable (onClick)', <Stat tone="transfer" icon="arrowSwap" label={TX.rates} value="3 валюты" sub={TX.statTap} onClick={() => {}} />, true)] },
+  ],
+  donut: () => [
+    { items: [it('segments + center', <Donut total={100} center="₽724,9т" label={TX.donutTotal} segments={[{ id: 'a', color: 'var(--brand)', value: 55 }, { id: 'b', color: 'var(--ev-transfer)', value: 25 }, { id: 'c', color: 'var(--muted-2)', value: 20 }]} />, true)] },
+  ],
+  'list-row': () => [
+    { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={<Tile size="xl" icon="bed" />} title={TX.rowTitle} sub={TX.rowSub} trail={<span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' ? () => {} : undefined} />, true)) },
+    { items: [it('selected (on)', <ListRow variant="select" selected lead={<Tile size="xl" icon="bed" />} title={TX.rowTitle} sub={TX.rowSub} trail={<span className="t-strong">₽1 234</span>} onClick={() => {}} />, true)] },
+  ],
   btn: () => [
     { items: [it('force', <ForceHarness kind="btn" states={['default', 'hover', 'active', 'focus', 'disabled', 'loading']} render={(s) => <Btn variant="primary" disabled={s === 'disabled'} loading={s === 'loading'}>{TX.save}</Btn>} />, true)] },
     { label: 'variant (карта BTN_VARIANTS)', items: BTN_VARIANTS.map((v) => it(`variant="${v}"`, <Btn variant={v}>{v}</Btn>)) },

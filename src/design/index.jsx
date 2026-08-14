@@ -39,6 +39,10 @@ import { FieldRequired } from './Input';
 // `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
 // (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
 export { Row, Col, Grid, Trunc, Grow } from './Layout';
+export { PageHead } from './PageHead';
+export { Stat, STAT_TONES } from './Stat';
+export { ListRow, LISTROW_VARIANTS } from './ListRow';
+export { Donut } from './Donut';
 // Кнопка-иконка — своим модулем по той же причине: крестик тоста живёт в
 // `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
 // оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
@@ -344,8 +348,8 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
 
 // ----- Badge -----
 /** @param {{ variant?: string, icon?: string, children?: any, style?: any }} p */
-export const Badge = ({ variant = "", icon, children, style }) => (
-  <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
+export const Badge = ({ variant = "", size, icon, children, style }) => (
+  <span className={`badge${variant ? " badge--" + variant : ""}${size ? " badge--" + size : ""}`} style={style}>
     {icon && <Icon name={icon} size={11} />}
     {children}
   </span>
