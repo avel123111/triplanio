@@ -104,8 +104,13 @@ export const TABLES = {
   // двумя операциями с клиента. Теперь клиент только читает.
   chat_messages:     { tier: 'B', write: 'send_chat_message via edge trip-chat (service_role)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296 закрыл прямой DML (REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop политик); TRIP-408 увёл и сам RPC за шов — EXECUTE у authenticated снят, send_chat_message(p_trip,p_actor) зовёт только edge trip-chat (op:rpc, гейт participant+pro). authSelect остаётся (realtime-подписка чата)' },
 
-  // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
-  users:              { tier: 'C', write: 'edge account/profile (service_role) + INSERT authenticated (регистрация, врем.)', anonDml: false, authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: закрыта дверь ПРАВКИ — REVOKE UPDATE (table+поколоночный) и DELETE у authenticated; правка профиля только через edge account/profile под service_role. INSERT+SELECT ПОКА остаются (снимет домен регистрации — там insert().select() профиля), поэтому ярус остаётся C и authDml=true (частичный клиентский DML). per-op authUpdate/authDelete=false — LIVE-2e сверяет, что сняты ПОШТУЧНО; anon без DML (Ф3)' },
+  // users: был ярус C (личное, политики скоупили auth.uid()). TRIP-411 закрыл
+  // домен регистрации полностью — клиентских дверей не осталось, поэтому ярус B
+  // (как user_custom_visits/notifications при полном закрытии: «клиент не пишет
+  // вовсе»). Шаг C двумя слайсами: 400c снял UPDATE/DELETE; 411-слайс1 увёл
+  // создание строки за шов (RPC create_user_profile, service_role); 411-слайс2
+  // снял последние клиентские двери INSERT+SELECT.
+  users:              { tier: 'B', write: 'edge account/register+account/profile via create_user_profile (service_role)', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-411: полное закрытие — клиент не пишет (создание строки → edge account/register, RPC create_user_profile идемпотентный под service_role; правка профиля → account/profile) и не читает (getMe/getUserPlan/… под service_role; фронт .from(users) = ноль после слайса 1). REVOKE INSERT+SELECT FROM authenticated,anon (UPDATE/DELETE сняты 400c); 4 RLS-политики users_*_own удалены ПОСЛЕ revoke, RLS остаётся enabled = deny-all backstop; service_role не тронут. twoDoor users 1→0 — последняя двойная дверь эпика закрыта; LIVE-2e ассертит нулевые клиентские INSERT/SELECT (auth+anon)' },
   // TRIP-402 шаг C: домен статистики закрыт — edge-only. Запись через шов
   // user-place (service_role, scope user_id=actor), чтение статов через RPC
   // get_user_travel_stats(p_actor) под service_role (EXECUTE у authenticated снят
