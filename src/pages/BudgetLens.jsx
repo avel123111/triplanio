@@ -37,7 +37,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 
@@ -550,6 +550,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const [deleteExpense, setDeleteExpense] = useState(null); // null | expense row
   const [categoryModal, setCategoryModal] = useState(null); // null | { existing?: row }
   const [fxOpen, setFxOpen] = useState(false);
+  const [catSheet, setCatSheet] = useState(false); // мобиль: деталь категории в боттом-шите (#4)
 
   // Main display currency: trip settings (default EUR); trip_budgets.currency
   // is a legacy fallback.
@@ -785,6 +786,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           ariaLabel={t('budget.group_by_category')}
           value={grouping}
           onChange={setGrouping}
+          variant={isMobile ? 'fill' : 'auto'}
+          className={isMobile ? 'grow' : ''}
           options={[
             { value: 'category', label: <><Icon name="grid" size={14} />{t('budget.group_by_category')}</> },
             { value: 'city', label: <><Icon name="pin" size={14} />{t('budget.group_by_city')}</> },
@@ -796,73 +799,79 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         )}
       </div>
 
-      {/* ░ DRILLDOWN ░ */}
-      {grouping === 'category' ? (
-        <div className="grid grid--split grid--g7">
-          {/* categories */}
-          <Card>
-            <div className="col col--g2">
-              {cats.map(c => {
-                const active = activeCat?.id === c.id;
-                const empty = c.itemCount === 0;
-                return (
-                  <ListRow key={c.id} variant="select" selected={active}
-                    role="tab" aria-selected={active} onClick={() => setActiveCatId(c.id)}
-                    lead={<span className="tile" style={{ background: c.color + '22', color: c.color }}><Icon name={catIcon(c)} size={17} /></span>}
-                    title={<span className="row row--g4"><span className="trunc">{c.displayName}</span>{c.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</span>}
-                    sub={<>{empty ? t('budget.empty_word') : `${c.itemCount} ${expensesPlural(c.itemCount)}`}{c.missingCount > 0 && <> · <span className="miss">{t('budget.no_rate_count', { n: c.missingCount })}</span></>}</>}
-                    trail={<span className={empty ? 't-strong muted' : 't-strong'}>{money(c.spent, mainCurrency)}</span>}
-                  />
-                );
-              })}
-              {!readOnly && (
-                <Btn variant="dashed" block icon="plus" onClick={openAddCategory}>
-                  {t('budget.add_category')}
-                </Btn>
+      {/* ░ DRILLDOWN ░ (десктоп: список + деталь двумя колонками; мобиль: только
+          список, деталь открывается боттом-шитом по тапу — #4) */}
+      {grouping === 'category' ? (() => {
+        const detailInner = activeCat && (
+          <div className="col col--g6">
+            <div className="row row--g6">
+              <span className="tile tile--xl" style={{ background: activeCat.color + '22', color: activeCat.color }}><Icon name={catIcon(activeCat)} size={22} /></span>
+              <div className="grow--fit">
+                <div className="t-title row row--g4">{activeCat.displayName}{activeCat.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</div>
+                <div className="t-meta muted">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
+              </div>
+              <div className="col col--g1">
+                <div className="t-title">{money(activeCat.spent, mainCurrency)}</div>
+                <div className="t-meta muted">{t('budget.spent_label')}</div>
+              </div>
+              {activeCat.kind === 'custom' && !readOnly && (
+                <Btn variant="secondary" size="sm" icon="edit" ariaLabel={t('visit.change')} onClick={() => openEditCategory(activeCat)} />
               )}
             </div>
-          </Card>
-
-          {/* detail */}
-          {activeCat && (
-            <Card>
-              <div className="col col--g6">
-                <div className="row row--g6">
-                  <span className="tile tile--xl" style={{ background: activeCat.color + '22', color: activeCat.color }}><Icon name={catIcon(activeCat)} size={22} /></span>
-                  <div className="grow--fit">
-                    <div className="t-title row row--g4">{activeCat.displayName}{activeCat.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</div>
-                    <div className="t-meta muted">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
-                  </div>
-                  <div className="col col--g1">
-                    <div className="t-title">{money(activeCat.spent, mainCurrency)}</div>
-                    <div className="t-meta muted">{t('budget.spent_label')}</div>
-                  </div>
-                  {activeCat.kind === 'custom' && !readOnly && (
-                    <Btn variant="secondary" size="sm" icon="edit" ariaLabel={t('visit.change')} onClick={() => openEditCategory(activeCat)} />
+            {activeCat.items.length === 0 ? (
+              <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
+                action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
+            ) : (
+              <div className="col col--g4">
+                {activeCat.items.map(exp => {
+                  const r = conv(exp);
+                  return (
+                    <ExpenseRow key={exp.id} expense={exp} catColor={activeCat.color} catIcon={catIcon(activeCat)}
+                      cityName={cityLabelOf(exp)}
+                      mode="category" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
+                      onOpen={openExpense} />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+        return (
+          <>
+            <div className={isMobile ? '' : 'grid grid--split grid--g7'}>
+              <Card>
+                <div className="col col--g2">
+                  {cats.map(c => {
+                    const active = activeCat?.id === c.id;
+                    const empty = c.itemCount === 0;
+                    return (
+                      <ListRow key={c.id} variant="select" selected={active && !isMobile}
+                        role="tab" aria-selected={active} onClick={() => { setActiveCatId(c.id); if (isMobile) setCatSheet(true); }}
+                        lead={<span className="tile" style={{ background: c.color + '22', color: c.color }}><Icon name={catIcon(c)} size={17} /></span>}
+                        title={<span className="row row--g4"><span className="trunc">{c.displayName}</span>{c.kind === 'custom' && <Badge variant="quiet" size="xs">{t('budget.custom_short')}</Badge>}</span>}
+                        sub={<>{empty ? t('budget.empty_word') : `${c.itemCount} ${expensesPlural(c.itemCount)}`}{c.missingCount > 0 && <> · <span className="miss">{t('budget.no_rate_count', { n: c.missingCount })}</span></>}</>}
+                        trail={<span className={empty ? 't-strong muted' : 't-strong'}>{money(c.spent, mainCurrency)}</span>}
+                      />
+                    );
+                  })}
+                  {!readOnly && (
+                    <Btn variant="dashed" block icon="plus" onClick={openAddCategory}>
+                      {t('budget.add_category')}
+                    </Btn>
                   )}
                 </div>
-                {activeCat.items.length === 0 ? (
-                  <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
-                    action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
-                ) : (
-                  <div className="col col--g4">
-                    {activeCat.items.map(exp => {
-                      const r = conv(exp);
-                      return (
-                        <ExpenseRow key={exp.id} expense={exp} catColor={activeCat.color} catIcon={catIcon(activeCat)}
-                          cityName={cityLabelOf(exp)}
-                          mode="category" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
-                          onOpen={openExpense} />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
-        </div>
-      ) : (
-        <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc}
+              </Card>
+              {!isMobile && activeCat && <Card>{detailInner}</Card>}
+            </div>
+            {isMobile && (
+              <Sheet open={catSheet} onOpenChange={setCatSheet} title={activeCat?.displayName}>
+                {detailInner}
+              </Sheet>
+            )}
+          </>
+        );
+      })() : (
+        <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc} isMobile={isMobile}
           expensesPlural={expensesPlural} onOpen={openExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
 
@@ -876,10 +885,11 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
 // ─── CityGrouping ─────────────────────────────────────────────────────────────
 
-function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onAdd, readOnly }) {
+function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onAdd, readOnly, isMobile }) {
   const { t } = useI18n();
   // A group is keyed by city identity (`id`); `label` is what to show.
   const [activeCityId, setActiveCityId] = useState(cityGroups[0]?.id || '');
+  const [citySheet, setCitySheet] = useState(false); // мобиль: траты города в боттом-шите (#4)
   const cur = cityGroups.find(g => g.id === activeCityId) || cityGroups[0];
 
   if (cityGroups.length === 0) {
@@ -891,49 +901,57 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
   if (!cur) return null;
   const cityLabel = (g) => g.label || t('budget.no_city');
 
-  return (
-    <div className="grid grid--split grid--g7">
-      <Card>
-        <div className="col col--g2">
-          {cityGroups.map(g => {
-            const active = g.id === activeCityId;
-            return (
-              <ListRow key={g.id} variant="select" selected={active}
-                role="tab" aria-selected={active} onClick={() => setActiveCityId(g.id)}
-                lead={<span className="tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={17} /></span>}
-                title={<span className="trunc">{cityLabel(g)}</span>}
-                sub={`${g.items.length} ${expensesPlural(g.items.length)}`}
-                trail={<span className="t-strong">{money(g.total, mainCurrency)}</span>}
-              />
-            );
-          })}
+  const detailInner = (
+    <div className="col col--g6">
+      <div className="row row--g6">
+        <span className="tile tile--xl" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={22} /></span>
+        <div className="grow--fit">
+          <div className="t-title">{cityLabel(cur)}</div>
+          <div className="t-meta muted">{cur.items.length} {expensesPlural(cur.items.length)}</div>
         </div>
-      </Card>
-      <Card>
-        <div className="col col--g6">
-          <div className="row row--g6">
-            <span className="tile tile--xl" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={22} /></span>
-            <div className="grow--fit">
-              <div className="t-title">{cityLabel(cur)}</div>
-              <div className="t-meta muted">{cur.items.length} {expensesPlural(cur.items.length)}</div>
-            </div>
-            <div className="col col--g1">
-              <div className="t-title">{money(cur.total, mainCurrency)}</div>
-              <div className="t-meta muted">{t('budget.spent_label')}</div>
-            </div>
-          </div>
-          <div className="col col--g4">
-            {cur.items.map(it => {
-              const r = conv(it);
+        <div className="col col--g1">
+          <div className="t-title">{money(cur.total, mainCurrency)}</div>
+          <div className="t-meta muted">{t('budget.spent_label')}</div>
+        </div>
+      </div>
+      <div className="col col--g4">
+        {cur.items.map(it => {
+          const r = conv(it);
+          return (
+            <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName}
+              mode="city" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
+              onOpen={onOpen} />
+          );
+        })}
+      </div>
+    </div>
+  );
+  return (
+    <>
+      <div className={isMobile ? '' : 'grid grid--split grid--g7'}>
+        <Card>
+          <div className="col col--g2">
+            {cityGroups.map(g => {
+              const active = g.id === activeCityId;
               return (
-                <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName}
-                  mode="city" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
-                  onOpen={onOpen} />
+                <ListRow key={g.id} variant="select" selected={active && !isMobile}
+                  role="tab" aria-selected={active} onClick={() => { setActiveCityId(g.id); if (isMobile) setCitySheet(true); }}
+                  lead={<span className="tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={17} /></span>}
+                  title={<span className="trunc">{cityLabel(g)}</span>}
+                  sub={`${g.items.length} ${expensesPlural(g.items.length)}`}
+                  trail={<span className="t-strong">{money(g.total, mainCurrency)}</span>}
+                />
               );
             })}
           </div>
-        </div>
-      </Card>
-    </div>
+        </Card>
+        {!isMobile && <Card>{detailInner}</Card>}
+      </div>
+      {isMobile && (
+        <Sheet open={citySheet} onOpenChange={setCitySheet} title={cityLabel(cur)}>
+          {detailInner}
+        </Sheet>
+      )}
+    </>
   );
 }
