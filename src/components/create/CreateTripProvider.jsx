@@ -87,7 +87,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       open={true}
       onOpenChange={(o) => { if (!o) onClose(); }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="col col--g6">
         <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
         <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>

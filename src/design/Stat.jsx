@@ -9,9 +9,9 @@ import { Tile } from './Tile';
 // ★ ЗАЧЕМ. Плитка показателя рисовалась приватно (bgt-stat …) на каждом экране;
 // один объект — своё имя. Здесь он один; тон/клик — оси, не новые имена.
 //
-// ★ ТОН красит ИКОНКУ (`.stat--<tone> .tile`), а не завозит тон в <Tile> —
-// это событийные цвета (`--ev-*`), которых у плитки в тонах нет; держим их в
-// семье stat, не расширяя союз тонов плитки.
+// ★ ТОН красит ИКОНКУ через союз тонов плитки (`<Tile tone>`): событийные цвета
+// (`--ev-*`) с TRIP-350 живут на `.tile--<tone>` (hotel/activity/transfer), поэтому
+// scoped-правило `.stat--<tone> .tile` больше не нужно — тон едет прямо в плитку.
 //
 // ★ ПОДПИСИ — канон текста (`.t-label`/`.t-meta` + утилита `.muted`), не свои
 // классы: своё у stat только раскладка и тон.
@@ -33,13 +33,12 @@ export const Stat = React.forwardRef(
         onClick={onClick}
         className={[
           "card", "stat",
-          tone && `stat--${tone}`,
           clickable && "stat--clickable",
           className,
         ].filter(Boolean).join(" ")}
         {...rest}
       >
-        <Tile size="xl" icon={icon} />
+        <Tile size="xl" tone={tone} icon={icon} />
         <div className="stat__body">
           {label != null && <div className="t-label muted">{label}</div>}
           {value != null && <div className="t-title">{value}</div>}

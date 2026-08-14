@@ -448,7 +448,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
-.nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
+.nrow, .mbrow, .bookrow, .doc-row, .te-table .te-row,
 .te-row.te-row--plan, .acct-tgrow,
 /* держали эту пару своей копией, а не именем в роли */
 .ncal-wdc,
@@ -484,9 +484,15 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .stat__body { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; flex: 1; }
 .stat--clickable { cursor: pointer; width: 100%; text-align: left; transition: border-color .18s, box-shadow .2s; }
 .stat--clickable:hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
-.stat--brand .tile { background: var(--brand-soft); color: var(--brand); }
-.stat--activity .tile { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
-.stat--transfer .tile { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
+/* TRIP-350: тон плитки Stat едет союзом тонов `<Tile tone>` (event tones on .tile),
+   scoped-дубли сняты — те же объявления теперь на .tile--<tone>.
+   visual-diff-move: .stat--activity .tile -> .tile--activity
+   visual-diff-move: .stat--transfer .tile -> .tile--transfer
+   brand: цель .tile--brand делит имя с solid-компаундом .tile--solid.tile--brand,
+   поэтому автосверка move читает значение солида (var(--brand)/#fff) и краснеет
+   ложно; мягкий .tile--brand несёт то же, что несла .stat--brand .tile — exempt:
+   visual-diff-exempt: .stat--brand background — перенос тона brand на союз .tile--brand; значение var(--brand-soft) то же, move ломает solid-компаунд
+   visual-diff-exempt: .stat--brand color — перенос тона brand на союз .tile--brand; значение var(--brand) то же, move ломает solid-компаунд */
 
 /* ── ListRow: строка списка — [лид] заголовок+подпись [трейл]. Скин = variant.
    Схлопывает bgt-exrow / bgt-fxrow / bgt-glist__row / bgt-dleg__row.
@@ -730,7 +736,6 @@ h4,
 .btn,
 .field__label,
 .app-side__item,
-.addsheet__tx b,
 .eroute p,
 .invite__tx p,
 .stepper--block .ts-startctl__date,
@@ -2913,6 +2918,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    мягкая форма не отрисовалась бы ни разу, а тон без потребителя - это по
    правилу выше не система, а мёртвый класс. */
 .tile--warning { background: var(--warning-soft); color: var(--warning); }
+/* TRIP-350: тона СОБЫТИЯ на плитке. Та же форма, что у тонов выше (мягкий оттенок
+   цвета значка), но цвет — событийный (`--ev-*`), а текст — тёмная грань `--ev-*-ink`
+   (у событий мягкий фон светлее сплошного значка, читаемость держит именно грань).
+   Заведены ВМЕСТЕ со своими первыми вызывателями: hotel — строка «Документ» «+»-меню,
+   activity — строка «Участник» «+»-меню и иконка Dialog, transfer — плитка Stat.
+   До этого те же цвета жили инлайном на элементе (addsheet__ic, Dialog) и scoped-
+   правилом (.stat--* .tile) — событийного тона у плитки в союзе не было.
+   activity/transfer доезжают переносом .stat--* .tile (см. Stat ниже); hotel —
+   новый тон, репост инлайна addsheet__ic (строка «Документ»):
+   visual-diff-exempt: .tile--hotel background — новый тон события, репост инлайна addsheet__ic (док)
+   visual-diff-exempt: .tile--hotel color — новый тон события, репост инлайна addsheet__ic (док) */
+.tile--hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
+.tile--activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.tile--transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 
 /* ЗАЛИТАЯ плитка - вторая и последняя форма тона, а не «ещё один цвет».
    Мягкий оттенок работает, только пока плитка стоит на нейтральной подложке.
@@ -3061,18 +3080,42 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__fab:active { transform: translateY(-15px) scale(.9); }
 }
 
-/* Add bottom-sheet rows (inside <Sheet>, opened by the nav "+") */
-.addsheet { display: flex; flex-direction: column; gap: 8px; padding: 2px 0 6px; }
-.addsheet__row {
-  display: flex; align-items: center; gap: 13px; width: 100%; padding: 12px; border-radius: var(--r-btn); cursor: pointer; text-align: left;
-  transition: border-color .15s, background .15s, transform .12s var(--ease-spring);
-}
-.addsheet__row:hover { border-color: var(--line-hover); }
-.addsheet__row:active { transform: scale(.99); }
-.addsheet__ic { width: 42px; height: 42px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.addsheet__tx { flex: 1; min-width: 0; }
-.addsheet__tx b { color: var(--ink); }
-.addsheet__chev { color: var(--muted-2); flex: none; }
+/* TRIP-350: семья `.addsheet` удалена — «+»-меню трипа теперь рендерит канон
+   ActionMenu (строки `.sheet-row--tile`), инлайн-шит из TripView снят. Строки
+   меню-шита переехали на борд-лесс канон `.sheet-row`, значения РАЗНЫЕ (padding
+   14 vs 12, border 0 vs 1px, фон прозрачный vs surface) — это переработка вида,
+   а не перенос; снятие раскладочных объявлений семьи объявляется точечно:
+   visual-diff-exempt: .addsheet display — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet flex-direction — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet gap — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet padding — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row display — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row align-items — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row background — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row border — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row border-radius — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row cursor — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row gap — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row padding — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row text-align — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row transition — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row width — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row:hover border-color — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row:active transform — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic width — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic height — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic border-radius — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic display — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic place-items — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic flex — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx flex — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx min-width — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b font-family — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b font-size — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b font-weight — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b letter-spacing — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b line-height — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__chev flex — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile */
 
 /* Trip-creation choice card — ONE source, shared by the empty Trips screen and
    the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
@@ -5482,6 +5525,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .sheet-row[disabled] { opacity: .5; pointer-events: none; }
 .sheet-row--danger { color: var(--danger-ink); }
 .sheet-row--danger svg { color: var(--danger-ink); }
+/* TRIP-350: строка «+»-меню с ведущей ЦВЕТНОЙ плиткой (тон события). Пункт с
+   заданным `tone` рисует `<Tile tone>` лидом и шеврон трейлом. Плитка несёт свой
+   размер и тон — базовое `.sheet-row svg` (18px, muted) в неё протекать не должно,
+   иначе значок съедет и потеряет цвет. Шеврон остаётся голым svg (его та же база
+   красит верно), а `.grow` толкает его вправо — отдельного класса не нужно.
+   visual-diff-exempt: .sheet-row--tile .tile > svg width — изоляция плитки строки-варианта от базового .sheet-row svg
+   visual-diff-exempt: .sheet-row--tile .tile > svg height — изоляция плитки строки-варианта от базового .sheet-row svg
+   visual-diff-exempt: .sheet-row--tile .tile > svg color — изоляция плитки строки-варианта от базового .sheet-row svg */
+.sheet-row--tile .tile > svg { width: var(--tile-ic, 17px); height: var(--tile-ic, 17px); color: inherit; }
 .sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
 @keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
 
