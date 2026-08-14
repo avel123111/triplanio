@@ -3,6 +3,7 @@ import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } fro
 import { Icon } from './icons';
 import { Tile } from './Tile';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useKeyboardOpen } from '@/lib/keyboardOpen';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
@@ -592,6 +593,12 @@ const DLG_ICON_TONES = { activity: 'activity' };
 /** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
   const t = useT();
+  // The dialog OWNS its footer: on mobile it hides it while the keyboard is up
+  // (it would otherwise rise above the keyboard and cover the autofill bar).
+  // Done here — not with an outer CSS rule on `.dlg__foot` — because reaching
+  // into a canon primitive from a state class is the coupling the design floor
+  // forbids (guard 2o `reach`). The primitive hides itself.
+  const kbOpen = useKeyboardOpen();
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
   const toneClass = `tile--${DLG_ICON_TONES[iconTone] || 'brand'}`;
   return (
@@ -622,7 +629,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
           <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} />
         </div>
         <div className="dlg__body">{children}</div>
-        {foot && <div className="dlg__foot">{foot}</div>}
+        {foot && !kbOpen && <div className="dlg__foot">{foot}</div>}
       </DialogContent>
     </UIDialog>
   );
