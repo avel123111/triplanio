@@ -6,7 +6,7 @@
 // tracking someone who never agreed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseConsent, buildConsent, CONSENT_VERSION, CONSENT_MAX_AGE_MS } from './consent-record.js';
+import { parseConsent, buildConsent, shouldSilenceOnConsentChange, CONSENT_VERSION, CONSENT_MAX_AGE_MS } from './consent-record.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
 const stored = (record) => JSON.stringify(record);
@@ -61,4 +61,26 @@ test('a truthy value that is not `true` does not become consent', () => {
   const parsed = parseConsent(stored(record), NOW);
   assert.equal(parsed.analytics, false);
   assert.equal(parsed.marketing, false);
+});
+
+// Variant B (TRIP-407): a cross-tab consent change silences THIS tab only when it
+// was persisting to the device. The trap Pavel flagged — under B the client runs
+// in every tab from load, so keying on "is analytics ready" would clear/reload a
+// memory-only tab that wrote nothing.
+test('a memory-only tab (not persisting) is NOT silenced on a foreign refusal', () => {
+  const refusal = parseConsent(stored(buildConsent(false, NOW)), NOW);
+  assert.equal(shouldSilenceOnConsentChange(false, refusal), false);
+});
+
+test('a persisting tab IS silenced when another tab refuses / withdraws', () => {
+  const refusal = parseConsent(stored(buildConsent(false, NOW)), NOW);
+  assert.equal(shouldSilenceOnConsentChange(true, refusal), true);
+  // An unusable/expired new value parses to null — still "no longer a grant".
+  assert.equal(shouldSilenceOnConsentChange(true, null), true);
+});
+
+test('a foreign GRANT never silences (one-way), whatever this tab is doing', () => {
+  const grant = parseConsent(stored(buildConsent(true, NOW)), NOW);
+  assert.equal(shouldSilenceOnConsentChange(true, grant), false);
+  assert.equal(shouldSilenceOnConsentChange(false, grant), false);
 });

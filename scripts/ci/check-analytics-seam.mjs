@@ -3,14 +3,14 @@
  * CI guard 2j — the analytics seam has ONE door per side, and it stays that way.
  *
  * Three invariants, one theme: every event and every identity goes through a
- * single module, so the rules that live there (consent, the held queue, the uid,
- * the first-touch source) cannot be walked around. All three failures are
+ * single module, so the rules that live there (consent, the readiness gate, the
+ * uid, the first-touch source) cannot be walked around. All three failures are
  * INVISIBLE — the app looks and behaves identically, and only a Network tab or a
  * months-later audit shows the difference. That is why they need a machine and
  * not a reviewer.
  *
  *   A. `posthog-js` is imported only by `src/lib/analytics.js` and
- *      `src/lib/consent.js` (TRIP-335).
+ *      `src/lib/destinations/posthog.js` (TRIP-335, TRIP-407).
  *      The expensive one. `$identify` is the event that CREATES the person, and
  *      PostHog attaches its own `$initial_*` block to it — including an explicit
  *      `$initial_utm_source: null`. That property is set-once and a null IS a
@@ -18,14 +18,15 @@
  *      channel of that account FOREVER. A second, bare `posthog.identify(uid)`
  *      anywhere — a new login button, a new screen — would silently cost us the
  *      channel of every account it touched, unrepairably. The same import ban
- *      keeps `capture` behind `track()` (which holds events until consent),
+ *      keeps `capture` behind `track()` (gated on the client being ready),
  *      `reset` behind `resetIdentity()`, and `group` / `setPersonProperties`
  *      behind their own gates.
  *
- *   B. `posthog.init()` is called only from `src/lib/consent.js` (TRIP-311).
- *      The whole cookie-consent design rests on PostHog not existing in the
- *      browser until someone has agreed. A second init would start tracking
- *      before (or regardless of) the answer.
+ *   B. `posthog.init()` is called only from `src/lib/destinations/posthog.js`
+ *      (TRIP-311, TRIP-407). The client is created in exactly one place — the
+ *      PostHog destination adapter, which boots it memory-only and upgrades it to
+ *      device persistence on consent. A second init would start a rogue client,
+ *      out of step with the consent state the adapter holds.
  *
  *   C. The PostHog ingestion key / host appear only in
  *      `supabase/functions/_shared/analytics.ts` (TRIP-213 Ф2).
@@ -68,7 +69,7 @@ const RULES = [
     id: 'A',
     roots: BROWSER_ROOTS,
     pattern: new RegExp(`${POSTHOG_MODULE.source}|${POSTHOG_GLOBAL.source}`),
-    allow: ['src/lib/analytics.js', 'src/lib/consent.js'],
+    allow: ['src/lib/analytics.js', 'src/lib/destinations/posthog.js'],
     title: 'posthog-js reached outside the analytics seam',
     fix: [
       'Events go through `track()`, identity through `identifyUser()` / `resetIdentity()`,',
@@ -85,12 +86,13 @@ const RULES = [
     // (`posthog?.capture?.`), so it is the MORE likely way a second init gets
     // written — matching only the plain dot would let the realistic case through.
     pattern: /\bposthog\s*(\?\.|\.)\s*init\s*\(/,
-    allow: ['src/lib/consent.js'],
-    title: 'posthog.init() outside the consent gate',
+    allow: ['src/lib/destinations/posthog.js'],
+    title: 'posthog.init() outside the destination adapter',
     fix: [
-      'Start PostHog through `applyConsent(record, uid)` from @/lib/consent instead.',
-      'An init anywhere else runs before the visitor has agreed to cookies — the exact',
-      'thing TRIP-311 removed. Add new analytics destinations to applyConsent().',
+      'The client is created in one place: boot() in @/lib/destinations/posthog.js.',
+      'An init anywhere else is a rogue client, out of step with the consent state the',
+      'adapter holds (memory-only until consent, TRIP-311/TRIP-407). Add new analytics',
+      'destinations under src/lib/destinations and wire them through applyConsent().',
     ],
   },
   {

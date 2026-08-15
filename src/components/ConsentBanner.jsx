@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
-import { isAnalyticsOn } from '@/lib/analytics';
+import { isPersisting } from '@/lib/destinations/posthog';
 import {
   applyConsent, clearAnalyticsStorage, getConsent, setConsent, subscribeConsentOpen,
 } from '@/lib/consent';
@@ -39,9 +39,11 @@ export default function ConsentBanner() {
       return;
     }
 
-    // Only a real downgrade needs a reload: an initialised client cannot be shut
-    // down. Refusing when it never ran must not throw the page away.
-    if (isAnalyticsOn()) {
+    // Only a real downgrade needs a reload: the client cannot un-init, but it CAN
+    // be memory-only. Reload solely when this document was PERSISTING to the device
+    // (variant B) — refusing a memory-only session wrote nothing, so throwing the
+    // page away would be gratuitous.
+    if (isPersisting()) {
       clearAnalyticsStorage();
       window.location.reload();
     }
