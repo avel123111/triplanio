@@ -216,13 +216,11 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
-      // Fed the PROFILE, on every load, not the marks freshly read at creation:
-      // consent can arrive after the account exists (confirmation link opened on
-      // a phone, or Google sign-in before answering the banner), and a reload in
-      // between would lose an in-memory value for good. The column cannot be
-      // lost, and set-once makes repeating it free. The campaign mark rides the
-      // same call — see identifyUser, which owns all of it.
-      identifyUser(authUser.id, profile);
+      // Identify on every load. First-touch (`$initial_utm_*`) is left to
+      // PostHog's own native block now (TRIP-407, decision 2) — the authoritative
+      // source of signup is the server-written `users.signup_utm_*` column — so no
+      // profile marks are fed here. identifyUser owns the last-touch campaign sync.
+      identifyUser(authUser.id);
       // Registration (TRIP-316 A1). The `users` row is the ONE birth point of a
       // user: it is created here, exactly once, and identically for Google,
       // Apple, One Tap and email — the login buttons are not, and the fourth one

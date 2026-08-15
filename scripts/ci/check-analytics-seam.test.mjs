@@ -26,7 +26,7 @@ const GUARD = fileURLToPath(new URL('./check-analytics-seam.mjs', import.meta.ur
 // fixture starts from this, so a test only has to describe what it ADDS.
 const SEAM = {
   'src/lib/analytics.js': "import posthog from 'posthog-js';\nexport function track(e) { posthog?.capture?.(e); }\n",
-  'src/lib/consent.js': "import posthog from 'posthog-js';\nexport function applyConsent() { posthog.init('phc_x', {}); }\n",
+  'src/lib/destinations/posthog.js': "import posthog from 'posthog-js';\nexport function boot() { posthog.init('phc_x', {}); }\n",
   'supabase/functions/_shared/analytics.ts': "const TOKEN = Deno.env.get('POSTHOG_PROJECT_KEY');\nexport function captureServer() { return TOKEN; }\n",
 };
 
@@ -123,8 +123,20 @@ test('B: a second init is a violation even inside the seam', (t) => {
   });
   const r = run(dir);
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /consent gate/);
+  assert.match(r.stderr, /destination adapter/);
   assert.match(r.stderr, /src\/lib\/analytics\.js/);
+});
+
+// The TRIP-407 move: init lived in consent.js, it now lives in the destination
+// adapter. consent.js is no longer allowed to init — pins the door where it is.
+test('B: init in consent.js is now a violation (init moved to the adapter)', (t) => {
+  const dir = fixture(t, {
+    'src/lib/consent.js': "import posthog from 'posthog-js';\nposthog.init('phc_x', {});\n",
+  });
+  const r = run(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /src\/lib\/consent\.js/);
+  assert.match(r.stderr, /destination adapter/);
 });
 
 test('C: an edge function posting to PostHog itself is a violation', (t) => {

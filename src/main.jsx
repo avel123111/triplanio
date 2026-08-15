@@ -34,20 +34,29 @@ import '@/design/app.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { initSentry } from '@/lib/sentry'
-import { applyConsent, clearAnalyticsStorage, getConsent, isProdHost } from '@/lib/consent'
+import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
+import { setCampaign } from '@/lib/analytics'
+import { boot as bootPosthog } from '@/lib/destinations/posthog'
+import { isProdHost } from '@/lib/analyticsEnv'
 import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
 import '@/index.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-// PostHog product analytics (TRIP-213 Phase 0), under consent since TRIP-311.
-// Started by applyConsent() and ONLY for someone who said yes; the config and the
-// reasoning live in consent.js. Until it runs, every posthog call in the codebase
-// is a no-op and nothing reaches the device or the network.
-//
+// PostHog product analytics (TRIP-213 Phase 0), variant B (TRIP-407) under consent
+// since TRIP-311. Boot the client into `persistence:'memory'` for EVERYONE, here,
+// before the first render — so the first screen of a first-time visitor
+// (landing_viewed, public_trip_viewed) is captured on an anonymous, device-less
+// profile. Nothing reaches the DEVICE until consent upgrades persistence
+// (applyConsent → the adapter's onConsent). setCampaign() primes the last-touch
+// campaign super-properties for the no-login case, before any event fires.
+bootPosthog()
+setCampaign()
+
 // No usable answer covers "never asked", "expired", "our version moved" and
-// "hand-edited" alike: wipe whatever PostHog left on the device and let
-// ConsentBanner ask again.
+// "hand-edited" alike: apply a stored answer (upgrading persistence on a grant),
+// else wipe whatever a prior consented session left on the device and let
+// ConsentBanner ask again. The memory-only client keeps running either way.
 const consent = getConsent()
 if (consent) applyConsent(consent)
 else clearAnalyticsStorage()
