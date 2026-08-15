@@ -212,6 +212,7 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
   );
 }
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { eventHeader } from '@/components/common/EventViewBody';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
@@ -864,6 +865,7 @@ export default function EventEditDialog({
         invalidateTripData(qc, tripId);
         // Same commit point as saveMut below (see removeOrphanedFiles).
         removeOrphanedFiles(seenDocPaths.current, form.documents);
+        successToast(t, 'booking_added');
       } catch (err) {
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
         invalidateTripData(qc, tripId);
@@ -908,6 +910,7 @@ export default function EventEditDialog({
       committedRef.current = true;
       removeOrphanedFiles(seenDocPaths.current, form.documents);
       if (tripId) invalidateTripData(qc, tripId);
+      successToast(t, entity ? 'booking_updated' : 'booking_added');
       onOpenChange(false);
     },
     onError: (err) => {
@@ -937,6 +940,7 @@ export default function EventEditDialog({
     onSuccess: () => {
       committedRef.current = true;
       if (tripId) invalidateTripData(qc, tripId);
+      successToast(t, 'booking_deleted');
       onOpenChange(false);
     },
     onError: (err) => {

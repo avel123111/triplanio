@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Card, Dialog, useToast } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
@@ -160,7 +161,7 @@ export function CreateTripProvider({ children }) {
       // list, so the next create attempt doesn't read a stale (under-cap) count.
       invalidateActiveTripsLimit(qc);
       track('trip_copied', { trip_id: tripId, new_trip_id: data?.tripId });
-      toast({ description: t('trip.copy_done'), variant: 'success' });
+      successToast(t, 'trip_copied');
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {
       toast({ description: errorText(t, e?.code), variant: 'destructive' });

@@ -130,6 +130,7 @@ const TX = {
   openDialog: 'Открыть диалог', openSheet: 'Открыть шит', readonly: 'Режим только для чтения.',
   toastTitle: 'Готово', toastBody: 'Изменения сохранены.',
   toastLab: 'Появятся в правом нижнем углу (на мобиле — сверху); наведи или тапни стопку, чтобы развернуть.',
+  toastDeck: 'колода',
   sheetNormal: 'Обычное действие', sheetDanger: 'Удалить',
   aiTitle: 'Распознать бронь', aiSub: 'Вставьте текст письма',
   dialogTitle: 'Диалог', sheetTitle: 'Шит', dialogBody: 'Содержимое диалога.',
@@ -258,7 +259,7 @@ function ToastLab() {
         {TOAST_DEMO.map((d) => (
           <Btn key={d.variant} variant="secondary" size="sm" onClick={() => toast(d)}>{d.variant}</Btn>
         ))}
-        <Btn variant="primary" size="sm" onClick={() => TOAST_DEMO.forEach((d, i) => setTimeout(() => toast(d), i * 140))}>колода</Btn>
+        <Btn variant="primary" size="sm" onClick={() => TOAST_DEMO.forEach((d, i) => setTimeout(() => toast(d), i * 140))}>{TX.toastDeck}</Btn>
       </div>
       <span className="t-meta">{TX.toastLab}</span>
     </div>

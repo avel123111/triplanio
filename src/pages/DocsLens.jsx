@@ -33,6 +33,7 @@ import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
@@ -139,6 +140,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       has_link: !!linkUrl.trim(),
     });
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
+    successToast(t, 'document_saved');
     close();
   }
 
@@ -374,6 +376,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     // Best-effort sweep; never blocks the delete (TRIP-117).
     await removeTripFiles(collectDocPaths(doc.documents));
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
+    successToast(t, 'document_deleted');
     close();
   }
 
