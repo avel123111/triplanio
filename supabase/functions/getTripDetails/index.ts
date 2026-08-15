@@ -25,7 +25,7 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isNotFound } from '../_shared/classifyDbError.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
-import { withHandler } from '../_shared/http.ts';
+import { withHandler, jsonError } from '../_shared/http.ts';
 import { fetchTripProfiles } from '../_shared/profiles.ts';
 import { readGroup } from './readGroup.ts';
 
@@ -35,12 +35,12 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // public anon key shipped in the frontend bundle). Either way: deny.
     const user = await getRequestUser(req);
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+      return jsonError(401, 'Unauthorized', undefined, corsHeaders);
     }
 
     const { tripId, include } = await req.json();
     if (!tripId) {
-      return Response.json({ error: 'tripId is required' }, { status: 400, headers: corsHeaders });
+      return jsonError(400, 'tripId is required', undefined, corsHeaders);
     }
 
     // Resolve which groups to fetch
@@ -75,7 +75,7 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
       throw tripError;
     }
     if (!trip) {
-      return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
+      return jsonError(404, 'Trip not found', undefined, corsHeaders);
     }
 
     // Access check — ALWAYS runs (user is guaranteed non-null above). Reading a
@@ -85,7 +85,7 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // runs on every trip open. The rule itself is the shared one (TRIP-274); a
     // failed membership query throws → 5xx, never a false 403 (TRIP-208).
     if (!clearsStep(await callerStep(tripId, user.id, trip.created_by), 'participant')) {
-      return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+      return jsonError(403, 'Forbidden', undefined, corsHeaders);
     }
 
     // Build parallel fetch list — only what was requested

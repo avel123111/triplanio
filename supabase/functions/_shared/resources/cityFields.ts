@@ -16,8 +16,12 @@
 
 import type { FieldSpec } from '../mutateRules.ts';
 
-/** Числовая координата (широта/долгота): клиент шлёт число или null. */
-const coord = (): FieldSpec => ({ type: 'number', nullable: true });
+/**
+ * Числовая координата (широта/долгота): клиент шлёт число или null. Общий фрагмент
+ * (реюз): identity-координаты города здесь И booking-координаты `tripBooking`
+ * (from/to/location) — одна форма поля, один дом, а не копия в каждом ресурсе.
+ */
+export const coord = (): FieldSpec => ({ type: 'number', nullable: true });
 
 export const CITY_FIELDS: Record<string, FieldSpec> = {
   external_city_id: { type: 'string', max: 300, nullable: true },
