@@ -163,7 +163,10 @@ export const FUNCTIONS = {
   // для anon они вернут false, но обязаны вернуть, а не упасть «permission denied»
   // посреди вычисления политики. Слагаемые (`_trip_file_trip_id`,
   // `_trip_file_not_others_private`) — internal, гранта клиенту нет (IF3).
-  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
+  // is_trip_creator убрана (TRIP-425 добор): осиротела после дропа политик
+  // trip_members_* — 0 вызывателей (src/**, functions/**, pg_policy, тела функций),
+  // EXECUTE снят у anon/authenticated/PUBLIC → internal (IF3).
+  publicExec: ['is_trip_participant', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
     '_can_edit_trip',
     // get_trip_owner_profiles убрана (TRIP-425): мёртвая — 0 вызовов в src/**,
