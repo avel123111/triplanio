@@ -886,7 +886,7 @@ Deno.test('★ invite: mapOutcome переводит дискриминант в
   const self = map({ outcome: 'self' });
   assert('status' in self && self.status === 400 && self.code === 'INVITE_SELF');
   const owner = map({ outcome: 'owner' });
-  assert('status' in owner && owner.status === 400 && owner.code === 'invite_owner');
+  assert('status' in owner && owner.status === 400 && owner.code === 'INVITE_OWNER');
   // Успех: created/reactivated → { data: member } (не Refusal).
   const ok = map({ outcome: 'created', member: { id: 'm1' } });
   assert(!('status' in ok) && (ok as { data: unknown }).data && ((ok as { data: { id: string } }).data).id === 'm1');
