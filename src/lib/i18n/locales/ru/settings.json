@@ -43,7 +43,6 @@
   "readonly_banner_title": "Только чтение",
   "save_error": "Не удалось сохранить: {message}",
   "save_error2": "Ошибка: {message}",
-  "saved": "Сохранено",
   "section_basic": "Основное",
   "tg_active": "Активен",
   "tg_after_start": "После «Старта» в Telegram вернись сюда, панель обновится автоматически",

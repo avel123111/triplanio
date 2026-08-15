@@ -43,7 +43,6 @@
   "readonly_banner_title": "View only",
   "save_error": "Could not save: {message}",
   "save_error2": "Error: {message}",
-  "saved": "Saved",
   "section_basic": "General",
   "tg_active": "Active",
   "tg_after_start": "After pressing Start in Telegram, come back here, the panel updates automatically",
