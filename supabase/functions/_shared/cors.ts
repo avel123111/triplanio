@@ -43,7 +43,11 @@ export function isAllowedOrigin(origin: string | null | undefined): boolean {
 }
 
 const BASE_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // `x-region` pins the function's execution region near the DB (TRIP-374, Этап 5).
+  // It is a non-safelisted request header, so the browser preflights it; without
+  // it here the OPTIONS check fails and every pinned call is blocked on all fronts
+  // (incl. Vercel previews). Ignored by server-to-server callers (no preflight).
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   // Without this, a cross-origin browser caller cannot read Retry-After off a 429
   // response — only CORS-safelisted headers are exposed by default. The geocode
