@@ -5481,25 +5481,113 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    F1 · Toast (Lumo) — canonical toast card with type icon.
    Rendered by the shared <Toaster>; type from `variant`.
    ============================================================ */
-/* Toast host: desktop = bottom-right; mobile = top, below the sticky app header
-   (60px) + safe-area, clear of the bottom nav. Container ignores pointer events;
-   the cards re-enable them. Newest toast on top in both layouts. */
+/* Toast host: desktop = bottom-right, cards absolutely stacked as a deck growing
+   upward (it overflows the host box upward, so no clipping here); mobile = top,
+   below the sticky app header (60px) + safe-area, clear of the bottom nav.
+   Container ignores pointer events; the cards re-enable them. Newest on top in
+   both layouts. */
 .toast-host {
   position: fixed; z-index: var(--z-overlay); pointer-events: none;
-  display: flex; flex-direction: column; gap: 8px;
   right: 16px; bottom: 16px; left: auto; top: auto;
-  width: 100%; max-width: 400px; max-height: 100vh; overflow: hidden;
+  width: 100%; max-width: 400px;
 }
 .toast-host > * { pointer-events: auto; }
+
+/* Card. Position + transform is the deck machinery; the surface (radius,
+   shadow, fill) is the shared overlay card. `--i` (depth, 0 = front) and `--y`
+   (summed heights of the cards in front) are written per-card by <Toaster>.
+   Collapsed: front card at rest, older ones nudged up + scaled down behind it.
+   visual-diff-exempt: .toast bottom — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast left — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast position — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast right — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast transform-origin — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast transition — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast will-change — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast z-index — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast {@media (max-width: 640px)} bottom — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast {@media (max-width: 640px)} top — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast {@media (max-width: 640px)} transform-origin — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast {@media (prefers-reduced-motion: reduce)} transition — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host display — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host flex-direction — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host gap — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host max-height — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host overflow — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host {@media (max-width: 640px)} align-items — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host:focus-within opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host:focus-within transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host:focus-within {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host:has(.toast:hover) opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host:has(.toast:hover) transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host:has(.toast:hover) {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host[data-expanded] opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host[data-expanded] transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast-host[data-expanded] {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-deep] opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=enter] opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=enter] transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=enter] {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=leave] opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=leave] transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=leave] {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=visible] opacity — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=visible] transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast[data-state=visible] {@media (max-width: 640px)} transform — редизайн тостов в колоду (deck) TRIP-424, апрув Pavel */
+.toast {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 12px 15px; border-radius: var(--r-md); box-shadow: var(--sh-3);
+  pointer-events: auto; transform-origin: bottom center;
+  z-index: calc(100 - var(--i, 0));
+  transform: translateY(calc(var(--i, 0) * -12px)) scale(calc(1 - var(--i, 0) * 0.05));
+  transition: transform .38s var(--ease-spring), opacity .3s var(--ease-out);
+  will-change: transform, opacity;
+}
+/* Deeper than the visible deck: fade out behind the front cards. */
+.toast[data-deep] { opacity: 0; }
+/* Fan the deck into a readable column: hover / keyboard focus (desktop) or a tap
+   that sets [data-expanded] (touch). Entering and leaving cards keep their own
+   pose (they are excluded here). */
+.toast-host:has(.toast:hover) .toast[data-state="visible"],
+.toast-host:focus-within .toast[data-state="visible"],
+.toast-host[data-expanded] .toast[data-state="visible"] {
+  transform: translateY(calc(var(--y, 0px) * -1)) scale(1);
+  opacity: 1;
+}
+/* Enter / leave: slide in and out past the anchored (bottom) edge. */
+.toast-host .toast[data-state="enter"],
+.toast-host .toast[data-state="leave"] {
+  transform: translateY(24px) scale(.94); opacity: 0;
+}
+/* Mobile: same deck, top-anchored, growing downward — newest on top. Tap fans
+   it into a column; enter/leave slide past the top edge. */
 @media (max-width: 640px) {
   .toast-host {
     top: calc(60px + env(safe-area-inset-top, 0px) + 8px);
     left: 12px; right: 12px; bottom: auto;
-    width: auto; max-width: none; align-items: stretch;
+    width: auto; max-width: none;
+  }
+  .toast {
+    top: 0; bottom: auto; transform-origin: top center;
+    transform: translateY(calc(var(--i, 0) * 12px)) scale(calc(1 - var(--i, 0) * 0.05));
+  }
+  .toast-host:has(.toast:hover) .toast[data-state="visible"],
+  .toast-host:focus-within .toast[data-state="visible"],
+  .toast-host[data-expanded] .toast[data-state="visible"] {
+    transform: translateY(var(--y, 0px)) scale(1);
+  }
+  .toast-host .toast[data-state="enter"],
+  .toast-host .toast[data-state="leave"] {
+    transform: translateY(-16px) scale(.96);
   }
 }
-
-.toast { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px 15px; border-radius: var(--r-md); box-shadow: var(--sh-3); pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 .toast .tic { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: var(--ink-2); }
 .toast .tic svg { width: 17px; height: 17px; color: #fff; }
 .toast__body { min-width: 0; flex: 1; }
@@ -5516,6 +5604,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .toast--error   .tic { background: var(--danger); }
 .toast--warning .tic { background: var(--warning); }
 .toast--info    .tic { background: var(--info); }
+/* TRIP-424: рамка тоста несёт УРОВЕНЬ, а не серый `--line` surface-канона —
+   success зелёная, error красная и т.д. Neutral/default остаётся на каноне.
+   Отдельным коммитом, чтобы легко откатить.
+   visual-diff-exempt: .toast--success border-color — рамка тоном уровня, TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast--error border-color — рамка тоном уровня, TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast--warning border-color — рамка тоном уровня, TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast--info border-color — рамка тоном уровня, TRIP-424, апрув Pavel */
+.toast--success { border-color: var(--success); }
+.toast--error   { border-color: var(--danger); }
+.toast--warning { border-color: var(--warning); }
+.toast--info    { border-color: var(--info); }
 
 /* ============================================================
    C6 · Bottom sheet (Lumo) — mobile shell for menus / pickers.

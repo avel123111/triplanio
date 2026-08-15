@@ -195,6 +195,7 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useStay22Bundle } from '@/lib/stay22';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -361,7 +362,10 @@ export default function EditLens({ tripId, shell, content }) {
   // onResult(result) runs ONLY on RPC success, under the seq-guard, BEFORE the refetch —
   // e.g. addCity reconciles the real city_visit uuid returned by add_city into the draft
   // immediately (shrinks the tmp- window to the RPC latency instead of the full refetch).
-  const runAction = async (rpcFn, onResult, refetchOpts) => {
+  // okKey: optional `toast` subtitle key fired ONLY on real success. Passed by the
+  // discrete actions (start date / add city / remove city); the frequent ones
+  // (nights, reorder) leave it undefined so they stay silent and don't spam.
+  const runAction = async (rpcFn, onResult, refetchOpts, okKey) => {
     const mySeq = ++seqRef.current;
     let result;
     try { result = await rpcFn(); }
@@ -385,6 +389,7 @@ export default function EditLens({ tripId, shell, content }) {
     try { await refetchTrip(qc, tripId, refetchOpts); } catch { /* ignore */ }
     if (mySeq !== seqRef.current) return;           // a newer action started during the refetch
     setDraft(null); // rebuild from fresh server state on next render (buildDraft)
+    if (okKey) successToast(t, okKey);
   };
   // Any panel that may have WRITTEN transfers/bookings (create/event) closes through
   // here: pull fresh server state and rebuild the draft from it. The server already
@@ -611,7 +616,7 @@ export default function EditLens({ tripId, shell, content }) {
       startCommit.current = null;
       const finalBase = startTarget.current;
       startTarget.current = null;
-      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), undefined, { content: false });
+      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), undefined, { content: false }, 'start_date_updated');
     }, 350);
   };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
@@ -648,7 +653,7 @@ export default function EditLens({ tripId, shell, content }) {
       ...liveActivities.filter((a) => a.city_visit_id === id),
       ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
     ].flatMap((e) => collectDocPaths(e.documents));
-    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths));
+    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths), undefined, 'city_removed');
   };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
@@ -698,7 +703,7 @@ export default function EditLens({ tripId, shell, content }) {
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
     }, insertIdx), (realId) => {
       if (realId) editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === tmpId ? { ...n, id: realId } : n)) }));
-    });
+    }, undefined, 'city_added');
   };
   const onPickCity = async (c, kind) => {
     closeLeftPanel();

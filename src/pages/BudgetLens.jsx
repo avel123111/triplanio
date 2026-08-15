@@ -29,6 +29,7 @@ import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { classifyError } from '@/lib/errorText';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
@@ -166,6 +167,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
     if (!isEdit) {
       track('budget_expense_added', { trip_id: tripId, has_fx: currency !== (mainCurrency || 'EUR') });
     }
+    successToast(t, isEdit ? 'expense_updated' : 'expense_added');
     onSaved?.();
     close();
   }
@@ -180,6 +182,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       return;
     }
     setDeleting(false);
+    successToast(t, 'expense_deleted');
     onSaved?.();
     close();
   }
@@ -300,6 +303,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       return;
     }
     setSaving(false);
+    successToast(t, 'rate_updated');
     onSaved?.();
     close();
   }
@@ -390,6 +394,7 @@ export function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChang
       return;
     }
     setSaving(false);
+    successToast(t, existing ? 'category_updated' : 'category_added');
     onSaved?.();
     close();
   }

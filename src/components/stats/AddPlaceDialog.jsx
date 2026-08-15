@@ -4,6 +4,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { Dialog, Btn, Card, Field, useToast } from '@/design/index';
 import CountryFlag from '@/components/common/CountryFlag';
 import DateTimeInput from '@/components/common/DateTimeInput';
@@ -84,7 +85,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     }
     setSaving(false);
     refresh();
-    toast({ variant: 'success', title: isEdit ? t('stats.saved_toast') : t('stats.added_toast', { city: city.city_name }) });
+    successToast(t, isEdit ? 'visit_updated' : 'visit_added', { city: city.city_name });
     onSaved?.();
     onOpenChange(false);
   };
@@ -102,7 +103,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     }
     setSaving(false);
     refresh();
-    toast({ variant: 'success', title: t('stats.deleted_toast') });
+    successToast(t, 'visit_deleted');
     onSaved?.();
     onOpenChange(false);
   };

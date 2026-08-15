@@ -86,6 +86,9 @@ const AuthenticatedApp = () => {
           <Route path="/kit" element={<Kit />} />
           <Route path="/kit/:object" element={<Kit />} />
         </Routes>
+        {/* Витрине тостов нужен живой <Toaster>: этот бранч возвращается ДО общего
+            дерева, где он смонтирован, поэтому монтируем его и здесь. */}
+        <Toaster />
       </Suspense>
     );
   }

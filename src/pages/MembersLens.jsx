@@ -20,6 +20,7 @@ import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -92,6 +93,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     track('link_invited', { role, trip_id: tripId });
     navigator.clipboard?.writeText(linkUrl).then(() => {
       setCopied(true);
+      successToast(t, 'link_copied');
       setTimeout(() => setCopied(false), 2000);
     });
   }
@@ -115,6 +117,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       await invokeFn('trip-member/remove', { body: { id: promoteMember.id, trip_id: tripId } });
     }
     track('email_invited', { role, trip_id: tripId });
+    successToast(t, 'invite_sent');
     onSaved?.();
     close();
   }
@@ -239,6 +242,7 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
     });
     setSaving(false);
     if (error || data?.error) { setErr(classifyError(t, code).text); return; }
+    successToast(t, 'role_updated');
     onSaved?.();
     close();
   }
@@ -289,6 +293,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
     const { data, error, code } = await invokeFn('trip-member/resend', { body: { id: memberId, trip_id: tripId } });
     setRemoving(null);
     if (error || data?.error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+    successToast(t, 'invite_resent');
   }
 
   // Re-invite a member who declined: restart the invite flow on the SAME row.
@@ -301,19 +306,22 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
     });
     setRemoving(null);
     if (error || data?.error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+    successToast(t, 'invite_resent');
     refresh();
   }
 
   // Confirmed via the async confirm so the dialog's button spins while
   // the remove action (trip-member/remove) runs (the kebab menu can't host a
   // spinner; the dialog can).
-  async function removeMember(memberId) {
+  async function removeMember(memberId, status) {
     await confirm({
       title: t('member.remove_confirm'),
       variant: 'destructive',
       onConfirm: async () => {
         const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
         if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+        // pending row = an invite being cancelled; anything else = a member removed.
+        successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed');
         refresh();
       },
     });
@@ -330,6 +338,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
       onConfirm: async () => {
         const { error, code } = await invokeFn('trip-member-self/leave', { body: { id: member.id, trip_id: tripId } });
         if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+        successToast(t, 'trip_left');
         nav('/trips');
       },
     });
@@ -444,7 +453,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                           m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
                           m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
                           m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m, name: who.name }) },
-                          { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id) },
+                          { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id, m.status) },
                         ]
                     }
                   />

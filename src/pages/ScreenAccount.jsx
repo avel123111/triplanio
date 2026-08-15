@@ -8,6 +8,7 @@ import {
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useTheme } from '@/lib/ThemeContext';
 import { useProStatus } from '@/lib/useProStatus';
 import { useUnreadNotificationCount } from '@/lib/useNotifications';
@@ -459,7 +460,7 @@ export default function ScreenAccount() {
         setErrorMsg(errorText(t, code));
       } else {
         await checkUserAuth?.();
-        toast({ description: t('settings.saved'), variant: 'success' });
+        successToast(t, 'account_saved');
       }
     } finally {
       // invokeFn по контракту не бросает (отказ приходит значением), но finally

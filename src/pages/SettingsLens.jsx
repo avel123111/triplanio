@@ -18,6 +18,7 @@ import { track } from '@/lib/analytics';
 import { classifyError } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveAuthor, resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
@@ -550,6 +551,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     } else {
       setBookingWarnings(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+      successToast(t, 'settings_saved');
     }
     setBusyToggle(null);
   }
@@ -571,6 +573,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     } else {
       setChatWidget(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+      successToast(t, 'settings_saved');
     }
     setBusyToggle(null);
   }
@@ -626,7 +629,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
     queryClient?.invalidateQueries({ queryKey: ['trips'] }); // trips list shows title/cover/description
-    toast({ description: t('settings.saved'), variant: 'success' });
+    successToast(t, 'settings_saved');
   }
 
   // Toggle feature → persist to trip.details.addons, then invalidate shell query.
@@ -668,6 +671,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     setFeatures(s => ({ ...s, [id]: newVal }));  // reflect only after server confirms
     patchAddons(nextAddons);                      // sync the shell cache (lenses/widget)
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    successToast(t, newVal ? 'addon_enabled' : 'addon_disabled', { addon: feat ? t(feat.labelKey) : '' });
     setBusyToggle(null);
   }
 
@@ -695,6 +699,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           refusalToast(code, 'settings.save_error2');
           return;
         }
+        successToast(t, 'trip_left');
         nav('/trips');
       },
     });
@@ -722,6 +727,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       // so the planner can't read a stale count and flash the limit guard.
       invalidateActiveTripsLimit(queryClient);
       track('trip_deleted', { trip_id: tripId });
+      successToast(t, 'trip_deleted');
       nav('/trips');
     };
 
