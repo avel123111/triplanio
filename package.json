@@ -27,7 +27,8 @@
     "check:shadow-style": "node scripts/ci/check-shadow-style-skin.mjs",
     "check:surface-registry": "node scripts/ci/check-surface-registry.mjs",
     "check:error-map": "node scripts/ci/check-error-i18n-map.mjs",
-    "check:raw-errors": "node scripts/ci/check-raw-error-surface.mjs"
+    "check:raw-errors": "node scripts/ci/check-raw-error-surface.mjs",
+    "check:spec-columns": "node scripts/ci/check-spec-columns.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",

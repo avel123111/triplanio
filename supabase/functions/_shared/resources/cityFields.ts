@@ -27,7 +27,7 @@ export const CITY_FIELDS: Record<string, FieldSpec> = {
   country_code: { type: 'string', max: 8, nullable: true },
   latitude: coord(),
   longitude: coord(),
-  timezone: { type: 'string', max: 64, nullable: true },
+  timezone: { type: 'string', max: 300, nullable: true },
 };
 
 /**

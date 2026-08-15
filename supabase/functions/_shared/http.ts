@@ -184,7 +184,11 @@ export function withHandler(
       // 5xx path is logged; expected 4xx control flow would just be noise.
       console.error(`${fnName} unhandled:`, e);
       runInBackground(captureEdgeError(e, fnName));
-      return jsonError(500, (e as Error).message, 'INTERNAL', corsHeaders);
+      // Клиенту — СТАТИЧНЫЙ текст, `e.message` (в т.ч. сырой текст Postgres) едет
+      // только в Sentry строкой выше (TRIP-420, кусок контракта ошибок TRIP-276).
+      // Пользователь видит локализованную строку по `code: 'INTERNAL'`; `error`
+      // здесь — фолбэк для лога/дев, не проза исключения.
+      return jsonError(500, 'Internal server error', 'INTERNAL', corsHeaders);
     }
   };
 }
