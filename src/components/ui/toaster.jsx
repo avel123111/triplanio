@@ -13,8 +13,11 @@ import {
 // override this with an explicit `duration` (ms) in its options.
 const DURATION = { error: 8000, destructive: 8000, warning: 8000 };
 const DEFAULT_DURATION = 5000;
-const durationFor = (tt) =>
-  typeof tt.duration === "number" ? tt.duration : (DURATION[tt.variant] ?? DEFAULT_DURATION);
+function durationFor(tt) {
+  return typeof tt.duration === "number"
+    ? tt.duration
+    : DURATION[tt.variant] ?? DEFAULT_DURATION;
+}
 
 // Gap (px) between cards once the deck is fanned into a column.
 const GAP = 12;
