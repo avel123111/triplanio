@@ -3,8 +3,25 @@ import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { forgetStashedAttribution, getSignupMarks, identifyUser, rememberSignupMarks, resetIdentity, track } from '@/lib/analytics';
 import { detectLandingLang } from '@/lib/i18n/translations';
+import { stripAuthHash } from '@/lib/authHash';
 
 const AuthContext = createContext();
+
+// Drop the OAuth implicit-flow `#access_token` from the address bar once a
+// session is confirmed (TRIP-407, 328.1). Must run STRICTLY AFTER supabase-js has
+// parsed the session out of the hash — doing it earlier would swallow the token
+// before sign-in reads it. Idempotent: a second call on an already-clean address
+// finds no token and no-ops, so calling it from every confirmed-session branch is
+// safe. Only the fragment is dropped; `search` (campaign marks, `?t=`, `?code=`)
+// is preserved.
+function clearAuthHashFromAddress() {
+  const next = stripAuthHash(
+    window.location.pathname,
+    window.location.search,
+    window.location.hash,
+  );
+  if (next !== null) window.history.replaceState(null, '', next);
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -36,6 +53,7 @@ export const AuthProvider = ({ children }) => {
     // Primary: check session immediately - reliably handles page refresh
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        clearAuthHashFromAddress();
         loadUserProfile(session.user);
       } else if (!isOAuthCallback) {
         // No session and not an OAuth callback - user is genuinely not logged in
@@ -51,6 +69,8 @@ export const AuthProvider = ({ children }) => {
     // Secondary: react to auth changes (sign-in, sign-out, OAuth callback, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
+        // Session confirmed by supabase — safe to drop the `#access_token` now.
+        clearAuthHashFromAddress();
         // Skip when this user's profile is already loaded (the common case on
         // tab refocus) or a load for them is already in flight. Without this,
         // every tab focus reloaded the profile → isLoadingAuth flash → remount.
@@ -61,6 +81,8 @@ export const AuthProvider = ({ children }) => {
       } else if (event === 'INITIAL_SESSION') {
         // Fired on page load with the resolved session (covers OAuth callback exchange)
         if (session) {
+          // Session parsed out of the hash — now the token can leave the address.
+          clearAuthHashFromAddress();
           if (loadedUserIdRef.current !== session.user.id &&
               loadingForRef.current !== session.user.id) {
             loadUserProfile(session.user);
