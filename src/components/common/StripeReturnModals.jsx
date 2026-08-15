@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { track } from '@/lib/analytics';
+import { conversion } from '@/lib/destinations/ads';
+import { hashEmail } from '@/lib/hashEmail';
 import { invokeFn } from '@/lib/invokeFn';
 import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -25,7 +27,7 @@ export default function StripeReturnModals() {
   const [searchParams, setSearchParams] = useSearchParams();
   const nav = useNavigate();
   const qc = useQueryClient();
-  const { checkUserAuth } = useAuth();
+  const { checkUserAuth, user } = useAuth();
   const handledRef = useRef(null); // run-once guard per checkout return
   const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
   const [variant, setVariant] = useState('sub');   // 'sub' | 'trip'
@@ -44,6 +46,7 @@ export default function StripeReturnModals() {
 
     const kind = searchParams.get('kind') === 'trip' ? 'trip' : 'sub';
     const pt = searchParams.get('pt');
+    const sessionId = searchParams.get('session_id') || undefined;
     setVariant(kind);
     setRetryTo(kind === 'trip' && pt ? `/pro?tripId=${pt}` : '/pro');
 
@@ -80,6 +83,7 @@ export default function StripeReturnModals() {
       // then poll getUserPlan until the webhook flips the cache to Pro (capped
       // backoff, bounded budget). A per-trip purchase has its is_pro_trip set by
       // the webhook before redirect, so we don't poll — just refresh the user.
+      let value, currency;
       if (kind === 'sub') {
         try {
           const planRes = await invokeFn('getUserPlan');
@@ -89,11 +93,28 @@ export default function StripeReturnModals() {
             const priceRes = await invokeFn('getStripePrices', { body: {} });
             const p = priceRes.data?.prices?.[productCode];
             if (p?.unit_amount != null) {
-              setPriceLabel(fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd'));
+              value = p.unit_amount / 100;
+              currency = p.currency || 'usd';
+              setPriceLabel(fmtMoneyActive(value, currency));
             }
           }
         } catch { /* chip is optional */ }
+      }
 
+      // Google Ads payment conversion (TRIP-407 PR6) — dormant without the tag.
+      // transaction_id = the Stripe session_id, so a re-opened return URL cannot
+      // double-count. Enhanced conversions ride the SHA-256 of the email; the raw
+      // email never leaves hashEmail. Fired before the entitlement poll so a slow
+      // webhook does not delay it. Best-effort — never touches the success flow.
+      if (user?.email) {
+        hashEmail(user.email)
+          .then((sha256_email) => conversion('payment', { value, currency, transaction_id: sessionId, userData: { sha256_email } }))
+          .catch(() => { /* ads conversion is best-effort */ });
+      } else {
+        conversion('payment', { value, currency, transaction_id: sessionId });
+      }
+
+      if (kind === 'sub') {
         const deadline = Date.now() + 20000;
         let delay = 1000;
         while (!cancelled && Date.now() < deadline) {

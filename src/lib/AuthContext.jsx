@@ -3,6 +3,8 @@ import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { identifyUser, resetIdentity, track } from '@/lib/analytics';
 import { forgetStashedAttribution, getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
+import { conversion } from '@/lib/destinations/ads';
+import { hashEmail } from '@/lib/hashEmail';
 import { detectLandingLang } from '@/lib/i18n/translations';
 import { stripAuthHash } from '@/lib/authHash';
 
@@ -234,6 +236,15 @@ export const AuthProvider = ({ children }) => {
       // of showing up as an empty bucket worth looking at.
       if (profileCreated) {
         track('user_signed_up', { method: authUser.app_metadata?.provider });
+        // Google Ads registration conversion (TRIP-407 PR6) — dormant without the
+        // tag. Enhanced conversions ride the SHA-256 of the email; the raw email
+        // never leaves hashEmail. Best-effort: a hashing / gtag hiccup must not
+        // touch the signup path.
+        if (authUser.email) {
+          hashEmail(authUser.email)
+            .then((sha256_email) => conversion('registration', { userData: { sha256_email } }))
+            .catch(() => { /* ads conversion is best-effort */ });
+        }
       }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
