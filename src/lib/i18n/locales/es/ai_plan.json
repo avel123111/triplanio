@@ -8,7 +8,6 @@
   "draft_label": "Borrador",
   "end": "Fin",
   "end_badge": "Fin",
-  "error_plan_desc": "No se pudo generar el viaje. Inténtalo de nuevo.",
   "error_plan_title": "Error al planificar",
   "error_rate_limited": "Demasiadas solicitudes de IA. Inténtalo de nuevo en unos minutos.",
   "generate_draft": "Generar borrador",

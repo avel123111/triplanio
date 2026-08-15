@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
+import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -93,7 +94,7 @@ export default function Pro() {
       // СЕРВЕРЕ из (productCode, tripId) — returnPath клиента не шлём (ломал детерминизм
       // тела под нативную идемпотентность Stripe). Result-модалка глобальная, откроется на любом роуте.
       // invokeFn парсит {error, code} тела один раз и возвращает code/message (не throw).
-      const { data, error, code, message } = await invokeFn('createStripeCheckout', { body: { tripId, productCode } });
+      const { data, error, code } = await invokeFn('createStripeCheckout', { body: { tripId, productCode } });
       if (error || data?.error) {
         if (code === 'SUBSCRIPTION_ALREADY_ACTIVE') {
           const portal = await invokeFn('createBillingPortal', { body: { returnPath: '/settings' } });
@@ -103,7 +104,9 @@ export default function Pro() {
           return;
         }
         track('checkout_error', { plan, product_code: productCode, reason: code || 'create_failed' });
-        setErrorMsg(t('sub.upgrade_error', { message: message || error?.message }));
+        // Коды createStripeCheckout могут быть вне реестра → generic (ок, лучше
+        // сырого). Серверную прозу пользователю не показываем (TRIP-423).
+        setErrorMsg(errorText(t, code));
         setLoadingPlan(null);
         return;
       }
@@ -122,7 +125,8 @@ export default function Pro() {
     } catch (error) {
       console.error('Upgrade error:', error);
       track('checkout_error', { plan, product_code: productCode, reason: 'exception' });
-      setErrorMsg(t('sub.upgrade_error', { message: error.message }));
+      // Клиентское исключение (сеть/JS) — кода нет → общий фолбэк, не сырой message.
+      setErrorMsg(errorText(t, null));
       setLoadingPlan(null);
     }
   };

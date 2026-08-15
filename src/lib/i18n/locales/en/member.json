@@ -3,8 +3,6 @@
   "adding": "Adding…",
   "cancel_invite": "Cancel invite",
   "empty": "No participants",
-  "err_remove": "Could not remove the participant",
-  "err_send_invite": "Could not send the invite",
   "invite_again": "Invite again",
   "invite_email_note": "The recipient accepts the invite from their Triplanio inbox",
   "invite_link_label": "Invite link · expires in 7 days",

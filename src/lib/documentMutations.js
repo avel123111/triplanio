@@ -12,6 +12,7 @@
  */
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
+import { refusalError } from '@/lib/refusalError';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
@@ -102,16 +103,16 @@ export function uploadErrorText(error, t) {
  *
  * `created_by` is stamped by the server from the JWT — the caller must NOT send
  * it. `invokeFn` never throws on a non-2xx (functions-js returns {data:null,
- * error}); a refusal comes back as `error`. We surface it as the `write_rejected`
- * sentinel (never the raw server text — invariant TRIP-378) so the screen maps
- * it to its own localized line.
+ * error}); a refusal comes back as `error`. We rethrow it as the machine `code`
+ * (never the raw server text — invariant TRIP-378) so the screen words it via
+ * `errorText(t, e.code)`.
  *
  * @param {object} body  { tripId, title, notes, link_url, documents, visibility, created_by_name }
  * @returns the created row (or null).
  */
 export async function insertTripDocument(body) {
-  const { data, error } = await invokeFn('trip-document/doc', { body });
-  if (error) throw new Error('write_rejected');
+  const { data, error, code } = await invokeFn('trip-document/doc', { body });
+  if (error) throw refusalError(code);
   return data ?? null; // the seam answers the row payload flat
 }
 
@@ -122,15 +123,15 @@ export async function insertTripDocument(body) {
  * @param {string} id
  * @returns {Promise<boolean>} true if a row was deleted; false if it was already
  *   gone (seam answers 404 NOT_FOUND — another member deleted it). Callers must
- *   NOT treat false as success. Throws (write_rejected) on any other refusal
- *   (403 not-editor / private-not-owner, 401 expired) so the screen shows the
- *   generic failure — never the raw server text (TRIP-378).
+ *   NOT treat false as success. Rethrows the machine `code` on any other refusal
+ *   (403 not-editor / DOC_PRIVATE_NOT_OWNER, 401 expired) so the screen words it
+ *   via `errorText(t, e.code)` — never the raw server text (TRIP-378).
  */
 export async function deleteTripDocument(tripId, id) {
   const { error, code } = await invokeFn('trip-document/doc/delete', { body: { tripId, id } });
   if (error) {
     if (code === 'NOT_FOUND') return false;
-    throw new Error('write_rejected');
+    throw refusalError(code);
   }
   return true;
 }

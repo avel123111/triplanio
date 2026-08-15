@@ -17,5 +17,6 @@
   "TRIP_LIMIT_REACHED": "You've reached your active-trip limit. Wait for the current one to end or upgrade to Pro.",
   "UNAUTHENTICATED": "Please sign in again.",
   "UNAUTHORIZED": "You don't have permission to do that.",
+  "refusal": "This action isn't available.",
   "temporary": "Something went wrong. Please try again."
 }

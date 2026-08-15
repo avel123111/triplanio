@@ -341,20 +341,20 @@ function TelegramSection({ tripId }) {
   const toggle = async (a) => {
     if (busyId) return;
     setBusyId(a.id);
-    const { error } = await invokeFn('telegramSetActive', {
+    const { error, code } = await invokeFn('telegramSetActive', {
       body: { tripId, integrationId: a.id, isActive: !a.is_active },
     });
-    if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
+    if (error) toast({ description: classifyError(t, code).text, variant: 'destructive' });
     else setAccounts(list => list.map(x => x.id === a.id ? { ...x, is_active: !x.is_active } : x));
     setBusyId(null);
   };
 
   const doRemove = async (a) => {
     setBusyId(a.id);
-    const { error } = await invokeFn('telegramDisconnect', {
+    const { error, code } = await invokeFn('telegramDisconnect', {
       body: { tripId, integrationId: a.id },
     });
-    if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
+    if (error) toast({ description: classifyError(t, code).text, variant: 'destructive' });
     else setAccounts(list => list.filter(x => x.id !== a.id));
     setBusyId(null);
   };
@@ -686,14 +686,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         // reason on failure, so we must read the response - navigating on a silent
         // failure left the user still in the trip ("выход" перебрасывал на /trips,
         // но не выходил).
-        const { error, message } = await invokeFn('trip-member-self/leave', {
+        const { error, code } = await invokeFn('trip-member-self/leave', {
           body: { id: myMember.id, trip_id: tripId },
         });
         if (error) {
-          // invokeFn already parsed the body (read error.context once — a Response
-          // can only be read one time), so use its message; don't re-read.
-          const msg = message || t('settings.leave_error');
-          toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
+          // Причина отказа приходит машинным `code`; текст даёт общий refusalToast
+          // (одна карта код→текст). Серверный `message` не показываем НИКОГДА.
+          refusalToast(code, 'settings.save_error2');
           return;
         }
         nav('/trips');

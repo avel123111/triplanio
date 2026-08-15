@@ -51,6 +51,24 @@ const PATTERNS = [
   /\bset\w*[Ee]rr\w*\([^)\n]*?\b\w+\??\.message\b/g,
 ];
 
+// TRIP-423 — ДОМЕНЫ С ЗАКРЫТОЙ ДВЕРЬЮ: экраны, полностью переведённые на контракт
+// ошибок (`classifyError`/`errorText`/`uploadErrorText`). Здесь ноль АБСОЛЮТНЫЙ,
+// не ратчет: любой сырой показ краснит PR, даже если файл не тронут. Сырьё тут
+// двух форм — `.message` (PATTERNS выше) И голый серверный `message`,
+// деструктуренный из `invokeFn` (эту форму PATTERNS не ловит: она без `.message`,
+// см. «ГРАНИЦА ВСЛУХ» — invokeFn кладёт серверную прозу в корневой `message`).
+const ZERO_TOLERANCE = [
+  /^src\/pages\/MembersLens\.jsx$/,
+  /^src\/pages\/SettingsLens\.jsx$/,
+  /^src\/pages\/Pro\.jsx$/,
+  /^src\/pages\/ManualPlanner\.jsx$/,
+  /^src\/components\/create\/CreateTripProvider\.jsx$/,
+  /^src\/pages\/DocsLens\.jsx$/,
+];
+// Деструктуринг `const { …, message } = await invokeFn(…)` — чтение серверной
+// прозы в этих доменах запрещено (бери `code`, не `message`).
+const INVOKE_MSG = /const\s*\{[^}]*\bmessage\b[^}]*\}\s*=\s*await\s+invokeFn/g;
+
 const unknown = process.argv.slice(2).filter((a) => a !== '--');
 if (unknown.length) {
   console.error(`::error::check-raw-error-surface: unknown flag ${unknown.join(' ')}.`);
@@ -77,12 +95,12 @@ function blankComments(src) {
 }
 
 /** Число НЕ-освобождённых строк-показов сырого `.message` (дедуп по строке). */
-function scan(src) {
+function scan(src, patterns = PATTERNS) {
   if (!src) return 0;
   const masked = blankComments(src);
   const lines = src.split('\n');
   const hitLines = new Set();
-  for (const re of PATTERNS) {
+  for (const re of patterns) {
     for (const m of masked.matchAll(re)) {
       const from = masked.slice(0, m.index).split('\n').length - 1;
       if (lines.slice(from, from + 2).some((l) => l.includes(EXEMPT))) continue;
@@ -148,18 +166,35 @@ for (const file of touched) {
   }
 }
 
-// Whole-tree итог — для видимости числа (сам по себе не ратчетится).
+// Whole-tree проход: итог для видимости (сам по себе не ратчетится) + абсолютный
+// ноль для закрытых доменов (base-independent, TRIP-423 — краснит и нетронутый файл).
 let total = 0;
-try { for (const f of walk(ROOT)) total += scan(readFileSync(f, 'utf8')); } catch { /* ignore */ }
+const zeroErrors = [];
+try {
+  for (const f of walk(ROOT)) {
+    const src = readFileSync(f, 'utf8');
+    total += scan(src);
+    if (ZERO_TOLERANCE.some((re) => re.test(f))) {
+      const z = scan(src, [...PATTERNS, INVOKE_MSG]);
+      if (z > 0) {
+        zeroErrors.push(
+          `${f}: ${z} сырых показов серверного message — домен закрыт (TRIP-423), здесь ноль абсолютный` +
+          '\n    → показывай текст через `classifyError(t, code).text` / `errorText(t, code)`; бери `code`, не `message`.',
+        );
+      }
+    }
+  }
+} catch { /* ignore */ }
 
-if (errors.length) {
-  console.error('::error::check-raw-error-surface (3b): сырой error.message показан пользователю — см. контракт ошибок TRIP-400');
+if (errors.length || zeroErrors.length) {
+  console.error('::error::check-raw-error-surface (3b): сырой error.message показан пользователю — см. контракт ошибок TRIP-400/423');
   errors.forEach((e) => console.error(`  ✗ ${e}`));
+  zeroErrors.forEach((e) => console.error(`  ✗ ${e}`));
   console.error(`  Всего сырых показов в ${ROOT}/: ${total} (цель — вниз).`);
   process.exit(1);
 }
 
 console.log(
-  `check-raw-error-surface (3b): ${scanned} changed file(s) vs ${BASE_REF} — OK · сырых показов в ${ROOT}/: ${total} (не растёт)`,
+  `check-raw-error-surface (3b): ${scanned} changed file(s) vs ${BASE_REF} — OK · сырых показов в ${ROOT}/: ${total} (не растёт) · ${ZERO_TOLERANCE.length} закрытых доменов = 0`,
 );
 process.exit(0);

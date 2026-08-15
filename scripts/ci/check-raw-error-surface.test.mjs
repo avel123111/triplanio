@@ -132,6 +132,44 @@ test('бар `.message` вне слота показа не считается (
   assert.equal(r.code, 0, `бар .message посчитан показом:\n${r.out}`);
 });
 
+/* ─────────────────── zero-tolerance закрытых доменов (TRIP-423) ───────────── */
+
+test('zero-tolerance: сырой .message в закрытом домене → fail даже без роста/тронутости', (t) => {
+  // MembersLens НЕ тронут (head меняет другой файл) и рост=0 — ратчет бы промолчал.
+  // Абсолютный ноль домена обязан покраснеть по одному лишь наличию в HEAD.
+  const raw = 'export const f = (e) => setErr(e.message);\n';
+  const f = fixture(t, {
+    base: { 'src/pages/MembersLens.jsx': raw, 'src/other.js': 'const a = 1;\n' },
+    head: { 'src/other.js': 'const a = 2;\n' },
+  });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /MembersLens/);
+});
+
+test('zero-tolerance: голый message от invokeFn в закрытом домене → fail', (t) => {
+  // `setErr(message)` — БЕЗ `.message`, PATTERNS его не видит; ловит INVOKE_MSG.
+  const body = 'export async function g() { const { data, error, message } = await invokeFn("x", {}); return setErr(message); }\n';
+  const f = fixture(t, { base: {}, head: { 'src/pages/DocsLens.jsx': body } });
+  const r = run(f);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /DocsLens/);
+});
+
+test('zero-tolerance: закрытый домен на канон → ok', (t) => {
+  const clean = 'export const f = (t, code) => setErr(classifyError(t, code).text);\n';
+  const f = fixture(t, { base: {}, head: { 'src/pages/Pro.jsx': clean } });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('вне закрытого домена: голый message от invokeFn НЕ считается (INVOKE_MSG scoped)', (t) => {
+  const body = 'export async function g() { const { data, error, message } = await invokeFn("x", {}); return setErr(message); }\n';
+  const f = fixture(t, { base: {}, head: { 'src/A.jsx': body } });
+  const r = run(f);
+  assert.equal(r.code, 0, r.out);
+});
+
 test('неразрешимый BASE_REF → skip (exit 0), не догадка', (t) => {
   const f = fixture(t, { base: {}, head: { 'src/A.jsx': 'const f = (e) => setErr(e.message);\n' } });
   const r = run(f, { ref: 'origin/does-not-exist' });

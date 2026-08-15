@@ -32,6 +32,28 @@ test('фолбэк err.temporary существует и непустой', () =
   assert.ok(errDict.temporary.length > 0);
 });
 
+test('фолбэк err.refusal существует и непустой (TRIP-423)', () => {
+  assert.equal(typeof errDict.refusal, 'string');
+  assert.ok(errDict.refusal.length > 0);
+});
+
+test('★ отказ без своей строки → err.refusal, НЕ err.temporary (TRIP-423)', () => {
+  // Отказ обещать «попробуй позже» = врать: ответ всегда будет «нет».
+  for (const code of REFUSAL_CODES) {
+    const out = errorText(fakeT, code);
+    if (Object.hasOwn(errDict, code)) {
+      assert.equal(out, errDict[code], `код ${code} должен брать свою строку`);
+    } else {
+      assert.equal(out, errDict.refusal, `код ${code} без строки → err.refusal`);
+      assert.notEqual(out, errDict.temporary, `код ${code} не должен уходить в temporary`);
+    }
+  }
+});
+
+test('неизвестный (НЕ refusal) код → err.temporary, не err.refusal (TRIP-423)', () => {
+  assert.equal(errorText(fakeT, 'NO_SUCH_CODE'), errDict.temporary);
+});
+
 test('код с точной строкой возвращает её, а не адрес', () => {
   assert.equal(errorText(fakeT, 'FORBIDDEN'), errDict.FORBIDDEN);
   assert.equal(errorText(fakeT, 'INVALID_INPUT'), errDict.INVALID_INPUT);

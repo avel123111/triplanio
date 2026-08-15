@@ -29,7 +29,6 @@
   "leave_btn": "Salir",
   "leave_confirm": "¿Salir del viaje? Dejarás de verlo.",
   "leave_desc": "Dejarás de ver el viaje. Tus documentos personales en él se eliminarán de forma permanente. El propietario podrá invitarte de nuevo.",
-  "leave_error": "No se pudo salir",
   "leave_not_found": "Error: no se encontró tu participación en el viaje",
   "leave_owner_blocked": "Transfiere la propiedad a otro participante antes de salir",
   "leave_trip": "Salir del viaje",
