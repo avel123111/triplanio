@@ -8,8 +8,8 @@
       }
     },
     "tolgee": {
-      "command": "/data/.local/bin/uvx",
-      "args": ["tolgee-mcp"],
+      "command": "uvx",
+      "args": ["--with", "mcp[cli]<2", "--from", "tolgee-mcp", "tolgee-mcp"],
       "env": {
         "TOLGEE_API_KEY": "${TOLGEE_API_KEY}",
         "TOLGEE_API_URL": "https://tolgee.triplanio.com"
