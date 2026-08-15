@@ -19,7 +19,8 @@ import posthog from 'posthog-js';
 import { CAMPAIGN_KEYS, campaignQuery, pickSignupMarks, readMarks, resolveCampaign } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
-import { isReady } from '@/lib/destinations/posthog';
+import { mayIdentify } from '@/lib/consent-record';
+import { isPersisting, isReady } from '@/lib/destinations/posthog';
 
 // The campaign marks of THIS document, read from the entry-URL snapshot (taken at
 // module load in analyticsEnv). Null on any page the visitor did not arrive on
@@ -271,14 +272,22 @@ function syncCampaignToPerson() {
  * THE ONLY place the app identifies anyone (CI guard 2j). First-touch
  * (`$initial_utm_*`) is now left to PostHog's own native block — we no longer feed
  * it (TRIP-407, decision 2): the authoritative "source of signup" is the
- * `users.signup_utm_*` column written server-side, and a click made before the
- * banner is a knowingly-accepted gap. So this is a bare identify plus the
- * last-touch person sync — no `$set_once` payload.
+ * `users.signup_utm_*` column written server-side. So this is a bare identify plus
+ * the last-touch person sync — no `$set_once` payload.
+ *
+ * Gated on PERSISTING, not merely `isReady()` (TRIP-407 P1). Under variant B the
+ * client runs from load, so `isReady()` is true even for someone who REFUSED
+ * cookies or has not answered — and `identify(uid)` is a network event that
+ * CREATES a server-side person under that uid. Identity is a "person" operation,
+ * so it waits for the SAME consent that lets us write to the device.
+ * `track()`/`group()`/`setCampaign()` stay on `isReady()`: those ride the accepted
+ * anonymous memory hit, this does not. The consumer that fires unconditionally
+ * (AuthContext, on every profile load) is exactly why the gate lives HERE.
  *
  * @param {string} uid  the Supabase user id — no PII ever goes to analytics
  */
 export function identifyUser(uid) {
-  if (!uid || !isReady()) return;
+  if (!mayIdentify(uid, isPersisting())) return;
   // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
   // data stays in Supabase; resolve uid → user there when needed.
   posthog?.identify?.(uid);

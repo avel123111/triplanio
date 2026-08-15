@@ -77,3 +77,22 @@ export function buildConsent(accepted, now) {
 export function shouldSilenceOnConsentChange(persisting, record) {
   return persisting && record?.analytics !== true;
 }
+
+/**
+ * Whether we may identify a person to analytics (TRIP-407 P1). `identify(uid)` is
+ * a network event that CREATES a server-side person under that uid — a "person"
+ * operation — so it requires the SAME consent that lets us persist to the device,
+ * NOT merely a live (memory-only) client. So: a uid AND a persisting document.
+ *
+ * The trap: under variant B the client is "ready" from load, so a logged-in
+ * visitor who REFUSED cookies (or has not answered) would otherwise be identified
+ * anyway — a real person without consent. Anonymous capture rides `isReady()`;
+ * identity waits for `isPersisting()`.
+ *
+ * @param {string|null|undefined} uid
+ * @param {boolean} persisting  isPersisting() — this document writes to the device
+ * @returns {boolean}
+ */
+export function mayIdentify(uid, persisting) {
+  return !!uid && persisting === true;
+}

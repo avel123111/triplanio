@@ -6,7 +6,7 @@
 // tracking someone who never agreed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseConsent, buildConsent, shouldSilenceOnConsentChange, CONSENT_VERSION, CONSENT_MAX_AGE_MS } from './consent-record.js';
+import { parseConsent, buildConsent, shouldSilenceOnConsentChange, mayIdentify, CONSENT_VERSION, CONSENT_MAX_AGE_MS } from './consent-record.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
 const stored = (record) => JSON.stringify(record);
@@ -83,4 +83,21 @@ test('a foreign GRANT never silences (one-way), whatever this tab is doing', () 
   const grant = parseConsent(stored(buildConsent(true, NOW)), NOW);
   assert.equal(shouldSilenceOnConsentChange(true, grant), false);
   assert.equal(shouldSilenceOnConsentChange(false, grant), false);
+});
+
+// TRIP-407 P1: identity waits for consent-persistence, not mere readiness. Under B
+// the client is ready (memory) from load, but a logged-in refuser must NOT become
+// a server-side person — identify(uid) creates one.
+test('a refuser / not-yet-answered user (persisting=false) is NOT identified', () => {
+  assert.equal(mayIdentify('u1', false), false);
+});
+
+test('a consented, logged-in user (persisting=true) IS identified', () => {
+  assert.equal(mayIdentify('u1', true), true);
+});
+
+test('no uid is never identified, even when persisting', () => {
+  assert.equal(mayIdentify('', true), false);
+  assert.equal(mayIdentify(null, true), false);
+  assert.equal(mayIdentify(undefined, true), false);
 });
