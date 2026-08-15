@@ -19,12 +19,10 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveMembers } from '@/lib/resolveAuthor';
 import ChatStream from '@/components/chat/ChatStream';
 import ChatComposer from '@/components/chat/ChatComposer';
-import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
-import { Avatar, AvatarStack, EmptyState, Severity, Skeleton, Btn, Chip, Grow, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
+import { Avatar, AvatarStack, EmptyState, RoleBadge, Severity, Skeleton, Btn, Chip, Grow, Popover, PopoverTrigger, PopoverContent, Sheet } from '../design/index';
 import { useIsPhone } from '@/hooks/use-mobile';
 import { chatParticipants, pluralPeople, useChatId, useChatRows, useChatMessages, useChatSend, applyChatRow, isAiThinking, fetchOlderMessages, prependChatMessages, CHAT_PAGE } from '@/lib/chat';
 
@@ -35,7 +33,7 @@ function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
   return (
     <div className="row chat-member">
       {ai
-        ? <TriplanioAvatar />
+        ? <Avatar kind="ai" />
         : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} />}
       <div className="grow--fit">
         <div className="chat-member__nm trunc">{name}</div>
@@ -91,7 +89,7 @@ function ChatSkeleton() {
 
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
 
-export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
+export default function ChatLens({ tripId, members = [], myRole, ownerId, profiles = {} }) {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -111,13 +109,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // ── Send ── one shared seam with the widget; the client passes text only.
   const { send, retry, sending } = useChatSend(chatId, tripId);
 
-  // ── Resolve participant display names ──
-  const profileIds = [
-    ...members.map(m => m.user_id),
-    ownerId,          // owner often has no trip_members row → resolve explicitly
-    user?.id,
-  ].filter(Boolean);
-  const profiles = useUserProfiles(profileIds, tripId);
+  // ── Participant display names ── from the ONE profile bundle shipped with the
+  // trip content (getTripDetails, owner included), handed down by TripView. No
+  // separate profile-fetch hop; authors who left resolve from their snapshot.
 
   // ── Load messages ── shared cache with the chat widget.
   const { data: msgs = [], isLoading, error: msgsError, refetch: refetchMsgs } = useChatMessages(chatId);
@@ -246,7 +240,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           name={p.name}
           avatarUrl={p.photo}
           isDeleted={p.deleted}
-          role={p.role === 'owner' ? t('members.role_owner') : p.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer')}
+          role={<RoleBadge role={p.role} />}
         />
       ))}
       <div className="chat-member-sep">
@@ -260,7 +254,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const renderMembersBtn = (onClick) => (
     <Chip avatars onClick={onClick} aria-label={t('chat.members_title')}>
       <AvatarStack people={people} />
-      <span className="chat-members-btn__lbl t-ui">{t('trip.sidebar_members')}</span>
+      <span className="chat-members-btn__lbl t-label">{t('trip.sidebar_members')}</span>
     </Chip>
   );
 

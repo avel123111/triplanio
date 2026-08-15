@@ -26,21 +26,28 @@ import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { DOCK_SECTIONS, sectionById } from '@/lib/tripMenu';
 
 // ─── Context bridge ──────────────────────────────────────────────────────────
-// TripShell регистрирует { current, onNavigate, openMenu, openAdd,
-// hidesDock } пока смонтирован; null = экрана трипа сейчас нет.
+// TripShell регистрирует { current, onNavigate, openMenu, hidesDock } пока
+// смонтирован; null = экрана трипа сейчас нет.
+// `addActions` — ОТДЕЛЬНЫЙ канал «+»-меню: список дескрипторов действий
+// `{ id, icon, tone, labelKey, onSelect }`, который собирает ЭКРАН (трип-линза
+// знает роль/аддон, Stats — свой набор). Держится отдельно от `tripNav`, потому
+// что регистрируют его и НЕ-трип экраны (Stats под app-вариантом дока). Есть
+// список → «+» открывает ActionMenu; нет → фолбэк `openChoice()`.
 // ⚠️ Тип контекста TS берёт с ДЕФОЛТНОГО ЗНАЧЕНИЯ, а не с реализации: заглушка
 // `() => {}` объявляла сеттер БЕЗ аргументов, и настоящий `setTripNav` из
 // `useState` в него не влезал. Долг был невидим при `checkJs:false` и вскрылся
 // ровно тогда, когда в файл поставили прагму.
-/** @type {React.Context<{ tripNav: any, setTripNav: (v: any) => void }>} */
-const MobileNavContext = createContext({ tripNav: null, setTripNav: () => {} });
+/** @type {React.Context<{ tripNav: any, setTripNav: (v: any) => void, addActions: any, setAddActions: (v: any) => void }>} */
+const MobileNavContext = createContext({ tripNav: null, setTripNav: () => {}, addActions: null, setAddActions: () => {} });
 
 export function MobileNavProvider({ children }) {
   const [tripNav, setTripNav] = useState(null);
-  const value = useMemo(() => ({ tripNav, setTripNav }), [tripNav]);
+  const [addActions, setAddActions] = useState(null);
+  const value = useMemo(() => ({ tripNav, setTripNav, addActions, setAddActions }), [tripNav, addActions]);
   return <MobileNavContext.Provider value={value}>{children}</MobileNavContext.Provider>;
 }
 
@@ -73,9 +80,33 @@ export default function MobileBottomNav() {
   const nav = useNavigate();
   const loc = useLocation();
   const { user } = useAuth();
-  const { tripNav } = useMobileNav();
+  const { tripNav, addActions } = useMobileNav();
   const { openChoice } = useCreateTrip();
   const path = loc.pathname;
+
+  // Один аффорданс «+»: если экран объявил `addActions`, «+» = триггер ActionMenu
+  // (на мобиле — его Sheet со строками-плитками); иначе фолбэк — создать трип.
+  // Подпись: есть меню действий → общая «Добавить»; фолбэк-создание → своя подпись.
+  const addMenu = (fallbackAria) => {
+    const hasActions = !!addActions?.length;
+    const trigger = (
+      <IconBtn
+        icon="plus"
+        size="fab"
+        className="mbnav__fab"
+        ariaLabel={hasActions ? t('common.add') : fallbackAria}
+        onClick={hasActions ? undefined : () => openChoice()}
+      />
+    );
+    if (!hasActions) return trigger;
+    return (
+      <ActionMenu
+        trigger={trigger}
+        title={t('common.add')}
+        items={addActions.map((a) => ({ ...a, label: t(a.labelKey) }))}
+      />
+    );
+  };
 
   // Секция сама объявляет, что дока на ней быть не должно (композер чата забрал
   // нижнюю кромку; у редактора раскладка под док ещё не сделана). Причина живёт
@@ -132,7 +163,7 @@ export default function MobileBottomNav() {
         <div className="mbnav__dock">
           {sectionItems(DOCK_SECTIONS.left)}
           <span className="mbnav__center">
-            <IconBtn icon="plus" size="fab" className="mbnav__fab" ariaLabel={t('common.add')} onClick={() => tripNav.openAdd?.()} />
+            {addMenu(t('common.add'))}
           </span>
           {sectionItems(DOCK_SECTIONS.right)}
           <NavItem icon="more" label={t('common.more')} active={false} onClick={() => tripNav.openMenu?.()} />
@@ -147,7 +178,7 @@ export default function MobileBottomNav() {
       <div className="mbnav__dock mbnav__dock--app">
         <NavItem icon="grid" label={t('nav.trips')} active={path.startsWith('/trips')} onClick={() => nav('/trips')} />
         <span className="mbnav__center">
-          <IconBtn icon="plus" size="fab" className="mbnav__fab" ariaLabel={t('trips.new')} onClick={() => openChoice()} />
+          {addMenu(t('trips.new'))}
         </span>
         <NavItem label={t('nav.account')} active={path.startsWith('/settings')} avatar={avatarEl} onClick={() => nav('/settings')} />
       </div>

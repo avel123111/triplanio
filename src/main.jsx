@@ -35,6 +35,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { initSentry } from '@/lib/sentry'
 import { applyConsent, clearAnalyticsStorage, getConsent, isProdHost } from '@/lib/consent'
+import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
 import '@/index.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -65,5 +66,9 @@ if (!isProdHost) {
     .then((m) => m.initCanonInspector())
     .catch(() => { /* dev tool is best-effort; never break the app */ })
 }
+
+// Flag `has-keyboard` on <html> while the soft keyboard is up (mobile) so CSS can
+// hide the bottom nav / sheet footer above it. Geometry-based, not focus-based.
+startKeyboardOpenWatch()
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />)

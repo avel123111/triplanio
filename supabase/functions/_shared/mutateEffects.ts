@@ -17,6 +17,7 @@ import type { Actor } from './mutateRules.ts';
 import { emit } from './emit.ts';
 import { purgePrivateDocsForMember } from './personalDocsTeardown.ts';
 import { disconnectTripTelegram } from './telegramTeardown.ts';
+import { purgeTripBucket } from './tripStoragePurge.ts';
 import { emitTripReached2 } from './analytics.ts';
 import { respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
 
@@ -55,30 +56,65 @@ async function teardownMember(db: SupabaseClient, tripId: unknown, userId: unkno
  * afterWrite» (декларация — здесь, в файле ресурса-эффектов, не на чистом спеке).
  */
 export const AFTER_WRITE: Record<string, AfterWrite> = {
+  // Трип удалён владельцем (TRIP-416). Внешняя побочка, которую FK-каскад не
+  // достаёт, ПОСЛЕ удаления строки — обе best-effort:
+  //   1. Telegram-teardown: FK `trip_telegram_integrations.trip_id` = ON DELETE
+  //      CASCADE, поэтому строки привязок каскад снял сам; вызов оставлен
+  //      forward-домом под будущий шаг вызова Telegram API (снимет 0 строк — no-op).
+  //   2. Storage-purge префикса `<tripId>/` в бакете `trips` (обложка включительно).
+  // scopeValue = tripId (resolveScope по body.tripId).
+  'trip-owner/delete': async ({ scopeValue, db }) => {
+    try {
+      await disconnectTripTelegram(db, { tripId: scopeValue });
+    } catch (e) {
+      console.error('afterWrite: trip-owner/delete telegram teardown failed', e);
+    }
+    try {
+      await purgeTripBucket(db, scopeValue);
+    } catch (e) {
+      console.error('afterWrite: trip-owner/delete storage purge failed', e);
+    }
+  },
+
+  // Регистрация связала pending-инвайты (TRIP-411): по каждому связанному — n8n
+  // уведомляет приглашённого (получатель = сам новый юзер). Заменяет слепой
+  // `INSERT notifications` из удалённого триггера `link_pending_invites`. Только
+  // при created (повтор из двух вкладок уже связал на 1-м вызове). Best-effort.
+  'account/register': async ({ result, actor, db }) => {
+    const data = asRow(result);
+    if (!data.created) return;
+    const linked = Array.isArray(data.linked) ? data.linked : [];
+    for (const inv of linked) {
+      const m = asRow(inv);
+      emit('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id }, { db });
+    }
+  },
+
   // Приглашение создано/реактивировано (declined→pending) — n8n шлёт нотиф+email.
-  'trip-member/invite': async ({ result, scopeValue, actor }) => {
+  'trip-member/invite': async ({ result, scopeValue, actor, db }) => {
     const member = asRow(result);
-    emit('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string });
+    emit('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Приглашение переслано (записи не было — re-emit по загруженной строке).
-  'trip-member/resend': async ({ loadedRow, actor }) => {
+  'trip-member/resend': async ({ loadedRow, actor, db }) => {
     const member = asRow(loadedRow);
-    emit('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string });
+    emit('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Роль изменена — уведомляем участника ТОЛЬКО при реальной смене и для юзера с
   // аккаунтом (сравниваем старую роль из loadedRow с новой из результата UPDATE).
-  'trip-member/role': async ({ loadedRow, result, actor }) => {
+  'trip-member/role': async ({ loadedRow, result, actor, db }) => {
     const before = asRow(loadedRow);
     const after = asRow(result);
     if (roleChangeNotifies(before.role, after.role, before.user_id)) {
+      // Снимок = полная строка (before) с НОВОЙ ролью (after) — резолвер отдаёт member с актуальной ролью.
       emit('role_changed', {
         trip_id: before.trip_id as string,
         recipient_id: before.user_id as string,
         actor_id: actor.id,
         member_id: before.id as string,
-      });
+      }, { db, snapshot: { ...before, ...after } });
     }
   },
 
@@ -88,7 +124,8 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
     if (member.user_id) {
-      emit('member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id });
+      // Строка членства уже удалена → member ТОЛЬКО из снимка (дочитать нечего).
+      emit('member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 
@@ -97,7 +134,8 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
   'trip-member-self/leave': async ({ loadedRow, db }) => {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
-    if (member.user_id) emit('member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string });
+    // Строка членства уже удалена → member ТОЛЬКО из снимка.
+    if (member.user_id) emit('member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
   },
 
   // Ответ на приглашение. По исходу RPC: accept → North-Star + уведомить пригласившего;
@@ -111,7 +149,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     // North Star: сделал ли accept трип коллаборативным (владелец + 1-й участник = 2)?
     if (plan.reached2) await emitTripReached2(db, scopeValue, actor.id);
     if (plan.emit && member.invited_by) {
-      emit(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id });
+      emit(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 };

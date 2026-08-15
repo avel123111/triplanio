@@ -5,8 +5,8 @@ import { hashStr } from '@/lib/hash';
  *
  * 8 sanctioned gradient pairs [base, lighter]. A user's colour is picked
  * deterministically from a seed (name/email) so the same person is always the
- * same colour everywhere. Both <Avatar> (design/index.jsx) and <UserAvatar>
- * render from this ramp — do not introduce a second palette.
+ * same colour everywhere. <Avatar> (design/index.jsx) renders from this ramp —
+ * do not introduce a second palette.
  *
  * (Kept in JS rather than CSS tokens because the gradient is composed in JS;
  * JS cannot cleanly read CSS custom properties at render time.)

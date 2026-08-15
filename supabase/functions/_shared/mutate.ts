@@ -34,10 +34,10 @@
 
 import { supabaseAdmin, getRequestUser } from './supabaseAdmin.ts';
 import { HttpError, jsonError, refusalResponse } from './http.ts';
-import { isCallerEditor, isCallerParticipant } from './tripAccess.ts';
+import { isCallerEditor, isCallerOwner, isCallerParticipant } from './tripAccess.ts';
 import { proRefusal } from './proGate.ts';
 import { mutateSuccess } from './mutateResponse.ts';
-import { buildPlan, findUnguardedRowSelf, parseAction, REGISTRY, unwrapDbResult, validateInput } from './mutateRules.ts';
+import { buildPlan, findUnguardedRowSelf, parseAction, REGISTRY, TRIP_LIMIT_REACHED, unwrapDbResult, validateInput } from './mutateRules.ts';
 import type { Actor, ActionSpec, Refusal, ResourceSpec, WritePlan } from './mutateRules.ts';
 import { AFTER_WRITE } from './mutateEffects.ts';
 
@@ -83,6 +83,14 @@ async function checkRequirement(
       return (await isCallerEditor(ctx.scopeValue, ctx.actor))
         ? null
         : { status: 403, code: 'FORBIDDEN', message: 'Forbidden' };
+    case 'owner':
+      // Верхняя ступень лестницы (`created_by === actor`) — гейтит удаление трипа
+      // (TRIP-416). Так же, как editor/participant: инфра-сбой бросает
+      // TripAccessError → 5xx, а не ложный 403; НЕсуществующий трип → false → 403
+      // (не течёт существование трипа; тот же seam-паттерн, что editor/participant).
+      return (await isCallerOwner(ctx.scopeValue, ctx.actor))
+        ? null
+        : { status: 403, code: 'FORBIDDEN', message: 'Forbidden' };
     case 'self':
       // Ресурс без трипа: владение = актор владеет своей же строкой.
       return ctx.scopeValue === ctx.actor
@@ -101,9 +109,7 @@ async function checkRequirement(
       // Сбой БД брошен внутри `rpc()` → 500 (как editor/pro); сюда доезжает только
       // настоящее `data` → `false` = бизнес-«нет» (лимит), не спрятанный инцидент.
       const ok = await rpc('can_create_trip', { p_uid: ctx.actor });
-      return ok === true
-        ? null
-        : { status: 402, code: 'TRIP_LIMIT_REACHED', message: 'Trip limit reached', sentrySkip: true };
+      return ok === true ? null : TRIP_LIMIT_REACHED;
     }
     default:
       // Незнакомое требование — сбой конфигурации, а не отказ юзеру: 500.

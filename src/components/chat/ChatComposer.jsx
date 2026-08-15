@@ -1,11 +1,10 @@
 // @ts-check
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { IconBtn } from '@/design/index';
+import { Avatar, IconBtn } from '@/design/index';
 import { InputGroup } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { highlightMentions } from '@/lib/mention';
-import TriplanioAvatar from './TriplanioAvatar';
 
 /**
  * The message composer — ONE implementation for the chat lens and the floating
@@ -108,7 +107,7 @@ const ChatComposer = forwardRef(
           <div className="row row--g4 chat-overline">
             {isThinking && (
               <div className="chat-thinking">
-                <TriplanioAvatar size="xs" />
+                <Avatar kind="ai" size="sm" />
                 <span>{t('chat.typing')}</span>
                 <span className="ai-dots"><span /><span /><span /></span>
               </div>
@@ -126,7 +125,7 @@ const ChatComposer = forwardRef(
               onMouseDown={(e) => { e.preventDefault(); insertMention(); }}
               className="row chat-mention__row"
             >
-              <TriplanioAvatar />
+              <Avatar kind="ai" />
               <span className="grow">
                 <b>{TRIPLANIO_BOT_NAME}</b>
                 <span>{t('chat.mention_all_hint')}</span>

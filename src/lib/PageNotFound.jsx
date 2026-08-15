@@ -23,7 +23,7 @@ export function SystemStub({ icon, tone = 'brand', title, body, primary, seconda
         <Icon name={icon} size={42} />
       </Tile>
       <h1 className="t-title" style={{ marginBottom: 12, maxWidth: 520 }}>{title}</h1>
-      <div className="muted t-ui" style={{ maxWidth: 480, marginBottom: 24 }}>{body}</div>
+      <div className="muted t-body" style={{ maxWidth: 480, marginBottom: 24 }}>{body}</div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
         {primary && <Btn variant="primary" onClick={primary.onClick}>{primary.label}</Btn>}
         {secondary && <Btn variant="secondary" onClick={secondary.onClick}>{secondary.label}</Btn>}

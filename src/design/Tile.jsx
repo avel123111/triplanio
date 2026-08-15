@@ -36,7 +36,7 @@ import { Icon } from './icons';
 // `children` — для НЕ-иконочного содержимого (номер точки маршрута, буква):
 // плитка не всегда несёт `<Icon>`. Если задан `icon`, рисуется он; иначе `children`.
 /** @typedef {'sm'|'lg'|'xl'|'2xl'} TileSize */
-/** @typedef {'brand'|'danger'|'ai'|'info'|'success'|'quiet'|'warning'|'warm'} TileTone */
+/** @typedef {'brand'|'danger'|'ai'|'info'|'success'|'quiet'|'warning'|'warm'|'hotel'|'activity'|'transfer'} TileTone */
 export const Tile = React.forwardRef(
   /**
    * @param {React.ComponentPropsWithoutRef<'div'> & {
@@ -88,4 +88,4 @@ Tile.displayName = "Tile";
 /** @type {readonly TileSize[]} */
 export const TILE_SIZES = ["sm", "lg", "xl", "2xl"];
 /** @type {readonly TileTone[]} */
-export const TILE_TONES = ["brand", "danger", "ai", "info", "success", "quiet", "warning"];
+export const TILE_TONES = ["brand", "danger", "ai", "info", "success", "quiet", "warning", "hotel", "activity", "transfer"];

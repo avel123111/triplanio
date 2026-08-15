@@ -21,6 +21,8 @@
   "invite_created.email_signup_link": "Regístrate aquí",
   "invite_created.email_subject": "Invitación al viaje",
   "invite_created.title": "Te han invitado al viaje",
+  "invite_linked.body": "te invita como",
+  "invite_linked.title": "Te han invitado al viaje",
   "invite_declined.body": "Al viaje",
   "invite_declined.title": "rechazó la invitación",
   "invite_resent.email_subject": "Recordatorio: invitación al viaje",

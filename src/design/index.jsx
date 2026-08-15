@@ -3,6 +3,7 @@ import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } fro
 import { Icon } from './icons';
 import { Tile } from './Tile';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useKeyboardOpen } from '@/lib/keyboardOpen';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { faviconUrl } from '@/lib/booking-platforms';
@@ -39,6 +40,10 @@ import { FieldRequired } from './Input';
 // `components/ui/*`, а примитив раскладки обязан быть доступен без этого хвоста
 // (TRIP-388). Экраны зовут его отсюда, чтобы точка входа в ДС была одна.
 export { Row, Col, Grid, Trunc, Grow } from './Layout';
+export { PageHead } from './PageHead';
+export { Stat, STAT_TONES } from './Stat';
+export { ListRow, LISTROW_VARIANTS } from './ListRow';
+export { Donut } from './Donut';
 // Кнопка-иконка — своим модулем по той же причине: крестик тоста живёт в
 // `components/ui/toast`, который этот баррель реэкспортит, и импорт кнопки
 // оттуда замкнул бы кольцо `design/index → ui/toaster → design/index`
@@ -58,6 +63,25 @@ import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — �
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
+// The Triplanio AI assistant's face. It used to live in its own component
+// (TriplanioAvatar) so the bot's avatar drifted from every other avatar; now it
+// is the `kind="ai"` variant, one robot for the stream, the assistant reply, the
+// mention popup and the "typing" pill. Sized in % so it fills whatever the
+// container hands `.avatar` (32 in a chat run, 22 at size="sm").
+const AI_ROBOT = (
+  <svg width="62%" height="62%" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    {/* antenna */}
+    <path d="M24 7V12" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    <circle cx="24" cy="6" r="2.6" fill="white" />
+    {/* head */}
+    <rect x="9" y="13" width="30" height="26" rx="9" fill="white" />
+    {/* eyes */}
+    <circle cx="18.5" cy="25" r="3" fill="var(--ai)" />
+    <circle cx="29.5" cy="25" r="3" fill="var(--ai)" />
+    {/* smile */}
+    <path d="M19 32 Q24 35.5 29 32" stroke="var(--ai)" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+  </svg>
+);
 /** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, className?: string, style?: any }} p */
 export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
   const t = useT();
@@ -66,7 +90,7 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "sm" ? 12 : 15} /></div>;
   }
   if (kind === "ai") {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp} aria-label="Triplanio">{AI_ROBOT}</div>; // i18n-ignore — «Triplanio» бренд, не переводится
   }
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
@@ -324,13 +348,29 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
 );
 
 // ----- Badge -----
-/** @param {{ variant?: string, icon?: string, children?: any, style?: any }} p */
-export const Badge = ({ variant = "", icon, children, style }) => (
-  <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
+/** @param {{ variant?: string, size?: string, icon?: string, children?: any, style?: any }} p */
+export const Badge = ({ variant = "", size, icon, children, style }) => (
+  <span className={`badge${variant ? " badge--" + variant : ""}${size ? " badge--" + size : ""}`} style={style}>
     {icon && <Icon name={icon} size={11} />}
     {children}
   </span>
 );
+
+// ----- RoleBadge ----- (TRIP-409, апрув Pavel)
+// ОДИН перевод роли участника → бейдж. До него пять поверхностей рисовали его
+// по-своему: список участников — цветными <Badge>, «Кто едет» в Обзоре —
+// руками собранными классами, чат — простой текстовой строкой, карточки
+// трипов — то quiet+eye, то голым <Badge>. Канон — облик списка участников:
+// owner=warning, admin=brand, viewer=outline+eye. `viewer` — единственная явная
+// ветка; всё остальное (admin и несуществующая в схеме роль `member`) читается
+// как admin, повторяя прежний fallback карточек трипов.
+/** @param {{ role?: string }} p */
+export const RoleBadge = ({ role }) => {
+  const t = useT();
+  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>;
+  if (role === "viewer") return <Badge variant="outline" icon="eye">{t("trips.role_viewer")}</Badge>;
+  return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
+};
 
 // ----- Card -----
 // ★ ГОЛАЯ ПОВЕРХНОСТЬ (TRIP-343, объект 2). Прежний `Card` жёстко рисовал шапку
@@ -547,16 +587,20 @@ export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 //      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +
 //      window.__openModal stack has been removed; every modal in the app now
 //      runs on the same `ui/dialog` Dialog/DialogContent. ----
-// iconTone swaps the header-icon tint to an existing Lumo event token set
-// (default = brand). Add tones here as needed — no new tokens introduced.
-const DLG_ICON_TONES = {
-  activity: { bg: 'var(--ev-activity-soft)', fg: 'var(--ev-activity-ink)' },
-};
+// iconTone swaps the header-icon tint to an existing tile tone (default = brand).
+// Whitelist the tones the header supports — an unknown value falls back to brand.
+const DLG_ICON_TONES = { activity: 'activity' };
 /** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
 export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
   const t = useT();
+  // The dialog OWNS its footer: on mobile it hides it while the keyboard is up
+  // (it would otherwise rise above the keyboard and cover the autofill bar).
+  // Done here — not with an outer CSS rule on `.dlg__foot` — because reaching
+  // into a canon primitive from a state class is the coupling the design floor
+  // forbids (guard 2o `reach`). The primitive hides itself.
+  const kbOpen = useKeyboardOpen();
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
-  const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
+  const toneClass = `tile--${DLG_ICON_TONES[iconTone] || 'brand'}`;
   return (
     <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       {/* a11y contract lives HERE — the one wrapper every app dialog uses. The
@@ -568,11 +612,10 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
         <div className="dlg__head">
           {icon && (
             /* Геометрия - примитив .tile (34px, значок 17px = дефолт лестницы;
-               было 36px руками, а ступень --md и есть полоса 32-36). Тон пока
-               остаётся данными на элементе, как у Severity/EmptyState выше:
-               системным классом он станет, когда у .tile--* появится тон
-               события - сегодняшний набор тонов цветов события не знает. */
-            <div className="tile" style={{ background: tone.bg, color: tone.fg }}>
+               было 36px руками, а ступень --md и есть полоса 32-36). Тон - класс
+               союза тонов плитки: `.tile--activity` завёлся в TRIP-350, инлайн
+               ушёл. */
+            <div className={`tile ${toneClass}`}>
               <Icon name={icon} size={17} />
             </div>
           )}
@@ -586,7 +629,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
           <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} />
         </div>
         <div className="dlg__body">{children}</div>
-        {foot && <div className="dlg__foot">{foot}</div>}
+        {foot && !kbOpen && <div className="dlg__foot">{foot}</div>}
       </DialogContent>
     </UIDialog>
   );

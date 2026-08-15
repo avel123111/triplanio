@@ -80,9 +80,9 @@ export const TABLES = {
   trip_members:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE INSERT,DELETE ON trip_members FROM authenticated (пишет только edge)' },
   // trips: РЕШЕНО (Pavel) — полный Ярус B, никаких поколоночных исключений.
   // Поколоночные гранты — хрупкий анти-паттерн (TRIP-62: owner включал аддоны PATCH'ем
-  // details). Все записи через edge. Единственный прямой клиентский write — обложка в
-  // ManualPlanner сразу после создания — перевести на edge/RPC в Ф3.
-  trips:             { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE ALL DML ON trips FROM authenticated; reroute ManualPlanner cover-update через edge (updateTripSettings)' },
+  // details). Все записи через edge-шов: create (trip), settings/обложка
+  // (trip-settings), delete (trip-owner), share/copy (trip-share).
+  trips:             { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'REVOKE ALL DML ON trips FROM authenticated; все записи через seam (trip/trip-settings/trip-owner/trip-share)' },
   // Токены/блоки — серверные, клиент не должен ни писать, ни читать токены.
   trip_invite_links: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE ALL FROM anon,authenticated (invite-токены, только edge)' },
   telegram_link_tokens: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated (link-токены)' },
@@ -104,8 +104,13 @@ export const TABLES = {
   // двумя операциями с клиента. Теперь клиент только читает.
   chat_messages:     { tier: 'B', write: 'send_chat_message via edge trip-chat (service_role)', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'TRIP-296 закрыл прямой DML (REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop политик); TRIP-408 увёл и сам RPC за шов — EXECUTE у authenticated снят, send_chat_message(p_trip,p_actor) зовёт только edge trip-chat (op:rpc, гейт participant+pro). authSelect остаётся (realtime-подписка чата)' },
 
-  // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
-  users:              { tier: 'C', write: 'edge account/profile (service_role) + INSERT authenticated (регистрация, врем.)', anonDml: false, authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: true, status: 'aligned', note: 'TRIP-400 шаг C: закрыта дверь ПРАВКИ — REVOKE UPDATE (table+поколоночный) и DELETE у authenticated; правка профиля только через edge account/profile под service_role. INSERT+SELECT ПОКА остаются (снимет домен регистрации — там insert().select() профиля), поэтому ярус остаётся C и authDml=true (частичный клиентский DML). per-op authUpdate/authDelete=false — LIVE-2e сверяет, что сняты ПОШТУЧНО; anon без DML (Ф3)' },
+  // users: был ярус C (личное, политики скоупили auth.uid()). TRIP-411 закрыл
+  // домен регистрации полностью — клиентских дверей не осталось, поэтому ярус B
+  // (как user_custom_visits/notifications при полном закрытии: «клиент не пишет
+  // вовсе»). Шаг C двумя слайсами: 400c снял UPDATE/DELETE; 411-слайс1 увёл
+  // создание строки за шов (RPC create_user_profile, service_role); 411-слайс2
+  // снял последние клиентские двери INSERT+SELECT.
+  users:              { tier: 'B', write: 'edge account/register+account/profile via create_user_profile (service_role)', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-411: полное закрытие — клиент не пишет (создание строки → edge account/register, RPC create_user_profile идемпотентный под service_role; правка профиля → account/profile) и не читает (getMe/getUserPlan/… под service_role; фронт .from(users) = ноль после слайса 1). REVOKE INSERT+SELECT FROM authenticated,anon (UPDATE/DELETE сняты 400c); 4 RLS-политики users_*_own удалены ПОСЛЕ revoke, RLS остаётся enabled = deny-all backstop; service_role не тронут. twoDoor users 1→0 — последняя двойная дверь эпика закрыта; LIVE-2e ассертит нулевые клиентские INSERT/SELECT (auth+anon)' },
   // TRIP-402 шаг C: домен статистики закрыт — edge-only. Запись через шов
   // user-place (service_role, scope user_id=actor), чтение статов через RPC
   // get_user_travel_stats(p_actor) под service_role (EXECUTE у authenticated снят
@@ -317,22 +322,18 @@ export const DOORS_VALUES = new Set([...STEP_VALUES, 'owner', 'self', 'auth', 't
  * шов не знает. `participant` реализован в шве с TRIP-408 (дверь `trip-chat`
  * зовёт `['participant','pro']`) — `checkRequirement` его знает.
  */
-export const SEAM_GATE_TOKENS = new Set(['participant', 'editor', 'self', 'pro', 'trip_quota']);
+export const SEAM_GATE_TOKENS = new Set(['participant', 'editor', 'self', 'pro', 'trip_quota', 'owner']);
 
 export const DOORS = {
   // ── participant: viewer проходит осознанно ──
   getTripDetails:        'participant', // чтение трипа
   callTriplanioAi:       'participant', // обращение к ассистенту = сообщение в чат
-  copyTrip:              'participant', // копия создаётся как СВОЙ трип
-  ensureShareToken:      'participant', // ссылка открывает то, что зритель и так видит (TRIP-202)
-  resolveProfiles:       'participant', // чтение профилей участников
   render_share_card:     'participant', // рендер карточки, только чтение
   telegramGetIntegration:'participant', // чтение статуса привязки
   parseBookingWithAi:    'participant', // распознавание брони, в БД не пишет
   checkSubscriptionStatus: 'participant', // Pro-статус трипа видит всякий, кто трип открывает
 
   // ── editor: меняет план трипа ──
-  updateTripSettings:    'editor',
   telegramDisconnect:    'editor',      // ИЛИ своя строка — вторая ось, см. код
   telegramSetActive:     'editor',
   telegramStartLink:     'editor',
@@ -351,9 +352,11 @@ export const DOORS = {
   trip_member:           ['editor'],          // TRIP-409: invite/add-offline/resend/role/remove — единый гейт editor; RPC-тела скоупят p_trip+p_actor
   trip_member_self:      [],                  // TRIP-409: leave/respond — авторизация row-self через guardRow (requires:[]); инвариант №7 форсит loadTarget+guardRow
   trip_invite_link:      ['editor'],          // TRIP-409: create — общая ссылка (find-or-create), гейт editor
+  trip_settings:         ['editor'],          // TRIP-416: settings — update_trip_settings (детали+Pro-гейт), гейт editor
+  trip_owner:            ['owner'],            // TRIP-416: delete — удаление трипа по скоупу, гейт owner (created_by)
+  trip_share:            ['participant'],      // TRIP-416: share/copy — токен + атомарная копия, зритель проходит
 
   // ── owner: создатель трипа, проверка руками по trips.created_by ──
-  deleteTrip:            'owner',       // удалить трип
   createStripeCheckout:  'owner',       // pro_trip покупает только владелец
 
   // ── self: своя строка / свой аккаунт ──

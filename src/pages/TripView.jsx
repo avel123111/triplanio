@@ -18,7 +18,7 @@ import { DEFAULT_SECTION, isSectionAvailable, resolveSection, sectionById } from
 import TripShell from '@/components/trips/TripShell';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
-import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast } from '../design/index';
+import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
@@ -30,8 +30,9 @@ import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { useStay22Bundle } from '@/lib/stay22';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { useMobileNav } from '@/components/MobileBottomNav';
 import OverviewLens from './OverviewLens';
-import BudgetLens, { AddExpenseDialog } from './BudgetLens';
+import BudgetLens, { AddExpenseDialog, AddCategoryDialog } from './BudgetLens';
 import MembersLens, { InviteDialog } from './MembersLens';
 import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
@@ -41,7 +42,8 @@ import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
-import { useProfileMap } from '@/lib/useUserProfiles';
+import { useProfileMap } from '@/lib/useProfileMap';
+import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
@@ -312,7 +314,7 @@ function StreamAnchor({ label, sub, color, icon }) {
         <Icon name={icon} size={13} />
       </Tile>
       <div>
-        <div className="t-ui">{label}</div>
+        <div className="t-label">{label}</div>
         {sub && <div className="muted t-meta">{sub}</div>}
       </div>
     </div>
@@ -333,7 +335,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div className="t-ui grow">
+      <div className="t-label grow">
         {t('trip.no_transfer', { from, to })}
       </div>
       <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
@@ -888,20 +890,40 @@ export default function TripView() {
 
   const { openProUpsell } = useProUpsell();
   // Участник (не владелец) → инфо-апселл «подключает владелец» (app-level, TRIP-225).
-  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: members.find(m => m.user_id === trip?.created_by)?.user_full_name || '' });
+  const openProInfo = () => openProUpsell({ mode: 'info', ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }) });
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
   // Открытие бокового меню и мобильный док теперь на TripShell — она владеет
   // оболочкой целиком. Отсюда наверх уезжает только «+»: что именно добавлять,
-  // знает экран, а не оболочка.
-  const [addOpen, setAddOpen] = useState(false);
-  const [addModal, setAddModal] = useState(null); // null | 'expense' | 'docs' | 'members' — trip-level create dialog opened by the bottom-nav "+"
+  // знает экран (роль/аддон/линза), а не оболочка — экран регистрирует список
+  // действий `addActions`, а сам «+» в доке рендерит их канон-меню.
+  const { setAddActions } = useMobileNav();
+  const [addModal, setAddModal] = useState(null); // null | 'expense' | 'category' | 'docs' | 'members' — trip-level create dialog opened by the bottom-nav "+"
   const isPhone = useIsPhone();
 
   // Что реально показать: недоступная секция (выключенный аддон, роль без права)
   // и несуществующая (`?lens=` с опечаткой) одинаково падают на дефолт. Правило
   // живёт в реестре секций — тут только его применение.
   const shownLens = resolveSection(lens, trip, myRole);
+
+  // «+»-меню трипа: дескрипторы действий, которые собирает экран. Гейт единый —
+  // `roleCanEdit` (+ аддон бюджета для траты/категории); «Категория» — только на
+  // линзе Бюджет. Обработчики открывают трип-level диалоги IN PLACE (см. overlays),
+  // диалоги рендерит экран, сам «+» их не импортирует.
+  const addActions = useMemo(() => {
+    const budgetOn = isAddonEnabled(trip, 'budget');
+    const canEdit = roleCanEdit(myRole);
+    return [
+      budgetOn && canEdit && { id: 'expense', icon: 'wallet', tone: 'brand', labelKey: 'budget.manual_expense', onSelect: () => setAddModal('expense') },
+      shownLens === 'budget' && budgetOn && canEdit && { id: 'category', icon: 'grid', tone: 'info', labelKey: 'budget.add_category', onSelect: () => setAddModal('category') },
+      canEdit && { id: 'docs', icon: 'file', tone: 'hotel', labelKey: 'doc.add_doc', onSelect: () => setAddModal('docs') },
+      canEdit && { id: 'members', icon: 'users', tone: 'activity', labelKey: 'members.invite', onSelect: () => setAddModal('members') },
+    ].filter(Boolean);
+  }, [trip, myRole, shownLens]);
+  useEffect(() => {
+    setAddActions(addActions);
+    return () => setAddActions(null);
+  }, [setAddActions, addActions]);
 
   // Событие открытия секции — на СМЕНУ ПОКАЗАННОЙ секции, а не на клик по меню.
   //
@@ -1064,35 +1086,9 @@ export default function TripView() {
     <>
     <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} visits={visits} transfers={transfers} />
   
-    {/* Add bottom-sheet — opened by the mobile bottom-nav "+". Each item opens
-        a trip-level create dialog (addModal) IN PLACE, without navigating to the
-        lens. Items are gated: expense needs the budget addon, member needs owner/admin. */}
-    <Sheet open={addOpen} onOpenChange={setAddOpen} title={t('common.add')}>
-      <div className="addsheet">
-        {isAddonEnabled(trip, 'budget') && (
-          <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('expense'); }}>
-            <span className="addsheet__ic" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="wallet" size={20} /></span>
-            <span className="addsheet__tx"><b>{t('budget.manual_expense')}</b></span>
-            <Icon name="chev" size={16} className="addsheet__chev" />
-          </button>
-        )}
-        <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('docs'); }}>
-          <span className="addsheet__ic" style={{ background: 'var(--ev-hotel-soft)', color: 'var(--ev-hotel-ink)' }}><Icon name="file" size={20} /></span>
-          <span className="addsheet__tx"><b>{t('doc.add_doc')}</b></span>
-          <Icon name="chev" size={16} className="addsheet__chev" />
-        </button>
-        {(myRole === 'owner' || myRole === 'admin') && (
-          <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('members'); }}>
-            <span className="addsheet__ic" style={{ background: 'var(--ev-activity-soft)', color: 'var(--ev-activity-ink)' }}><Icon name="users" size={20} /></span>
-            <span className="addsheet__tx"><b>{t('members.invite')}</b></span>
-            <Icon name="chev" size={16} className="addsheet__chev" />
-          </button>
-        )}
-      </div>
-    </Sheet>
-  
-    {/* Trip-level create dialogs opened by the add sheet — render over ANY lens
-        without navigating (same pattern as the event dialogs above). */}
+    {/* Trip-level create dialogs opened by the bottom-nav "+" (addActions above) —
+        render over ANY lens without navigating (same pattern as the event dialogs
+        above). The "+" menu itself lives in the dock (ActionMenu), fed by addActions. */}
     {addModal === 'expense' && (
       <AddExpenseDialog
         open
@@ -1105,7 +1101,22 @@ export default function TripView() {
         onProRefusal={() => openProUpsell({
           mode: isOwner ? 'upgrade' : 'info',
           feature: t('budget.title'),
-          ownerName: members.find((m) => m.user_id === trip?.created_by)?.user_full_name || '',
+          ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
+          onUpgrade: openUpgrade,
+        })}
+      />
+    )}
+    {addModal === 'category' && (
+      <AddCategoryDialog
+        open
+        onOpenChange={(o) => { if (!o) setAddModal(null); }}
+        tripId={tripId}
+        existing={null}
+        onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
+        onProRefusal={() => openProUpsell({
+          mode: isOwner ? 'upgrade' : 'info',
+          feature: t('budget.title'),
+          ownerName: resolveOwnerName({ trip, members, profiles: memberProfiles, selfUser: user, deletedLabel: t('common.deleted_user') }),
           onUpgrade: openUpgrade,
         })}
       />
@@ -1142,7 +1153,7 @@ export default function TripView() {
         "chat widget" display toggle (default ON). The full Chat lens stays
         reachable from the sidebar regardless of this toggle. */}
     {!isPhone && isSectionAvailable('chat', trip, myRole) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
-      <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
+      <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} ownerId={trip?.created_by} />
     )}
     </>
   );
@@ -1162,7 +1173,6 @@ export default function TripView() {
       onShare={() => setShareOpen(true)}
       onUpgrade={openUpgrade}
       onProInfo={openProInfo}
-      onAdd={() => setAddOpen(true)}
       bodyRef={screenBodyRef}
       drawer={eventDrawer}
       overlays={overlays}
@@ -1331,6 +1341,7 @@ export default function TripView() {
               tripId={tripId}
               isLoading={loadingContent}
               members={members}
+              profiles={memberProfiles}
               myRole={myRole}
             />
           )}
@@ -1360,6 +1371,7 @@ export default function TripView() {
               tripId={tripId}
               trip={trip}
               members={members}
+              profiles={memberProfiles}
               myRole={myRole}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
@@ -1371,6 +1383,7 @@ export default function TripView() {
             <ChatLens
               tripId={tripId}
               members={members}
+              profiles={memberProfiles}
               myRole={myRole}
               ownerId={trip?.created_by}
             />

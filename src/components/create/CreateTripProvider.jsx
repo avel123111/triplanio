@@ -87,7 +87,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       open={true}
       onOpenChange={(o) => { if (!o) onClose(); }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="col col--g6">
         <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
         <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>
@@ -150,7 +150,7 @@ export function CreateTripProvider({ children }) {
   const doCopy = useCallback(async (tripId) => {
     setCopying(true);
     try {
-      const { data, error, message } = await invokeFn('copyTrip', { body: { tripId } });
+      const { data, error, message } = await invokeFn('trip-share/copy', { body: { tripId } });
       // `message` is already parsed by invokeFn (it read error.context once — a
       // Response body can only be read one time, so we must NOT re-read it). This
       // keeps the real server reason (e.g. TRIP_LIMIT_REACHED) out of a generic toast.
@@ -214,7 +214,7 @@ export function CreateTripProvider({ children }) {
         >
           <div className="dlg dlg--sm" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 28, textAlign: 'center' }}>
             <div className="spin spin--ring spin--xl spin--ink" />
-            <div className="t-ui">{t('trip.copying')}</div>
+            <div className="t-label">{t('trip.copying')}</div>
           </div>
         </div>
       )}

@@ -23,7 +23,7 @@
 /* visual-diff-move: eed-fclabel -> row row--a-start row--g4 */
 .eed-fclabel { cursor: pointer; }   /* flex items-start gap-2 cursor-pointer */
 .eed-fcbody { flex: 1; }                                                   /* flex-1 */
-/* .eed-fctitle typography now on the .t-ui canon (co-selector in app.css) */
+/* .eed-fctitle typography now on the .t-label canon (co-selector in app.css) */
 .eed-fchint { color: var(--muted); }                                       /* text-xs text-muted-foreground */
 .eed-fcdate { margin-top: 8px; }                                           /* mt-2 */
 
@@ -50,7 +50,7 @@
 /* position: anchor for the AI badge — .stay-dates below is overflow:hidden and
    would clip it, so the badge pins to this outer block instead (TRIP-277). */
 .eed-dateblock { margin-bottom: 12px; position: relative; }
-.eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-ui (co-selector в app.css, TRIP-333) */
+.eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-label (co-selector в app.css, TRIP-333) */
 /* Finance block (design "Стоимость за всё"): price+currency row + payment pills */
 .eed-finance { margin-bottom: 12px; }
 /* visual-diff-move: eed-pricerow -> grid grid--g4 */

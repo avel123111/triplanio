@@ -28,7 +28,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, Tile, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -589,7 +588,7 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
 
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
-export default function DocsLens({ tripId, isLoading: parentLoading, members = [], myRole }) {
+export default function DocsLens({ tripId, isLoading: parentLoading, members = [], myRole, profiles = {} }) {
   const { t }    = useI18n();
   const { user } = useAuth();
   // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
@@ -615,15 +614,10 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
     enabled: !!tripId,
   });
 
-  // Resolve real author identity (name/avatar/is_deleted) for every doc creator
-  // and member via the shared profile resolver — same source as other screens.
-  const profileIds = useMemo(() => {
-    const ids = new Set();
-    docs.forEach(d => { if (d.created_by) ids.add(d.created_by); });
-    members.forEach(m => { if (m.user_id) ids.add(m.user_id); });
-    return Array.from(ids);
-  }, [docs, members]);
-  const profiles = useUserProfiles(profileIds, tripId);
+  // Author identity (name/avatar/is_deleted) comes from the ONE profile bundle
+  // shipped with the trip content (getTripDetails), handed down by TripView —
+  // no separate profile-fetch hop. Authors who have LEFT the trip aren't in
+  // the bundle; resolveAuthor falls back to the doc's created_by_name snapshot.
 
   // Search + filter (applied after visibility split)
   const filterDoc = (d) => {

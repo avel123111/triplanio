@@ -1,12 +1,13 @@
 /**
  * The ONE shape AND the ONE scope of a "public-ish" user profile leaving the
- * backend, shared by resolveProfiles (chat authors, on demand) and
- * getTripDetails (trip members, bundled with the trip content).
+ * backend. Profiles ride bundled with the trip content out of getTripDetails
+ * (trip members + owner); the front-end no longer fetches them separately
+ * (TRIP-409 folded the old resolveProfiles hop into this one bundle).
  *
- * Two functions emit profiles, and two rules must not drift between them:
+ * Two rules must not drift:
  *   • privacy — a soft-deleted account must never leak its email (toProfile);
  *   • scope   — whose profile a trip's payload may carry (tripProfileScope).
- * Both callers had their own copy of the scope rule, and that is exactly how
+ * They used to live in two callers with a copy each, and that is exactly how
  * TRIP-334 happened: see tripProfileScope below.
  */
 
@@ -101,24 +102,19 @@ export function liveIdentityIds(
 }
 
 /**
- * The single entry point both emitters use: loads the trip's profiles in ONE
- * query and applies both rules (scope, then live-vs-identity-only) in one
- * place, so neither caller can hold one of them and not the other.
- *
- * `only` restricts the result to caller-requested ids (resolveProfiles);
- * omit it to get the whole scope (getTripDetails).
+ * The single entry point: loads the trip's profiles in ONE query and applies
+ * both rules (scope, then live-vs-identity-only) in one place, so a caller can
+ * never hold one of them and not the other.
  */
 export async function fetchTripProfiles(
   db: { from: (table: string) => any },
-  { members, ownerId, extraIds = [], only }: {
+  { members, ownerId, extraIds = [] }: {
     members: ({ user_id?: string | null; status?: string | null } & Record<string, unknown>)[] | null | undefined;
     ownerId?: string | null;
     extraIds?: (string | null | undefined)[];
-    only?: string[];
   },
 ): Promise<Profile[]> {
-  const scope = tripProfileScope(members, ownerId, extraIds);
-  const ids = only ? only.filter((id) => scope.includes(id)) : scope;
+  const ids = tripProfileScope(members, ownerId, extraIds);
   if (ids.length === 0) return [];
 
   const { data } = await db.from('users').select(PROFILE_COLUMNS).in('id', ids);

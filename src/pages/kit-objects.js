@@ -50,6 +50,13 @@
  * @type {KitObject[]} */
 export const KIT_OBJECTS = [
   // ── Компоненты ──────────────────────────────────────────────────────────
+  { id: 'pagehead', family: 'pagehead', group: 'components', css: false },
+  // TRIP-350: тон Stat едет союзом тонов `<Tile tone>` (event tones на .tile),
+  // своих `.stat--<tone>` классов у семьи больше нет — источник вариантов = CSS
+  // (`.stat--clickable`), карту STAT_TONES не заявляем.
+  { id: 'stat', family: 'stat', group: 'components', prefix: 'stat', css: true, interactive: true },
+  { id: 'list-row', family: 'lrow', group: 'components', prefix: 'lrow', maps: ['LISTROW_VARIANTS'], extras: ['clickable', 'on'], interactive: true },
+  { id: 'donut', family: 'donut', group: 'components', css: false },
   { id: 'btn', family: 'btn', group: 'components', prefix: 'btn', maps: ['BTN_VARIANTS'], extras: ['sm', 'brand'], interactive: true },
   { id: 'icon-btn', family: 'icon', group: 'components', prefix: 'icon-btn', maps: ['ICON_BTN_TONES', 'ICON_BTN_SIZES'], extras: ['round'], interactive: true },
   { id: 'chip', family: 'fpill', group: 'components', prefix: 'fpill', maps: ['CHIP_VARIANTS'], extras: ['square', 'sm', 'avatars'], interactive: true },

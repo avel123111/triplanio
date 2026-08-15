@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { forgetStashedAttribution, getSignupMarks, identifyUser, rememberSignupMarks, resetIdentity, track } from '@/lib/analytics';
-import { marksToColumns, pickSignupMarks } from '@/lib/campaign';
+import { detectLandingLang } from '@/lib/i18n/translations';
 
 const AuthContext = createContext();
 
@@ -122,7 +122,7 @@ export const AuthProvider = ({ children }) => {
     // Prevent concurrent loads for the same user
     if (loadingForRef.current === authUser.id) return;
     loadingForRef.current = authUser.id;
-    // Set by the PGRST116 branch below when THIS call inserted the profile row.
+    // Set from `data.created` of account/register when THIS call created the row.
     let profileCreated = false;
     try {
       // A silent refresh (checkUserAuth after a profile save / avatar change /
@@ -155,45 +155,29 @@ export const AuthProvider = ({ children }) => {
         // The marks this signup arrived with, from whichever carrier crossed the
         // border the visitor took: auth metadata for email (they survive
         // confirming on another device entirely), the sessionStorage stash for
-        // OAuth. Resolved ONCE, here, and handed to both readers below — the
-        // `users` columns and the campaign super-properties. Announcing them is
-        // what gives last touch a value for someone who arrived marked, ignored
-        // the cookie banner and signed in with Google (TRIP-335); doing it only
-        // on this branch is what stops a year-old click resurrecting on a later
-        // login, since the metadata live on the auth user forever.
-        // `pickSignupMarks` is a whitelist, never a raw spread: `user_metadata`
-        // is client-owned, so an unfiltered one would set any column.
-        const signupMarks = pickSignupMarks(authUser.user_metadata?.signup_attribution)
-          || getSignupMarks();
+        // OAuth. Announcing them is what gives last touch a value for someone who
+        // arrived marked, ignored the cookie banner and signed in with Google
+        // (TRIP-335); doing it only on this branch is what stops a year-old click
+        // resurrecting on a later login, since the metadata live on the auth user
+        // forever. The DB-column whitelist now lives in the RPC (trust boundary on
+        // the server, TRIP-411), so the client no longer filters before sending —
+        // both carriers are already param-keyed, so the campaign super-property is
+        // unchanged; the RPC picks the four `signup_*` columns and nothing else.
+        const signupMarks = authUser.user_metadata?.signup_attribution || getSignupMarks();
         rememberSignupMarks(signupMarks);
 
-        // Profile doesn't exist yet - create it (first login via Google or email).
-        // Avatar policy: keep ONLY a real uploaded/OAuth image. When there is
-        // none, leave avatar_url null — <Avatar> renders a gradient fallback.
-        // No generated placeholder image (single fallback, no third variant).
-        const { data: newProfile, error: createError } = await supabase
-          .from('users')
-          .insert({
-            id: authUser.id,
-            email: authUser.email,
-            full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
-            avatar_url: authUser.user_metadata?.avatar_url || null,
-            // Where this account came from (TRIP-311). WRITTEN here, at the one
-            // birth point of a user — the same reason `user_signed_up` lives
-            // here rather than in the login buttons. (Capturing the marks before
-            // an OAuth redirect does have to happen per button: once the provider
-            // replaces the document there is no choke point left.)
-            // Account data, not tracking: recorded whatever the visitor answered
-            // on the cookie banner. `utm_content` has no column and stops here —
-            // it says which creative, which is ad reporting, not account data.
-            ...(marksToColumns(signupMarks) || {}),
-          })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        profile = newProfile;
-        profileCreated = true;
+        // Profile doesn't exist yet — create it за швом, идемпотентно (first login
+        // via Google/Apple/One Tap/email). The RPC reads id/email/full_name/
+        // avatar_url from auth.users itself, so the client sends ONLY the landing
+        // language (authoritative) and the raw marks. `created` is DATA, not a
+        // success flag (both outcomes succeed): it, and only it, decides whether
+        // this counts as a signup for `user_signed_up` below.
+        const { data, error, code } = await invokeFn('account/register', {
+          body: { language: detectLandingLang(), marks: signupMarks || null },
+        });
+        if (error || code) throw error || new Error(code);
+        profile = data.profile;
+        profileCreated = data.created;
       } else {
         // Signing in to an existing account is not a signup, so the marks the
         // OAuth redirect carried have nothing to attribute. Dropping them here
@@ -203,8 +187,8 @@ export const AuthProvider = ({ children }) => {
 
       // avatar_url is passed through as stored — do NOT re-add a sanitizer here.
       // This path feeds only the header and the profile, while trip screens and
-      // chat read the same column through resolveProfiles, so one user ended up
-      // with two different avatars. Legacy dicebear placeholders are cleared in
+      // chat read the same column through the trip profile bundle, so one user
+      // ended up with two different avatars. Legacy dicebear placeholders are cleared in
       // the data instead (migration 20260725202621).
       setUser({ ...profile, id: authUser.id });
       setIsAuthenticated(true);

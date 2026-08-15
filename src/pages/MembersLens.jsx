@@ -17,7 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -27,15 +27,6 @@ import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/comp
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
 // is never selectable here. There is no "editor" role on the backend.
-
-// Role badge colours unified with the Overview "who's going" card
-// (MembersSummaryCard): owner=warning, admin=brand, viewer=outline.
-function RoleBadge({ role }) {
-  const { t } = useI18n();
-  if (role === 'owner') return <Badge variant="warning">{t('members.role_owner')}</Badge>;
-  if (role === 'admin') return <Badge variant="brand">{t('trips.role_admin')}</Badge>;
-  return <Badge variant="outline" icon="eye">{t('trips.role_viewer')}</Badge>;
-}
 
 // Status column. Active members show no status text (the role badge already
 // conveys they're in the trip). Offline placeholders show nothing here (the
@@ -166,7 +157,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
             onChange={setRole}
             options={[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) => ({
               value: k,
-              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-ui">{lab}</span><span className="muted t-meta">{sub}</span></span>,
+              label: <span className="col" style={{ gap: 0, alignItems: 'center' }}><span className="t-subheading">{lab}</span><span className="muted t-meta">{sub}</span></span>,
             }))}
           />
         </Field>

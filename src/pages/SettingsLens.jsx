@@ -19,11 +19,10 @@ import { classifyError } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
-import { resolveAuthor } from '@/lib/resolveAuthor';
+import { resolveAuthor, resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
-import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -395,7 +394,7 @@ function TelegramSection({ tripId }) {
             <Icon name="telegram" size={17} />
           </div>
           <Grow fit>
-            <div className="t-ui">{tgName(a)}</div>
+            <div className="t-subheading">{tgName(a)}</div>
             {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </Grow>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
@@ -433,13 +432,13 @@ function ApproverRow({ member, profiles, locked }) {
     deletedLabel: t('common.deleted_user'),
     fallback: t('common.deleted_user'),
   });
-  const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
+  const roleLabel = member.role === 'owner' ? t('trips.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
     <Row>
       <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
       <Grow>
-        <div className="t-ui">{who.name}</div>
+        <div className="t-subheading">{who.name}</div>
         <div className="muted t-meta">{roleLabel}</div>
       </Grow>
       {locked
@@ -451,8 +450,9 @@ function ApproverRow({ member, profiles, locked }) {
 
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient }) {
-  const memberProfiles = useUserProfiles((members || []).map(m => m.user_id), tripId);
+export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient, profiles = {} }) {
+  // Profiles ride in the trip content bundle (getTripDetails), handed down by
+  // TripView — no separate profile-fetch hop for the approver list.
   const { t } = useI18n();
   const confirm = useConfirm();
   const { user } = useAuth();
@@ -486,7 +486,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
   // Pro-апселл — единый app-level хост (TRIP-225), открывается императивно.
   const { openProUpsell } = useProUpsell();
-  const ownerName = members.find(m => m.user_id === trip?.created_by)?.user_full_name || '';
+  const ownerName = resolveOwnerName({ trip, members, profiles, selfUser: user, deletedLabel: t('common.deleted_user') });
   // Owner upgrade from Settings shows the SAME 3 offers as the sidebar / AI-block
   // (per-trip + monthly + yearly). No hidePerTrip here: Pro.jsx already hides the
   // per-trip offer for non-owners (tripOwner check), so the flag only created an
@@ -542,10 +542,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !bookingWarnings;
     setBusyToggle('booking_warnings');
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, display: { booking_warnings: next } },
     });
-    if (error || !data?.ok) {
+    if (error) {
       refusalToast(code);
     } else {
       setBookingWarnings(next); // reflect only after the server confirms
@@ -563,10 +563,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (busyToggle) return;
     const next = !chatWidget;
     setBusyToggle('chat_widget');
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, display: { chat_widget: next } },
     });
-    if (error || !data?.ok) {
+    if (error) {
       refusalToast(code);
     } else {
       setChatWidget(next); // reflect only after the server confirms
@@ -576,7 +576,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   }
 
   // Save identity settings: title, description, notes, cover (gradient/image)
-  // and main currency. All these columns are whitelisted by updateTripSettings
+  // and main currency. All these columns are whitelisted by trip-settings/settings
   // (title/description/cover_image_url/cover_gradient/notes); currency lives
   // under details.main_currency.
   async function saveSettings() {
@@ -597,11 +597,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     // Смена главной валюты обесценивает fx_overrides (они заданы против СТАРОЙ
     // валюты). Сброс делает СЕРВЕР в той же транзакции — второй клиентской
     // до-записи в trip_budgets больше нет (единая дверь, TRIP-394).
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, fields, main_currency: currency },
     });
     setSaving(false);
-    if (error || !data?.ok) { refusalToast(code, 'settings.save_error2'); return; }
+    if (error) { refusalToast(code, 'settings.save_error2'); return; }
     // Cover replaced/cleared → the previously persisted object is now orphaned.
     // Delete it best-effort, comparing object KEYS (signed-URL tokens differ but
     // the key is stable) so we never delete the key the new cover still uses (TRIP-117).
@@ -650,10 +650,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
-    const { data, error, code } = await invokeFn('updateTripSettings', {
+    const { error, code } = await invokeFn('trip-settings/settings', {
       body: { tripId, addons: nextAddons },
     });
-    if (error || !data?.ok) {
+    if (error) {
       // Единственная ветка, ЗАВИСЯЩАЯ от кода: Pro-отказ открывает апселл, а не
       // тост (kind==='upsell' у classifyError). Читается `code` от invokeFn, не
       // `data.code` - 402 оставляет `data` пустым.
@@ -701,17 +701,18 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
   }
 
-  // Delete trip (owner only). Routed through the deleteTrip edge function so
-  // Telegram teardown + Storage purge run before the irreversible DELETE.
+  // Delete trip (owner only). Routed through the trip-owner/delete seam action;
+  // FK cascade wipes child rows, then Telegram teardown + Storage purge run
+  // best-effort in afterWrite (post-delete).
   async function deleteTrip() {
     if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
 
     // The actual irreversible delete; attached to the LAST confirm shown so its
-    // button carries the spinner while deleteTrip (Telegram teardown + Storage
-    // purge + DELETE) runs.
+    // button carries the spinner while trip-owner/delete (DELETE + best-effort
+    // Telegram teardown + Storage purge) runs.
     const runDelete = async () => {
-      const { data, error, code } = await invokeFn('deleteTrip', { body: { tripId } });
-      if (error || !data?.ok) {
+      const { error, code } = await invokeFn('trip-owner/delete', { body: { tripId } });
+      if (error) {
         // Нейтральный `err.FORBIDDEN` покрывает и «не владелец» на удалении, и
         // отказ правки — отдельной клаузы удаления больше нет (серверный
         // `message` пользователю не показываем НИКОГДА).
@@ -864,7 +865,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <CardHeader title={t('settings.chat_widget_title')} />
               <Row gap="g7">
                 <Grow fit>
-                  <div className="t-ui">{t('settings.chat_widget_label')}</div>
+                  <div className="t-label">{t('settings.chat_widget_label')}</div>
                   <div className="muted t-meta">
                     {t('settings.chat_widget_desc')}
                   </div>
@@ -917,8 +918,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Card>
               <CardHeader title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} />
               <Col gap="g4">
-                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked />)}
-                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={memberProfiles} locked={false} />)}
+                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked />)}
+                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked={false} />)}
                 {members.length === 0 && (
                   <div className="muted t-body">{t('settings.members_loading')}</div>
                 )}

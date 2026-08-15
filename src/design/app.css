@@ -238,13 +238,13 @@
      схлоп имён 10→6 отдельной задачей); соответствие токен → канон:
        --fs-nano  → .t-micro (11, CAPS)            --fs-h3      → .t-subheading (16)
        --fs-micro → .t-meta (12.5)                 --fs-h2      → .t-heading (18)
-       --fs-meta  → .t-label / .t-ui / .t-mono (13) --fs-h1     → .t-title (clamp 20–24)
+       --fs-meta  → .t-label / .t-mono (13)         --fs-h1     → .t-title (clamp 20–24)
        --fs-base  → .t-body / body (15)            --fs-display → .t-display (clamp 28–40)
                                                    --ctl-fs     → пол контролов (16)
      Гард не ловит эти defs (нет префикса `font-size:`). */
   --fs-nano:    11px;    /* .t-micro (капс-лейблы) */
   --fs-micro:   12.5px;  /* .t-meta */
-  --fs-meta:    13px;    /* .t-label / .t-ui / .t-mono */
+  --fs-meta:    13px;    /* .t-label / .t-mono */
   --fs-base:    15px;    /* .t-body / глобальный body */
   --ctl-fs:     16px;    /* пол контролов: textarea/select/chat ≥16px (анти-iOS-zoom), .btn--lg, шапка — переименован из --fs-h4 (TRIP-410) */
   --fs-h3:      16px;    /* .t-subheading */
@@ -448,10 +448,10 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
-.nrow, .mbrow, .bookrow, .doc-row, .addsheet__row, .te-table .te-row,
+.nrow, .mbrow, .bookrow, .doc-row, .te-table .te-row,
 .te-row.te-row--plan, .acct-tgrow,
 /* держали эту пару своей копией, а не именем в роли */
-.bgt-exrow, .ncal-wdc,
+.ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
 /* ★TRIP-344: сюда встала КОНТЕЙНЕР-плашка `.map-ctl` — фон/рамку карты-оверлея
    несёт она, а не кнопки (кнопки внутри quiet). `.mapfs-close` тут нет: он
@@ -462,6 +462,65 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
   background: var(--surface);
   border: 1px solid var(--line);
 }
+
+/* ── PageHead: шапка экрана — заголовок (.t-title) + необязательный подзаголовок
+   слева, необязательные действия справа. Схлопывает приватные шапки экранов
+   (bgt-head, dl-head, …) в один канон. Адаптив — на экране (не передаёт actions
+   на мобиле), не здесь: облик шапки один.
+   prefix-exempt: pagehead — новый канон-объект «шапка экрана», апрув Pavel TRIP-413
+   floor-exempt: namespaces +3 — 4 новых канон-семьи ДС (pagehead/stat/lrow/donut) минус удалённый bgt; общий словарь, переиспользуется всеми экранами, апрув Pavel TRIP-413
+   floor-exempt: layout +2 — канон-кубики ДС несут свою раскладку (lrow/stat/pagehead __body/__trail), это язык системы, не приватная раскладка экрана, апрув Pavel TRIP-413
+   floor-exempt: apart +1 — grid--split объявлен apart (адаптивная сетка с @media, не чистая ось колонок), апрув Pavel TRIP-413 */
+.pagehead { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-7); }
+.pagehead__titles { min-width: 0; }
+.pagehead__title { margin: 0; }
+.pagehead__sub { color: var(--muted); margin-top: var(--sp-1); }
+.pagehead__actions { margin-left: auto; display: flex; gap: var(--sp-3); flex: none; }
+
+/* ── Stat: плитка-показатель (KPI) на карточке — иконка-плитка + подпись +
+   значение + строка. Тон красит иконку событийным цветом. Опц. кликабельная.
+   prefix-exempt: stat — новый канон-объект «плитка-показатель», апрув Pavel TRIP-413 */
+.stat { display: flex; align-items: center; gap: var(--sp-6); padding: var(--sp-7); }
+.stat__body { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; flex: 1; }
+.stat--clickable { cursor: pointer; width: 100%; text-align: left; transition: border-color .18s, box-shadow .2s; }
+.stat--clickable:hover { border-color: var(--line-hover); box-shadow: var(--sh-2); }
+/* TRIP-350: тон плитки Stat едет союзом тонов `<Tile tone>` (event tones on .tile),
+   scoped-дубли сняты — те же объявления теперь на .tile--<tone>.
+   visual-diff-move: .stat--activity .tile -> .tile--activity
+   visual-diff-move: .stat--transfer .tile -> .tile--transfer
+   brand: цель .tile--brand делит имя с solid-компаундом .tile--solid.tile--brand,
+   поэтому автосверка move читает значение солида (var(--brand)/#fff) и краснеет
+   ложно; мягкий .tile--brand несёт то же, что несла .stat--brand .tile — exempt:
+   visual-diff-exempt: .stat--brand background — перенос тона brand на союз .tile--brand; значение var(--brand-soft) то же, move ломает solid-компаунд
+   visual-diff-exempt: .stat--brand color — перенос тона brand на союз .tile--brand; значение var(--brand) то же, move ломает solid-компаунд */
+
+/* ── ListRow: строка списка — [лид] заголовок+подпись [трейл]. Скин = variant.
+   Схлопывает bgt-exrow / bgt-fxrow / bgt-glist__row / bgt-dleg__row.
+   prefix-exempt: lrow — новый канон-объект «строка списка», апрув Pavel TRIP-413 */
+.lrow { display: flex; align-items: center; gap: var(--sp-6); padding: var(--sp-6); border-radius: var(--r-btn); }
+.lrow__body { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; flex: 1; }
+.lrow__trail { flex: none; display: flex; align-items: center; gap: var(--sp-3); text-align: right; }
+.lrow--clickable { cursor: pointer; width: 100%; text-align: left; font: inherit; }
+.lrow--raised { background: var(--surface); border: 1px solid var(--line); transition: box-shadow .2s, border-color .2s; }
+.lrow--select { border: 1px solid transparent; background: transparent; transition: background .15s, border-color .15s; }
+.lrow--select:hover { background: var(--wash); }
+.lrow--divider { border-radius: 0; padding-left: 0; padding-right: 0; border-bottom: 1px solid var(--line); }
+.lrow--divider:last-child { border-bottom: 0; }
+.lrow--compact { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); transition: background .15s; }
+.lrow--compact:hover { background: var(--wash); }
+.lrow--on { background: var(--brand-soft); border-color: var(--brand-soft-12); }
+@media (hover: hover) {
+  .lrow--raised.lrow--clickable:hover { box-shadow: var(--sh-2); border-color: var(--line-hover); }
+}
+
+/* ── Donut: кольцевая диаграмма — сегменты по долям + центр, запертый в дырке
+   кольца (inset), поэтому крупное значение не заезжает на дугу.
+   prefix-exempt: donut — новый канон-объект «кольцевая диаграмма», апрув Pavel TRIP-413 */
+.donut { position: relative; width: 210px; height: 210px; flex: none; margin: 0 auto; }
+.donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.donut__seg { transition: stroke-width .2s var(--ease-out), opacity .2s; }
+.donut__seg[data-dim="true"] { opacity: .4; }
+.donut__c { position: absolute; inset: 24%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--sp-1); }
 
 /* Утопленная поверхность (заметки, адрес, плитки отсчёта) СВЕДЕНА к канону
    `<Card recessed>` (TRIP-343 PR-4, объект 2, закрытие). Прежняя приватная
@@ -542,7 +601,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    visual-diff-exempt: .hv-notes border-radius — радиус → канон .card--r-md (--r-md, тождественно) */
 
 /* =================================================================
-   ТИПОГРАФИКА — 10 канонических текст-стилей.
+   ТИПОГРАФИКА — 9 канонических текст-стилей.
    Единственный санкционированный набор на всё приложение. Каждый
    класс полностью фиксирует гарнитуру+размер+вес+интерлиньяж+трекинг.
    ЦВЕТ сюда НЕ входит — отдельная ось (цвет-токены/утилиты).
@@ -562,9 +621,8 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
      .t-title       Geologica  clamp(20–24) (--fs-h1)      · 700 · 1.15 · --track-h · tabular
      .t-heading     Geologica  18 (--fs-h2)                · 700 · 1.25 · --track-h · tabular
      .t-subheading  Geologica  16 (--fs-h3)                · 600 · 1.3
-     .t-label       Geologica  13 (--fs-meta)              · 600 · 1.4
+     .t-label       Geologica  13 (--fs-meta)              · 600 · 1.4   (единственный утилити-канон: подписи/кнопки/статусы)
      .t-body        Geologica  15 (--fs-base)              · 400 · 1.55
-     .t-ui          =АЛИАС .t-label  13 (--fs-meta)        · 600 · 1.4
      .t-meta        Geologica  12.5 (--fs-micro)           · 500 · 1.4 · tabular   (де-моно; +времена/даты)
      .t-micro       Geologica  11 (--fs-nano)              · 700 · 1.3 · UPPER/--track-caps
      .t-mono        JetBrains  13 (--fs-meta)              · 500 · 1.4 · -0.01em · tabular   (ТОЛЬКО коды/email/kbd; числа→Geologica)
@@ -584,7 +642,6 @@ h1,
 .auth__h1,
 .bud-total,        /* TRIP-175 инсп.: Heading→Title (итог бюджета) */
 .tl3-dh .datechip .d,  /* TRIP-175 инсп.: Subheading→Title (число дня хронологии) */
-.bgt-donut__c .v,  /* TRIP-175 инсп.: Heading→Title (центр доната бюджета; .t-flush сохранён) */
 .sfig .v,          /* TRIP-175 инсп.: Heading→Title (числа сводки статистики) */
 .rec .v,           /* TRIP-175 инсп.: Subheading→Title (числа рекордов) */
 .ncal-month-lbl,   /* TRIP-175 инсп.: Display→Title (месяц календаря) */
@@ -603,9 +660,6 @@ h2,
 .acct-hero__name,
 .acct-plan__v,
 .sec-head h2,
-.bgt-stat__v,
-.bgt-detail__amt .v,
-.bgt-detail__n,   /* TRIP-243 инсп.: Subheading→Heading (название категории в детали бюджета) */
 .tcp__ph,
 .ncal-wdc-num,
 .pt-mm .n,
@@ -613,7 +667,6 @@ h2,
 .dlg__head h2,     /* TRIP-175 инсп.: Subheading→Heading (заголовки модалок .dlg__head) */
 .addon-card__title,/* TRIP-175 инсп.: Label→Heading (тайтл карточки аддона) */
 .card h3,          /* TRIP-175 инсп.: Subheading→Heading (заголовок карточки) */
-.bgt-head__title,  /* TRIP-175 инсп.: Subheading→Heading (заголовок экрана бюджета) */
 .visit .when .yr,  /* TRIP-175 инсп.: Label→Heading (год визита) */
 .cbar .yr,         /* TRIP-175 инсп.: Meta→Heading (год столбца графика) */
 .app-header__trip-title, /* TRIP-175 инсп.: Subheading→Heading (заголовок трипа в шапке) */
@@ -634,11 +687,6 @@ h3,
 .sheet-h h3,
 .head__av,
 .vp-h h3,
-.bgt-dleg__v,      /* TRIP-243 инсп.: Meta→Subheading (сумма легенды доната) */
-.bgt-glist__v,     /* TRIP-243 инсп.: UI→Subheading (сумма строки списка категорий/городов) */
-.bgt-exrow__t,     /* TRIP-243 инсп.: UI→Subheading (название траты) */
-.bgt-exrow__amt,   /* TRIP-243 инсп.: UI→Subheading (сумма траты) */
-.bgt-fxrow__eq,    /* TRIP-243 инсп.: Meta→Subheading (курс в модалке валют) */
 .pt-cstop__num,
 .auth__brand-link,
 .brand-col__logo,
@@ -654,12 +702,10 @@ h3,
 .tl3-card .body b, /* TRIP-175 инсп.: UI→Subheading (акцент в теле карточки события) */
 .tl3-card--tr .rv-end b, /* TRIP-175 инсп.: UI→Subheading (город назначения переезда) */
 .mbrow__name,      /* TRIP-175 инсп.: UI→Subheading (имя участника) */
-.map-route__name.t-ui, /* TRIP-175 инсп.: UI→Subheading (город в списке карты; перебивает класс .t-ui) */
 .vrow .nm,         /* TRIP-175 инсп.: UI→Subheading (страна/город в списке) */
 .visit .dt,        /* TRIP-175 инсп.: UI→Subheading (город визита) */
 .acct-subhead,     /* TRIP-175 инсп.: UI→Subheading (подзаголовок карточки аккаунта) */
 .invite-banner__title, /* TRIP-175 инсп.: off-canon→Subheading (заголовок инвайт-баннера) */
-.bell-dd__head .t-ui, /* TRIP-175 инсп.: UI→Subheading (заголовок «Уведомления» в колокольчике; перебивает класс .t-ui) */
 .ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
 .dl-visopt__lbl b,   /* TRIP-275 инсп.: Meta→Subheading (заголовок опции видимости «Общий»/«Личный») */
@@ -673,7 +719,6 @@ h4,
    это осталось бы единственное поле в приложении с жирным текстом. */
 .plan-card__name,
 .nonext b,
-.bgt-donutcard__h b,
 .dl-card__title,
 .dl-empty b,
 .pt-mast__av,
@@ -684,54 +729,13 @@ h4,
 .brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
 .nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
-.readonly-banner .t-ui, /* TRIP-275 инсп.: UI→Label (заголовок «Только чтение» баннера наблюдателя; перебивает класс .t-ui) */
-.cm-h { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410 V2: .t-label — Geologica 13/600/1.4 (+ co-селекторы .t-ui влиты ниже) */
-.t-body,
-.fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
-.head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
-.limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
-.app-header .app-header__avatar,
-.avatar--lg,
-.chat-bubble,
-.chat-ov, .chat-ta,
-.pro-hero__sub,
-.notes-block,
-.dl-dview-note,
-/* `.tcp__upload` снят из этого списка вместе с классом: кнопка загрузки обложки
-   стала обычной `.btn`, а та берёт типографику канона `.t-ui` строкой ниже —
-   подпись кнопки и не должна была стоять в теле текста. */
-.check,
-.checkbox,
-.auth__switch,
-.auth-error,
-.nav a,
-.footer,
-.bubble,
-.card p,
-.step p,
-.deep__highlights li,
-.trust__item,
-.langdd__item,
-.brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
-.nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
-/* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
-   `.t-ui` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
-   как надпись НА кнопке (канон .t-ui, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
-   её держит `min-height: var(--ctl-h)` при нулевом вертикальном паддинге. */
-.input, .select, .textarea,
-.sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
-.stay-dates__lbl,  /* они же в просмотре события */
-.auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
-.ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
-.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
-.t-ui,
+.cm-h,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
 .hv-lbl,              /* «Стоимость за всё», «Когда», «Документы» в панели события */
-.trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
+.trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → Label (спецификее .seg button{font:inherit}) */
 .btn,
 .field__label,
 .app-side__item,
-.addsheet__tx b,
 .eroute p,
 .invite__tx p,
 .stepper--block .ts-startctl__date,
@@ -760,10 +764,6 @@ h4,
 .cbar .val,
 .empty-note .en-tx b,
 .visit .info .dt,
-.bgt-glist__n,
-.bgt-dleg__n,      /* TRIP-243 инсп.: Meta→UI (название категории легенды доната) */
-.bgt-fxlist span,  /* TRIP-243 инсп.: Meta→UI (строки курсов в FX-карточке) */
-.bgt-fxrow__cur,
 .dl-addcard b,
 .eed-fctitle,
 .docfield__title,
@@ -788,20 +788,58 @@ h4,
 .faq__a-inner,
 .input-unit,
 .fork-manual__tx b,
-.bud-leg .nm,      /* TRIP-175 инсп.: Meta→UI (легенда бюджета; .t-strong сохранён) */
-.bud-leg .v,       /* TRIP-175 инсп.: Meta→UI (сумма легенды бюджета; .t-strong сохранён) */
-.visit .triplink,  /* TRIP-175 инсп.: off-canon→UI (ссылка на трип в визите) */
-.fork-partner__mid b, /* TRIP-175 инсп.: Meta→UI (название партнёра GetRentacar/Omio) */
-.chat-member__nm,     /* TRIP-175 инсп.: Meta→UI (имя участника в списке чата) */
-.chat-name b,         /* TRIP-296 инсп.: Meta→UI (автор сообщения) */
-.chat-thinking,       /* TRIP-296 инсп.: Meta→UI («Triplanio печатает») */
+.bud-leg .nm,      /* TRIP-175 инсп.: Meta→Label (легенда бюджета; .t-strong сохранён) */
+.bud-leg .v,       /* TRIP-175 инсп.: Meta→Label (сумма легенды бюджета; .t-strong сохранён) */
+.visit .triplink,  /* TRIP-175 инсп.: off-canon→Label (ссылка на трип в визите) */
+.fork-partner__mid b, /* TRIP-175 инсп.: Meta→Label (название партнёра GetRentacar/Omio) */
+.chat-member__nm,     /* TRIP-175 инсп.: Meta→Label (имя участника в списке чата) */
+.chat-name b,         /* TRIP-296 инсп.: Meta→Label (автор сообщения) */
+.chat-thinking,       /* TRIP-296 инсп.: Meta→Label («Triplanio печатает») */
 .chat-mention__row span, /* TRIP-296: подпись в поповере упоминания — не моно */
-.chat-reply__who b,   /* TRIP-296 инсп.: Meta→UI (автор ответа ассистента) */
+.chat-reply__who b,   /* TRIP-296 инсп.: Meta→Label (автор ответа ассистента) */
 .dock-panel__id b,    /* TRIP-296: заголовок виджета */
-.pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→UI (body-med макета) */
-.dl-label,            /* TRIP-275 инсп.: Meta→UI (лейблы «Доступ»/«Файлы» диалога документа) */
-.dl-dropzone b,       /* TRIP-275 инсп.: Meta→UI (CTA dropzone «Загрузить файлы…») */
-.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410 V2: .t-ui — АЛИАС .t-label (Geologica 13/600/1.4); был 13/500, снят near-dup с .t-meta (12.5/500) */
+.pro-hero-eyebrow,    /* TRIP-229: инспектор канонов — бейдж Triplanio Pro Meta→Label (body-med макета) */
+.dl-label,            /* TRIP-275 инсп.: Meta→Label (лейблы «Доступ»/«Файлы» диалога документа) */
+.dl-dropzone b,       /* TRIP-275 инсп.: Meta→Label (CTA dropzone «Загрузить файлы…») */
+.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-410 Ф3: .t-label — Geologica 13/600/1.4 · единственный утилити-канон (кегль подписи/кнопки/статуса); сюда влиты компонентные co-селекторы бывшей утилиты + чат-якоря .cm-h/.cm-h3 */
+.t-body,
+.fork-state p,   /* TRIP-287: инспектор канонов — тело состояния поиска → t-body */
+.head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
+.limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
+.app-header .app-header__avatar,
+.avatar--lg,
+.chat-bubble,
+.chat-ov, .chat-ta,
+.pro-hero__sub,
+.notes-block,
+.dl-dview-note,
+/* `.tcp__upload` снят из этого списка вместе с классом: кнопка загрузки обложки
+   стала обычной `.btn`, а та берёт типографику канона `.t-label` (co-selector выше) —
+   подпись кнопки и не должна была стоять в теле текста. */
+.check,
+.checkbox,
+.auth__switch,
+.auth-error,
+.nav a,
+.footer,
+.bubble,
+.card p,
+.step p,
+.deep__highlights li,
+.trust__item,
+.langdd__item,
+.brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
+.nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
+/* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
+   `.t-label` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
+   как надпись НА кнопке (канон .t-label, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
+   её держит `min-height: var(--ctl-h)` при нулевом вертикальном паддинге. */
+.input, .select, .textarea,
+.sd-cell__lbl,     /* «Заезд»/«Выезд» в ячейке даты */
+.stay-dates__lbl,  /* они же в просмотре события */
+.auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
+.ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
+.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
 .t-meta,
 .field__hint,
 .app-header__trip-meta,
@@ -908,14 +946,6 @@ h4,
 .visit .info .rng,
 .triplink,
 .vmanual,
-.bgt-donut__c .l,
-.bgt-dleg__p,
-.bgt-stat__s,
-.bgt-glist__c,
-.bgt-detail__s,
-.bgt-detail__amt .l,
-.bgt-exrow__s,
-.bgt-fxrow__hint,
 .dl-card__sub,
 .dl-card__notes,
 .dl-card__foot-who,
@@ -995,7 +1025,7 @@ h4,
 .ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-meta — Geologica 12.5/500/1.4, tabular (де-моно) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
    `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
-   `.field__label` вне диалога оставался на `.t-ui` - одна и та же подпись
+   `.field__label` вне диалога оставался на `.t-label` - одна и та же подпись
    выглядела по-разному в зависимости от ОБОЛОЧКИ. Резать надо было именно
    поимённо: сам канон трогать нельзя, его носят ещё 44 объекта (бейджи,
    эйбрау шапок, дни недели календаря, футер лендинга). */
@@ -1023,7 +1053,6 @@ h4,
 .rec .k,
 .visit .when .mo,
 .eed-fromto,
-.bgt-stat__l,
 .ncal-wd,          /* инсп.: Micro (дни недели над сеткой месяца) */
 .ncal-wdc-wd,      /* TRIP-280: близнец .ncal-wd — день недели в карточке вида «Неделя» */
 .pt-mast__kick,
@@ -1077,7 +1106,6 @@ h4,
 .tl3-card--tr .rv-mode small,
 .acct-plan__line b,
 .s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
-.bgt-stat__s b,
 .ptrip h1, .ptrip h2, .ptrip h3,
 .pt-mast__l1 b,
 .pt-cstop__sub b,
@@ -1095,7 +1123,6 @@ h4,
 .t-flush,
 .tmk,
 .s22mk,
-.bgt-donut__c .v,
 .ncal-title-row,
 .ncal-dn,
 .ncal-wdc-num,
@@ -1329,7 +1356,7 @@ button.app-side__item:hover { background: var(--wash); }
 .btn {
   --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  /* тип — из канона .t-ui (co-selector, TRIP-165) */
+  /* тип — из канона .t-label (co-selector, TRIP-165) */
   /* Высота - общий токен контрола, поэтому вертикального паддинга нет: кнопка
      обязана вставать в один рост с полем рядом (была 37.5 против 41.5). */
   min-height: var(--ctl-h); padding: 0 15px; border-radius: var(--r-btn);
@@ -1754,8 +1781,8 @@ button.app-side__item:hover { background: var(--wash); }
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 7px; }
 /* Подпись поля - ink-2, чтобы не спорить с самим значением. Размер/вес тут НЕ
-   объявлены: их держит канон .t-ui (Geologica 13/500), см. co-selector выше. */
-.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-ui (co-selector, TRIP-165) */
+   объявлены: их держит канон .t-label (Geologica 13/600), см. co-selector выше. */
+.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-label (co-selector, TRIP-165) */
 /* Звёздочка обязательного поля - одна на всё приложение (TRIP-333). Знак и цвет
    объявлены здесь; КОМУ ставить `data-required`, отвечает валидатор
    (`isFieldRequired`), а не автор лейбла.
@@ -1773,7 +1800,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 
 /* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
-   on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
+   on .t-subheading/.t-meta canons (set in the JSX); here only layout/colour. */
 /* скин (panel) — см. групповой селектор поверхностей в начале файла (TRIP-189); тут только раскладка */
 /* Свой `margin-bottom: 12px` снят: родитель аккордеона (`.lp-b`) уже
    раскладывает детей зазором, поэтому отступ был ДОБАВОЧНЫМ - между двумя
@@ -2044,12 +2071,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   padding-inline: 0 12px;
   border-inline-start: none; border-inline-end: 1px solid var(--line);
 }
+/* Ширина ячейки валюты в поле «сумма + валюта»: триггер CurrencyCombobox без
+   ширины растягивается и накрывает ввод суммы. Фикс под длину кода+символа.
+   Модификатор канон-семьи input (не приватное имя экрана). */
+.input-group .input-unit--ccy { width: 122px; }
 
 /* Canonical inline validation lines (Lumo). Standalone classes so they work
    both inside <Field> and in custom field wrappers (e.g. the event editor). */
 .err, .wrn { display: flex; align-items: center; gap: 5px; }
 .err { color: var(--danger-ink); }
 .wrn { color: var(--warning-ink); }
+/* Значение с проблемой (нет курса, несведённая сумма) — danger-цветом. Был приватно
+   под bgt-scope, сведён в общую утилиту при переезде Бюджета на ДС (TRIP-413). */
+.miss { color: var(--danger); }
 .err svg, .wrn svg { width: 13px; height: 13px; flex: none; }
 
 /* Canonical checkbox — the app's only one. `appearance: none` because the box
@@ -2327,10 +2361,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .pro-up--inline .btn { width: 100%; }
 }
 .badge--success { background: var(--success-soft); color: var(--success); }
+/* orphan-exempt: badge--warning — эмитится <Badge variant="warning"> композицией
+   badge--${variant} (RoleBadge, роль «Владелец»); литерала в разметке нет по построению (TRIP-409) */
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--brand-soft); color: var(--brand); }
 .badge--count { background: var(--brand); color: var(--primary-fg); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
+/* orphan-exempt: badge--outline — эмитится <Badge variant="outline"> композицией
+   badge--${variant} (RoleBadge, роль «Наблюдатель»); литерала в разметке нет по построению (TRIP-409) */
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 
 /* Severity (Lumo .sev — soft plate with a tinted icon chip) */
@@ -2394,7 +2432,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 }
 .avatar--lg { width: 36px; height: 36px; }
 .avatar--sm { width: 22px; height: 22px; }
-.avatar--ai { background: var(--ai-gradient) !important; }
+/* visual-diff-exempt: .avatar--ai background — перенос робота ассистента из
+   TriplanioAvatar в <Avatar kind="ai">: сохраняем ЖИВОЙ вид бота (он рисовался
+   на --assistant-grad), а не прежний неиспользованный --ai-gradient. Апрув Pavel. */
+.avatar--ai { background: var(--assistant-grad) !important; }
 /* Аватар БЕЗ картинки - один скин на оба случая (инициалы и удалённый
    аккаунт), объявлен один раз. Два имени тут не дубль, а настоящая вариация:
    различает их ровно пунктирная рамка, и она объявлена отдельной строкой -
@@ -2558,6 +2599,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    примитива, иначе шкала снова расползётся по трём именам. */
 .grid { display: grid; gap: var(--sp-5); }
 .grid--2 { grid-template-columns: 1fr 1fr; }
+/* Две колонки, что стекаются в одну на планшете (брейкпоинт 880, R2). Общая
+   раскладка «список + деталь» / «виз + сводка» — вместо приватных сеток экранов. */
+.grid--split { grid-template-columns: 1fr 1fr; }
+@media (max-width: 880px) { .grid--split { grid-template-columns: 1fr; } }
 /* Кнопка в ячейке сетки переносит строку. `.btn` по умолчанию nowrap, а трек
    сетки задаёт ей ширину извне - значит длинная локаль («Solo las necesarias»)
    не сжимается, а вылезает. Свойство принадлежит паре «кнопка в сетке», а не
@@ -2873,6 +2918,20 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    мягкая форма не отрисовалась бы ни разу, а тон без потребителя - это по
    правилу выше не система, а мёртвый класс. */
 .tile--warning { background: var(--warning-soft); color: var(--warning); }
+/* TRIP-350: тона СОБЫТИЯ на плитке. Та же форма, что у тонов выше (мягкий оттенок
+   цвета значка), но цвет — событийный (`--ev-*`), а текст — тёмная грань `--ev-*-ink`
+   (у событий мягкий фон светлее сплошного значка, читаемость держит именно грань).
+   Заведены ВМЕСТЕ со своими первыми вызывателями: hotel — строка «Документ» «+»-меню,
+   activity — строка «Участник» «+»-меню и иконка Dialog, transfer — плитка Stat.
+   До этого те же цвета жили инлайном на элементе (addsheet__ic, Dialog) и scoped-
+   правилом (.stat--* .tile) — событийного тона у плитки в союзе не было.
+   activity/transfer доезжают переносом .stat--* .tile (см. Stat ниже); hotel —
+   новый тон, репост инлайна addsheet__ic (строка «Документ»):
+   visual-diff-exempt: .tile--hotel background — новый тон события, репост инлайна addsheet__ic (док)
+   visual-diff-exempt: .tile--hotel color — новый тон события, репост инлайна addsheet__ic (док) */
+.tile--hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
+.tile--activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.tile--transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
 
 /* ЗАЛИТАЯ плитка - вторая и последняя форма тона, а не «ещё один цвет».
    Мягкий оттенок работает, только пока плитка стоит на нейтральной подложке.
@@ -3021,18 +3080,42 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   .mbnav__fab:active { transform: translateY(-15px) scale(.9); }
 }
 
-/* Add bottom-sheet rows (inside <Sheet>, opened by the nav "+") */
-.addsheet { display: flex; flex-direction: column; gap: 8px; padding: 2px 0 6px; }
-.addsheet__row {
-  display: flex; align-items: center; gap: 13px; width: 100%; padding: 12px; border-radius: var(--r-btn); cursor: pointer; text-align: left;
-  transition: border-color .15s, background .15s, transform .12s var(--ease-spring);
-}
-.addsheet__row:hover { border-color: var(--line-hover); }
-.addsheet__row:active { transform: scale(.99); }
-.addsheet__ic { width: 42px; height: 42px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.addsheet__tx { flex: 1; min-width: 0; }
-.addsheet__tx b { color: var(--ink); }
-.addsheet__chev { color: var(--muted-2); flex: none; }
+/* TRIP-350: семья `.addsheet` удалена — «+»-меню трипа теперь рендерит канон
+   ActionMenu (строки `.sheet-row--tile`), инлайн-шит из TripView снят. Строки
+   меню-шита переехали на борд-лесс канон `.sheet-row`, значения РАЗНЫЕ (padding
+   14 vs 12, border 0 vs 1px, фон прозрачный vs surface) — это переработка вида,
+   а не перенос; снятие раскладочных объявлений семьи объявляется точечно:
+   visual-diff-exempt: .addsheet display — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet flex-direction — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet gap — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet padding — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row display — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row align-items — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row background — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row border — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row border-radius — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row cursor — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row gap — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row padding — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row text-align — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row transition — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row width — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row:hover border-color — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__row:active transform — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic width — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic height — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic border-radius — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic display — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic place-items — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__ic flex — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx flex — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx min-width — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b font-family — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b font-size — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b font-weight — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b letter-spacing — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__tx b line-height — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile
+   visual-diff-exempt: .addsheet__chev flex — семья .addsheet удалена, строки «+» теперь канон .sheet-row--tile */
 
 /* Trip-creation choice card — ONE source, shared by the empty Trips screen and
    the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
@@ -3499,6 +3582,26 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      open) — drop it on small screens; the scrim alone is enough. */
   .dlg-backdrop, .sheet-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .dlg-modal, .sheet { will-change: transform; }
+
+  /* Клавиатура открыта → убираем нижнюю «хромированную» полосу, пока
+     пользователь печатает: (1) action-футер шита и (2) плавающий боттом-нав.
+     На мобиле поле у низа + подъём над клавиатурой заставляли эти полосы
+     «подлетать» и наезжать на панель автозаполнения Chrome/iOS.
+
+     Сигнал — АТРИБУТ `[data-keyboard]` на <html> (src/lib/keyboardOpen.js), по
+     ГЕОМЕТРИИ вьюпорта (клавиатура сжимает `visualViewport` при `interactive-
+     widget=resizes-content`), а НЕ по фокусу поля. Фокус на мобиле мигает: тап
+     по наву возвращал фокус в последнее поле и прятал нав в момент нажатия —
+     геометрия на тап по кнопке не реагирует. Атрибут, а не класс: новый класс
+     состояния растил бы число классов дизайн-пола (гард 2o), а root-состояние —
+     это data-атрибут (как `data-theme`).
+
+     Здесь скрываем только НЕ-канон элементы: плавающий нав `.mbnav` и футер
+     панелей редактора `.lp-f`. Футер шита `.dlg__foot` — канон-примитив, и его
+     прячет САМ компонент <Dialog> через useKeyboardOpen (реагировать снаружи на
+     канон-примитив = reach, гард 2o). */
+  [data-keyboard] .lp-sheet .lp-f { display: none; }
+  [data-keyboard] .mbnav { display: none; }
 
 
   /* Editor side panels become FULL-SCREEN panels on phones (a standalone screen
@@ -5024,7 +5127,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    даёт `.settings-lens` gap; docs/budget не раскладывают детей через gap → задаём
    отступ снизу здесь, чтобы баннер не прилипал к тулбару/контенту (как на settings). */
 .dl-root > .readonly-banner,
-.bgt > .readonly-banner { margin-bottom: 16px; }
 
 /* Identity card: live cover preview + name/description/currency/notes. */
 /* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
@@ -5306,7 +5408,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-tgrow + .acct-tgrow { margin-top: 8px; }
 /* .acct-tgrow__t УДАЛЁН (TRIP-321): тот же заголовок строки, что .row__t, но жил
    с зазором 7 (мимо шкалы, ближайшая ступень 8) и ярусом ниже на полшага
-   (t-ui 12.5/600 против t-label 13/700). Обе правки ВИДНЫ на экране - как и
+   (утилита-подпись 12.5/600 против t-label 13/700). Обе правки ВИДНЫ на экране - как и
    переход колец загрузки на ступень 18 (см. .spin--ring), поэтому оба места
    сняты скриншотом до и после. */
 /* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
@@ -5443,6 +5545,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .sheet-row[disabled] { opacity: .5; pointer-events: none; }
 .sheet-row--danger { color: var(--danger-ink); }
 .sheet-row--danger svg { color: var(--danger-ink); }
+/* TRIP-350: строка «+»-меню с ведущей ЦВЕТНОЙ плиткой (тон события). Пункт с
+   заданным `tone` рисует `<Tile tone>` лидом и шеврон трейлом. Плитка несёт свой
+   размер и тон — базовое `.sheet-row svg` (18px, muted) в неё протекать не должно,
+   иначе значок съедет и потеряет цвет. Шеврон остаётся голым svg (его та же база
+   красит верно), а `.grow` толкает его вправо — отдельного класса не нужно.
+   visual-diff-exempt: .sheet-row--tile .tile > svg width — изоляция плитки строки-варианта от базового .sheet-row svg
+   visual-diff-exempt: .sheet-row--tile .tile > svg height — изоляция плитки строки-варианта от базового .sheet-row svg
+   visual-diff-exempt: .sheet-row--tile .tile > svg color — изоляция плитки строки-варианта от базового .sheet-row svg */
+.sheet-row--tile .tile > svg { width: var(--tile-ic, 17px); height: var(--tile-ic, 17px); color: inherit; }
 .sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
 @keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
 
@@ -6271,9 +6382,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .ev-sec{padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
 /* Заголовок раздела - ОДИН на просмотр и на форму (TRIP-333). Раньше это были
    два разных объекта: тут мелкая метка канона `.t-micro` цветом типа события, а
-   в форме (`.acc__title`) - `.t-ui` цветом `--ink`. Один и тот же «Детали
+   в форме (`.acc__title`) - `.t-label` цветом `--ink`. Один и тот же «Детали
    брони» читался как подпись в одном месте и как заголовок в другом.
-   Канон и цвет теперь общие (`.t-ui` ставится в разметке, цвет `--ink`), а
+   Канон и цвет теперь общие (`.t-label` ставится в разметке, цвет `--ink`), а
    тип события несёт ПЛАНКА-АКЦЕНТ ниже - это вариация чтения, как шеврон и
    бейдж - вариация формы. */
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px; color:var(--ink);}
@@ -7233,7 +7344,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
    рамка, тон, подчёркивание И ТИПОГРАФИКА) уехал в `btn--link`; два следствия
    названы, потому что видны глазом: подчёркивание перестало быть постоянным и
-   приходит на ховере, а кегль пришёл из канона `.t-ui` кнопки — класс стоял в
+   приходит на ховере, а кегль пришёл из канона `.t-label` кнопки — класс стоял в
    мета-ярусе `.t-meta` (тогда моно) и снят оттуда. То же
    касается соседней кнопки сортировки ниже. */
 .s22f-resetall { margin-left: auto; }
@@ -7436,9 +7547,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .badge--on-arrival color — класс удалён, тон уехал на базу через канал --hl - значение то же
    visual-diff-exempt: .bell-dd__mark background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .bell-dd__more:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
-   visual-diff-exempt: .bgt-glist__row background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
-   visual-diff-exempt: .bgt-glist__row border-color — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
-   visual-diff-exempt: .bgt-stat--total background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .bk-link:hover background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .brow--unread:hover {@media (hover: hover)} background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .brow--unread background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
