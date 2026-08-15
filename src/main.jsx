@@ -37,6 +37,7 @@ import { initSentry } from '@/lib/sentry'
 import { applyConsent, clearAnalyticsStorage, getConsent } from '@/lib/consent'
 import { setCampaign } from '@/lib/analytics'
 import { boot as bootPosthog } from '@/lib/destinations/posthog'
+import { boot as bootAds } from '@/lib/destinations/ads'
 import { isProdHost } from '@/lib/analyticsEnv'
 import { startKeyboardOpenWatch } from '@/lib/keyboardOpen'
 import App from '@/App.jsx'
@@ -51,6 +52,9 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 // (applyConsent → the adapter's onConsent). setCampaign() primes the last-touch
 // campaign super-properties for the no-login case, before any event fires.
 bootPosthog()
+// The Google Ads adapter shares the boot/onConsent contract; boot() is a no-op
+// (the tag loads on a marketing grant via applyConsent), booted here for symmetry.
+bootAds()
 setCampaign()
 
 // No usable answer covers "never asked", "expired", "our version moved" and

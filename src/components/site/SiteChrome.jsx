@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import { openConsentBanner } from '@/lib/consent';
+import { withVisitCampaign } from '@/lib/analytics';
 import { Icon as BaseIcon } from '@/design/icons';
 
 /* =========================================================
@@ -106,7 +107,9 @@ export function SiteHeader({ lang, setLang, navBase = '', brandHref = '#top' }) 
   const t = useT();
   const nav = useNavigate();
   const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : APP_URL;
+  // Carry this visit's campaign marks onto /login so a gclid/utm survives the
+  // click — gtag's url_passthrough reads them off the address (TRIP-407 PR5).
+  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navHref = (hash) => `${navBase}${hash}`;
