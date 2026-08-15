@@ -9,7 +9,6 @@
 import posthog from 'posthog-js';
 import { forgetPendingEvents, identifyUser, isAnalyticsOn, startAnalytics, stopAnalytics } from '@/lib/analytics';
 import { buildConsent, parseConsent } from '@/lib/consent-record';
-import { stripAuthHashFromEvent } from '@/lib/authHash';
 
 const STORAGE_KEY = 'tp-consent';
 
@@ -121,13 +120,6 @@ export function applyConsent(record, uid) {
     capture_performance: false,
     disable_session_recording: true,
     person_profiles: 'identified_only',
-    // Freeze the OAuth `#access_token` out of analytics AT THE SOURCE (TRIP-407,
-    // 328.1). PostHog reads `$session_entry_url` off the FIRST event — captured in
-    // main.jsx before React mounts, so before AuthContext's replaceState can run —
-    // and `$current_url` off every event. `before_send` runs on each, catching the
-    // token no matter which event beat the address cleanup. Moves to
-    // destinations/posthog.js with the rest of this config in PR3.
-    before_send: stripAuthHashFromEvent,
   });
   // `env` super-property tags every event → prod dashboards filter env=prod.
   posthog.register({ env: isProdHost ? 'prod' : 'dev' });

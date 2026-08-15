@@ -1,7 +1,9 @@
-// Pins the P0 that removing the OAuth `#access_token` guards against (TRIP-407,
-// 328.1): the token must leave both the address bar and the first PostHog event,
-// and NOTHING in `search` may be dropped along with it. All invisible in the UI,
-// so it needs a test.
+// Pins the OAuth `#access_token` strip (TRIP-407, 328.1) and that NOTHING in
+// `search` is dropped along with it. `stripAuthHash` is what AuthContext uses in
+// PR1 (address bar); `stripAuthHashFromUrl` / `stripAuthHashFromEvent` are
+// groundwork for `analyticsUrl.js` (TRIP-330 / Часть 5) — tested here so their
+// shape is pinned before that owner wires them in. All invisible in the UI, so
+// it needs a test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stripAuthHash, stripAuthHashFromUrl, stripAuthHashFromEvent } from './authHash.js';

@@ -1,20 +1,23 @@
-// Strip the OAuth implicit-flow `#access_token` fragment out of the address and
-// out of the first analytics event (TRIP-407, 328.1 — P0).
+// Strip the OAuth implicit-flow `#access_token` fragment out of a URL
+// (TRIP-407, 328.1 — P0).
 //
 // After supabase-js parses the session, the access token still sits in the URL
-// hash: in the address bar (copy-paste / referrer leak) and, because PostHog
-// freezes `$session_entry_url` / `$current_url` off the first event it sees, in
-// analytics too. This module is the SINGLE decider, shared by two callers on two
-// different clocks:
-//   - AuthContext calls `stripAuthHash` and `replaceState`, but only AFTER the
-//     async session parse (earlier would break sign-in);
-//   - `posthog.init`'s `before_send` (in consent.js today, destinations/posthog.js
-//     in PR3) calls `stripAuthHashFromEvent` synchronously on the very first
-//     event — which is frozen BEFORE that async replaceState can run.
-// Both must strip identically, hence one helper.
+// hash. This module is the SINGLE stripper, so every sink that carries the
+// address strips it identically.
 //
 // Only the FRAGMENT is touched. `search` — campaign marks, the share `?t=` token,
 // the PKCE `?code=` — is preserved verbatim; supabase clears `?code=` itself.
+//
+// USED NOW by only ONE caller: AuthContext calls `stripAuthHash` +
+// `replaceState`, but only AFTER the async session parse (earlier would break
+// sign-in) — address-bar hygiene (copy-paste / referrer), NOT analytics.
+//
+// Analytics/telemetry sinks (PostHog `$session_entry_url`/`$current_url`, Sentry,
+// Vercel) still carry the token, and the share `?t=` token leaks the same way.
+// Both cuts belong to ONE owner over ALL sinks — the deferred `analyticsUrl.js`
+// (TRIP-330 / Часть 5), NOT a per-sink patch here. `stripAuthHashFromUrl` /
+// `stripAuthHashFromEvent` below are groundwork FOR that owner and are not wired
+// into any init yet; their tests stay so the shape is pinned when it lands.
 //
 // Dependency-free on purpose so `npm test` runs it under plain `node --test`.
 
@@ -36,12 +39,13 @@ export function stripAuthHash(pathname, search, hash) {
 }
 
 /**
- * The same strip on an absolute URL string — the shape PostHog stores in
- * `$current_url` / `$session_entry_url`.
+ * The same strip on an absolute URL string — the shape a telemetry sink stores
+ * (PostHog `$current_url` / `$session_entry_url`, Sentry, Vercel).
  *
- * Reuses `stripAuthHash` on the parsed parts and rebuilds `origin + rest`.
+ * Groundwork consumed by `analyticsUrl.js` (TRIP-330 / Часть 5) — not wired in
+ * yet. Reuses `stripAuthHash` on the parsed parts and rebuilds `origin + rest`.
  * Returns the input unchanged when there is no token to strip, or when it does
- * not parse as a URL (never throw inside `before_send`).
+ * not parse as a URL (a URL sanitiser must never throw).
  *
  * @param {string} url
  * @returns {string}
@@ -63,6 +67,10 @@ export function stripAuthHashFromUrl(url) {
  * properties PostHog freezes on the first event of a session. Mutates in place
  * and returns the event (the shape `before_send` expects). Exported pure so it is
  * unit-tested without a live client.
+ *
+ * Groundwork consumed by `analyticsUrl.js` (TRIP-330 / Часть 5) — not wired into
+ * `posthog.init` yet: the epic's core PRs do NO URL transformation, one owner
+ * does every sink at once.
  *
  * @template T
  * @param {T} event  a PostHog CaptureResult (or null)
