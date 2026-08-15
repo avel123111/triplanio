@@ -29,6 +29,7 @@
 
 import { supabase } from '@/api/supabaseClient';
 import { parseEdgeError } from '@/lib/edgeError';
+import { edgeRegionHeaders } from '@/lib/edgeRegion';
 import { Sentry } from '@/lib/sentry';
 
 /**
@@ -45,7 +46,11 @@ import { Sentry } from '@/lib/sentry';
  * @returns {Promise<{ data: T|null, error: any, code: string|null, message: string|null }>}
  */
 export async function invokeFn(name, options = {}) {
-  const { data, error } = await supabase.functions.invoke(name, options);
+  // Pin execution to the DB region so DB-heavy functions don't pay the
+  // cross-region hop (TRIP-374, Этап 5). edgeRegionHeaders() is {} when the
+  // region is unknown, and a caller-supplied header still wins.
+  const opts = { ...options, headers: { ...edgeRegionHeaders(), ...options.headers } };
+  const { data, error } = await supabase.functions.invoke(name, opts);
 
   const failed = Boolean(error) || Boolean(data && data.error);
   if (!failed) return { data, error: null, code: null, message: null };
