@@ -133,7 +133,7 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     // TRIP-356: announce the join; n8n notifies the trip owner.
     if (trip.created_by && trip.created_by !== user.id) {
       // Снимка членства нет (standalone) → резолвер дочитает member по (trip_id, actor_id).
-      emit('invite_accepted', { trip_id: trip.id, recipient_id: trip.created_by, actor_id: user.id }, { db: supabaseAdmin });
+      emit('trip_member_joined', { trip_id: trip.id, recipient_id: trip.created_by, actor_id: user.id }, { db: supabaseAdmin });
     }
 
     return Response.json({ ok: true, tripId: trip.id, alreadyMember: false }, { headers: corsHeaders });

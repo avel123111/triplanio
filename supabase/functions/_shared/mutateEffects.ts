@@ -109,7 +109,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const after = asRow(result);
     if (roleChangeNotifies(before.role, after.role, before.user_id)) {
       // Снимок = полная строка (before) с НОВОЙ ролью (after) — резолвер отдаёт member с актуальной ролью.
-      emit('role_changed', {
+      emit('trip_role_changed', {
         trip_id: before.trip_id as string,
         recipient_id: before.user_id as string,
         actor_id: actor.id,
@@ -125,17 +125,17 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     await teardownMember(db, member.trip_id, member.user_id);
     if (member.user_id) {
       // Строка членства уже удалена → member ТОЛЬКО из снимка (дочитать нечего).
-      emit('member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
+      emit('trip_member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 
   // Участник вышел сам — teardown + уведомление владельцу/админам (n8n резолвит
-  // аудиторию по member_left). Блок-лист НЕ пишем (ушёл добровольно).
+  // аудиторию по trip_member_left). Блок-лист НЕ пишем (ушёл добровольно).
   'trip-member-self/leave': async ({ loadedRow, db }) => {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
     // Строка членства уже удалена → member ТОЛЬКО из снимка.
-    if (member.user_id) emit('member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
+    if (member.user_id) emit('trip_member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
   },
 
   // Ответ на приглашение. По исходу RPC: accept → North-Star + уведомить пригласившего;

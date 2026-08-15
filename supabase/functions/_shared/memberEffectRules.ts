@@ -13,10 +13,10 @@ export function respondEffectPlan(outcome: unknown): {
   /** North-Star `trip_reached_2` — только при принятии (трип стал коллаборативным). */
   reached2: boolean;
   /** Событие пригласившему; null = не уведомлять (owner_stray/неизвестный исход). */
-  emit: 'invite_accepted' | 'invite_declined' | null;
+  emit: 'trip_member_joined' | 'trip_invite_declined' | null;
 } {
-  if (outcome === 'accepted') return { reached2: true, emit: 'invite_accepted' };
-  if (outcome === 'declined') return { reached2: false, emit: 'invite_declined' };
+  if (outcome === 'accepted') return { reached2: true, emit: 'trip_member_joined' };
+  if (outcome === 'declined') return { reached2: false, emit: 'trip_invite_declined' };
   return { reached2: false, emit: null };
 }
 

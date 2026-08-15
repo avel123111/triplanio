@@ -3,12 +3,12 @@
 import { assertEquals } from 'jsr:@std/assert@^1.0.8';
 import { respondEffectPlan, roleChangeNotifies } from './memberEffectRules.ts';
 
-Deno.test('★ respond accept → North-Star + invite_accepted пригласившему', () => {
-  assertEquals(respondEffectPlan('accepted'), { reached2: true, emit: 'invite_accepted' });
+Deno.test('★ respond accept → North-Star + trip_member_joined пригласившему', () => {
+  assertEquals(respondEffectPlan('accepted'), { reached2: true, emit: 'trip_member_joined' });
 });
 
-Deno.test('★ respond decline → БЕЗ North-Star, invite_declined', () => {
-  assertEquals(respondEffectPlan('declined'), { reached2: false, emit: 'invite_declined' });
+Deno.test('★ respond decline → БЕЗ North-Star, trip_invite_declined', () => {
+  assertEquals(respondEffectPlan('declined'), { reached2: false, emit: 'trip_invite_declined' });
 });
 
 Deno.test('★ respond owner_stray → ни North-Star, ни emit (стрэй удалён)', () => {
