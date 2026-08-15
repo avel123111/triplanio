@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
+import { refusalError } from '@/lib/refusalError';
+import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Card, Dialog, useToast } from '@/design/index';
@@ -150,11 +152,10 @@ export function CreateTripProvider({ children }) {
   const doCopy = useCallback(async (tripId) => {
     setCopying(true);
     try {
-      const { data, error, message } = await invokeFn('trip-share/copy', { body: { tripId } });
-      // `message` is already parsed by invokeFn (it read error.context once — a
-      // Response body can only be read one time, so we must NOT re-read it). This
-      // keeps the real server reason (e.g. TRIP_LIMIT_REACHED) out of a generic toast.
-      if (error || data?.error) throw new Error(message || 'copy failed');
+      const { data, error, code } = await invokeFn('trip-share/copy', { body: { tripId } });
+      // Rethrow the refusal as its machine `code` (e.g. TRIP_LIMIT_REACHED) so the
+      // catch words it via errorText — the raw server prose is never shown.
+      if (error || data?.error) throw refusalError(code);
       // Copying adds an active trip — drop the limit gate cache too, not just the
       // list, so the next create attempt doesn't read a stale (under-cap) count.
       invalidateActiveTripsLimit(qc);
@@ -162,7 +163,7 @@ export function CreateTripProvider({ children }) {
       toast({ description: t('trip.copy_done'), variant: 'success' });
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {
-      toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
+      toast({ description: errorText(t, e?.code), variant: 'destructive' });
     } finally {
       setCopying(false);
     }

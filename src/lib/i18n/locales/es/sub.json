@@ -66,6 +66,5 @@
   "trip_pro_desc_pre": "Las funciones Pro de este viaje las activa ",
   "trip_pro_feature_named": "«{feature}» es una función Pro",
   "trip_pro_heading": "Función Pro del viaje",
-  "unlimited_word": "Ilimitados",
-  "upgrade_error": "Error: {message}"
+  "unlimited_word": "Ilimitados"
 }

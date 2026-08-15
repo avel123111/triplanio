@@ -22,6 +22,7 @@ import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { TRIP_DOCUMENTS_INCLUDE } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
+import { errorText } from '@/lib/errorText';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
@@ -114,7 +115,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       });
     } catch (e) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('doc.save_failed'));
+      // insertTripDocument бросает refusalError → текст по машинному `code`
+      // (серверную прозу не показываем, TRIP-378/423).
+      setErr(errorText(t, e?.code));
       return;
     }
     setSaving(false);
@@ -351,18 +354,20 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     let deleted;
     try {
       deleted = await deleteTripDocument(tripId, doc.id); // false = already gone (404), not success
-    } catch {
+    } catch (e) {
       setDeleting(false);
-      toast({ description: t('doc.delete_failed'), variant: 'destructive' });
+      // Реальный отказ (напр. DOC_PRIVATE_NOT_OWNER) → текст по машинному `code`.
+      toast({ description: errorText(t, e?.code), variant: 'destructive' });
       return; // real error → keep dialog open
     }
     if (!deleted) {
       // Nothing was deleted: RLS hid the row (session expired / removed from
       // trip) or another member already deleted it. Don't sweep files, don't
-      // claim success — refresh so the user sees the real state.
+      // claim success — refresh so the user sees the real state. Контракт
+      // deleteTripDocument: false = NOT_FOUND → так и словим.
       setDeleting(false);
       qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-      toast({ description: t('doc.delete_failed'), variant: 'destructive' });
+      toast({ description: errorText(t, 'NOT_FOUND'), variant: 'destructive' });
       return;
     }
     // Row gone → its files are now orphaned (unique uuid keys, single reference).
@@ -650,7 +655,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   if (error) {
     return (
       <div style={{ padding: 32 }}>
-        <Severity level="error">{t('doc.load_error', { message: error.message })}</Severity>
+        <Severity level="error">{errorText(t, error && 'code' in error && typeof error.code === 'string' ? error.code : null)}</Severity>
       </div>
     );
   }

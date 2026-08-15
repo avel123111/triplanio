@@ -8,7 +8,6 @@
   "draft_label": "Draft",
   "end": "End",
   "end_badge": "Finish",
-  "error_plan_desc": "Could not generate trip. Please try again.",
   "error_plan_title": "Planning failed",
   "error_rate_limited": "Too many AI requests. Please try again in a few minutes.",
   "generate_draft": "Generate draft",

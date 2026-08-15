@@ -17,6 +17,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
+import { uploadErrorText } from '@/lib/documentMutations';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
 import { Btn, Card, FileRow, IconBtn, InputGroup, Textarea, Tile } from '@/design/index';
@@ -120,7 +121,11 @@ export default function EventAiBlock({
         // display via `documents` below.
         const path = tripStoragePath(tripId, f.name);
         const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, f.file);
-        if (upErr) throw new Error(upErr.message || t('event.ai_upload_error'));
+        // Storage-ошибка (кода НЕТ) → её дом uploadErrorText, не сырой показ .message.
+        if (upErr) {
+          const storageMsg = upErr.message;
+          throw new Error(uploadErrorText({ file: f, reason: 'upload', message: storageMsg }, t));
+        }
         uploadedPaths.push(path);
         const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         return { ...f, file_url: urlData?.signedUrl || '', storage_path: path };

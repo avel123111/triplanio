@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { refusalError } from '@/lib/refusalError';
+import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -900,15 +901,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   const planMut = useMutation({
     mutationFn: async ({ promptText }) => {
-      const { data, error: fnErr } = await invokeFn('planTripWithAi', {
+      const { data, error: fnErr, code } = await invokeFn('planTripWithAi', {
         body: { sessionId, prompt: promptText, language: lang || 'ru' },
       });
       if (fnErr) {
-        // TRIP-111: серверный rate-limit генераций → понятное сообщение вместо
-        // общего «не удалось». supabase.functions.invoke кладёт Response в .context.
-        // Мутируем message и бросаем ОРИГИНАЛ (invokeFn пометил его __seamHandled),
-        // иначе new Error теряет стамп → MutationCache.onError задваивает репорт.
-        if (fnErr?.context?.status === 429) { fnErr.message = t('ai_plan.error_rate_limited'); throw fnErr; }
+        // Attach the machine `code` and throw the ORIGINAL error: invokeFn stamped
+        // it __seamHandled, so MutationCache.onError won't double-report (a fresh
+        // Error would lose the stamp). onError words it — the 429 rate-limit gets
+        // domain copy, everything else goes through errorText (never raw prose).
+        fnErr.code = code;
         throw fnErr;
       }
       return data;
@@ -922,11 +923,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     },
     onError: (err) => {
       setAiState(cities.length ? 'draft' : 'prompt');
-      toast({
-        title: t('ai_plan.error_plan_title'),
-        description: err?.message || t('ai_plan.error_plan_desc'),
-        variant: 'destructive',
-      });
+      // TRIP-111: серверный rate-limit генераций → доменная копия; прочие отказы
+      // словит errorText по машинному `code` (серверную прозу не показываем).
+      const description = err?.context?.status === 429
+        ? t('ai_plan.error_rate_limited')
+        : errorText(t, err?.code);
+      toast({ title: t('ai_plan.error_plan_title'), description, variant: 'destructive' });
     },
   });
   const onGenerate = (promptText) => { if (promptText) planMut.mutate({ promptText }); };
@@ -1090,7 +1092,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     } catch (err) {
       console.error('Failed to save trip:', err);
       track('trip_create_failed', { method, reason: err?.message || 'unknown' });
-      setError(err.message || t('planner.err_save_failed'));
+      // refusalError несёт машинный `code` (message = сам код) → словим текст
+      // через errorText; серверную/сырую прозу не показываем (TRIP-378/423).
+      setError(errorText(t, err?.code));
     } finally {
       setSaving(false);
     }

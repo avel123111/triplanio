@@ -3,8 +3,6 @@
   "adding": "Añadiendo…",
   "cancel_invite": "Cancelar invitación",
   "empty": "Sin participantes",
-  "err_remove": "No se pudo quitar al participante",
-  "err_send_invite": "No se pudo enviar la invitación",
   "invite_again": "Invitar de nuevo",
   "invite_email_note": "El destinatario acepta la invitación desde su bandeja en Triplanio",
   "invite_link_label": "Enlace de invitación · caduca en 7 días",

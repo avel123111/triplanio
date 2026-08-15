@@ -29,7 +29,6 @@
   "leave_btn": "Leave",
   "leave_confirm": "Leave the trip? You will stop seeing it.",
   "leave_desc": "You will stop seeing the trip. Your personal documents in it will be permanently deleted. The owner can invite you again.",
-  "leave_error": "Could not leave",
   "leave_not_found": "Error: your membership in the trip was not found",
   "leave_owner_blocked": "Transfer ownership to another participant before leaving",
   "leave_trip": "Leave the trip",

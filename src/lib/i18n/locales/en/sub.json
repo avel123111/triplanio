@@ -66,6 +66,5 @@
   "trip_pro_desc_pre": "The Pro features of this trip are enabled by ",
   "trip_pro_feature_named": "\"{feature}\" is a Pro feature",
   "trip_pro_heading": "Trip Pro feature",
-  "unlimited_word": "Unlimited",
-  "upgrade_error": "Error: {message}"
+  "unlimited_word": "Unlimited"
 }

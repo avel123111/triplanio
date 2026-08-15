@@ -123,11 +123,11 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const name = offlineName.trim();
     setSaving(true);
     setErr('');
-    const { data, error, message } = await invokeFn('trip-member/add-offline', {
+    const { data, error, code } = await invokeFn('trip-member/add-offline', {
       body: { trip_id: tripId, user_full_name: name },
     });
     setSaving(false);
-    if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
+    if (error || data?.error) { setErr(classifyError(t, code).text); return; }
     track('member_invited', { role: 'offline', trip_id: tripId });
     onSaved?.();
     close();
@@ -234,11 +234,11 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
   async function save() {
     setSaving(true);
     setErr('');
-    const { data, error, message } = await invokeFn('trip-member/role', {
+    const { data, error, code } = await invokeFn('trip-member/role', {
       body: { id: member.id, trip_id: tripId, role },
     });
     setSaving(false);
-    if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
+    if (error || data?.error) { setErr(classifyError(t, code).text); return; }
     onSaved?.();
     close();
   }
@@ -286,9 +286,9 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // can't host a spinner, so the row shows the busy state (mbrow--busy) instead.
   async function resend(memberId) {
     setRemoving(memberId);
-    const { data, error, message } = await invokeFn('trip-member/resend', { body: { id: memberId, trip_id: tripId } });
+    const { data, error, code } = await invokeFn('trip-member/resend', { body: { id: memberId, trip_id: tripId } });
     setRemoving(null);
-    if (error || data?.error) { toast({ description: message || t('member.err_send_invite'), variant: 'destructive' }); return; }
+    if (error || data?.error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
   }
 
   // Re-invite a member who declined: restart the invite flow on the SAME row.
@@ -296,11 +296,11 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // and re-sends the notification + email (reusing the existing role).
   async function reinvite(member) {
     setRemoving(member.id);
-    const { data, error, message } = await invokeFn('trip-member/invite', {
+    const { data, error, code } = await invokeFn('trip-member/invite', {
       body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
     });
     setRemoving(null);
-    if (error || data?.error) { toast({ description: message || t('member.err_send_invite'), variant: 'destructive' }); return; }
+    if (error || data?.error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
     refresh();
   }
 
@@ -312,8 +312,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
       title: t('member.remove_confirm'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { error, message } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
-        if (error) { toast({ description: message || t('member.err_remove'), variant: 'destructive' }); return; }
+        const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
+        if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
         refresh();
       },
     });
@@ -328,8 +328,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
       description: t('confirm.leave_trip.body'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { error, message } = await invokeFn('trip-member-self/leave', { body: { id: member.id, trip_id: tripId } });
-        if (error) { toast({ description: message || t('settings.leave_error'), variant: 'destructive' }); return; }
+        const { error, code } = await invokeFn('trip-member-self/leave', { body: { id: member.id, trip_id: tripId } });
+        if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
         nav('/trips');
       },
     });

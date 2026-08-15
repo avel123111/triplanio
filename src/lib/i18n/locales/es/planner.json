@@ -27,7 +27,6 @@
   "err_no_date": "Indica la fecha de inicio del viaje, sin ella no se puede guardar",
   "err_no_session": "Tu sesión ha expirado. Vuelve a iniciar sesión.",
   "err_no_title": "Indica un nombre para el viaje",
-  "err_save_failed": "No se pudo guardar el viaje. Inténtalo de nuevo.",
   "fewer_nights": "Menos noches",
   "final_point": "Este es el punto final del viaje",
   "final_point_hint": "No hace falta regreso, se omite el paso «Regreso»",

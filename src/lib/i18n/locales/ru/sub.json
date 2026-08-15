@@ -66,6 +66,5 @@
   "trip_pro_desc_pre": "Pro-функции этого путешествия подключает ",
   "trip_pro_feature_named": "«{feature}»: Pro-функция",
   "trip_pro_heading": "Pro-функция путешествия",
-  "unlimited_word": "Безлимит",
-  "upgrade_error": "Ошибка: {message}"
+  "unlimited_word": "Безлимит"
 }

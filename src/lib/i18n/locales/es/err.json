@@ -17,5 +17,6 @@
   "TRIP_LIMIT_REACHED": "Has alcanzado el límite de viajes activos. Espera a que termine el actual o pásate a Pro.",
   "UNAUTHENTICATED": "Vuelve a iniciar sesión.",
   "UNAUTHORIZED": "No tienes permiso para hacer eso.",
+  "refusal": "Esta acción no está disponible.",
   "temporary": "Algo salió mal. Inténtalo de nuevo."
 }

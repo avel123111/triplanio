@@ -27,7 +27,6 @@
   "err_no_date": "Set the trip start date, it cannot be saved without it",
   "err_no_session": "Your session expired. Sign in again.",
   "err_no_title": "Enter a trip name",
-  "err_save_failed": "Could not save the trip. Try again.",
   "fewer_nights": "Fewer nights",
   "final_point": "This is the trip's final stop",
   "final_point_hint": "No return needed, the \"Return\" step is skipped",

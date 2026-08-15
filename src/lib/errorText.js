@@ -6,15 +6,20 @@
 // из namespace `err.*` через обычный `t()`. Одна дверь на весь клиент, заводится
 // в домене аккаунта (TRIP-400) и переиспользуется всеми доменами блока 3.
 //
-// Фолбэк — `err.temporary`: под него уходит `code === null` (сеть/relay-сбой, у
-// него кода нет) И любой код, которому ещё не завели строку. Реестр
-// `errorCodes.js` — источник набора кодов; `errorText.test.js` идёт по нему и
-// падает, если у известного кода нет строки в `err.json` (DoD «errorText
+// Фолбэк — два, по семантике кода (TRIP-423):
+//   • `err.temporary` — сбой: `code === null` (сеть/relay, кода нет) И любой
+//     неизвестный/невыясненный код. Смысл «попробуй ещё раз».
+//   • `err.refusal` — намеренное «нет» (`REFUSAL_CODES`) без своей `err.<code>`
+//     строки: нейтральное «нельзя», НЕ «попробуй позже» (обещать повтор там, где
+//     ответ всегда будет «нет», — врать пользователю).
+// Реестр `errorCodes.js` — источник набора кодов; `errorText.test.js` идёт по
+// нему и падает, если у известного кода нет строки в `err.json` (DoD «errorText
 // покрывает реестр»).
 
 import { REFUSAL_CODES } from './errorCodes.js';
 
 const FALLBACK_KEY = 'err.temporary';
+const REFUSAL_FALLBACK_KEY = 'err.refusal';
 
 /**
  * @param {(key: string, vars?: Record<string, any>) => string} t  из `useI18n()`
@@ -26,9 +31,11 @@ export function errorText(t, code) {
     const key = `err.${code}`;
     const msg = t(key);
     // `t()` возвращает сам адрес, когда строки нет (active → en-фолбэк → сырой
-    // ключ). Совпадение = строки для кода нет → уводим в общий `err.temporary`,
-    // а не показываем пользователю `err.SOME_CODE`.
+    // ключ). Совпадение = строки для кода нет → уводим в общий фолбэк, а не
+    // показываем пользователю `err.SOME_CODE`. Отказ без своей строки → «нельзя»
+    // (`err.refusal`), а не «попробуй позже» (`err.temporary`).
     if (msg !== key) return msg;
+    if (REFUSAL_CODES.has(code)) return t(REFUSAL_FALLBACK_KEY);
   }
   return t(FALLBACK_KEY);
 }
