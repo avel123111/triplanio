@@ -7,7 +7,7 @@
 // NOTE: the real free-tier enforcement lives in the create_trip RPC. This endpoint
 // only drives the upsell dialog, so on ANY error we fail OPEN (activeCount 0)
 // rather than falsely blocking the user.
-import { withHandler } from '../_shared/http.ts';
+import { withHandler, jsonError } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const admin = createClient(
@@ -25,7 +25,7 @@ async function getUser(req: Request) {
 
 Deno.serve(withHandler('getActiveTrips', async (req, corsHeaders) => {
     const user = await getUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    if (!user) return jsonError(401, 'Unauthorized', undefined, corsHeaders);
 
     // Pro verdict from the single SQL source (is_user_pro, migration 0055) instead
     // of an inline copy of the predicate. Fail-open: on RPC error isPro=false and

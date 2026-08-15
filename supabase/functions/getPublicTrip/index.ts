@@ -2,7 +2,7 @@
 // Returns trip (ownership stripped) + visits/hotels/transfers/activities/carRentals,
 // plus a minimal `owner` identity and the active `members` list (display name +
 // avatar + role ONLY — never user_id/email) for the shared-trip reader UI.
-import { withHandler } from '../_shared/http.ts';
+import { withHandler, jsonError } from '../_shared/http.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // AI assistant account — a trip_member for chat, never shown as a human traveler.
@@ -45,12 +45,12 @@ type MemberRow = { user_id: string | null; user_full_name: string | null; role: 
 Deno.serve(withHandler('getPublicTrip', async (req, corsHeaders) => {
     const { tripId, token } = await req.json().catch(() => ({}));
     if (!tripId || !token) {
-      return Response.json({ error: 'tripId and token required' }, { status: 400, headers: corsHeaders });
+      return jsonError(400, 'tripId and token required', undefined, corsHeaders);
     }
 
     const { data: trip } = await admin.from('trips').select('*').eq('id', tripId).single();
     if (!trip || !trip.share_token || trip.share_token !== token) {
-      return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
+      return jsonError(404, 'Not found', undefined, corsHeaders);
     }
 
     const [visits, hotels, transfers, activities, services, members] = await Promise.all([

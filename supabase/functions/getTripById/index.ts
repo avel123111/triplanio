@@ -13,7 +13,7 @@
  * included (finances are never exposed to the bot/n8n layer).
  */
 
-import { withHandler } from '../_shared/http.ts';
+import { withHandler, jsonError } from '../_shared/http.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { fetchTripPayload } from '../_shared/tripPayload.ts';
 
@@ -24,7 +24,7 @@ Deno.serve(withHandler('getTripById', async (req, corsHeaders) => {
 
   const { id } = await req.json();
   if (!id) {
-    return Response.json({ error: 'id is required' }, { status: 400, headers: corsHeaders });
+    return jsonError(400, 'id is required', undefined, corsHeaders);
   }
 
   return await fetchTripPayload(id);

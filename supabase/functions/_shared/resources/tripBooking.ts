@@ -35,33 +35,12 @@
  * `documents[].file_url` невыразимы `type/max/enum` → едут `validate`-хуком.
  */
 
-import { validateEach } from '../mutateRules.ts';
+import { bad, HTTP_URL, validateDocuments, validateEach } from '../mutateRules.ts';
 import type { FieldSpec, Refusal, ResourceSpec } from '../mutateRules.ts';
-import { CITY_FIELDS } from './cityFields.ts';
-
-const invalid = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
-
-/** Зеркало CHECK `*_link_url`-семейства и элементов `*_documents_urls`. */
-const HTTP_URL = /^https?:\/\//i;
+import { CITY_FIELDS, coord } from './cityFields.ts';
 
 const httpUrl = (v: unknown): Refusal | null =>
-  typeof v === 'string' && HTTP_URL.test(v) ? null : invalid('booking_url must be an http(s) URL');
-
-/**
- * `documents` — jsonb-МАССИВ объектов файла. CHECK `*_documents_urls` требует
- * `$[*].file_url` matchить `^https?://` (иначе `javascript:`-ссылка = stored XSS,
- * TRIP-281). Зеркалим поэлементно; прочие поля объекта БД не проверяет.
- */
-function validateDocuments(value: unknown): Refusal | null {
-  if (!Array.isArray(value)) return invalid('Field "documents" must be a list');
-  for (const item of value) {
-    const url = (item as { file_url?: unknown })?.file_url;
-    if (typeof url !== 'string' || !HTTP_URL.test(url)) {
-      return invalid('Every document file_url must be an http(s) URL');
-    }
-  }
-  return null;
-}
+  typeof v === 'string' && HTTP_URL.test(v) ? null : bad('booking_url must be an http(s) URL');
 
 /**
  * `details` услуги (`trip_services`) — jsonb-ОБЪЕКТ, где живут documents/notes/
@@ -71,7 +50,7 @@ function validateDocuments(value: unknown): Refusal | null {
  */
 function validateServiceDetails(value: unknown): Refusal | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return invalid('Field "details" must be an object');
+    return bad('Field "details" must be an object');
   }
   const docs = (value as { documents?: unknown }).documents;
   if (docs === undefined || docs === null) return null;
@@ -84,10 +63,8 @@ const ts = (): FieldSpec => ({
   max: 40,
   nullable: true,
   validate: (v) =>
-    typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? null : invalid('must be an ISO datetime'),
+    typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? null : bad('must be an ISO datetime'),
 });
-
-const coord = (): FieldSpec => ({ type: 'number', nullable: true });
 
 /** Деньги — общий фрагмент всех 4 видов. `currency` NOT NULL (клиент всегда шлёт). */
 const MONEY_FIELDS: Record<string, FieldSpec> = {
