@@ -110,12 +110,23 @@ export function Toaster() {
     return () => window.removeEventListener("resize", bump);
   }, []);
 
+  // Touch has no hover, so a tap on the deck toggles the fanned column (desktop
+  // keeps fanning on :hover via CSS). Reset when the deck empties so it does not
+  // reopen collapsed-then-expanded on the next toast.
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => { if (!toasts.length) setExpanded(false); }, [toasts.length]);
+  const onHostPointerDown = (e) => {
+    if (e.pointerType === "mouse") return;       // desktop fans on hover
+    if (e.target.closest("button")) return;      // let the close button through
+    setExpanded((v) => !v);
+  };
+
   const openIndex = new Map(
     toasts.filter((t) => t.open !== false).map((t, i) => [t.id, i]),
   );
 
   return (
-    <ToastProvider>
+    <ToastProvider data-expanded={expanded ? "" : undefined} onPointerDown={onHostPointerDown}>
       {toasts.map(function ({ id, title, description, action, open, onOpenChange: _onOpenChange, ...props }) {
         const leaving = open === false;
         const state = leaving ? "leave" : (entered.has(id) ? "visible" : "enter");

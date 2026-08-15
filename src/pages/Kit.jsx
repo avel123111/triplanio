@@ -36,7 +36,7 @@ import {
   FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
-  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS,
+  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
 import { Icon } from '@/design/icons';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
@@ -129,6 +129,7 @@ const TX = {
   emptyBoxTitle: 'Пусто', emptyBoxBody: 'В рамке (boxed).',
   openDialog: 'Открыть диалог', openSheet: 'Открыть шит', readonly: 'Режим только для чтения.',
   toastTitle: 'Готово', toastBody: 'Изменения сохранены.',
+  toastLab: 'Появятся в правом нижнем углу (на мобиле — сверху); наведи или тапни стопку, чтобы развернуть.',
   sheetNormal: 'Обычное действие', sheetDanger: 'Удалить',
   aiTitle: 'Распознать бронь', aiSub: 'Вставьте текст письма',
   dialogTitle: 'Диалог', sheetTitle: 'Шит', dialogBody: 'Содержимое диалога.',
@@ -236,6 +237,30 @@ function ForceHarness({ kind, states, render }) {
         ))}
       </div>
       <div data-kit={kind} data-force={force}>{render(force)}</div>
+    </div>
+  );
+}
+
+/** Живая витрина тоста: кнопки фаярят настоящие `toast()` через глобальный
+ *  <Toaster>, так что видно и появление, и уход, и наслоение колоды. Каждый
+ *  вариант — свой тон; «колода» шлёт пачку, чтобы карты встали стопкой. */
+const TOAST_DEMO = [
+  { variant: 'success', title: 'Путешествие сохранено', description: 'Все изменения применены' },
+  { variant: 'info', title: 'Ссылка скопирована' },
+  { variant: 'warning', title: 'Обложка не сохранилась', description: 'Попробуйте загрузить ещё раз' },
+  { variant: 'error', title: 'Не удалось удалить' },
+  { variant: 'neutral', title: 'Черновик обновлён' },
+];
+function ToastLab() {
+  return (
+    <div className="col col--g3">
+      <div className="row row--g3 row--wrap">
+        {TOAST_DEMO.map((d) => (
+          <Btn key={d.variant} variant="secondary" size="sm" onClick={() => toast(d)}>{d.variant}</Btn>
+        ))}
+        <Btn variant="primary" size="sm" onClick={() => TOAST_DEMO.forEach((d, i) => setTimeout(() => toast(d), i * 140))}>колода</Btn>
+      </div>
+      <span className="t-meta">{TX.toastLab}</span>
     </div>
   );
 }
@@ -631,14 +656,20 @@ const RECIPES = {
     ],
   }],
 
-  toast: (ctx) => [{
-    items: ctx.declared.map((c) => it(c, (
-      <div className={`toast ${c}`}>
-        <span className="tic" />
-        <div className="toast__body"><b>{TX.toastTitle}</b><span>{TX.toastBody}</span></div>
-      </div>
-    ), true)),
-  }],
+  toast: (ctx) => [
+    { label: 'живьём — нажми, покажет появление, стопку и уход', items: [it('toast(…)', <ToastLab />, true)] },
+    {
+      label: 'тон (карта осей)',
+      items: ctx.declared.map((c) => it(c, (
+        // Kit-only: `.toast` is position:absolute in the deck; `data-kit="toast"`
+        // (Kit.css) puts the static swatch back in flow so it renders in its cell.
+        <div className={`toast ${c}`} data-kit="toast">
+          <span className="tic" />
+          <div className="toast__body"><b>{TX.toastTitle}</b><span>{TX.toastBody}</span></div>
+        </div>
+      ), true)),
+    },
+  ],
 
   'sheet-row': (ctx) => [{
     items: [

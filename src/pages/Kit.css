@@ -94,3 +94,9 @@
 }
 /* visual-diff-exempt: [data-kit=card][data-force=focus] button outline — зеркалит [data-card-btn]:focus-visible > .card--interactive (outline снят), только Kit.css, прод не тронут — объект 2 */
 /* visual-diff-exempt: [data-kit=card][data-force=focus] button box-shadow — зеркалит фокус-кольцо канона (--primary-ring), только Kit.css, прод не тронут — объект 2 */
+
+/* Тост-образец: карточка `.toast` в проде position:absolute (колода). Витрине
+   нужен статичный образец В ПОТОКЕ ячейки — возвращаем его на место. Только
+   Kit.css, прод не тронут. */
+.toast[data-kit="toast"] { position: static; }
+/* visual-diff-exempt: .toast[data-kit=toast] position — витрина: статичный образец тоста в потоке, только Kit.css, прод не тронут, апрув Pavel */
