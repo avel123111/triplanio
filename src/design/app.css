@@ -927,14 +927,12 @@ h4,
 .tmk__core,
 .tmk__h,
 .s22mk__core,
-.statbar .k,
 .map-skel,
 .ring__c .l,
 .wmini .sub,
 .nextcard__tx .rt,
 .nonext p,
 .sfig .v small,
-.sfig .k,
 .world__ring .cap,
 .crow .c,
 .crow .c small,
@@ -1052,7 +1050,6 @@ h4,
 .kv .k,
 .sec-lbl .sl,
 .nextcard__tag,
-.cdu span,
 .world__cont .ttl,
 .rec .k,
 .visit .when .mo,
@@ -1094,7 +1091,22 @@ h4,
    visual-diff-exempt: .t-tiny-caps letter-spacing — новый канон
    visual-diff-exempt: .t-tiny-caps text-transform — новый канон */
 .t-tiny { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 500; line-height: 1.3; letter-spacing: 0; font-variant-numeric: tabular-nums; }
-.t-tiny-caps { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }
+/* Переносы стат-подписей на канон Tiny Caps (гард 2p) — все намеренные, апрув Pavel:
+   visual-diff-exempt: .cdu span font-size — подпись таймера Micro→Tiny Caps
+   visual-diff-exempt: .k font-size — стат-подпись сводки Meta→Tiny Caps
+   visual-diff-exempt: .sfig font-size — стат-подпись сводки Meta→Tiny Caps
+   visual-diff-exempt: .sfig font-weight — стат-подпись сводки Meta→Tiny Caps
+   visual-diff-exempt: .sfig letter-spacing — стат-подпись сводки Meta→Tiny Caps
+   visual-diff-exempt: .sfig line-height — стат-подпись сводки Meta→Tiny Caps
+   visual-diff-exempt: .sfig text-transform — стат-подпись сводки Meta→Tiny Caps
+   visual-diff-exempt: .statbar font-size — стат-подпись statbar Meta→Tiny Caps
+   visual-diff-exempt: .statbar font-weight — стат-подпись statbar Meta→Tiny Caps
+   visual-diff-exempt: .statbar letter-spacing — стат-подпись statbar Meta→Tiny Caps
+   visual-diff-exempt: .statbar line-height — стат-подпись statbar Meta→Tiny Caps */
+.t-tiny-caps,
+.statbar .k,   /* TRIP-175 инсп.: стат-подпись statbar Meta→Tiny Caps (мелкий серый капс) */
+.sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
+.cdu span { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175 инсп.: подпись таймера Micro→Tiny Caps */
 /* Моно — ОДИН источник (JetBrains Mono, --font-mono): коды/брони/рейсы/полисы/
    share-URL/email/kbd/code. Числа/даты/времена НЕ моно — их держит Geologica с
    tabular-nums (каноны t-display/t-title/t-heading/t-meta). kbd сохраняет свой кегль. */
@@ -7027,7 +7039,7 @@ a.doc-row__n:hover{ color: var(--brand); }
 /* caps micro-label (mockup v01). Tracking stays on the .t-meta canon (0): the
    mono face already reads as spaced in caps, and widening it both truncated the
    longest labels and pushed the one-row minimum from 765px to 845px. */
-.statbar .k { color: var(--muted); margin-top: 6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.statbar .k { color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* капс — из канона .t-tiny-caps (co-selector) */
 .statbar .cta { display: flex; align-items: center; padding: 0 16px; border-left: 1px solid var(--line); flex: none; }
 .statbar .cta button { width: 100%; }
 /* Overview column supplies its own vertical rhythm via .ov-col gap (TRIP-278). */

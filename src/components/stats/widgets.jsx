@@ -17,7 +17,7 @@ export function Greeting({ greeting, name, avatarName, photo, sub, eyebrow }) {
       <div className="head__row">
         <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
         <div className="grow">
-          {eyebrow && <div className="t-mono tp-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
+          {eyebrow && <div className="t-label tp-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>
           {sub && <div className="sub">{sub}</div>}
         </div>
