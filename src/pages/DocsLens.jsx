@@ -655,7 +655,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   if (error) {
     return (
       <div style={{ padding: 32 }}>
-        <Severity level="error">{errorText(t, error?.code)}</Severity>
+        <Severity level="error">{errorText(t, error && 'code' in error && typeof error.code === 'string' ? error.code : null)}</Severity>
       </div>
     );
   }
