@@ -83,23 +83,34 @@ export default function StripeReturnModals() {
       // then poll getUserPlan until the webhook flips the cache to Pro (capped
       // backoff, bounded budget). A per-trip purchase has its is_pro_trip set by
       // the webhook before redirect, so we don't poll — just refresh the user.
+      // The conversion `value` comes from the getStripePrices catalog for BOTH
+      // kinds: a subscription's product code arrives from getUserPlan (and also
+      // drives the plan chip); a per-trip purchase's code is the fixed catalog id
+      // `trip_pro_lifetime`. The UI chip (setPlanLabel / setPriceLabel) stays
+      // sub-only by design — the trip fetch is purely for the conversion amount
+      // (TRIP-407 PR6, fix A). Best-effort: a failed lookup drops value/currency and
+      // the conversion still fires (list price from the catalog, not the settled
+      // amount — server-side conversion import is Часть 5, out of scope).
       let value, currency;
-      if (kind === 'sub') {
-        try {
+      try {
+        let productCode;
+        if (kind === 'sub') {
           const planRes = await invokeFn('getUserPlan');
-          const productCode = planRes.data?.productCode;
+          productCode = planRes.data?.productCode;
           setPlanLabel(productCode === 'account_pro_monthly' ? t('sub.plan_monthly_title') : productCode === 'account_pro_yearly' ? t('sub.plan_yearly_title') : null);
-          if (productCode) {
-            const priceRes = await invokeFn('getStripePrices', { body: {} });
-            const p = priceRes.data?.prices?.[productCode];
-            if (p?.unit_amount != null) {
-              value = p.unit_amount / 100;
-              currency = p.currency || 'usd';
-              setPriceLabel(fmtMoneyActive(value, currency));
-            }
+        } else {
+          productCode = 'trip_pro_lifetime';
+        }
+        if (productCode) {
+          const priceRes = await invokeFn('getStripePrices', { body: {} });
+          const p = priceRes.data?.prices?.[productCode];
+          if (p?.unit_amount != null) {
+            value = p.unit_amount / 100;
+            currency = p.currency || 'usd';
+            if (kind === 'sub') setPriceLabel(fmtMoneyActive(value, currency));
           }
-        } catch { /* chip is optional */ }
-      }
+        }
+      } catch { /* chip + conversion value are best-effort */ }
 
       // Google Ads payment conversion (TRIP-407 PR6) — dormant without the tag.
       // transaction_id = the Stripe session_id, so a re-opened return URL cannot
