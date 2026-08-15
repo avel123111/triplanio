@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { track } from '@/lib/analytics';
+import { conversion } from '@/lib/destinations/ads';
+import { hashEmail } from '@/lib/hashEmail';
 import { invokeFn } from '@/lib/invokeFn';
 import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -25,7 +27,7 @@ export default function StripeReturnModals() {
   const [searchParams, setSearchParams] = useSearchParams();
   const nav = useNavigate();
   const qc = useQueryClient();
-  const { checkUserAuth } = useAuth();
+  const { checkUserAuth, user } = useAuth();
   const handledRef = useRef(null); // run-once guard per checkout return
   const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
   const [variant, setVariant] = useState('sub');   // 'sub' | 'trip'
@@ -44,6 +46,7 @@ export default function StripeReturnModals() {
 
     const kind = searchParams.get('kind') === 'trip' ? 'trip' : 'sub';
     const pt = searchParams.get('pt');
+    const sessionId = searchParams.get('session_id') || undefined;
     setVariant(kind);
     setRetryTo(kind === 'trip' && pt ? `/pro?tripId=${pt}` : '/pro');
 
@@ -80,20 +83,49 @@ export default function StripeReturnModals() {
       // then poll getUserPlan until the webhook flips the cache to Pro (capped
       // backoff, bounded budget). A per-trip purchase has its is_pro_trip set by
       // the webhook before redirect, so we don't poll — just refresh the user.
-      if (kind === 'sub') {
-        try {
+      // The conversion `value` comes from the getStripePrices catalog for BOTH
+      // kinds: a subscription's product code arrives from getUserPlan (and also
+      // drives the plan chip); a per-trip purchase's code is the fixed catalog id
+      // `trip_pro_lifetime`. The UI chip (setPlanLabel / setPriceLabel) stays
+      // sub-only by design — the trip fetch is purely for the conversion amount
+      // (TRIP-407 PR6, fix A). Best-effort: a failed lookup drops value/currency and
+      // the conversion still fires (list price from the catalog, not the settled
+      // amount — server-side conversion import is Часть 5, out of scope).
+      let value, currency;
+      try {
+        let productCode;
+        if (kind === 'sub') {
           const planRes = await invokeFn('getUserPlan');
-          const productCode = planRes.data?.productCode;
+          productCode = planRes.data?.productCode;
           setPlanLabel(productCode === 'account_pro_monthly' ? t('sub.plan_monthly_title') : productCode === 'account_pro_yearly' ? t('sub.plan_yearly_title') : null);
-          if (productCode) {
-            const priceRes = await invokeFn('getStripePrices', { body: {} });
-            const p = priceRes.data?.prices?.[productCode];
-            if (p?.unit_amount != null) {
-              setPriceLabel(fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd'));
-            }
+        } else {
+          productCode = 'trip_pro_lifetime';
+        }
+        if (productCode) {
+          const priceRes = await invokeFn('getStripePrices', { body: {} });
+          const p = priceRes.data?.prices?.[productCode];
+          if (p?.unit_amount != null) {
+            value = p.unit_amount / 100;
+            currency = p.currency || 'usd';
+            if (kind === 'sub') setPriceLabel(fmtMoneyActive(value, currency));
           }
-        } catch { /* chip is optional */ }
+        }
+      } catch { /* chip + conversion value are best-effort */ }
 
+      // Google Ads payment conversion (TRIP-407 PR6) — dormant without the tag.
+      // transaction_id = the Stripe session_id, so a re-opened return URL cannot
+      // double-count. Enhanced conversions ride the SHA-256 of the email; the raw
+      // email never leaves hashEmail. Fired before the entitlement poll so a slow
+      // webhook does not delay it. Best-effort — never touches the success flow.
+      if (user?.email) {
+        hashEmail(user.email)
+          .then((sha256_email) => conversion('payment', { value, currency, transaction_id: sessionId, userData: { sha256_email } }))
+          .catch(() => { /* ads conversion is best-effort */ });
+      } else {
+        conversion('payment', { value, currency, transaction_id: sessionId });
+      }
+
+      if (kind === 'sub') {
         const deadline = Date.now() + 20000;
         let delay = 1000;
         while (!cancelled && Date.now() < deadline) {

@@ -10,6 +10,7 @@
 // hangs GTM / GA4 / ad pixels off `applyConsent`.
 import { identifyUser } from '@/lib/analytics';
 import { isPersisting, onConsent, stopAnalytics } from '@/lib/destinations/posthog';
+import { onConsent as adsOnConsent } from '@/lib/destinations/ads';
 import { buildConsent, parseConsent, shouldSilenceOnConsentChange } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
@@ -85,7 +86,13 @@ export function applyConsent(record, uid) {
   if (!record) return;
 
   // Sent for a refusal too: once TRIP-227 loads tags, silence is the wrong signal.
+  // MUST precede adsOnConsent — the tag reads its Consent Mode state at load.
   updateGoogleConsent(record);
+
+  // Load the Google Ads tag on a marketing grant (TRIP-407 PR5). Dormant without
+  // VITE_GADS_TAG_ID, idempotent, and off any non-prod host — so this is a no-op
+  // today and stays one until the tag id is set in prod.
+  adsOnConsent(record);
 
   // Upgrade the memory-only client to device persistence when analytics is granted
   // (a no-op otherwise, and idempotent). The client already exists — main.jsx
