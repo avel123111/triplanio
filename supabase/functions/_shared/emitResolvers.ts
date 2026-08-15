@@ -141,19 +141,19 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Роль изменена — адресат = сам участник.
-  role_changed: async (db, ids, snapshot) => {
+  trip_role_changed: async (db, ids, snapshot) => {
     const core = await tripActorMember(db, ids, snapshot);
     return { ...core, recipients: await loadUsers(db, [ids.recipient_id]) };
   },
 
   // Участник удалён админом — адресат = удалённый (member из снимка до delete).
-  member_removed: async (db, ids, snapshot) => {
+  trip_member_removed: async (db, ids, snapshot) => {
     const core = await tripActorMember(db, ids, snapshot);
     return { ...core, recipients: await loadUsers(db, [ids.recipient_id]) };
   },
 
   // Участник вышел сам — адресаты = владелец + активные админы, без ушедшего.
-  member_left: async (db, ids, snapshot) => {
+  trip_member_left: async (db, ids, snapshot) => {
     const [core, adminIds] = await Promise.all([
       tripActorMember(db, ids, snapshot),
       loadActiveAdminIds(db, ids.trip_id),
@@ -165,8 +165,8 @@ export const RESOLVERS: Record<string, Resolver> = {
     return { ...core, recipients };
   },
 
-  invite_accepted: respondResolver,
-  invite_declined: respondResolver,
+  trip_member_joined: respondResolver,
+  trip_invite_declined: respondResolver,
   pro_activated: proResolver,
   pro_payment_failed: proResolver,
 };
