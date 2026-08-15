@@ -34,8 +34,8 @@
  */
 
 import type { Refusal, ResourceSpec } from '../mutateRules.ts';
+import { forbid } from '../mutateRules.ts';
 
-const forbid = (code: string, message: string): Refusal => ({ status: 403, code, message });
 const invalid = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
 
 /** Зеркало CHECK `td_link_url_scheme` / элементов `td_documents_urls`. */
@@ -98,7 +98,7 @@ export const TRIP_DOCUMENT: ResourceSpec = {
       // `actor` теперь ПОЛНЫЙ `{id,email}` (TRIP-409) — владение сверяем по `actor.id`.
       guardRow: (row, actor) =>
         row.visibility === 'private' && row.created_by !== actor.id
-          ? forbid('DOC_PRIVATE_NOT_OWNER', 'A private document can be removed only by its owner')
+          ? forbid(403, 'DOC_PRIVATE_NOT_OWNER', 'A private document can be removed only by its owner')
           : null,
     },
   },

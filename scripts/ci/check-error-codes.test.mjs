@@ -147,6 +147,7 @@ test('все четыре формы эмиссии ловятся; многос
       );
       return jsonError(403, 'nope, sorry', 'B_JSONERROR', headers);
       guardRow: (row) => row.ok ? null : forbid(
+        403,
         'C_FORBID',
         'message, with comma',
       );
@@ -166,7 +167,7 @@ test('каждая форма эмиссии, код ВНЕ реестра → �
     'supabase/functions/fn/index.ts': `
       throw new HttpError(400, 'a', 'MISS_HTTPERROR');
       return jsonError(403, 'b', 'MISS_JSONERROR', h);
-      forbid('MISS_FORBID', 'c');
+      forbid(403, 'MISS_FORBID', 'c');
       return Response.json({ code: 'MISS_CODEPROP' });
     `,
   };
@@ -175,6 +176,27 @@ test('каждая форма эмиссии, код ВНЕ реестра → �
   for (const c of ['MISS_HTTPERROR', 'MISS_JSONERROR', 'MISS_FORBID', 'MISS_CODEPROP']) {
     assert.match(r.out, new RegExp(c), `форма не поймана: ${c}`);
   }
+});
+
+test('forbid 3-арг (status, CODE, msg): код читается из arg1, вне реестра → красный (TRIP-419)', (t) => {
+  // Регресс-якорь TRIP-419: `forbid` теперь всегда `forbid(status, code, message)`,
+  // и код стоит во ВТОРОМ аргументе. Гард обязан читать arg1. МУТАЦИЯ: верни
+  // `collectCallArgCodes(..., /\bforbid\b/g, 0, ...)` (как было до TRIP-419) — arg0
+  // это число статуса, не код-литерал → `MEMBER_MISS` не назовётся, гард позеленеет
+  // над незарегистрированным member-кодом, и ЭТОТ тест покраснеет. Ровно та слепота,
+  // из-за которой шесть member-кодов эмитились мимо реестра при зелёном 2v.
+  const files = {
+    [REGISTRY]: registry(['FORBIDDEN']),
+    'supabase/functions/_shared/resources/x.ts': `
+      guardRow: (row) => row.ok ? null : forbid(409, 'MEMBER_MISS', 'already a member');
+      const g = (row, a) => row.user_id === a.id ? null : forbid(403, 'FORBIDDEN', 'not yours');
+    `,
+  };
+  const r = run(fixture(t, { base: files, head: files }));
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /MEMBER_MISS/);
+  // FORBIDDEN (arg1) в реестре → не должен всплыть как нарушение.
+  assert.doesNotMatch(r.out, /'FORBIDDEN'.*НЕТ в реестре/);
 });
 
 test('легаси-нижний-регистр, продуктовые план-коды и PGRST-СРАВНЕНИЯ НЕ считаются эмиссией', (t) => {
@@ -241,7 +263,7 @@ test('эмиссия в ДВОЙНЫХ кавычках, код вне реес�
     'supabase/functions/fn/index.ts': `
       return jsonError(400, "x", "DQ_JSONERROR", h);
       throw new HttpError(400, "y", "DQ_HTTPERROR");
-      forbid("DQ_FORBID", "z");
+      forbid(400, "DQ_FORBID", "z");
       return Response.json({ code: "DQ_CODEPROP" });
     `,
   };

@@ -13,6 +13,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { withViralMarks } from '@/lib/viralLink';
+import { classifyError } from '@/lib/errorText';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
@@ -99,12 +100,14 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const trimmed = email.trim().toLowerCase();
     setSaving(true);
     setErr('');
-    const { data, error, code, message } = await invokeFn('trip-member/invite', {
+    const { data, error, code } = await invokeFn('trip-member/invite', {
       body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
     if (error || data?.error) {
-      setErr(code === 'invite_owner' ? t('members.err_invite_owner') : (message || t('members.error_generic')));
+      // Единая дверь трактовки кода (TRIP-400/419): `INVITE_OWNER` и прочие
+      // member-отказы → локализованный `err.*`, серверная проза не показывается.
+      setErr(classifyError(t, code).text);
       return;
     }
     // Promoting an offline placeholder → remove it now that a real invite exists.
