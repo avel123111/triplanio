@@ -5,7 +5,6 @@
   "badge_viewer": "Viewer",
   "change_role": "Change role",
   "empty": "It's just you. Invite someone!",
-  "err_invite_owner": "This person is the trip owner — they already have full access.",
   "error_generic": "Error",
   "invite": "Invite",
   "leave": "Leave trip",
