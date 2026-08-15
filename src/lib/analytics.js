@@ -16,32 +16,12 @@
 // Naming convention: object_action, snake_case; variant info goes in props, never
 // in the event name. No PII in props (uid only, set via identify).
 import posthog from 'posthog-js';
-import { CAMPAIGN_KEYS, campaignQuery, pickSignupMarks, readMarks, resolveCampaign } from '@/lib/campaign';
+import { CAMPAIGN_KEYS, campaignQuery, resolveCampaign } from '@/lib/campaign';
 import { appendQuery } from '@/lib/viralLink';
 import { entrySearch } from '@/lib/analyticsEnv';
 import { mayIdentify } from '@/lib/consent-record';
+import { getActiveMarks } from '@/lib/attribution';
 import { isPersisting, isReady } from '@/lib/destinations/posthog';
-
-// The campaign marks of THIS document, read from the entry-URL snapshot (taken at
-// module load in analyticsEnv). Null on any page the visitor did not arrive on
-// directly — including every page after Google's OAuth screen or a confirmation
-// link, which is why `recoveredMarks` exists below.
-const visitMarks = readMarks(entrySearch);
-// The same marks, brought across a document replacement by the signup path.
-//
-// ONE CARRIER PER BORDER, both readers on it (TRIP-335). The marks have to cross
-// three borders and no single carrier crosses all of them: in-memory dies with
-// the document, so the OAuth redirect is crossed by the sessionStorage stash below
-// and the confirmation email by Supabase auth metadata. Whichever carrier made it
-// hands the marks here, and both readers (the campaign super-properties and the
-// `users` columns) take them from one place instead of each growing a courier of
-// its own.
-let recoveredMarks = null;
-
-// Survives the OAuth round trip, which the in-memory snapshot cannot: the provider
-// replaces the whole document. Same category as `postLoginRedirect`, which already
-// rides sessionStorage next to it.
-const REDIRECT_KEY = 'tp-signup-attribution';
 
 /**
  * Capture a product-analytics event.
@@ -114,99 +94,22 @@ export function withVisitCampaign(url) {
 }
 
 /**
- * Keep this visit's marks through an OAuth provider. Called on the button, not at
- * start-up: pressing "continue with Google" is the request that makes storing them
- * part of the service.
- *
- * The MARKS, not the columns projected out of them: this stash is the carrier for
- * that border, and both readers hang off it. Not getSignupMarks(): that one
- * consumes the stash, so a retry after a failed sign-in would eat its own marks.
- */
-export function rememberAttributionForRedirect() {
-  if (!visitMarks) return;
-  try {
-    sessionStorage.setItem(REDIRECT_KEY, JSON.stringify(visitMarks));
-  } catch { /* private mode — attribution is lost, the signup still works */ }
-}
-
-/**
- * Drop the OAuth stash unused: the sign-in belonged to an existing account, so
- * there was no signup to attribute, and leaving the marks would credit them to
- * whoever registers next in this tab.
- */
-export function forgetStashedAttribution() {
-  try {
-    sessionStorage.removeItem(REDIRECT_KEY);
-  } catch { /* nothing stored, nothing to forget */ }
-}
-
-/**
- * The marks of the signup being made, or null: this document's address, else
- * whatever the OAuth stash carried across. Feeds the `users` columns, which are
- * written for EVERY visitor, refusers included — this is why "which campaign
- * brought this signup" has an answer that does not depend on consent.
- *
- * Read-and-forget on the stash: the marks belong to ONE signup, and leaving them
- * would credit them to whoever registers next in this tab.
- *
- * @returns {Record<string, string> | null}  marks, keyed by query parameter
- */
-export function getSignupMarks() {
-  if (visitMarks) return visitMarks;
-
-  try {
-    const stashed = sessionStorage.getItem(REDIRECT_KEY);
-    if (!stashed) return null;
-    sessionStorage.removeItem(REDIRECT_KEY);
-    // Recovered = they made it across the redirect, so the campaign side gets them
-    // too. Announced rather than left to the caller: rememberSignupMarks is what
-    // re-runs setCampaign if analytics is already live by now.
-    const marks = pickSignupMarks(JSON.parse(stashed));
-    rememberSignupMarks(marks);
-    return marks;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Hand the campaign side the marks that crossed a document replacement.
- *
- * Called by AuthContext at the ONE point a `users` row is born, with whatever the
- * signup path recovered — the OAuth stash, or the auth metadata that carried them
- * through a confirmation email to another device. Only there: those metadata live
- * on the auth user forever, and reading them on a later login would resurrect a
- * year-old click as a fresh one, exactly the lie last-touch attribution avoids.
- *
- * Re-runs `setCampaign` when analytics is already live, because the order is not
- * ours to choose: on a device that consented long ago, the client boots before the
- * profile is fetched, so the campaign pass has already happened when the marks
- * arrive.
- *
- * @param {Record<string, string> | null} marks  keyed by query parameter
- */
-export function rememberSignupMarks(marks) {
-  if (!marks) return;
-  recoveredMarks = marks;
-  if (isReady()) setCampaign();
-}
-
-/**
  * Record the ad campaign the user arrived through as persisted super-properties
- * (TRIP-316) — every later event carries it. Reads the entry-URL snapshot, never a
- * live `location.search`; falls back to what the signup path recovered across a
- * redirect or a confirmation email, so the visitor who arrived marked, ignored the
- * banner and signed in with Google is still covered (TRIP-335).
+ * (TRIP-316) — every later event carries it. Reads the marks the browser currently
+ * holds via `attribution.getActiveMarks()` (the entry-URL snapshot, or what the
+ * signup path recovered across a redirect / confirmation email), so the visitor who
+ * arrived marked, ignored the banner and signed in with Google is still covered
+ * (TRIP-335).
  *
- * Called once from main.jsx right after boot (the no-login case) and again from
- * `rememberSignupMarks` when a signup recovers marks after the fact. Storage is
- * per-host, so campaign links MUST point at the same host the app runs on (www vs
- * apex are different jars).
+ * Triggered from exactly two points: `main.jsx` right after boot (the no-login
+ * case) and `identifyUser` (the recovered-marks case, right after AuthContext
+ * stores them). Storage is per-host, so campaign links MUST point at the same host
+ * the app runs on (www vs apex are different jars).
  */
 export function setCampaign() {
   if (!isReady()) return;
   const decision = resolveCampaign(
-    visitMarks || recoveredMarks,
+    getActiveMarks(),
     posthog?.get_property?.('camp_ts') || null,
     Date.now(),
   );
@@ -284,6 +187,12 @@ function syncCampaignToPerson() {
  * anonymous memory hit, this does not. The consumer that fires unconditionally
  * (AuthContext, on every profile load) is exactly why the gate lives HERE.
  *
+ * The last-touch trigger is collected here in one place: identify, then
+ * `setCampaign()` (picks up whatever marks AuthContext just recovered for a fresh
+ * signup, via attribution.getActiveMarks()), then `syncCampaignToPerson()` pushes
+ * the resulting `camp_*` onto the person. `setCampaign` self-gates on readiness, so
+ * calling it from inside this persistence-gated door is safe.
+ *
  * @param {string} uid  the Supabase user id — no PII ever goes to analytics
  */
 export function identifyUser(uid) {
@@ -291,6 +200,7 @@ export function identifyUser(uid) {
   // Identify by uid ONLY — no PII (email/name) in analytics (TRIP-213). Personal
   // data stays in Supabase; resolve uid → user there when needed.
   posthog?.identify?.(uid);
+  setCampaign();
   syncCampaignToPerson();
 }
 

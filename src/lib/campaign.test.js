@@ -13,8 +13,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CAMPAIGN_KEYS, CAMPAIGN_TTL_MS, campaignQuery, marksToColumns, pickSignupMarks,
-  readMarks, resolveCampaign, toInitialPersonProps,
+  CAMPAIGN_KEYS, CAMPAIGN_TTL_MS, campaignQuery, pickSignupMarks,
+  readMarks, resolveCampaign,
 } from './campaign.js';
 
 const NOW = Date.parse('2026-07-30T12:00:00.000Z');
@@ -119,24 +119,6 @@ test('marks are read from the query, capped, and never empty-string', () => {
   assert.equal(readMarks(`?utm_source=${'x'.repeat(500)}`).utm_source.length, 200);
 });
 
-test('marks become the users columns, and utm_content stops at the border', () => {
-  assert.deepEqual(
-    marksToColumns(readMarks('?utm_source=google&utm_medium=cpc&utm_campaign=ru_aug&utm_content=hero&gclid=xyz')),
-    {
-      signup_utm_source: 'google',
-      signup_utm_medium: 'cpc',
-      signup_utm_campaign: 'ru_aug',
-      signup_gclid: 'xyz',
-    },
-  );
-  // utm_content has no column: which creative is ad reporting, not account data.
-  assert.equal(marksToColumns({ utm_content: 'stories' }), null);
-  assert.equal(marksToColumns(null), null);
-  assert.equal(marksToColumns({}), null);
-  // A lone medium still counts here, unlike the campaign mark.
-  assert.deepEqual(marksToColumns({ utm_medium: 'email' }), { signup_utm_medium: 'email' });
-});
-
 test('attribution from client-owned metadata cannot smuggle other columns', () => {
   assert.deepEqual(
     pickSignupMarks({ utm_source: 'google', subscription_status: 'active', is_admin: true }),
@@ -191,46 +173,13 @@ test('a mark passed on to the next document keeps the marks and nothing else', (
   assert.equal(campaignQuery('?utm_source=a%26b'), 'utm_source=a%26b');
 });
 
-// The account's channel goes to two stores at once: `users.signup_utm_*` for
-// everyone, and PostHog's own first-touch fields for whoever consented. A typo
-// in a name here is silent — the report just shows an empty column forever.
-test('signup columns translate into the first-touch fields PostHog reads', () => {
-  assert.deepEqual(
-    toInitialPersonProps({
-      signup_utm_source: 'trip_share',
-      signup_utm_medium: 'viral',
-      signup_utm_campaign: 'trip_7',
-      signup_gclid: 'GC1',
-    }),
-    {
-      $initial_utm_source: 'trip_share',
-      $initial_utm_medium: 'viral',
-      $initial_utm_campaign: 'trip_7',
-      $initial_gclid: 'GC1',
-    },
-  );
-
-  // A partial mark still says something — a lone medium is a channel we would
-  // otherwise file under "direct".
-  assert.deepEqual(
-    toInitialPersonProps({ signup_utm_medium: 'viral_email' }),
-    { $initial_utm_medium: 'viral_email' },
-  );
-
-  // Nothing to say → nothing sent, so an unattributed signup does not write
-  // empty strings that would then be frozen by set_once.
-  assert.equal(toInitialPersonProps(null), null);
-  assert.equal(toInitialPersonProps(undefined), null);
-  assert.equal(toInitialPersonProps({}), null);
-  assert.equal(toInitialPersonProps({ signup_utm_source: '' }), null);
-  // Columns we do NOT own must not leak into PostHog under an invented name.
-  assert.equal(toInitialPersonProps({ id: 'u1', email: 'a@b.c' }), null);
-});
-
 // The point of deriving every dictionary from one table: a mark added tomorrow
-// gets all four projections, or none of them — never three out of four, which is
-// the shape a hand-written map drifts into and nobody notices.
-test('every mark has all four projections, and they agree on the vocabulary', () => {
+// gets all its projections, or none — never a subset, the shape a hand-written map
+// drifts into and nobody notices. After TRIP-407 the CLIENT projections are the
+// persisted super-properties and the pass-through query; the `users.signup_utm_*`
+// columns are written server-side (RPC create_user_profile) and first-touch is
+// PostHog's own native block — both off the client, so neither is derived here.
+test('every mark reaches both client projections, agreeing on the vocabulary', () => {
   const marks = readMarks('?utm_source=a&utm_medium=b&utm_campaign=c&utm_content=d&gclid=e');
   const params = Object.keys(marks);
 
@@ -243,13 +192,5 @@ test('every mark has all four projections, and they agree on the vocabulary', ()
   assert.deepEqual(
     new URLSearchParams(campaignQuery('?utm_source=a&utm_medium=b&utm_campaign=c&utm_content=d&gclid=e')),
     new URLSearchParams(marks),
-  );
-
-  // Columns and first-touch properties cover the same marks as each other — the
-  // one place a mark is allowed to drop out is a mark with no column.
-  const columns = marksToColumns(marks);
-  assert.deepEqual(
-    Object.keys(toInitialPersonProps(columns)).sort(),
-    Object.keys(columns).map((c) => `$initial_${c.replace(/^signup_/, '')}`).sort(),
   );
 });

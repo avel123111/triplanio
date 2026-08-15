@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { VIRAL_MARKS, appendQuery, withViralMarks } from './viralLink.js';
-import { marksToColumns, readMarks, resolveCampaign } from './campaign.js';
+import { readMarks, resolveCampaign } from './campaign.js';
 
 const TRIP = '0f2a1c34-5b6d-4e7f-8a9b-0c1d2e3f4a5b';
 
@@ -67,11 +67,6 @@ test('round trip: what the link writes is what campaign.js reads back', () => {
   const search = withViralMarks('https://x/', 'public_link', TRIP).split('?')[1];
 
   const marks = readMarks(`?${search}`);
-  assert.deepEqual(marksToColumns(marks), {
-    signup_utm_source: 'trip_share',
-    signup_utm_medium: 'viral',
-    signup_utm_campaign: `trip_${TRIP}`,
-  });
   assert.deepEqual(resolveCampaign(marks, null, 0).set, {
     camp_ts: new Date(0).toISOString(),
     camp_source: 'trip_share',

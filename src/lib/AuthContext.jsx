@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
-import { forgetStashedAttribution, getSignupMarks, identifyUser, rememberSignupMarks, resetIdentity, track } from '@/lib/analytics';
+import { identifyUser, resetIdentity, track } from '@/lib/analytics';
+import { forgetStashedAttribution, getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
 import { detectLandingLang } from '@/lib/i18n/translations';
 import { stripAuthHash } from '@/lib/authHash';
 
