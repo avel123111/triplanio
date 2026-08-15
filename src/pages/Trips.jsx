@@ -581,15 +581,9 @@ export default function Trips() {
   // badge) via `isLoading`, and getTravelStats (hero: stat-bar/map/world) via
   // `statsLoaded`. Cached list wins — a background stats refetch never re-gates.
   const isLoadingData = isLoading || (hasTrips && !statsLoaded);
-  // TRIP-188: склоняем каждое существительное отдельно (Intl.PluralRules) — «1 путешествие»,
-  // «2 страны», «5 городов» вместо застывшего множественного числа.
-  const subText = hasTrips
-    ? [
-        pluralize(t, home.trips,     'stats.sum_trips',     lang, { count: home.trips }),
-        pluralize(t, home.countries, 'stats.sum_countries', lang, { count: home.countries }),
-        pluralize(t, home.cities,    'stats.sum_cities',    lang, { count: home.cities }),
-      ].join(' · ')
-    : t('stats.home_sub_empty');
+  // Строка-счётчик «N trips · N countries · N cities» убрана (запрос Pavel);
+  // при отсутствии трипов остаётся приветственный подзаголовок.
+  const subText = hasTrips ? null : t('stats.home_sub_empty');
 
   // ── Load gate (TRIP-208) ──────────────────────────────────────────────────────
   // A failed PRIMARY trips load must surface an error + retry, not silently fall

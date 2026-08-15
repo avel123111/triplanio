@@ -1415,8 +1415,11 @@ button.app-side__item:hover { background: var(--wash); }
    Ховер/нажатие — это ПОТЕМНЕНИЕ канала в светлой теме и ОСВЕТЛЕНИЕ в тёмной
    (как ведёт себя brand сегодня), а не токен --primary-hover: тот знает только
    brand и арбитрарный цвет категории потемнить не умеет. */
-.btn--primary { --bg: var(--a, var(--hl, var(--brand))); --fg: #fff; --bd: transparent; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--a, var(--hl, var(--brand))) 70%, transparent); }
-.btn--primary:hover { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 86%, #000); box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--a, var(--hl, var(--brand))) 75%, transparent); }
+.btn--primary { --bg: var(--a, var(--hl, var(--brand))); --fg: #fff; --bd: transparent; }
+.btn--primary:hover { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 86%, #000); }
+/* Свечение primary снято (запрос Pavel) — цветная тень убрана, focus-ring остаётся:
+   visual-diff-exempt: .btn--primary box-shadow — снят glow (rest)
+   visual-diff-exempt: .btn--primary:hover box-shadow — снят glow (hover) */
 .btn--primary:active { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 75%, #000); }
 [data-theme="dark"] .btn--primary:hover { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 81%, #fff); }
 [data-theme="dark"] .btn--primary:active { --bg: color-mix(in srgb, var(--a, var(--hl, var(--brand))) 60%, #fff); }
@@ -1512,9 +1515,9 @@ button.app-side__item:hover { background: var(--wash); }
 .btn--danger-solid:hover { --bg: color-mix(in srgb, var(--danger) 86%, #000); }
 /* AI CTA — design-system: white text in light, dark text in dark (the dark-theme
    ai-gradient is brighter, so dark text reads better there). */
-.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); box-shadow: 0 8px 20px -7px var(--ai); }
+.btn--ai { --fg: #fff; --bd: transparent; background: var(--ai-gradient); }   /* visual-diff-exempt: .btn--ai box-shadow — снято свечение (запрос Pavel) */
 [data-theme="dark"] .btn--ai { --fg: #0c0a1e; }
-.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); box-shadow: 0 8px 20px -7px var(--pro); }
+.btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); }   /* visual-diff-exempt: .btn--pro box-shadow — снято свечение (запрос Pavel) */
 /* Общий слой градиентных вариантов (TRIP-295). `background-origin` обязан стоять
    ЗДЕСЬ, после шортката `background` выше: шорткат сбрасывает ВСЕ background-*
    longhand'ы, включая origin, — поэтому то же правило в базовом .btn молча не
@@ -7140,7 +7143,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 .nextcard__tx { flex: 1; min-width: 0; }
 .nextcard__tag { max-width: 100%; margin-top: 9px; color: var(--success-ink); background: var(--success-soft); }
 .nextcard__tx b { display: block; margin-top: 7px; color: var(--ink); }
-.nextcard__tx .rt { color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nextcard__tx .rt { color: var(--muted); margin-top: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* display:block: строка scope занимает свою строку → бейдж «starts in» встаёт НАД таймером (запрос Pavel); заодно чинит ellipsis (на инлайне не работал).   visual-diff-exempt: .nextcard__tx display — блок у .rt, чтобы бейдж ушёл на свою строку
+   visual-diff-exempt: .rt display — то же правило (.nextcard__tx .rt), второй юнит */
 .nextcard__chev { color: var(--muted-2); flex: none; }
 .nextcard__cd { display: flex; flex-wrap: nowrap; gap: 7px; margin-top: 11px; }
 /* Плитка обратного отсчёта — скин утоплённой поверхности несёт `<Card recessed
