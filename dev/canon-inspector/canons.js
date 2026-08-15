@@ -28,7 +28,9 @@ export const CANONS = [
   { id: 6,  cls: 't-body',       name: 'Body',       role: 'Основной текст, абзацы · Geologica 400' },
   { id: 7,  cls: 't-meta',       name: 'Meta',       role: 'Даты/времена, вторичная инфо · Geologica 500 tabular' },
   { id: 8,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, эйбрау · Geologica 700 UPPER' },
-  { id: 9,  cls: 't-mono',       name: 'Mono',       role: 'Коды/брони/рейсы/полисы/email/kbd · JetBrains Mono 13/500' },
+  { id: 9,  cls: 't-tiny',       name: 'Tiny',       role: 'Субтитл/подпись мельче .t-meta · Geologica 10/500 tabular · НЕ-капс' },
+  { id: 10, cls: 't-tiny-caps',  name: 'Tiny Caps',  role: 'Капс micro-стиля на кегль ниже (ink, плотный трекинг) · Geologica 10/700 UPPER' },
+  { id: 11, cls: 't-mono',       name: 'Mono',       role: 'Коды/брони/рейсы/полисы/email/kbd · JetBrains Mono 13/500' },
 ];
 
 // TRIP-410 · РОВНО три санкционированных орто-модификатора канона (из ТЗ).

@@ -236,12 +236,14 @@
   /* Type scale — единственная санкционированная лесенка (var(--fs-*), не сырой px).
      ★TRIP-410 V2 — чистая шкала Geologica. Имена токенов историчны (тир — по канону,
      схлоп имён 10→6 отдельной задачей); соответствие токен → канон:
-       --fs-nano  → .t-micro (11, CAPS)            --fs-h3      → .t-subheading (16)
-       --fs-micro → .t-meta (12.5)                 --fs-h2      → .t-heading (18)
+       --fs-tiny  → .t-tiny / .t-tiny-caps (10)    --fs-h3      → .t-subheading (16)
+       --fs-nano  → .t-micro (11, CAPS)            --fs-h2      → .t-heading (18)
+       --fs-micro → .t-meta (12.5)
        --fs-meta  → .t-label / .t-mono (13)         --fs-h1     → .t-title (clamp 20–24)
        --fs-base  → .t-body / body (15)            --fs-display → .t-display (clamp 28–40)
                                                    --ctl-fs     → пол контролов (16)
      Гард не ловит эти defs (нет префикса `font-size:`). */
+  --fs-tiny:    10px;    /* .t-tiny / .t-tiny-caps — субтитл мельче meta + его micro-капс   floor-exempt: tokens +1 — новый мелкий текст-ярус, апрув Pavel */
   --fs-nano:    11px;    /* .t-micro (капс-лейблы) */
   --fs-micro:   12.5px;  /* .t-meta */
   --fs-meta:    13px;    /* .t-label / .t-mono */
@@ -601,7 +603,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    visual-diff-exempt: .hv-notes border-radius — радиус → канон .card--r-md (--r-md, тождественно) */
 
 /* =================================================================
-   ТИПОГРАФИКА — 9 канонических текст-стилей.
+   ТИПОГРАФИКА — 11 канонических текст-стилей.
    Единственный санкционированный набор на всё приложение. Каждый
    класс полностью фиксирует гарнитуру+размер+вес+интерлиньяж+трекинг.
    ЦВЕТ сюда НЕ входит — отдельная ось (цвет-токены/утилиты).
@@ -625,6 +627,8 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
      .t-body        Geologica  15 (--fs-base)              · 400 · 1.55
      .t-meta        Geologica  12.5 (--fs-micro)           · 500 · 1.4 · tabular   (де-моно; +времена/даты)
      .t-micro       Geologica  11 (--fs-nano)              · 700 · 1.3 · UPPER/--track-caps
+     .t-tiny        Geologica  10 (--fs-tiny)              · 500 · 1.3 · tabular   (субтитл/подпись мельче .t-meta; НЕ-капс)
+     .t-tiny-caps   Geologica  10 (--fs-tiny)              · 700 · 1.3 · UPPER/--track-caps   (капс micro-стиля на кегль ниже; ink, НЕ синий-широкий .tp-caption)
      .t-mono        JetBrains  13 (--fs-meta)              · 500 · 1.4 · -0.01em · tabular   (ТОЛЬКО коды/email/kbd; числа→Geologica)
    ================================================================= */
 .t-display,
@@ -1071,6 +1075,26 @@ h4,
 .mbrow .badge--warning, /* TRIP-410 моно-аудит: бейдж роли «Владелец» → Geologica CAPS (был .t-mono; эйбрау/бейджи = t-micro) */
 .mbrow .badge--brand,   /* TRIP-410 моно-аудит: бейдж роли «Админ» → Geologica CAPS */
 .ncal-legend-lbl { font-family: var(--font-ui);    font-size: var(--fs-nano);   font-weight: 700; line-height: 1.3;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-410 V2: .t-micro — Geologica 11/700 CAPS/1.3 (де-моно; эйбрау/бейджи) */
+/* .t-tiny / .t-tiny-caps — мелкий ярус НИЖЕ .t-meta (10px). Тот же субтитл, что
+   .t-meta, но мельче: плотные подписи/каунтеры. Капс-близнец = .t-micro-стиль (ink,
+   плотный --track-caps), НЕ синий-широкий .tp-caption. Потребители навешиваются
+   co-selector'ом отдельным шагом.   floor-exempt: classes +2 — новый мелкий текст-ярус, апрув Pavel */
+/* Новые объявления канонов (гард 2p) — все намеренные, апрув Pavel:
+   visual-diff-exempt: :root --fs-tiny — новый токен мелкого яруса
+   visual-diff-exempt: .t-tiny font-family — новый канон
+   visual-diff-exempt: .t-tiny font-size — новый канон
+   visual-diff-exempt: .t-tiny font-weight — новый канон
+   visual-diff-exempt: .t-tiny line-height — новый канон
+   visual-diff-exempt: .t-tiny letter-spacing — новый канон
+   visual-diff-exempt: .t-tiny font-variant-numeric — новый канон
+   visual-diff-exempt: .t-tiny-caps font-family — новый канон
+   visual-diff-exempt: .t-tiny-caps font-size — новый канон
+   visual-diff-exempt: .t-tiny-caps font-weight — новый канон
+   visual-diff-exempt: .t-tiny-caps line-height — новый канон
+   visual-diff-exempt: .t-tiny-caps letter-spacing — новый канон
+   visual-diff-exempt: .t-tiny-caps text-transform — новый канон */
+.t-tiny { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 500; line-height: 1.3; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.t-tiny-caps { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }
 /* Моно — ОДИН источник (JetBrains Mono, --font-mono): коды/брони/рейсы/полисы/
    share-URL/email/kbd/code. Числа/даты/времена НЕ моно — их держит Geologica с
    tabular-nums (каноны t-display/t-title/t-heading/t-meta). kbd сохраняет свой кегль. */
