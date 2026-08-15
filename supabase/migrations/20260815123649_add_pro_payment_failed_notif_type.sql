@@ -6,6 +6,8 @@
 -- без легаси-эквивалента в CHECK — `pro_payment_failed` (линия «фейл платежа»
 -- падала на `notifications_type_check`). Добавляем значение; существующие строки
 -- не затрагиваются (расширение допустимого множества, не сужение).
+-- ddl-guard: allow-destructive — CHECK нельзя изменить на месте: drop+immediate re-add
+--   расширяет множество (добавлен pro_payment_failed), существующие строки не затрагиваются.
 alter table public.notifications drop constraint notifications_type_check;
 alter table public.notifications add constraint notifications_type_check
   check (type = any (array[
