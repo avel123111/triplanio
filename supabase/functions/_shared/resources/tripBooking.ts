@@ -95,17 +95,34 @@ const MONEY_FIELDS: Record<string, FieldSpec> = {
   currency: { type: 'string', max: 8, required: true },
 };
 
-/** Мета брони: ссылка + файлы + заметки. Общая для верхних колонок И сегмента layover. */
-const BOOKING_META_FIELDS: Record<string, FieldSpec> = {
+/**
+ * Ссылка + референс брони — ВЕРХНИЕ колонки. Есть у `hotel_stays`/`transfers`
+ * (и у сегмента layover — сегмент это transfer), но НЕ у `activities`: у таблицы
+ * активности этих колонок нет вовсе. Спред этих полей в `activity` = 500 с сырым
+ * текстом Postgres (`42703 undefined_column`), а не внятный 400 (TRIP-420); у
+ * активности booking-ссылка живёт внутри `details` (jsonb), как у `service`.
+ */
+const BOOKING_REF_FIELDS: Record<string, FieldSpec> = {
   booking_reference: { type: 'string', max: 300, nullable: true },
   booking_url: { type: 'string', max: 2048, nullable: true, validate: httpUrl },
+};
+
+/** Файлы + заметки — верхние колонки, ОБЩИЕ для hotel/transfer/activity. */
+const DOCS_NOTES_FIELDS: Record<string, FieldSpec> = {
   documents: { type: 'array', nullable: true, validate: validateDocuments },
   notes: { type: 'string', max: 10000, nullable: true },
 };
 
+/** Мета брони целиком: ссылка + референс + файлы + заметки. Для hotel/transfer И сегмента layover. */
+const BOOKING_META_FIELDS: Record<string, FieldSpec> = {
+  ...BOOKING_REF_FIELDS,
+  ...DOCS_NOTES_FIELDS,
+};
+
 /**
- * Общие ВЕРХНИЕ колонки hotel/transfer/activity. У `service` их нет — там всё в
- * `details` (см. SERVICE ниже), поэтому фрагмент спредится только в эти три.
+ * Общие ВЕРХНИЕ колонки hotel/transfer. `activity` НЕ входит (у `activities` нет
+ * booking_reference/booking_url — см. BOOKING_REF_FIELDS), а у `service` верхних
+ * колонок брони нет вовсе (всё в `details`, см. SERVICE ниже).
  */
 const COMMON_BOOKING_FIELDS: Record<string, FieldSpec> = {
   ...MONEY_FIELDS,
@@ -193,12 +210,17 @@ export const TRIP_BOOKING: ResourceSpec = {
     'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true },
 
     // ── Активность ────────────────────────────────────────────────────────────
+    // У `activities` НЕТ верхних booking_reference/booking_url — поэтому активность
+    // НЕ спредит COMMON_BOOKING_FIELDS (аутлаер среди броней): деньги + файлы/
+    // заметки + `details`, куда клиент кладёт booking-ссылку (как `service`).
     activity: {
       op: 'upsert',
       table: 'activities',
       requires: ['editor'],
       fields: {
-        ...COMMON_BOOKING_FIELDS,
+        ...MONEY_FIELDS,
+        ...DOCS_NOTES_FIELDS,
+        details: { type: 'json', nullable: true },
         city_visit_id: { type: 'uuid', required: true },
         title: { type: 'string', required: true, max: 300 },
         start_datetime: ts(),
