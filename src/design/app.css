@@ -5604,6 +5604,17 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .toast--error   .tic { background: var(--danger); }
 .toast--warning .tic { background: var(--warning); }
 .toast--info    .tic { background: var(--info); }
+/* TRIP-424: рамка тоста несёт УРОВЕНЬ, а не серый `--line` surface-канона —
+   success зелёная, error красная и т.д. Neutral/default остаётся на каноне.
+   Отдельным коммитом, чтобы легко откатить.
+   visual-diff-exempt: .toast--success border-color — рамка тоном уровня, TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast--error border-color — рамка тоном уровня, TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast--warning border-color — рамка тоном уровня, TRIP-424, апрув Pavel
+   visual-diff-exempt: .toast--info border-color — рамка тоном уровня, TRIP-424, апрув Pavel */
+.toast--success { border-color: var(--success); }
+.toast--error   { border-color: var(--danger); }
+.toast--warning { border-color: var(--warning); }
+.toast--info    { border-color: var(--info); }
 
 /* ============================================================
    C6 · Bottom sheet (Lumo) — mobile shell for menus / pickers.
