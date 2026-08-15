@@ -131,6 +131,10 @@ const TX = {
   toastTitle: 'Готово', toastBody: 'Изменения сохранены.',
   toastLab: 'Появятся в правом нижнем углу (на мобиле — сверху); наведи или тапни стопку, чтобы развернуть.',
   toastDeck: 'колода',
+  toastDemoSaved: 'Путешествие сохранено', toastDemoSavedSub: 'Все изменения применены',
+  toastDemoLink: 'Ссылка скопирована',
+  toastDemoCover: 'Обложка не сохранилась', toastDemoCoverSub: 'Попробуйте загрузить ещё раз',
+  toastDemoDelFail: 'Не удалось удалить', toastDemoDraft: 'Черновик обновлён',
   sheetNormal: 'Обычное действие', sheetDanger: 'Удалить',
   aiTitle: 'Распознать бронь', aiSub: 'Вставьте текст письма',
   dialogTitle: 'Диалог', sheetTitle: 'Шит', dialogBody: 'Содержимое диалога.',
@@ -246,11 +250,11 @@ function ForceHarness({ kind, states, render }) {
  *  <Toaster>, так что видно и появление, и уход, и наслоение колоды. Каждый
  *  вариант — свой тон; «колода» шлёт пачку, чтобы карты встали стопкой. */
 const TOAST_DEMO = [
-  { variant: 'success', title: 'Путешествие сохранено', description: 'Все изменения применены' },
-  { variant: 'info', title: 'Ссылка скопирована' },
-  { variant: 'warning', title: 'Обложка не сохранилась', description: 'Попробуйте загрузить ещё раз' },
-  { variant: 'error', title: 'Не удалось удалить' },
-  { variant: 'neutral', title: 'Черновик обновлён' },
+  { variant: 'success', title: TX.toastDemoSaved, description: TX.toastDemoSavedSub },
+  { variant: 'info', title: TX.toastDemoLink },
+  { variant: 'warning', title: TX.toastDemoCover, description: TX.toastDemoCoverSub },
+  { variant: 'error', title: TX.toastDemoDelFail },
+  { variant: 'neutral', title: TX.toastDemoDraft },
 ];
 function ToastLab() {
   return (
