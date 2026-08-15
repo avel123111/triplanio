@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getSignupMarks, rememberAttributionForRedirect, track } from '@/lib/analytics';
+import { track } from '@/lib/analytics';
+import { getSignupMarks, rememberAttributionForRedirect } from '@/lib/attribution';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
 import { BRAND_NAME } from '@/lib/brand';
