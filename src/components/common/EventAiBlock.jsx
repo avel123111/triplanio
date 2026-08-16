@@ -21,6 +21,7 @@ import { uploadErrorText } from '@/lib/documentMutations';
 import { canonTransportType } from '@/lib/transport';
 import { isAllowedUpload, ALLOWED_PARSER_EXTENSIONS, PARSER_ACCEPT } from '@/lib/fileType';
 import { Btn, Card, FileRow, IconBtn, InputGroup, Textarea, Tile } from '@/design/index';
+import { formatBytes } from '@/lib/formatBytes';
 import {
   Sparkles, Lock, X,
   ChevronUp, Check,
@@ -308,7 +309,7 @@ export default function EventAiBlock({
                   key={i}
                   name={f.name}
                   tone="ai"
-                  size={f.file?.size ? formatSize(f.file.size) : null}
+                  size={f.file?.size ? formatBytes(f.file.size) : null}
                   action={(
                     <IconBtn
                       icon="close"
@@ -369,8 +370,3 @@ function pluralFields(t, n) {
   return t('event.field_many');
 }
 
-function formatSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}

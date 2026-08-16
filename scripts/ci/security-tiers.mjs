@@ -71,6 +71,11 @@ export const TABLES = {
   product:           { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   provider_price:    { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   webhook_event:     { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
+  // Обратная связь пользователя (TRIP-232): пишет ТОЛЬКО edge supportTicketCreate
+  // под сервис-ролью; клиент не читает свои тикеты (0 .from('support_tickets') в
+  // src). RLS on, deny-all без политик, REVOKE ALL у anon/authenticated. Файлы —
+  // в приватном бакете `support` (ниже), браузер грузит напрямую, edge пишет пути.
+  support_tickets:   { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   // Биллинг (правило 13): клиент таблицы НЕ читает — 0 .from() в src/**, Pro-статус
   // едет из users через getMe/getUserPlan (service_role). Мёртвый SELECT снят
   // TRIP-425 под security-review; *_select_own политики дропнуты.
@@ -237,6 +242,10 @@ export const BUCKETS = {
     writePredicate: '_can_write_trip_file',
     note: 'приватный; TRIP-118 private-файлы; TRIP-274 чтение=участие, запись=_can_edit_trip (оба DEFINER, общая половина «не чужой private»); черновая обложка — только своя папка _drafts/<uid>/ (TRIP-281)',
   },
+  // Скриншоты обратной связи (TRIP-232): приватный, читает только сервис-роль
+  // (n8n). Браузер (авторизованный) кладёт файл напрямую — INSERT; DELETE для
+  // подметания осиротевшего файла при несохранённом тикете. Клиентского SELECT нет.
+  support: { public: false, policies: ['insert', 'delete'] },
 };
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
@@ -386,6 +395,7 @@ export const DOORS = {
   planTripWithAi:        'auth',        // Pro-гейта нет — продуктовое решение, TRIP-32
   stay22Accommodations:  'auth',
   viatorActivities:      'auth',
+  supportTicketCreate:   'auth',        // любой залогиненный шлёт баг-репорт; user_id из JWT (TRIP-232)
 
   // ── token: владение секретом в запросе ──
   getPublicTrip:         'token',       // tripId + share_token, без аутентификации
