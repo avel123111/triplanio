@@ -1,8 +1,18 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Input } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import GeoAttribution from '@/components/common/GeoAttribution';
+
+// A pointerdown INSIDE the list must not reach Radix's DismissableLayer listener
+// on `document`: the list is portaled to <body> (outside the dialog's Radix
+// content), so a plain `createPortal` popover is NOT part of Radix's layer stack,
+// and Radix would treat a row click as an outside pointer-down and CLOSE the
+// dialog. Stopping the event at the list node (bubble phase) keeps it from
+// reaching document; our own outside-close handler is capture-phase and still
+// fires. Native listener (attached via the callback ref below) so the ordering
+// vs. Radix's document listener is exact, not React-delegation-dependent.
+const stopDown = (e) => e.stopPropagation();
 
 /**
  * Autocomplete — the single, canonical async search-as-you-type field + dropdown
@@ -54,6 +64,14 @@ export default function Autocomplete({
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
   const listRef = useRef(null);
+  // Callback ref for the portaled list: keeps `listRef.current` (used by the
+  // outside-close handler) AND attaches/detaches the native pointerdown guard
+  // once per mount, so it never re-binds on every scroll-driven reposition.
+  const attachList = useCallback((node) => {
+    if (listRef.current) listRef.current.removeEventListener('pointerdown', stopDown);
+    listRef.current = node;
+    if (node) node.addEventListener('pointerdown', stopDown);
+  }, []);
   // Read inside the debounce timer so a mid-debounce language switch isn't stale.
   const langRef = useRef(lang);
   useEffect(() => { langRef.current = lang; }, [lang]);
@@ -204,7 +222,7 @@ export default function Autocomplete({
       />
       {open && results.length > 0 && box && createPortal(
         <div
-          ref={listRef}
+          ref={attachList}
           id={`${uid}-list`}
           role="listbox"
           className="menu"
