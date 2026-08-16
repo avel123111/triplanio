@@ -204,7 +204,7 @@ export default function ForkPartnerModal({
           locked={!canEdit}
           onClick={canEdit ? handleManual : undefined}
           aria-disabled={canEdit ? undefined : true}
-          style={{ '--fk': canEdit ? meta.color : 'var(--muted)', '--fk-soft': canEdit ? meta.colorSoft : 'var(--surface-2)' }}
+          style={{ '--fk': meta.color, '--fk-soft': meta.colorSoft }}
         >
           <span className="fork-manual__ic"><ManualIcon size={20} /></span>
           <span className="fork-manual__tx">

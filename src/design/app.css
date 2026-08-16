@@ -8331,7 +8331,9 @@ a.doc-row__n:hover{ color: var(--brand); }
 .tt--block { display: block; width: 100%; }
 .tt__b {
   position: fixed;
-  z-index: var(--z-menu);
+  /* Выше модалки (--z-modal 200): пузырь в портале <body> обязан лежать НАД
+     диалогом форка, иначе клипается за ним (был баг: z-menu 60 < 200). */
+  z-index: calc(var(--z-modal) + 10);
   max-width: 240px; padding: var(--sp-3) var(--sp-5);
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--line-strong);
