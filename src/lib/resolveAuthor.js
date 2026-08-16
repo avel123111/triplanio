@@ -124,35 +124,37 @@ export function resolveAuthor({
   // last resort the name — so the colour is a property of WHO, not of the label.
   const seed = userId || m?.id || m?.invite_email || p?.email || undefined;
 
-  // The resolved identity. `email` is the address printed UNDER the name, and
-  // it is only ever shown next to a REAL name: with nothing but an address,
-  // displayName() has already turned it into the name, and printing it twice is
-  // what every member screen used to guard by hand. The invite address wins —
-  // it is what was actually invited.
-  const identity = (name, hasRealName, photo) => ({
+  // The resolved identity. `email` is the address printed UNDER the name, and it
+  // is shown whenever we HAVE one — including when the name itself was derived
+  // from that address (`test8@…` → "Test8"). We used to hide it in that case to
+  // avoid "Test8 / test8@…", but that made the member list read inconsistently —
+  // named rows carried an address line, name-from-email rows did not — so a real
+  // account looked like it had "no email". Consistency wins: every resolvable
+  // account shows its address. The invite address wins — it is what was invited.
+  const identity = (name, photo) => ({
     name: name || fallback,
-    email: hasRealName ? String(m?.invite_email || p?.email || '').trim() : '',
+    email: String(m?.invite_email || p?.email || '').trim(),
     photo: photo || null,
     deleted: false,
     seed: seed || name || fallback,
   });
 
   if (p && (p.full_name || p.avatar_url || p.email)) {
-    return identity(displayName(p.email, p.full_name), !!p.full_name, p.avatar_url);
+    return identity(displayName(p.email, p.full_name), p.avatar_url);
   }
 
   // 2) Name snapshot on the content row — survives the author leaving the trip.
   const snap = nameSnapshot && String(nameSnapshot).trim();
-  if (snap) return identity(snap, true, null);
+  if (snap) return identity(snap, null);
 
   // 3) Live membership snapshot — invited/offline authors without a users row.
   if (m && (m.user_full_name || m.invite_email)) {
-    return identity(displayName(m.invite_email, m.user_full_name), !!m.user_full_name, null);
+    return identity(displayName(m.invite_email, m.user_full_name), null);
   }
 
   // 4) The viewer's own content — safe to attribute to self, never to others.
   if (userId && selfUser?.id && userId === selfUser.id) {
-    return identity(displayName(selfUser.email, selfUser.full_name), !!selfUser.full_name, selfUser.avatar_url);
+    return identity(displayName(selfUser.email, selfUser.full_name), selfUser.avatar_url);
   }
 
   // 5) Nothing resolvable.
