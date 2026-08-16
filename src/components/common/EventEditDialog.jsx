@@ -21,7 +21,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
 import {
-  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
+  Trash2, ChevronDown, ArrowRight, Repeat,
   Plane, Car as CarIcon, Moon, ShieldCheck,
   BedDouble, Ticket,
 } from 'lucide-react';
@@ -109,6 +109,7 @@ function CityPicker({ value, onPick, placeholder, ...rest }) {
       renderRow={cityOptionRow}
       placeholder={placeholder || t('event.layover_city_ph')}
       icon="pin"
+      attribution={false}
     />
   );
 }
@@ -136,7 +137,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { validateEntity, transferAiCityAdvisories, issuesToShow, isFieldRequired } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldState } from '@/components/common/ValidationUI';
-import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
+import { faviconUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/storageCleanup';
 import { aiField } from '@/lib/ai-values';
@@ -180,7 +181,6 @@ const makeAiSetter = (upd, filled) => (k, v) => {
 // no copy-paste).
 function BookingUrlField({ value, onChange, aiActive, t }) {
   const logo = faviconUrl(value);
-  const label = hostnameFromUrl(value);
   return (
     <div>
       <Label>{t('event.booking_url')}</Label>
@@ -197,17 +197,6 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
           />
         </div>
       </AiField>
-      {value && (
-        <div className="row row--g4 eed-bkmeta">
-          <span className="row row--inline row--g3 eed-bkpill">
-            {logo && <img src={logo} alt="" className="eed-bkpill__logo" />}
-            {label}
-          </span>
-          <a href={normalizeExternalUrl(value)} target="_blank" rel="noreferrer" className="row row--inline row--g2 eed-bkopen">
-            <ExternalLink size={12} />{t('common.open')}
-          </a>
-        </div>
-      )}
     </div>
   );
 }
@@ -1995,9 +1984,10 @@ function TransferLegCard({
         {/* Overnight — DERIVED from the dates, not a user toggle. day_change is a pure
             function of (arrival day > departure day): the single bit recompute_trip
             reads to add the +1 arrival-day gap, so it must always equal the actual
-            dates. Shown as a passive badge the moment the arrival date is a later day. */}
+            dates. Shown as a clear tinted MARK (not an empty container — Pavel) the
+            moment the arrival date is a later day. Radius 10 (r-btn) как у контролов экрана. */}
         {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <Card radius="md" className="row eed-nightrow">
+          <Card radius="btn" className="row eed-nightrow">
             <span className="row row--g4 eed-nightrow__l">
               <Moon size={16} />
               <span className="t-label">{t('event.overnight_label')}</span>

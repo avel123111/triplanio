@@ -978,8 +978,6 @@ h4,
 .dl-dview-link b,
 .dl-dview-meta,
 .eed-fchint,
-.eed-bkpill,
-.eed-bkopen,
 .tcp__err,
 .docfield__count,
 .ncal-wdc-empty,   /* инсп.: Meta («Свободный день» календаря) */
@@ -1763,17 +1761,19 @@ button.app-side__item:hover { background: var(--wash); }
     var(--pro-gradient) border-box;
   box-shadow: 0 26px 54px -32px var(--pro);
 }
-/* Приподнятая карточка (проп `raised`, TRIP-337 объект 2): статическая тень --sh-1,
-   на ховере усиление до --sh-2 (превью карты обзора). База `.card` тени не даёт.
+/* Приподнятая карточка (проп `raised`, TRIP-337 объект 2): статическая тень --sh-1.
+   База `.card` тени не даёт. `raised` — ТОЛЬКО статичная высота, БЕЗ ховер-лифта:
+   лифт на наведении = язык КЛИКАБЕЛЬНОЙ поверхности (`.card--interactive`), а оба
+   вызывателя `raised` (превью карты Обзора, fork-state) контейнером не кликабельны,
+   и ховер-усиление читалось как «нажми меня» на неинтерактивной панели (TRIP-337).
    Дожиг split-скина 4→0 — radius/тень с приватных классов на пропы, значение то же:
    visual-diff-move: .choice-card -> card--r-card
    visual-diff-move: .records -> card--r-card
    visual-diff-exempt: .ov-mapcard box-shadow — на .card--raised (--sh-1), значение то же
-   visual-diff-exempt: .ov-mapcard:hover box-shadow — hover-тень уехала на .card--raised:hover (--sh-2), канон media-gated
-   visual-diff-exempt: .card--raised box-shadow — новый канон-вариант raised (--sh-1), первый вызыватель ov-mapcard
-   visual-diff-exempt: .card--raised:hover {@media (hover: hover) and (pointer: fine)} box-shadow — новый канон-вариант raised: ховер-усиление --sh-2 (media-gated как .card--interactive) */
+   visual-diff-exempt: .card--raised box-shadow — канон-вариант raised (--sh-1), первый вызыватель ov-mapcard
+   visual-diff-exempt: .ov-mapcard:hover box-shadow — ховер-лифт снят: карта не кликабельна контейнером, лифт = язык .card--interactive (TRIP-337)
+   visual-diff-exempt: .card--raised:hover {@media (hover: hover) and (pointer: fine)} box-shadow — ховер-усиление снято с raised: статичная высота без «нажми меня» (TRIP-337) */
 .card--raised { box-shadow: var(--sh-1); }
-@media (hover: hover) and (pointer: fine) { .card--raised:hover { box-shadow: var(--sh-2); } }
 /* TRIP-337 объект 2 дожиг: радиус (и тень eroute) ушли с приватных карточек на
    пропы <Card radius/raised> — класс стал layout-only. Перенос объявлен в блоке
    visual-diff-move у ко-селектора выше (`.X -> card card--r-Y`, eroute тень снята),
@@ -1875,7 +1875,7 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Статичные. (`.acc` — отдельным заходом: условная обёртка isMulti + хук
    состояния `.acc.is-open .acc__chev`, требует динамического носителя.)
    visual-diff-move: eed-fcbox -> card card--r-md
-   visual-diff-move: eed-nightrow -> card card--r-md */
+   visual-diff-exempt: .eed-nightrow border-radius — overnight-отметка на r-btn 10 (было r-md 16) как контролы экрана (просьба Pavel, TRIP-337) */
 /* TRIP-343 объект 2: скин аккордеона на `<Card radius="md" pad="none">` (bg/border
    → .card, radius → .card--r-md, overflow → .card--flush). `.acc` остаётся КЛАССОМ
    (хук состояния `.acc.is-open .acc__chev`); своё правило было только overflow →
@@ -4494,7 +4494,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
        и gap принадлежал СОСТАВНОМУ правилу планировщика (оно специфичнее), и его
        перенос удостоверен своим маркером на полный селектор. Заявить их переносом
        на `.grid` было бы неправдой. Объявлены исключением в конце файла. */
-    .te-row { position: relative; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+    /* Колонки отеля/активности сужены 96→56: иконки-плейсхолдеры стояли по центру
+       широких 96px-треков → большой зазор между отелем и активностью (просьба Pavel).
+       56px держит и чип с иконкой+счётчиком, и пунктирную кнопку, но убирает лишний
+       слак. Ширины фиксированы (каждая .te-row — свой грид) ради выравнивания колонок
+       между строками. Степпер (4-я колонка) 96 не тронут.
+       visual-diff-exempt: .te-row grid-template-columns — сужение колонок отель/активность 96→56, зазор между плейсхолдерами (просьба Pavel, TRIP-337) */
+    .te-row { position: relative; grid-template-columns: 16px 28px minmax(0,1fr) 96px 56px 56px; row-gap: 0; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: var(--r-sm); border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--surface); border-color: var(--brand); box-shadow: var(--sh-2); }
     .te-row:hover .te-cityname { color: var(--brand); }
     /* visual-diff-move: te-cityname -> trunc */
@@ -6444,6 +6450,15 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .ai-blk-hd padding — координация на токен --sp-6 (12), было 11/13
    visual-diff-exempt: .ai-blk-body padding — координация на токен --sp-6 (12) по горизонтали/низу, было 13/12 */
 .ai-blk-hd{display:flex;align-items:center;gap:var(--sp-5);padding:var(--sp-5) var(--sp-6);}
+/* Лёгкий ховер КЛИКАБЕЛЬНОЙ шапки (свёрнутый парсер = одна большая кнопка «раскрыть»).
+   Переезд `.ai-blk` → <Card tone="ai"> увёл ховер на `.card--interactive`, которого
+   у блока нет, — и свёрнутый контейнер перестал реагировать на наведение (TRIP-337).
+   Тинт из канона ai (тот же `--ai-soft`, что у `.icon-btn--ai:hover`/`.chat-mention__row:hover`),
+   клип по скруглению несёт `.ai-blk{overflow:hidden}`. Скоуп `[role="button"]` — пассивные
+   шапки (parsed/locked/parsing/checking) не кликабельны и НЕ реагируют.
+   visual-diff-exempt: .ai-blk-hd[role="button"]:hover background — возврат лёгкого ai-ховера кликабельной шапке (TRIP-337) */
+.ai-blk-hd[role="button"]{cursor:pointer;transition:background .16s;}
+.ai-blk-hd[role="button"]:hover{background:var(--ai-soft);}
 /* .ai-blk-ic УДАЛЁН (TRIP-391 объект 3): значок-плитка AI-блока = <Tile tone="ai"
    solid size="sm"> (солид-ai градиент + белый значок, канон .tile--solid.tile--ai).
    Сторона 30→ступень sm 28 (кегль 15→--tile-ic sm 15 точь-в-точь), принято глазом
@@ -7604,9 +7619,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    `margin-left: auto` не переезжает и не нужен: соседний блок заголовка стоит
    на `flex: 1`, поэтому крестик и так прижат вправо. */
 .vp-b { flex: 1; min-height: 0; padding: 6px 20px 24px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-/* Mobile bottom-sheet: clear the fixed bottom-nav so the last rows aren't hidden
-   under it, and keep the body the scroll container (flex:1 + min-height:0). */
-@media (max-width: 640px) { .vp-b { padding-bottom: calc(88px + env(safe-area-inset-bottom)); } }
+/* Mobile bottom-sheet: тело — скролл-контейнер (flex:1 + min-height:0). Прежний
+   `88px` «под нижнюю навигацию» был мёртвым: шит (z 120) лежит ПОВЕРХ нава (z-nav 95)
+   и накрывает его скримом — навигации под последними строками нет, чистить нечего.
+   Отступ низа сведён к канону шитов (safe-area + дыхание), убран большой пустой гэп.
+   visual-diff-exempt: .vp-b padding-bottom — снят мёртвый 88px-клиренс нава (нав перекрыт шитом), гэп низа (просьба Pavel, TRIP-337) */
+@media (max-width: 640px) { .vp-b { padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom)); } }
 .visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
 .visit:last-child { border-bottom: 0; }
 .visit .when { flex: none; width: 44px; text-align: center; padding-top: 2px; }
@@ -7688,7 +7706,11 @@ a.doc-row__n:hover{ color: var(--brand); }
    брендовая. Канал объявлен на контейнере, поэтому у кнопки своего класса под
    тон нет (TRIP-344 PR 3). */
 .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; --a: var(--muted); }
-.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
+/* Высота чипа диктует вложенный <IconBtn sm> (32px); вертикальный паддинг 5+5
+   раздувал его до ~42px — чип читался «высоким». Паддинг вертикали снят: высота =
+   32px, ровно как у канонных фильтр-пилюль `.fpill` (min-height --ctl-h-sm).
+   visual-diff-exempt: .s22f-pill padding — высота чипа выровнена под --ctl-h-sm (снят вертикальный паддинг), просьба Pavel TRIP-337 */
+.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--sp-2) 0 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
 /* Крестик удаления фильтра — примитив <IconBtn size="sm" tone="quiet"> (канон
    .icon-btn). Приватный каскад `.s22f-pill button` (круг 17px, --brand-soft-12)
    снят: крестик теперь как везде, унификация к канону (апрув Pavel, TRIP-344).

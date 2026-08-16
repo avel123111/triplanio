@@ -60,6 +60,7 @@ export default function Autocomplete({
   const [loading, setLoading] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const [box, setBox] = useState(null);
+  const [flipTop, setFlipTop] = useState(null);
   const timerRef = useRef(null);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
@@ -78,11 +79,12 @@ export default function Autocomplete({
       if (!el) return;
       const sp = getScrollParent(el);
       const r = el.getBoundingClientRect();
-      const vh = window.visualViewport?.height || window.innerHeight;
-      const spaceBelow = vh - r.bottom - 12;
-      const maxH = Math.round(Math.max(160, Math.min(300, spaceBelow)));
+      const gap = 4;
       const width = Math.round(r.width);
       const isEl = sp !== document.body && sp !== document.scrollingElement;
+      // Drop any stale flip correction before we reposition (avoids a one-frame
+      // jump when results change while the list is open).
+      setFlipTop(null);
       if (isEl) {
         // Absolute-in-scroller: the list lives in the scrolled content and tracks
         // the input with zero lag. Requires the scroller to be a positioning
@@ -93,20 +95,33 @@ export default function Autocomplete({
           mutatedSp = sp;
         }
         const spRect = sp.getBoundingClientRect();
-        setBox({
-          target: sp,
-          left: Math.round(r.left - spRect.left + sp.scrollLeft),
-          top: Math.round(r.bottom - spRect.top + sp.scrollTop + 4),
-          width, maxH,
-        });
+        // Room is measured inside the SCROLLER's own viewport, not the window: the
+        // list is clipped by `sp`'s overflow, so a dialog footer (a sibling below
+        // the scroll body) is the real bottom bound. When the input sits low and
+        // there's no room below, FLIP the list above the input instead of letting
+        // it disappear under the footer (the bug this fixes — TRIP-337).
+        const spaceBelow = spRect.bottom - r.bottom - gap;
+        const spaceAbove = r.top - spRect.top - gap;
+        const flipUp = spaceBelow < 168 && spaceAbove > spaceBelow;
+        const maxH = Math.round(Math.max(120, Math.min(300, flipUp ? spaceAbove : spaceBelow)));
+        const left = Math.round(r.left - spRect.left + sp.scrollLeft);
+        const belowTop = Math.round(r.bottom - spRect.top + sp.scrollTop + gap);
+        // For a flip, the list BOTTOM must sit at the input top; the exact `top`
+        // needs the rendered height and is corrected in the measure effect below.
+        const anchorBottom = Math.round(r.top - spRect.top + sp.scrollTop - gap);
+        setBox({ target: sp, left, width, maxH, flipUp, anchorBottom, top: flipUp ? anchorBottom - maxH : belowTop });
       } else {
-        // Page-level scroll: portal to <body> and position in document space.
-        setBox({
-          target: document.body,
-          left: Math.round(r.left + window.scrollX),
-          top: Math.round(r.bottom + window.scrollY + 4),
-          width, maxH,
-        });
+        // Page-level scroll: portal to <body>, position in document space, and use
+        // the window viewport as the clip bound (same flip rule).
+        const vh = window.visualViewport?.height || window.innerHeight;
+        const spaceBelow = vh - r.bottom - 12;
+        const spaceAbove = r.top - 12;
+        const flipUp = spaceBelow < 168 && spaceAbove > spaceBelow;
+        const maxH = Math.round(Math.max(120, Math.min(300, flipUp ? spaceAbove : spaceBelow)));
+        const left = Math.round(r.left + window.scrollX);
+        const belowTop = Math.round(r.bottom + window.scrollY + gap);
+        const anchorBottom = Math.round(r.top + window.scrollY - gap);
+        setBox({ target: document.body, left, width, maxH, flipUp, anchorBottom, top: flipUp ? anchorBottom - maxH : belowTop });
       }
     };
     compute();
@@ -119,6 +134,18 @@ export default function Autocomplete({
       if (mutatedSp) mutatedSp.style.position = '';
     };
   }, [open, results]);
+
+  // Flip correction: when opening ABOVE the input, anchor the list's BOTTOM to the
+  // input top. The final `top` depends on the rendered height (≤ maxH), so measure
+  // once the list is in the DOM — otherwise a short list would float away from the
+  // input by the reserved maxH. Runs only on flip; converges in one frame (box
+  // unchanged → effect doesn't re-fire when flipTop updates), no layout thrash.
+  useLayoutEffect(() => {
+    if (!box?.flipUp || !listRef.current) { return; }
+    const h = listRef.current.offsetHeight;
+    const t = box.anchorBottom - h;
+    setFlipTop((prev) => (prev === t ? prev : t));
+  }, [box]);
 
   const runSearch = (query) => {
     clearTimeout(timerRef.current);
@@ -228,7 +255,9 @@ export default function Autocomplete({
           onWheel={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
           style={{
-            position: 'absolute', left: box.left, top: box.top, width: box.width, zIndex: 'var(--z-popover)',
+            position: 'absolute', left: box.left,
+            top: box.flipUp && flipTop != null ? flipTop : box.top,
+            width: box.width, zIndex: 'var(--z-popover)',
             maxHeight: box.maxH, overflowX: 'hidden', overflowY: 'auto',
             overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
           }}

@@ -27,6 +27,7 @@ export default function CitySearch({ onSelect }) {
       renderRow={cityOptionRow}
       placeholder={t('visit.search_city')}
       autoFocus
+      attribution={false}
     />
   );
 }

@@ -32,18 +32,9 @@
 /* logo overlay — was: w-5 h-5 absolute left-2.5 top-1/2 -translate-y-1/2 rounded-sm */
 .eed-inlogo { width: 20px; height: 20px; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); border-radius: calc(var(--r-md) - 8px); }
 .input.eed-in--logo { padding-left: 36px; }                                /* was pl-9 */
-/* platform meta row — was: mt-1.5 flex items-center gap-2 */
-/* visual-diff-move: eed-bkmeta -> row row--g4 */
-.eed-bkmeta { margin-top: 6px; }
-/* platform pill — was: inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium.
-   URL-detected brand-colour tint removed — neutral surface-2 background, favicon is the brand signal. */
-/* visual-diff-move: eed-bkpill -> row row--inline row--g3 */
-.eed-bkpill { padding: 2px 8px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); }
-.eed-bkpill__logo { width: 14px; height: 14px; border-radius: calc(var(--r-md) - 8px); }   /* was w-3.5 h-3.5 rounded-sm */
-/* open link — was: text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 */
-/* visual-diff-move: eed-bkopen -> row row--inline row--g2 */
-.eed-bkopen { color: var(--muted); text-decoration: none; }
-.eed-bkopen:hover { color: var(--brand); }
+/* Плашка host + ссылка «Открыть» под инпутом брони УДАЛЕНЫ (TRIP-337, просьба Pavel):
+   URL и так виден в поле, дублирующая строка убрана. Приватные .eed-bkmeta/.eed-bkpill/
+   .eed-bkopen сняты вместе с разметкой (осиротевших правил не осталось). */
 
 /* Stay-dates block — label + inner .stay-dates grid. TRIP-186: внешний контейнер
    оголён (рамка/радиус/паддинг убраны), рамкой остаётся сам .stay-dates. */
@@ -57,15 +48,15 @@
 .eed-pricerow { grid-template-columns: 1fr 108px; }
 /* TRIP-176: статус оплаты — канонический сегмент .seg (был самодельный .payseg) */
 .eed-finance .seg { margin-top: 10px; }
-/* Overnight — standalone card below the transfer date-range (design). TRIP-186:
-   порядок свитч · иконка · текст, всё прижато влево (flex:1 убран). */
-/* ★ОСТАТОК: `justify-content: flex-start` УДЕРЖАН приватным. Это дефолт флекса,
-     он ничего не делает, но снять его значило бы заявить перенос на `.row`, где
-     такого объявления нет - маркер стал бы неправдой. Снос дохлой строки - отдельная
-     чистка, не часть переноса раскладки. Зазор 10px = собственный зазор `.row`, модификатор не нужен.
-     visual-diff-move: eed-nightrow -> row */
-.eed-nightrow { justify-content: flex-start; padding: 12px 14px; margin-top: 12px; }
-/* visual-diff-move: eed-nightrow__l -> row row--g4 */
-.eed-nightrow__l { min-width: 0; color: var(--ink); }
+/* Overnight — производная ОТМЕТКА под датами трансфера (TRIP-337, просьба Pavel).
+   Была почти невидимой белой плашкой (Card без тона) — читалась как «пустой
+   контейнер». Теперь ЯВНАЯ метка: мягкая бренд-заливка + акцентный значок луны,
+   радиус 10 (r-btn у Card) как у контролов экрана. Тон/фон здесь, форму даёт Card.
+   visual-diff-exempt: .eed-nightrow background — производная overnight-отметка: бренд-тинт вместо белого (просьба Pavel, TRIP-337)
+   visual-diff-exempt: .eed-nightrow border-color — заливка-метка без рамки (просьба Pavel, TRIP-337)
+   visual-diff-exempt: .eed-nightrow__l color — значок+текст метки в бренд-акценте (просьба Pavel, TRIP-337) */
+.eed-nightrow { justify-content: flex-start; gap: var(--sp-4); padding: var(--sp-5) var(--sp-6); margin-top: var(--sp-6); background: var(--brand-soft); border-color: transparent; }
+.eed-nightrow__l { min-width: 0; color: var(--brand); }
+.eed-nightrow svg { flex: none; }
 /* Second stacked row inside an accordion body — spacing between rows. */
 .eed-accrow { margin-top: 10px; }
