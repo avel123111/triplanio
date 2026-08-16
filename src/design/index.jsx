@@ -55,6 +55,7 @@ export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
+export { NotifRow } from './NotifRow';
 export { Swatch, SWATCH_VARIANTS } from './Swatch';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 

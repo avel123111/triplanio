@@ -454,8 +454,8 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 /* оверлеи и всплывающее (диалог тут только за РАМКОЙ — заливку он берёт
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
-/* строки-списки и ряды */
-.nrow, .mbrow, .bookrow, .doc-row, .te-table .te-row,
+/* строки-списки и ряды (`.nrow` уехала на <NotifRow>, surface несёт компонент) */
+.mbrow, .bookrow, .doc-row, .te-table .te-row,
 .te-row.te-row--plan, .acct-tgrow,
 /* держали эту пару своей копией, а не именем в роли */
 .ncal-wdc,
@@ -505,7 +505,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    Схлопывает bgt-exrow / bgt-fxrow / bgt-glist__row / bgt-dleg__row.
    prefix-exempt: lrow — новый канон-объект «строка списка», апрув Pavel TRIP-413 */
 .lrow { display: flex; align-items: center; gap: var(--sp-6); padding: var(--sp-6); border-radius: var(--r-btn); }
-.lrow__body { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; flex: 1; }
+.lrow__body { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; flex: 1; text-align: left; }
 .lrow__trail { flex: none; display: flex; align-items: center; gap: var(--sp-3); text-align: right; }
 .lrow--clickable { cursor: pointer; width: 100%; text-align: left; font: inherit; }
 .lrow--raised { background: var(--surface); border: 1px solid var(--line); transition: box-shadow .2s, border-color .2s; }
@@ -736,8 +736,6 @@ h4,
 .pt-cta p,
 .banner p,
 .row__t,   /* TRIP-175 инсп.: UI→Label (лейбл строки аккаунта; сюда же сведены .acct-chan__t и .acct-tgrow__t) */
-.brow__title,      /* TRIP-175 инсп.: Meta→Label (заголовок уведомления в колокольчике) */
-.nrow__title,      /* TRIP-175 инсп.: UI→Label (заголовок строки уведомлений) */
 .ai-blk-ti b,      /* TRIP-175 инсп.: UI→Label («Заполнить через ИИ») */
 .cm-h,
 .eed-dateblock__lbl,  /* «Даты проживания» - подпись поля, а не бейдж */
@@ -858,14 +856,8 @@ h4,
    visual-diff-exempt: .t-support font-size — новый канон (13, --fs-meta)
    visual-diff-exempt: .t-support font-weight — новый канон (400)
    visual-diff-exempt: .t-support line-height — новый канон (1.45)
-   visual-diff-exempt: .t-support letter-spacing — новый канон (0)
-   visual-diff-exempt: .brow__msg font-size — пояснение уведомления на канон t-support (A): 15 → 13
-   visual-diff-exempt: .brow__msg line-height — то же: 1.55 → 1.45
-   visual-diff-exempt: .nrow__msg font-size — пояснение уведомления на канон t-support (A): 15 → 13
-   visual-diff-exempt: .nrow__msg line-height — то же: 1.55 → 1.45 */
-.t-support,
-.brow__msg,        /* текст уведомления в колокольчике → t-support (A) */
-.nrow__msg { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле) */
+   visual-diff-exempt: .t-support letter-spacing — новый канон (0) */
+.t-support { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле; носитель №1 = сообщение уведомления в <NotifRow>) */
 .t-meta,
 .field__hint,
 .app-header__trip-meta,
@@ -893,10 +885,6 @@ h4,
 .dock-panel__head .nm,
 .fpill,
 .fpill__c,
-.nrow__meta,
-.brow__time,
-.brow__ok,
-.brow__link,
 .mbrow__email,
 .m-status,
 .invite-banner__desc,
@@ -1158,7 +1146,6 @@ h4,
 .t-strong,
 .app-side__item.active,
 .dock-panel__head .nm b,
-.nrow__link,
 .bud-leg .nm,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
@@ -1499,8 +1486,12 @@ button.app-side__item:hover { background: var(--wash); }
    «Управлять подпиской» в аккаунте на en/es длиннее русского и упиралась в край
    (ревью Codex, P2). Перенос разрешён, а не задан — короткие подписи стоят в
    одну строку, как стояли. */
-.btn--link { --bg: transparent; --fg: var(--a, var(--brand)); --bd: transparent; min-height: 0; padding: var(--sp-2) 0; white-space: normal; }
+.btn--link { --bg: transparent; --fg: var(--a, var(--brand)); --bd: transparent; min-height: 0; padding: var(--sp-2) 0; white-space: normal; gap: var(--sp-3); }
 .btn--link:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* Иконка текстовой кнопки — мельче кегля значка кнопок (16→14) и теснее к
+   подписи: текстовая кнопка читается как строка, а не как кнопка с иконкой.
+   Lucide кладёт размер атрибутами width/height — CSS их перебивает. */
+.btn--link svg { width: 14px; height: 14px; }
 /* Плейсхолдер «добавить»: в покое серый пунктир, на ховере рамка, текст и фон
    красятся в акцент контекста (`--a` — тип брони, тип сервиса), с тем же
    умолчанием brand, что у `link`.
@@ -2783,6 +2774,15 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    раз. Голый .grow (40 мест в JSX) НЕ трогаем: min-width:0 меняет поведение
    ужимания, и проверять это надо экран за экраном, а не одной правкой. */
 .grow--fit { flex: 1; min-width: 0; }
+
+/* Standalone-экран под AppHeader: центрированная колонка контента страницы. Был
+   повторяющимся инлайном на <main> (Inbox/Statistics/Trips — байт-в-байт одна и
+   та же форма, TRIP-282 «повторяющийся инлайн = отсутствующий класс»). Здесь
+   применён к Inbox (760 — читаемая колонка уведомлений); Statistics/Trips (1240)
+   переезжают отдельной кросс-экранной задачей с вариантом ширины.
+   prefix-exempt: page — новый layout-примитив «колонка страницы», апрув Pavel
+   (сведение инлайна <main> уведомлений на ДС) */
+.page-main { flex: 1; width: 100%; max-width: 760px; margin-inline: auto; padding: var(--sp-8); box-sizing: border-box; }
 
 /* prefix-exempt: trunc — примитив обрезки строки, TRIP-321 Ф11, апрув Pavel.
    Только сама обрезка; «разрешено ужаться» - это .grow--fit, они складываются.
@@ -4221,7 +4221,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    нехватке места ужимается он. Своего `flex: none` у кнопки больше нет — оно
    ушло вместе с `.bell-dd__mark` (TRIP-344 PR 3). */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
+/* Строки вплотную и во всю ширину поповера (макет): свой inset несёт сама
+   `.notif` (padding), разделитель — хайрлайн `.notif + .notif::before`. Поэтому
+   у списка ни бокового padding, ни gap — иначе строки отходят от краёв и рвётся
+   непрерывная лента с разделителями. */
+.bell-dd__list { max-height: 400px; overflow: auto; padding: 0; display: flex; flex-direction: column; }
 .bell-dd__foot { padding: 9px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
 /* `.bell-dd__mark` и `.bell-dd__more` удалены: обе кнопки поповера уехали на
    текстовую кнопку системы (`<Btn variant="link">`, TRIP-344 PR 3). Вместе с
@@ -4229,17 +4233,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    именно удалённое правило и над `.bell-dd__loading` читалась бы как ложь. */
 .bell-dd__loading { display: flex; justify-content: center; padding: 28px 0; color: var(--muted); }
 
-/* Per-type icon tile — colour passed in via inline `--ic` (the notifMeta accent) */
-.n-ic {
-  width: 38px; height: 38px; border-radius: var(--r-sm); flex-shrink: 0;
-  display: grid; place-items: center;
-  color: var(--ic, var(--brand));
-  background: color-mix(in oklab, var(--ic, var(--brand)) 13%, transparent);
-}
-.n-ic--sm { width: 34px; height: 34px; border-radius: var(--r-sm); }
-
-/* Inbox filter pills (Все / Непрочитанные·N / Приглашения·N) */
-.nfilters { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
 /* ── Chip (TRIP-344 PR 7) ──────────────────────────────────────────────────
    Канон кликабельной пилюли — примитив `<Chip>` (`src/design/Chip.jsx`).
    Фон и рамку базовой (neutral) формы держит `.fpill` из §«сильная рамка»
@@ -4281,43 +4274,36 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Inbox list — stacked date groups of rounded row-cards */
 .ngrp__label { padding: 0 4px; color: var(--muted-2); }
 
-/* Inbox row — rounded card, hover lift, unread = soft tint + left accent */
-.nrow {
-  display: grid; grid-template-columns: auto 1fr auto; gap: 14px;
-  padding: 14px 16px; align-items: center; border-radius: var(--r-md);
-  box-shadow: var(--sh-1);
-  transition: border-color .16s, box-shadow .2s, transform .16s var(--ease-out);
+/* ═══ NotifRow — канон строки уведомления (редизайн уведомлений) ══════════════
+   ОДНА строка на все типы событий и обе поверхности (поповер + экран). Схлопнула
+   приватные `.brow`/`.nrow`/`.n-ic`. Глиф (аватар/плитка/pro) — примитивы ДС в
+   ячейке `ava`; тексты — канон `.t-label/.t-support/.t-meta` (класс несёт только
+   раскладку). Вариант `--compact` — поповер, `--unread` — мягкая подложка.
+   prefix-exempt: notif — новый канон-объект ДС «строка уведомления», апрув Pavel
+   (замена приватных .brow/.nrow/.n-ic на один компонент <NotifRow>) */
+.notif {
+  position: relative; display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "ava title time" "ava sub sub" "ava act act";
+  column-gap: 13px; padding: 14px 16px;
+  transition: background .15s var(--ease-out);
 }
-@media (hover: hover) { .nrow:hover { border-color: var(--line-hover); transform: translateY(-1px); } }
-.nrow--unread { background: var(--brand-soft); border-color: transparent; box-shadow: inset 3px 0 0 var(--brand), var(--sh-1); }
-.nrow__body { min-width: 0; }
-.nrow__title { color: var(--ink); }
-.nrow__title em { font-style: normal; color: var(--brand); }
-.nrow__msg { color: var(--muted); margin-top: 2px; }
-.nrow__meta { color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 10px; }
-.nrow__link { color: var(--brand); display: inline-flex; align-items: center; gap: 3px; }
-/* Mobile: actions drop to a full-width second row so the title isn't squeezed */
-@media (max-width: 640px) {
-  .nrow { grid-template-columns: auto 1fr; align-items: start; column-gap: 12px; }
-  .nrow__acts { grid-column: 1 / -1; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
-}
-
-/* Bell popover row — rounded prow, hover, unread tint + left dot */
-.brow {
-  position: relative; display: flex; gap: 11px; padding: 11px 11px 11px 13px;
-  border-radius: var(--r-btn); align-items: flex-start; transition: background .14s;
-}
-.brow--unread { background: var(--brand-soft); cursor: pointer; }
-@media (hover: hover) { .brow:hover { background: var(--surface-2); } .brow--unread:hover { background: var(--brand-soft-12); } }
-.brow--unread::before { content: ""; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
-.brow__body { flex: 1; min-width: 0; }
-.brow__title { color: var(--ink); }
-.brow__title em { font-style: normal; color: var(--brand); }
-.brow__msg { color: var(--muted); margin-top: 1px; }
-.brow__time { color: var(--muted-2); margin-top: 3px; }
-.brow__acts { display: flex; gap: 6px; margin-top: 8px; }
-.brow__ok { color: var(--success); margin-top: 4px; }
-.brow__link { display: inline-flex; align-items: center; gap: 4px; color: var(--brand); margin-top: 6px; }
+.notif + .notif::before { content: ""; position: absolute; left: 65px; right: 0; top: 0; height: 1px; background: var(--line); }
+.notif--unread { background: var(--brand-soft); }
+.notif--link { cursor: pointer; }
+@media (hover: hover) { .notif--link:hover { background: var(--surface-2); } }
+.notif__ava { grid-area: ava; align-self: start; }
+.notif__ava--pro { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--pro-gradient); color: #fff; }
+.notif__title { grid-area: title; color: var(--ink); }
+.notif__title em { font-style: normal; font-weight: 700; color: var(--brand); }
+.notif__msg em { font-style: normal; font-weight: 700; }
+.notif__msg { grid-area: sub; color: var(--muted); margin-top: 2px; }
+.notif__time { grid-area: time; color: var(--muted-2); padding-left: var(--sp-6); white-space: nowrap; }
+.notif__act { grid-area: act; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
+.notif--compact { column-gap: 11px; padding: var(--sp-6) 14px; }
+.notif--compact + .notif--compact::before { left: 57px; }
+.notif--compact .notif__ava--pro { width: 32px; height: 32px; }
+.notif--compact .notif__act { margin-top: var(--sp-4); }
 
 /* ── Members list — rounded row-cards (own `.mbrow` namespace; `.mrow` is the
    separate MembersSummaryCard "who's going" widget and must not be touched) ── */
