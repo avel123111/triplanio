@@ -4489,12 +4489,6 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* visual-diff-move: te-th -> trunc */
     .te-th { color: var(--muted); min-width: 0; }
     .te-th--c { text-align: center; }
-    /* Заголовки ЖИЛЬЁ/АКТИВНОСТЬ прижаты к общей границе своих колонок — ровно
-       ТУДА же, куда `justify-self` ставит иконки (отель к правому краю, активность
-       к левому). Так заголовок стоит над своей иконкой, а пара «жильё+активность»
-       читается вместе. Колонки при этом НЕ трогаем (просьба Pavel). */
-    .te-th--e { text-align: right; }
-    .te-th--s { text-align: left; }
 
     /* ---- list rows ---- */
     /* ★`align-items: center` ОСТАЁТСЯ приватным, и это не недоделка: у `.grid` оси
@@ -4562,12 +4556,8 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     .te-step:active:not(:disabled) { transform: scale(0.9); }
     .te-step:disabled { color: var(--muted-2); cursor: default; }
     .te-cell { flex-shrink: 0; }
-    /* Только сближаем иконки отель↔активность: ширины колонок НЕ трогаем (иначе
-       1fr раздувается и весь кластёр едет). Отель прижат к ПРАВОМУ краю своей
-       колонки, активность — к ЛЕВОМУ соседней: пара встаёт вплотную к общей
-       границе (~12px между иконками), степпер и всё остальное на месте (просьба Pavel). */
-    .te-cell--hotel { justify-self: end; min-width: 0; }
-    .te-cell--act { justify-self: start; }
+    .te-cell--hotel { justify-self: center; min-width: 0; }
+    .te-cell--act { justify-self: center; }
     /* Пустая ячейка отеля/активности — это `Btn variant="dashed" size="sm"`, и
        своих правил у неё больше НЕТ. Ушли вместе с классом: собственная высота
        34px (теперь `--ctl-h-sm` 32), собственный пунктир и `scale` на нажатии.

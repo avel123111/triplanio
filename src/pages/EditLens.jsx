@@ -973,8 +973,8 @@ export default function EditLens({ tripId, shell, content }) {
           <Grid className="te-thead" style={{ padding: '0 4px 6px' }}>
             <Trunc as="span" className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</Trunc>
             <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</Trunc>
-            <Trunc as="span" className="te-th te-th--e" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</Trunc>
-            <Trunc as="span" className="te-th te-th--s" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</Trunc>
+            <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</Trunc>
           </Grid>
           <div className={'te-table' + (draggingId != null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
