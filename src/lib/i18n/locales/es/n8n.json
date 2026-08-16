@@ -19,6 +19,7 @@
   "invite_created.email_signup_link": "Regístrate aquí",
   "invite_created.email_subject": "Invitación al viaje",
   "invite_resent.email_subject": "Recordatorio: invitación al viaje",
+  "trip_telegram_unlinked.text": "El asistente de Telegram se ha desconectado de este viaje: los recordatorios ya no llegarán.",
   "welcome.email_cta": "Planificar mi primer viaje",
   "welcome.email_eyebrow": "Tu planificador de viajes personal",
   "welcome.email_feat1_desc": "Ciudades, hoteles, traslados y actividades - ordenados automáticamente por fechas y zonas horarias.",

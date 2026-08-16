@@ -36,7 +36,7 @@ import { Icon } from './icons';
 // `children` — для НЕ-иконочного содержимого (номер точки маршрута, буква):
 // плитка не всегда несёт `<Icon>`. Если задан `icon`, рисуется он; иначе `children`.
 /** @typedef {'sm'|'lg'|'xl'|'2xl'} TileSize */
-/** @typedef {'brand'|'danger'|'ai'|'info'|'success'|'quiet'|'warning'|'warm'|'hotel'|'activity'|'transfer'} TileTone */
+/** @typedef {'brand'|'danger'|'ai'|'info'|'success'|'quiet'|'warning'|'warm'|'pro'|'hotel'|'activity'|'transfer'} TileTone */
 export const Tile = React.forwardRef(
   /**
    * @param {React.ComponentPropsWithoutRef<'div'> & {
@@ -80,11 +80,12 @@ Tile.displayName = "Tile";
 // у него нет класса-модификатора, его рисует базовый образец. `round`/`solid`
 // (булевы оси) и `warm` идут в `extras` реестра витрины.
 //
-// ★ `warm` НЕ в `TILE_TONES`, хотя есть в `TileTone`. У него нет ОТДЕЛЬНОГО
-// мягкого правила: единственная форма — `.tile--solid.tile--warm` (канон,
-// `app.css:2867`: «--warm мягким тоном НЕ заводится, его единственный вызов
-// залитый»). Значит `warm` — валидный литерал ТОЛЬКО с `solid`; в карте мягких
-// тонов его быть не должно (иначе витрина нарисовала бы плитку без фона).
+// ★ `warm` и `pro` НЕ в `TILE_TONES`, хотя есть в `TileTone`. У них нет ОТДЕЛЬНОГО
+// мягкого правила: единственная форма — `.tile--solid.tile--warm` / `.tile--solid.tile--pro`
+// (канон: «--warm мягким тоном НЕ заводится, его единственный вызов залитый»; pro —
+// то же, залитый --pro-gradient плитки тарифа). Значит `warm`/`pro` — валидные
+// литералы ТОЛЬКО с `solid`; в карте мягких тонов их быть не должно (иначе витрина
+// нарисовала бы плитку без фона).
 /** @type {readonly TileSize[]} */
 export const TILE_SIZES = ["sm", "lg", "xl", "2xl"];
 /** @type {readonly TileTone[]} */

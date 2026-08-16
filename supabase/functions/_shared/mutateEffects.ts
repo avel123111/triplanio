@@ -92,6 +92,20 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     }
   },
 
+  // Настройки трипа сохранены (TRIP-415). Инвариант «аддон telegram_assistant
+  // выключен ⇒ живых привязок нет»: перечитываем текущее значение аддона и, если
+  // он НЕ включён, сносим привязки через единый шов (teardown + прощальный emit
+  // приезжают оттуда). Идемпотентно и self-healing — при включённом аддоне и на
+  // сохранении не-Telegram настроек это no-op (снимет 0 строк). Серверный шаг, не
+  // зависит от фронта: даже если тумблер обойдут, привязка не переживёт выключение.
+  // Best-effort по контракту afterWrite.
+  'trip-settings/settings': async ({ scopeValue, db }) => {
+    const { data: trip } = await db.from('trips').select('details').eq('id', scopeValue).maybeSingle();
+    const addons = (trip?.details as { addons?: Record<string, unknown> } | null)?.addons;
+    if (addons?.telegram_assistant === true) return;
+    await disconnectTripTelegram(db, { tripId: scopeValue });
+  },
+
   // Приглашение создано/реактивировано (declined→pending) — in-app пишет notify в
   // edge, n8n шлёт email.
   'trip-member/invite': async ({ result, scopeValue, actor, db }) => {

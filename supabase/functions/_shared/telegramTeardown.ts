@@ -1,11 +1,23 @@
 /**
  * telegramTeardown — ЕДИНЫЙ источник правды для отвязки Telegram у трипа.
  *
- * Используется и пользовательским telegramDisconnect (отвязать одну привязку
- * вручную), и системным путём отката Pro (revokeLostProFeatures). ВСЯ логика
- * teardown живёт здесь — будущие шаги (групповые чаты, вызовы Telegram API,
- * прощальное сообщение, снятие бота из группы) добавляются в одном месте, чтобы
- * вызыватели никогда не разъезжались.
+ * Используется пользовательским telegramDisconnect (ручная отвязка), системным
+ * откатом Pro (revokeLostProFeatures) и afterWrite-эффектами (выход/удаление
+ * участника, выключение аддона telegram_assistant). ВСЯ логика teardown живёт
+ * здесь — включая ПРОЩАЛЬНЫЙ emit: сняли привязку → по каждому снятому чату шлём
+ * external-only `trip_telegram_unlinked` (n8n доставит сообщение в чат). Emit
+ * стоит ОДИН раз тут → срабатывает из всех точек входа, вызыватели не
+ * разъезжаются.
+ *
+ * Намеренно НЕ покрывает destroy-кейсы: удаление трипа (FK ON DELETE CASCADE
+ * снимает строки на уровне БД — до этого шва по строкам не доходит) и удаление
+ * аккаунта (атомарный SQL `anonymize_my_account`). Привязка там тоже уходит, но
+ * прощального сообщения нет намеренно — трипа/аккаунта уже не существует.
+ *
+ * ⚠️ Из-за emit модуль тянет `emit.ts` → `sentry`/`analytics`, читающие `Deno.env`
+ * на загрузке. Значит он env-coupled (как `mutateEffects.ts`) и НЕ импортируется
+ * из чистых `deno test` без `--allow-env` — юнит-тест скоупинга держать на чистом
+ * хелпере, не на этом файле.
  *
  * Идентичность привязки = (trip_id, telegram_chat_id); user_id — только «кто
  * привязал». Удаление скоупится по trip_id, поэтому общий чат, привязанный к
@@ -21,6 +33,7 @@
  * @returns число удалённых привязок.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { notify } from './emit.ts';
 
 export async function disconnectTripTelegram(
   admin: SupabaseClient,
@@ -33,7 +46,33 @@ export async function disconnectTripTelegram(
   if (integrationId) q = q.eq('id', integrationId);
   if (userId) q = q.eq('user_id', userId);
 
-  const { data, error } = await q.select('id');
+  // Забираем telegram_chat_id снятых строк — по нему адресуется прощальный emit.
+  const { data, error } = await q.select('telegram_chat_id');
   if (error) throw error;
-  return (data ?? []).length;
+
+  const removed = data ?? [];
+  const chatIds = removed
+    .map((r) => (r as { telegram_chat_id?: unknown }).telegram_chat_id)
+    .filter((id): id is string => typeof id === 'string' && !!id);
+
+  if (chatIds.length) {
+    // Трип читаем ОДИН раз и отдаём резолверу снимком (иначе каждый notify
+    // перечитывал бы ту же строку). Язык прощального сообщения = язык владельца
+    // трипа (у чата своего языка нет) — тоже один раз на всю пачку чатов.
+    // external-only trip_telegram_unlinked: notify fail-open (сам ловит сбои) —
+    // сообщение не роняет ни teardown, ни действие вызывателя. Чаты независимы →
+    // шлём параллельно.
+    const { data: trip } = await admin.from('trips').select('*').eq('id', tripId).maybeSingle();
+    let locale: string | undefined;
+    const ownerId = (trip as { created_by?: unknown } | null)?.created_by;
+    if (typeof ownerId === 'string' && ownerId) {
+      const { data: owner } = await admin.from('users').select('language').eq('id', ownerId).maybeSingle();
+      const lang = (owner as { language?: unknown } | null)?.language;
+      if (typeof lang === 'string' && lang) locale = lang;
+    }
+    await Promise.all(chatIds.map((chatId) =>
+      notify('trip_telegram_unlinked', { trip_id: tripId, chat_id: chatId, locale }, { db: admin, snapshot: trip ?? undefined })
+    ));
+  }
+  return removed.length;
 }

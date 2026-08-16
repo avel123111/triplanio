@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, Seg, Severity, SearchSelect, Tile, useToast,
+  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -19,6 +19,7 @@ import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
 import { openConsentBanner } from '@/lib/consent';
 import AppHeader from '@/components/AppHeader';
+import Accordion from '@/components/common/Accordion';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
@@ -59,7 +60,49 @@ function fmtDate(iso, locale) {
   });
 }
 
-// ─── Subscription module (4 plan faces) ───────────────────────────────────────
+// floor-exempt: dsshare +23 — две причины, обе — правильный реюз (rule #6), не долг:
+// (1) плашка/каналы вынесены в общие <Plaque>/<ChannelCard> — DS-элементы считаются
+//     ОДИН раз, а не N по числу состояний/каналов (handoff: своя композиция вне
+//     знаменателя, декомпозиция опускает долю);
+// (2) привязанные трипы рисуются КАНОННОЙ строкой трипа `.tr` (та же, что список
+//     путешествий) — она span-based по построению, поэтому реюз реальной строки
+//     вместо самодельных DS-карточек (их Pavel отклонил как «уёбищные») опускает
+//     долю. Апрув Pavel на дизайн-направление ТГ-канала.
+
+// ─── Subscription plaque («Плитка», TRIP-337) ─────────────────────────────────
+// Одна строка внутри карточки: плитка тарифа (цвет живёт ТОЛЬКО здесь и в точке
+// статус-бейджа) → название + статус → дата → сумма справа → ОДНО действие.
+// Отмена и смена тарифа живут внутри «Биллинг-портала» Stripe, поэтому плитка
+// несёт ровно один CTA (решение Pavel). Собрана из примитивов ДС —
+// Card/Row/Col/Grow/Tile/Badge/Btn, без своего namespace и инлайнов.
+
+/** @param {{ tile: any, name: any, badge?: any, sub?: any, price?: any, per?: any, action?: any }} p */
+function Plaque({ tile, name, badge, sub, price, per, action }) {
+  return (
+    <Card>
+      <Row gap="g7" wrap>
+        {tile}
+        {/* id держит content-ширину (`.grow`, min-width auto — НЕ `fit`): на узком
+            это переносит цену+кнопку на след. строку, а не схлопывает id до нуля,
+            от чего цена наезжала на подпись (замер скриншотом на 358). */}
+        <Grow>
+          <Row gap="g4" wrap>
+            <div className="t-heading">{name}</div>
+            {badge}
+          </Row>
+          {sub && <div className="t-meta muted">{sub}</div>}
+        </Grow>
+        {price && (
+          <Col align="a-end" gap="g1">
+            <div className="t-title">{price}</div>
+            {per && <div className="t-meta muted">{per}</div>}
+          </Col>
+        )}
+        {action}
+      </Row>
+    </Card>
+  );
+}
 
 function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awaitingWebhook, portalLoading, onUpgrade, onManage, onRetryDetails, locale, prices }) {
   const { t, fmtMoney } = useI18nFormat();
@@ -71,39 +114,39 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
     const p = prices?.[type];
     return (p && p.unit_amount != null) ? money(p.unit_amount, p.currency) : null;
   };
-  const yearlyMonthlyEq = () => {
-    const p = prices?.account_pro_yearly;
-    return (p && p.unit_amount != null) ? money(Math.round(p.unit_amount / 12), p.currency) : null;
-  };
   const monthlyPrice = priceOf('account_pro_monthly');
   const yearlyPrice = priceOf('account_pro_yearly');
 
   // Exact billed amount from the user's Stripe subscription (preferred over catalog).
   const actual = plan?.actualPrice;
   const actualMoney = (actual && actual.amount != null) ? money(actual.amount, actual.currency) : null;
-  const actualMonthlyEq = (actual && actual.amount != null && actual.interval === 'year')
-    ? money(Math.round(actual.amount / 12), actual.currency) : null;
+
+  // Единый tile активного Pro: залитый --pro-gradient (тот же источник, что несут
+  // .btn--pro и .badge--pro — одна фирменная заливка Pro во всём приложении).
+  const proTile = <Tile size="xl" solid tone="pro" icon="pro" />;
+  const dateB = (iso) => <b>{fmtDate(iso, locale)}</b>;
+  const portalBtn = (
+    <Btn variant="secondary" icon="external" disabled={portalLoading} onClick={onManage}>
+      {portalLoading ? t('account.opening') : t('account.billing_portal')}
+    </Btn>
+  );
 
   // Free is a VERDICT (not a getUserPlan result), so it renders instantly — no
   // spinner gating on the details fetch.
   if (planState === 'no-sub') {
     return (
-      <div className="card">
-        <Grid gap="g8" className="acct-plan">
-          <Col justify="j-center" className="acct-plan__face acct-plan__face--free">
-            <div className="acct-plan__k">{t('account.plan_current')}</div>
-            <div className="acct-plan__v">Free</div>
-          </Col>
-          <Col gap="g6" className="acct-plan__side">
-            <Row wrap gap="g4" className="acct-plan__line">{t('account.free_desc')}</Row>
-            <Row wrap className="acct-plan__acts">
-              <Btn variant="pro" icon="pro" disabled={awaitingWebhook} onClick={onUpgrade}>
-                {t('account.go_to_pro')}
-              </Btn>
-            </Row>
-          </Col>
-        </Grid>
-      </div>
+      <Plaque
+        tile={<Tile size="xl" tone="quiet" icon="lock" />}
+        name="Free"
+        badge={<Badge variant="quiet" size="tiny">{t('account.free_tariff')}</Badge>}
+        sub={t('account.free_desc')}
+        price={money(0, 'usd')}
+        action={(
+          <Btn variant="pro" icon="pro" disabled={awaitingWebhook} onClick={onUpgrade}>
+            {t('account.go_to_pro')}
+          </Btn>
+        )}
+      />
     );
   }
 
@@ -112,111 +155,89 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
   // error.
   if (planState === 'pro-pending') {
     return (
-      <div className="card">
-        <Grid gap="g8" className="acct-plan">
-          <Col justify="j-center" className="acct-plan__face acct-plan__face--mo">
-            <span className="blob" aria-hidden="true" />
-            <div className="acct-plan__k">{t('account.plan_current')}</div>
-            <div className="acct-plan__v">Pro</div>
-          </Col>
-          <Col gap="g6" className="acct-plan__side">
-            {detailsError ? (
-              <>
-                <Row wrap gap="g4" className="acct-plan__line">{t('account.details_unavailable')}</Row>
-                <Row wrap className="acct-plan__acts">
-                  <Btn variant="soft" icon="refresh" disabled={detailsLoading} onClick={onRetryDetails}>
-                    {t('account.details_retry')}
-                  </Btn>
-                </Row>
-              </>
-            ) : (
-              <Row style={{ height: 40 }}>
-                <div className="spin spin--ring" />
-              </Row>
-            )}
-          </Col>
-        </Grid>
-      </div>
+      <Plaque
+        tile={proTile}
+        name="Pro"
+        badge={<Badge variant="success" size="tiny">{t('account.active')}</Badge>}
+        sub={detailsError ? t('account.details_unavailable') : null}
+        action={detailsError
+          ? (
+            <Btn variant="soft" icon="refresh" disabled={detailsLoading} onClick={onRetryDetails}>
+              {t('account.details_retry')}
+            </Btn>
+          )
+          : <div className="spin spin--ring" />}
+      />
     );
   }
 
   if (planState === 'with-sub') {
     return (
-      <div className="card">
-        <Grid gap="g8" className="acct-plan">
-          <Col justify="j-center" className="acct-plan__face acct-plan__face--mo">
-            <span className="blob" aria-hidden="true" />
-            <div className="acct-plan__k">{t('account.pro_monthly_sub')}</div>
-            <div className="acct-plan__v num">{actualMoney || monthlyPrice || 'Pro'}{(actualMoney || monthlyPrice) && <span className="t-body">{t('account.per_month_short')}</span>}</div>
-            <div className="acct-plan__p">{t('account.active')}</div>
-          </Col>
-          <Col gap="g6" className="acct-plan__side">
-            {plan?.subscriptionEnd && (
-              <Row wrap gap="g4" className="acct-plan__line num">{t('account.next_charge')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></Row>
-            )}
-            <Row wrap className="acct-plan__acts">
-              {yearlyPrice && (
-                <Btn variant="soft" icon="arrow" disabled={portalLoading} onClick={onManage}>
-                  {t('account.switch_yearly', { price: yearlyPrice })}
-                </Btn>
-              )}
-              <Btn variant="secondary" icon="external" disabled={portalLoading} onClick={onManage}>
-                {portalLoading ? t('account.opening') : t('account.billing_portal')}
-              </Btn>
-            </Row>
-            <Row align="a-start" className="acct-note"><Icon name="info" size={14} /><span>{t('account.after_cancel_access')}</span></Row>
-          </Col>
-        </Grid>
-      </div>
+      <Plaque
+        tile={proTile}
+        name="Pro"
+        badge={<Badge variant="success" size="tiny">{t('account.active')}</Badge>}
+        sub={plan?.subscriptionEnd ? <>{t('account.next_charge')} {dateB(plan.subscriptionEnd)}</> : null}
+        price={actualMoney || monthlyPrice}
+        per={t('account.per_month_short')}
+        action={portalBtn}
+      />
     );
   }
 
   if (planState === 'annual') {
     return (
-      <div className="card">
-        <Grid gap="g8" className="acct-plan">
-          <Col justify="j-center" className="acct-plan__face acct-plan__face--yr">
-            <span className="blob" aria-hidden="true" />
-            <div className="acct-plan__k">{t('account.pro_yearly_sub')}</div>
-            <div className="acct-plan__v num">{actualMoney || yearlyPrice || 'Pro'}{(actualMoney || yearlyPrice) && <span className="t-body">{t('account.per_year_short')}</span>}</div>
-            {(actualMonthlyEq || yearlyMonthlyEq()) && <div className="acct-plan__p num">{t('account.equivalent')} {actualMonthlyEq || yearlyMonthlyEq()}{t('account.per_month_short')}</div>}
-          </Col>
-          <Col gap="g6" className="acct-plan__side">
-            <Row wrap gap="g4" className="acct-plan__line"><Badge variant="success" icon="check">{t('account.active')}</Badge>{plan?.subscriptionEnd && <span className="num">{t('account.renews')} <b>{fmtDate(plan.subscriptionEnd, locale)}</b></span>}</Row>
-            <Row wrap className="acct-plan__acts">
-              <Btn variant="secondary" icon="external" disabled={portalLoading} onClick={onManage}>
-                {portalLoading ? t('account.opening') : t('account.billing_portal')}
-              </Btn>
-              <Btn variant="link" onClick={onManage}>{t('account.cancel_until_year_end')}</Btn>
-            </Row>
-            <Row align="a-start" className="acct-note"><Icon name="info" size={14} /><span>{t('account.yearly_note')}</span></Row>
-          </Col>
-        </Grid>
-      </div>
+      <Plaque
+        tile={proTile}
+        name="Pro"
+        badge={<Badge variant="success" size="tiny">{t('account.active')}</Badge>}
+        sub={plan?.subscriptionEnd ? <>{t('account.renews')} {dateB(plan.subscriptionEnd)}</> : null}
+        price={actualMoney || yearlyPrice}
+        per={t('account.per_year_short')}
+        action={portalBtn}
+      />
     );
   }
 
   // cancelled
   return (
-    <div className="card">
-      <Grid gap="g8" className="acct-plan">
-        <Col justify="j-center" className="acct-plan__face acct-plan__face--ca">
-          <span className="blob" aria-hidden="true" />
-          <div className="acct-plan__k">{t('account.cancelled_sub')}</div>
-          <div className="acct-plan__v t-subheading">{t('account.pro_cancelled')}</div>
-          {plan?.subscriptionEnd && <div className="acct-plan__p">{fmtDate(plan.subscriptionEnd, locale)}</div>}
-        </Col>
-        <Col gap="g6" className="acct-plan__side">
-          <Row wrap gap="g4" className="acct-plan__line">{t('account.cancelled_desc')}</Row>
-          <Row wrap className="acct-plan__acts">
-            <Btn variant="primary" icon="refresh" disabled={portalLoading} onClick={onManage}>
-              {portalLoading ? t('account.opening') : t('account.resume')}
-            </Btn>
+    <Plaque
+      tile={<Tile size="xl" tone="warning" icon="pro" />}
+      name="Pro"
+      badge={<Badge variant="warning" size="tiny">{t('account.cancelled_sub')}</Badge>}
+      sub={plan?.subscriptionEnd ? t('account.access_until', { date: fmtDate(plan.subscriptionEnd, locale) }) : null}
+      price={actualMoney || monthlyPrice}
+      per={t('account.per_month_short')}
+      action={(
+        <Btn variant="primary" icon="refresh" disabled={portalLoading} onClick={onManage}>
+          {portalLoading ? t('account.opening') : t('account.resume')}
+        </Btn>
+      )}
+    />
+  );
+}
+
+// ─── Reminder channel card (one row: tile + title/desc + trailing control) ────
+// Единый скин канала (Telegram / WhatsApp / Push): плитка → название со статусом
+// → описание → правый элемент (бейдж «Скоро», CTA или chevron). Собран из
+// примитивов ДС, без своего namespace.
+
+/** @param {{ icon: string, tone: import('../design/Tile').TileTone, name: any, desc: any, titleBadge?: any, trailing?: any }} p */
+function ChannelCard({ icon, tone, name, desc, titleBadge, trailing }) {
+  return (
+    <Card radius="btn">
+      <Row gap="g6" wrap>
+        <Tile size="lg" tone={tone} icon={icon} />
+        <Grow fit>
+          <Row gap="g4" wrap>
+            <div className="t-label">{name}</div>
+            {titleBadge}
           </Row>
-          <Row align="a-start" className="acct-note"><Icon name="info" size={14} /><span>{t('account.cancelled_note')}</span></Row>
-        </Col>
-      </Grid>
-    </div>
+          <div className="t-meta muted">{desc}</div>
+        </Grow>
+        {trailing}
+      </Row>
+    </Card>
   );
 }
 
@@ -229,7 +250,6 @@ function ReminderChannels() {
   const { t } = useI18n();
   const nav = useNavigate();
   const [items, setItems] = useState(null); // null = loading
-  const [open, setOpen] = useState(false); // Telegram block collapsed by default
   const [unlinkState, setUnlinkState] = useState(null); // null | { account }
 
   const load = React.useCallback(async () => {
@@ -252,79 +272,72 @@ function ReminderChannels() {
 
   const connected = Array.isArray(items) && items.length > 0;
 
-  // future, non-functional channels (visual placeholders)
-  const soon = (
-    <>
-      <Card radius="md" className="row row--g6 acct-chan acct-chan--soon">
-        <span className="tile tile--lg tile--success"><Icon name="whatsapp" size={20} /></span>
-        <Grow fit className="acct-chan__main">
-          <Row gap="g4" wrap className="row__t">WhatsApp</Row>{/* i18n-ignore: имя бренда, не переводится */}
-          <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
-          <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
-        </Grow>
-      </Card>
-      <Card radius="md" className="row row--g6 acct-chan acct-chan--soon">
-        <span className="tile tile--lg tile--ai"><Icon name="bell" size={20} /></span>
-        <Grow fit className="acct-chan__main">
-          <Row gap="g4" wrap className="row__t">{t('account.channel_push')}</Row>
-          <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
-          <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
-        </Grow>
-      </Card>
-    </>
-  );
-
   return (
-    <div className="card">
-      <div className="acct-subhead">{t('account.channels_title')}</div>
-      <div className="muted t-meta" style={{ margin: '3px 0 16px' }}>{t('account.channels_desc')}</div>
+    <Card>
+      <Col gap="g6">
+        <Col gap="g1">
+          <div className="t-subheading">{t('account.channels_title')}</div>
+          <div className="t-meta muted">{t('account.channels_desc')}</div>
+        </Col>
 
-      <Col>
-        {items === null ? (
-          <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>
-        ) : connected ? (
-          <div>
-            <Card as="button" radius="md" className="acct-chan acct-chan--btn row row--g6" ariaExpanded={open} onClick={() => setOpen(v => !v)}>
-              <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
-              <Grow as="span" fit className="acct-chan__main">
-                <Row as="span" gap="g4" wrap className="row__t">Telegram</Row>{/* i18n-ignore: имя бренда, не переводится */}
-                <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
-                <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
-              </Grow>
-              <Icon name="chev" size={16} className="acct-chan__chev" />
-            </Card>
-            {open && (
-              <div className="acct-tgtrips">
-                <div className="acct-tgtrips__lbl">{t('telegram.linked_trips')}</div>
+        <Col gap="g4">
+          {items === null ? (
+            <div className="t-body muted">{t('common.loading')}</div>
+          ) : connected ? (
+            /* Канал Telegram — раскрывашка <Accordion> (радиус 10, кликабельная
+               шапка с ховером, шеврон вправо→вниз): привязанные трипы ВЛОЖЕНЫ в
+               тело канала. Каждый трип = его КАНОННАЯ строка `.tr` (обложка +
+               название + ТГ-логин получателя), отвязка — иконка справа по центру. */
+            <Accordion
+              icon="telegram" tone="info"
+              title={'Telegram'/* i18n-ignore: имя бренда, не переводится */}
+              subtitle={t('telegram.account_section_subtitle')}
+              badge={<Badge variant="success" size="tiny">{t('telegram.connected')}</Badge>}
+            >
+              <Col gap="g2">
                 {items.map((a) => (
-                  <Row gap="g6" className="acct-tgrow" key={a.id}>
-                    <span className="tile tile--brand"><Icon name="map" size={15} /></span>
-                    <Grow fit>
-                      <Row gap="g4" wrap className="row__t">
-                        <Trunc as="span">{a.trip_title}</Trunc>
-                        <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
+                  <Row gap="g2" key={a.id}>
+                    {/* Строка трипа собрана из ПРИМИТИВОВ ДС (Card/Row/Grow/Cover/каноны),
+                        без triage-классов и инлайна: обложка — <Cover> (градиент классами
+                        по data-cover, фото через <img>), название/логин — каноны .t-*.
+                        Вся строка ведёт в трип; отвязка — <IconBtn> справа (sibling, т.к.
+                        кнопку в кнопку нельзя). `grow--fit` даёт всем карточкам равную
+                        ширину → иконки строго выровнены, длинное название truncate'ится. */}
+                    <Card as="button" radius="btn" interactive className="grow--fit" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
+                      <Row gap="g4">
+                        <Cover gradient={a.cover_gradient} image={a.cover_image_url} />
+                        <Grow fit>
+                          <Trunc className="t-strong">{a.trip_title}</Trunc>
+                          <div className="t-meta muted">{nick(a)}</div>
+                        </Grow>
                       </Row>
-                      <div className="muted t-mono" style={{ marginTop: 1 }}>{nick(a)}</div>
-                    </Grow>
-                    <Btn variant="secondary" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
-                    <Btn variant="secondary" icon="unlink" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
+                    </Card>
+                    <IconBtn icon="unlink" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
                   </Row>
                 ))}
-                <Row gap="g4" className="acct-tghint"><Icon name="info" size={13} /><span>{t('telegram.account_hint')}</span></Row>
-              </div>
-            )}
-          </div>
-        ) : (
-          <Card radius="md" className="row row--g6 acct-chan">
-            <span className="tile tile--lg tile--info"><Icon name="telegram" size={20} /></span>
-            <Grow fit className="acct-chan__main">
-              <Row gap="g4" wrap className="row__t">Telegram</Row>{/* i18n-ignore: имя бренда, не переводится */}
-              <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
-            </Grow>
-            <Btn variant="soft" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
-          </Card>
-        )}
-        {soon}
+                <Row gap="g4" align="a-start"><Icon name="info" size={13} className="muted" /><span className="t-meta muted">{t('telegram.account_hint')}</span></Row>
+              </Col>
+            </Accordion>
+          ) : (
+            <ChannelCard
+              icon="telegram" tone="info" name="Telegram"
+              desc={t('telegram.account_empty_desc')}
+              trailing={<Btn variant="soft" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>}
+            />
+          )}
+
+          <ChannelCard
+            icon="whatsapp" tone="success" name="WhatsApp"
+            desc={t('account.channel_whatsapp_desc')}
+            trailing={<Badge variant="quiet" size="tiny">{t('trip.addon_coming_soon')}</Badge>}
+          />
+          <ChannelCard
+            icon="bell" tone="ai" name={t('account.channel_push')}
+            desc={t('account.channel_push_desc')}
+            trailing={<Badge variant="quiet" size="tiny">{t('trip.addon_coming_soon')}</Badge>}
+          />
+        </Col>
+
         {unlinkState && (
           <TelegramUnlinkDialog
             open={true}
@@ -334,7 +347,7 @@ function ReminderChannels() {
           />
         )}
       </Col>
-    </div>
+    </Card>
   );
 }
 
@@ -743,7 +756,7 @@ export default function ScreenAccount() {
 
           {/* ░░ SUBSCRIPTION ░░ */}
           <section id="acct-plan">
-            <Row as="h2" className="acct-sectitle">{t('account.subscription')} <small>{t('account.pro_monthly_sub')}</small></Row>
+            <Row as="h2" className="acct-sectitle">{t('account.subscription')}</Row>
             <SubscriptionModule
               planState={planState}
               plan={plan}
