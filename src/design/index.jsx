@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
 import { Tile } from './Tile';
+import { Tooltip } from './Tooltip';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -52,6 +53,7 @@ export { Donut } from './Donut';
 // точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
 export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
 export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
+export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
@@ -295,9 +297,15 @@ export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "d
  * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
  *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
  *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
- *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any }} p
+ *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any,
+ *   locked?: boolean, lockedHint?: any }} p
  */
-export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style }) => (
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style, locked, lockedHint }) => {
+  // `locked` — действие недоступно текущей роли (наблюдателю). Не плодит класс:
+  // приглушённый вид даёт существующий `.btn[aria-disabled]`, справа — замок,
+  // клик подавлен, а причина висит тултипом. Один кирпич на все «viewer'у нельзя»
+  // по всему приложению (TRIP-274 Ф2.2).
+  const btn = (
   <button
     // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
     // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
@@ -308,15 +316,16 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
     // их сырые <button type="submit">, а не Btn. Проверено грепом по всему src.
     type="button"
     className={`btn btn--${variant} ${size ? `btn--${size}` : ""} ${block ? "btn--block" : ""} ${className}`}
-    onClick={onClick}
+    onClick={locked ? undefined : onClick}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
     aria-label={ariaLabel}
     aria-pressed={ariaPressed}
     // Полу-disabled: примитив выглядит приглушённым (`.btn[aria-disabled]`), но
     // НЕ получает атрибут `disabled` — остаётся кликабельным (клик раскрывает
-    // валидацию). Заменяет инлайн `opacity` у вызывателя (TRIP-344).
-    aria-disabled={ariaDisabled || undefined}
+    // валидацию). Заменяет инлайн `opacity` у вызывателя (TRIP-344). `locked`
+    // тоже сюда: приглушён, но hover жив — иначе тултип-причина не всплыл бы.
+    aria-disabled={ariaDisabled || locked || undefined}
     title={title}
     style={style}
   >
@@ -331,9 +340,11 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
         плитка, а не только когда есть вторая строка: иначе форма с плиткой и
         однострочной подписью («Добавить активность») схлопнулась бы в центр. */}
     {(tile || sub) ? <span className="gt"><b>{children}</b>{sub && <span>{sub}</span>}</span> : children}
-    {iconRight && !loading && <Icon name={iconRight} size={16} />}
+    {locked ? <Icon name="lock" size={14} /> : (iconRight && !loading && <Icon name={iconRight} size={16} />)}
   </button>
-);
+  );
+  return locked && lockedHint ? <Tooltip content={lockedHint}>{btn}</Tooltip> : btn;
+};
 
 // ----- Badge -----
 /** @param {{ variant?: string, size?: string, icon?: string, children?: any, style?: any }} p */
