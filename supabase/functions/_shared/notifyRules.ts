@@ -148,6 +148,18 @@ export const INAPP: Record<string, (d: NotifyData) => InAppSpec | null> = {
   // нему in-app не пишет, внешняя доставка идёт как прежде.
 };
 
+/**
+ * События с ВНЕШНИМ каналом (email через n8n/Resend). Только для них `notify`
+ * шлёт конверт в n8n; всё остальное — edge-only in-app, БЕЗ сетевого хопа (после
+ * TRIP-374 in-app пишет edge, а in-app-only ветки в n8n удалены — POST по ним
+ * дал бы 404). Сегодня письма шлют ровно два события:
+ *   • invite_created — приглашение (письмо приглашённому + in-app);
+ *   • invite_resent  — повторная отправка приглашения (только письмо).
+ * (welcome-письмо на регистрацию живёт на PG-триггере в n8n, не на этом шве.)
+ * Добавится Telegram/новый канал — событие дописывается сюда.
+ */
+export const EXTERNAL: ReadonlySet<string> = new Set(['invite_created', 'invite_resent']);
+
 /** Собрать готовые строки для вставки: общий spec × получатели. Получатель без
  *  `id` (офлайн/битый) отбрасывается; нет спеки или нет получателей → []. */
 export function buildInAppRows(event: string, data: NotifyData): Array<InAppSpec & { user_id: string; read: boolean }> {
