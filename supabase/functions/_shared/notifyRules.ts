@@ -82,6 +82,20 @@ function memberEventSpec(
   };
 }
 
+/** Системная строка (подписка/оплата): автора-человека нет (created_by null →
+ *  без аватара), текст без параметров, вне трипа. */
+function systemSpec(type: string, titleKey: string, messageKey: string): InAppSpec {
+  return {
+    type,
+    i18n_title_key: titleKey,
+    i18n_message_key: messageKey,
+    i18n_params: {},
+    trip_id: null,
+    trip_member_id: null,
+    created_by: null,
+  };
+}
+
 /**
  * Реестр по имени события. Билдер отдаёт ОБЩУЮ строку (одна на событие) либо
  * `null`, если у события нет in-app-канала. Отсутствие ключа = нет in-app.
@@ -126,26 +140,9 @@ export const INAPP: Record<string, (d: NotifyData) => InAppSpec | null> = {
     created_by: actorId(d),
   }),
 
-  // Подписка — системные строки: автора-человека нет (created_by null → без
-  // аватара), текст без параметров.
-  pro_activated: () => ({
-    type: 'pro_activated',
-    i18n_title_key: 'notif.tpl_pro_activated_title',
-    i18n_message_key: 'notif.tpl_pro_activated_msg',
-    i18n_params: {},
-    trip_id: null,
-    trip_member_id: null,
-    created_by: null,
-  }),
-  pro_payment_failed: () => ({
-    type: 'pro_payment_failed',
-    i18n_title_key: 'notif.tpl_pro_payment_failed_title',
-    i18n_message_key: 'notif.tpl_pro_payment_failed_msg',
-    i18n_params: {},
-    trip_id: null,
-    trip_member_id: null,
-    created_by: null,
-  }),
+  // Подписка — системные строки (см. systemSpec): без автора и без параметров.
+  pro_activated: () => systemSpec('pro_activated', 'notif.tpl_pro_activated_title', 'notif.tpl_pro_activated_msg'),
+  pro_payment_failed: () => systemSpec('pro_payment_failed', 'notif.tpl_pro_payment_failed_title', 'notif.tpl_pro_payment_failed_msg'),
 
   // invite_resent — только email (в реестре отсутствует намеренно): notify по
   // нему in-app не пишет, внешняя доставка идёт как прежде.

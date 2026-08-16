@@ -130,7 +130,8 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     // North Star: did this join make the trip collaborative (owner + 1st member = 2)?
     await emitTripReached2(supabaseAdmin, trip.id, user.id);
 
-    // TRIP-356: announce the join; n8n notifies the trip owner.
+    // TRIP-356 / TRIP-374: notify writes the owner's in-app row in edge and hands
+    // n8n the envelope for external channels.
     if (trip.created_by && trip.created_by !== user.id) {
       // Снимка членства нет (standalone) → резолвер дочитает member по (trip_id, actor_id).
       await notify('trip_member_joined', { trip_id: trip.id, recipient_id: trip.created_by, actor_id: user.id }, { db: supabaseAdmin });

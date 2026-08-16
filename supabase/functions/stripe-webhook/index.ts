@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
                 value: (session.amount_total || 0) / 100, currency: session.currency || 'usd',
                 transaction_id: session.id,
               });
-              // TRIP-356: announce the event; n8n resolves text and delivers the notification.
+              // TRIP-356 / TRIP-374: notify writes the in-app row in edge; n8n resolves text for external channels.
               await notify('pro_activated', { recipient_id: user_id }, { db: supabaseAdmin });
             }
           }
@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
             providerMeta: nextAttemptIso ? { mode: 'set', nextPaymentAttempt: nextAttemptIso } : { mode: 'leave' },
           }), { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
-        // TRIP-356: announce the event; n8n resolves text and delivers the notification.
+        // TRIP-356 / TRIP-374: notify writes the in-app row in edge; n8n resolves text for external channels.
         await notify('pro_payment_failed', { recipient_id: resolved.userId }, { db: supabaseAdmin });
         break;
       }

@@ -1,9 +1,10 @@
 /**
- * ЭФФЕКТЫ ШВА (`afterWrite`) — I/O-побочка действий, ВНЕШНЯЯ для БД: `emit` в n8n,
- * teardown Storage/Telegram, отметка уведомления прочитанным (TRIP-409, эпик
- * TRIP-374). Живёт ОТДЕЛЬНО от чистых спеков (`resources/*.ts`) НАМЕРЕННО: `emit`
- * тянет `sentry.ts`/`analytics.ts`, а те читают `Deno.env` на загрузке модуля —
- * значит файл, достижимый по импорту из `REGISTRY`, уронил бы `deno test` (он
+ * ЭФФЕКТЫ ШВА (`afterWrite`) — I/O-побочка действий: `notify` (in-app-запись в
+ * edge + конверт в n8n на внешние каналы), teardown Storage/Telegram, отметка
+ * уведомления прочитанным (TRIP-409, эпик TRIP-374). Живёт ОТДЕЛЬНО от чистых
+ * спеков (`resources/*.ts`) НАМЕРЕННО: `notify` тянет `sentry.ts`/`analytics.ts`,
+ * а те читают `Deno.env` на загрузке модуля — значит файл, достижимый по импорту
+ * из `REGISTRY`, уронил бы `deno test` (он
  * идёт без `--allow-env`). Поэтому эффекты сюда, а `mutate.ts` (уже I/O) зовёт их
  * по ключу `slug/action`. Дверь остаётся тупой: диспетчер здесь, не в движке.
  *
@@ -76,9 +77,10 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     }
   },
 
-  // Регистрация связала pending-инвайты (TRIP-411): по каждому связанному — n8n
-  // уведомляет приглашённого (получатель = сам новый юзер). Заменяет слепой
-  // `INSERT notifications` из удалённого триггера `link_pending_invites`. Только
+  // Регистрация связала pending-инвайты (TRIP-411): по каждому связанному —
+  // уведомляем приглашённого (получатель = сам новый юзер; in-app пишет notify в
+  // edge, n8n добирает внешние каналы). Заменяет слепой `INSERT notifications` из
+  // удалённого триггера `link_pending_invites`. Только
   // при created (повтор из двух вкладок уже связал на 1-м вызове). Best-effort.
   'account/register': async ({ result, actor, db }) => {
     const data = asRow(result);
@@ -90,7 +92,8 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     }
   },
 
-  // Приглашение создано/реактивировано (declined→pending) — n8n шлёт нотиф+email.
+  // Приглашение создано/реактивировано (declined→pending) — in-app пишет notify в
+  // edge, n8n шлёт email.
   'trip-member/invite': async ({ result, scopeValue, actor, db }) => {
     const member = asRow(result);
     await notify('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
@@ -129,8 +132,9 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     }
   },
 
-  // Участник вышел сам — teardown + уведомление владельцу/админам (n8n резолвит
-  // аудиторию по trip_member_left). Блок-лист НЕ пишем (ушёл добровольно).
+  // Участник вышел сам — teardown + уведомление владельцу/админам (аудиторию
+  // резолвит резолвер события в edge, in-app пишет notify, n8n добирает внешнее).
+  // Блок-лист НЕ пишем (ушёл добровольно).
   'trip-member-self/leave': async ({ loadedRow, db }) => {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
