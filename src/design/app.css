@@ -8321,7 +8321,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    Переиспользуемый примитив ДС: «замок» недоступного действия у наблюдателя, дальше — карта и т.п.
    prefix-exempt: tt — новый примитив ДС «тултип», глобальный текст-хинт, апрув Pavel TRIP-274
    floor-exempt: namespaces +1 — новая канон-семья ДС tt (тултип), общий примитив, апрув Pavel TRIP-274
-   floor-exempt: classes +4 — .tt · .tt__b · .tt__b--top · .tt__b--bottom, примитив ДС, апрув Pavel TRIP-274 */
+   floor-exempt: classes +4 — .tt · .tt__b · .tt__b--top · .tt__b--bottom, примитив ДС, апрув Pavel TRIP-274
+   floor-exempt: layout +1 — .tt несёт свою раскладку (inline-flex/relative), канон-кубик ДС, апрув Pavel TRIP-274 */
 .tt { position: relative; display: inline-flex; }
 .tt__b {
   position: absolute; left: 50%; transform: translateX(-50%);
@@ -8335,3 +8336,27 @@ a.doc-row__n:hover{ color: var(--brand); }
 .tt__b--top { bottom: calc(100% + var(--sp-3)); }
 .tt__b--bottom { top: calc(100% + var(--sp-3)); }
 .tt:hover .tt__b, .tt:focus-within .tt__b { opacity: 1; }
+
+/* visual-diff-exempt для нового примитива тултип (.tt) — каждое объявление
+   объявлено новым; примитив ДС, апрув Pavel TRIP-274 (Ф2.2):
+   visual-diff-exempt: .tt__b--bottom top — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b--top bottom — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b background — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b border-radius — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b color — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b font-size — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b left — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b line-height — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b max-width — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b opacity — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b padding — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b pointer-events — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b position — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b text-align — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b transform — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b transition — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b white-space — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b z-index — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt display — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt position — новый примитив тултип ДС, апрув Pavel TRIP-274
+ */
