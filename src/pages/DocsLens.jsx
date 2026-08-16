@@ -596,11 +596,12 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
 
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
-export default function DocsLens({ tripId, isLoading: parentLoading, members = [], myRole, profiles = {} }) {
+export default function DocsLens({ tripId, isLoading: parentLoading, members = [], canEdit = false, profiles = {} }) {
   const { t }    = useI18n();
   const { user } = useAuth();
-  // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
-  const readOnly = myRole === 'viewer';
+  // Право редактировать — единая лестница доступа (ступень editor), решено выше
+  // в TripView. Read-only = не editor; серверная защита — edge/RLS _can_edit_trip.
+  const readOnly = !canEdit;
   const [addDocVis,    setAddDocVis]    = useState(null); // null | { defaultVisibility }
   const [detailDoc,    setDetailDoc]    = useState(null); // null | doc object
   const [searchQuery,  setSearchQuery]  = useState('');

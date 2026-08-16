@@ -72,7 +72,7 @@ export default function TripShell({
   tripId,
   trip,
   section = DEFAULT_SECTION,
-  myRole,
+  myStep,
   isOwner,
   isPro,
   proResolved = true,
@@ -145,7 +145,7 @@ export default function TripShell({
   const flush = sectionById(section)?.flush === true;
 
   const menuProps = {
-    tripId, trip, lens: section, isPro, proResolved, isOwner, myRole,
+    tripId, trip, lens: section, isPro, proResolved, isOwner, myStep,
     onUpgrade, onProInfo,
   };
 

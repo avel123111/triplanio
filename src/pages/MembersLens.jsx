@@ -2,7 +2,7 @@
 /**
  * MembersLens - members tab inside TripView.
  *
- * Props: tripId, members, profiles, trip, user, role, isLoading, queryClient
+ * Props: tripId, members, profiles, trip, user, canManage, isLoading, queryClient
  *
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
@@ -268,7 +268,7 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
 
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
-export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, role: myRole, isLoading, queryClient }) {
+export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, canManage = false, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -278,7 +278,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   const [promoteState, setPromoteState] = useState(null); // null | { member }
   const [roleState, setRoleState] = useState(null); // null | { member }
 
-  const canManage = myRole === 'owner' || myRole === 'admin';
+  // Управление участниками — ступень editor, решено выше в TripView (clearsStep).
 
   function refresh() {
     // B5: invalidate both content (members list) and shell (header avatar row)

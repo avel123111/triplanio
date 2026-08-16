@@ -451,7 +451,7 @@ function ApproverRow({ member, profiles, locked }) {
 
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient, profiles = {} }) {
+export default function SettingsLens({ tripId, trip, members = [], myRole, canEdit = false, isPro, isProTrip, proResolved = true, queryClient, profiles = {} }) {
   // Profiles ride in the trip content bundle (getTripDetails), handed down by
   // TripView — no separate profile-fetch hop for the approver list.
   const { t } = useI18n();
@@ -480,7 +480,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // Viewers get Settings in read-only mode: identity fields muted, management
   // cards hidden, only "Leave trip" stays active (TRIP-137). NOTE: this is a UI
   // guard only — server-side write protection is TRIP-136 (RLS), not this.
-  const readOnly = myRole === 'viewer';
+  // Право — единая лестница доступа (ступень editor), решено выше в TripView.
+  const readOnly = !canEdit;
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);

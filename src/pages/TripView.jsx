@@ -41,7 +41,8 @@ import EditLens from './EditLens';
 import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit } from '@/lib/members';
+import { resolveMyRole } from '@/lib/members';
+import { resolveMyStep, clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
@@ -852,6 +853,9 @@ export default function TripView() {
   // the SOLE source of ownership and wins over any stray trip_members row
   // (TRIP-143). Same helper as the structure editor so the two can't drift.
   const myRole = resolveMyRole(members, trip, user);
+  // Ступень доступа — ЕДИНЫЙ гейт прав (зеркало сервера), см. src/lib/tripStep.js.
+  // `myRole` остаётся только для показа (ярлык, аналитика); правами рулит `myStep`.
+  const myStep = resolveMyStep(members, trip, user);
 
   const stream = useMemo(
     () => buildEventStream(t, hotels, activities, transfers, visits, services),
@@ -863,9 +867,9 @@ export default function TripView() {
   // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
   // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
   const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
-  // Edit Mode (structure editor) gate: anyone but a viewer. Past trips are no
+  // Edit Mode (structure editor) gate: ступень editor. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
-  const canEditMode = roleCanEdit(myRole);
+  const canEditMode = clearsStep(myStep, 'editor');
 
   // trip_opened (once per trip) + associate events with the trip GROUP so the
   // North Star ("active trips with ≥2 participants") is measured per-trip. Group
@@ -904,22 +908,22 @@ export default function TripView() {
   // Что реально показать: недоступная секция (выключенный аддон, роль без права)
   // и несуществующая (`?lens=` с опечаткой) одинаково падают на дефолт. Правило
   // живёт в реестре секций — тут только его применение.
-  const shownLens = resolveSection(lens, trip, myRole);
+  const shownLens = resolveSection(lens, trip, myStep);
 
   // «+»-меню трипа: дескрипторы действий, которые собирает экран. Гейт единый —
-  // `roleCanEdit` (+ аддон бюджета для траты/категории); «Категория» — только на
+  // ступень editor (+ аддон бюджета для траты/категории); «Категория» — только на
   // линзе Бюджет. Обработчики открывают трип-level диалоги IN PLACE (см. overlays),
   // диалоги рендерит экран, сам «+» их не импортирует.
   const addActions = useMemo(() => {
     const budgetOn = isAddonEnabled(trip, 'budget');
-    const canEdit = roleCanEdit(myRole);
+    const canEdit = clearsStep(myStep, 'editor');
     return [
       budgetOn && canEdit && { id: 'expense', icon: 'wallet', tone: 'brand', labelKey: 'budget.manual_expense', onSelect: () => setAddModal('expense') },
       shownLens === 'budget' && budgetOn && canEdit && { id: 'category', icon: 'grid', tone: 'info', labelKey: 'budget.add_category', onSelect: () => setAddModal('category') },
       canEdit && { id: 'docs', icon: 'file', tone: 'hotel', labelKey: 'doc.add_doc', onSelect: () => setAddModal('docs') },
       canEdit && { id: 'members', icon: 'users', tone: 'activity', labelKey: 'members.invite', onSelect: () => setAddModal('members') },
     ].filter(Boolean);
-  }, [trip, myRole, shownLens]);
+  }, [trip, myStep, shownLens]);
   useEffect(() => {
     setAddActions(addActions);
     return () => setAddActions(null);
@@ -1152,7 +1156,7 @@ export default function TripView() {
     {/* Floating chat widget: requires the chat addon AND the trip-level
         "chat widget" display toggle (default ON). The full Chat lens stays
         reachable from the sidebar regardless of this toggle. */}
-    {!isPhone && isSectionAvailable('chat', trip, myRole) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
+    {!isPhone && isSectionAvailable('chat', trip, myStep) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
       <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} ownerId={trip?.created_by} />
     )}
     </>
@@ -1163,7 +1167,7 @@ export default function TripView() {
       tripId={tripId}
       trip={trip}
       section={shownLens}
-      myRole={myRole}
+      myStep={myStep}
       isOwner={isOwner}
       isPro={tripIsPro}
       proResolved={tripProResolved}
@@ -1273,7 +1277,7 @@ export default function TripView() {
                   visits={visits}
                   transfers={transfers}
                   trip={trip}
-                  isViewer={myRole === 'viewer'}
+                  isViewer={!canEditMode}
                   isLoading={loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
@@ -1311,7 +1315,7 @@ export default function TripView() {
               cityVisits={visits}
               isLoading={loadingContent}
               isPro={tripIsPro}
-              role={myRole}
+              canEdit={canEditMode}
               queryClient={qc}
               onOpenSource={(kind, id) => setEventView({ open: true, kind, id, warning: null })}
             />
@@ -1323,7 +1327,7 @@ export default function TripView() {
               profiles={memberProfiles}
               trip={trip}
               user={user}
-              role={myRole}
+              canManage={canEditMode}
               isLoading={loadingContent}
               queryClient={qc}
             />
@@ -1342,7 +1346,7 @@ export default function TripView() {
               isLoading={loadingContent}
               members={members}
               profiles={memberProfiles}
-              myRole={myRole}
+              canEdit={canEditMode}
             />
           )}
           {/* Структурный редактор. До TRIP-349 — отдельный роут /trip/:id/edit со
@@ -1373,6 +1377,7 @@ export default function TripView() {
               members={members}
               profiles={memberProfiles}
               myRole={myRole}
+              canEdit={canEditMode}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
               proResolved={tripProResolved}

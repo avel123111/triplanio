@@ -37,7 +37,7 @@ import { currencySymbol } from '@/lib/budget/currencies';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
 import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constants';
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
-import { countTripMembers, roleCanEdit } from '@/lib/members';
+import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
@@ -479,13 +479,14 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, role, queryClient, onOpenSource }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, canEdit = false, queryClient, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   const isMobile = useIsMobile();
-  // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
-  // UI прячет мутации, чтобы прямые записи не падали молчаливым 403.
-  const readOnly = !roleCanEdit(role);
+  // Право редактировать — единая лестница доступа (ступень editor), решено выше
+  // в TripView через clearsStep. UI прячет мутации, чтобы прямые записи не падали
+  // молчаливым 403 (серверная защита — edge/RLS _can_edit_trip, TRIP-124).
+  const readOnly = !canEdit;
   // Pro-отказ записи открывает единый app-level апселл (как SettingsLens): владелец
   // видит апгрейд, участник — «подключает владелец». Контекст владельца есть только
   // здесь (у диалогов его нет), поэтому хендлер даём вниз пропом `onProRefusal`.
