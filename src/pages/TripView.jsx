@@ -229,6 +229,23 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
     });
   }
 
+  // Carry the optimistic-pending flag from the source booking onto its timeline
+  // event(s), so a just-created booking renders dimmed until the write reconciles
+  // (the row still carries `_pending` — swap on success clears it). Hotel events
+  // embed hotelId; the others use the source id directly as e.id.
+  const pending = {
+    hotel:    new Set(hotels.filter(h => h._pending).map(h => h.id)),
+    activity: new Set(activities.filter(a => a._pending).map(a => a.id)),
+    transfer: new Set(transfers.filter(tr => tr._pending).map(tr => tr.id)),
+    service:  new Set((services || []).filter(s => s._pending).map(s => s.id)),
+  };
+  for (const e of events) {
+    if (e.hotelId) e._pending = pending.hotel.has(e.hotelId);
+    else if (e.type === 'activity') e._pending = pending.activity.has(e.id);
+    else if (e.type === 'transfer' || e.type === 'flight') e._pending = pending.transfer.has(e.id);
+    else if (e.type === 'car-pickup' || e.type === 'car-return') e._pending = pending.service.has(e.id);
+  }
+
   return events
     .filter(e => e.date)
     .sort((a, b) => a._ms - b._ms);

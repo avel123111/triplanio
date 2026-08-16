@@ -860,7 +860,7 @@ export function StreamEventRow({ e, onClick }) {
             Была сырым <button>, из-за чего скин (переехавший с `.tl3-card` на Card)
             её не касался — карточка облезала до прозрачного текста. `.tl3-card--tr`
             остаётся раскладкой коннектора (город→режим→город). */}
-        <Card as="button" radius="lg" interactive className="tl3-card tl3-card--tr" onClick={onClick}>
+        <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card tl3-card--tr" onClick={onClick}>
           <div className="rv-end">
             <b>{e.from || "—"}</b>
             {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
@@ -887,7 +887,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <Card as="button" radius="lg" interactive className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
+      <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>

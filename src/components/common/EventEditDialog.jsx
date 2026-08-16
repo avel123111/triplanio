@@ -857,7 +857,7 @@ export default function EventEditDialog({
     const cacheKind = OPT_CACHE[currentKind];
     const payload = buildCurrentPayload();
     const tempId = 'tmp-' + Math.random().toString(36).slice(2);
-    const row = { id: tempId, trip_id: tripId, created_by: user?.id, ...payload };
+    const row = { id: tempId, trip_id: tripId, created_by: user?.id, _pending: true, ...payload };
     // Committing optimistically and the dialog unmounts now — mark it so the
     // unmount sweep won't delete the staged files this create references (TRIP-117);
     // on failure runOptimism's onError sweeps them explicitly.

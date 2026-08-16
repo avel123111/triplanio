@@ -445,7 +445,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
       as="button"
       radius="md"
       interactive
-      aria-busy={pending || undefined}
+      ariaBusy={pending || undefined}
       className="col dl-card"
       onClick={() => { if (!pending) onOpenDetail?.(doc); }}>
 
