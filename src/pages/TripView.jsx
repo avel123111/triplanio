@@ -296,6 +296,26 @@ function RightRailSkeleton() {
   );
 }
 
+// Скелетон структурного редактора: левая колонка маршрута = вертикальный список
+// карточек-городов (плитка + название + степпер ночей), а не карточки ленты —
+// иначе форма заглушки не совпадала с реальным экраном (TRIP-337 visual-fixes).
+function SkeletonEditor() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i} radius="lg" pad="none" style={{ padding: 14, display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Skeleton w={40} h={40} r={'var(--r-sm)'} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Skeleton w="55%" h={15} r={5} />
+            <Skeleton w="35%" h={12} r={5} />
+          </div>
+          <Skeleton w={96} h={32} r={'var(--r-pill)'} />
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 // Build a sorted array of all days between start and end (inclusive), 'yyyy-MM-dd'
 function buildDayList(startIso, endIso) {
   const days = [];
@@ -1364,8 +1384,9 @@ export default function TripView() {
             editGate === 'loading'
               // Скелетон в геометрии самой секции (`.ts-grid` — левая колонка
               // маршрута, правая под карту), а не общий: тело секции flush, и
-              // padded-заглушка прыгнула бы при резолве.
-              ? <div className="ts-grid"><div className="ts-leftscroll"><SkeletonTimeline /></div></div>
+              // padded-заглушка прыгнула бы при резолве. Форма — карточки-города
+              // редактора (SkeletonEditor), а не карточки ленты (TRIP-337).
+              ? <div className="ts-grid"><div className="ts-leftscroll"><SkeletonEditor /></div></div>
               : editGate === 'ok'
                 ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
                 : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
@@ -1381,6 +1402,7 @@ export default function TripView() {
               isProTrip={!!trip?.is_pro_trip}
               proResolved={tripProResolved}
               queryClient={qc}
+              isLoading={loadingContent}
             />
           )}
           {shownLens === 'chat' && (

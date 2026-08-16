@@ -963,7 +963,6 @@ h4,
 .tmk__core,
 .tmk__h,
 .s22mk__core,
-.map-skel,
 .ring__c .l,
 .wmini .sub,
 .nextcard__tx .rt,
@@ -6319,7 +6318,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    поэтому тело выровнено под шапку по горизонтали. TRIP-337 visual-fixes.
    visual-diff-exempt: .ai-blk-hd padding — координация на токен --sp-6 (12), было 11/13
    visual-diff-exempt: .ai-blk-body padding — координация на токен --sp-6 (12) по горизонтали/низу, было 13/12 */
-.ai-blk-hd{display:flex;align-items:center;gap:var(--sp-5);padding:var(--sp-6);}
+.ai-blk-hd{display:flex;align-items:center;gap:var(--sp-5);padding:var(--sp-5) var(--sp-6);}
 /* .ai-blk-ic УДАЛЁН (TRIP-391 объект 3): значок-плитка AI-блока = <Tile tone="ai"
    solid size="sm"> (солид-ai градиент + белый значок, канон .tile--solid.tile--ai).
    Сторона 30→ступень sm 28 (кегль 15→--tile-ic sm 15 точь-в-точь), принято глазом
@@ -6351,22 +6350,20 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    Схождение размеров 26 → 32 остаётся за пересадкой шапки на общий ряд. */
 .ai-blk-x{width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:var(--r-sm);flex:none;}
 .ai-blk-x:hover{background:var(--ai-soft);color:var(--ai-ink);}
-.ai-blk-body{padding:0 var(--sp-6) var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-4);}
+.ai-blk-body{padding:0 var(--sp-5) var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);}
 /* Раскрытие/скрытие тела блока: шапка структурно НЕИЗМЕННА между свёрнутым
    (`available`) и развёрнутым (`idle`/`uploaded`) — плитка + заголовок + шеврон
-   стоят всегда, поэтому при open/close ничего не «дёргается». Тело едет обёрткой
-   `.ai-blk__reveal` через grid-template-rows 0fr→1fr (анимируется в обе стороны,
-   без max-height-магии). Шеврон в свёрнутом смотрит вниз (rotate 180). TRIP-337.
-   `.ai-blk--pill` УДАЛЁН: свёрнутое состояние больше не отдельный кликабельный
-   pill (`<Card as="button">`), а та же оболочка со свёрнутым телом — клик держит
-   шапка (`role="button"`), как в развёрнутом.
-   floor-exempt: classes +1 — нетто: +.ai-blk--open +.ai-blk__reveal −.ai-blk--pill; статичная шапка + анимация раскрытия AI-блока, апрув Pavel */
-.ai-blk__reveal{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease-out);}
-.ai-blk--open .ai-blk__reveal{grid-template-rows:1fr;}
-.ai-blk__reveal > .ai-blk-body{overflow:hidden;min-height:0;}
+   стоят всегда, поэтому при open/close ничего не «дёргается». Тело рендерится
+   ТОЛЬКО в открытом состоянии (в свёрнутом его в DOM нет — ничего не «торчит»),
+   появляется лёгкой анимацией `.ai-blk-body--in`. Шеврон в свёрнутом смотрит вниз
+   (rotate 180). `.ai-blk--pill` УДАЛЁН: свёрнутое состояние больше не отдельный
+   кликабельный pill (`<Card as="button">`), а та же оболочка без тела — клик
+   держит шапка (`role="button"`), как в развёрнутом. TRIP-337.
+   floor-exempt: classes +1 — нетто: +.ai-blk--open +.ai-blk-body--in −.ai-blk--pill; статичная шапка + условный рендер тела AI-блока, апрув Pavel */
+.ai-blk-body--in{animation:fadeUp .18s var(--ease-out);}
 .ai-blk-x svg{transition:transform .2s var(--ease-out);}
 .ai-blk:not(.ai-blk--open) .ai-blk-x svg{transform:rotate(180deg);}
-@media (prefers-reduced-motion: reduce){.ai-blk__reveal{transition:none;}.ai-blk-x svg{transition:none;}}
+@media (prefers-reduced-motion: reduce){.ai-blk-body--in{animation:none;}.ai-blk-x svg{transition:none;}}
 /* Строка вложения переехала на общий `.doc-row` + `--ai` (TRIP-321 Ф14.5).
    Прежний комментарий здесь утверждал ровно обратное - «AI-tinted, distinct
    from generic .doc-row»; эта «осознанная разница» на замере оказалась 1px по
@@ -6377,7 +6374,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    вместо её 6px - зазор до разделителя держит `margin-top` у `.ai-input-row`),
    AI-тон рамки, свой радиус и отступ. Кольца фокуса у блока не было вообще ни
    одного правила - теперь канонное, как у любого поля. */
-.ai-input{flex-direction:column;align-items:stretch;gap:0;border-color:var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:var(--sp-5);}
+.ai-input{flex-direction:column;align-items:stretch;gap:0;border-color:var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:var(--sp-4);}
 .ai-input .textarea{min-height:64px;resize:none;}
 .ai-input-row{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line);}
 .ai-blk-hint{ color:var(--muted-2); }
@@ -7199,7 +7196,8 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* бордер/радиус как у канон-поверхности; фон остаётся wash (под картой). TRIP-326: тень снята вместе со стеклом */
 .mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--line); }
-.map-skel { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); gap: 8px; z-index: 1; }
+/* `.map-skel` УДАЛЁН (TRIP-337 visual-fixes): заглушка карты (Trips/Stats) на
+   канон <Skeleton> (шиммер ДС), как остальные скелетоны. */
 
 /* скин — см. co-селектор ролей поверхностей в начале файла (TRIP-189); тут только раскладка */
 .wmini { padding: 18px 20px; position: relative; overflow: hidden; }

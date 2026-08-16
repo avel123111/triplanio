@@ -155,7 +155,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
         <div className="mapwrap">
           {showMap
             ? <StatsMap points={points} colorScheme={scheme} pins={false} />
-            : <div className="map-skel"><Icon name="globe" /><div>{t('stats.map_loading')}</div></div>}
+            : <Skeleton style={{ position: 'absolute', inset: 0 }} h="100%" r={0} />}
         </div>
         <div className="rail">
           <WorldMini

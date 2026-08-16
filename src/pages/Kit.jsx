@@ -90,7 +90,7 @@ const TX = {
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
     'sheet-row': 'Действие во всю ширину; danger — деструктивное.',
-    'ai-blk': 'Распознавание брони. Шапка статична; тело раскрывается/скрывается анимацией (grid-rows).',
+    'ai-blk': 'Распознавание брони. Шапка статична; тело есть в DOM только в открытом (появляется анимацией).',
     'time': 'Вылет сверху, прибытие снизу (в ленте у события-переезда).',
     'row': 'Флекс-ряд: зазор (ступени --sp-N) и оси выравнивания/потока.',
     'col': 'Флекс-колонка: зазор и оси.',
@@ -692,7 +692,7 @@ const RECIPES = {
     // EventAiBlock). Витрина рисует ЧЕРЕЗ Card, а не сырым <button> — иначе образец
     // показывал бы ai-blk без его поверхности (ровно класс дыры, что был у трансфера).
     // TRIP-337 visual-fixes: шапка структурно НЕИЗМЕННА между свёрнутым и развёрнутым
-    // (плитка + заголовок + шеврон стоят всегда), тело едет обёрткой `.ai-blk__reveal`.
+    // (плитка + заголовок + шеврон стоят всегда), тело есть в DOM только в открытом.
     const head = (
       <div className="ai-blk-hd">
         <Tile tone="ai" solid size="sm"><Icon name="sparkles" size={15} /></Tile>
@@ -701,24 +701,22 @@ const RECIPES = {
       </div>
     );
     const body = (
-      <div className="ai-blk__reveal">
-        <div className="ai-blk-body">
-          <InputGroup className="ai-input">
-            <Textarea rows={2} placeholder={TX.aiPh} readOnly />
-            <div className="ai-input-row">
-              <Btn variant="secondary" icon="upload">{TX.aiUpload}</Btn>
-              <div className="grow" />
-              <Btn variant="ai" icon="sparkles">{TX.aiTitle}</Btn>
-            </div>
-          </InputGroup>
-        </div>
+      <div className="ai-blk-body ai-blk-body--in">
+        <InputGroup className="ai-input">
+          <Textarea rows={2} placeholder={TX.aiPh} readOnly />
+          <div className="ai-input-row">
+            <Btn variant="secondary" icon="upload">{TX.aiUpload}</Btn>
+            <div className="grow" />
+            <Btn variant="ai" icon="sparkles">{TX.aiTitle}</Btn>
+          </div>
+        </InputGroup>
       </div>
     );
     return [{
-      label: 'свёрнуто · развёрнуто (шапка статична; тело раскрывается анимацией grid-rows)',
+      label: 'свёрнуто · развёрнуто (шапка статична; тело есть в DOM ТОЛЬКО в открытом, появляется анимацией)',
       items: [
-        it('ai-blk (свёрнуто)', <Card tone="ai" className="ai-blk">{head}{body}</Card>, true),
-        it('ai-blk ai-blk--open (развёрнуто)', <Card tone="ai" className="ai-blk ai-blk--open">{head}{body}</Card>, true),
+        it('ai-blk (свёрнуто — только шапка)', <Card tone="ai" pad="none" className="ai-blk">{head}</Card>, true),
+        it('ai-blk ai-blk--open (развёрнуто)', <Card tone="ai" pad="none" className="ai-blk ai-blk--open">{head}{body}</Card>, true),
       ],
     }];
   },

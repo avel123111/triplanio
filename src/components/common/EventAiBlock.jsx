@@ -191,7 +191,7 @@ export default function EventAiBlock({
   // and use the parser before the check lands.
   if (state === 'checking') {
     return (
-      <Card tone="ai" ariaBusy className="ai-blk">
+      <Card tone="ai" ariaBusy pad="none" className="ai-blk">
         <div className="ai-blk-hd">
           <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
@@ -206,7 +206,7 @@ export default function EventAiBlock({
 
   if (state === 'locked') {
     return (
-      <Card tone="ai" locked className="ai-blk">
+      <Card tone="ai" locked pad="none" className="ai-blk">
         <div className="ai-blk-hd">
           <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
@@ -224,7 +224,7 @@ export default function EventAiBlock({
 
   if (state === 'parsing') {
     return (
-      <Card tone="ai" className="ai-blk">
+      <Card tone="ai" pad="none" className="ai-blk">
         <div className="ai-blk-hd">
           <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
           <div className="ai-blk-ti">
@@ -239,7 +239,7 @@ export default function EventAiBlock({
 
   if (state === 'parsed') {
     return (
-      <Card tone="ai" parsed className="ai-blk">
+      <Card tone="ai" parsed pad="none" className="ai-blk">
         <div className="ai-blk-hd">
           <Tile tone="success" solid size="sm"><Check size={15} /></Tile>
           <div className="ai-blk-ti">
@@ -265,12 +265,12 @@ export default function EventAiBlock({
 
   // available / idle / uploaded — ОДНА оболочка. Шапка структурно неизменна во
   // всех трёх (плитка + заголовок + шеврон), поэтому при раскрытии/скрытии ничего
-  // не «дёргается»; тело едет обёрткой `.ai-blk__reveal` (анимация grid-rows).
-  // `available` = свёрнуто (тело скрыто), idle/uploaded = развёрнуто.
+  // не «дёргается». Тело рендерится ТОЛЬКО в открытом состоянии — в свёрнутом его
+  // в DOM нет (ничего не «торчит»), появляется лёгкой анимацией (.ai-blk-body--in).
   const open = state !== 'available';
   const toggle = () => setState(open ? 'available' : 'idle');
   return (
-    <Card tone="ai" className={'ai-blk' + (open ? ' ai-blk--open' : '')}>
+    <Card tone="ai" pad="none" className={'ai-blk' + (open ? ' ai-blk--open' : '')}>
       <div
         className="ai-blk-hd"
         role="button"
@@ -290,8 +290,8 @@ export default function EventAiBlock({
         <span className="ai-blk-x" aria-hidden="true"><ChevronUp size={14} /></span>
       </div>
 
-      <div className="ai-blk__reveal">
-        <div className="ai-blk-body"
+      {open && (
+        <div className="ai-blk-body ai-blk-body--in"
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
@@ -352,7 +352,7 @@ export default function EventAiBlock({
             onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
           />
         </div>
-      </div>
+      )}
     </Card>
   );
 }

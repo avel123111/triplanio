@@ -427,7 +427,7 @@ export default function Statistics() {
                 </div>
               </StatsMap>
             )
-            : <div className="map-skel"><Icon name="globe" /><div>{t('stats.map_loading')}</div></div>}
+            : <Skeleton style={{ position: 'absolute', inset: 0 }} h="100%" r={0} />}
         </div>
 
         {/* summary */}
