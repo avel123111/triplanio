@@ -31,14 +31,14 @@ import { useStay22Bundle } from '@/lib/stay22';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useMobileNav } from '@/components/MobileBottomNav';
-import OverviewLens, { OverviewSkeleton } from './OverviewLens';
-import BudgetLens, { AddExpenseDialog, AddCategoryDialog, BudgetSkeleton } from './BudgetLens';
-import MembersLens, { InviteDialog, MembersSkeleton } from './MembersLens';
-import CalendarLens, { CalendarSkeleton } from './CalendarLens';
-import DocsLens, { AddDocDialog, DocsSkeleton } from './DocsLens';
-import SettingsLens, { SettingsSkeleton } from './SettingsLens';
+import OverviewLens from './OverviewLens';
+import BudgetLens, { AddExpenseDialog, AddCategoryDialog } from './BudgetLens';
+import MembersLens, { InviteDialog } from './MembersLens';
+import CalendarLens from './CalendarLens';
+import DocsLens, { AddDocDialog } from './DocsLens';
+import SettingsLens from './SettingsLens';
 import EditLens from './EditLens';
-import ChatLens, { ChatLensSkeleton } from './ChatLens';
+import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole, roleCanEdit } from '@/lib/members';
@@ -240,32 +240,15 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 //
 // Скелетон ЗНАЕТ СЕКЦИЮ: у обзора и чата свои заглушки, иначе на их месте
 // мигала бы лента (плюс правый рейл, которого у чата нет вовсе).
-// ★ ФАЗА 1 (грузится shell, секция ещё не смонтирована) рисует скелетон ТОЙ ЖЕ
-// секции, что и фаза 2 — ОДИН и тот же компонент (`<BudgetSkeleton/>` и т.д.),
-// экспортированный самой секцией. Раньше здесь была централизованная угадайка,
-// которая для всего, кроме overview/chat, показывала скелетон ТАЙМЛАЙНА, а потом
-// фаза 2 показывала скелетон экрана — отсюда «таймлайн → экран» на всех экранах.
-// Теперь фаза 1 и фаза 2 идентичны по построению (TRIP-337, двойная загрузка).
-function LoadingBody({ section = DEFAULT_SECTION }) {
-  switch (section) {
-    case 'overview': return <OverviewSkeleton />;
-    case 'chat': return <ChatLensSkeleton />;
-    case 'budget': return <BudgetSkeleton />;
-    case 'members': return <MembersSkeleton />;
-    case 'calendar': return <CalendarSkeleton />;
-    case 'docs': return <DocsSkeleton />;
-    case 'settings': return <SettingsSkeleton />;
-    case 'edit': return <EditSkeleton />;
-    default: return (
-      // timeline — тот же контейнер `.tl-twocol` (max-width + центрирование), что и
-      // реальный таймлайн, чтобы скелетон не «прилипал к меню» и не прыгал.
-      <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-        <SkeletonTimeline />
-        <RightRailSkeleton />
-      </div>
-    );
-  }
-}
+// ★ ЕДИНЫЙ ПУТЬ РЕНДЕРА (TRIP-337, двойная загрузка). Прежде был отдельный
+// РАННИЙ return для фазы shell (`<TripShell loading><LoadingBody/></TripShell>`),
+// а основной return — для фазы content. В позиции тела ТИП компонента менялся
+// (LoadingBody → секция), поэтому React РАЗМОНТИРОВАЛ поддерево и МОНТИРОВАЛ
+// заново — скелетон перезапускался, а меню менялось skeleton→real, отсюда прыжок
+// «2 раза». `LoadingBody` УДАЛЁН: теперь секция монтируется ОДИН раз в основном
+// рендере и живёт через все фазы, только `isLoading` идёт true→false НА МЕСТЕ —
+// без размонтирования, без прыжка. Скелетон каждой секции — её собственный
+// экспорт (`<BudgetSkeleton/>` и т.д.), тот же компонент до и после загрузки.
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
@@ -948,7 +931,11 @@ export default function TripView() {
   // Что реально показать: недоступная секция (выключенный аддон, роль без права)
   // и несуществующая (`?lens=` с опечаткой) одинаково падают на дефолт. Правило
   // живёт в реестре секций — тут только его применение.
-  const shownLens = resolveSection(lens, trip, myRole);
+  // ★ В фазе shell (`trip` ещё не загружен) resolveSection не знает аддонов/роли и
+  // свалил бы `?lens=chat/budget` на дефолт-обзор — тогда в загрузке мигал бы НЕ
+  // тот скелетон. Пока trip нет — берём СЫРОЙ `lens` из адреса (как делал прежний
+  // LoadingBody), а как приедет shell — резолвим по-настоящему (TRIP-337).
+  const shownLens = trip ? resolveSection(lens, trip, myRole) : lens;
 
   // «+»-меню трипа: дескрипторы действий, которые собирает экран. Гейт единый —
   // `roleCanEdit` (+ аддон бюджета для траты/категории); «Категория» — только на
@@ -1031,16 +1018,11 @@ export default function TripView() {
   // Секция берётся СЫРОЙ из адреса, а не через resolveSection: аддоны приезжают
   // тем же shell-запросом, которого мы ждём, поэтому `?lens=chat` до ответа
   // выглядел бы недоступным и мигнул бы скелетоном обзора вместо чата.
-  if (shellGate === 'loading' || shellGate === 'auth') {
-    return (
-      // onNavigate нужен и тут: раньше мост к доку висел ВЫШЕ этого раннего
-      // возврата, поэтому пункты дока работали и на грузящемся экране - тап по
-      // «Календарю» менял адрес сразу, и по приходу данных открывался календарь.
-      <TripShell tripId={tripId} section={lens} onNavigate={setLens} loading>
-        <LoadingBody section={lens} />
-      </TripShell>
-    );
-  }
+  // ★ Никакого раннего return для загрузки: единый путь рендера (см. коммент у
+  // удалённого LoadingBody). shell-загрузка/auth → `shellLoading`: TripShell
+  // покажет скелетон меню, а секция — свой скелетон, ВСЁ в том же дереве, что и
+  // после загрузки, поэтому ничего не размонтируется и не прыгает (TRIP-337).
+  const shellLoading = shellGate === 'loading' || shellGate === 'auth';
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
   // exist" page, NOT the accusatory "no access". Split from 'access' in TRIP-208.
@@ -1220,6 +1202,7 @@ export default function TripView() {
       bodyRef={screenBodyRef}
       drawer={eventDrawer}
       overlays={overlays}
+      loading={shellLoading}
     >
           {/* TRIP-195: hotel / activity / transfer create moved to the global
               add-booking DRAWER (see EventDrawerHost below). Only services keep
@@ -1297,7 +1280,7 @@ export default function TripView() {
               memberProfiles={memberProfiles}
               services={services}
               user={user}
-              contentLoading={loadingContent}
+              contentLoading={shellLoading || loadingContent}
               active={shownLens === 'overview'}
               canManage={canEditMode}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
@@ -1318,7 +1301,7 @@ export default function TripView() {
                   transfers={transfers}
                   trip={trip}
                   isViewer={myRole === 'viewer'}
-                  isLoading={loadingContent}
+                  isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
                   }
@@ -1340,7 +1323,9 @@ export default function TripView() {
                     }
                   }}
                 />
-                <CityRail visits={visits ?? []} scrollRef={screenBodyRef} />
+                {/* пока города не приехали (фаза shell) — скелетон рейла, потом
+                    живой CityRail НА МЕСТЕ (тело таймлайна не размонтируется) */}
+                {visits.length ? <CityRail visits={visits} scrollRef={screenBodyRef} /> : <RightRailSkeleton />}
               </div>
             </>
           )}
@@ -1353,7 +1338,7 @@ export default function TripView() {
               budgetExpenses={budgetExpenses}
               members={members}
               cityVisits={visits}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               isPro={tripIsPro}
               role={myRole}
               queryClient={qc}
@@ -1368,7 +1353,7 @@ export default function TripView() {
               trip={trip}
               user={user}
               role={myRole}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               queryClient={qc}
             />
           )}
@@ -1376,14 +1361,14 @@ export default function TripView() {
             <CalendarLens
               stream={stream}
               visits={visits}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               onOpenEvent={openEventView}
             />
           )}
           {shownLens === 'docs' && (
             <DocsLens
               tripId={tripId}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               members={members}
               profiles={memberProfiles}
               myRole={myRole}
@@ -1401,9 +1386,9 @@ export default function TripView() {
               навсегда. Формулировка из TRIP-220: «gate to retry rather than
               render an empty editor». */}
           {shownLens === 'edit' && (
-            editGate === 'loading'
-              // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же и в
-              // фазе shell (LoadingBody edit), и здесь в фазе content — TRIP-337.
+            (shellLoading || editGate === 'loading')
+              // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же в
+              // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
               ? <EditSkeleton />
               : editGate === 'ok'
                 ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
@@ -1420,7 +1405,7 @@ export default function TripView() {
               isProTrip={!!trip?.is_pro_trip}
               proResolved={tripProResolved}
               queryClient={qc}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
             />
           )}
           {shownLens === 'chat' && (

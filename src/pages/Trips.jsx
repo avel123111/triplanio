@@ -326,33 +326,43 @@ function EmptyRoute({ onManual, onAi }) {
 function HomeSkeleton({ viewMode }) {
   return (
     <>
+      {/* 1. Greeting: аватар-круг (.head__av 60×60 50%) + eyebrow + заголовок (h1).
+          Реальный Greeting здесь БЕЗ третьей строки — sub не рисуем. */}
       <div className="head">
         <div className="head__row">
-          {/* аватар = круг (как реальный .head__av 60×60 border-radius:50%), а не квадрат */}
           <Skeleton w={60} h={60} r="50%" />
           <div className="grow">
-            {/* eyebrow + заголовок + подзаголовок — как компонент Greeting (marginBottom 6 / sub margin-top 8) */}
-            <Skeleton w={90} h={12} r={5} style={{ marginBottom: 6 }} />
-            <Skeleton w={240} h={38} r={'var(--r-sm)'} style={{ marginBottom: 8 }} />
-            <Skeleton w={200} h={15} r={6} />
+            <Skeleton w={120} h={12} r={5} style={{ marginBottom: 8 }} />
+            <Skeleton w={240} h={38} r={'var(--r-sm)'} />
           </div>
         </div>
       </div>
-      <Skeleton w="100%" h={86} r={'var(--r-xl)'} />
+      {/* 2. «TRAVEL SUMMARY» — label с теми же отступами, что реальный (36/12) */}
+      <Skeleton w={140} h={13} r={5} style={{ margin: '36px 0 12px' }} />
+      {/* 3. Стат-бар (.statbar-карточка ≈76px) */}
+      <Skeleton w="100%" h={76} r={'var(--r-lg)'} />
+      {/* 4. dash-hero: карта | рейл (World Explored ≈150 + Next Trip ≈200) */}
       <div className="dash-hero" style={{ marginTop: 18 }}>
-        <Skeleton w="100%" h={340} r={'var(--r-card)'} />
+        <Skeleton w="100%" h={380} r={'var(--r-xl)'} />
         <div className="rail">
           <Skeleton w="100%" h={150} r={'var(--r-xl)'} />
-          <Skeleton w="100%" h={120} r={'var(--r-xl)'} />
+          <Skeleton w="100%" h={200} r={'var(--r-xl)'} />
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <Skeleton w={170} h={26} r={'var(--r-sm)'} style={{ marginBottom: 8 }} />
-          <Skeleton w={140} h={14} r={6} />
-        </div>
-        <Skeleton w={150} h={44} r={'var(--r-sm)'} />
+      {/* 5. Секц.шапка «MY TRIPS / N trips»: eyebrow + заголовок, БЕЗ кнопки справа
+          (в реальном её нет — раньше скелетон рисовал лишнюю кнопку) */}
+      <div style={{ margin: '30px 0 16px' }}>
+        <Skeleton w={120} h={13} r={5} style={{ marginBottom: 6 }} />
+        <Skeleton w={160} h={28} r={'var(--r-sm)'} />
       </div>
+      {/* 6. Ряд фильтров `.trips-toolbar`: сегменты + поиск + переключатель вида —
+          целый ряд, которого в скелетоне не было (карточки съезжали вверх) */}
+      <div className="trips-toolbar">
+        <Skeleton w={190} h={40} r={'var(--r-pill)'} />
+        <Skeleton w={300} h={44} r={'var(--r-xl)'} />
+        <Skeleton w={78} h={40} r={'var(--r-sm)'} />
+      </div>
+      {/* 7. Карточки */}
       <TripSkeleton viewMode={viewMode} />
     </>
   );
