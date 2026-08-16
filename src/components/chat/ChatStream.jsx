@@ -91,7 +91,7 @@ function Msg({ who, isMe, text, time, grouped, lastOfRun, pending, failed, aiErr
             <Icon name="warning" size={12} />
             {footText}
           </span>
-          <Btn variant="secondary" onClick={onRetry}>{t('sys.retry')}</Btn>
+          <Btn variant="link" onClick={onRetry}>{t('sys.retry')}</Btn>
         </div>
       ) : isMe && lastOfRun && (
         <div className="chat-time">{time}</div>

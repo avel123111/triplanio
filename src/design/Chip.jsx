@@ -39,6 +39,11 @@ import { Icon } from './icons';
 // ★ БАЗА АННОТАЦИИ = `<button>`: туда уезжает остаток (`onClick`, `title`,
 // `disabled`, `aria-current`, `data-*`). `variant` — закрытая ось; неверное
 // значение (`ghost`) — ошибка типа, а не красный CI.
+//
+// ★ DISMISSIBLE (`onRemove`) — ярлык-тег со снятием (активный фильтр поиска и т.п.):
+// хвостовой ✕. Тег НЕ кликается телом (снимает только ✕), поэтому корень тут —
+// `<span>`, а не `<button>`: `<button>` внутри `<button>` невалиден, а ✕ обязан
+// быть настоящей кнопкой. Пилюля-действие (с `onClick`) остаётся `<button>`.
 /** @typedef {'neutral'|'tone'|'placeholder'|'soft'} ChipVariant */
 export const Chip = React.forwardRef(
   /**
@@ -51,29 +56,57 @@ export const Chip = React.forwardRef(
    *   icon?: string,
    *   iconRight?: string,
    *   count?: React.ReactNode,
+   *   onRemove?: (e: any) => void,
+   *   removeLabel?: string,
    * }} p
    */
-  ({ variant = "neutral", square, sm, avatars, on, icon, iconRight, count, children, className = "", type = "button", ...rest }, ref) => (
-    <button
-      ref={ref}
-      type={type}
-      aria-pressed={on === undefined ? undefined : on}
-      className={[
-        "fpill",
-        variant !== "neutral" && `fpill--${variant}`,
-        square && "fpill--square",
-        sm && "fpill--sm",
-        avatars && "fpill--avatars",
-        className,
-      ].filter(Boolean).join(" ")}
-      {...rest}
-    >
-      {icon && <Icon name={icon} size={sm ? 12 : 14} />}
-      {children}
-      {count !== undefined && count !== null && <span className="fpill__c">{count}</span>}
-      {iconRight && <Icon name={iconRight} size={sm ? 12 : 14} />}
-    </button>
-  ),
+  ({ variant = "neutral", square, sm, avatars, on, icon, iconRight, count, onRemove, removeLabel, children, className = "", type = "button", ...rest }, ref) => {
+    const cls = [
+      "fpill",
+      variant !== "neutral" && `fpill--${variant}`,
+      square && "fpill--square",
+      sm && "fpill--sm",
+      avatars && "fpill--avatars",
+      onRemove && "fpill--dismiss",
+      className,
+    ].filter(Boolean).join(" ");
+    const inner = (
+      <>
+        {icon && <Icon name={icon} size={sm ? 12 : 14} />}
+        {children}
+        {count !== undefined && count !== null && <span className="fpill__c">{count}</span>}
+        {iconRight && <Icon name={iconRight} size={sm ? 12 : 14} />}
+        {onRemove && (
+          <button
+            type="button"
+            className="fpill__x"
+            aria-label={removeLabel}
+            onClick={(e) => { e.stopPropagation(); onRemove(e); }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <Icon name="close" size={sm ? 12 : 14} />
+          </button>
+        )}
+      </>
+    );
+    // Dismissible tag → non-button container (see note above). `rest` here carries
+    // only static props (id/title/aria/data/style); interactive `onClick` belongs
+    // to the action form below.
+    if (onRemove) {
+      return <span ref={/** @type {any} */ (ref)} className={cls} {...rest}>{inner}</span>;
+    }
+    return (
+      <button
+        ref={ref}
+        type={type}
+        aria-pressed={on === undefined ? undefined : on}
+        className={cls}
+        {...rest}
+      >
+        {inner}
+      </button>
+    );
+  },
 );
 Chip.displayName = "Chip";
 
