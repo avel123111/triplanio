@@ -456,7 +456,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды (`.nrow` → <NotifRow>, `.bookrow` → <ListRow> — surface несёт компонент) */
 .mbrow, .doc-row, .te-table .te-row,
-.te-row.te-row--plan, .acct-tgrow,
+.te-row.te-row--plan,
 /* держали эту пару своей копией, а не именем в роли */
 .ncal-wdc,
 /* контролы: кнопки, пилюли, чипы */
@@ -683,7 +683,6 @@ h2,
 .eroute h3,
 .acct-hero__av,
 .acct-hero__name,
-.acct-plan__v,
 .sec-head h2,
 .tcp__ph,
 .ncal-wdc-num,
@@ -729,7 +728,6 @@ h3,
 .mbrow__name,      /* TRIP-175 инсп.: UI→Subheading (имя участника) */
 .vrow .nm,         /* TRIP-175 инсп.: UI→Subheading (страна/город в списке) */
 .visit .dt,        /* TRIP-175 инсп.: UI→Subheading (город визита) */
-.acct-subhead,     /* TRIP-175 инсп.: UI→Subheading (подзаголовок карточки аккаунта) */
 .invite-banner__title, /* TRIP-175 инсп.: off-canon→Subheading (заголовок инвайт-баннера) */
 .ncal-year-lbl,    /* TRIP-175 инсп.: Heading→Subheading (год календаря) */
 .dl-root section h3, /* TRIP-175 инсп.: off-canon→Subheading (заголовки секций документов) */
@@ -771,7 +769,6 @@ h4,
 .tl3-card--tr .rv-mode,
 .acct-content,
 .acct-nav a,
-.acct-plan__line,
 .menu .mi,
 .toast__body b,
 .sheet-row,
@@ -921,11 +918,7 @@ h4,
 .acct-hero__av .ov,
 .acct-hero__mail,
 .acct-flabel,
-.acct-plan__p,
-.acct-note,
 .acct-lang__flag,
-.acct-chan__s,
-.acct-tghint,
 .toast__body span,
 .ss-empty,
 .tc__dates,
@@ -1067,8 +1060,6 @@ h4,
 .te-wptag,
 .tl3-dh .datechip .m,
 .cityrail .cr-h,
-.acct-plan__k,
-.acct-tgtrips__lbl,
 .plan-popular-badge,
 .kv .k,
 .sec-lbl .sl,
@@ -1162,7 +1153,6 @@ h4,
 .bud-leg .nm,
 .bud-leg .v,
 .tl3-card--tr .rv-mode small,
-.acct-plan__line b,
 .s22mk__count, .s22mk__price,   /* TRIP-287: цена/счётчик маркера карты — strong (bold) */
 .ptrip h1, .ptrip h2, .ptrip h3,
 .pt-mast__l1 b,
@@ -3048,6 +3038,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .tile--success background — залитая форма success: сплошной success под solid
    visual-diff-exempt: .tile--success color — залитая форма success: белый значок под solid */
 .tile--solid.tile--success { background: var(--success); color: #fff; }
+/* TRIP-337: залитая форма Pro — тот же --pro-gradient, что несут .btn--pro и
+   .badge--pro (единый источник фирменного розово-оранжевого Pro). Как и --warm,
+   pro мягким тоном НЕ существует: единственная форма — залитый градиент. Заведена
+   с первым вызывателем — плитка тарифа в плашке подписки аккаунта.
+   visual-diff-exempt: .tile--solid background — новая комбинация solid pro (первый вызыватель — плитка тарифа Pro)
+   visual-diff-exempt: .tile--pro background — залитая форма pro: --pro-gradient под solid
+   visual-diff-exempt: .tile--pro color — залитая форма pro: белый значок под solid */
+.tile--solid.tile--pro { background: var(--pro-gradient); color: #fff; }
 
 /* TRIP-211: the medium-width icon-rail tier was REMOVED. The trip nav has exactly
    three layouts — full sidebar (≥881), burger→off-canvas drawer (641–880), and the
@@ -5398,35 +5396,153 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-hero__edit .btn { align-self: end; }
 .acct-flabel { display: block; color: var(--ink-2); margin-bottom: 6px; }
 
-/* subscription module */
-/* ★`align-items: center` удержан - у `.grid` оси выравнивания нет.
-   visual-diff-move: acct-plan -> grid grid--g8 */
-.acct-plan { grid-template-columns: 228px 1fr; align-items: center; }
-/* ★ОСТАТОК: зазор 3px вне шкалы - удержан.
-   visual-diff-move: acct-plan__face -> col col--j-center */
-.acct-plan__face { border-radius: var(--r-md); padding: 18px; min-height: 120px; gap: 3px; position: relative; overflow: hidden; }
-.acct-plan__face .blob { position: absolute; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.14); top: -44px; right: -30px; }
-.acct-plan__k { opacity: .85; position: relative; }
-.acct-plan__v { position: relative; }
-.acct-plan__p { opacity: .9; position: relative; margin-top: 3px; }
-.acct-plan__face--free { background: var(--surface-2); color: var(--ink); } .acct-plan__face--free .acct-plan__k { color: var(--muted); }
-.acct-plan__face--mo { background: var(--brand-grad); color: #fff; }
-.acct-plan__face--yr { background: var(--success); color: #fff; }
-.acct-plan__face--ca { background: var(--warning); color: #fff; }
-/* visual-diff-move: acct-plan__side -> col col--g6 */
-.acct-plan__side { min-width: 0; }
-/* visual-diff-move: acct-plan__line -> row row--wrap row--g4 */
-.acct-plan__line { color: var(--ink-2); }
-.acct-plan__line b { color: var(--ink); }
-/* ★ОСТАТОК: зазор 9px вне шкалы. `align-items: stretch` возвращён явно.
-   visual-diff-move: acct-plan__acts -> row row--wrap */
-.acct-plan__acts { gap: 9px; align-items: stretch; }
-/* ★ОСТАТОК: зазор 9px вне шкалы - удержан.
-   visual-diff-move: acct-note -> row row--a-start */
-.acct-note { gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
-.acct-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
-/* `.acct-linktext` удалён: «Отменить до конца года» — текстовая кнопка системы
-   (`<Btn variant="link">`, TRIP-344 PR 3). */
+/* Плашка подписки собрана из примитивов ДС (Card/Row/Col/Grow/Tile/Badge/Btn,
+   вариант «Плитка» TRIP-337) — своего namespace `.acct-plan*` и `.acct-note`
+   больше нет. Тон плитки активного Pro — `.tile--solid.tile--pro`. */
+
+/* ── 2p (check:semantics) teardown namespace аккаунта — снятые декларации
+   удалённых приватных классов (acct-plan · acct-chan · acct-tgrow · acct-tgtrips ·
+   acct-tghint · acct-subhead) + возвраты агрегатов .badge/.blob/.btn к канон-базе
+   после снятия acct-scoped оверрайдов. Разметка переехала на примитивы ДС
+   (Card/Row/Col/Grow/Tile/Badge/Btn/IconBtn) и каноны типографики. Маркеры
+   живут 1 PR (как floor-exempt): на BASE эти правила ещё есть, на HEAD их нет.
+   visual-diff-exempt: .acct-chan__chev align-self — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__chev flex — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__chev transform — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__chev transition — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__main display — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__main margin-top — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__s font-family — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__s font-size — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__s font-variant-numeric — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__s font-weight — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__s letter-spacing — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__s line-height — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan__s margin-top — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--btn:hover background — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--btn:hover border-color — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--btn[aria-expanded=true] transform — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--btn cursor — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--btn font-family — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--btn text-align — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--btn width — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan--soon opacity — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan {@media (max-width: 640px)} flex — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan {@media (max-width: 640px)} flex-wrap — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan {@media (max-width: 640px)} row-gap — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan {@media (max-width: 640px)} width — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan align-items — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan align-self — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan padding — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-chan transition — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-note svg flex — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note svg height — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note svg margin-top — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note svg width — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note background — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note border-radius — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note font-family — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note font-size — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note font-variant-numeric — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note font-weight — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note gap — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note letter-spacing — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note line-height — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-note padding — правило удалено (TRIP-337)
+   visual-diff-exempt: .acct-plan__acts align-items — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__acts gap — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face--ca background — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face--free background — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face--mo background — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face--yr background — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face background — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face border-radius — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face gap — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face height — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face min-height — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face overflow — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face padding — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face position — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face right — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face top — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__face width — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k font-family — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k font-size — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k font-weight — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k letter-spacing — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k line-height — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k opacity — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k position — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__k text-transform — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__line b font-weight — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__line font-family — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__line font-size — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__line font-weight — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__line letter-spacing — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__line line-height — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p font-family — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p font-size — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p font-variant-numeric — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p font-weight — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p letter-spacing — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p line-height — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p margin-top — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p opacity — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__p position — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__side min-width — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__v font-family — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__v font-size — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__v font-variant-numeric — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__v font-weight — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__v letter-spacing — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__v line-height — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan__v position — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan {@media (max-width: 860px)} grid-template-columns — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan align-items — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-plan grid-template-columns — плашка подписки переехала на примитивы ДС (вариант «Плитка», TRIP-337), правило удалено
+   visual-diff-exempt: .acct-subhead font-family — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-subhead font-size — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-subhead font-weight — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-subhead letter-spacing — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-subhead line-height — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint svg flex — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint svg height — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint svg width — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint font-family — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint font-size — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint font-variant-numeric — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint font-weight — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint letter-spacing — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint line-height — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tghint margin-top — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow {@media (max-width: 640px)} flex — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow {@media (max-width: 640px)} flex-wrap — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow {@media (max-width: 640px)} min-width — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow {@media (max-width: 640px)} row-gap — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow background — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow border — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow border-radius — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow margin-top — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgrow padding — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl font-family — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl font-size — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl font-weight — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl letter-spacing — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl line-height — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl margin-bottom — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl padding-left — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips__lbl text-transform — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .acct-tgtrips margin-top — каналы напоминаний переехали на примитивы ДС (TRIP-337), правило удалено
+   visual-diff-exempt: .badge margin-top — снят acct-scoped оверрайд .acct-chan__main > .badge; .badge вернулся к канон-базе inline-flex
+   visual-diff-exempt: .blob height — снят .acct-plan__face .blob (плашка на Плитку); остаётся только .acct-hero__band .blob
+   visual-diff-exempt: .blob right — снят .acct-plan__face .blob (плашка на Плитку); остаётся только .acct-hero__band .blob
+   visual-diff-exempt: .blob top — снят .acct-plan__face .blob (плашка на Плитку); остаётся только .acct-hero__band .blob
+   visual-diff-exempt: .blob width — снят .acct-plan__face .blob (плашка на Плитку); остаётся только .acct-hero__band .blob
+   visual-diff-exempt: .btn {@media (max-width: 640px)} min-width — снят acct-scoped оверрайд .acct-chan > .btn / .acct-tgrow > .btn; .btn вернулся к канон-базе
+   visual-diff-exempt: .badge display — снят acct-scoped оверрайд .acct-chan__main > .badge; .badge вернулся к канон-базе inline-flex
+   visual-diff-exempt: .blob background — снят .acct-plan__face .blob (плашка на Плитку); остаётся только .acct-hero__band .blob
+   visual-diff-exempt: .btn align-self — снят acct-scoped оверрайд .acct-chan > .btn / .acct-tgrow > .btn; .btn вернулся к канон-базе
+*/
 
 /* language flag chip (reused by the language SearchSelect trigger + options).
    visual-diff-move: acct-lang__flag -> tile — плитка-флаг на примитив <Tile
@@ -5449,81 +5565,23 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .acct-prefctl { flex: none; }
 .acct-prefctl .input { width: auto; min-width: 210px; }
 
-/* reminder channels */
-/* .acct-chanlist УДАЛЁН (Ф12.2a): это ровно .col - дефолтный зазор колонки (--sp-5)
-   и есть те самые 10px. */
-/* Раскладка -> .row .row--g6 в JSX (зазор 13 -> ступень 12). Остаётся своё:
-   отбивка, радиус, переход и align-items ниже.
-   align-items:flex-start so the icon always hugs the title (top) regardless of
-   how many description lines or whether a CTA button is present — keeps every
-   channel card visually consistent (the icon no longer floats mid-card on the
-   taller Telegram card). The trailing CTA/chevron re-centres on desktop.
-   Это ПЕРЕОПРЕДЕЛЕНИЕ .row (у неё align-items:center) при равной специфичности -
-   держится только тем, что .acct-chan объявлен ниже .row по файлу. */
-/* TRIP-343 объект 2: скин канала-напоминаний на `<Card radius="md">` (bg/border →
-   .card, r-md → .card--r-md); `.acct-chan` — численный раскладочный остаток
-   (padding 14 + align + transition для --btn-ховера → 08). `--btn` (кликабельный,
-   свой ховер border/surface-3) и `--soon` остаются вариантами; носитель --btn —
-   `<Card as="button">` без interactive (свой ховер), aria-expanded/controls через
-   контракт Card. Row-сайты — `<Card>` + row/row--g6.
-   visual-diff-move: acct-chan -> card card--r-md */
-.acct-chan { align-items: flex-start; padding: 14px; transition: border-color .2s, background .2s; }
-.acct-chan > .btn, .acct-chan__chev { align-self: center; }
-/* Status badge ("Coming soon" / "Connected") sits on its OWN line under the
-   subtitle (like Telegram's CTA) — NOT inline in the title (wraps differently
-   per title length) and NOT a trailing chip (squeezes the description into a
-   narrow column). Identical placement for every channel card. */
-.acct-chan__main > .badge { display: flex; margin-top: 8px; }
-/* .acct-chan__ic УДАЛЁН (Ф12.2a): 42px мимо лестницы -> .tile.tile--lg (40px),
-   значок 20 -> 19px. Ступень --xl (46) тут была бы ошибкой: она несёт --r-btn и
-   молча перекрасила бы угол, а этот значок сегодня на --r-sm (полоса 42-46 в
-   лестнице - большинство, а не факт). */
-/* Раскладка -> .grow--fit в JSX: это была побайтово та же пара flex:1 + min-width:0,
-   объявленная в трёх строках от самого примитива. Имя класса остаётся - на нём
-   висит правило `> .badge` выше. */
-/* .acct-chan__t УДАЛЁН (TRIP-321): побайтово тот же заголовок строки, что .row__t
-   (тот же ярус типографики, тот же зазор 8, тот же перенос) - только под своим
-   именем. Раскладка -> .row.row--g4.row--wrap в JSX, цвет -> .row__t. */
-.acct-chan__s { color: var(--muted); margin-top: 2px; }
-.acct-chan--btn { cursor: pointer; width: 100%; text-align: left; font-family: inherit; } .acct-chan--btn:hover { border-color: var(--line-hover); background: var(--surface-3); }
-.acct-chan--soon { opacity: .7; }
-.acct-chan__chev { color: var(--muted); flex: none; transition: transform .2s var(--ease-out); }
-.acct-chan--btn[aria-expanded="true"] .acct-chan__chev { transform: rotate(90deg); }
-.acct-tgtrips { margin-top: 10px; }
-.acct-tgtrips__lbl { color: var(--muted-2); margin-bottom: 8px; padding-left: 2px; }
-/* Раскладка -> .row .row--g6 в JSX (зазор 11 -> ступень 12). Отдельная сущность
-   от .acct-chan сознательно (решение Pavel): другое поведение, меняются независимо. */
-.acct-tgrow { padding: 10px; border-radius: var(--r-sm); }
-.acct-tgrow + .acct-tgrow { margin-top: 8px; }
-/* .acct-tgrow__t УДАЛЁН (TRIP-321): тот же заголовок строки, что .row__t, но жил
-   с зазором 7 (мимо шкалы, ближайшая ступень 8) и ярусом ниже на полшага
-   (утилита-подпись 12.5/600 против t-label 13/700). Обе правки ВИДНЫ на экране - как и
-   переход колец загрузки на ступень 18 (см. .spin--ring), поэтому оба места
-   сняты скриншотом до и после. */
-/* .acct-tgrow__ic УДАЛЁН (Ф12.2a): 34px - это ровно дефолт .tile. Два сдвига НЕ
-   нулевые: значок 15 -> 17px (дефолтный --tile-ic бьёт проп size, см. .tile > svg)
-   и тинт --primary-soft (имя удалено в 04 PR3) -> --brand-soft у .tile--brand
-   (тогда в тёмной теме это был сдвиг .16 -> .14, см. блок .tile--*). */
-/* visual-diff-move: acct-tghint -> row row--g4 */
-.acct-tghint { margin-top: 12px; color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
-.acct-subhead { color: var(--ink); }
+/* Каналы напоминаний собраны из примитивов ДС (Card/Row/Col/Grow/Tile/Badge/
+   Btn/IconBtn, TRIP-337): единый скин канала = `<ChannelCard>`, привязанные
+   трипы = вложенные `<Card radius="sm">` со стопкой Col. Своего namespace
+   `.acct-chan*`/`.acct-tgrow*`/`.acct-tgtrips*`/`.acct-tghint`/`.acct-subhead`
+   больше нет. */
 
 /* responsive: collapse to single column; nav becomes a horizontal scroller */
 @media (max-width: 860px) {
   .acct-shell { grid-template-columns: 1fr; gap: 18px; padding: 18px 16px 64px; }
   /* The section rail is hidden on mobile — sections are reached by scrolling. */
   .acct-nav { display: none; }
-  .acct-plan { grid-template-columns: 1fr; }
   .acct-hero__edit { grid-template-columns: 1fr; }
 }
-/* Card rows (channel cards, linked-trip rows, delete/logout) wrap on phones so
-   the trailing button(s) drop to their own line instead of overflowing or
-   squeezing the text. */
+/* List rows (.row--div / .row--flush: preferences, help & legal, delete/logout)
+   wrap on phones so the trailing button(s) drop to their own line instead of
+   overflowing or squeezing the text. */
 @media (max-width: 640px) {
-  .acct-chan { flex-wrap: wrap; row-gap: 12px; }
-  .acct-chan > .btn { flex: 1 1 100%; width: 100%; }
-  .acct-tgrow { flex-wrap: wrap; row-gap: 10px; }
-  .acct-tgrow > .btn { flex: 1 1 auto; min-width: 0; }
   .row--div, .row--flush { flex-wrap: wrap; row-gap: 12px; }
   .row--div > .btn, .row--flush > .btn { flex: 1 1 100%; width: 100%; }
   .acct-prefctl { flex: 1 1 100%; }
