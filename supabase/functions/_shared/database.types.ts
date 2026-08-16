@@ -1388,6 +1388,66 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          created_at: string
+          files: Json
+          id: string
+          lang: string | null
+          meta: Json
+          number: number
+          resolved: boolean
+          resolved_at: string | null
+          source: string
+          text: string | null
+          trip_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          files?: Json
+          id?: string
+          lang?: string | null
+          meta?: Json
+          number?: never
+          resolved?: boolean
+          resolved_at?: string | null
+          source?: string
+          text?: string | null
+          trip_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          files?: Json
+          id?: string
+          lang?: string | null
+          meta?: Json
+          number?: never
+          resolved?: boolean
+          resolved_at?: string | null
+          source?: string
+          text?: string | null
+          trip_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_link_tokens: {
         Row: {
           created_at: string | null
