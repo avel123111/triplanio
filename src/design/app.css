@@ -3180,6 +3180,13 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .choice-card__arr { margin-left: auto; flex: none; color: var(--muted-2); transition: color .2s, transform .2s; }
 .choice-card:hover .choice-card__arr { color: var(--brand); transform: translateX(3px); }
 .choice-card--ai:hover .choice-card__arr { color: var(--ai); }
+/* Заметный ховер всего блока (запрос Pavel): рамка --line-hover уже от .card--interactive,
+   добавляем тинт --brand-soft + тень --sh-2 (реюз токенов /kit), без движения:
+   visual-diff-exempt: .choice-card:hover {@media (hover: hover) and (pointer: fine)} background — тинт фона на ховере
+   visual-diff-exempt: .choice-card:hover {@media (hover: hover) and (pointer: fine)} box-shadow — усиление тени --sh-2 на ховере */
+@media (hover: hover) and (pointer: fine) {
+  .choice-card:hover { background: var(--brand-soft); box-shadow: var(--sh-2); }
+}
 /* Карточка ВЫБОРА бывает двух родов, и до сих пор в системе жил только один.
    Навигационная («создать вручную / через ИИ») ведёт дальше и носит стрелку.
    Выбираемая остаётся на экране и имеет состояние «выбрана» - и вот она была
@@ -5837,7 +5844,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* cover background */
 .tc__bg { position: absolute; inset: 0; z-index: 0; }
-.tc__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.tc__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transition: transform .35s var(--ease-out); }
+/* Ховер медиа-карточки: картинка внутри чуть зумится (тень остаётся --sh-1→--sh-3);
+   переиспользуемый приём для фото-карточек (запрос Pavel):
+   visual-diff-exempt: .tc__img transition — плавный зум картинки
+   visual-diff-exempt: .tc__img {@media (hover: hover)} transform — зум 1.05 на ховере
+   visual-diff-exempt: .tc:hover:not(.tc--band) {@media (hover: hover)} transform — тот же зум, второй юнит правила */
+@media (hover: hover) { .tc:not(.tc--band):hover .tc__img { transform: scale(1.05); } }
 
 /* decorative semi-transparent blobs */
 .tc__blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.14); z-index: 1; pointer-events: none; }

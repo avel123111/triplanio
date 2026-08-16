@@ -60,7 +60,7 @@ export function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
   return (
     <Card
       as="button"
-      radius="card"
+      radius="md"
       interactive
       onClick={onClick}
       className={`choice-card${isAi ? ' choice-card--ai' : ''}`}

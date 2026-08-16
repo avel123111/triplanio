@@ -59,7 +59,7 @@ export function WorldMini({ world, title, subCaption }) {
           <div className="ring__c t-title">{world.pct}%</div>
         </div>
         <div>
-          <div className="ttl t-mono tp-caption">{title}</div>
+          <div className="ttl t-label tp-caption">{title}</div>
           {/* TRIP-188: «6 / 195» — visited в t-title (ink), /total в t-heading mute */}
           <div className="sub" style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
             <b className="t-title" style={{ color: 'var(--ink)' }}>{world.visited}</b>

@@ -973,7 +973,7 @@ export default function EditLens({ tripId, shell, content }) {
               same as on mobile. A left panel replaces this whole column. */}
           <div className="ts-routehead">
             <span className="ts-routehead__tt">
-              <span className="ts-routehead__title t-mono tp-caption">{t('planner.step_cities')}</span>
+              <span className="ts-routehead__title t-label tp-caption">{t('planner.step_cities')}</span>
               {/* TRIP-186: сводка маршрута под заголовком — реюз уже посчитанных
                   totalNights / cityCount / dateRange (никакой новой логики). */}
               {(totalNights != null || cityCount > 0 || (dateRange && dateRange !== '-')) && (
