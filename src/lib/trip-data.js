@@ -148,18 +148,72 @@ export function swapOptimisticRow(qc, tripId, kind, tmpId, realRow) {
 }
 
 /**
+ * A "cache binding" tells {@link withOptimism} HOW to touch one specific cache:
+ * which query keys to cancel/snapshot/restore, and how to add/update/remove/swap
+ * a row inside it. The lifecycle in `withOptimism` is identical for every screen;
+ * only the cache shape differs, and that difference lives here — one binding per
+ * cache, so no call site re-implements cache surgery and no second optimism
+ * engine is ever written. A binding is `{ qc, keys, add, update, remove, swap }`.
+ */
+
+/**
+ * Binding for a trip-content collection (hotels / activities / transfers /
+ * services / budgetExpenses / budgetCategories / cityVisits). Wraps the existing
+ * trip-content patchers, so the object-of-lists shape and the cityVisits→shell
+ * mirroring stay defined in ONE place (optimisticContentUpdate / swapOptimisticRow).
+ * add appends (trip-content lists are not display-sorted in the cache).
+ */
+export function tripContentBinding(qc, tripId, kind) {
+  return {
+    qc,
+    keys: affectedKeys(tripId, kind),
+    add:    (row) => optimisticContentUpdate(qc, tripId, kind, 'add', row),
+    update: (row) => optimisticContentUpdate(qc, tripId, kind, 'update', row),
+    remove: (id)  => optimisticContentUpdate(qc, tripId, kind, 'remove', { id }),
+    swap:   (tmpId, realRow) => swapOptimisticRow(qc, tripId, kind, tmpId, realRow),
+  };
+}
+
+/**
+ * Binding for a bare-array cache at a single key — a list that is its own query
+ * (documents `['trip-docs']`, notifications `['notifications']`, …), not a slice
+ * of trip-content. `addTo: 'start'` prepends (a newest-first sorted list like
+ * documents); the default appends. Never writes into a not-yet-loaded query
+ * (old === undefined): an optimistic row on an unfetched list would flash a
+ * one-item list where the screen should still be loading.
+ */
+export function listBinding(qc, key, { addTo = 'end' } = {}) {
+  const patch = (fn) => qc.setQueryData(key, (old) => (old === undefined ? old : fn(old)));
+  const put = (list, row) => (addTo === 'start' ? [row, ...list] : [...list, row]);
+  return {
+    qc,
+    keys: [key],
+    add:    (row) => patch((list) => put(list, row)),
+    update: (row) => patch((list) => list.map(r => (r.id === row.id ? { ...r, ...row } : r))),
+    remove: (id)  => patch((list) => list.filter(r => r.id !== id)),
+    swap:   (tmpId, realRow) => patch((list) => {
+      if (list.some(r => r.id === tmpId)) return list.map(r => (r.id === tmpId ? realRow : r));
+      // tmp already clobbered by a refetch — re-insert, but never duplicate.
+      return list.some(r => r.id === realRow.id) ? list : put(list, realRow);
+    }),
+  };
+}
+
+/**
  * The canonical optimistic-mutation lifecycle, spread into `useMutation`. It
  * bakes in the exact sequence every booking/doc/member CRUD used to hand-roll —
  * and got subtly wrong six different ways (see the optimism audit):
  *
  *   onMutate:  cancelQueries → snapshot → apply the optimistic patch
  *   onSuccess: reconcile the optimistic row with the row the write RETURNED
- *              (swap tmp→real on add; authoritative merge on update) — NO refetch
- *   onError:   restore the snapshot, then hand the error to the caller's toast
+ *              (swap tmp→real on add; authoritative merge on update) — NO refetch;
+ *              then hand (data, vars) to the caller's success toast
+ *   onError:   restore the snapshot, then hand (err, vars) to the caller's toast
  *
  * The call site keeps ONLY its `mutationFn` (the real write, whose return value
- * is the reconcile source) and its own error toast; it re-implements none of the
- * cache choreography. Variables passed to `.mutate()` carry the row:
+ * is the reconcile source) and its own toasts; it re-implements none of the
+ * cache choreography. It picks the cache with a `binding` (tripContentBinding /
+ * listBinding). Variables passed to `.mutate()` carry the row:
  *   add    → mutate({ row })   row.id is a tmp id (e.g. 'tmp-abc')
  *   update → mutate({ row })   row.id is the real id; row may be a partial patch
  *   remove → mutate({ id })
@@ -177,33 +231,37 @@ export function swapOptimisticRow(qc, tripId, kind, tmpId, realRow) {
  * narrow backstop invalidate at its call site — it is NOT the default, so one
  * edit never re-pulls (and re-renders) the whole trip.
  *
- * @param {import('@tanstack/react-query').QueryClient} qc
- * @param {{ tripId: string, kind: string, op: 'add'|'update'|'remove',
- *           reconcile?: boolean, onError?: (err:any)=>void }} opts
+ * @param {{ qc: any, keys: any[], add: Function, update: Function, remove: Function, swap: Function }} binding
+ * @param {{ op: 'add'|'update'|'remove', reconcile?: boolean,
+ *           onSuccess?: (data:any, vars:any)=>void, onError?: (err:any, vars:any)=>void }} opts
  */
-export function withOptimism(qc, { tripId, kind, op, reconcile = true, onError } = {}) {
-  const keys = affectedKeys(tripId, kind);
+export function withOptimism(binding, { op, reconcile = true, onSuccess, onError } = {}) {
+  const { qc, keys } = binding;
   return {
     onMutate: async (vars) => {
       // Stop in-flight refetches BEFORE patching, so none can resolve later and
       // clobber the optimistic row. This is the fix for the flicker (see above).
       await Promise.all(keys.map((queryKey) => qc.cancelQueries({ queryKey })));
       const snapshot = keys.map((queryKey) => [queryKey, qc.getQueryData(queryKey)]);
-      if (op === 'remove') optimisticContentUpdate(qc, tripId, kind, 'remove', { id: vars.id });
-      else optimisticContentUpdate(qc, tripId, kind, op, vars.row);
+      if (op === 'remove') binding.remove(vars.id);
+      else if (op === 'update') binding.update(vars.row);
+      else binding.add(vars.row);
       return { snapshot };
     },
     onSuccess: (data, vars) => {
-      if (!reconcile || op === 'remove') return;
-      // writeRows returns an array of affected rows; rpc/invoke may return one.
-      const realRow = Array.isArray(data) ? data[0] : data;
-      if (!realRow) return;
-      if (op === 'add') swapOptimisticRow(qc, tripId, kind, vars.row.id, realRow);
-      else optimisticContentUpdate(qc, tripId, kind, 'update', realRow);
+      if (reconcile && op !== 'remove') {
+        // writeRows returns an array of affected rows; rpc/invoke may return one.
+        const realRow = Array.isArray(data) ? data[0] : data;
+        if (realRow) {
+          if (op === 'add') binding.swap(vars.row.id, realRow);
+          else binding.update(realRow);
+        }
+      }
+      onSuccess?.(data, vars);
     },
-    onError: (err, _vars, ctx) => {
+    onError: (err, vars, ctx) => {
       for (const [queryKey, prev] of ctx?.snapshot ?? []) qc.setQueryData(queryKey, prev);
-      onError?.(err);
+      onError?.(err, vars);
     },
   };
 }

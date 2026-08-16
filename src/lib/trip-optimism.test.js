@@ -1,16 +1,21 @@
-// Tests for the canonical optimistic-mutation seam (optimism epic, Stage 0):
-// withOptimism (the useMutation lifecycle) + swapOptimisticRow (reconcile-from-row).
+// Tests for the canonical optimistic-mutation seam (optimism epic).
+//   withOptimism   — the useMutation lifecycle (cancel → snapshot → patch →
+//                    reconcile-from-row → rollback), toast hooks
+//   tripContentBinding — binding for the {kind:[...]} trip-content cache
+//   listBinding    — binding for a bare-array cache at one key (documents, …)
 //
-// The whole point of the seam is a set of behaviours that every hand-rolled copy
-// got subtly wrong. Each is pinned here, and the load-bearing one — cancelQueries
-// BEFORE the optimistic patch — has its own guard so the flicker bug can't return
-// silently. No React, no Supabase: withOptimism is a pure options builder over a
-// query client, so a tiny fake client is all it needs.
+// The whole point of the seam is a set of behaviours every hand-rolled copy got
+// subtly wrong. Each is pinned here, and the load-bearing one — cancelQueries
+// BEFORE the optimistic patch — has its own guard so the flicker bug can't come
+// back silently. No React, no Supabase: the seam is a pure options builder over
+// a query client, so a tiny fake client is all it needs.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   withOptimism,
+  tripContentBinding,
+  listBinding,
   swapOptimisticRow,
   TRIP_CONTENT_KEY,
   TRIP_SHELL_KEY,
@@ -18,7 +23,7 @@ import {
 
 const k = (key) => JSON.stringify(key);
 
-// Minimal QueryClient stand-in: a keyed store + the three methods the seam uses.
+// Minimal QueryClient stand-in: a keyed store + the methods the seam uses.
 // Records cancelQueries calls (in order) so a test can prove cancel-before-patch.
 function makeQC(seed = {}) {
   const store = new Map(Object.entries(seed).map(([key, val]) => [key, val]));
@@ -39,10 +44,13 @@ function makeQC(seed = {}) {
 const TRIP = 't1';
 const CONTENT = TRIP_CONTENT_KEY(TRIP);
 const SHELL = TRIP_SHELL_KEY(TRIP);
+const DOCS = ['trip-docs', TRIP];
 
-test('add: optimistic tmp row appears, then reconciles to the returned real row', async () => {
+// ─── trip-content binding ─────────────────────────────────────────────────────
+
+test('trip-content add: tmp row appears, then reconciles to the returned real row', async () => {
   const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } });
-  const life = withOptimism(qc, { tripId: TRIP, kind: 'hotels', op: 'add' });
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'hotels'), { op: 'add' });
 
   const ctx = await life.onMutate({ row: { id: 'tmp-x', name: 'Hilton' } });
   assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'tmp-x'], 'tmp row shown immediately');
@@ -51,9 +59,9 @@ test('add: optimistic tmp row appears, then reconciles to the returned real row'
   assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'tmp swapped for real id in place');
 });
 
-test('add: cancelQueries runs BEFORE the optimistic patch (flicker guard)', async () => {
+test('cancelQueries runs BEFORE the optimistic patch (flicker guard)', async () => {
   const qc = makeQC({ [k(CONTENT)]: { hotels: [] } });
-  const life = withOptimism(qc, { tripId: TRIP, kind: 'hotels', op: 'add' });
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'hotels'), { op: 'add' });
 
   await life.onMutate({ row: { id: 'tmp-x' } });
 
@@ -63,10 +71,10 @@ test('add: cancelQueries runs BEFORE the optimistic patch (flicker guard)', asyn
   assert.ok(setIdx >= 0 && cancelIdx < setIdx, 'cancel happens before the cache is patched');
 });
 
-test('add: onError restores the pre-mutation snapshot and calls the caller toast', async () => {
+test('trip-content add: onError restores the snapshot and calls the caller toast', async () => {
   const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } });
   let toasted = null;
-  const life = withOptimism(qc, { tripId: TRIP, kind: 'hotels', op: 'add', onError: (e) => { toasted = e; } });
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'hotels'), { op: 'add', onError: (e) => { toasted = e; } });
 
   const ctx = await life.onMutate({ row: { id: 'tmp-x' } });
   assert.equal(qc.get(CONTENT).hotels.length, 2, 'tmp row present while in flight');
@@ -79,7 +87,7 @@ test('add: onError restores the pre-mutation snapshot and calls the caller toast
 
 test('update: optimistic partial patch, then authoritative merge from the returned row', async () => {
   const qc = makeQC({ [k(CONTENT)]: { activities: [{ id: 'a1', title: 'Old', notes: 'keep' }] } });
-  const life = withOptimism(qc, { tripId: TRIP, kind: 'activities', op: 'update' });
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'activities'), { op: 'update' });
 
   const ctx = await life.onMutate({ row: { id: 'a1', title: 'New' } });
   assert.equal(qc.get(CONTENT).activities[0].title, 'New', 'optimistic field applied');
@@ -91,12 +99,11 @@ test('update: optimistic partial patch, then authoritative merge from the return
 
 test('remove: drops the row on mutate, restores it on error, no reconcile on success', async () => {
   const qc = makeQC({ [k(CONTENT)]: { services: [{ id: 's1' }, { id: 's2' }] } });
-  const life = withOptimism(qc, { tripId: TRIP, kind: 'services', op: 'remove' });
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'services'), { op: 'remove' });
 
   const ctx = await life.onMutate({ id: 's1' });
   assert.deepEqual(qc.get(CONTENT).services.map(r => r.id), ['s2'], 'row removed optimistically');
 
-  // Success path must NOT touch the cache again (nothing to reconcile on a delete).
   const before = qc.events.length;
   life.onSuccess([], { id: 's1' }, ctx);
   assert.equal(qc.events.length, before, 'no cache writes on delete success');
@@ -110,7 +117,7 @@ test('cityVisits: mutation touches AND rolls back both content and shell', async
     [k(CONTENT)]: { cityVisits: [{ id: 'c1' }] },
     [k(SHELL)]: { cityVisits: [{ id: 'c1' }] },
   });
-  const life = withOptimism(qc, { tripId: TRIP, kind: 'cityVisits', op: 'add' });
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'cityVisits'), { op: 'add' });
 
   const ctx = await life.onMutate({ row: { id: 'tmp-c' } });
   assert.equal(qc.get(CONTENT).cityVisits.length, 2, 'content got the tmp city');
@@ -122,21 +129,59 @@ test('cityVisits: mutation touches AND rolls back both content and shell', async
   assert.deepEqual(qc.get(SHELL).cityVisits.map(r => r.id), ['c1'], 'shell rolled back');
 });
 
+test('onSuccess hook fires with (data, vars) for the confirm toast', async () => {
+  const qc = makeQC({ [k(CONTENT)]: { hotels: [] } });
+  let got = null;
+  const life = withOptimism(tripContentBinding(qc, TRIP, 'hotels'), {
+    op: 'add', onSuccess: (data, vars) => { got = { data, vars }; },
+  });
+  const ctx = await life.onMutate({ row: { id: 'tmp-x' } });
+  life.onSuccess([{ id: 'real-9' }], { row: { id: 'tmp-x' } }, ctx);
+  assert.deepEqual(got.data, [{ id: 'real-9' }], 'success toast hook saw the returned row');
+  assert.equal(got.vars.row.id, 'tmp-x', 'success toast hook saw the vars');
+});
+
+// ─── flat-array (list) binding — the documents cache ──────────────────────────
+
+test('list add: prepends (newest-first) then reconciles tmp→real at the top', async () => {
+  const qc = makeQC({ [k(DOCS)]: [{ id: 'd1' }, { id: 'd2' }] });
+  const life = withOptimism(listBinding(qc, DOCS, { addTo: 'start' }), { op: 'add' });
+
+  const ctx = await life.onMutate({ row: { id: 'tmp-x', title: 'Booking' } });
+  assert.deepEqual(qc.get(DOCS).map(r => r.id), ['tmp-x', 'd1', 'd2'], 'new doc prepended');
+
+  life.onSuccess([{ id: 'real-9', title: 'Booking' }], { row: { id: 'tmp-x' } }, ctx);
+  assert.deepEqual(qc.get(DOCS).map(r => r.id), ['real-9', 'd1', 'd2'], 'tmp swapped for real at the top');
+});
+
+test('list remove: drops on mutate, restores on error', async () => {
+  const qc = makeQC({ [k(DOCS)]: [{ id: 'd1' }, { id: 'd2' }] });
+  let toasted = false;
+  const life = withOptimism(listBinding(qc, DOCS, { addTo: 'start' }), { op: 'remove', onError: () => { toasted = true; } });
+
+  const ctx = await life.onMutate({ id: 'd1' });
+  assert.deepEqual(qc.get(DOCS).map(r => r.id), ['d2'], 'doc removed optimistically');
+  assert.ok(qc.events.includes(`cancel:${k(DOCS)}`), 'docs refetch cancelled first');
+
+  life.onError(new Error('nope'), { id: 'd1' }, ctx);
+  assert.deepEqual(qc.get(DOCS).map(r => r.id), ['d1', 'd2'], 'delete rolled back');
+  assert.ok(toasted, 'error toast fired');
+});
+
+test('list binding never patches a not-yet-loaded cache (old === undefined)', async () => {
+  const qc = makeQC({}); // DOCS key absent → query not loaded
+  const life = withOptimism(listBinding(qc, DOCS, { addTo: 'start' }), { op: 'add' });
+  await life.onMutate({ row: { id: 'tmp-x' } });
+  assert.equal(qc.get(DOCS), undefined, 'no phantom one-item list written before the real fetch');
+});
+
+// ─── swapOptimisticRow direct (trip-content) ──────────────────────────────────
+
 test('swapOptimisticRow: appends the real row if the tmp row was already clobbered', () => {
   const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } }); // tmp-x already gone
   swapOptimisticRow(qc, TRIP, 'hotels', 'tmp-x', { id: 'real-9' });
   assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'real row not lost when tmp missing');
 
-  // Idempotent: a second reconcile must not duplicate the real row.
-  swapOptimisticRow(qc, TRIP, 'hotels', 'tmp-x', { id: 'real-9' });
+  swapOptimisticRow(qc, TRIP, 'hotels', 'tmp-x', { id: 'real-9' }); // idempotent
   assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'no duplicate on repeat');
-});
-
-test('reconcile:false leaves the optimistic row untouched on success (opt-out)', async () => {
-  const qc = makeQC({ [k(CONTENT)]: { hotels: [] } });
-  const life = withOptimism(qc, { tripId: TRIP, kind: 'hotels', op: 'add', reconcile: false });
-
-  const ctx = await life.onMutate({ row: { id: 'tmp-x' } });
-  life.onSuccess([{ id: 'real-9' }], { row: { id: 'tmp-x' } }, ctx);
-  assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['tmp-x'], 'tmp kept when reconcile is opted out');
 });
