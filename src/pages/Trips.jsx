@@ -179,20 +179,19 @@ const TripCard = ({ trip, onClick }) => {
 
   return (
     <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
-      {/* background */}
+      {/* cover layer — фото ИЛИ градиент + декоративные блобы. Всё внутри .tc__bg,
+          который и зумится на ховере: у градиентных карточек видимый зум дают блобы
+          (плоский градиент сам по себе при scale не читается — увеличивать нечего) */}
       <div className="tc__bg" style={{ background: bg || undefined }}>
-        {trip.cover_image_url && (
+        {trip.cover_image_url ? (
           <img className="tc__img" src={trip.cover_image_url} alt="" />
+        ) : (
+          <>
+            <div className="tc__blob tc__b1" />
+            <div className="tc__blob tc__b2" />
+          </>
         )}
       </div>
-
-      {/* decorative blobs (only on gradient covers, looks odd on photos) */}
-      {!trip.cover_image_url && (
-        <>
-          <div className="tc__blob tc__b1" />
-          <div className="tc__blob tc__b2" />
-        </>
-      )}
 
       {/* scrim */}
       <div className="tc__scrim" />
