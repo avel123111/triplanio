@@ -1,18 +1,8 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/design/Input';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import GeoAttribution from '@/components/common/GeoAttribution';
-
-// A pointerdown INSIDE the list must not reach Radix's DismissableLayer listener
-// on `document`: the list is portaled to <body> (outside the dialog's Radix
-// content), so a plain `createPortal` popover is NOT part of Radix's layer stack,
-// and Radix would treat a row click as an outside pointer-down and CLOSE the
-// dialog. Stopping the event at the list node (bubble phase) keeps it from
-// reaching document; our own outside-close handler is capture-phase and still
-// fires. Native listener (attached via the callback ref below) so the ordering
-// vs. Radix's document listener is exact, not React-delegation-dependent.
-const stopDown = (e) => e.stopPropagation();
 
 /**
  * Autocomplete — the single, canonical async search-as-you-type field + dropdown
@@ -21,22 +11,36 @@ const stopDown = (e) => e.stopPropagation();
  * all share ONE dropdown shell, ONE hover, ONE scroll behaviour.
  *
  * Design decisions (why this shape):
- *  • Dropdown chrome reuses the canonical action-menu (`.menu` / `.mi`) — which
- *    already carries the primary/accent hover (`var(--accent)/--accent-ink`).
- *  • The list is a PLAIN overflow:auto div portaled to <body> with position:FIXED
- *    and z-index above the modal layer, so it OVERLAYS everything (dialog body,
- *    footer, dialog edge) and is NEVER clipped by an ancestor's overflow — the fix
- *    for a short dialog body cropping the list under its footer (TRIP-337). It is
- *    re-positioned from the input's viewport rect on any scroll (capture:true, so
- *    an inner scroller like the dialog body counts) and on resize, and FLIPS above
- *    the input when there's no room below (bottom-anchored via CSS `bottom`).
- *  • overscroll-behavior:contain + -webkit-overflow-scrolling:touch keep the
- *    gesture inside the list on phones (same hardening as .vp-b / .ss-list).
+ *  • Built on the DS `Popover` primitive (the same Radix-backed popover that the
+ *    other searchable picker, `SearchSelect`, uses). That gives, for free and
+ *    WITHOUT hand-rolled code: anchored positioning + automatic FLIP/collision so
+ *    the list is never clipped by a short dialog body (TRIP-337), a z-index above
+ *    the modal layer, and — crucially — membership in Radix's dismissable-layer
+ *    STACK, so a click on a row never leaks out as "outside" and closes the host
+ *    dialog. The old hand-rolled fixed-portal + manual outside-close + flip math
+ *    are all deleted; this is the reuse-first version.
+ *  • The list reuses `.ss-list` / `.ss-opt` — the SAME list chrome as SearchSelect
+ *    (both are searchable pickers), so the two share one look and one hover
+ *    (`--accent`). Keyboard highlight rides the same `[data-highlighted]` accent.
+ *  • The input keeps focus while the list is open: `onOpenAutoFocus` is prevented
+ *    (Radix would otherwise move focus into the content), and `onInteractOutside`
+ *    is prevented when the target is the anchor (input), so clicking/typing in the
+ *    field never dismisses the list. Arrow/Enter/Esc are handled on the input.
+ *  • overscroll-behavior:contain + -webkit-overflow-scrolling:touch (on .ss-list)
+ *    keep the gesture inside the list on phones.
  *
  * The engine is data-agnostic: callers pass `search`, `getKey`, `renderRow`,
  * `onPick`, so the city/address contracts live in the facades, not here.
+ *
+ * @param {{
+ *   inputValue?: string, onInputChange?: (v: string) => void,
+ *   search: (query: string, lang: string) => any, getKey: (r: any) => any,
+ *   renderRow: (r: any) => any, onPick?: (r: any) => void,
+ *   placeholder?: string, autoFocus?: boolean, disabled?: boolean,
+ *   icon?: string, minChars?: number, debounceMs?: number,
+ *   attribution?: boolean, inputProps?: object,
+ * }} p
  */
-
 export default function Autocomplete({
   inputValue = '',
   onInputChange,
@@ -59,67 +63,12 @@ export default function Autocomplete({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
-  const [box, setBox] = useState(null);
   const timerRef = useRef(null);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
-  const listRef = useRef(null);
-  // Callback ref for the portaled list: keeps `listRef.current` (used by the
-  // outside-close handler) AND attaches/detaches the native pointerdown guard
-  // once per mount, so it never re-binds on every scroll-driven reposition.
-  const attachList = useCallback((node) => {
-    if (listRef.current) listRef.current.removeEventListener('pointerdown', stopDown);
-    listRef.current = node;
-    if (node) node.addEventListener('pointerdown', stopDown);
-  }, []);
   // Read inside the debounce timer so a mid-debounce language switch isn't stale.
   const langRef = useRef(lang);
   useEffect(() => { langRef.current = lang; }, [lang]);
-
-  // Position the portaled list. It is portaled to <body> with position:FIXED and a
-  // z-index above the modal layer (--z-popover 250 > --z-modal 200), so it OVERLAYS
-  // everything — a dialog body, its footer, the dialog edge — and is NEVER clipped
-  // by an ancestor's overflow. (The old absolute-in-scroller kept the list inside
-  // the dialog body, so a short body cropped it under the footer — TRIP-337.) Fixed
-  // coords come straight from the input's viewport rect; we re-derive on ANY scroll
-  // (capture:true catches inner scrollers like the dialog body) and on resize, so
-  // the list tracks the input. When there's no room below, FLIP above the input —
-  // with fixed positioning the list's BOTTOM anchors to the input top via CSS
-  // `bottom`, so no height measurement / second pass is needed.
-  useLayoutEffect(() => {
-    if (!open || results.length === 0) { setBox(null); return undefined; }
-    const compute = () => {
-      const el = wrapRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const gap = 4;
-      const vh = window.visualViewport?.height || window.innerHeight;
-      const spaceBelow = vh - r.bottom - 8;
-      const spaceAbove = r.top - 8;
-      const flipUp = spaceBelow < 200 && spaceAbove > spaceBelow;
-      const maxH = Math.round(Math.max(140, Math.min(320, flipUp ? spaceAbove : spaceBelow)));
-      setBox({
-        left: Math.round(r.left),
-        width: Math.round(r.width),
-        maxH, flipUp,
-        top: flipUp ? undefined : Math.round(r.bottom + gap),
-        bottom: flipUp ? Math.round(vh - r.top + gap) : undefined,
-      });
-    };
-    compute();
-    const onMove = () => compute();
-    // capture:true so a scroll INSIDE the dialog body (not just the window) fires.
-    window.addEventListener('scroll', onMove, true);
-    window.addEventListener('resize', onMove);
-    window.visualViewport?.addEventListener('resize', onMove);
-    window.visualViewport?.addEventListener('scroll', onMove);
-    return () => {
-      window.removeEventListener('scroll', onMove, true);
-      window.removeEventListener('resize', onMove);
-      window.visualViewport?.removeEventListener('resize', onMove);
-      window.visualViewport?.removeEventListener('scroll', onMove);
-    };
-  }, [open, results]);
 
   const runSearch = (query) => {
     clearTimeout(timerRef.current);
@@ -171,73 +120,57 @@ export default function Autocomplete({
       e.preventDefault();
       pick(results[highlighted]);
     } else if (e.key === 'Escape') {
-      // Stop here so the Esc that dismisses the dropdown doesn't also bubble to a
-      // host Radix Dialog (EventEditDialog) and tear down the whole form.
+      // Close the list without bubbling to a host Radix Dialog (EventEditDialog),
+      // which would otherwise tear down the whole form on the same Esc.
       e.stopPropagation();
       setOpen(false);
     }
   };
 
-  // Close on a pointer-down OUTSIDE the field and the list — NOT on input blur.
-  // Selection lands on the row's onClick (a real tap), so a touch-drag inside the
-  // list scrolls instead of selecting, and the drag never closes the dropdown.
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDocDown = (e) => {
-      if (wrapRef.current?.contains(e.target)) return;
-      if (listRef.current?.contains(e.target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('pointerdown', onDocDown, true);
-    return () => document.removeEventListener('pointerdown', onDocDown, true);
-  }, [open]);
-
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
+  const isOpen = open && results.length > 0;
+
   return (
-    <div style={{ position: 'relative', minWidth: 0 }}>
-      {/* `boxRef` - на обёртку поля: по ней меряется позиция выпадающего списка
-          и по ней же определяется «клик вне» (см. onDocDown выше). Индикатор
-          держит сам <Input>: кольцо встаёт НА МЕСТО стартовой иконки (она тут
-          есть всегда - у `icon` дефолт `pin`), ширина текстовой зоны при этом
-          не меняется, поэтому дёргаться нечему и резерв справа не нужен. */}
-      <Input
-        boxRef={wrapRef}
-        icon={icon}
-        loading={loading}
-        value={inputValue || ''}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder={placeholder}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        autoComplete="off"
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded={open && results.length > 0}
-        aria-controls={`${uid}-list`}
-        aria-activedescendant={highlighted >= 0 ? `${uid}-opt-${highlighted}` : undefined}
-        {...inputProps}
-      />
-      {open && results.length > 0 && box && createPortal(
-        <div
-          ref={attachList}
-          id={`${uid}-list`}
-          role="listbox"
-          className="menu"
-          onWheel={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-          style={{
-            position: 'fixed', left: box.left,
-            top: box.top, bottom: box.bottom,
-            width: box.width, zIndex: 'var(--z-popover)',
-            maxHeight: box.maxH, overflowX: 'hidden', overflowY: 'auto',
-            overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {/* TRIP-391 объект 1: опция листа ВНУТРИ примитива Autocomplete (объект 5/поле-
-              комбобокс) — часть самого примитива, не отдельная кнопка-объект. */}
+    <Popover open={isOpen} onOpenChange={(o) => { if (!o) setOpen(false); }}>
+      {/* Anchor = the field wrapper; the list positions against it and keeps the
+          input's width via --radix-popover-trigger-width. The loading indicator
+          is owned by <Input> itself (ring in place of the leading icon). */}
+      <PopoverAnchor asChild>
+        <div ref={wrapRef} style={{ minWidth: 0 }}>
+          <Input
+            icon={icon}
+            loading={loading}
+            value={inputValue || ''}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => results.length > 0 && setOpen(true)}
+            placeholder={placeholder}
+            disabled={disabled}
+            autoFocus={autoFocus}
+            autoComplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={isOpen}
+            aria-controls={`${uid}-list`}
+            aria-activedescendant={highlighted >= 0 ? `${uid}-opt-${highlighted}` : undefined}
+            {...inputProps}
+          />
+        </div>
+      </PopoverAnchor>
+      <PopoverContent
+        className="pop-flush"
+        align="start"
+        sideOffset={4}
+        style={{ width: 'var(--radix-popover-trigger-width)' }}
+        // Keep focus on the typing input, and don't let a pointer-down on the
+        // input (the anchor) dismiss the list — only a click truly outside does.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => { if (wrapRef.current?.contains(e.target)) e.preventDefault(); }}
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
+        <div id={`${uid}-list`} role="listbox" className="ss-list">
           {results.map((r, i) => (
             <button
               key={getKey(r)}
@@ -245,24 +178,22 @@ export default function Autocomplete({
               type="button"
               role="option"
               aria-selected={highlighted === i}
-              className="mi"
+              className="ss-opt"
               data-highlighted={highlighted === i ? '' : undefined}
               onMouseEnter={() => setHighlighted(i)}
               // Keep the input focused on tap (no keyboard flicker / iOS double-tap).
               // mousedown does NOT fire on a touch-drag, so this never blocks scroll.
               onMouseDown={(e) => e.preventDefault()}
               // Select on a real tap/click only — a touch-drag scrolls the list and
-              // fires no click, so the user can scroll before choosing. Closing is
-              // handled by the outside-pointerdown effect, not blur.
+              // fires no click, so the user can scroll before choosing.
               onClick={() => pick(r)}
             >
               {renderRow(r)}
             </button>
           ))}
           {attribution && <GeoAttribution />}
-        </div>,
-        document.body,
-      )}
-    </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

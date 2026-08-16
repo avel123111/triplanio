@@ -1027,7 +1027,7 @@ h4,
 .langdd__btn,
 .langdd__item .code,
 .s22-count,
-.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .s22f-pill, .fork-or span,
+.fork-manual__tx span, .pcard__mtx, .pcard__addr, .pcard__stars, .pcard__score, .pcard__sup, .pcard__price span, .fork-or span,
 .addon-card__desc, /* инсп.: Meta (описание аддона) */
 /* TRIP-410 моно-аудит: календарь уходит с JetBrains на Geologica — управляющие
    пилюли, плашки городов, чипы событий (были в .t-mono, поверх sans-оверлея). Кегли
@@ -1869,13 +1869,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    пересадки, и лишний отступ оторвал бы её от своего сегмента).
    ★Родитель теперь ОДИН: тело диалога переехало на `.lp-b` вместе со всей
    оболочкой события (TRIP-333 §4). */
-/* TRIP-343 объект 2: eed-fcbox / eed-nightrow — скин снят на `<Card radius="md">`,
-   класс ОСТАЁТСЯ численным раскладочным остатком (padding живёт в
-   EventEditDialog.css: .eed-fcbox 12, .eed-nightrow 12/14 + margin/justify → 08).
-   Статичные. (`.acc` — отдельным заходом: условная обёртка isMulti + хук
-   состояния `.acc.is-open .acc__chev`, требует динамического носителя.)
-   visual-diff-move: eed-fcbox -> card card--r-md
-   visual-diff-exempt: .eed-nightrow border-radius — overnight-отметка на r-btn 10 (было r-md 16) как контролы экрана (просьба Pavel, TRIP-337) */
+/* TRIP-343 объект 2: eed-fcbox — скин снят на `<Card radius="md">`, класс ОСТАЁТСЯ
+   численным раскладочным остатком (padding живёт в EventEditDialog.css: .eed-fcbox 12).
+   Статичный. (`.acc` — отдельным заходом: условная обёртка isMulti + хук состояния
+   `.acc.is-open .acc__chev`, требует динамического носителя.)
+   (Overnight-отметка `.eed-nightrow` удалена — переехала на канон <Badge>, TRIP-337.)
+   visual-diff-move: eed-fcbox -> card card--r-md */
 /* TRIP-343 объект 2: скин аккордеона на `<Card radius="md" pad="none">` (bg/border
    → .card, radius → .card--r-md, overflow → .card--flush). `.acc` остаётся КЛАССОМ
    (хук состояния `.acc.is-open .acc__chev`); своё правило было только overflow →
@@ -4367,6 +4366,14 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .fpill--sm { min-height: 24px; padding: 0 8px; font-size: var(--fs-micro); font-weight: 500; }
 .fpill--soft { background: var(--brand-soft); border-color: transparent; color: var(--brand); }
 .fpill--soft:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+/* dismiss — ярлык-тег со снятием (активный фильтр поиска): тело НЕ кликается,
+   курсор обычный, справа хвостовой ✕ `.fpill__x`. ✕ МЕНЬШЕ высоты пилюли, поэтому
+   не раздувает её (прежний `.s22f-pill` вставлял полноразмерный <IconBtn> и рос до
+   ~42px — теперь высота держится каноном `--ctl-h-sm`). */
+.fpill--dismiss { cursor: default; padding-right: var(--sp-2); }
+.fpill__x { display: grid; place-items: center; width: 20px; height: 20px; flex: none; padding: 0; border: 0; background: transparent; border-radius: var(--r-pill); color: inherit; cursor: pointer; opacity: .7; transition: opacity .14s, background .14s; }
+.fpill__x:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
+.fpill__x svg { width: 14px; height: 14px; }
 /* avatars — стопка аватаров + подпись, высота от содержимого */
 .fpill--avatars { padding: 0 12px 0 5px; min-height: 38px; }
 .fpill--avatars .avatar { width: 26px; height: 26px; }
@@ -5979,9 +5986,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    ============================================================ */
 /* Только раскладка: вид поля и иконки держит `<Input icon>` (TRIP-333). */
 .ss-search { padding: 6px 6px 8px; }
-.ss-list { max-height: 264px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
+/* max-height caps to Radix's available popover height so a long list never spills
+   past the viewport when the popover can't flip to more room (shared by both
+   searchable pickers — SearchSelect + Autocomplete). Fallback 264 when the var is
+   absent (mobile sheet, where `.sheet .ss-list` overrides with 56vh anyway). */
+.ss-list { max-height: min(264px, var(--radix-popover-content-available-height, 264px)); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 2px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
 .ss-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; background: transparent; border-radius: var(--r-sm); font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; }
-.ss-opt:hover, .ss-opt[data-active] { background: var(--accent); color: var(--accent-ink); }
+.ss-opt:hover, .ss-opt[data-active], .ss-opt[data-highlighted] { background: var(--accent); color: var(--accent-ink); }
 .ss-opt .chk { margin-left: auto; flex: none; width: 15px; height: 15px; color: var(--brand); }
 .ss-empty { padding: 16px; text-align: center; color: var(--muted); }
 /* bigger touch rows when the picker is shown inside a bottom-sheet */
@@ -7710,18 +7721,8 @@ a.doc-row__n:hover{ color: var(--brand); }
    брендовая. Канал объявлен на контейнере, поэтому у кнопки своего класса под
    тон нет (TRIP-344 PR 3). */
 .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; --a: var(--muted); }
-/* Высота чипа диктует вложенный <IconBtn sm> (32px); вертикальный паддинг 5+5
-   раздувал его до ~42px — чип читался «высоким». Паддинг вертикали снят: высота =
-   32px, ровно как у канонных фильтр-пилюль `.fpill` (min-height --ctl-h-sm).
-   visual-diff-exempt: .s22f-pill padding — высота чипа выровнена под --ctl-h-sm (снят вертикальный паддинг), просьба Pavel TRIP-337 */
-.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--sp-2) 0 11px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); }
-/* Крестик удаления фильтра — примитив <IconBtn size="sm" tone="quiet"> (канон
-   .icon-btn). Приватный каскад `.s22f-pill button` (круг 17px, --brand-soft-12)
-   снят: крестик теперь как везде, унификация к канону (апрув Pavel, TRIP-344).
-   ⚠️ 2p краснеет на снятии этих 9 объявлений и НЕ гасится маркером: единица
-   `.s22f-pill button` — бесклассовый селектор из нескольких лексем, слепой
-   участок TRIP-366 (visual-diff-exempt его не адресует). Оставлено красным с
-   разбором в теле PR — доказательство переноса = рендер до/после. */
+/* Сам активный чип фильтра переехал на канон <Chip variant="soft" onRemove> (модуль
+   Chip): приватный `.s22f-pill` (+ вложенный <IconBtn>, раздувавший высоту) удалён. */
 /* От класса остался ОДИН смысл — «прижата к правому краю ряда». Вид (фон,
    рамка, тон, подчёркивание И ТИПОГРАФИКА) уехал в `btn--link`; два следствия
    названы, потому что видны глазом: подчёркивание перестало быть постоянным и
@@ -8030,7 +8031,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .pro-hero-eyebrow background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .ptrip --brand-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
    visual-diff-exempt: .ptrip --primary-soft — пин острова .ptrip переименован вслед за токеном, значение то же (33,115,200,.10)
-   visual-diff-exempt: .s22f-pill background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .sec-lbl background — шаг 2 TRIP-352: имя токена --primary-soft заменено на --brand-soft, значения выровнены в #699 - тон тот же
    visual-diff-exempt: .seg background — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)
    visual-diff-exempt: .seg color — канал тинта один (Р7): ручка --ev- переименована в --hl, фолбэк снят как заведомо мёртвый (--hl объявлен в :root)

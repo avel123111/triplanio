@@ -19,10 +19,10 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, DialogTitle, CurrencyCombobox, AiField, AiBadge, Badge, Toggle, Btn, Card, IconBtn, Tile, Seg, Severity, useToast } from '@/design/index';
 import {
   Trash2, ChevronDown, ArrowRight, Repeat,
-  Plane, Car as CarIcon, Moon, ShieldCheck,
+  Plane, Car as CarIcon, ShieldCheck,
   BedDouble, Ticket,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
@@ -1984,15 +1984,10 @@ function TransferLegCard({
         {/* Overnight — DERIVED from the dates, not a user toggle. day_change is a pure
             function of (arrival day > departure day): the single bit recompute_trip
             reads to add the +1 arrival-day gap, so it must always equal the actual
-            dates. Shown as a clear tinted MARK (not an empty container — Pavel) the
-            moment the arrival date is a later day. Radius 10 (r-btn) как у контролов экрана. */}
+            dates. Shown as the canon <Badge> (moon + label) the moment the arrival
+            date is a later day — a DS mark, not a bespoke tinted box. */}
         {isOvernightLocal(leg.startLocal, leg.endLocal) && (
-          <Card radius="btn" className="row eed-nightrow">
-            <span className="row row--g4 eed-nightrow__l">
-              <Moon size={16} />
-              <span className="t-label">{t('event.overnight_label')}</span>
-            </span>
-          </Card>
+          <Badge variant="brand" icon="moon" style={{ marginTop: 14 }}>{t('event.overnight_label')}</Badge>
         )}
 
         {/* Carrier / flight no. */}

@@ -48,15 +48,8 @@
 .eed-pricerow { grid-template-columns: 1fr 108px; }
 /* TRIP-176: статус оплаты — канонический сегмент .seg (был самодельный .payseg) */
 .eed-finance .seg { margin-top: 10px; }
-/* Overnight — производная ОТМЕТКА под датами трансфера (TRIP-337, просьба Pavel).
-   Была почти невидимой белой плашкой (Card без тона) — читалась как «пустой
-   контейнер». Теперь ЯВНАЯ метка: мягкая бренд-заливка + акцентный значок луны,
-   радиус 10 (r-btn у Card) как у контролов экрана. Тон/фон здесь, форму даёт Card.
-   visual-diff-exempt: .eed-nightrow background — производная overnight-отметка: бренд-тинт вместо белого (просьба Pavel, TRIP-337)
-   visual-diff-exempt: .eed-nightrow border-color — заливка-метка без рамки (просьба Pavel, TRIP-337)
-   visual-diff-exempt: .eed-nightrow__l color — значок+текст метки в бренд-акценте (просьба Pavel, TRIP-337) */
-.eed-nightrow { justify-content: flex-start; gap: var(--sp-4); padding: var(--sp-5) var(--sp-6); margin-top: var(--sp-6); background: var(--brand-soft); border-color: transparent; }
-.eed-nightrow__l { min-width: 0; color: var(--brand); }
-.eed-nightrow svg { flex: none; }
+/* Overnight-отметка переехала на канон <Badge variant="brand" icon="moon"> (TRIP-337):
+   производный признак «ночной переезд» = обычный бейдж ДС, приватный `.eed-nightrow`
+   (бокс r10 с тинтом) удалён вместе с разметкой. */
 /* Second stacked row inside an accordion body — spacing between rows. */
 .eed-accrow { margin-top: 10px; }
