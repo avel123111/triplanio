@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Search, FileText, BedDouble, Plane, Ticket } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-import { IconBtn, Seg, Tile } from '@/design/index';
+import { IconBtn, Seg, Tile, Tooltip } from '@/design/index';
+import { Icon } from '@/design/icons';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { eventHeader } from '@/components/common/EventViewBody';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -39,7 +41,12 @@ export default function AddBookingPanel({
   onClose,
 }) {
   const { t, lang } = useI18nFormat();
-  const [tab, setTab] = useState(initialTab === 'manual' ? 'manual' : 'find');
+  // Вкладка «Найти» (fork, партнёрские витрины) открыта всем. Вкладка «у меня
+  // есть бронь» — это ВХОД В CREATE: наблюдателю недоступна (замьючена + замок),
+  // и наблюдатель не может на ней оказаться даже при initialTab='manual'
+  // (TRIP-274 Ф2.2 — «открыть fork, заблокировать вход в create»).
+  const { canEdit } = useTripAccess();
+  const [tab, setTab] = useState(initialTab === 'manual' && canEdit ? 'manual' : 'find');
   const meta = KIND_META[kind] || KIND_META.hotel;
   const HeaderIcon = meta.Icon;
 
@@ -72,10 +79,17 @@ export default function AddBookingPanel({
           variant="fill"
           ariaLabel={t(meta.eyebrowKey)}
           value={tab}
-          onChange={setTab}
+          onChange={(v) => { if (v === 'manual' && !canEdit) return; setTab(v); }}
           options={[
             { value: 'find', label: <><Search size={14} />{t(meta.findKey)}</> },
-            { value: 'manual', label: <><FileText size={14} />{t('fork.tab_have_booking')}</> },
+            {
+              value: 'manual',
+              // Наблюдателю вход в create заблокирован: клик не переключает
+              // (onChange выше), замок + styled-тултип (не нативный title).
+              label: !canEdit
+                ? <Tooltip content={t('trip.viewer_locked')}><span className="row row--g2"><FileText size={14} />{t('fork.tab_have_booking')}<Icon name="lock" size={12} /></span></Tooltip>
+                : <><FileText size={14} />{t('fork.tab_have_booking')}</>,
+            },
           ]}
         />
       </div>

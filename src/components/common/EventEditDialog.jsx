@@ -224,6 +224,7 @@ import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
 import EventAiBlock from '@/components/common/EventAiBlock';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Type metadata - colours, icons, copy
@@ -607,6 +608,10 @@ export default function EventEditDialog({
   const [isPro, setIsPro] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
   const { openProUpsell } = useProUpsell();
+  // Право редактировать план — из единого контекста доступа (TRIP-274 Ф2.2).
+  // Это движок записи для эвентов/сервисов: наблюдатель видит форму (fork), но
+  // сохранение замьючено с тултипом-причиной. Серверный шов всё равно 403-ит.
+  const { canEdit } = useTripAccess();
 
   const [confirmDel, setConfirmDel] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -1375,6 +1380,8 @@ export default function EventEditDialog({
                   loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
                   ariaDisabled={!canSave}
+                  locked={!canEdit}
+                  lockedHint={t('trip.viewer_locked')}
                 >
                   {isEdit ? t('common.save') : t('event.create')}
                 </Btn>

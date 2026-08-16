@@ -33,6 +33,7 @@ import { telegram as tgBrand } from '@/lib/externalBrands';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
@@ -477,7 +478,7 @@ export function SettingsSkeleton() {
   );
 }
 
-export default function SettingsLens({ tripId, trip, members = [], isOwner = false, canEdit = false, isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
+export default function SettingsLens({ tripId, trip, members = [], isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
   // Profiles ride in the trip content bundle (getTripDetails), handed down by
   // TripView — no separate profile-fetch hop for the owner name.
   const { t } = useI18n();
@@ -502,12 +503,11 @@ export default function SettingsLens({ tripId, trip, members = [], isOwner = fal
   const { toast } = useToast();
 
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
-  // isOwner — ступень owner лестницы (строго created_by), решено в TripView.
-  // Гейтит owner-only управление (удалить трип) и режим апселла (upgrade/info).
-  // Viewers get Settings in read-only mode: identity fields muted, management
-  // cards hidden, only "Leave trip" stays active (TRIP-137). NOTE: this is a UI
-  // guard only — server-side write protection is TRIP-136 (RLS), not this.
-  // Право — единая лестница доступа (ступень editor), решено выше в TripView.
+  // Право (editor) и владелец (owner) — из единого контекста доступа (TRIP-274
+  // Ф2.2). isOwner гейтит owner-only управление (удалить трип) и режим апселла;
+  // readOnly=не-editor даёт viewer'у Settings только на чтение (есть «Выйти»,
+  // TRIP-137). Это UI-гейт; серверная защита — edge/RLS.
+  const { canEdit, isOwner } = useTripAccess();
   const readOnly = !canEdit;
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   // Trip-level display toggles (default ON when the flag is absent).

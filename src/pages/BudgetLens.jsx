@@ -42,6 +42,7 @@ import { Icon } from '../design/icons';
 import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── запись бюджета: клиентская половина единой двери (TRIP-394) ──────────────
 //
@@ -529,13 +530,14 @@ export function BudgetSkeleton() {
   );
 }
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, canEdit = false, isOwner = false, queryClient, onOpenSource }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   const isMobile = useIsMobile();
-  // Право редактировать — единая лестница доступа (ступень editor), решено выше
-  // в TripView через clearsStep. UI прячет мутации, чтобы прямые записи не падали
-  // молчаливым 403 (серверная защита — edge/RLS _can_edit_trip, TRIP-124).
+  // Право (editor) и владелец (owner) — из единого контекста доступа (TRIP-274
+  // Ф2.2). UI прячет мутации, чтобы прямые записи не падали молчаливым 403
+  // (серверная защита — edge/RLS _can_edit_trip, TRIP-124).
+  const { canEdit, isOwner } = useTripAccess();
   const readOnly = !canEdit;
   // Pro-отказ записи открывает единый app-level апселл (как SettingsLens): владелец
   // видит апгрейд, участник — «подключает владелец». Контекст владельца есть только

@@ -20,6 +20,7 @@ import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
 import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
+import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -366,6 +367,8 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       <div className="t-label grow">
         {t('trip.no_transfer', { from, to })}
       </div>
+      {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
+          её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
       <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
       <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
     </div>
@@ -374,7 +377,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const { t, lang } = useI18n();
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
@@ -397,7 +400,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // toggle is on (default on) AND (b) the current user can act on them. Viewers
   // (Зрители) never see them - they can't add bookings, so it's just noise that
   // exposes planning gaps.
-  const showBookingWarnings = !isViewer && trip?.details?.display?.booking_warnings !== false;
+  // Варнинги «нет переезда» показываем ВСЕМ, включая наблюдателя (TRIP-274 Ф2.2):
+  // не прячем контент по роли, а блокируем ДЕЙСТВИЕ (кнопка добавления замьючена).
+  const showBookingWarnings = trip?.details?.display?.booking_warnings !== false;
 
   if (!visits.length) {
     return (
@@ -1193,6 +1198,10 @@ export default function TripView() {
   );
 
   return (
+    // Единый доступ к праву для всего поддерева трипа: линзы, шит, диалоги
+    // читают `useTripAccess()` вместо пропов права (TRIP-274 Ф2.2). Ступень
+    // считается один раз в самом провайдере.
+    <TripAccessProvider members={members} trip={trip} user={user}>
     <TripShell
       tripId={tripId}
       trip={trip}
@@ -1290,7 +1299,6 @@ export default function TripView() {
               user={user}
               contentLoading={shellLoading || loadingContent}
               active={shownLens === 'overview'}
-              canManage={canEditMode}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
               onOpenMap={() => setLens('map')}
               onOpenBudget={() => setLens('budget')}
@@ -1308,7 +1316,6 @@ export default function TripView() {
                   visits={visits}
                   transfers={transfers}
                   trip={trip}
-                  isViewer={!canEditMode}
                   isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
@@ -1348,8 +1355,6 @@ export default function TripView() {
               cityVisits={visits}
               isLoading={shellLoading || loadingContent}
               isPro={tripIsPro}
-              canEdit={canEditMode}
-              isOwner={isOwner}
               queryClient={qc}
               onOpenSource={(kind, id) => setEventView({ open: true, kind, id, warning: null })}
             />
@@ -1361,7 +1366,6 @@ export default function TripView() {
               profiles={memberProfiles}
               trip={trip}
               user={user}
-              canManage={canEditMode}
               isLoading={shellLoading || loadingContent}
               queryClient={qc}
             />
@@ -1380,7 +1384,6 @@ export default function TripView() {
               isLoading={shellLoading || loadingContent}
               members={members}
               profiles={memberProfiles}
-              canEdit={canEditMode}
             />
           )}
           {/* Структурный редактор. До TRIP-349 — отдельный роут /trip/:id/edit со
@@ -1409,8 +1412,6 @@ export default function TripView() {
               trip={trip}
               members={members}
               profiles={memberProfiles}
-              isOwner={isOwner}
-              canEdit={canEditMode}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
               proResolved={tripProResolved}
@@ -1441,5 +1442,6 @@ export default function TripView() {
           )}
           </ErrorBoundary>
     </TripShell>
+    </TripAccessProvider>
   );
 }

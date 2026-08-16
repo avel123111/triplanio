@@ -78,5 +78,6 @@
   "tl_transfer": "Transfer",
   "to_my_trips": "To my trips",
   "update": "Update trip",
-  "who_goes": "Who is going"
+  "who_goes": "Who is going",
+  "viewer_locked": "Viewers cannot edit the trip"
 }

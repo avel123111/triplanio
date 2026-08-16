@@ -36,6 +36,7 @@ import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import './DocsLens.css';
 
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
@@ -601,11 +602,12 @@ export function DocsSkeleton() {
   );
 }
 
-export default function DocsLens({ tripId, isLoading: parentLoading, members = [], canEdit = false, profiles = {} }) {
+export default function DocsLens({ tripId, isLoading: parentLoading, members = [], profiles = {} }) {
   const { t }    = useI18n();
   const { user } = useAuth();
-  // Право редактировать — единая лестница доступа (ступень editor), решено выше
-  // в TripView. Read-only = не editor; серверная защита — edge/RLS _can_edit_trip.
+  // Право редактировать — из единого контекста доступа (ступень editor). Один
+  // источник на всё поддерево (TRIP-274 Ф2.2); серверная защита — edge/RLS.
+  const { canEdit } = useTripAccess();
   const readOnly = !canEdit;
   const [addDocVis,    setAddDocVis]    = useState(null); // null | { defaultVisibility }
   const [detailDoc,    setDetailDoc]    = useState(null); // null | doc object

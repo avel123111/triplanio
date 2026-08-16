@@ -8454,3 +8454,54 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .te-seam__pill:hover box-shadow — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
    visual-diff-exempt: .te-seam__pill:hover transform — класс удалён — заполненный шов на <Chip tone> (TRIP-344 PR 7)
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ----- Tooltip (.tt) — глобальный текст-хинт на ховере/фокусе (TRIP-274 Ф2.2) -----
+   Триггер `.tt` (relative). Пузырь `.tt__b` рендерится ПОРТАЛОМ в <body> и
+   позиционируется по getBoundingClientRect (position: fixed) — НЕ клипается
+   overflow-контейнерами. Светлая карточка (surface + рамка --line-strong + тень
+   --sh-3), а не стеклянная чёрно-белая инверсия. Переиспользуемый примитив ДС.
+   prefix-exempt: tt — новый примитив ДС «тултип», глобальный текст-хинт, апрув Pavel TRIP-274
+   floor-exempt: namespaces +1 — новая канон-семья ДС tt (тултип), общий примитив, апрув Pavel TRIP-274
+   floor-exempt: classes +5 — .tt · .tt__b · .tt__b--top · .tt__b--bottom · .tt--block, примитив ДС, апрув Pavel TRIP-274
+   floor-exempt: layout +1 — семья tt (тултип) несёт свою раскладку (inline-flex/relative/block-обёртка), канон-кубик ДС, апрув Pavel TRIP-274
+   floor-exempt: inline +1 — динамическая позиция тултип-пузыря в портале (getBoundingClientRect), классом невыразима, апрув Pavel TRIP-274 */
+.tt { position: relative; display: inline-flex; }
+/* Обёртка блочного триггера (full-width карточка): не ужимать по контенту. */
+.tt--block { display: block; width: 100%; }
+.tt__b {
+  position: fixed;
+  /* Выше модалки (--z-modal 200): пузырь в портале <body> обязан лежать НАД
+     диалогом форка, иначе клипается за ним (был баг: z-menu 60 < 200). */
+  z-index: calc(var(--z-modal) + 10);
+  max-width: 240px; padding: var(--sp-3) var(--sp-5);
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm); box-shadow: var(--sh-3);
+  font-size: var(--fs-meta); line-height: 1.35;
+  white-space: normal; text-align: center;
+  pointer-events: none;
+}
+.tt__b--top { transform: translate(-50%, -100%); }
+.tt__b--bottom { transform: translate(-50%, 0); }
+/* visual-diff-exempt для примитива тултип (.tt) — каждое объявление новое; апрув Pavel TRIP-274 Ф2.2:
+   visual-diff-exempt: .tt__b--bottom transform — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b--top transform — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b background — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b border — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b border-radius — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b box-shadow — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b color — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b font-size — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b line-height — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b max-width — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b padding — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b pointer-events — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b position — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b text-align — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b white-space — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b z-index — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt display — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt--block display — примитив тултип ДС (обёртка блочного триггера), апрув Pavel TRIP-274
+   visual-diff-exempt: .tt--block width — примитив тултип ДС (обёртка блочного триггера), апрув Pavel TRIP-274
+   visual-diff-exempt: .tt position — примитив тултип ДС, апрув Pavel TRIP-274
+ */
