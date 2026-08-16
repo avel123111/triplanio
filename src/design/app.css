@@ -8317,48 +8317,46 @@ a.doc-row__n:hover{ color: var(--brand); }
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ----- Tooltip (.tt) — глобальный текст-хинт на ховере/фокусе (TRIP-274 Ф2.2) -----
-   Триггер `.tt` (relative), пузырь `.tt__b` (absolute), виден `.tt:hover`/`.tt:focus-within`.
-   Переиспользуемый примитив ДС: «замок» недоступного действия у наблюдателя, дальше — карта и т.п.
+   Триггер `.tt` (relative). Пузырь `.tt__b` рендерится ПОРТАЛОМ в <body> и
+   позиционируется по getBoundingClientRect (position: fixed) — НЕ клипается
+   overflow-контейнерами. Светлая карточка (surface + рамка --line-strong + тень
+   --sh-3), а не стеклянная чёрно-белая инверсия. Переиспользуемый примитив ДС.
    prefix-exempt: tt — новый примитив ДС «тултип», глобальный текст-хинт, апрув Pavel TRIP-274
    floor-exempt: namespaces +1 — новая канон-семья ДС tt (тултип), общий примитив, апрув Pavel TRIP-274
    floor-exempt: classes +4 — .tt · .tt__b · .tt__b--top · .tt__b--bottom, примитив ДС, апрув Pavel TRIP-274
-   floor-exempt: layout +1 — .tt несёт свою раскладку (inline-flex/relative), канон-кубик ДС, апрув Pavel TRIP-274 */
+   floor-exempt: layout +1 — .tt несёт свою раскладку (inline-flex/relative), канон-кубик ДС, апрув Pavel TRIP-274
+   floor-exempt: inline +1 — динамическая позиция тултип-пузыря в портале (getBoundingClientRect), классом невыразима, апрув Pavel TRIP-274 */
 .tt { position: relative; display: inline-flex; }
 .tt__b {
-  position: absolute; left: 50%; transform: translateX(-50%);
+  position: fixed;
   z-index: var(--z-menu);
-  max-width: 220px; padding: var(--sp-3) var(--sp-5);
-  background: var(--ink); color: var(--surface);
-  border-radius: var(--r-sm); font-size: var(--fs-meta); line-height: 1.3;
+  max-width: 240px; padding: var(--sp-3) var(--sp-5);
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm); box-shadow: var(--sh-3);
+  font-size: var(--fs-meta); line-height: 1.35;
   white-space: normal; text-align: center;
-  opacity: 0; pointer-events: none; transition: opacity .12s ease;
+  pointer-events: none;
 }
-.tt__b--top { bottom: calc(100% + var(--sp-3)); }
-.tt__b--bottom { top: calc(100% + var(--sp-3)); }
-.tt:hover .tt__b, .tt:focus-within .tt__b { opacity: 1; }
-
-/* visual-diff-exempt для нового примитива тултип (.tt) — каждое объявление
-   объявлено новым; примитив ДС, апрув Pavel TRIP-274 (Ф2.2):
-   visual-diff-exempt: .tt__b--bottom top — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b--top bottom — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b background — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b border-radius — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b color — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b font-size — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b left — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b line-height — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b max-width — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b opacity — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b padding — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b pointer-events — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b position — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b text-align — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b transform — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b transition — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b white-space — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt__b z-index — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt display — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt position — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt:focus-within opacity — новый примитив тултип ДС, апрув Pavel TRIP-274
-   visual-diff-exempt: .tt:hover opacity — новый примитив тултип ДС, апрув Pavel TRIP-274
+.tt__b--top { transform: translate(-50%, -100%); }
+.tt__b--bottom { transform: translate(-50%, 0); }
+/* visual-diff-exempt для примитива тултип (.tt) — каждое объявление новое; апрув Pavel TRIP-274 Ф2.2:
+   visual-diff-exempt: .tt__b--bottom transform — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b--top transform — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b background — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b border — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b border-radius — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b box-shadow — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b color — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b font-size — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b line-height — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b max-width — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b padding — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b pointer-events — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b position — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b text-align — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b white-space — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt__b z-index — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt display — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt position — примитив тултип ДС, апрув Pavel TRIP-274
  */

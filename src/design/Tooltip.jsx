@@ -1,17 +1,17 @@
 // @ts-check
-import React from 'react';
+import React, { useState, useRef, useId, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 // ----- Tooltip ----- (TRIP-274 Ф2.2 — глобальный текст-хинт на ховере/фокусе)
 // Обёртка вокруг триггера: показывает короткий текст при наведении/фокусе.
-// CSS-only, БЕЗ новой зависимости — примитив несёт текст, портал ему не нужен
-// (лестница «нативное над библиотекой»; Radix-tooltip'а в стеке нет, тянуть пакет
-// ради текста на ховере — лишнее). Переиспользуемый: сейчас «замок» недоступного
-// действия у наблюдателя (`<Btn locked>`), дальше — названия стран на карте и т.п.
+// БЕЗ новой зависимости. Пузырь рендерится ПОРТАЛОМ в <body> и позиционируется
+// по `getBoundingClientRect` триггера (position: fixed) — поэтому НЕ клипается
+// `overflow:hidden`-контейнерами (диалог/карточка), как клипался absolute-вариант.
+// Переиспользуемый: «замок» недоступного действия у наблюдателя (`<Btn locked>`),
+// дальше — названия стран на карте и т.п.
 //
-// Разметка: триггер `.tt` (position:relative), пузырь `.tt__b` (показывается
-// `.tt:hover`/`.tt:focus-within`). Доступность: пузырь `role="tooltip"` со своим
-// id, триггер ссылается `aria-describedby`. Пустой `content` → рендерит только
-// детей (обёртки нет).
+// Доступность: пузырь `role="tooltip"` со своим id, триггер ссылается
+// `aria-describedby`, пока показан. Пустой `content` → только дети.
 /**
  * @param {{
  *   content?: any,
@@ -21,12 +21,45 @@ import React from 'react';
  * }} p
  */
 export const Tooltip = ({ content, side = 'top', children, className = '' }) => {
-  const id = React.useId();
+  const id = useId();
+  const ref = useRef(/** @type {HTMLSpanElement|null} */(null));
+  const [pos, setPos] = useState(/** @type {{top:number,left:number}|null} */(null));
+
+  const show = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setPos({
+      top: side === 'bottom' ? r.bottom + 8 : r.top - 8,
+      left: r.left + r.width / 2,
+    });
+  }, [side]);
+  const hide = useCallback(() => setPos(null), []);
+
   if (content == null || content === '') return children;
+
   return (
-    <span className={['tt', className].filter(Boolean).join(' ')} aria-describedby={id}>
+    <span
+      ref={ref}
+      className={['tt', className].filter(Boolean).join(' ')}
+      aria-describedby={pos ? id : undefined}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
       {children}
-      <span id={id} role="tooltip" className={`tt__b tt__b--${side}`}>{content}</span>
+      {pos && createPortal(
+        <span
+          id={id}
+          role="tooltip"
+          className={`tt__b tt__b--${side}`}
+          style={{ top: pos.top, left: pos.left }}
+        >
+          {content}
+        </span>,
+        document.body,
+      )}
     </span>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
+import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight, Lock } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import { Btn, IconBtn, Card, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Card, Tile, Tooltip, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -191,29 +191,34 @@ export default function ForkPartnerModal({
       <div className="fork-addzone">
         {/* Manual add — redesigned horizontal CTA, ev-colored. Dropped in
             embedded (tab) mode: the "I have a booking" tab replaces it. */}
-        {!embedded && (canEdit ? (
+        {/* Ручное добавление (create) — только editor. Наблюдателю мьючим ТУ ЖЕ
+            карточку (приглушена + замок + тултип-причина), а не placeholder: fork
+            (партнёрские витрины ниже) при этом открыт (TRIP-274 Ф2.2). */}
+        {!embedded && (
+        <Tooltip content={canEdit ? '' : t('trip.viewer_locked')}>
         <Card
           as="button"
           radius="md"
           pad="none"
           className="fork-manual"
-          onClick={handleManual}
-          style={{ '--fk': meta.color, '--fk-soft': meta.colorSoft }}
+          onClick={canEdit ? handleManual : undefined}
+          aria-disabled={canEdit ? undefined : true}
+          style={{
+            '--fk': canEdit ? meta.color : 'var(--muted)',
+            '--fk-soft': canEdit ? meta.colorSoft : 'var(--surface-2)',
+            ...(canEdit ? null : { opacity: 0.55, cursor: 'not-allowed' }),
+          }}
         >
           <span className="fork-manual__ic"><ManualIcon size={20} /></span>
           <span className="fork-manual__tx">
             <b>{t('fork.manual_add')}</b>
             <span>{t(meta.manualSubKey)}</span>
           </span>
-          <ChevronRight size={16} className="fork-manual__chev" />
+          {canEdit && <ChevronRight size={16} className="fork-manual__chev" />}
+          {!canEdit && <Lock size={16} className="fork-manual__chev" />}
         </Card>
-        ) : (
-          // Наблюдателю ручное добавление недоступно: тот же кирпич-замок, что и
-          // на Save движка записи — видимый замок + тултип, без своего CSS.
-          <Btn variant="dashed" block locked lockedHint={t('trip.viewer_locked')}>
-            {t('fork.manual_add')}
-          </Btn>
-        ))}
+        </Tooltip>
+        )}
 
         {count > 0 && (
           <>

@@ -352,7 +352,7 @@ function StreamAnchor({ label, sub, color, icon }) {
 
 // ─── MissingTransferWarning ───────────────────────────────────────────────────
 
-function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd, locked = false }) {
+function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
   const { t } = useI18n();
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
@@ -367,7 +367,9 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd, locked = 
       <div className="t-label grow">
         {t('trip.no_transfer', { from, to })}
       </div>
-      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)} locked={locked} lockedHint={t('trip.viewer_locked')}>{t('trip.add_transfer')}</Btn>
+      {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
+          её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
+      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
       <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
     </div>
   );
@@ -375,7 +377,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd, locked = 
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const { t, lang } = useI18n();
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
@@ -481,7 +483,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
           <MissingTransferWarning
             from={prev.city_name} to={city.city_name}
-            fromVisit={prev} toVisit={city} onAdd={onAddTransfer} locked={isViewer}
+            fromVisit={prev} toVisit={city} onAdd={onAddTransfer}
           />
         </div>
       );
@@ -660,7 +662,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         <div key="mt-end" style={{ marginBottom: 8 }}>
           <MissingTransferWarning
             from={prevCity.city_name} to={endVisit.city_name}
-            fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer} locked={isViewer}
+            fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer}
           />
         </div>
       );
@@ -1314,7 +1316,6 @@ export default function TripView() {
                   visits={visits}
                   transfers={transfers}
                   trip={trip}
-                  isViewer={!canEditMode}
                   isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
