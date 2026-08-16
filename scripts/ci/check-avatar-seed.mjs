@@ -67,15 +67,48 @@ function blankComments(src) {
   return out.join('');
 }
 
-// A whole `<Avatar …/>` or `<Avatar …>` opening tag. Avatar is self-closing in
-// this codebase, but match up to the first `>` either way so the `name`/`seed`
-// props are the ones ON the tag, not a later sibling.
-const AVATAR_TAG = /<Avatar\b[\s\S]*?\/?>/g;
-// `name` whose value is exactly a quoted/template string with no interpolation.
-const LITERAL_NAME = /\bname=(?:"[^"]*"|'[^']*'|\{\s*(['"`])(?:\\.|(?!\1)[^\\])*\1\s*\})/;
+// `name` whose value is a quoted STRING literal — `name="A B"`, `name='A B'`,
+// `name={"A B"}`, `name={'A B'}`. Deliberately NOT template literals: `` name={`${x}`} ``
+// interpolates and must be treated as dynamic, so backticks are excluded here.
+const LITERAL_NAME = /\bname=(?:"[^"]*"|'[^']*'|\{\s*(['"])(?:\\.|(?!\1)[^\\])*\1\s*\})/;
 const HAS_NAME = /\bname=/;
 const HAS_SEED = /\bseed=/;
 const HAS_KIND = /\bkind=/;
+
+/**
+ * Extract each `<Avatar …>` / `<Avatar …/>` OPENING tag from (comment-masked)
+ * source. A regex `.*?>` would truncate the tag at the first `>` inside a prop —
+ * a `p => p.id` arrow, a `n > 3` compare, a nested `<Icon/>` — and then miss the
+ * violation entirely (a person avatar whose `name` sits AFTER such a prop reads
+ * as "no name"). So we scan by hand, tracking `{}` depth and string literals, and
+ * end the tag only at a `>` seen at brace-depth 0 and outside any string.
+ * Returns [{ tag, index }] with `index` into the original source (masking keeps
+ * offsets), so line numbers and the exempt-marker lookup stay valid.
+ */
+function avatarTags(masked) {
+  const out = [];
+  const re = /<Avatar\b/g;
+  let m;
+  while ((m = re.exec(masked))) {
+    let depth = 0;
+    let quote = null;
+    let i = m.index + m[0].length;
+    for (; i < masked.length; i++) {
+      const c = masked[i];
+      if (quote) {
+        if (c === '\\') i++;               // skip an escaped char inside a string
+        else if (c === quote) quote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') quote = c;
+      else if (c === '{') depth++;
+      else if (c === '}') depth--;
+      else if (c === '>' && depth === 0) break; // end of the opening tag
+    }
+    out.push({ tag: masked.slice(m.index, i + 1), index: m.index });
+  }
+  return out;
+}
 
 /** Violations (dynamic-name Avatar with no seed) in one file. */
 function scan(src) {
@@ -83,14 +116,17 @@ function scan(src) {
   const lineOf = (idx) => src.slice(0, idx).split('\n').length - 1; // 0-based
   const lines = src.split('\n');
   const hits = [];
-  for (const m of masked.matchAll(AVATAR_TAG)) {
-    const tag = m[0];
-    if (!HAS_NAME.test(tag)) continue;        // kind-only avatar (ai) — no name to colour
-    if (HAS_KIND.test(tag)) continue;         // ai / placeholder — colour irrelevant
-    if (LITERAL_NAME.test(tag)) continue;     // literal name (kit demo / decorative)
-    if (HAS_SEED.test(tag)) continue;         // the correct case
-    const from = lineOf(m.index);
-    const to = lineOf(m.index + tag.length);
+  for (const { tag, index } of avatarTags(masked)) {
+    // Blank the CONTENTS of quoted attribute values before testing which props
+    // are present, so a literal like `aria-label="seed=warm"` can never
+    // masquerade as a real `seed=`/`kind=`/`name=` prop.
+    const attrs = tag.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''");
+    if (!HAS_NAME.test(attrs)) continue;   // kind-only avatar (ai) — no name to colour
+    if (HAS_KIND.test(attrs)) continue;    // ai / placeholder — colour irrelevant
+    if (LITERAL_NAME.test(attrs)) continue; // literal name (kit demo / decorative)
+    if (HAS_SEED.test(attrs)) continue;    // the correct case
+    const from = lineOf(index);
+    const to = lineOf(index + tag.length);
     // Reason may sit on any line the tag spans, or the line right before it.
     if (lines.slice(Math.max(0, from - 1), to + 1).some((l) => l.includes(EXEMPT))) continue;
     hits.push(from + 1); // 1-based for humans

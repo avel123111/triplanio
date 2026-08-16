@@ -73,6 +73,38 @@ test('a dynamic-name Avatar inside a comment is ignored', (t) => {
   assert.equal(runOn('// <Avatar name={who.name} />\nexport const C = 1;\n', t).code, 0);
 });
 
+/* ── regex-robustness: a `>` inside a prop must not truncate the tag ────────── */
+
+test('an arrow BEFORE name does not hide a missing seed', (t) => {
+  // The `>` of `=>` used to end the tag before `name` was seen → false pass.
+  const r = runOn(wrap('<Avatar onClick={() => open()} name={who.name} photo={p} />'), t);
+  assert.equal(r.code, 1);
+});
+
+test('a `>` compare inside a prop does not truncate the tag', (t) => {
+  const r = runOn(wrap('<Avatar size={n > 3 ? "lg" : "sm"} name={who.name} />'), t);
+  assert.equal(r.code, 1);
+});
+
+test('a nested self-closing element in a prop is not the tag end', (t) => {
+  // `icon={<I/>}` contains `/>` inside braces; the real tag close is later, and
+  // it carries seed → must pass.
+  const r = runOn(wrap('<Avatar name={who.name} icon={<I/>} seed={who.seed} />'), t);
+  assert.equal(r.code, 0);
+});
+
+/* ── regex-robustness: interpolation is dynamic, string values are not props ── */
+
+test('an interpolated template name is dynamic and needs a seed', (t) => {
+  const r = runOn(wrap('<Avatar name={`${who.name}`} />'), t);
+  assert.equal(r.code, 1);
+});
+
+test('the literal "seed=" inside a string value is not a real seed prop', (t) => {
+  const r = runOn(wrap('<Avatar name={who.name} aria-label="seed=warm" />'), t);
+  assert.equal(r.code, 1);
+});
+
 /* ── a real repeat/negative: two tags, one bad ─────────────────────────────── */
 
 test('one good and one bad tag still fails on the bad one', (t) => {
