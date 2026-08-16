@@ -214,6 +214,14 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-ts-check.mjs
+      # 2z — гейт права на фронте ТОЛЬКО через лестницу доступа src/lib/tripStep.js
+      # (TRIP-274 Ф2.1). Абсолютный инвариант (HEAD-only, не храповик, BASE_REF не
+      # нужен), только стандартная библиотека — инвариант джобы «без `npm ci`» цел.
+      # Ловит рукописный гейт (`myRole === 'admin'` / `x === trip.created_by`) мимо
+      # `clearsStep`; показ роли (ярлык/бейдж) помечается `// role-gate-exempt`.
+      - name: 2z — role gate (право только через лестницу clearsStep)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-role-gate.mjs
       # 2u — целостность CSS-комментариев (TRIP-344). HEAD-only, абсолютный
       # инвариант (не храповик, BASE_REF не нужен), только стандартная библиотека —
       # инвариант джобы `guards` цел. Ловит осиротевший/лишний терминатор и

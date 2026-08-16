@@ -356,8 +356,9 @@ export const Badge = ({ variant = "", size, icon, children, style }) => (
 /** @param {{ role?: string }} p */
 export const RoleBadge = ({ role }) => {
   const t = useT();
-  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>;
-  if (role === "viewer") return <Badge variant="outline">{t("trips.role_viewer")}</Badge>;
+  // RoleBadge рисует ЯРЛЫК роли — это показ, не гейт права редактирования.
+  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>; // role-gate-exempt: показ
+  if (role === "viewer") return <Badge variant="outline">{t("trips.role_viewer")}</Badge>; // role-gate-exempt: показ
   return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
 };
 
