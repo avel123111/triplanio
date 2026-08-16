@@ -2507,7 +2507,12 @@ export type Database = {
         Returns: undefined
       }
       remove_trip_member: {
-        Args: { p_actor: string; p_member: string; p_trip: string }
+        Args: {
+          p_actor: string
+          p_block?: boolean
+          p_member: string
+          p_trip: string
+        }
         Returns: undefined
       }
       reorder_cities: {
@@ -2634,6 +2639,10 @@ export type Database = {
       tg_reminders_undelivered_watchdog: { Args: never; Returns: undefined }
       translit_ru_lat: { Args: { s: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
+      unblock_trip_member: {
+        Args: { p_actor: string; p_trip: string; p_user: string }
+        Returns: undefined
+      }
       update_trip_settings: {
         Args: {
           p_actor: string

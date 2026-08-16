@@ -1027,7 +1027,46 @@ Deno.test('★ remove: guardRow — не владелец и не сам; buildA
   });
   assert(plan.op === 'rpc' && plan.name === 'remove_trip_member');
   // IDOR: скоуп трипа + id участника в теле RPC (реестровый sweep rpc НЕ покрывает).
-  assertEquals(plan.args, { p_member: 'member-1', p_trip: TRIP, p_actor: M_ACTOR.id });
+  // p_block=false по умолчанию — обычное «Удалить»/«Отменить приглашение» НЕ банит (TRIP-412).
+  assertEquals(plan.args, { p_member: 'member-1', p_trip: TRIP, p_block: false, p_actor: M_ACTOR.id });
+});
+
+Deno.test('★ remove: p_block=true ТОЛЬКО по явному block:true («Удалить и заблокировать»)', () => {
+  const resource = REGISTRY['trip-member'];
+  const remove = resource.actions.remove;
+  // block — строгий boolean (не коэрция): не-boolean → 400.
+  const bad = validateInput(remove, { block: 'yes' }, { isInsert: false });
+  assert('status' in bad && bad.status === 400, 'block не-boolean → 400');
+  // block:true → p_block:true (бан = ЯВНОЕ намерение).
+  const blocked = buildPlan(resource, remove, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: 'member-1', values: { block: true },
+  });
+  assert(blocked.op === 'rpc');
+  assertEquals(blocked.args.p_block, true);
+  // block:false → p_block:false (обычное удаление без бана).
+  const plain = buildPlan(resource, remove, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: 'member-1', values: { block: false },
+  });
+  assert(plain.op === 'rpc');
+  assertEquals(plain.args.p_block, false);
+});
+
+Deno.test('★ unblock: rpc unblock_trip_member, p_trip из скоупа, p_user из тела, p_actor от шва (IDOR)', () => {
+  const resource = REGISTRY['trip-member'];
+  const unblock = resource.actions.unblock;
+  assertEquals([...unblock.requires], ['editor']);
+  // user_id обязателен (кого разбанить).
+  const noUser = validateInput(unblock, {}, { isInsert: false });
+  assert('status' in noUser && noUser.status === 400, 'без user_id — 400');
+  const badUser = validateInput(unblock, { user_id: 'not-a-uuid' }, { isInsert: false });
+  assert('status' in badUser && badUser.status === 400, 'user_id не uuid — 400');
+  const plan = buildPlan(resource, unblock, {
+    actor: M_ACTOR.id, scopeValue: TRIP, targetId: null,
+    values: { user_id: '11111111-1111-4111-8111-111111111111' },
+  });
+  assert(plan.op === 'rpc' && plan.name === 'unblock_trip_member');
+  // IDOR: скоуп трипа приезжает из проверенного scopeValue, не из клиента.
+  assertEquals(plan.args, { p_trip: TRIP, p_user: '11111111-1111-4111-8111-111111111111', p_actor: M_ACTOR.id });
 });
 
 Deno.test('★ leave: guardRow row-self (только своя строка членства)', () => {

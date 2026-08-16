@@ -1,6 +1,9 @@
 {
   "actions": "Actions",
   "adding": "Adding…",
+  "block_confirm": "Remove and block this member?",
+  "block_confirm_body": "They'll lose access and can't rejoin via an invite link until you unblock them.",
+  "blocked_desc": "These people can't rejoin via a link until you unblock them.",
   "cancel_invite": "Cancel invite",
   "empty": "No participants",
   "invite_again": "Invite again",

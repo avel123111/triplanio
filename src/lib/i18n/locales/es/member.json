@@ -1,6 +1,9 @@
 {
   "actions": "Acciones",
   "adding": "Añadiendo…",
+  "block_confirm": "¿Eliminar y bloquear a este miembro?",
+  "block_confirm_body": "Perderá el acceso y no podrá volver mediante un enlace de invitación hasta que lo desbloquees.",
+  "blocked_desc": "Estas personas no pueden volver mediante un enlace hasta que las desbloquees.",
   "cancel_invite": "Cancelar invitación",
   "empty": "Sin participantes",
   "invite_again": "Invitar de nuevo",

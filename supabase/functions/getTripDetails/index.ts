@@ -26,7 +26,7 @@ import { isNotFound } from '../_shared/classifyDbError.ts';
 import { callerStep } from '../_shared/tripAccess.ts';
 import { clearsStep } from '../_shared/tripStep.ts';
 import { withHandler, jsonError } from '../_shared/http.ts';
-import { fetchTripProfiles } from '../_shared/profiles.ts';
+import { fetchTripProfiles, fetchSenders } from '../_shared/profiles.ts';
 import { readGroup } from './readGroup.ts';
 
 Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
@@ -84,7 +84,8 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
     // already in hand — the latter would re-read `trips` a second time, and this
     // runs on every trip open. The rule itself is the shared one (TRIP-274); a
     // failed membership query throws → 5xx, never a false 403 (TRIP-208).
-    if (!clearsStep(await callerStep(tripId, user.id, trip.created_by), 'participant')) {
+    const step = await callerStep(tripId, user.id, trip.created_by);
+    if (!clearsStep(step, 'participant')) {
       return jsonError(403, 'Forbidden', undefined, corsHeaders);
     }
 
@@ -177,6 +178,32 @@ Deno.serve(withHandler('getTripDetails', async (req, corsHeaders) => {
                          members: response.members as any[],
                          ownerId: trip.created_by as string | null,
                        });
+      // Blocked list — источник раздела «Заблокированные» (TRIP-412). ТОЛЬКО
+      // редактору: кто забанен — не для глаз viewer'а. Всегда массив (пустой при
+      // отсутствии) — фронт прячет секцию, когда пусто. Сбой под-запроса → 5xx
+      // (как остальные группы), не молчаливо пустой список. Сортировка — свежие бану
+      // сверху (blocked_at не уезжает в payload, фронт его не читает).
+      // ГЕЙТ ДВЕРИ — `participant` (выше); editor здесь лишь фильтрует ДОП. поле, не
+      // авторизует чтение трипа. Считаем по уже resolved `step` инлайном (owner ⊃
+      // editor), а НЕ через `clearsStep(step,'editor')`: у двери одна решающая
+      // ступень, и страж ярусов (check-security-tiers) обязан видеть её однозначной.
+      const isEditor = step === 'owner' || step === 'editor';
+      if (isEditor) {
+        const { data: blocks, error: blockErr } = await supabaseAdmin
+          .from('trip_member_blocks').select('user_id').eq('trip_id', tripId)
+          .order('blocked_at', { ascending: false });
+        if (blockErr) throw blockErr;
+        const blockRows = (blocks ?? []) as { user_id: string }[];
+        // Имя + флаг удаления — через ТОТ ЖЕ шов, что резолвит авторов событий
+        // (`fetchSenders`): единый приговор приватности (удалённый аккаунт не отдаёт
+        // ни имени, ни адреса) и та же лестница `displayName`. Забаненные НЕ
+        // участники, поэтому по user_id, а не через `fetchTripProfiles` (по строкам).
+        const senders = await fetchSenders(supabaseAdmin, blockRows.map((b) => b.user_id));
+        response.blocked = blockRows.map((b) => {
+          const s = senders[b.user_id];
+          return { user_id: b.user_id, name: s?.name ?? '', is_deleted: s?.is_deleted ?? false };
+        });
+      }
     }
     if (wantDocuments) response.documents          = pick('documents');
     if (wantBudget) {

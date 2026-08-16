@@ -4424,6 +4424,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    margin-inline (not margin) keeps the banner's margin-top intact (TRIP-279). */
 .mlist,
 .invite-banner { max-width: 1040px; margin-inline: auto; }
+/* Раздел «Заблокированные» — зазор сверху на шкале (--sp-8=20px): отделяет группу
+   забаненных от списка/баннера. Модификатор семьи .mlist (TRIP-412). Раздел одобрен
+   Pavel (вариант B тикета): явная развязка «удалить vs заблокировать» + список
+   забаненных с разбаном. Он зеркалит существующую разметку списка участников
+   (.mbrow), поэтому пол храповика растёт согласованно:
+   floor-exempt: classes +1 — модификатор .mlist--blocked раздела «Заблокированные», апрув Pavel TRIP-412
+   floor-exempt: namespaces +1 — семья .mlist получает второго члена (.mlist--blocked), апрув Pavel TRIP-412
+   floor-exempt: triage +1 — тот же класс .mlist--blocked в triage-семье mlist, апрув Pavel TRIP-412
+   floor-exempt: dsshare +6 — раздел зеркалит сырую .mbrow-разметку списка участников (тот же паттерн выше), апрув Pavel TRIP-412
+   visual-diff-exempt: .mlist--blocked margin-top — новый зазор раздела «Заблокированные», ступень --sp-8, апрув Pavel TRIP-412 */
+.mlist--blocked { margin-top: var(--sp-8); }
 .mbrow {
   display: grid; grid-template-columns: auto 1fr auto auto;
   align-items: center; gap: 16px; padding: 14px 16px; border-radius: var(--r-md);

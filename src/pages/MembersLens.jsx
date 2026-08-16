@@ -289,7 +289,7 @@ export function MembersSkeleton() {
   );
 }
 
-export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, isLoading, queryClient }) {
+export default function MembersLens({ tripId, members = [], blocked = [], profiles = {}, trip, user, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -334,19 +334,34 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
   // Confirmed via the async confirm so the dialog's button spins while
   // the remove action (trip-member/remove) runs (the kebab menu can't host a
-  // spinner; the dialog can).
-  async function removeMember(memberId, status) {
+  // spinner; the dialog can). `block` = ЯВНОЕ намерение «Удалить и заблокировать»
+  // (TRIP-412): бан пишется только с ним, обычное «Удалить»/«Отменить приглашение»
+  // шлют block=false и вход по ссылке НЕ закрывают.
+  async function removeMember(memberId, status, block = false) {
     await confirm({
-      title: t('member.remove_confirm'),
+      title: block ? t('member.block_confirm') : t('member.remove_confirm'),
+      description: block ? t('member.block_confirm_body') : undefined,
       variant: 'destructive',
       onConfirm: async () => {
-        const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
+        const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId, block } });
         if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
-        // pending row = an invite being cancelled; anything else = a member removed.
-        successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed');
+        // pending row = an invite being cancelled; block = removed + barred; else removed.
+        let removedToast = 'member_removed';
+        if (block) removedToast = 'member_blocked';
+        else if (status === 'pending') removedToast = 'invite_revoked';
+        successToast(t, removedToast);
         refresh();
       },
     });
+  }
+
+  // Разблокировать — снять бан (раздел «Заблокированные»). Разбан НЕ восстанавливает
+  // членство: человеку нужен свежий инвайт/ссылка, чтобы войти (TRIP-412).
+  async function unblockUser(userId) {
+    const { error, code } = await invokeFn('trip-member/unblock', { body: { trip_id: tripId, user_id: userId } });
+    if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+    successToast(t, 'member_unblocked');
+    refresh();
   }
 
   // Leaving the trip = self-removal via trip-member-self/leave (a member removes
@@ -469,7 +484,11 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                           m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
                           m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
                           m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m, name: who.name }) },
-                          { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id, m.status) },
+                          { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id, m.status, false) },
+                          // «Удалить и заблокировать» — только для активного участника
+                          // с аккаунтом (offline/pending банить нечем/незачем; бан
+                          // закрывает вход по ссылке до явного разбана, TRIP-412).
+                          m.status === 'active' && !!m.user_id && { icon: 'lock', label: t('members.remove_and_block'), danger: true, onSelect: () => removeMember(m.id, m.status, true) },
                         ]
                     }
                   />
@@ -491,6 +510,34 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
             <div className="invite-banner__desc">{t('member.invite_more_desc')}</div>
           </div>
           <Btn variant="primary" icon="plus" onClick={() => setInviteOpen(true)}>{t('members.invite')}</Btn>
+        </div>
+      )}
+
+      {/* Заблокированные — редактору и только когда есть кого показать (иначе секция
+          скрыта). Забаненные не участники: строки членства нет, аватар без фото,
+          имя — снимок из бандла. Кнопка снимает бан (TRIP-412). */}
+      {canManage && blocked.length > 0 && (
+        <div className="mlist mlist--blocked col col--g4">
+          <div className="invite-banner__title">{t('members.blocked_title')}</div>
+          <div className="invite-banner__desc">{t('member.blocked_desc')}</div>
+          {blocked.map((b) => {
+            // Имя резолвит бэк-шов (fetchSenders): у удалённого аккаунта имя пустое
+            // + is_deleted → метка «удалённый» и серый аватар, как у resolveAuthor.
+            const name = b.name || t('common.deleted_user');
+            return (
+            <div key={b.user_id} className="mbrow">
+              <Avatar name={name} deleted={b.is_deleted} seed={b.user_id} size="lg" />
+              <div className="mbrow__id">
+                <div className="mbrow__name">{name}</div>
+              </div>
+              <div className="mbrow__acts">
+                <Btn variant="secondary" icon="refresh" onClick={() => unblockUser(b.user_id)}>
+                  {t('members.unblock')}
+                </Btn>
+              </div>
+            </div>
+            );
+          })}
         </div>
       )}
 
