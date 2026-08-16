@@ -22,12 +22,16 @@
     "report:exemptions": "node scripts/ci/report-exemptions.mjs",
     "check:door": "node scripts/ci/check-data-door.mjs",
     "check:tscheck": "node scripts/ci/check-ts-check.mjs",
+    "check:avatar": "node scripts/ci/check-avatar-seed.mjs",
     "check:invoke": "node scripts/ci/check-invoke-discriminant.mjs",
     "check:css-comments": "node scripts/ci/check-css-comments.mjs",
     "check:shadow-style": "node scripts/ci/check-shadow-style-skin.mjs",
     "check:surface-registry": "node scripts/ci/check-surface-registry.mjs",
     "check:error-map": "node scripts/ci/check-error-i18n-map.mjs",
-    "check:raw-errors": "node scripts/ci/check-raw-error-surface.mjs"
+    "check:raw-errors": "node scripts/ci/check-raw-error-surface.mjs",
+    "check:spec-columns": "node scripts/ci/check-spec-columns.mjs",
+    "check:one-helper": "node scripts/ci/check-one-helper.mjs",
+    "check:roles": "node scripts/ci/check-role-gate.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.6",

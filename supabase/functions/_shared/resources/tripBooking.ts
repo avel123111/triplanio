@@ -35,33 +35,12 @@
  * `documents[].file_url` невыразимы `type/max/enum` → едут `validate`-хуком.
  */
 
-import { validateEach } from '../mutateRules.ts';
+import { bad, HTTP_URL, validateDocuments, validateEach } from '../mutateRules.ts';
 import type { FieldSpec, Refusal, ResourceSpec } from '../mutateRules.ts';
-import { CITY_FIELDS } from './cityFields.ts';
-
-const invalid = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
-
-/** Зеркало CHECK `*_link_url`-семейства и элементов `*_documents_urls`. */
-const HTTP_URL = /^https?:\/\//i;
+import { CITY_FIELDS, coord } from './cityFields.ts';
 
 const httpUrl = (v: unknown): Refusal | null =>
-  typeof v === 'string' && HTTP_URL.test(v) ? null : invalid('booking_url must be an http(s) URL');
-
-/**
- * `documents` — jsonb-МАССИВ объектов файла. CHECK `*_documents_urls` требует
- * `$[*].file_url` matchить `^https?://` (иначе `javascript:`-ссылка = stored XSS,
- * TRIP-281). Зеркалим поэлементно; прочие поля объекта БД не проверяет.
- */
-function validateDocuments(value: unknown): Refusal | null {
-  if (!Array.isArray(value)) return invalid('Field "documents" must be a list');
-  for (const item of value) {
-    const url = (item as { file_url?: unknown })?.file_url;
-    if (typeof url !== 'string' || !HTTP_URL.test(url)) {
-      return invalid('Every document file_url must be an http(s) URL');
-    }
-  }
-  return null;
-}
+  typeof v === 'string' && HTTP_URL.test(v) ? null : bad('booking_url must be an http(s) URL');
 
 /**
  * `details` услуги (`trip_services`) — jsonb-ОБЪЕКТ, где живут documents/notes/
@@ -71,7 +50,7 @@ function validateDocuments(value: unknown): Refusal | null {
  */
 function validateServiceDetails(value: unknown): Refusal | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return invalid('Field "details" must be an object');
+    return bad('Field "details" must be an object');
   }
   const docs = (value as { documents?: unknown }).documents;
   if (docs === undefined || docs === null) return null;
@@ -84,10 +63,8 @@ const ts = (): FieldSpec => ({
   max: 40,
   nullable: true,
   validate: (v) =>
-    typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? null : invalid('must be an ISO datetime'),
+    typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? null : bad('must be an ISO datetime'),
 });
-
-const coord = (): FieldSpec => ({ type: 'number', nullable: true });
 
 /** Деньги — общий фрагмент всех 4 видов. `currency` NOT NULL (клиент всегда шлёт). */
 const MONEY_FIELDS: Record<string, FieldSpec> = {
@@ -95,17 +72,34 @@ const MONEY_FIELDS: Record<string, FieldSpec> = {
   currency: { type: 'string', max: 8, required: true },
 };
 
-/** Мета брони: ссылка + файлы + заметки. Общая для верхних колонок И сегмента layover. */
-const BOOKING_META_FIELDS: Record<string, FieldSpec> = {
+/**
+ * Ссылка + референс брони — ВЕРХНИЕ колонки. Есть у `hotel_stays`/`transfers`
+ * (и у сегмента layover — сегмент это transfer), но НЕ у `activities`: у таблицы
+ * активности этих колонок нет вовсе. Спред этих полей в `activity` = 500 с сырым
+ * текстом Postgres (`42703 undefined_column`), а не внятный 400 (TRIP-420); у
+ * активности booking-ссылка живёт внутри `details` (jsonb), как у `service`.
+ */
+const BOOKING_REF_FIELDS: Record<string, FieldSpec> = {
   booking_reference: { type: 'string', max: 300, nullable: true },
   booking_url: { type: 'string', max: 2048, nullable: true, validate: httpUrl },
+};
+
+/** Файлы + заметки — верхние колонки, ОБЩИЕ для hotel/transfer/activity. */
+const DOCS_NOTES_FIELDS: Record<string, FieldSpec> = {
   documents: { type: 'array', nullable: true, validate: validateDocuments },
   notes: { type: 'string', max: 10000, nullable: true },
 };
 
+/** Мета брони целиком: ссылка + референс + файлы + заметки. Для hotel/transfer И сегмента layover. */
+const BOOKING_META_FIELDS: Record<string, FieldSpec> = {
+  ...BOOKING_REF_FIELDS,
+  ...DOCS_NOTES_FIELDS,
+};
+
 /**
- * Общие ВЕРХНИЕ колонки hotel/transfer/activity. У `service` их нет — там всё в
- * `details` (см. SERVICE ниже), поэтому фрагмент спредится только в эти три.
+ * Общие ВЕРХНИЕ колонки hotel/transfer. `activity` НЕ входит (у `activities` нет
+ * booking_reference/booking_url — см. BOOKING_REF_FIELDS), а у `service` верхних
+ * колонок брони нет вовсе (всё в `details`, см. SERVICE ниже).
  */
 const COMMON_BOOKING_FIELDS: Record<string, FieldSpec> = {
   ...MONEY_FIELDS,
@@ -193,12 +187,17 @@ export const TRIP_BOOKING: ResourceSpec = {
     'transfer/delete': { op: 'delete', table: 'transfers', requires: ['editor'], loadTarget: true },
 
     // ── Активность ────────────────────────────────────────────────────────────
+    // У `activities` НЕТ верхних booking_reference/booking_url — поэтому активность
+    // НЕ спредит COMMON_BOOKING_FIELDS (аутлаер среди броней): деньги + файлы/
+    // заметки + `details`, куда клиент кладёт booking-ссылку (как `service`).
     activity: {
       op: 'upsert',
       table: 'activities',
       requires: ['editor'],
       fields: {
-        ...COMMON_BOOKING_FIELDS,
+        ...MONEY_FIELDS,
+        ...DOCS_NOTES_FIELDS,
+        details: { type: 'json', nullable: true },
         city_visit_id: { type: 'uuid', required: true },
         title: { type: 'string', required: true, max: 300 },
         start_datetime: ts(),

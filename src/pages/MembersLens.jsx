@@ -2,7 +2,7 @@
 /**
  * MembersLens - members tab inside TripView.
  *
- * Props: tripId, members, profiles, trip, user, role, isLoading, queryClient
+ * Props: tripId, members, profiles, trip, user, canManage, isLoading, queryClient
  *
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
@@ -13,16 +13,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { withViralMarks } from '@/lib/viralLink';
+import { classifyError } from '@/lib/errorText';
 import { invokeFn } from '@/lib/invokeFn';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
@@ -91,6 +94,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     track('link_invited', { role, trip_id: tripId });
     navigator.clipboard?.writeText(linkUrl).then(() => {
       setCopied(true);
+      successToast(t, 'link_copied');
       setTimeout(() => setCopied(false), 2000);
     });
   }
@@ -99,12 +103,14 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const trimmed = email.trim().toLowerCase();
     setSaving(true);
     setErr('');
-    const { data, error, code, message } = await invokeFn('trip-member/invite', {
+    const { data, error, code } = await invokeFn('trip-member/invite', {
       body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
     if (error || data?.error) {
-      setErr(code === 'invite_owner' ? t('members.err_invite_owner') : (message || t('members.error_generic')));
+      // Единая дверь трактовки кода (TRIP-400/419): `INVITE_OWNER` и прочие
+      // member-отказы → локализованный `err.*`, серверная проза не показывается.
+      setErr(classifyError(t, code).text);
       return;
     }
     // Promoting an offline placeholder → remove it now that a real invite exists.
@@ -112,6 +118,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       await invokeFn('trip-member/remove', { body: { id: promoteMember.id, trip_id: tripId } });
     }
     track('email_invited', { role, trip_id: tripId });
+    successToast(t, 'invite_sent');
     onSaved?.();
     close();
   }
@@ -120,11 +127,11 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     const name = offlineName.trim();
     setSaving(true);
     setErr('');
-    const { data, error, message } = await invokeFn('trip-member/add-offline', {
+    const { data, error, code } = await invokeFn('trip-member/add-offline', {
       body: { trip_id: tripId, user_full_name: name },
     });
     setSaving(false);
-    if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
+    if (error || data?.error) { setErr(classifyError(t, code).text); return; }
     track('member_invited', { role: 'offline', trip_id: tripId });
     onSaved?.();
     close();
@@ -231,11 +238,12 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
   async function save() {
     setSaving(true);
     setErr('');
-    const { data, error, message } = await invokeFn('trip-member/role', {
+    const { data, error, code } = await invokeFn('trip-member/role', {
       body: { id: member.id, trip_id: tripId, role },
     });
     setSaving(false);
-    if (error || data?.error) { setErr(message || t('members.error_generic')); return; }
+    if (error || data?.error) { setErr(classifyError(t, code).text); return; }
+    successToast(t, 'role_updated');
     onSaved?.();
     close();
   }
@@ -261,7 +269,27 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
 
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
-export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, role: myRole, isLoading, queryClient }) {
+// Скелетон участников — PURE, зеркалит реальный layout: `.mlist` со строками
+// `.mbrow` (аватар + имя/роль + действие), а не три генерик-полосы. Один источник
+// для обеих фаз загрузки (shell в TripView.LoadingBody и content). TRIP-337.
+export function MembersSkeleton() {
+  return (
+    <div className="mlist col col--g4 ov-anim" aria-busy="true">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="mbrow">
+          <Skeleton w={38} h={38} r="50%" style={{ flex: 'none' }} />
+          <div className="grow col col--g2">
+            <Skeleton w="45%" h={14} r={5} />
+            <Skeleton w="30%" h={11} r={5} />
+          </div>
+          <Skeleton w={72} h={26} r="var(--r-pill)" style={{ flex: 'none' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -271,7 +299,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   const [promoteState, setPromoteState] = useState(null); // null | { member }
   const [roleState, setRoleState] = useState(null); // null | { member }
 
-  const canManage = myRole === 'owner' || myRole === 'admin';
+  // Управление участниками — ступень editor из единого контекста (TRIP-274 Ф2.2).
+  const { canEdit: canManage } = useTripAccess();
 
   function refresh() {
     // B5: invalidate both content (members list) and shell (header avatar row)
@@ -283,9 +312,10 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // can't host a spinner, so the row shows the busy state (mbrow--busy) instead.
   async function resend(memberId) {
     setRemoving(memberId);
-    const { data, error, message } = await invokeFn('trip-member/resend', { body: { id: memberId, trip_id: tripId } });
+    const { data, error, code } = await invokeFn('trip-member/resend', { body: { id: memberId, trip_id: tripId } });
     setRemoving(null);
-    if (error || data?.error) { toast({ description: message || t('member.err_send_invite'), variant: 'destructive' }); return; }
+    if (error || data?.error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+    successToast(t, 'invite_resent');
   }
 
   // Re-invite a member who declined: restart the invite flow on the SAME row.
@@ -293,24 +323,27 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // and re-sends the notification + email (reusing the existing role).
   async function reinvite(member) {
     setRemoving(member.id);
-    const { data, error, message } = await invokeFn('trip-member/invite', {
+    const { data, error, code } = await invokeFn('trip-member/invite', {
       body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
     });
     setRemoving(null);
-    if (error || data?.error) { toast({ description: message || t('member.err_send_invite'), variant: 'destructive' }); return; }
+    if (error || data?.error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+    successToast(t, 'invite_resent');
     refresh();
   }
 
   // Confirmed via the async confirm so the dialog's button spins while
   // the remove action (trip-member/remove) runs (the kebab menu can't host a
   // spinner; the dialog can).
-  async function removeMember(memberId) {
+  async function removeMember(memberId, status) {
     await confirm({
       title: t('member.remove_confirm'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { error, message } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
-        if (error) { toast({ description: message || t('member.err_remove'), variant: 'destructive' }); return; }
+        const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
+        if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+        // pending row = an invite being cancelled; anything else = a member removed.
+        successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed');
         refresh();
       },
     });
@@ -325,8 +358,9 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
       description: t('confirm.leave_trip.body'),
       variant: 'destructive',
       onConfirm: async () => {
-        const { error, message } = await invokeFn('trip-member-self/leave', { body: { id: member.id, trip_id: tripId } });
-        if (error) { toast({ description: message || t('settings.leave_error'), variant: 'destructive' }); return; }
+        const { error, code } = await invokeFn('trip-member-self/leave', { body: { id: member.id, trip_id: tripId } });
+        if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+        successToast(t, 'trip_left');
         nav('/trips');
       },
     });
@@ -336,13 +370,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // member list), so the removed per-screen bar's invite button — which merely
   // duplicated it — needed no replacement.
 
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[1,2,3].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 'var(--r-sm)' }} />)}
-      </div>
-    );
-  }
+  if (isLoading) return <MembersSkeleton />;
 
   // Shared owner rule (withOwnerRow): the creator is never a real trip_members
   // row — ownership lives in trips.created_by. Drop any stray member row for the
@@ -388,7 +416,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
           return (
             <div key={m.id || i} className={`mbrow${isRemoving ? ' mbrow--busy' : ''}`}>
-              <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="lg" />
+              <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} seed={who.seed} size="lg" />
               <div className="mbrow__id">
                 <div className="mbrow__name row row--g4">
                   {who.name}
@@ -441,7 +469,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
                           m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
                           m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
                           m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m, name: who.name }) },
-                          { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id) },
+                          { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id, m.status) },
                         ]
                     }
                   />

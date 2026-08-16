@@ -1,9 +1,10 @@
 /**
- * ЭФФЕКТЫ ШВА (`afterWrite`) — I/O-побочка действий, ВНЕШНЯЯ для БД: `emit` в n8n,
- * teardown Storage/Telegram, отметка уведомления прочитанным (TRIP-409, эпик
- * TRIP-374). Живёт ОТДЕЛЬНО от чистых спеков (`resources/*.ts`) НАМЕРЕННО: `emit`
- * тянет `sentry.ts`/`analytics.ts`, а те читают `Deno.env` на загрузке модуля —
- * значит файл, достижимый по импорту из `REGISTRY`, уронил бы `deno test` (он
+ * ЭФФЕКТЫ ШВА (`afterWrite`) — I/O-побочка действий: `notify` (in-app-запись в
+ * edge + конверт в n8n на внешние каналы), teardown Storage/Telegram, отметка
+ * уведомления прочитанным (TRIP-409, эпик TRIP-374). Живёт ОТДЕЛЬНО от чистых
+ * спеков (`resources/*.ts`) НАМЕРЕННО: `notify` тянет `sentry.ts`/`analytics.ts`,
+ * а те читают `Deno.env` на загрузке модуля — значит файл, достижимый по импорту
+ * из `REGISTRY`, уронил бы `deno test` (он
  * идёт без `--allow-env`). Поэтому эффекты сюда, а `mutate.ts` (уже I/O) зовёт их
  * по ключу `slug/action`. Дверь остаётся тупой: диспетчер здесь, не в движке.
  *
@@ -14,7 +15,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Actor } from './mutateRules.ts';
-import { emit } from './emit.ts';
+import { notify } from './emit.ts';
 import { purgePrivateDocsForMember } from './personalDocsTeardown.ts';
 import { disconnectTripTelegram } from './telegramTeardown.ts';
 import { purgeTripBucket } from './tripStoragePurge.ts';
@@ -76,9 +77,10 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     }
   },
 
-  // Регистрация связала pending-инвайты (TRIP-411): по каждому связанному — n8n
-  // уведомляет приглашённого (получатель = сам новый юзер). Заменяет слепой
-  // `INSERT notifications` из удалённого триггера `link_pending_invites`. Только
+  // Регистрация связала pending-инвайты (TRIP-411): по каждому связанному —
+  // уведомляем приглашённого (получатель = сам новый юзер; in-app пишет notify в
+  // edge, n8n добирает внешние каналы). Заменяет слепой `INSERT notifications` из
+  // удалённого триггера `link_pending_invites`. Только
   // при created (повтор из двух вкладок уже связал на 1-м вызове). Best-effort.
   'account/register': async ({ result, actor, db }) => {
     const data = asRow(result);
@@ -86,20 +88,35 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const linked = Array.isArray(data.linked) ? data.linked : [];
     for (const inv of linked) {
       const m = asRow(inv);
-      emit('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id }, { db });
+      await notify('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id }, { db });
     }
   },
 
-  // Приглашение создано/реактивировано (declined→pending) — n8n шлёт нотиф+email.
+  // Настройки трипа сохранены (TRIP-415). Инвариант «аддон telegram_assistant
+  // выключен ⇒ живых привязок нет»: перечитываем текущее значение аддона и, если
+  // он НЕ включён, сносим привязки через единый шов (teardown + прощальный emit
+  // приезжают оттуда). Идемпотентно и self-healing — при включённом аддоне и на
+  // сохранении не-Telegram настроек это no-op (снимет 0 строк). Серверный шаг, не
+  // зависит от фронта: даже если тумблер обойдут, привязка не переживёт выключение.
+  // Best-effort по контракту afterWrite.
+  'trip-settings/settings': async ({ scopeValue, db }) => {
+    const { data: trip } = await db.from('trips').select('details').eq('id', scopeValue).maybeSingle();
+    const addons = (trip?.details as { addons?: Record<string, unknown> } | null)?.addons;
+    if (addons?.telegram_assistant === true) return;
+    await disconnectTripTelegram(db, { tripId: scopeValue });
+  },
+
+  // Приглашение создано/реактивировано (declined→pending) — in-app пишет notify в
+  // edge, n8n шлёт email.
   'trip-member/invite': async ({ result, scopeValue, actor, db }) => {
     const member = asRow(result);
-    emit('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
+    await notify('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Приглашение переслано (записи не было — re-emit по загруженной строке).
   'trip-member/resend': async ({ loadedRow, actor, db }) => {
     const member = asRow(loadedRow);
-    emit('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
+    await notify('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Роль изменена — уведомляем участника ТОЛЬКО при реальной смене и для юзера с
@@ -109,7 +126,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const after = asRow(result);
     if (roleChangeNotifies(before.role, after.role, before.user_id)) {
       // Снимок = полная строка (before) с НОВОЙ ролью (after) — резолвер отдаёт member с актуальной ролью.
-      emit('role_changed', {
+      await notify('trip_role_changed', {
         trip_id: before.trip_id as string,
         recipient_id: before.user_id as string,
         actor_id: actor.id,
@@ -125,17 +142,18 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     await teardownMember(db, member.trip_id, member.user_id);
     if (member.user_id) {
       // Строка членства уже удалена → member ТОЛЬКО из снимка (дочитать нечего).
-      emit('member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
+      await notify('trip_member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 
-  // Участник вышел сам — teardown + уведомление владельцу/админам (n8n резолвит
-  // аудиторию по member_left). Блок-лист НЕ пишем (ушёл добровольно).
+  // Участник вышел сам — teardown + уведомление владельцу/админам (аудиторию
+  // резолвит резолвер события в edge, in-app пишет notify, n8n добирает внешнее).
+  // Блок-лист НЕ пишем (ушёл добровольно).
   'trip-member-self/leave': async ({ loadedRow, db }) => {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
     // Строка членства уже удалена → member ТОЛЬКО из снимка.
-    if (member.user_id) emit('member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
+    if (member.user_id) await notify('trip_member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
   },
 
   // Ответ на приглашение. По исходу RPC: accept → North-Star + уведомить пригласившего;
@@ -149,7 +167,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     // North Star: сделал ли accept трип коллаборативным (владелец + 1-й участник = 2)?
     if (plan.reached2) await emitTripReached2(db, scopeValue, actor.id);
     if (plan.emit && member.invited_by) {
-      emit(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id }, { db, snapshot: member });
+      await notify(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 };

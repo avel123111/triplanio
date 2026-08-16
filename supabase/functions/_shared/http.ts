@@ -96,7 +96,7 @@ const _edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): v
 /**
  * Run background work that finishes AFTER the response is sent, via Supabase
  * edge's `EdgeRuntime.waitUntil` (fire-and-forget fallback in local dev). Shared
- * so callers here (Sentry reporting) and `emit()` (`_shared/emit.ts`) reuse ONE
+ * so callers here (Sentry reporting) and `notify()` (`_shared/emit.ts`) reuse ONE
  * runtime check and never add a network hop to the user's response.
  */
 export function runInBackground(p: Promise<unknown>): void {
@@ -184,7 +184,11 @@ export function withHandler(
       // 5xx path is logged; expected 4xx control flow would just be noise.
       console.error(`${fnName} unhandled:`, e);
       runInBackground(captureEdgeError(e, fnName));
-      return jsonError(500, (e as Error).message, 'INTERNAL', corsHeaders);
+      // Клиенту — СТАТИЧНЫЙ текст, `e.message` (в т.ч. сырой текст Postgres) едет
+      // только в Sentry строкой выше (TRIP-420, кусок контракта ошибок TRIP-276).
+      // Пользователь видит локализованную строку по `code: 'INTERNAL'`; `error`
+      // здесь — фолбэк для лога/дев, не проза исключения.
+      return jsonError(500, 'Internal server error', 'INTERNAL', corsHeaders);
     }
   };
 }

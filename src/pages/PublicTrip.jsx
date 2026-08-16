@@ -279,6 +279,7 @@ export default function PublicTrip() {
 
           {ownerName && (
             <div className="pt-mast__by">
+              {/* avatar-seed-exempt: getPublicTrip не отдаёт user_id/email (приватность) — стабильного id нет */}
               <Avatar name={ownerName} photo={owner.avatar_url} className="pt-mast__av" />
               <span className="pt-mast__tx">
                 <span className="pt-mast__l1">{t('public.shared_by')} <b>{ownerName}</b></span>
@@ -433,6 +434,7 @@ export default function PublicTrip() {
           <div className="pt-people">
             {people.map((m, i) => (
               <div className="pt-person" key={i}>
+                {/* avatar-seed-exempt: публичная страница без user_id (приватность getPublicTrip) */}
                 <Avatar name={m.display_name} photo={m.avatar_url} className="av" />
                 <span className="nm">{m.display_name}</span>
               </div>

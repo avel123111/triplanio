@@ -10,8 +10,6 @@
   "cities_count_few": "cities",
   "cities_count_many": "cities",
   "cities_count_one": "city",
-  "copy_done": "Trip copied",
-  "copy_error": "Could not copy the trip",
   "copy_link": "Copy link",
   "copying": "Copying the trip…",
   "cover_image": "Cover image",
@@ -80,5 +78,6 @@
   "tl_transfer": "Transfer",
   "to_my_trips": "To my trips",
   "update": "Update trip",
-  "who_goes": "Who is going"
+  "who_goes": "Who is going",
+  "viewer_locked": "Viewers cannot edit the trip"
 }

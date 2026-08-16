@@ -29,19 +29,17 @@
  * (общий фрагмент с booking/create). `nights` 0..60 клампит RPC; шов держит `>= 0`.
  */
 
-import { isUuid } from '../mutateRules.ts';
+import { bad, isUuid } from '../mutateRules.ts';
 import type { Refusal, ResourceSpec } from '../mutateRules.ts';
 import { CITY_FIELDS, KIND_FIELD } from './cityFields.ts';
-
-const invalid = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
 
 /** `p_order` — массив uuid городов в целевом порядке. Элементы БД примет как
  *  `uuid[]`; кривой элемент → внятный 400, а не сырой 500 от каста Postgres.
  *  UUID-предикат — общий `isUuid` шва (тот же, что `typeOk` для type:'uuid'). */
 const uuidArray = (value: unknown): Refusal | null => {
-  if (!Array.isArray(value)) return invalid('Field "order" must be a list');
+  if (!Array.isArray(value)) return bad('Field "order" must be a list');
   for (const item of value) {
-    if (!isUuid(item)) return invalid('Every order entry must be a city id (uuid)');
+    if (!isUuid(item)) return bad('Every order entry must be a city id (uuid)');
   }
   return null;
 };

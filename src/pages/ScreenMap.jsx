@@ -150,7 +150,7 @@ function RoutePanel({ route, selectedIdx, onSelect, onHover }) {
 
   const head = (
     <div className="map-route__head">
-      <span className="t-mono tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
+      <span className="t-label tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
     </div>
   );
   const list = (

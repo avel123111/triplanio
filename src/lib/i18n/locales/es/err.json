@@ -1,14 +1,22 @@
 {
+  "ALREADY_MEMBER": "Esta persona ya está invitada o es miembro.",
+  "ALREADY_RESPONDED": "Esta invitación ya fue respondida.",
   "AUTH_UNAVAILABLE": "El servicio de acceso no está disponible temporalmente.",
   "FORBIDDEN": "No tienes permiso para hacer eso.",
   "INTERNAL": "Algo salió mal por nuestra parte. Inténtalo de nuevo.",
   "INVALID_BODY": "Algunos de los datos introducidos no son válidos.",
   "INVALID_INPUT": "Algunos de los datos introducidos no son válidos.",
+  "INVITE_OWNER": "Esta persona es la propietaria del viaje y ya tiene acceso completo.",
+  "INVITE_SELF": "No puedes invitarte a ti mismo.",
   "NOT_FOUND": "No pudimos encontrarlo.",
+  "NOT_PENDING": "Esta invitación ya no está pendiente.",
+  "OWNER_IMMUTABLE": "El rol de la persona propietaria del viaje no se puede cambiar.",
   "PRO_REQUIRED": "Esto requiere un viaje Pro. Pásate a Pro para continuar.",
   "RATE_LIMITED": "Demasiados intentos. Inténtalo de nuevo en un momento.",
+  "REMOVE_SELF": "Usa «Salir del viaje» para quitarte a ti mismo.",
   "TRIP_LIMIT_REACHED": "Has alcanzado el límite de viajes activos. Espera a que termine el actual o pásate a Pro.",
   "UNAUTHENTICATED": "Vuelve a iniciar sesión.",
   "UNAUTHORIZED": "No tienes permiso para hacer eso.",
+  "refusal": "Esta acción no está disponible.",
   "temporary": "Algo salió mal. Inténtalo de nuevo."
 }

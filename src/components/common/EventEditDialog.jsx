@@ -74,7 +74,7 @@ function Textarea({ className = '', ...p }) {
 function SwitchRow({ on, onChange, title, hint, children }) {
   const flip = () => onChange(!on);
   return (
-    <Card radius="md" className="eed-fcbox">
+    <Card radius="btn" className="eed-fcbox">
       <div className="row row--a-start row--g4 eed-fclabel">
         <Toggle on={on} onChange={onChange} label={title} />
         <div className="eed-fcbody">
@@ -212,6 +212,7 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
   );
 }
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { eventHeader } from '@/components/common/EventViewBody';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
@@ -223,6 +224,7 @@ import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
 import EventAiBlock from '@/components/common/EventAiBlock';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Type metadata - colours, icons, copy
@@ -606,6 +608,10 @@ export default function EventEditDialog({
   const [isPro, setIsPro] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
   const { openProUpsell } = useProUpsell();
+  // Право редактировать план — из единого контекста доступа (TRIP-274 Ф2.2).
+  // Это движок записи для эвентов/сервисов: наблюдатель видит форму (fork), но
+  // сохранение замьючено с тултипом-причиной. Серверный шов всё равно 403-ит.
+  const { canEdit } = useTripAccess();
 
   const [confirmDel, setConfirmDel] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -864,6 +870,7 @@ export default function EventEditDialog({
         invalidateTripData(qc, tripId);
         // Same commit point as saveMut below (see removeOrphanedFiles).
         removeOrphanedFiles(seenDocPaths.current, form.documents);
+        successToast(t, 'booking_added');
       } catch (err) {
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
         invalidateTripData(qc, tripId);
@@ -908,6 +915,7 @@ export default function EventEditDialog({
       committedRef.current = true;
       removeOrphanedFiles(seenDocPaths.current, form.documents);
       if (tripId) invalidateTripData(qc, tripId);
+      successToast(t, entity ? 'booking_updated' : 'booking_added');
       onOpenChange(false);
     },
     onError: (err) => {
@@ -937,6 +945,7 @@ export default function EventEditDialog({
     onSuccess: () => {
       committedRef.current = true;
       if (tripId) invalidateTripData(qc, tripId);
+      successToast(t, 'booking_deleted');
       onOpenChange(false);
     },
     onError: (err) => {
@@ -1371,6 +1380,8 @@ export default function EventEditDialog({
                   loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
                   ariaDisabled={!canSave}
+                  locked={!canEdit}
+                  lockedHint={t('trip.viewer_locked')}
                 >
                   {isEdit ? t('common.save') : t('event.create')}
                 </Btn>

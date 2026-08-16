@@ -29,6 +29,7 @@ import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { classifyError } from '@/lib/errorText';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
@@ -36,11 +37,12 @@ import { currencySymbol } from '@/lib/budget/currencies';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
 import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constants';
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
-import { countTripMembers, roleCanEdit } from '@/lib/members';
+import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── запись бюджета: клиентская половина единой двери (TRIP-394) ──────────────
 //
@@ -166,6 +168,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
     if (!isEdit) {
       track('budget_expense_added', { trip_id: tripId, has_fx: currency !== (mainCurrency || 'EUR') });
     }
+    successToast(t, isEdit ? 'expense_updated' : 'expense_added');
     onSaved?.();
     close();
   }
@@ -180,6 +183,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       return;
     }
     setDeleting(false);
+    successToast(t, 'expense_deleted');
     onSaved?.();
     close();
   }
@@ -300,6 +304,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       return;
     }
     setSaving(false);
+    successToast(t, 'rate_updated');
     onSaved?.();
     close();
   }
@@ -390,6 +395,7 @@ export function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChang
       return;
     }
     setSaving(false);
+    successToast(t, existing ? 'category_updated' : 'category_added');
     onSaved?.();
     close();
   }
@@ -474,20 +480,72 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, cityName,
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, role, queryClient, onOpenSource }) {
+// Скелетон бюджета — PURE (без данных): шапка + summary-band (донат + легенда +
+// вторая карточка) + список трат. Один источник для обеих фаз загрузки (shell в
+// TripView.LoadingBody и content в самом BudgetLens), поэтому «таймлайн → экран»
+// не мигает и форма совпадает с реальным экраном. TRIP-337 visual-fixes.
+export function BudgetSkeleton() {
+  const isMobile = useIsMobile();
+  return (
+    <div className="col col--g7 ov-anim" aria-busy="true">
+      <div className="row row--j-between">
+        <Skeleton w={180} h={28} r={8} />
+        {!isMobile && (
+          <div className="row row--g3">
+            <Skeleton w={116} h={40} r="var(--r-btn)" />
+            <Skeleton w={140} h={40} r="var(--r-btn)" />
+          </div>
+        )}
+      </div>
+      <div className="grid grid--split grid--g7">
+        <Card>
+          <div className="col col--g6">
+            <Skeleton w="45%" h={18} r={6} />
+            <div className={isMobile ? 'col col--g6' : 'row row--g8 row--wrap'}>
+              <Skeleton w={150} h={150} r="50%" style={{ flex: 'none' }} />
+              <div className="grow col col--g4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="row row--j-between">
+                    <Skeleton w="45%" h={13} r={5} />
+                    <Skeleton w={56} h={13} r={5} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div className="col col--g6">
+            <Skeleton w="50%" h={18} r={6} />
+            <div className="col col--g4">
+              {[0, 1, 2].map((i) => <Skeleton key={i} w="100%" h={44} r="var(--r-btn)" />)}
+            </div>
+          </div>
+        </Card>
+      </div>
+      <div className="col col--g4">
+        {[0, 1, 2, 3].map((i) => <Skeleton key={i} w="100%" h={56} r="var(--r-btn)" />)}
+      </div>
+    </div>
+  );
+}
+
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   const isMobile = useIsMobile();
-  // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
-  // UI прячет мутации, чтобы прямые записи не падали молчаливым 403.
-  const readOnly = !roleCanEdit(role);
+  // Право (editor) и владелец (owner) — из единого контекста доступа (TRIP-274
+  // Ф2.2). UI прячет мутации, чтобы прямые записи не падали молчаливым 403
+  // (серверная защита — edge/RLS _can_edit_trip, TRIP-124).
+  const { canEdit, isOwner } = useTripAccess();
+  const readOnly = !canEdit;
   // Pro-отказ записи открывает единый app-level апселл (как SettingsLens): владелец
   // видит апгрейд, участник — «подключает владелец». Контекст владельца есть только
   // здесь (у диалогов его нет), поэтому хендлер даём вниз пропом `onProRefusal`.
   const { user } = useAuth();
   const nav = useNavigate();
   const { openProUpsell } = useProUpsell();
-  const isOwner = !!user?.id && user.id === trip?.created_by;
+  // isOwner — ступень owner лестницы (строго created_by), решено в TripView.
   const ownerName = resolveOwnerName({ trip, members, selfUser: user, deletedLabel: t('common.deleted_user') });
   const onProRefusal = () => openProUpsell({
     mode: isOwner ? 'upgrade' : 'info',
@@ -620,21 +678,16 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   const expensesPlural = (n) => n === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many');
 
-  // Skeleton
-  if (isLoading) {
-    return (
-      <div className="col col--g6">
-        {[1, 2, 3].map(i => <Skeleton key={i} h={80} r="var(--r-sm)" />)}
-      </div>
-    );
-  }
+  // Скелетон — ОДИН компонент BudgetSkeleton (см. ниже), тот же и в фазе shell
+  // (TripView LoadingBody), и в фазе content — фаза 1 и 2 идентичны, не «прыгают».
+  if (isLoading) return <BudgetSkeleton />;
 
   const noExpenses = budgetExpenses.length === 0;
 
   return (
     <div className="col col--g7 ov-anim">
       {readOnly && (
-        <ReadOnlyBanner>{t('budget.readonly_banner_desc')}</ReadOnlyBanner>
+        <Severity level="info" title={t('settings.readonly_banner_title')}>{t('budget.readonly_banner_desc')}</Severity>
       )}
       {/* ░ HEADER: screen title + primary actions relocated from the removed
           per-screen bar. On phones the buttons hide (see BudgetLens.css): "add
@@ -718,8 +771,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </Severity>
       )}
 
-      {/* ░ NO-EXPENSES HERO ░ */}
-      {noExpenses && (
+      {/* ░ NO-EXPENSES HERO ░ — не показываем наблюдателю: плита зовёт добавить
+          расход, а у него нет такой возможности (гейт всей плашки, не только кнопки) */}
+      {noExpenses && !readOnly && (
         // inline-style-exempt: отступ сверху зависит от того, стоит ли выше
         // плашка «нет курса» — это состояние данных, а не вёрстка.
         <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: missingCurrencies.length > 0 ? 16 : 4 }}>

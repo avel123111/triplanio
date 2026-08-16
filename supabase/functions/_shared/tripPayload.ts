@@ -20,6 +20,7 @@
 
 import { supabaseAdmin } from './supabaseAdmin.ts';
 import { corsFor } from './cors.ts';
+import { jsonError } from './http.ts';
 
 export interface TripData {
   trip: Record<string, unknown>;
@@ -93,7 +94,7 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
 export async function fetchTripPayload(tripId: string): Promise<Response> {
   const data = await buildTripData(tripId);
   if (!data) {
-    return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsFor() });
+    return jsonError(404, 'Trip not found', undefined, corsFor());
   }
   return Response.json(data, { headers: corsFor() });
 }

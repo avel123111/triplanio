@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
-import { CardSim } from '@/design/icons';
-import { Btn, IconBtn, Card, Tile, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { CardSim, Icon } from '@/design/icons';
+import { Btn, IconBtn, Card, Tile, Tooltip, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -12,6 +12,7 @@ import {
 } from '@/components/bookings/buildBookingPlatforms';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 import Stay22HotelList from '@/components/bookings/Stay22HotelList';
 import ViatorActivityList from '@/components/bookings/ViatorActivityList';
@@ -140,6 +141,9 @@ export default function ForkPartnerModal({
   stay22,
 }) {
   const { t, lang } = useI18nFormat();
+  // Витрина партнёров открыта всем; ручное добавление (create) — только editor.
+  // Наблюдатель видит fork, но CTA замьючена замком+тултипом (TRIP-274 Ф2.2).
+  const { canEdit } = useTripAccess();
   const logClick = usePartnerLogger(tripId);
   const meta = TYPE_META[type] || TYPE_META.hotel;
   const tripCurrency = trip?.details?.main_currency || 'EUR';
@@ -187,13 +191,19 @@ export default function ForkPartnerModal({
       <div className="fork-addzone">
         {/* Manual add — redesigned horizontal CTA, ev-colored. Dropped in
             embedded (tab) mode: the "I have a booking" tab replaces it. */}
+        {/* Ручное добавление (create) — только editor. Наблюдателю мьючим ТУ ЖЕ
+            карточку (приглушена + замок + тултип-причина), а не placeholder: fork
+            (партнёрские витрины ниже) при этом открыт (TRIP-274 Ф2.2). */}
         {!embedded && (
+        <Tooltip block content={canEdit ? '' : t('trip.viewer_locked')}>
         <Card
           as="button"
           radius="md"
           pad="none"
           className="fork-manual"
-          onClick={handleManual}
+          locked={!canEdit}
+          onClick={canEdit ? handleManual : undefined}
+          aria-disabled={canEdit ? undefined : true}
           style={{ '--fk': meta.color, '--fk-soft': meta.colorSoft }}
         >
           <span className="fork-manual__ic"><ManualIcon size={20} /></span>
@@ -201,8 +211,10 @@ export default function ForkPartnerModal({
             <b>{t('fork.manual_add')}</b>
             <span>{t(meta.manualSubKey)}</span>
           </span>
-          <ChevronRight size={16} className="fork-manual__chev" />
+          {canEdit && <ChevronRight size={16} className="fork-manual__chev" />}
+          {!canEdit && <Icon name="lock" size={16} className="fork-manual__chev" />}
         </Card>
+        </Tooltip>
         )}
 
         {count > 0 && (

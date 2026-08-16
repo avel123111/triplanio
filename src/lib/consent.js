@@ -1,14 +1,17 @@
-// Cookie consent — the single owner of "may we run analytics" (TRIP-311).
+// Cookie consent — the single owner of "may we run analytics" (TRIP-311),
+// variant B (TRIP-407).
 //
-// THE INVARIANT: `posthog.init()` is called here and nowhere else, and only for
-// someone who said yes. An uninitialised client is a no-op by construction, so
-// there are no consent checks on the call-sites and none of PostHog's own consent
-// machinery is used — we depend on no library internals, hence no version pin.
-// CI guard 2j fails the build if a second `posthog.init` appears. TRIP-227 hangs
-// GTM / GA4 / ad pixels off `applyConsent`.
-import posthog from 'posthog-js';
-import { forgetPendingEvents, identifyUser, isAnalyticsOn, startAnalytics, stopAnalytics } from '@/lib/analytics';
-import { buildConsent, parseConsent } from '@/lib/consent-record';
+// This module records the visitor's answer and APPLIES it to the destinations; it
+// no longer creates the PostHog client itself. Under variant B the client is
+// booted (memory-only) at load by main.jsx, and consent's job is to UPGRADE it to
+// device persistence — `applyConsent` → `posthogAdapter.onConsent`. `posthog.init`
+// lives in `destinations/posthog.js` now (CI guard 2j moved with it). The Google
+// consent signal (`updateGoogleConsent`) still rides through here, and TRIP-227
+// hangs GTM / GA4 / ad pixels off `applyConsent`.
+import { identifyUser } from '@/lib/analytics';
+import { isPersisting, onConsent, stopAnalytics } from '@/lib/destinations/posthog';
+import { onConsent as adsOnConsent } from '@/lib/destinations/ads';
+import { buildConsent, parseConsent, shouldSilenceOnConsentChange } from '@/lib/consent-record';
 
 const STORAGE_KEY = 'tp-consent';
 
@@ -18,17 +21,6 @@ const openListeners = new Set();
 // All three masks matter: `__ph_opt_in_out_*` has two underscores so it misses
 // the `ph_` mask, and `dmn_chk_*` is the cross-subdomain probe.
 const POSTHOG_KEY = /^(ph_|__ph_opt_in_out_|dmn_chk_)/;
-
-// The production split, shared with main.jsx. One list, not two copies.
-const PROD_HOSTS = new Set(['triplanio.com', 'www.triplanio.com']);
-export const isProdHost = PROD_HOSTS.has(window.location.hostname);
-// True local `vite dev` is the ONLY place without the vercel.json /ingest rewrite.
-const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-// dev / preview stay silent by default so the single (free-tier) project isn't
-// polluted by test traffic; enable with VITE_POSTHOG_ENABLE_DEV=true.
-const analyticsEnabledHere =
-  isProdHost || ['1', 'true'].includes(import.meta.env.VITE_POSTHOG_ENABLE_DEV);
-const POSTHOG_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
 
 /**
  * The visitor's current answer, or null when there isn't a usable one.
@@ -44,7 +36,9 @@ export function getConsent() {
 }
 
 /**
- * Record the answer just given and return it.
+ * Record the answer just given and return it. Only writes the record — applying it
+ * (upgrading persistence, or reloading on a downgrade) is applyConsent's / the
+ * banner's half. Under B there is no held queue to drop on a refusal any more.
  * @param {boolean} accepted
  */
 export function setConsent(accepted) {
@@ -52,11 +46,6 @@ export function setConsent(accepted) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
   } catch { /* private mode — the answer holds for this visit only */ }
-  // "No" is an answer too: whatever this document held waiting for a destination
-  // now has none. Not stopAnalytics() — that would flip `isAnalyticsOn()` and rob
-  // the banner of the one thing it reads to decide a downgrade needs a reload.
-  // The answer given HERE only — a recorded one is applyConsent's half.
-  if (!accepted) forgetPendingEvents();
   return record;
 }
 
@@ -71,71 +60,56 @@ export function subscribeConsentOpen(listener) {
   return () => openListeners.delete(listener);
 }
 
-// Consent is per-device. Another open tab keeps a live client whose next capture
-// WRITES `ph_*` back, undoing the deletion; `storage` fires only in those tabs.
-// We silence rather than reload — a background tab may hold unsaved work. One-way
-// on purpose: a grant elsewhere does not start analytics here.
+// Another tab changing the answer to "no". We silence + wipe rather than reload —
+// a background tab may hold unsaved work; `storage` fires only in the OTHER tabs.
+// Keyed on `isPersisting()`, NOT readiness: under B a memory-only tab wrote nothing
+// to the device, so a foreign refusal must leave it running (silencing it would
+// throw away captures it was entitled to make). One-way on purpose: a grant
+// elsewhere does not start persistence here.
 window.addEventListener('storage', (event) => {
-  if (event.key !== STORAGE_KEY || !isAnalyticsOn()) return;
-  if (parseConsent(event.newValue, Date.now())?.analytics) return;
+  if (event.key !== STORAGE_KEY) return;
+  const record = parseConsent(event.newValue, Date.now());
+  if (!shouldSilenceOnConsentChange(isPersisting(), record)) return;
   stopAnalytics();
   clearAnalyticsStorage();
 });
 
 /**
- * Put the app in the state the record describes. Safe to call on every start:
- * it starts PostHog at most once and sends no opt-in event.
+ * Put the destinations in the state the record describes. Safe to call on every
+ * start: the adapters are idempotent and send no opt-in event.
  *
  * @param {ReturnType<typeof getConsent>} record
- * @param {string} [uid]  pass when a session is already open, so the person
- *   appears immediately instead of waiting for the next auth cycle.
+ * @param {string} [uid]  pass when a session is already open, so the person appears
+ *   immediately instead of waiting for the next auth cycle.
  */
 export function applyConsent(record, uid) {
   if (!record) return;
 
   // Sent for a refusal too: once TRIP-227 loads tags, silence is the wrong signal.
+  // MUST precede adsOnConsent — the tag reads its Consent Mode state at load.
   updateGoogleConsent(record);
 
-  // A refusal on RECORD, not just one clicked in this document: someone who said
-  // no on an earlier visit gets no banner, so `setConsent` never runs, and what
-  // this document held would be replayed in full the moment they reopened
-  // "Cookie settings" and changed their mind — events captured while their
-  // answer was already "no". Both roads to a refusal have to clear the hold.
-  if (!record.analytics) forgetPendingEvents();
+  // Load the Google Ads tag on a marketing grant (TRIP-407 PR5). Dormant without
+  // VITE_GADS_TAG_ID, idempotent, and off any non-prod host — so this is a no-op
+  // today and stays one until the tag id is set in prod.
+  adsOnConsent(record);
 
-  if (!record.analytics || isAnalyticsOn() || !POSTHOG_TOKEN || !analyticsEnabledHere) return;
+  // Upgrade the memory-only client to device persistence when analytics is granted
+  // (a no-op otherwise, and idempotent). The client already exists — main.jsx
+  // booted it — so this never inits.
+  onConsent(record);
 
-  posthog.init(POSTHOG_TOKEN, {
-    // Same-origin proxy path (TRIP-265). Post to `${origin}/ingest` on EVERY host
-    // that serves this app — prod, www, dev.triplanio.com, Vercel previews — so
-    // ingestion is always same-origin as the page: no CORS, no cross-host
-    // redirect. The rewrite lives in vercel.json, so only true local `vite dev`
-    // lacks it → there we hit PostHog EU directly.
-    api_host: isLocalhost
-      ? (import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com')
-      : `${window.location.origin}/ingest`,
-    defaults: '2026-05-30',
-    autocapture: false,
-    capture_pageview: false, // our own page_view via track() replaces it (no dupe)
-    capture_performance: false,
-    disable_session_recording: true,
-    person_profiles: 'identified_only',
-  });
-  // `env` super-property tags every event → prod dashboards filter env=prod.
-  posthog.register({ env: isProdHost ? 'prod' : 'dev' });
-  startAnalytics();
-  // The account can already exist when the banner is answered — a confirmation
-  // link opened on a phone that never saw it, or a visitor who ignores it and
-  // signs in with Google first. AuthContext's own identify ran as a no-op back
-  // then and held the marks; this is the first moment there is a PostHog to say
-  // them to, and the person must be born carrying them (TRIP-335).
-  if (uid) identifyUser(uid);
+  // The account can already exist when the banner is answered — a confirmation link
+  // opened on a phone that never saw it, or a visitor who ignores the banner and
+  // signs in with Google first. Identify now so the person appears at once carrying
+  // the last-touch campaign (identifyUser owns that). Only on a grant: a refuser has
+  // no persisted profile to attach to.
+  if (record.analytics && uid) identifyUser(uid);
 }
 
 /**
- * Remove everything PostHog stored here. Runs on any start without a usable
- * answer (which also clears pre-TRIP-311 keys, no migration needed) and on
- * withdrawal.
+ * Remove everything PostHog stored here. Runs on any start without a usable answer
+ * (which also clears pre-TRIP-311 keys, no migration needed) and on withdrawal.
  */
 export function clearAnalyticsStorage() {
   try {
@@ -164,8 +138,8 @@ function cookieDomainAttrs() {
 
 /**
  * The stub and the `denied` default live in index.html; this is only the update.
- * `marketing` always equals `analytics` today (one sentence asks both), but stays
- * a separate field because TRIP-227 splits the question.
+ * `marketing` always equals `analytics` today (one sentence asks both), but stays a
+ * separate field because TRIP-227 splits the question.
  */
 function updateGoogleConsent(record) {
   const ads = record.marketing ? 'granted' : 'denied';

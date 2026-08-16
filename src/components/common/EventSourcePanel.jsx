@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { Btn, Severity, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, eventHeader } from '@/components/common/EventViewBody';
@@ -110,6 +111,8 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
         if (error || !deleted) {
           if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
           toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' });
+        } else {
+          successToast(t, 'booking_deleted');
         }
         invalidate();
       })();
@@ -119,6 +122,7 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
     const { error, deleted, code } = await deleteSourceEntity(kind, data.id, tripId, orphanPaths);
     setDeleting(false);
     if (error || !deleted) { toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' }); return; }
+    successToast(t, 'booking_deleted');
     invalidate();
     onClose?.();
   };

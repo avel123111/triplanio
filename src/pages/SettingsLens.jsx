@@ -6,7 +6,8 @@
  *   tripId      - string
  *   trip        - trip object
  *   members     - array of trip member rows
- *   myRole      - 'owner' | 'admin' | 'viewer'
+ *   isOwner     - boolean (ступень owner лестницы, из TripView)
+ *   canEdit     - boolean (ступень editor лестницы, из TripView)
  *   isPro       - boolean
  *   queryClient - react-query QueryClient (for invalidation)
  */
@@ -18,11 +19,12 @@ import { track } from '@/lib/analytics';
 import { classifyError } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
-import { resolveAuthor, resolveOwnerName } from '@/lib/resolveAuthor';
+import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, ReadOnlyBanner, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -31,27 +33,20 @@ import { telegram as tgBrand } from '@/lib/externalBrands';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
 // for the gateable lenses: budget / chat).
 
 // Pro flags MUST match the backend definition (lib/tripAddons.js PRO_ONLY_ADDONS):
-// pro = budget, chat, telegram_assistant. hotels_selection is "coming soon"
-// (locked). There is no personal-AI addon. docs and calendar are core lenses
-// (always visible), not optional addons, so they're not listed here.
+// pro = budget, chat, telegram_assistant. There is no personal-AI addon. docs and
+// calendar are core lenses (always visible), not optional addons, so not listed.
 const FEATURES = [
   { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', labelKey: 'settings.feat_budget_title', descKey: 'settings.feat_budget_desc',             pro: true  },
   { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      labelKey: 'chat.group_title',          descKey: 'settings.feat_chat_desc',              pro: true  },
   { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: tgBrand.fg,        labelKey: 'settings.feat_tg_title',    descKey: 'settings.feat_tg_desc',                pro: true  },
-  { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    labelKey: 'settings.feat_hotels_title', descKey: 'settings.feat_hotels_desc',           locked: true },
 ];
-
-// Hotel-voting / collaborative hotel-selection is hidden from the UI for now
-// (feature parked). Flip to `true` to bring back the "Совместный выбор отелей"
-// addon row and the "Аппруверы голосования за отели" card. The logic, i18n keys
-// and the `hotels_selection` addon are intentionally left intact behind this gate.
-const SHOW_HOTEL_VOTING = false;
 
 // Тон плитки Telegram. Цвет обязан приходить из ЕДИНСТВЕННОГО реестра брендов
 // (src/lib/externalBrands.js, TRIP-321 Ф2) - CSS-токенов у брендов нет намеренно,
@@ -341,20 +336,20 @@ function TelegramSection({ tripId }) {
   const toggle = async (a) => {
     if (busyId) return;
     setBusyId(a.id);
-    const { error } = await invokeFn('telegramSetActive', {
+    const { error, code } = await invokeFn('telegramSetActive', {
       body: { tripId, integrationId: a.id, isActive: !a.is_active },
     });
-    if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
+    if (error) toast({ description: classifyError(t, code).text, variant: 'destructive' });
     else setAccounts(list => list.map(x => x.id === a.id ? { ...x, is_active: !x.is_active } : x));
     setBusyId(null);
   };
 
   const doRemove = async (a) => {
     setBusyId(a.id);
-    const { error } = await invokeFn('telegramDisconnect', {
+    const { error, code } = await invokeFn('telegramDisconnect', {
       body: { tripId, integrationId: a.id },
     });
-    if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
+    if (error) toast({ description: classifyError(t, code).text, variant: 'destructive' });
     else setAccounts(list => list.filter(x => x.id !== a.id));
     setBusyId(null);
   };
@@ -417,42 +412,75 @@ function TelegramSection({ tripId }) {
   );
 }
 
-// ─── ApproverRow ──────────────────────────────────────────────────────────────
+// ─── SettingsLens (main export) ───────────────────────────────────────────────
 
-function ApproverRow({ member, profiles, locked }) {
-  const { t } = useI18n();
-  const [on, setOn] = useState(false);
-  // Shared identity resolver (TRIP-334): name, avatar and the "anonymized
-  // account" label all come from the one ladder.
-  const who = resolveAuthor({
-    userId: member.user_id,
-    nameSnapshot: member.user_full_name,
-    member,
-    profiles,
-    deletedLabel: t('common.deleted_user'),
-    fallback: t('common.deleted_user'),
-  });
-  const roleLabel = member.role === 'owner' ? t('trips.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
-
+// Скелетон настроек — PURE, зеркалит РЕАЛЬНУЮ разметку экрана теми же классами:
+// (1) карточка «General» = CardHeader + `.settings-identity` (обложка `__cover`
+// слева | форма `__fields` справа), (2) «Optional features» = `.addon-grid` из
+// тоггл-карточек, (3) `.settings-grid` в 2 колонки. Не сетка одинаковых карточек
+// (то был «выдуманный» layout). Один источник для обеих фаз загрузки. TRIP-337.
+export function SettingsSkeleton() {
   return (
-    <Row>
-      <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
-      <Grow>
-        <div className="t-subheading">{who.name}</div>
-        <div className="muted t-meta">{roleLabel}</div>
-      </Grow>
-      {locked
-        ? <span className="muted t-meta">{t('settings.approver_by_role')}</span>
-        : <Toggle on={on} onChange={() => setOn(v => !v)} />}
-    </Row>
+    <Col gap="g7" className="settings-lens" aria-busy="true">
+      {/* 1. General: заголовок + Save + identity-grid (обложка | форма) */}
+      <Card>
+        <CardHeader title={<Skeleton w={120} h={22} r={6} />} action={<Skeleton w={130} h={40} r={'var(--r-btn)'} />} />
+        <Grid className="settings-identity">
+          <div className="settings-identity__cover">
+            <Skeleton w="100%" h={150} r={'var(--r-md)'} />
+            <div className="row row--g4 row--wrap" style={{ marginTop: 12 }}>
+              {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} w={32} h={32} r="50%" />)}
+            </div>
+          </div>
+          <Col gap="g7" className="settings-identity__fields">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="col col--g3">
+                <Skeleton w="35%" h={13} r={5} />
+                <Skeleton w="100%" h={i === 3 ? 120 : 44} r={'var(--r-btn)'} />
+              </div>
+            ))}
+          </Col>
+        </Grid>
+      </Card>
+      {/* 2. Optional features: заголовок + addon-grid (3 тоггл-карточки в ряд) */}
+      <Card>
+        <div className="card-h"><Skeleton w={190} h={22} r={6} /></div>
+        <Grid className="addon-grid">
+          {[0, 1, 2].map((i) => (
+            <Card key={i}>
+              <div className="col col--g4">
+                <div className="row row--j-between">
+                  <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+                  <Skeleton w={44} h={24} r={'var(--r-pill)'} />
+                </div>
+                <Skeleton w="60%" h={16} r={5} />
+                <Skeleton w="90%" h={12} r={5} />
+              </div>
+            </Card>
+          ))}
+        </Grid>
+      </Card>
+      {/* 3. settings-grid: 2 колонки настроек */}
+      <Grid cols="2" gap="g7" className="settings-grid">
+        {[0, 1].map((c) => (
+          <Col key={c} gap="g7" className="settings-col">
+            <Card>
+              <CardHeader title={<Skeleton w="45%" h={18} r={6} />} />
+              <div className="row row--j-between" style={{ marginTop: 8 }}>
+                <div className="col col--g2 grow"><Skeleton w="50%" h={13} r={5} /><Skeleton w="70%" h={11} r={5} /></div>
+                <Skeleton w={44} h={24} r={'var(--r-pill)'} style={{ flex: 'none' }} />
+              </div>
+            </Card>
+          </Col>
+        ))}
+      </Grid>
+    </Col>
   );
 }
 
-// ─── SettingsLens (main export) ───────────────────────────────────────────────
-
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient, profiles = {} }) {
+export default function SettingsLens({ tripId, trip, members = [], isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
   // Profiles ride in the trip content bundle (getTripDetails), handed down by
-  // TripView — no separate profile-fetch hop for the approver list.
+  // TripView — no separate profile-fetch hop for the owner name.
   const { t } = useI18n();
   const confirm = useConfirm();
   const { user } = useAuth();
@@ -475,11 +503,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const { toast } = useToast();
 
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
-  const isOwner = myRole === 'owner';
-  // Viewers get Settings in read-only mode: identity fields muted, management
-  // cards hidden, only "Leave trip" stays active (TRIP-137). NOTE: this is a UI
-  // guard only — server-side write protection is TRIP-136 (RLS), not this.
-  const readOnly = myRole === 'viewer';
+  // Право (editor) и владелец (owner) — из единого контекста доступа (TRIP-274
+  // Ф2.2). isOwner гейтит owner-only управление (удалить трип) и режим апселла;
+  // readOnly=не-editor даёт viewer'у Settings только на чтение (есть «Выйти»,
+  // TRIP-137). Это UI-гейт; серверная защита — edge/RLS.
+  const { canEdit, isOwner } = useTripAccess();
+  const readOnly = !canEdit;
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
@@ -550,6 +579,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     } else {
       setBookingWarnings(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+      successToast(t, 'settings_saved');
     }
     setBusyToggle(null);
   }
@@ -571,6 +601,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     } else {
       setChatWidget(next); // reflect only after the server confirms
       queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+      successToast(t, 'settings_saved');
     }
     setBusyToggle(null);
   }
@@ -626,7 +657,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
     queryClient?.invalidateQueries({ queryKey: ['trips'] }); // trips list shows title/cover/description
-    toast({ description: t('settings.saved'), variant: 'success' });
+    successToast(t, 'settings_saved');
   }
 
   // Toggle feature → persist to trip.details.addons, then invalidate shell query.
@@ -642,6 +673,18 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       return;
     }
     const newVal = !features[id];
+    // TRIP-415: выключение Telegram-аддона снимает ВСЕ привязки чата на сервере
+    // (teardown в шве trip-settings/settings). Если живые привязки есть — просим
+    // подтверждение из канона ДС (тот же useConfirm, что у выхода из трипа), чтобы
+    // отвязка не случилась молча. Проверяем ровно на пути выключения.
+    if (feat.addon === 'telegram_assistant' && !newVal) {
+      const { data } = await invokeFn('telegramGetIntegration', { body: { tripId } });
+      if ((data?.integrations?.length ?? 0) > 0 && !(await confirm({
+        title: t('settings.tg_addon_off_confirm_title'),
+        description: t('settings.tg_addon_off_confirm_body'),
+        variant: 'destructive',
+      }))) return;
+    }
     const prevAddons = trip?.details?.addons || {};
     const nextAddons = { ...prevAddons, [feat.addon]: newVal };
     setBusyToggle(id);
@@ -668,6 +711,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     setFeatures(s => ({ ...s, [id]: newVal }));  // reflect only after server confirms
     patchAddons(nextAddons);                      // sync the shell cache (lenses/widget)
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    successToast(t, newVal ? 'addon_enabled' : 'addon_disabled', { addon: feat ? t(feat.labelKey) : '' });
     setBusyToggle(null);
   }
 
@@ -686,16 +730,16 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         // reason on failure, so we must read the response - navigating on a silent
         // failure left the user still in the trip ("выход" перебрасывал на /trips,
         // но не выходил).
-        const { error, message } = await invokeFn('trip-member-self/leave', {
+        const { error, code } = await invokeFn('trip-member-self/leave', {
           body: { id: myMember.id, trip_id: tripId },
         });
         if (error) {
-          // invokeFn already parsed the body (read error.context once — a Response
-          // can only be read one time), so use its message; don't re-read.
-          const msg = message || t('settings.leave_error');
-          toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
+          // Причина отказа приходит машинным `code`; текст даёт общий refusalToast
+          // (одна карта код→текст). Серверный `message` не показываем НИКОГДА.
+          refusalToast(code, 'settings.save_error2');
           return;
         }
+        successToast(t, 'trip_left');
         nav('/trips');
       },
     });
@@ -723,6 +767,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       // so the planner can't read a stale count and flash the limit guard.
       invalidateActiveTripsLimit(queryClient);
       track('trip_deleted', { trip_id: tripId });
+      successToast(t, 'trip_deleted');
       nav('/trips');
     };
 
@@ -743,15 +788,14 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     }
   }
 
-  const approvers    = members.filter(m => ['owner', 'admin'].includes(m.role) && m.status === 'active');
-  const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
+  if (isLoading) return <SettingsSkeleton />;
 
   return (
     <Col gap="g7" className="settings-lens">
       {/* Viewer read-only notice — only this banner + the Leave button are
           interactive for a viewer (TRIP-137). */}
       {readOnly && (
-        <ReadOnlyBanner>{t('settings.readonly_banner_desc')}</ReadOnlyBanner>
+        <Severity level="info" title={t('settings.readonly_banner_title')}>{t('settings.readonly_banner_desc')}</Severity>
       )}
       {/* ── Identity: cover + name / description / currency / notes ──────────
           Save here governs only these manually-edited fields; the feature and
@@ -802,7 +846,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </fieldset>
       </Card>
 
-      {/* Management cards (features, integrations, warnings, approvers) stay
+      {/* Management cards (features, integrations, warnings) stay
           VISIBLE for a read-only viewer (TRIP-63 №5) but disabled: a native
           <fieldset disabled> switches off every control inside (toggles, inputs,
           file pickers and buttons are all native), and opacity + pointer-events
@@ -846,7 +890,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </div>
         <Grid className="addon-grid">
           {FEATURES
-            .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')
             .map(f => (
               <FeatureCard key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
                 busy={busyToggle === f.id}
@@ -912,20 +955,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <TelegramSection tripId={tripId} />
             </Card>
           )}
-
-          {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
-          {SHOW_HOTEL_VOTING && (
-            <Card>
-              <CardHeader title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} />
-              <Col gap="g4">
-                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked />)}
-                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked={false} />)}
-                {members.length === 0 && (
-                  <div className="muted t-body">{t('settings.members_loading')}</div>
-                )}
-              </Col>
-            </Card>
-          )}
         </Col>
       </Grid>
       </Col>
@@ -958,7 +987,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* ── Danger zone (full width) ── */}
       <Card style={{ borderColor: 'var(--danger-soft)' }}>
         <CardHeader title={t('settings.danger_zone')} />
-        {myRole !== 'owner' && (
+        {!isOwner && (
           <Row gap="g7" className="row--flush">
             <span className="tile tile--lg tile--danger"><Icon name="arrow" size={18} /></span>
             <Grow>
@@ -968,7 +997,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
           </Row>
         )}
-        {myRole === 'owner' && (
+        {isOwner && (
           <>
             {/* Линейку между строками несёт сама строка (.row--div), поэтому
                 отдельный <hr> больше не нужен - его сброс был ещё одним инлайном. */}

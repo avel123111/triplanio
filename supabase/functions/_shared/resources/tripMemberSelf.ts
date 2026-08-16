@@ -14,9 +14,8 @@
  * авторизацию в edge. Полного актора `{id,email}` guardRow получает от шва.
  */
 
-import type { Refusal, ResourceSpec } from '../mutateRules.ts';
-
-const forbid = (status: number, code: string, message: string): Refusal => ({ status, code, message });
+import type { ResourceSpec } from '../mutateRules.ts';
+import { forbid } from '../mutateRules.ts';
 
 export const TRIP_MEMBER_SELF: ResourceSpec = {
   name: 'trip-member-self',

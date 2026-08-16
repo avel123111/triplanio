@@ -62,6 +62,39 @@ test('a deleted profile wins over the name snapshot on the row', () => {
   assert.equal(who.name, DELETED);
 });
 
+// ── colour seed is STABLE per identity, never the display name ────────────────
+
+test('seed is the account id, not the name — one colour across naming states', () => {
+  // Same person, three different labels they might render under. The avatar
+  // colour must not change, so the seed must be the same for all three.
+  const named = resolveAuthor({
+    userId: 'u1', profiles: { u1: { id: 'u1', full_name: 'Pavel', email: 'p@e.com', is_deleted: false } }, ...opts,
+  });
+  const noName = resolveAuthor({
+    userId: 'u1', profiles: { u1: { id: 'u1', full_name: '', email: 'p@e.com', is_deleted: false } }, ...opts,
+  });
+  assert.equal(named.seed, 'u1');
+  assert.equal(noName.seed, 'u1');
+  assert.equal(named.seed, noName.seed);
+  // The names themselves differ — proving the seed is decoupled from the label.
+  assert.notEqual(named.name, noName.name);
+});
+
+test('deleted account keeps the account id as its seed', () => {
+  const who = resolveAuthor({
+    userId: 'u1',
+    profiles: { u1: { id: 'u1', full_name: '', avatar_url: '', email: '', is_deleted: true } },
+    ...opts,
+  });
+  assert.equal(who.seed, 'u1');
+});
+
+test('an unregistered invite seeds off the membership row, not the label', () => {
+  const m = { id: 'm7', user_id: null, status: 'pending', user_full_name: '', invite_email: 'newcomer@example.com' };
+  const who = resolveAuthor({ userId: null, nameSnapshot: '', member: m, profiles: {}, members: [m], ...opts });
+  assert.equal(who.seed, 'm7');
+});
+
 // ── the ordinary rungs still resolve as before ───────────────────────────────
 
 test('live profile wins: name from the account, email underneath', () => {
@@ -91,9 +124,11 @@ test('invite address wins over the account address as the email line', () => {
   assert.equal(who.email, 'invited@example.com');
 });
 
-test('no real name: the address becomes the NAME and is not repeated below', () => {
-  // Otherwise the row reads "Invited / invited@example.com" with the same text
-  // twice — the duplication each screen used to guard by hand.
+test('no real name: name is derived from the address, and the address is STILL shown', () => {
+  // The list must read consistently — a named row shows an email line, so a
+  // name-from-email row shows one too (else a real account looks like it has no
+  // email). This is the Test8 case from prod: full_name empty, email test8@…,
+  // name "Test8", and the address printed underneath.
   const m = { id: 'm1', user_id: null, status: 'pending', user_full_name: '', invite_email: 'invited@example.com' };
   const who = resolveAuthor({
     userId: 'u2',
@@ -103,7 +138,21 @@ test('no real name: the address becomes the NAME and is not repeated below', () 
     ...opts,
   });
   assert.equal(who.name, 'Invited');
-  assert.equal(who.email, '');
+  assert.equal(who.email, 'invited@example.com');
+});
+
+test('Test8 (live account, empty full_name): name from email + email underneath', () => {
+  // Exact prod row: users.full_name = '', email = test8@test.com, active viewer.
+  const m = { id: 'm1', user_id: 'u1', status: 'active', role: 'viewer', user_full_name: 'test8@test.com', invite_email: 'test8@test.com' };
+  const who = resolveAuthor({
+    userId: 'u1',
+    nameSnapshot: m.user_full_name,
+    member: m,
+    profiles: { u1: { id: 'u1', full_name: '', avatar_url: '', email: 'test8@test.com', is_deleted: false } },
+    ...opts,
+  });
+  assert.equal(who.name, 'Test8');
+  assert.equal(who.email, 'test8@test.com');
 });
 
 // ── invites to people WITHOUT an account — the row has no user_id at all ─────
@@ -125,7 +174,7 @@ test('invite to an unregistered address: name from the address, not a fallback',
   });
   assert.equal(who.name, 'Newcomer');
   assert.equal(who.deleted, false);
-  assert.equal(who.email, ''); // the address IS the name — never printed twice
+  assert.equal(who.email, 'newcomer@example.com'); // address shown for consistency
 });
 
 test('declined invite to an unregistered address resolves the same way', () => {

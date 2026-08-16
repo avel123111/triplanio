@@ -3,6 +3,7 @@ import { track } from '@/lib/analytics';
 import { withViralMarks } from '@/lib/viralLink';
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { Badge, Btn, Dialog, Seg, Severity, Skeleton } from '@/design/index';
 import { renderCardMapPng, blobToDataUri, rasterizeSvgToPng } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
@@ -150,6 +151,7 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     track('trip_share_link_copied', { trip_id: trip?.id });
     navigator.clipboard?.writeText(shareUrl).then(() => {
       setCopied(true);
+      successToast(t, 'link_copied');
       setTimeout(() => setCopied(false), 2000);
     });
   }

@@ -30,9 +30,8 @@
  * как внятный 400.
  */
 
-import type { Refusal, ResourceSpec } from '../mutateRules.ts';
-
-const forbid = (code: string, message: string): Refusal => ({ status: 403, code, message });
+import type { ResourceSpec } from '../mutateRules.ts';
+import { forbid } from '../mutateRules.ts';
 
 export const TRIP_BUDGET: ResourceSpec = {
   name: 'trip-budget',
@@ -59,6 +58,7 @@ export const TRIP_BUDGET: ResourceSpec = {
       forcedOnInsert: { source_kind: 'manual', source_id: null, created_by: '@actor' },
       guardRow: (row) =>
         row.source_kind === 'manual' ? null : forbid(
+          403,
           'EXPENSE_NOT_MANUAL',
           'This expense comes from a booking and is edited there',
         ),
@@ -71,6 +71,7 @@ export const TRIP_BUDGET: ResourceSpec = {
       loadTarget: true,
       guardRow: (row) =>
         row.source_kind === 'manual' ? null : forbid(
+          403,
           'EXPENSE_NOT_MANUAL',
           'This expense comes from a booking and is removed there',
         ),
@@ -96,6 +97,7 @@ export const TRIP_BUDGET: ResourceSpec = {
       forcedOnInsert: { kind: 'custom', system_key: null, order_index: 99, created_by: '@actor' },
       guardRow: (row) =>
         row.kind === 'custom' ? null : forbid(
+          403,
           'CATEGORY_SYSTEM',
           'System categories cannot be edited',
         ),

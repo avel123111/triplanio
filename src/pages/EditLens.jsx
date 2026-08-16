@@ -102,18 +102,6 @@
  * visual-diff-exempt: .ts-pdrawer position — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-pdrawer z-index — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-pdrawer {@media (prefers-reduced-motion: reduce)} animation — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead align-items — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead gap — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead margin — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead padding — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__sp flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__sub color — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt flex-direction — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt gap — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt min-width — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} background — вторая оболочка редактора снесена, off-canvas держит .trip-shell
  * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} border — вторая оболочка редактора снесена, off-canvas держит .trip-shell
  * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} box-shadow — вторая оболочка редактора снесена, off-canvas держит .trip-shell
@@ -182,7 +170,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, Card, Tile, useToast } from '../design/index';
+import { Badge, Btn, IconBtn, Chip, Card, Tile, PageHead, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -195,6 +183,7 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useStay22Bundle } from '@/lib/stay22';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -302,7 +291,7 @@ function buildDraft(shell, transfers = [], lang) {
 //   shell   — тот же ответ TRIP_SHELL_KEY, что у TripView (trip + cityVisits)
 //   content — тот же ответ TRIP_CONTENT_KEY (hotels/activities/transfers/members)
 // Роль сюда НЕ передаётся: право на редактор проверяет реестр секций
-// (canAccess: roleCanEdit), а resolveSection подменяет недоступную секцию
+// (canAccess: clearsStep(step,'editor')), а resolveSection подменяет недоступную секцию
 // дефолтной — то есть по прямому адресу `?lens=edit` наблюдатель просто не
 // попадёт. Своего ролевого гарда здесь нет намеренно, второй такой проверки
 // быть не должно.
@@ -361,7 +350,10 @@ export default function EditLens({ tripId, shell, content }) {
   // onResult(result) runs ONLY on RPC success, under the seq-guard, BEFORE the refetch —
   // e.g. addCity reconciles the real city_visit uuid returned by add_city into the draft
   // immediately (shrinks the tmp- window to the RPC latency instead of the full refetch).
-  const runAction = async (rpcFn, onResult, refetchOpts) => {
+  // okKey: optional `toast` subtitle key fired ONLY on real success. Passed by the
+  // discrete actions (start date / add city / remove city); the frequent ones
+  // (nights, reorder) leave it undefined so they stay silent and don't spam.
+  const runAction = async (rpcFn, onResult, refetchOpts, okKey) => {
     const mySeq = ++seqRef.current;
     let result;
     try { result = await rpcFn(); }
@@ -385,6 +377,7 @@ export default function EditLens({ tripId, shell, content }) {
     try { await refetchTrip(qc, tripId, refetchOpts); } catch { /* ignore */ }
     if (mySeq !== seqRef.current) return;           // a newer action started during the refetch
     setDraft(null); // rebuild from fresh server state on next render (buildDraft)
+    if (okKey) successToast(t, okKey);
   };
   // Any panel that may have WRITTEN transfers/bookings (create/event) closes through
   // here: pull fresh server state and rebuild the draft from it. The server already
@@ -611,7 +604,7 @@ export default function EditLens({ tripId, shell, content }) {
       startCommit.current = null;
       const finalBase = startTarget.current;
       startTarget.current = null;
-      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), undefined, { content: false });
+      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), undefined, { content: false }, 'start_date_updated');
     }, 350);
   };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
@@ -648,7 +641,7 @@ export default function EditLens({ tripId, shell, content }) {
       ...liveActivities.filter((a) => a.city_visit_id === id),
       ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
     ].flatMap((e) => collectDocPaths(e.documents));
-    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths));
+    runAction(() => rpcRemoveCity(tripId, id), () => removeTripFiles(orphanPaths), undefined, 'city_removed');
   };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
@@ -698,7 +691,7 @@ export default function EditLens({ tripId, shell, content }) {
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
     }, insertIdx), (realId) => {
       if (realId) editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === tmpId ? { ...n, id: realId } : n)) }));
-    });
+    }, undefined, 'city_added');
   };
   const onPickCity = async (c, kind) => {
     closeLeftPanel();
@@ -727,7 +720,7 @@ export default function EditLens({ tripId, shell, content }) {
   // Ни шапки, ни гейтов, ни ролевого гарда тут больше нет:
   //   шапку и меню держит TripShell (раньше это была вторая, своя копия);
    //   гейты shell/content отработал TripView до того, как отрисовать секцию;
-  //   право на редактор проверил реестр секций (canAccess: roleCanEdit), и
+  //   право на редактор проверил реестр секций (canAccess: clearsStep(step,'editor')), и
   //   он же не пускает сюда по прямому адресу - resolveSection подменит
   //   недоступную секцию дефолтной.
   // Осталась ОДНА собственная проверка: без content драфт не построить.
@@ -964,26 +957,19 @@ export default function EditLens({ tripId, shell, content }) {
               panel opens as a Radix bottom-sheet (rendered below). */}
           {(!isSheet && !useDrawer && leftPanelEl) || (<>
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'transparent' }}>
-          {/* "Маршрут" container header — scrolls WITH the list (not sticky), the
-              same as on mobile. A left panel replaces this whole column. */}
-          <div className="ts-routehead">
-            <span className="ts-routehead__tt">
-              <span className="ts-routehead__title t-mono tp-caption">{t('planner.step_cities')}</span>
-              {/* TRIP-186: сводка маршрута под заголовком — реюз уже посчитанных
-                  totalNights / cityCount / dateRange (никакой новой логики). */}
-              {(totalNights != null || cityCount > 0 || (dateRange && dateRange !== '-')) && (
-                <span className="ts-routehead__sub t-meta">
-                  {[
-                    totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
-                    cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
-                    dateRange && dateRange !== '-' ? dateRange : null,
-                  ].filter(Boolean).join(' · ')}
-                </span>
-              )}
-            </span>
-            <span className="ts-routehead__sp" />
-            {startDateControl}
-          </div>
+          {/* Container header — канон `PageHead` (как на Budget): заголовок «Маршрут»
+              + сводка маршрута сабтитлом (реюз totalNights/cityCount/dateRange, без
+              новой логики), степпер старта трипа — в слот actions вместо кнопок.
+              Скроллится ВМЕСТЕ со списком (не sticky); левая панель заменяет колонку. */}
+          <PageHead
+            title={t('planner.step_cities')}
+            subtitle={[
+              totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
+              cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
+              dateRange && dateRange !== '-' ? dateRange : null,
+            ].filter(Boolean).join(' · ') || undefined}
+            actions={startDateControl}
+          />
           <Grid className="te-thead" style={{ padding: '0 4px 6px' }}>
             <Trunc as="span" className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</Trunc>
             <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</Trunc>

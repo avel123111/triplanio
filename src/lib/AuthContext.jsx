@@ -1,10 +1,30 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { invokeFn } from '@/lib/invokeFn';
-import { forgetStashedAttribution, getSignupMarks, identifyUser, rememberSignupMarks, resetIdentity, track } from '@/lib/analytics';
+import { identifyUser, resetIdentity, track } from '@/lib/analytics';
+import { forgetStashedAttribution, getSignupMarks, rememberSignupMarks } from '@/lib/attribution';
+import { conversion } from '@/lib/destinations/ads';
+import { hashEmail } from '@/lib/hashEmail';
 import { detectLandingLang } from '@/lib/i18n/translations';
+import { stripAuthHash } from '@/lib/authHash';
 
 const AuthContext = createContext();
+
+// Drop the OAuth implicit-flow `#access_token` from the address bar once a
+// session is confirmed (TRIP-407, 328.1). Must run STRICTLY AFTER supabase-js has
+// parsed the session out of the hash — doing it earlier would swallow the token
+// before sign-in reads it. Idempotent: a second call on an already-clean address
+// finds no token and no-ops, so calling it from every confirmed-session branch is
+// safe. Only the fragment is dropped; `search` (campaign marks, `?t=`, `?code=`)
+// is preserved.
+function clearAuthHashFromAddress() {
+  const next = stripAuthHash(
+    window.location.pathname,
+    window.location.search,
+    window.location.hash,
+  );
+  if (next !== null) window.history.replaceState(null, '', next);
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -36,6 +56,7 @@ export const AuthProvider = ({ children }) => {
     // Primary: check session immediately - reliably handles page refresh
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        clearAuthHashFromAddress();
         loadUserProfile(session.user);
       } else if (!isOAuthCallback) {
         // No session and not an OAuth callback - user is genuinely not logged in
@@ -51,6 +72,8 @@ export const AuthProvider = ({ children }) => {
     // Secondary: react to auth changes (sign-in, sign-out, OAuth callback, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
+        // Session confirmed by supabase — safe to drop the `#access_token` now.
+        clearAuthHashFromAddress();
         // Skip when this user's profile is already loaded (the common case on
         // tab refocus) or a load for them is already in flight. Without this,
         // every tab focus reloaded the profile → isLoadingAuth flash → remount.
@@ -61,6 +84,8 @@ export const AuthProvider = ({ children }) => {
       } else if (event === 'INITIAL_SESSION') {
         // Fired on page load with the resolved session (covers OAuth callback exchange)
         if (session) {
+          // Session parsed out of the hash — now the token can leave the address.
+          clearAuthHashFromAddress();
           if (loadedUserIdRef.current !== session.user.id &&
               loadingForRef.current !== session.user.id) {
             loadUserProfile(session.user);
@@ -194,13 +219,11 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
-      // Fed the PROFILE, on every load, not the marks freshly read at creation:
-      // consent can arrive after the account exists (confirmation link opened on
-      // a phone, or Google sign-in before answering the banner), and a reload in
-      // between would lose an in-memory value for good. The column cannot be
-      // lost, and set-once makes repeating it free. The campaign mark rides the
-      // same call — see identifyUser, which owns all of it.
-      identifyUser(authUser.id, profile);
+      // Identify on every load. First-touch (`$initial_utm_*`) is left to
+      // PostHog's own native block now (TRIP-407, decision 2) — the authoritative
+      // source of signup is the server-written `users.signup_utm_*` column — so no
+      // profile marks are fed here. identifyUser owns the last-touch campaign sync.
+      identifyUser(authUser.id);
       // Registration (TRIP-316 A1). The `users` row is the ONE birth point of a
       // user: it is created here, exactly once, and identically for Google,
       // Apple, One Tap and email — the login buttons are not, and the fourth one
@@ -213,6 +236,15 @@ export const AuthProvider = ({ children }) => {
       // of showing up as an empty bucket worth looking at.
       if (profileCreated) {
         track('user_signed_up', { method: authUser.app_metadata?.provider });
+        // Google Ads registration conversion (TRIP-407 PR6) — dormant without the
+        // tag. Enhanced conversions ride the SHA-256 of the email; the raw email
+        // never leaves hashEmail. Best-effort: a hashing / gtag hiccup must not
+        // touch the signup path.
+        if (authUser.email) {
+          hashEmail(authUser.email)
+            .then((sha256_email) => conversion('registration', { userData: { sha256_email } }))
+            .catch(() => { /* ads conversion is best-effort */ });
+        }
       }
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.

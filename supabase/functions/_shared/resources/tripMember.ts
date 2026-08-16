@@ -23,9 +23,8 @@
  * `unique_violation` (он дал бы 500 через `unwrapDbResult`). Успех = `data.member`.
  */
 
-import type { Refusal, ResourceSpec } from '../mutateRules.ts';
-
-const forbid = (status: number, code: string, message: string): Refusal => ({ status, code, message });
+import type { ResourceSpec } from '../mutateRules.ts';
+import { forbid } from '../mutateRules.ts';
 
 /** Роли, которые клиент вправе назначить (owner выдаётся только через created_by). */
 const ROLE_FIELD = { type: 'string', required: true, enum: ['viewer', 'admin'] } as const;
@@ -53,8 +52,8 @@ export const TRIP_MEMBER: ResourceSpec = {
           return forbid(409, 'ALREADY_MEMBER', 'This user is already invited or a member');
         }
         if (outcome === 'self') return forbid(400, 'INVITE_SELF', 'You cannot invite yourself');
-        // Код `invite_owner` — контракт фронта (`MembersLens.jsx:116`), сохраняем.
-        if (outcome === 'owner') return forbid(400, 'invite_owner', 'Cannot invite the trip owner');
+        // `INVITE_OWNER` — контракт фронта (`MembersLens.jsx` → `classifyError`).
+        if (outcome === 'owner') return forbid(400, 'INVITE_OWNER', 'Cannot invite the trip owner');
         return { data: (data as { member?: unknown }).member };
       },
     },

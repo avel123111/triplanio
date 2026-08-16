@@ -27,7 +27,7 @@ test('у каждой секции есть id, группа, подпись, и
 
 test('дефолтная секция существует и доступна всегда', () => {
   assert.ok(sectionById(DEFAULT_SECTION));
-  assert.equal(isSectionAvailable(DEFAULT_SECTION, null, 'viewer'), true);
+  assert.equal(isSectionAvailable(DEFAULT_SECTION, null, 'participant'), true);
   assert.equal(isSectionAvailable(DEFAULT_SECTION, plainTrip, undefined), true);
 });
 
@@ -69,13 +69,15 @@ test('секции без аддона не зависят от трипа', () 
   }
 });
 
-// ── роли ─────────────────────────────────────────────────────────────────────
+// ── ступени доступа ──────────────────────────────────────────────────────────
 
-test('наблюдатель не видит Участников, но видит Настройки (TRIP-137)', () => {
-  assert.equal(isSectionAvailable('members', plainTrip, 'viewer'), false);
-  assert.equal(isSectionAvailable('settings', plainTrip, 'viewer'), true);
-  for (const role of ['owner', 'admin']) {
-    assert.equal(isSectionAvailable('members', plainTrip, role), true, role);
+test('наблюдатель (participant) не видит Участников, но видит Настройки (TRIP-137)', () => {
+  assert.equal(isSectionAvailable('members', plainTrip, 'participant'), false);
+  assert.equal(isSectionAvailable('settings', plainTrip, 'participant'), true);
+  // Не на трипе вовсе (step=null) — тоже без Участников (fail-closed).
+  assert.equal(isSectionAvailable('members', plainTrip, null), false);
+  for (const step of ['owner', 'editor']) {
+    assert.equal(isSectionAvailable('members', plainTrip, step), true, step);
   }
 });
 
@@ -88,8 +90,8 @@ test('availableSections отдаёт группу в порядке реестр
   assert.deepEqual(manage.map((s) => s.id), ['edit', 'members', 'settings']);
 });
 
-test('availableSections режет и по аддону, и по роли одновременно', () => {
-  const all = availableSections(tripWith({ budget: true }), 'viewer').map((s) => s.id);
+test('availableSections режет и по аддону, и по ступени одновременно', () => {
+  const all = availableSections(tripWith({ budget: true }), 'participant').map((s) => s.id);
   assert.equal(all.includes('budget'), true, 'бюджет включён аддоном');
   assert.equal(all.includes('chat'), false, 'чат аддоном не включён');
   assert.equal(all.includes('members'), false, 'наблюдателю участники недоступны');
@@ -118,19 +120,20 @@ test('редактор структуры закрыт наблюдателю и
   // больше нет (была — в отдельном роуте), а по прямому `?lens=edit`
   // наблюдателя разворачивает resolveSection. Ломается предикат — открывается
   // экран записи тому, кто писать не может.
-  assert.equal(isSectionAvailable('edit', plainTrip, 'viewer'), false);
-  assert.equal(resolveSection('edit', plainTrip, 'viewer'), DEFAULT_SECTION);
-  for (const role of ['owner', 'admin']) {
-    assert.equal(isSectionAvailable('edit', plainTrip, role), true, role);
-    assert.equal(resolveSection('edit', plainTrip, role), 'edit', role);
+  assert.equal(isSectionAvailable('edit', plainTrip, 'participant'), false);
+  assert.equal(resolveSection('edit', plainTrip, 'participant'), DEFAULT_SECTION);
+  assert.equal(isSectionAvailable('edit', plainTrip, null), false); // не на трипе — тоже нет
+  for (const step of ['owner', 'editor']) {
+    assert.equal(isSectionAvailable('edit', plainTrip, step), true, step);
+    assert.equal(resolveSection('edit', plainTrip, step), 'edit', step);
   }
 });
 
 test('недоступная секция падает на дефолт, доступная остаётся', () => {
   assert.equal(resolveSection('budget', plainTrip, 'owner'), DEFAULT_SECTION);
   assert.equal(resolveSection('budget', tripWith({ budget: true }), 'owner'), 'budget');
-  assert.equal(resolveSection('members', plainTrip, 'viewer'), DEFAULT_SECTION);
-  assert.equal(resolveSection('members', plainTrip, 'admin'), 'members');
+  assert.equal(resolveSection('members', plainTrip, 'participant'), DEFAULT_SECTION);
+  assert.equal(resolveSection('members', plainTrip, 'editor'), 'members');
 });
 
 // ── раскладка ────────────────────────────────────────────────────────────────

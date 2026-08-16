@@ -205,7 +205,9 @@ export async function mutate(
   if (!action) return jsonError(404, 'Unknown action', 'UNKNOWN_ACTION', corsHeaders);
 
   const actor = await getRequestUser(req); // throws 503 on Auth outage
-  if (!actor) return jsonError(401, 'Unauthorized', undefined, corsHeaders);
+  // Машинный код на 401 — как у всех прочих edge-функций (`UNAUTHORIZED` — мёртвый
+  // код, не использовать); клиент ветвится по `code`, не по тексту (TRIP-420).
+  if (!actor) return jsonError(401, 'Unauthorized', 'UNAUTHENTICATED', corsHeaders);
 
   // Райдер #6 (TRIP-409): пустое/отсутствующее тело → `{}`. Клиент no-arg
   // действия (`inbox/read-all`) зовёт `invokeFn` без body → `req.json()` бросал →

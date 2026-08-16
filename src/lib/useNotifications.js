@@ -32,7 +32,11 @@ export const BELL_ROWS = 30;
 
 const INBOX_KEY = (userId) => ['inbox', userId];
 
-/** @typedef {{ list: any[], unreadCount: number }} Inbox */
+/** Каждая строка `list` несёт `sender` — автора события (`created_by`),
+ *  резолвнутого сервером в `{ id, full_name, avatar_url, is_deleted }` или `null`
+ *  для системных строк (оплата/подписка — без человека-автора). Из него берутся
+ *  живые имя и аватар в попапе и на экране инбокса (PR подготовки редизайна).
+ *  @typedef {{ list: any[], unreadCount: number }} Inbox */
 
 /** Empty inbox shape — keeps `select`s total even before the first fetch lands.
  *  @type {Inbox} */

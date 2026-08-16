@@ -1,49 +1,12 @@
 // @ts-check
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useNotificationList, useUnreadNotificationCount, useNotificationActions, BELL_ROWS } from '@/lib/useNotifications';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Btn, EmptyState, IconBtn, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
-
-// Render `text` but wrap occurrences of given values in styled <span>s.
-// Used to bold the inviter name and emphasize the trip name in invite rows.
-export function emphasize(text, parts = []) {
-  if (text == null) return text;
-  let nodes = [String(text)];
-  parts.filter(p => p && p.value).forEach((p, pi) => {
-    nodes = nodes.flatMap((node, ni) => {
-      if (typeof node !== 'string') return [node];
-      const segs = node.split(p.value);
-      const out = [];
-      segs.forEach((s, si) => {
-        if (s) out.push(s);
-        if (si < segs.length - 1) out.push(<span key={`e${pi}-${ni}-${si}`} style={p.style}>{p.value}</span>);
-      });
-      return out;
-    });
-  });
-  return nodes;
-}
-
-// Icon + accent colour for a notification, by type.
-export function notifMeta(type = '') {
-  const tp = String(type).toLowerCase();
-  // Specific member/booking events first — they'd otherwise be swallowed by the
-  // broader 'invite' / 'member' substring matches below.
-  if (tp.includes('declined')) return { icon: 'user', color: 'var(--muted)' };
-  if (tp.includes('removed')) return { icon: 'user', color: 'var(--danger)' };
-  if (tp.includes('left')) return { icon: 'user', color: 'var(--warm)' };
-  if (tp.includes('role')) return { icon: 'shield', color: 'var(--brand)' };
-  if (tp.includes('booking')) return { icon: 'bed', color: 'var(--ai)' };
-  if (tp.includes('invite')) return { icon: 'users', color: 'var(--brand)' };
-  if (tp.includes('vote') || tp.includes('hotel')) return { icon: 'vote', color: 'var(--ai)' };
-  if (tp.includes('pro') || tp.includes('subscription') || tp.includes('payment')) return { icon: 'pro', color: 'var(--pro)' };
-  if (tp.includes('join') || tp.includes('member')) return { icon: 'user', color: 'var(--success)' };
-  if (tp.includes('activity') || tp.includes('update') || tp.includes('edit')) return { icon: 'edit', color: 'var(--warm)' };
-  return { icon: 'bell', color: 'var(--brand)' };
-}
+import { Badge, Btn, EmptyState, IconBtn, NotifRow, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
+import { buildNotifView } from '@/components/notifications/notifView';
 
 // ★TRIP-344: проп `triggerClassName` удалён. Его единственный вызыватель
 // передавал `"icon-btn"` — то есть РОВНО дефолт, — а сам класс теперь несёт
@@ -102,10 +65,11 @@ export default function NotificationsBell() {
             <EmptyState icon="bell" title={t('notif.all_read')} body={t('notif.all_read_desc')} />
           ) : (
             notifications.map(n => (
-              <NotifRow
+              <PopoverRow
                 key={n.id}
                 n={n}
                 t={t}
+                nav={nav}
                 fmtRelative={fmtRelative}
                 pending={respondInvite.isPending}
                 onRespond={(action) => {
@@ -132,63 +96,44 @@ export default function NotificationsBell() {
   );
 }
 
-function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTrip }) {
-  const isInvite = n.type === 'trip_invite' && n.trip_member_id;
+// Поповер-строка = канон `<NotifRow compact>` + слоты действий. Резолв (глиф из
+// sender, живое имя, i18n-текст) — общий `buildNotifView`, тот же, что у экрана.
+function PopoverRow({ n, t, nav, fmtRelative, pending, onRespond, onMarkRead, onOpenTrip }) {
   // Invite status rides the row now (getInbox joins trip_members) — no per-row
   // `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
-
-  const time = fmtRelative(n.created_at);
-  // Форма приходит СТРОКОЙ ИЗ БД (`notifications.i18n_params`), и набор ключей
-  // зависит от типа уведомления — статически он не выводим, поэтому объявлен
-  // словарём, а не выдуманным союзом форм.
-  /** @param {Record<string, any>} params */
-  const renderParams = (params = {}) => {
-    /** @type {Record<string, any>} */
-    const resolved = { ...params };
-    if (resolved.role_key) { resolved.role = t(resolved.role_key); delete resolved.role_key; }
-    // Booking notifications carry `kind` as a code (hotel/transfer/service) — localize it.
-    if (resolved.kind) resolved.kind = t('notif.booking_kind_' + resolved.kind);
-    return resolved;
-  };
-  const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
-  const messageText = n.i18n_message_key ? t(n.i18n_message_key, renderParams(n.i18n_params)) : n.message;
-  const ip = n.i18n_params || {};
-  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */, color: 'var(--brand)' } }]) : titleText;
-  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } }]) : messageText;
-
-  const meta = notifMeta(n.type);
+  const { glyph, isInvite, titleNode, messageText, messageNode } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
   const showPending = isInvite && memberStatus === 'pending';
+  const showLink = n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite');
+  const hasActions = showPending || (isInvite && memberStatus === 'active') || showLink;
+
+  const actions = hasActions ? (
+    <>
+      {showPending && (
+        <>
+          <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+          <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+        </>
+      )}
+      {isInvite && memberStatus === 'active' && (
+        <Badge variant="success" icon="check">{t('notif.accepted')}</Badge>
+      )}
+      {showLink && (
+        <Btn variant="link" icon="pin" onClick={() => { onOpenTrip?.(); nav(`/trip/${n.trip_id}`); }}>{t('notif.view_trip')}</Btn>
+      )}
+    </>
+  ) : null;
 
   return (
-    <div
-      className={`brow${n.read ? '' : ' brow--unread'}`}
+    <NotifRow
+      compact
+      glyph={glyph}
+      unread={!n.read}
+      title={titleNode}
+      message={messageText ? messageNode : null}
+      time={fmtRelative(n.created_at)}
+      actions={actions}
       onClick={() => { if (!n.read) onMarkRead?.(); }}
-    >
-      <div className="n-ic n-ic--sm" style={{ '--ic': meta.color }}>
-        <Icon name={meta.icon} size={14} />
-      </div>
-      <div className="brow__body">
-        <div className="brow__title">{titleNode}</div>
-        {messageText && <div className="brow__msg">{messageNode}</div>}
-        <div className="brow__time">{time}</div>
-
-        {showPending && (
-          <div className="brow__acts">
-            <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
-          </div>
-        )}
-        {isInvite && memberStatus === 'active' && (
-          <div className="brow__ok">✓ {t('notif.accepted')}</div>
-        )}
-
-        {n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite') && (
-          <Link to={`/trip/${n.trip_id}`} onClick={onOpenTrip} className="brow__link">
-            <Icon name="pin" size={12} />{t('notif.view_trip')}
-          </Link>
-        )}
-      </div>
-    </div>
+    />
   );
 }

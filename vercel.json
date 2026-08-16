@@ -45,6 +45,10 @@
       "destination": "/terms.html"
     },
     {
+      "source": "/api/:path(.*)",
+      "destination": "/api/proxy?path=:path"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

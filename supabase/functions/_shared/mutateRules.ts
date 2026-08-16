@@ -55,6 +55,27 @@ export type Refusal = {
 };
 
 /**
+ * ЕДИНСТВЕННЫЙ конструктор бизнес-отказа спецификаций ресурсов — одна сигнатура
+ * `forbid(status, code, message)` на все домены (свод 4 локальных копий, TRIP-419).
+ * Раньше каждый ресурс держал СВОЙ `forbid`: половина 2-арг (403 захардкожен),
+ * половина 3-арг. Гард 2v читал код по фиксированной позиции аргумента и МОЛЧА
+ * промахивался мимо той конвенции, что не совпала (`ALREADY_MEMBER` и ещё пять
+ * member-кодов эмитились мимо реестра при зелёном гарде). Один экспорт = одна
+ * позиция кода (arg1), которую гард знает точно.
+ *
+ * `code` — контрактный `UPPER_SNAKE` (см. `errorCodes.ts`); `status` явный, т.к.
+ * отказы домена не все 403 (409 «уже участник», 400 self/owner, 402 Pro).
+ * Живёт в ЧИСТОМ модуле рядом с `Refusal`/`bad` — резолвится замыканиями
+ * (`guardRow`/`mapOutcome`/`validate`), не на загрузке, поэтому циклический
+ * value-импорт из ресурсов безопасен.
+ */
+export const forbid = (status: number, code: string, message: string): Refusal => ({
+  status,
+  code,
+  message,
+});
+
+/**
  * ЕДИНСТВЕННАЯ форма отказа «нет, нужен Pro» — 402 + `sentrySkip` (бизнес-«нет»
  * не шумит в Sentry). Живёт в ЧИСТОМ модуле, чтобы её мог взять и I/O-гейт
  * (`proGate.ts` ре-экспортит для `proRefusal`/не-шовных функций), и `mapOutcome`
@@ -277,7 +298,7 @@ function typeOk(spec: FieldSpec, value: unknown): boolean {
   }
 }
 
-const bad = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
+export const bad = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
 
 /**
  * Вход действия: выбирает семантику обязательности (вставка/транзакция строгая,
@@ -437,6 +458,32 @@ export function buildPlan(
   }
   // Порядок намеренный: серверные колонки идут ПОСЛЕДНИМИ и побеждают клиента.
   return { op: 'insert', table, values: { ...ctx.values, ...scoped, ...forced } };
+}
+
+/**
+ * Зеркало CHECK семейства `*_link_url` / `*_documents_urls` (`^https?://`) —
+ * ОБЩИЙ дом рядом с `bad`/валидаторами, а не копия в каждом ресурсе. `javascript:`
+ * в ссылке = stored XSS (TRIP-281); БД держит CHECK, шов зеркалит его внятным 400.
+ * Реюзают `trip-document` (link_url + documents) и `trip-booking` (booking_url +
+ * documents/details). Зовутся только внутри `validate`-замыканий (request-time),
+ * поэтому цикл `mutateRules ⇄ resources` безопасен (как `forbid`/`validateEach`).
+ */
+export const HTTP_URL = /^https?:\/\//i;
+
+/**
+ * `documents` — jsonb-МАССИВ объектов файла. CHECK `*_documents_urls` требует
+ * `$[*].file_url` matchить `^https?://` (иначе `javascript:`-ссылка = stored XSS,
+ * TRIP-281). Зеркалим поэлементно; прочие поля объекта БД не проверяет.
+ */
+export function validateDocuments(value: unknown): Refusal | null {
+  if (!Array.isArray(value)) return bad('Field "documents" must be a list');
+  for (const item of value) {
+    const url = (item as { file_url?: unknown })?.file_url;
+    if (typeof url !== 'string' || !HTTP_URL.test(url)) {
+      return bad('Every document file_url must be an http(s) URL');
+    }
+  }
+  return null;
 }
 
 import { TRIP_BUDGET } from './resources/tripBudget.ts';

@@ -42,22 +42,6 @@ function campKey(param) {
   return `camp_${param.replace(/^utm_/, '')}`;
 }
 
-/**
- * Query parameter → PostHog's OWN first-touch property.
- *
- * PostHog fills `$initial_utm_*` itself — from the address of the first event a
- * person is ever seen on. That address is useless to us: between the page that
- * carried the mark and the moment a person exists (identify, at account
- * creation) sits either Google's OAuth screen or a confirmation email, so what
- * PostHog sees is `/trips` with an empty query — and it writes an explicit null
- * (TRIP-335). We hand it the value instead, under its own canonical names.
- * Unlike `camp_*` these must NOT get names of ours: a second name for first
- * touch is exactly what makes two dashboards disagree.
- */
-function initialKey(param) {
-  return `$initial_${param}`;
-}
-
 /** Every super-property we own, including the timestamp driving the 30-day window. */
 export const CAMPAIGN_KEYS = [...MARKS.map((m) => campKey(m.param)), 'camp_ts'];
 
@@ -114,44 +98,6 @@ export function readMarks(search) {
   for (const { param } of MARKS) {
     const value = clean(params.get(param));
     if (value) out[param] = value;
-  }
-  return Object.keys(out).length ? out : null;
-}
-
-/**
- * Marks → the `users` columns. This is the ONLY attribution that survives a
- * refusal: the super-properties ride PostHog, which does not exist until someone
- * consents, while these are account data written once at signup (TRIP-311).
- * @param {Record<string, string> | null | undefined} marks
- * @returns {Record<string, string> | null}
- */
-export function marksToColumns(marks) {
-  if (!marks) return null;
-
-  const out = {};
-  for (const { param, column } of MARKS) {
-    if (column && marks[param]) out[column] = marks[param];
-  }
-  return Object.keys(out).length ? out : null;
-}
-
-/**
- * Marks → PostHog's first-touch person properties, via the `users` row.
- *
- * Fed the profile, so the source is the COLUMN rather than the moment of
- * signup — which is what makes it survive a confirmation link opened on another
- * device, consent given after the account exists, or a reload in between.
- *
- * @param {Record<string, string> | null | undefined} row  the `users` row, or
- *   the signup columns alone
- * @returns {Record<string, string> | null}
- */
-export function toInitialPersonProps(row) {
-  if (!row) return null;
-
-  const out = {};
-  for (const { param, column } of MARKS) {
-    if (column && row[column]) out[initialKey(param)] = row[column];
   }
   return Object.keys(out).length ? out : null;
 }

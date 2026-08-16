@@ -26,6 +26,13 @@ export type EmitData = {
   actor: Row;
   member: Row;
   recipients: Record<string, unknown>[];
+  /** Telegram-чат отвязки (только `trip_telegram_unlinked`): адресат внешней
+   *  доставки — сам чат, не пользователь, поэтому едет полем конверта, а не в
+   *  `recipients`. Остальные события его не заполняют. */
+  chat_id?: string | null;
+  /** Язык сообщения в чат (trip_telegram_unlinked): язык владельца трипа,
+   *  резолвится вызывателем. n8n читает 0 таблиц. */
+  locale?: string | null;
 };
 
 /** Пустой конверт — когда резолвера нет (неизвестное событие) или нет `db`. */
@@ -141,19 +148,19 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Роль изменена — адресат = сам участник.
-  role_changed: async (db, ids, snapshot) => {
+  trip_role_changed: async (db, ids, snapshot) => {
     const core = await tripActorMember(db, ids, snapshot);
     return { ...core, recipients: await loadUsers(db, [ids.recipient_id]) };
   },
 
   // Участник удалён админом — адресат = удалённый (member из снимка до delete).
-  member_removed: async (db, ids, snapshot) => {
+  trip_member_removed: async (db, ids, snapshot) => {
     const core = await tripActorMember(db, ids, snapshot);
     return { ...core, recipients: await loadUsers(db, [ids.recipient_id]) };
   },
 
   // Участник вышел сам — адресаты = владелец + активные админы, без ушедшего.
-  member_left: async (db, ids, snapshot) => {
+  trip_member_left: async (db, ids, snapshot) => {
     const [core, adminIds] = await Promise.all([
       tripActorMember(db, ids, snapshot),
       loadActiveAdminIds(db, ids.trip_id),
@@ -165,8 +172,23 @@ export const RESOLVERS: Record<string, Resolver> = {
     return { ...core, recipients };
   },
 
-  invite_accepted: respondResolver,
-  invite_declined: respondResolver,
+  trip_member_joined: respondResolver,
+  trip_invite_declined: respondResolver,
   pro_activated: proResolver,
   pro_payment_failed: proResolver,
+
+  // Telegram-привязка снята (ручная отвязка / потеря Pro / выход-удаление
+  // участника / выключение аддона telegram_assistant). Адресат — сам чат
+  // (`chat_id` из id-слота: строка привязки к этому моменту уже удалена).
+  // Трип нужен ради названия в тексте: берём из снимка (шов читает трип один раз
+  // на пачку чатов), иначе дочитываем. Получателей-пользователей нет (external-only,
+  // in-app-строку не пишем — нет спеки в notifyRules).
+  trip_telegram_unlinked: async (db, ids, snapshot) => ({
+    trip: snapshot ?? await loadTrip(db, ids.trip_id),
+    actor: null,
+    member: null,
+    recipients: [],
+    chat_id: typeof ids.chat_id === 'string' && ids.chat_id ? ids.chat_id : null,
+    locale: typeof ids.locale === 'string' && ids.locale ? ids.locale : null,
+  }),
 };

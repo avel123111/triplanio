@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from "@/design/index"
 import { track } from '@/lib/analytics'
-import { isProdHost } from '@/lib/consent'
+import { isProdHost } from '@/lib/analyticsEnv'
 import { Analytics } from '@vercel/analytics/react'
 import ConsentBanner from '@/components/ConsentBanner'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -86,6 +86,9 @@ const AuthenticatedApp = () => {
           <Route path="/kit" element={<Kit />} />
           <Route path="/kit/:object" element={<Kit />} />
         </Routes>
+        {/* Витрине тостов нужен живой <Toaster>: этот бранч возвращается ДО общего
+            дерева, где он смонтирован, поэтому монтируем его и здесь. */}
+        <Toaster />
       </Suspense>
     );
   }

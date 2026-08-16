@@ -33,12 +33,13 @@ import { useParams, Link } from 'react-router-dom';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
-  FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut,
+  FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut, Cover,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
-  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS,
+  TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
 import { Icon } from '@/design/icons';
+import Accordion from '@/components/common/Accordion';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
 import './Kit.css';
@@ -61,7 +62,7 @@ const TX = {
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
-    'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'readonly-banner': 'Плашка «только чтение»',
+    'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -86,12 +87,13 @@ const TX = {
     'doc-row': 'Имя, размер, тон (обычный / ai).',
     'skeleton': 'Плейсхолдер загрузки, разной ширины.',
     'dialog': 'Диалог и шит — оверлеи (открываются кнопкой).',
-    'readonly-banner': 'Режим просмотра трипа.',
+    'accordion': 'Раскрывашка: шапка-кнопка (иконка · заголовок · статус) + вложенное тело; шеврон вправо→вниз.',
+    'cover': 'Обложка трипа: градиент из конечного набора (16, классами по data-cover) ИЛИ фото поверх.',
     'tile': 'Квадрат под значок: тон · размер · форма · залитая.',
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
     'sheet-row': 'Действие во всю ширину; danger — деструктивное.',
-    'ai-blk': 'Распознавание брони, состояние «доступно» = кликабельная пилюля.',
+    'ai-blk': 'Распознавание брони. Шапка статична; тело плавно раскрывается/скрывается (grid-rows).',
     'time': 'Вылет сверху, прибытие снизу (в ленте у события-переезда).',
     'row': 'Флекс-ряд: зазор (ступени --sp-N) и оси выравнивания/потока.',
     'col': 'Флекс-колонка: зазор и оси.',
@@ -129,8 +131,15 @@ const TX = {
   emptyBoxTitle: 'Пусто', emptyBoxBody: 'В рамке (boxed).',
   openDialog: 'Открыть диалог', openSheet: 'Открыть шит', readonly: 'Режим только для чтения.',
   toastTitle: 'Готово', toastBody: 'Изменения сохранены.',
+  toastLab: 'Появятся в правом нижнем углу (на мобиле — сверху); наведи или тапни стопку, чтобы развернуть.',
+  toastDeck: 'колода',
+  toastDemoSaved: 'Путешествие сохранено', toastDemoSavedSub: 'Все изменения применены',
+  toastDemoLink: 'Ссылка скопирована',
+  toastDemoCover: 'Обложка не сохранилась', toastDemoCoverSub: 'Попробуйте загрузить ещё раз',
+  toastDemoDelFail: 'Не удалось удалить', toastDemoDraft: 'Черновик обновлён',
   sheetNormal: 'Обычное действие', sheetDanger: 'Удалить',
   aiTitle: 'Распознать бронь', aiSub: 'Вставьте текст письма',
+  aiFill: 'Заполнить через ИИ', aiUpload: 'PDF / скриншот', aiPh: 'Вставьте текст письма с подтверждением, номер брони, ссылку…',
   dialogTitle: 'Диалог', sheetTitle: 'Шит', dialogBody: 'Содержимое диалога.',
 };
 
@@ -240,6 +249,30 @@ function ForceHarness({ kind, states, render }) {
   );
 }
 
+/** Живая витрина тоста: кнопки фаярят настоящие `toast()` через глобальный
+ *  <Toaster>, так что видно и появление, и уход, и наслоение колоды. Каждый
+ *  вариант — свой тон; «колода» шлёт пачку, чтобы карты встали стопкой. */
+const TOAST_DEMO = [
+  { variant: 'success', title: TX.toastDemoSaved, description: TX.toastDemoSavedSub },
+  { variant: 'info', title: TX.toastDemoLink },
+  { variant: 'warning', title: TX.toastDemoCover, description: TX.toastDemoCoverSub },
+  { variant: 'error', title: TX.toastDemoDelFail },
+  { variant: 'neutral', title: TX.toastDemoDraft },
+];
+function ToastLab() {
+  return (
+    <div className="col col--g3">
+      <div className="row row--g3 row--wrap">
+        {TOAST_DEMO.map((d) => (
+          <Btn key={d.variant} variant="secondary" size="sm" onClick={() => toast(d)}>{d.variant}</Btn>
+        ))}
+        <Btn variant="primary" size="sm" onClick={() => TOAST_DEMO.forEach((d, i) => setTimeout(() => toast(d), i * 140))}>{TX.toastDeck}</Btn>
+      </div>
+      <span className="t-meta">{TX.toastLab}</span>
+    </div>
+  );
+}
+
 /* ─────────────────────────── рецепты рендера ─────────────────────────────── */
 /** Один рецепт = `(ctx) => Array<{ label?, items:[{name,node,full?}] }>`. Значения
  *  оси едут из карты (импортированные `*_VARIANTS`) или из CSS-производного
@@ -262,7 +295,7 @@ const RECIPES = {
     { items: [it('segments + center', <Donut total={100} center="₽724,9т" label={TX.donutTotal} segments={[{ id: 'a', color: 'var(--brand)', value: 55 }, { id: 'b', color: 'var(--ev-transfer)', value: 25 }, { id: 'c', color: 'var(--muted-2)', value: 20 }]} />, true)] },
   ],
   'list-row': () => [
-    { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={<Tile size="xl" icon="bed" />} title={TX.rowTitle} sub={TX.rowSub} trail={<span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' ? () => {} : undefined} />, true)) },
+    { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={v === 'add' ? <Tile tone="quiet" icon="plus" /> : <Tile size="xl" icon="bed" />} title={v === 'add' ? TX.chipAdd : TX.rowTitle} sub={TX.rowSub} trail={v === 'add' ? <Icon name="plus" size={16} /> : <span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' || v === 'add' ? () => {} : undefined} />, true)) },
     { items: [it('selected (on)', <ListRow variant="select" selected lead={<Tile size="xl" icon="bed" />} title={TX.rowTitle} sub={TX.rowSub} trail={<span className="t-strong">₽1 234</span>} onClick={() => {}} />, true)] },
   ],
   btn: () => [
@@ -287,6 +320,15 @@ const RECIPES = {
         it('size="sm" icon+iconRight', <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel="Добавить" />),
         // btn--brand — аддитивный класс тени под заливку --bg (партнёрская кнопка).
         it('btn--brand', <Btn variant="secondary" className="btn--brand" block style={{ '--bg': 'var(--brand)', '--fg': 'var(--primary-fg)' }}><span className="btn__brandlogo" />{TX.brandName}</Btn>, true), // inline-style-exempt: заливка партнёра каналом --bg из данных, тон ЕСТЬ содержимое
+        // locked — действие недоступно роли: приглушён + замок + тултип-причина (TRIP-274 Ф2.2).
+        it('locked (замок+тултип)', <Btn variant="secondary" locked lockedHint={TX.lockmsg}>{TX.save}</Btn>, true),
+      ],
+    },
+    {
+      family: 'tt',
+      items: [
+        // Tooltip — глобальный текст-хинт на ховере/фокусе (наведи на триггер).
+        it('content (ховер/фокус)', <Tooltip content={TX.lockmsg}><Btn variant="secondary">{TX.save}</Btn></Tooltip>, true),
       ],
     },
     {
@@ -398,7 +440,7 @@ const RECIPES = {
     // её ↔ живой CSS в обе стороны). radius/tone эмитятся своими пропами; булевы
     // формы - одноимённым пропом; danger - `danger`; до-края - `pad="none"`.
     const P = {
-      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' }, 'r-card': { radius: 'card' }, featured: { featured: true }, raised: { raised: true },
+      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' }, 'r-card': { radius: 'card' }, 'r-btn': { radius: 'btn' }, featured: { featured: true }, raised: { raised: true },
       interactive: { as: 'button', radius: 'md', interactive: true },
       'tone-brand': { tone: 'brand', radius: 'md' },
       'tone-ai': { tone: 'ai' },
@@ -568,7 +610,116 @@ const RECIPES = {
     ],
   }],
 
-  'readonly-banner': () => [{ items: [it('base', <div className="grow"><ReadOnlyBanner>{TX.readonly}</ReadOnlyBanner></div>, true)] }],
+  accordion: () => [{
+    items: [
+      it('icon + subtitle + badge-нода (статус) · раскрыт',
+        <Accordion icon="telegram" tone="info" title={'Telegram'} subtitle={'Аккаунты для уведомлений по путешествиям'} badge={<Badge variant="success" size="tiny">{'подключён'}</Badge>} defaultOpen>{/* i18n-ignore: витрина /kit, dev-only */}
+          <div className="t-meta muted">{'Вложенное тело: любой контент (строки, поля, список).'/* i18n-ignore: витрина /kit */}</div>
+        </Accordion>, true),
+      it('title + count badge (число)',
+        <Accordion title={'Детали брони'} subtitle={'рейс · отель · трансфер'} badge={3}>{/* i18n-ignore: витрина /kit, dev-only */}
+          <div className="t-meta muted">{'Поля брони…'/* i18n-ignore: витрина /kit */}</div>
+        </Accordion>, true),
+      it('свёрнут (шеврон вправо), без иконки',
+        <Accordion title={'Документы и заметки'/* i18n-ignore: витрина /kit */}>
+          <div className="t-meta muted">{'…'}</div>
+        </Accordion>, true),
+    ],
+  }],
+
+  cover: () => [
+    {
+      label: 'градиент трипа (data-cover, конечный набор из 16)',
+      items: ['gradient_1', 'gradient_5', 'gradient_9', 'gradient_14', 'gradient_16']
+        .map((g) => it(`gradient="${g}"`, <Cover gradient={g} />)),
+    },
+    {
+      items: [it('image (фото поверх градиента)', <Cover gradient="gradient_5" image="/flags/es.svg" />)],
+    },
+  ],
+
+
+  // Строка уведомления — один компонент на все типы и обе поверхности. Показана
+  // КАК В ПРИЛОЖЕНИИ: строки стопкой на реалистичной ширине, с теми же кнопками
+  // (accept/decline, «Открыть трип», бейджи) — статикой, без интерактива. Глиф по
+  // ТИПУ события: аватар (человек) · плитка (аккаунт/доступ/оплата) · pro.
+  notif: () => {
+    // Демо-контент витрины (dev-only, НЕ UI-строки): как `TX`, живёт в ДАННЫХ, а
+    // не JSX-литералами — i18n-гард 2d не считает это хардкодом (флагает JSX-props/
+    // текст, не свойства объектов). Ярлыки кнопок/бейджей — JSX-константы, помечены
+    // `// i18n-ignore` (демо-подписи /kit, показывают слоты действий строки).
+    const link = <Btn variant="link" icon="pin">Открыть трип</Btn>; // i18n-ignore: демо-подпись витрины /kit
+    const inviteActs = <><Btn variant="primary" icon="check">Принять</Btn><Btn variant="secondary">Отклонить</Btn></>; // i18n-ignore: демо-подписи витрины /kit
+    const acceptedActs = <><Badge variant="success" icon="check">Ты в путешествии</Badge>{link}</>; // i18n-ignore: демо-подпись витрины /kit
+    const declinedActs = <Badge variant="quiet">Отклонил</Badge>; // i18n-ignore: демо-подпись витрины /kit
+    const goTrips = <Btn variant="primary" icon="plus" block>Перейти к путешествиям</Btn>; // i18n-ignore: демо-подпись витрины /kit
+    const inbox = [
+      { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна · роль наблюдателя', time: '5 мин', actions: inviteActs },
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
+      { glyph: { mode: 'tile', icon: 'shield', tone: 'brand' }, title: 'Теперь ты администратор', message: 'Лиссабон · можно менять маршрут и бюджет', time: '2 дн', actions: link },
+      { glyph: { mode: 'avatar', name: 'Ира Волкова' }, title: 'Ира Волкова зовёт в путешествие', message: 'Токио, весна', time: '2 дн', actions: acceptedActs },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков не поедет', message: 'Грузия, октябрь · приглашение отклонено', time: 'вчера', actions: declinedActs },
+      { glyph: { mode: 'tile', icon: 'lock', tone: 'danger' }, title: 'Ты больше не участник', message: 'Исландия · доступ закрыт', time: '1 мес', actions: link },
+      { glyph: { mode: 'avatar', deleted: true }, title: 'Участник больше не в путешествии', message: 'Грузия, октябрь', time: '6 дн', actions: link },
+      { glyph: { mode: 'pro' }, title: 'Pro активирован', message: 'Все функции уже доступны', time: '14 дн' },
+      { glyph: { mode: 'tile', icon: 'card', tone: 'danger' }, title: 'Оплата Pro не прошла', message: 'Обнови способ оплаты, чтобы сохранить Pro', time: '3 ч' },
+    ];
+    const popover = [
+      { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна', time: '5 мин', actions: inviteActs },
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
+      { glyph: { mode: 'tile', icon: 'card', tone: 'danger' }, title: 'Оплата Pro не прошла', message: 'Обнови способ оплаты', time: '3 ч' },
+    ];
+    const emptyRows = [
+      { icon: 'users', title: 'Приглашения', sub: 'Когда тебя позовут в путешествие' },
+      { icon: 'refresh', title: 'Обновления', sub: 'Изменения в общих планах' },
+      { icon: 'file', title: 'Что нового', sub: 'Новые функции Triplanio' },
+    ];
+    const emptyTitle = 'Пока пусто'; // i18n-ignore: демо-заголовок витрины /kit
+    const emptyBody = 'Здесь появятся приглашения и обновления по твоим путешествиям.'; // i18n-ignore: демо-текст витрины /kit
+    return [
+      {
+        label: 'экран «Входящие» — как в приложении (реалистичная ширина, стопкой)',
+        items: [it('inbox', (
+          <div style={{ maxWidth: 640, width: '100%' }}>
+            {/* inline-style-exempt: витрина — ширина инбокса как в приложении; kit по конвенции своих классов не заводит (Kit.css: только force-state) */}
+            {inbox.map((n, i) => <NotifRow key={i} {...n} />)}
+          </div>
+        ), true)],
+      },
+      {
+        label: 'вариант --compact — поповер колокольчика (уже, плотнее)',
+        items: [it('popover', (
+          <div style={{ maxWidth: 384, width: '100%' }}>
+            {/* inline-style-exempt: витрина — ширина поповера колокольчика как в приложении; kit своих классов не заводит */}
+            {popover.map((n, i) => <NotifRow key={i} compact {...n} />)}
+          </div>
+        ), true)],
+      },
+      {
+        label: 'пустое состояние — что появится (EmptyState + ListRow variant divider)',
+        items: [it('empty', (
+          <div style={{ maxWidth: 640, width: '100%' }}>
+            {/* inline-style-exempt: витрина — ширина инбокса как в приложении; kit своих классов не заводит */}
+            <EmptyState
+              icon="bell"
+              title={emptyTitle}
+              body={emptyBody}
+              action={(
+                <div className="col col--g6 grow--fit">
+                  <div>
+                    {emptyRows.map((r) => <ListRow key={r.icon} variant="divider" lead={<Tile icon={r.icon} />} title={r.title} sub={r.sub} />)}
+                  </div>
+                  {goTrips}
+                </div>
+              )}
+            />
+          </div>
+        ), true)],
+      },
+    ];
+  },
 
   // TRIP-391 объект 3: витрина рисует ЧЕРЕЗ <Tile>, а не сырым `.tile`, и
   // итерирует карты примитива (TILE_SIZES/TILE_TONES) — полнота по построению,
@@ -588,13 +739,14 @@ const RECIPES = {
       items: TILE_TONES.map((t) => it(`tone="${t}"`, <Tile icon="sparkles" tone={t} />)),
     },
     {
-      label: 'форма и залитая (тон warm — только залитый, канон)',
+      label: 'форма и залитая (тоны warm/pro — только залитые, канон)',
       items: [
         it('round', <Tile icon="star" tone="brand" round />),
         it('solid (+brand)', <Tile icon="star" tone="brand" solid />),
         it('solid (+ai)', <Tile icon="sparkles" tone="ai" solid />),
         it('solid (+success)', <Tile icon="check" tone="success" solid />),
         it('solid (+warm)', <Tile icon="star" tone="warm" solid />),
+        it('solid (+pro, фирменный --pro-gradient)', <Tile icon="pro" tone="pro" solid />),
         it('children (число вместо иконки)', <Tile tone="quiet" round>3</Tile>),
       ],
     },
@@ -631,14 +783,20 @@ const RECIPES = {
     ],
   }],
 
-  toast: (ctx) => [{
-    items: ctx.declared.map((c) => it(c, (
-      <div className={`toast ${c}`}>
-        <span className="tic" />
-        <div className="toast__body"><b>{TX.toastTitle}</b><span>{TX.toastBody}</span></div>
-      </div>
-    ), true)),
-  }],
+  toast: (ctx) => [
+    { label: 'живьём — нажми, покажет появление, стопку и уход', items: [it('toast(…)', <ToastLab />, true)] },
+    {
+      label: 'тон (карта осей)',
+      items: ctx.declared.map((c) => it(c, (
+        // Kit-only: `.toast` is position:absolute in the deck; `data-kit="toast"`
+        // (Kit.css) puts the static swatch back in flow so it renders in its cell.
+        <div className={`toast ${c}`} data-kit="toast">
+          <span className="tic" />
+          <div className="toast__body"><b>{TX.toastTitle}</b><span>{TX.toastBody}</span></div>
+        </div>
+      ), true)),
+    },
+  ],
 
   'sheet-row': (ctx) => [{
     items: [
@@ -652,16 +810,43 @@ const RECIPES = {
     ],
   }],
 
-  'ai-blk': (ctx) => [{
+  'ai-blk': () => {
     // TRIP-343 объект 2 (F): скин ai-блока живёт на <Card tone="ai"> (как в проде
     // EventAiBlock). Витрина рисует ЧЕРЕЗ Card, а не сырым <button> — иначе образец
     // показывал бы ai-blk без его поверхности (ровно класс дыры, что был у трансфера).
-    items: ctx.declared.filter((c) => c.startsWith('ai-blk')).map((c) => it(c, (
-      <Card as="button" tone="ai" className={`ai-blk ${c}`}>
-        <div className="ai-blk-hd"><span className="ai-blk-ti"><b>{TX.aiTitle}</b><span>{TX.aiSub}</span></span></div>
-      </Card>
-    ), true)),
-  }],
+    // TRIP-337 visual-fixes: шапка структурно НЕИЗМЕННА между свёрнутым и развёрнутым
+    // (плитка + заголовок + шеврон стоят всегда), тело всегда в DOM, высота grid-rows.
+    const head = (
+      <div className="ai-blk-hd">
+        <Tile tone="ai" solid size="sm"><Icon name="sparkles" size={15} /></Tile>
+        <div className="ai-blk-ti"><b>{TX.aiFill}</b><span>{TX.aiSub}</span></div>
+        <span className="ai-blk-x" aria-hidden="true"><Icon name="chevU" size={14} /></span>
+      </div>
+    );
+    const body = (
+      <div className="ai-blk__reveal">
+        <div className="ai-blk__reveal-inner">
+          <div className="ai-blk-body">
+            <InputGroup className="ai-input">
+              <Textarea rows={2} placeholder={TX.aiPh} readOnly />
+              <div className="ai-input-row">
+                <Btn variant="secondary" icon="upload">{TX.aiUpload}</Btn>
+                <div className="grow" />
+                <Btn variant="ai" icon="sparkles">{TX.aiTitle}</Btn>
+              </div>
+            </InputGroup>
+          </div>
+        </div>
+      </div>
+    );
+    return [{
+      label: 'свёрнуто · развёрнуто (шапка статична; тело всегда в DOM, высота едет grid-rows 0fr→1fr — плавно, в свёрнутом схлопнуто в 0)',
+      items: [
+        it('ai-blk (свёрнуто — тело схлопнуто в 0)', <Card tone="ai" pad="none" className="ai-blk">{head}{body}</Card>, true),
+        it('ai-blk ai-blk--open (развёрнуто)', <Card tone="ai" pad="none" className="ai-blk ai-blk--open">{head}{body}</Card>, true),
+      ],
+    }];
+  },
 
   time: (ctx) => [{
     items: ctx.declared.filter((c) => c.startsWith('time')).map((c) => it(c, (
@@ -767,7 +952,7 @@ function SpacingSection({ ctx }) {
   );
 }
 
-const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-meta', 't-micro', 't-mono'];
+const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-support', 't-meta', 't-micro', 't-tiny', 't-tiny-caps', 't-mono'];
 /* Санкционированные орто-модификаторы канона (TRIP-410): комбинируются с любым
    каноном, НЕ каноны сами по себе. Прежний sans-оверлей удалён (мета-ярус — Geologica).
    `base` — канон, на котором эффект модификатора виден нагляднее. */

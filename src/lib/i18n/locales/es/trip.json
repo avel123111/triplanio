@@ -10,8 +10,6 @@
   "cities_count_few": "ciudades",
   "cities_count_many": "ciudades",
   "cities_count_one": "ciudad",
-  "copy_done": "Viaje copiado",
-  "copy_error": "No se pudo copiar el viaje",
   "copy_link": "Copiar enlace",
   "copying": "Copiando el viaje…",
   "cover_image": "Imagen de portada",
@@ -80,5 +78,6 @@
   "tl_transfer": "Traslado",
   "to_my_trips": "A mis viajes",
   "update": "Actualizar viaje",
-  "who_goes": "Quién viaja"
+  "who_goes": "Quién viaja",
+  "viewer_locked": "Los observadores no pueden editar el viaje"
 }

@@ -5,6 +5,7 @@ import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath, draftStoragePath } from '
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
+import { uploadErrorText } from '@/lib/documentMutations';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import './TripCoverPicker.css';
@@ -91,7 +92,9 @@ export default function TripCoverPicker({
       stagedUrls.current.add(signed.signedUrl);
       onChange({ cover_image_url: signed.signedUrl, cover_gradient: '' });
     } catch (err) {
-      setError(err?.message || t('trip.cover_upload_failed'));
+      // Storage-ошибка (кода НЕТ) → её дом uploadErrorText, не сырой показ .message.
+      const storageMsg = err?.message;
+      setError(uploadErrorText({ file, reason: 'upload', message: storageMsg }, t));
     } finally {
       setUploading(false);
     }

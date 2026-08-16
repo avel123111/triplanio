@@ -3,7 +3,7 @@ import React, {
   useEffect,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { track } from '@/lib/analytics';
+import { track, withVisitCampaign } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { Icon as BaseIcon } from '@/design/icons';
@@ -83,7 +83,9 @@ function Hero() {
   const t = useT();
   const nav = useNavigate();
   const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : APP_URL;
+  // Carry this visit's campaign marks onto /login (gclid/utm) so gtag's
+  // url_passthrough can read them off the address (TRIP-407 PR5).
+  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   return (
     <section className="hero" id="top">
       <div className="container">
@@ -558,7 +560,9 @@ function FinalCTA() {
   const t = useT();
   const nav = useNavigate();
   const { isAuthenticated } = useAuth();
-  const ctaTarget = isAuthenticated ? '/trips' : APP_URL;
+  // Carry this visit's campaign marks onto /login (gclid/utm) so gtag's
+  // url_passthrough can read them off the address (TRIP-407 PR5).
+  const ctaTarget = isAuthenticated ? '/trips' : withVisitCampaign(APP_URL);
   return (
     <section className="banner">
       <div className="reveal" style={{position:'relative',zIndex:1}}>

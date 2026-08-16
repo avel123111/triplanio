@@ -33,29 +33,8 @@
  * невыразимы `type/max/enum`, поэтому едут `validate`-хуком.
  */
 
-import type { Refusal, ResourceSpec } from '../mutateRules.ts';
-
-const forbid = (code: string, message: string): Refusal => ({ status: 403, code, message });
-const invalid = (message: string): Refusal => ({ status: 400, code: 'INVALID_INPUT', message });
-
-/** Зеркало CHECK `td_link_url_scheme` / элементов `td_documents_urls`. */
-const HTTP_URL = /^https?:\/\//i;
-
-/**
- * `documents` — jsonb-МАССИВ объектов файла. CHECK `td_documents_urls` требует
- * `$[*].file_url` matchить `^https?://` (иначе `javascript:`-ссылка = stored XSS,
- * TRIP-281). Зеркалим поэлементно; остальные поля объекта БД не проверяет.
- */
-function validateDocuments(value: unknown): Refusal | null {
-  if (!Array.isArray(value)) return invalid('Field "documents" must be a list');
-  for (const item of value) {
-    const url = (item as { file_url?: unknown })?.file_url;
-    if (typeof url !== 'string' || !HTTP_URL.test(url)) {
-      return invalid('Every document file_url must be an http(s) URL');
-    }
-  }
-  return null;
-}
+import type { ResourceSpec } from '../mutateRules.ts';
+import { bad, forbid, HTTP_URL, validateDocuments } from '../mutateRules.ts';
 
 export const TRIP_DOCUMENT: ResourceSpec = {
   name: 'trip-document',
@@ -76,7 +55,7 @@ export const TRIP_DOCUMENT: ResourceSpec = {
           type: 'string',
           max: 2048,
           nullable: true,
-          validate: (v) => (typeof v === 'string' && HTTP_URL.test(v) ? null : invalid(
+          validate: (v) => (typeof v === 'string' && HTTP_URL.test(v) ? null : bad(
             'Field "link_url" must be an http(s) URL',
           )),
         },
@@ -98,7 +77,7 @@ export const TRIP_DOCUMENT: ResourceSpec = {
       // `actor` теперь ПОЛНЫЙ `{id,email}` (TRIP-409) — владение сверяем по `actor.id`.
       guardRow: (row, actor) =>
         row.visibility === 'private' && row.created_by !== actor.id
-          ? forbid('DOC_PRIVATE_NOT_OWNER', 'A private document can be removed only by its owner')
+          ? forbid(403, 'DOC_PRIVATE_NOT_OWNER', 'A private document can be removed only by its owner')
           : null,
     },
   },

@@ -71,18 +71,21 @@ export const TABLES = {
   product:           { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   provider_price:    { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   webhook_event:     { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
-  provider_customer: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'authenticated читает свою строку' },
-  purchase:          { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'authenticated читает свои покупки' },
-  subscription:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'authenticated читает свою подписку' },
+  // Биллинг (правило 13): клиент таблицы НЕ читает — 0 .from() в src/**, Pro-статус
+  // едет из users через getMe/getUserPlan (service_role). Мёртвый SELECT снят
+  // TRIP-425 под security-review; *_select_own политики дропнуты.
+  provider_customer: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: REVOKE SELECT + DROP provider_customer_select_own (0 клиентских чтений)' },
+  purchase:          { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: REVOKE SELECT + DROP purchase_select_own (0 клиентских чтений)' },
+  subscription:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: REVOKE SELECT + DROP subscription_select_own (0 клиентских чтений)' },
   // trip_members: политики роль-осведомлённые (is_trip_creator), НО authenticated
   // ещё держит INSERT/DELETE-гранты (TRIP-62 снял только UPDATE). Все мутации идут
   // через edge (service_role) → снять INSERT/DELETE у authenticated.
-  trip_members:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE INSERT,DELETE ON trip_members FROM authenticated (пишет только edge)' },
+  trip_members:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: мёртвый SELECT снят (0 .from(trip_members) в src, чтение через edge под service_role); REVOKE ALL + DROP 5 политик (select/select_own/insert/update/delete)' },
   // trips: РЕШЕНО (Pavel) — полный Ярус B, никаких поколоночных исключений.
   // Поколоночные гранты — хрупкий анти-паттерн (TRIP-62: owner включал аддоны PATCH'ем
   // details). Все записи через edge-шов: create (trip), settings/обложка
   // (trip-settings), delete (trip-owner), share/copy (trip-share).
-  trips:             { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'REVOKE ALL DML ON trips FROM authenticated; все записи через seam (trip/trip-settings/trip-owner/trip-share)' },
+  trips:             { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: мёртвый SELECT снят (0 .from(trips) в src, чтение через edge); все записи через seam. REVOKE ALL + DROP trips_select' },
   // Токены/блоки — серверные, клиент не должен ни писать, ни читать токены.
   trip_invite_links: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE ALL FROM anon,authenticated (invite-токены, только edge)' },
   telegram_link_tokens: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated (link-токены)' },
@@ -96,7 +99,7 @@ export const TABLES = {
   // исполнялось; ярусный страж этого не видел и не увидит (он смотрит гранты и
   // политики, а гейт — в TS). Единственное, что его держит, — гейт `editor` в
   // telegramStartLink/telegramSetActive/telegramDisconnect (TRIP-274).
-  trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3c: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop _write политику (всё через telegram* edge); роль проверяют сами функции — гейт editor, TRIP-274' },
+  trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: мёртвый SELECT снят (0 .from() в src); всё через telegram* edge, гейт editor (TRIP-274). REVOKE ALL + DROP trip_telegram_integrations_select' },
   // chat_messages: был ярус C с прямым клиентским INSERT (viewer пишет — решение
   // Pavel в силе). TRIP-296 перевёл запись на secdef-функцию send_chat_message:
   // RLS не могла проверить автора (user_id приходил с клиента → подмена участника
@@ -121,12 +124,12 @@ export const TABLES = {
   // сверит, что DML+SELECT сняты (has_*_privilege).
   user_custom_visits: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned' },
   notifications:      { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-408: полное закрытие — клиент не читает (getInbox под service_role, get_inbox: список+честный unreadCount+member_status join) и не пишет (флаг read → edge inbox seam: mark_notification_read/mark_all_notifications_read); вставку делают триггеры/service_role. REVOKE SELECT+DML FROM authenticated,anon; 3 RLS-политики удалены ПОСЛЕ revoke, RLS остаётся deny-all' },
-  chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
-  partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
+  chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authInsert: true, authUpdate: true, authDelete: false, authSelect: true, status: 'aligned', note: 'TRIP-425: SELECT+INSERT+UPDATE (realtime + upsert отметки read); DELETE снят (клиент не удаляет); anon снят' },
+  partner_clicks:     { tier: 'C', write: 'client INSERT (fire-and-forget)', anonDml: false, authDml: true, authInsert: true, authUpdate: false, authDelete: false, authSelect: false, status: 'aligned', note: 'TRIP-425: оставлен только INSERT (трекинг кликов); SELECT/UPDATE/DELETE сняты, DROP partner_clicks_select (partner_clicks_insert жив)' },
 
   // ── Ярус D — справочник/системное (снять клиентский DML; SELECT где читаем) ───
-  cities:               { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated; клиент читает города (SELECT оставить)' },
-  fx_rates:             { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE DML; клиент читает курсы' },
+  cities:               { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: мёртвый SELECT снят (0 .from(cities) в src; города через газеттир-RPC/edge). REVOKE ALL + DROP cities_read' },
+  fx_rates:             { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'TRIP-425: мёртвый SELECT снят (0 .from(fx_rates) в src; курсы через edge getFxRates). REVOKE ALL + DROP fx_rates_select' },
   chats:                { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE DML; контейнер чата создаётся триггером, клиент читает' },
   geo_admin1:           { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; доступ только через search_gazetteer (secdef)' },
   geo_alt_names:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; только через RPC' },
@@ -160,10 +163,16 @@ export const FUNCTIONS = {
   // для anon они вернут false, но обязаны вернуть, а не упасть «permission denied»
   // посреди вычисления политики. Слагаемые (`_trip_file_trip_id`,
   // `_trip_file_not_others_private`) — internal, гранта клиенту нет (IF3).
-  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
+  // is_trip_creator убрана (TRIP-425 добор): осиротела после дропа политик
+  // trip_members_* — 0 вызывателей (src/**, functions/**, pg_policy, тела функций),
+  // EXECUTE снят у anon/authenticated/PUBLIC → internal (IF3).
+  publicExec: ['is_trip_participant', 'search_gazetteer', 'search_gazetteer_batch', 'nearest_cities', '_can_access_trip_file', '_can_write_trip_file'],
   authExec: [
     '_can_edit_trip',
-    'get_trip_owner_profiles',
+    // get_trip_owner_profiles убрана (TRIP-425): мёртвая — 0 вызовов в src/**,
+    // functions/**, RLS-политиках и телах функций (сверено pg_policy +
+    // pg_get_functiondef); близнец get_trip_participant_profiles дропнут TRIP-403.
+    // EXECUTE снят у authenticated/PUBLIC → internal (IF3: anon=false И auth=false).
     // add_city/remove_city/reorder_cities/set_city_nights/set_trip_start_date убраны
     // (TRIP-406): EXECUTE у authenticated снят, теперь service_role-only, зовутся edge
     // trip-route (op:'rpc', p_actor). create_trip ДРОПНУТА (заменена атомарной

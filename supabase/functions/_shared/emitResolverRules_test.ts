@@ -1,5 +1,5 @@
 /**
- * TRIP-417 — аудитория `member_left`: владелец + активные админы, без ушедшего.
+ * TRIP-417 — аудитория `trip_member_left`: владелец + активные админы, без ушедшего.
  * Запуск: deno test supabase/functions/_shared/emitResolverRules_test.ts
  */
 

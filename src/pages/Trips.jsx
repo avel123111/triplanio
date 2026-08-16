@@ -62,7 +62,7 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
     // Fallback (stale deploy with no is_pro field): the client predicate — own
     // trips only (is_pro_trip OR I'm the owner with an active sub) — so it degrades
     // gracefully instead of dropping all badges.
-    pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)),
+    pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)), // role-gate-exempt: pro-бейдж карточки (показ)
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
     isShared:  participants.length >= 2,
@@ -106,7 +106,7 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span className="t-mono muted-2">{t('stats.next_trip_title')}</span>
+        <span className="t-label tp-caption">{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="badge badge--sm nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
@@ -149,13 +149,13 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   ];
   return (
     <>
-      <div className="t-mono tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
+      <div className="t-label tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
       <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
           {showMap
             ? <StatsMap points={points} colorScheme={scheme} pins={false} />
-            : <div className="map-skel"><Icon name="globe" /><div>{t('stats.map_loading')}</div></div>}
+            : <Skeleton style={{ position: 'absolute', inset: 0 }} h="100%" r={0} />}
         </div>
         <div className="rail">
           <WorldMini
@@ -179,20 +179,19 @@ const TripCard = ({ trip, onClick }) => {
 
   return (
     <Card as="button" pad="none" radius="lg" className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
-      {/* background */}
+      {/* cover layer — фото ИЛИ градиент + декоративные блобы. Всё внутри .tc__bg,
+          который и зумится на ховере: у градиентных карточек видимый зум дают блобы
+          (плоский градиент сам по себе при scale не читается — увеличивать нечего) */}
       <div className="tc__bg" style={{ background: bg || undefined }}>
-        {trip.cover_image_url && (
+        {trip.cover_image_url ? (
           <img className="tc__img" src={trip.cover_image_url} alt="" />
+        ) : (
+          <>
+            <div className="tc__blob tc__b1" />
+            <div className="tc__blob tc__b2" />
+          </>
         )}
       </div>
-
-      {/* decorative blobs (only on gradient covers, looks odd on photos) */}
-      {!trip.cover_image_url && (
-        <>
-          <div className="tc__blob tc__b1" />
-          <div className="tc__blob tc__b2" />
-        </>
-      )}
 
       {/* scrim */}
       <div className="tc__scrim" />
@@ -244,12 +243,13 @@ const TripRow = ({ trip, onClick }) => {
       onClick={onClick}
       className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
     >
-      {/* thumbnail */}
+      {/* thumbnail — фото переиспользует канон-класс .tc__img (убирает инлайн-стили),
+          чтобы ховер-зум был как в гриде; градиент остаётся фоном .tr__thumb */}
       <div className="tr__thumb" style={{ background: bg || undefined }}>
         {trip.cover_image_url && (
-          <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img className="tc__img" src={trip.cover_image_url} alt="" />
         )}
-        <div className="tc__blob" style={{ width: 54, height: 54, top: -18, right: -14 }} />
+        <div className="tc__blob" />
         {trip.isShared && (
           <span className="tr__shared"><Icon name="users" /></span>
         )}
@@ -326,30 +326,43 @@ function EmptyRoute({ onManual, onAi }) {
 function HomeSkeleton({ viewMode }) {
   return (
     <>
+      {/* 1. Greeting: аватар-круг (.head__av 60×60 50%) + eyebrow + заголовок (h1).
+          Реальный Greeting здесь БЕЗ третьей строки — sub не рисуем. */}
       <div className="head">
         <div className="head__row">
-          <Skeleton w={60} h={60} r={'var(--r-md)'} />
+          <Skeleton w={60} h={60} r="50%" />
           <div className="grow">
-            <Skeleton w={220} h={32} r={'var(--r-sm)'} style={{ marginBottom: 10 }} />
-            <Skeleton w={260} h={15} r={6} />
+            <Skeleton w={120} h={12} r={5} style={{ marginBottom: 8 }} />
+            <Skeleton w={240} h={38} r={'var(--r-sm)'} />
           </div>
         </div>
       </div>
-      <Skeleton w="100%" h={86} r={'var(--r-xl)'} />
+      {/* 2. «TRAVEL SUMMARY» — label с теми же отступами, что реальный (36/12) */}
+      <Skeleton w={140} h={13} r={5} style={{ margin: '36px 0 12px' }} />
+      {/* 3. Стат-бар (.statbar-карточка ≈76px) */}
+      <Skeleton w="100%" h={76} r={'var(--r-lg)'} />
+      {/* 4. dash-hero: карта | рейл (World Explored ≈150 + Next Trip ≈200) */}
       <div className="dash-hero" style={{ marginTop: 18 }}>
-        <Skeleton w="100%" h={340} r={'var(--r-card)'} />
+        <Skeleton w="100%" h={380} r={'var(--r-xl)'} />
         <div className="rail">
           <Skeleton w="100%" h={150} r={'var(--r-xl)'} />
-          <Skeleton w="100%" h={120} r={'var(--r-xl)'} />
+          <Skeleton w="100%" h={200} r={'var(--r-xl)'} />
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <Skeleton w={170} h={26} r={'var(--r-sm)'} style={{ marginBottom: 8 }} />
-          <Skeleton w={140} h={14} r={6} />
-        </div>
-        <Skeleton w={150} h={44} r={'var(--r-sm)'} />
+      {/* 5. Секц.шапка «MY TRIPS / N trips»: eyebrow + заголовок, БЕЗ кнопки справа
+          (в реальном её нет — раньше скелетон рисовал лишнюю кнопку) */}
+      <div style={{ margin: '30px 0 16px' }}>
+        <Skeleton w={120} h={13} r={5} style={{ marginBottom: 6 }} />
+        <Skeleton w={160} h={28} r={'var(--r-sm)'} />
       </div>
+      {/* 6. Ряд фильтров `.trips-toolbar`: сегменты + поиск + переключатель вида —
+          целый ряд, которого в скелетоне не было (карточки съезжали вверх) */}
+      <div className="trips-toolbar">
+        <Skeleton w={190} h={40} r={'var(--r-pill)'} />
+        <Skeleton w={300} h={44} r={'var(--r-xl)'} />
+        <Skeleton w={78} h={40} r={'var(--r-sm)'} />
+      </div>
+      {/* 7. Карточки */}
       <TripSkeleton viewMode={viewMode} />
     </>
   );
@@ -581,15 +594,9 @@ export default function Trips() {
   // badge) via `isLoading`, and getTravelStats (hero: stat-bar/map/world) via
   // `statsLoaded`. Cached list wins — a background stats refetch never re-gates.
   const isLoadingData = isLoading || (hasTrips && !statsLoaded);
-  // TRIP-188: склоняем каждое существительное отдельно (Intl.PluralRules) — «1 путешествие»,
-  // «2 страны», «5 городов» вместо застывшего множественного числа.
-  const subText = hasTrips
-    ? [
-        pluralize(t, home.trips,     'stats.sum_trips',     lang, { count: home.trips }),
-        pluralize(t, home.countries, 'stats.sum_countries', lang, { count: home.countries }),
-        pluralize(t, home.cities,    'stats.sum_cities',    lang, { count: home.cities }),
-      ].join(' · ')
-    : t('stats.home_sub_empty');
+  // Строка-счётчик «N trips · N countries · N cities» убрана (запрос Pavel);
+  // при отсутствии трипов остаётся приветственный подзаголовок.
+  const subText = hasTrips ? null : t('stats.home_sub_empty');
 
   // ── Load gate (TRIP-208) ──────────────────────────────────────────────────────
   // A failed PRIMARY trips load must surface an error + retry, not silently fall
@@ -639,7 +646,7 @@ export default function Trips() {
             first-load skeleton is up). */}
         {!(isLoadingData && allTrips.length === 0) && (
           <>
-            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} eyebrow={t('trips.brand_eyebrow')} />
+            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} seed={user?.id} sub={subText} eyebrow={t('trips.brand_eyebrow')} />
             <StatHero
               points={statsPoints}
               home={home}
@@ -667,7 +674,7 @@ export default function Trips() {
             {/* Section header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div className="t-mono tp-caption" style={{ marginBottom: 6 }}>{t('trips.my_trips_eyebrow')}</div>
+                <div className="t-label tp-caption" style={{ marginBottom: 6 }}>{t('trips.my_trips_eyebrow')}</div>
                 <h2 className="t-title">{pluralize(t, allTrips.length, 'stats.sum_trips', lang, { count: allTrips.length })}</h2>
               </div>
             </div>
@@ -768,7 +775,7 @@ export default function Trips() {
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <Card as="button" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
+                  <Card as="button" variant="add" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
                     <span className="tr__addic"><Icon name="plus" size={20} /></span>
                     <span className="tr__main">
                       <b>{t('trips.add_trip')}</b>

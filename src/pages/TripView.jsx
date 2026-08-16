@@ -20,6 +20,7 @@ import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
 import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
+import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -38,10 +39,11 @@ import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
 import EditLens from './EditLens';
-import ChatLens, { ChatLensSkeleton } from './ChatLens';
+import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
-import { resolveMyRole, roleCanEdit } from '@/lib/members';
+import { resolveMyRole } from '@/lib/members';
+import { resolveMyStep, clearsStep } from '@/lib/tripStep';
 import { useProfileMap } from '@/lib/useProfileMap';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { track, groupTrip } from '@/lib/analytics';
@@ -240,16 +242,15 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 //
 // Скелетон ЗНАЕТ СЕКЦИЮ: у обзора и чата свои заглушки, иначе на их месте
 // мигала бы лента (плюс правый рейл, которого у чата нет вовсе).
-function LoadingBody({ section = DEFAULT_SECTION }) {
-  if (section === 'overview') return <OverviewLens isLoading />;
-  if (section === 'chat') return <ChatLensSkeleton />;
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-      <SkeletonTimeline />
-      <RightRailSkeleton />
-    </div>
-  );
-}
+// ★ ЕДИНЫЙ ПУТЬ РЕНДЕРА (TRIP-337, двойная загрузка). Прежде был отдельный
+// РАННИЙ return для фазы shell (`<TripShell loading><LoadingBody/></TripShell>`),
+// а основной return — для фазы content. В позиции тела ТИП компонента менялся
+// (LoadingBody → секция), поэтому React РАЗМОНТИРОВАЛ поддерево и МОНТИРОВАЛ
+// заново — скелетон перезапускался, а меню менялось skeleton→real, отсюда прыжок
+// «2 раза». `LoadingBody` УДАЛЁН: теперь секция монтируется ОДИН раз в основном
+// рендере и живёт через все фазы, только `isLoading` идёт true→false НА МЕСТЕ —
+// без размонтирования, без прыжка. Скелетон каждой секции — её собственный
+// экспорт (`<BudgetSkeleton/>` и т.д.), тот же компонент до и после загрузки.
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
@@ -288,6 +289,34 @@ function RightRailSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <Skeleton w="100%" h={150} r={'var(--r-btn)'} />
+    </div>
+  );
+}
+
+// Скелетон структурного редактора — PURE, зеркалит ОБЕ колонки `.ts-grid`:
+// СЛЕВА маршрут (шапка «Маршрут» + карточки-города), СПРАВА КАРТА. Раньше
+// заглушка рисовала только левую колонку — карта не учитывалась (TRIP-337).
+// Один источник для обеих фаз загрузки (shell в LoadingBody и content в editGate).
+function EditSkeleton() {
+  return (
+    <div className="ts-grid">
+      <div className="ts-leftscroll" style={{ padding: '12px 12px 18px', overflow: 'hidden' }}>
+        <Skeleton w={160} h={26} r={6} style={{ marginBottom: 12 }} />
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} radius="lg" pad="none" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
+            <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Skeleton w="50%" h={14} r={5} />
+              <Skeleton w="30%" h={11} r={5} />
+            </div>
+            <Skeleton w={90} h={30} r={'var(--r-pill)'} />
+          </Card>
+        ))}
+      </div>
+      {/* правая колонка — карта */}
+      <div style={{ position: 'relative', margin: 14, marginLeft: 7, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--line)' }}>
+        <Skeleton w="100%" h="100%" r={0} style={{ position: 'absolute', inset: 0 }} />
+      </div>
     </div>
   );
 }
@@ -338,6 +367,8 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       <div className="t-label grow">
         {t('trip.no_transfer', { from, to })}
       </div>
+      {/* Кнопка ОТКРЫВАЕТ форк (partner offerings, initialTab='find') — viewer
+          её видит и жмёт; блок стоит на СОЗДАНИИ внутри (Save движка), не тут. */}
       <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
       <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
     </div>
@@ -346,7 +377,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const { t, lang } = useI18n();
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
@@ -369,7 +400,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // toggle is on (default on) AND (b) the current user can act on them. Viewers
   // (Зрители) never see them - they can't add bookings, so it's just noise that
   // exposes planning gaps.
-  const showBookingWarnings = !isViewer && trip?.details?.display?.booking_warnings !== false;
+  // Варнинги «нет переезда» показываем ВСЕМ, включая наблюдателя (TRIP-274 Ф2.2):
+  // не прячем контент по роли, а блокируем ДЕЙСТВИЕ (кнопка добавления замьючена).
+  const showBookingWarnings = trip?.details?.display?.booking_warnings !== false;
 
   if (!visits.length) {
     return (
@@ -852,20 +885,27 @@ export default function TripView() {
   // the SOLE source of ownership and wins over any stray trip_members row
   // (TRIP-143). Same helper as the structure editor so the two can't drift.
   const myRole = resolveMyRole(members, trip, user);
+  // Ступень доступа — ЕДИНЫЙ гейт прав (зеркало сервера), см. src/lib/tripStep.js.
+  // `myRole` остаётся только для показа (ярлык, аналитика); правами рулит `myStep`.
+  const myStep = resolveMyStep(members, trip, user);
 
   const stream = useMemo(
     () => buildEventStream(t, hotels, activities, transfers, visits, services),
     [t, hotels, activities, transfers, visits, services],
   );
 
-  const isOwner = myRole === 'owner';
+  // Владелец = ступень owner лестницы (строго `trips.created_by`, TRIP-143).
+  // Питает owner-only управление (удалить трип) и РЕЖИМ апселла (владелец видит
+  // «Улучшить», остальные — «подключает владелец»). Показ Pro-контента этим НЕ
+  // гейтится — за него отвечает isPro/isProTrip (энтайтлмент), отдельная ось.
+  const isOwner = clearsStep(myStep, 'owner');
 
   // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
   // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
   const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
-  // Edit Mode (structure editor) gate: anyone but a viewer. Past trips are no
+  // Edit Mode (structure editor) gate: ступень editor. Past trips are no
   // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
-  const canEditMode = roleCanEdit(myRole);
+  const canEditMode = clearsStep(myStep, 'editor');
 
   // trip_opened (once per trip) + associate events with the trip GROUP so the
   // North Star ("active trips with ≥2 participants") is measured per-trip. Group
@@ -904,22 +944,26 @@ export default function TripView() {
   // Что реально показать: недоступная секция (выключенный аддон, роль без права)
   // и несуществующая (`?lens=` с опечаткой) одинаково падают на дефолт. Правило
   // живёт в реестре секций — тут только его применение.
-  const shownLens = resolveSection(lens, trip, myRole);
+  // ★ В фазе shell (`trip` ещё не загружен) resolveSection не знает аддонов/роли и
+  // свалил бы `?lens=chat/budget` на дефолт-обзор — тогда в загрузке мигал бы НЕ
+  // тот скелетон. Пока trip нет — берём СЫРОЙ `lens` из адреса (как делал прежний
+  // LoadingBody), а как приедет shell — резолвим по-настоящему (TRIP-337).
+  const shownLens = trip ? resolveSection(lens, trip, myStep) : lens;
 
   // «+»-меню трипа: дескрипторы действий, которые собирает экран. Гейт единый —
-  // `roleCanEdit` (+ аддон бюджета для траты/категории); «Категория» — только на
+  // ступень editor (+ аддон бюджета для траты/категории); «Категория» — только на
   // линзе Бюджет. Обработчики открывают трип-level диалоги IN PLACE (см. overlays),
   // диалоги рендерит экран, сам «+» их не импортирует.
   const addActions = useMemo(() => {
     const budgetOn = isAddonEnabled(trip, 'budget');
-    const canEdit = roleCanEdit(myRole);
+    const canEdit = clearsStep(myStep, 'editor');
     return [
       budgetOn && canEdit && { id: 'expense', icon: 'wallet', tone: 'brand', labelKey: 'budget.manual_expense', onSelect: () => setAddModal('expense') },
       shownLens === 'budget' && budgetOn && canEdit && { id: 'category', icon: 'grid', tone: 'info', labelKey: 'budget.add_category', onSelect: () => setAddModal('category') },
       canEdit && { id: 'docs', icon: 'file', tone: 'hotel', labelKey: 'doc.add_doc', onSelect: () => setAddModal('docs') },
       canEdit && { id: 'members', icon: 'users', tone: 'activity', labelKey: 'members.invite', onSelect: () => setAddModal('members') },
     ].filter(Boolean);
-  }, [trip, myRole, shownLens]);
+  }, [trip, myStep, shownLens]);
   useEffect(() => {
     setAddActions(addActions);
     return () => setAddActions(null);
@@ -987,16 +1031,11 @@ export default function TripView() {
   // Секция берётся СЫРОЙ из адреса, а не через resolveSection: аддоны приезжают
   // тем же shell-запросом, которого мы ждём, поэтому `?lens=chat` до ответа
   // выглядел бы недоступным и мигнул бы скелетоном обзора вместо чата.
-  if (shellGate === 'loading' || shellGate === 'auth') {
-    return (
-      // onNavigate нужен и тут: раньше мост к доку висел ВЫШЕ этого раннего
-      // возврата, поэтому пункты дока работали и на грузящемся экране - тап по
-      // «Календарю» менял адрес сразу, и по приходу данных открывался календарь.
-      <TripShell tripId={tripId} section={lens} onNavigate={setLens} loading>
-        <LoadingBody section={lens} />
-      </TripShell>
-    );
-  }
+  // ★ Никакого раннего return для загрузки: единый путь рендера (см. коммент у
+  // удалённого LoadingBody). shell-загрузка/auth → `shellLoading`: TripShell
+  // покажет скелетон меню, а секция — свой скелетон, ВСЁ в том же дереве, что и
+  // после загрузки, поэтому ничего не размонтируется и не прыгает (TRIP-337).
+  const shellLoading = shellGate === 'loading' || shellGate === 'auth';
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
   // exist" page, NOT the accusatory "no access". Split from 'access' in TRIP-208.
@@ -1152,18 +1191,22 @@ export default function TripView() {
     {/* Floating chat widget: requires the chat addon AND the trip-level
         "chat widget" display toggle (default ON). The full Chat lens stays
         reachable from the sidebar regardless of this toggle. */}
-    {!isPhone && isSectionAvailable('chat', trip, myRole) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
+    {!isPhone && isSectionAvailable('chat', trip, myStep) && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
       <ChatWidget tripId={tripId} members={members} profiles={memberProfiles} tripTitle={trip?.title} ownerId={trip?.created_by} />
     )}
     </>
   );
 
   return (
+    // Единый доступ к праву для всего поддерева трипа: линзы, шит, диалоги
+    // читают `useTripAccess()` вместо пропов права (TRIP-274 Ф2.2). Ступень
+    // считается один раз в самом провайдере.
+    <TripAccessProvider members={members} trip={trip} user={user}>
     <TripShell
       tripId={tripId}
       trip={trip}
       section={shownLens}
-      myRole={myRole}
+      myStep={myStep}
       isOwner={isOwner}
       isPro={tripIsPro}
       proResolved={tripProResolved}
@@ -1176,6 +1219,7 @@ export default function TripView() {
       bodyRef={screenBodyRef}
       drawer={eventDrawer}
       overlays={overlays}
+      loading={shellLoading}
     >
           {/* TRIP-195: hotel / activity / transfer create moved to the global
               add-booking DRAWER (see EventDrawerHost below). Only services keep
@@ -1253,9 +1297,8 @@ export default function TripView() {
               memberProfiles={memberProfiles}
               services={services}
               user={user}
-              contentLoading={loadingContent}
+              contentLoading={shellLoading || loadingContent}
               active={shownLens === 'overview'}
-              canManage={canEditMode}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
               onOpenMap={() => setLens('map')}
               onOpenBudget={() => setLens('budget')}
@@ -1273,8 +1316,7 @@ export default function TripView() {
                   visits={visits}
                   transfers={transfers}
                   trip={trip}
-                  isViewer={myRole === 'viewer'}
-                  isLoading={loadingContent}
+                  isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
                   }
@@ -1296,7 +1338,9 @@ export default function TripView() {
                     }
                   }}
                 />
-                <CityRail visits={visits ?? []} scrollRef={screenBodyRef} />
+                {/* пока города не приехали (фаза shell) — скелетон рейла, потом
+                    живой CityRail НА МЕСТЕ (тело таймлайна не размонтируется) */}
+                {visits.length ? <CityRail visits={visits} scrollRef={screenBodyRef} /> : <RightRailSkeleton />}
               </div>
             </>
           )}
@@ -1309,9 +1353,8 @@ export default function TripView() {
               budgetExpenses={budgetExpenses}
               members={members}
               cityVisits={visits}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               isPro={tripIsPro}
-              role={myRole}
               queryClient={qc}
               onOpenSource={(kind, id) => setEventView({ open: true, kind, id, warning: null })}
             />
@@ -1323,8 +1366,7 @@ export default function TripView() {
               profiles={memberProfiles}
               trip={trip}
               user={user}
-              role={myRole}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               queryClient={qc}
             />
           )}
@@ -1332,17 +1374,16 @@ export default function TripView() {
             <CalendarLens
               stream={stream}
               visits={visits}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               onOpenEvent={openEventView}
             />
           )}
           {shownLens === 'docs' && (
             <DocsLens
               tripId={tripId}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               members={members}
               profiles={memberProfiles}
-              myRole={myRole}
             />
           )}
           {/* Структурный редактор. До TRIP-349 — отдельный роут /trip/:id/edit со
@@ -1357,11 +1398,10 @@ export default function TripView() {
               навсегда. Формулировка из TRIP-220: «gate to retry rather than
               render an empty editor». */}
           {shownLens === 'edit' && (
-            editGate === 'loading'
-              // Скелетон в геометрии самой секции (`.ts-grid` — левая колонка
-              // маршрута, правая под карту), а не общий: тело секции flush, и
-              // padded-заглушка прыгнула бы при резолве.
-              ? <div className="ts-grid"><div className="ts-leftscroll"><SkeletonTimeline /></div></div>
+            (shellLoading || editGate === 'loading')
+              // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же в
+              // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
+              ? <EditSkeleton />
               : editGate === 'ok'
                 ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
                 : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
@@ -1372,11 +1412,11 @@ export default function TripView() {
               trip={trip}
               members={members}
               profiles={memberProfiles}
-              myRole={myRole}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
               proResolved={tripProResolved}
               queryClient={qc}
+              isLoading={shellLoading || loadingContent}
             />
           )}
           {shownLens === 'chat' && (
@@ -1402,5 +1442,6 @@ export default function TripView() {
           )}
           </ErrorBoundary>
     </TripShell>
+    </TripAccessProvider>
   );
 }

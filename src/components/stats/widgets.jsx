@@ -9,15 +9,15 @@ import { Icon } from '@/design/icons';
 
 // Greeting hero — highlights the name inside the localized greeting string
 // (every locale places {name} last, so we slice before its last occurrence).
-export function Greeting({ greeting, name, avatarName, photo, sub, eyebrow }) {
+export function Greeting({ greeting, name, avatarName, photo, seed, sub, eyebrow }) {
   const at = name ? greeting.lastIndexOf(name) : -1;
   const prefix = at >= 0 ? greeting.slice(0, at) : greeting;
   return (
     <div className="head">
       <div className="head__row">
-        <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
+        <Avatar name={avatarName || name || '?'} photo={photo} seed={seed} className="head__av" />
         <div className="grow">
-          {eyebrow && <div className="t-mono tp-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
+          {eyebrow && <div className="t-label tp-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>
           {sub && <div className="sub">{sub}</div>}
         </div>
@@ -59,7 +59,7 @@ export function WorldMini({ world, title, subCaption }) {
           <div className="ring__c t-title">{world.pct}%</div>
         </div>
         <div>
-          <div className="ttl t-mono tp-caption">{title}</div>
+          <div className="ttl t-label tp-caption">{title}</div>
           {/* TRIP-188: «6 / 195» — visited в t-title (ink), /total в t-heading mute */}
           <div className="sub" style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
             <b className="t-title" style={{ color: 'var(--ink)' }}>{world.visited}</b>

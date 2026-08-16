@@ -39,7 +39,7 @@
  * форме = дыра «новый код в двойных кавычках мимо гейта», ревью Codex):
  *   • `new HttpError(status, msg, 'CODE')`     — 3-й аргумент
  *   • `jsonError(status, msg, 'CODE', headers)`— 3-й аргумент
- *   • `forbid('CODE', msg)`                    — 1-й аргумент (правила mutate)
+ *   • `forbid(status, 'CODE', msg)`            — 2-й аргумент (arg1, правила mutate)
  *   • `code: 'CODE'`                           — свойство тела Response.json / правил
  * Edge-ТЕСТЫ (`_test.ts` по Deno-конвенции, и `.test.ts`) исключены из скана —
  * иначе тест-код считается прод-эмиссией и требует свои коды в реестре.
@@ -208,7 +208,7 @@ function emittedCodes(rawSrc) {
   }
   collectCallArgCodes(src, /\bnew\s+HttpError\b/g, 2, codes); // new HttpError( … , 'CODE')
   collectCallArgCodes(src, /\bjsonError\b/g, 2, codes);       // jsonError( … , 'CODE', headers)
-  collectCallArgCodes(src, /\bforbid\b/g, 0, codes);          // forbid('CODE', msg)
+  collectCallArgCodes(src, /\bforbid\b/g, 1, codes);          // forbid(status, 'CODE', msg) — код в arg1 (TRIP-419)
   return codes;
 }
 

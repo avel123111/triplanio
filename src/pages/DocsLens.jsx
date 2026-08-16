@@ -22,19 +22,21 @@ import { invokeGetTripDetails } from '@/lib/invokeTripFn';
 import { TRIP_DOCUMENTS_INCLUDE } from '@/lib/trip-data';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { uploadTripFiles, uploadErrorText, insertTripDocument, deleteTripDocument, DOCS_KEY, MAX_UPLOAD_MB } from '@/lib/documentMutations';
+import { errorText } from '@/lib/errorText';
 import { fileType, UPLOAD_ACCEPT } from '@/lib/fileType';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, ReadOnlyBanner, Skeleton, Seg, Tile, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
+import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, Skeleton, Seg, Tile, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { resolveAuthor } from '@/lib/resolveAuthor';
-import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { successToast } from '@/lib/successToast';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import './DocsLens.css';
 
 // ─── query key (DOCS_KEY) is owned by the document data-access layer ──────────
@@ -114,7 +116,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       });
     } catch (e) {
       setSaving(false);
-      setErr(e?.message && e.message !== 'write_rejected' ? e.message : t('doc.save_failed'));
+      // insertTripDocument бросает refusalError → текст по машинному `code`
+      // (серверную прозу не показываем, TRIP-378/423).
+      setErr(errorText(t, e?.code));
       return;
     }
     setSaving(false);
@@ -136,6 +140,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       has_link: !!linkUrl.trim(),
     });
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
+    successToast(t, 'document_saved');
     close();
   }
 
@@ -351,24 +356,27 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
     let deleted;
     try {
       deleted = await deleteTripDocument(tripId, doc.id); // false = already gone (404), not success
-    } catch {
+    } catch (e) {
       setDeleting(false);
-      toast({ description: t('doc.delete_failed'), variant: 'destructive' });
+      // Реальный отказ (напр. DOC_PRIVATE_NOT_OWNER) → текст по машинному `code`.
+      toast({ description: errorText(t, e?.code), variant: 'destructive' });
       return; // real error → keep dialog open
     }
     if (!deleted) {
       // Nothing was deleted: RLS hid the row (session expired / removed from
       // trip) or another member already deleted it. Don't sweep files, don't
-      // claim success — refresh so the user sees the real state.
+      // claim success — refresh so the user sees the real state. Контракт
+      // deleteTripDocument: false = NOT_FOUND → так и словим.
       setDeleting(false);
       qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-      toast({ description: t('doc.delete_failed'), variant: 'destructive' });
+      toast({ description: errorText(t, 'NOT_FOUND'), variant: 'destructive' });
       return;
     }
     // Row gone → its files are now orphaned (unique uuid keys, single reference).
     // Best-effort sweep; never blocks the delete (TRIP-117).
     await removeTripFiles(collectDocPaths(doc.documents));
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
+    successToast(t, 'document_deleted');
     close();
   }
 
@@ -454,20 +462,21 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   const more     = files.length - shown.length;
   const isShared = scope !== 'personal';
 
-  // Uploader info via the shared resolver (same mechanism as chat): falls back
-  // to the created_by_name snapshot so a doc whose author has LEFT the trip
-  // still shows their name + gradient-initials avatar instead of "?".
-  const uploader = useMemo(() => {
-    if (!isShared) return { name: null, photo: null, deleted: false }; // personal → "Только вы"
-    return resolveAuthor({
-      userId: doc.created_by,
-      nameSnapshot: doc.created_by_name,
-      profiles,
-      members,
-      selfUser: user,
-      deletedLabel: t('common.deleted_user'),
-    });
-  }, [doc.created_by, doc.created_by_name, profiles, members, isShared, user, t]);
+  // Uploader identity via the shared resolver (same mechanism as chat) for BOTH
+  // scopes: falls back to the created_by_name snapshot so a doc whose author has
+  // LEFT the trip still shows their name + gradient-initials avatar instead of
+  // "?". Personal docs are always the viewer's own, so this resolves to their
+  // live profile (photo + stable colour seed) — the personal card used to hand-
+  // build an <Avatar> with no `photo`, so it drew initials while the same user's
+  // shared docs showed their picture (the visible split this collapses).
+  const uploader = useMemo(() => resolveAuthor({
+    userId: doc.created_by,
+    nameSnapshot: doc.created_by_name,
+    profiles,
+    members,
+    selfUser: user,
+    deletedLabel: t('common.deleted_user'),
+  }), [doc.created_by, doc.created_by_name, profiles, members, user, t]);
 
   return (
     <Card
@@ -518,19 +527,12 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
         </Row>
       )}
 
-      {/* Footer: avatar + name + date */}
+      {/* Footer: avatar + name + date. One <Avatar> path for both scopes; only
+          the LABEL differs (a shared doc names its author, a personal one reads
+          "Только вы"). The avatar itself is always the real uploader identity. */}
       <Row className="dl-card__foot">
-        {isShared ? (
-          <>
-            <Avatar name={uploader.name} photo={uploader.photo} deleted={uploader.deleted} size="sm" />
-            <Grow as="span" fit className="trunc dl-card__foot-who">{uploader.name}</Grow>
-          </>
-        ) : (
-          <>
-            <Avatar name={displayName(user?.email, user?.full_name)} size="sm" />
-            <Grow as="span" fit className="trunc dl-card__foot-who">{t('doc.only_you')}</Grow>
-          </>
-        )}
+        <Avatar name={uploader.name} photo={uploader.photo || ''} deleted={uploader.deleted} seed={uploader.seed} size="sm" />
+        <Grow as="span" fit className="trunc dl-card__foot-who">{isShared ? uploader.name : t('doc.only_you')}</Grow>
         <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
       </Row>
     </Card>
@@ -588,11 +590,25 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
 
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
-export default function DocsLens({ tripId, isLoading: parentLoading, members = [], myRole, profiles = {} }) {
+// Скелетон документов — PURE (строка поиска + карточки-доки). Один источник для
+// обеих фаз загрузки (shell в TripView.LoadingBody и content). TRIP-337.
+export function DocsSkeleton() {
+  return (
+    <div className="col col--g7 ov-anim" aria-busy="true">
+      <Skeleton w="100%" h={44} r={'var(--r-xl)'} />
+      <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
+      <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
+    </div>
+  );
+}
+
+export default function DocsLens({ tripId, isLoading: parentLoading, members = [], profiles = {} }) {
   const { t }    = useI18n();
   const { user } = useAuth();
-  // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
-  const readOnly = myRole === 'viewer';
+  // Право редактировать — из единого контекста доступа (ступень editor). Один
+  // источник на всё поддерево (TRIP-274 Ф2.2); серверная защита — edge/RLS.
+  const { canEdit } = useTripAccess();
+  const readOnly = !canEdit;
   const [addDocVis,    setAddDocVis]    = useState(null); // null | { defaultVisibility }
   const [detailDoc,    setDetailDoc]    = useState(null); // null | doc object
   const [searchQuery,  setSearchQuery]  = useState('');
@@ -637,20 +653,12 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   // shows a DocEmpty CTA (when empty) or a DocsGrid add-card (`dl-addcard`), so
   // the removed per-screen bar didn't need a replacement button.
 
-  if (isLoading || parentLoading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Skeleton w="100%" h={44} r={'var(--r-xl)'} />
-        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
-        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
-      </div>
-    );
-  }
+  if (isLoading || parentLoading) return <DocsSkeleton />;
 
   if (error) {
     return (
       <div style={{ padding: 32 }}>
-        <Severity level="error">{t('doc.load_error', { message: error.message })}</Severity>
+        <Severity level="error">{errorText(t, error && 'code' in error && typeof error.code === 'string' ? error.code : null)}</Severity>
       </div>
     );
   }
@@ -664,7 +672,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   return (
     <div className="dl-root ov-anim">
       {readOnly && (
-        <ReadOnlyBanner>{t('doc.readonly_banner_desc')}</ReadOnlyBanner>
+        <Severity level="info" title={t('settings.readonly_banner_title')}>{t('doc.readonly_banner_desc')}</Severity>
       )}
       {/* ── Toolbar: search + filter ── */}
       <Row wrap gap="g6" className="dl-toolbar">

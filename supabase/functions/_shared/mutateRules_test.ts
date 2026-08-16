@@ -793,6 +793,96 @@ Deno.test('★ ни одно действие реестра не строит u
   assert(checked > 0, 'реестр пуст — тест не проверил НИЧЕГО');
 });
 
+// ── Сквозные инварианты реестра: порядок двери и IDOR у RPC (Этап 4) ──────────
+//
+// Классификация требований по СТАТУСУ отказа — зеркалит `checkRequirement` в
+// `mutate.ts` (I/O-половину из теста не загрузить: env читается на загрузке
+// клиента). Access-гейт → 403, payment-гейт → 402. Живёт здесь, а не в
+// production-модуле: инвариант — свойство ТЕСТА, а не рантайма, и трогать шов
+// (auth) не нужно. Дрейф закрыт тестом полноты ниже: новое имя требования,
+// не попавшее ни в один набор, красит сборку — значит его забыли и в
+// `checkRequirement`, и в классификации.
+const ACCESS_REQUIREMENTS = new Set(['participant', 'editor', 'owner', 'self']); // → 403
+const PAYMENT_REQUIREMENTS = new Set(['pro', 'trip_quota']); // → 402
+
+Deno.test('★ каждое требование реестра классифицировано (ловит новое имя)', () => {
+  let checked = 0;
+  for (const resource of Object.values(REGISTRY)) {
+    for (const [name, action] of Object.entries(resource.actions)) {
+      for (const req of action.requires) {
+        assert(
+          ACCESS_REQUIREMENTS.has(req) || PAYMENT_REQUIREMENTS.has(req),
+          `${resource.name}/${name}: требование "${req}" не классифицировано — добавь в ACCESS/PAYMENT + checkRequirement`,
+        );
+        checked++;
+      }
+    }
+  }
+  assert(checked > 0, 'ни одного требования не проверено — тест зелёный ни о чём');
+});
+
+Deno.test('★ порядок двери: 402 (Pro/лимит) НЕ раньше 403 (доступ) во всём реестре', () => {
+  // Инвариант монетизации+приватности: посторонний обязан получить 403 «нельзя»,
+  // а не 402 «купи Pro». 402 раньше 403 подтвердил бы существование трипа и слил
+  // Pro-детали чужому (handoff §3; канон chat `['participant','pro']`). Проверяем
+  // ДАННЫЕ — порядок в `requires`; шов (`mutate.ts`) возвращает ПЕРВЫЙ отказ по
+  // этому порядку, поэтому порядок в массиве и есть порядок дверей.
+  let checked = 0;
+  for (const resource of Object.values(REGISTRY)) {
+    for (const [name, action] of Object.entries(resource.actions)) {
+      const reqs = action.requires;
+      const firstPayment = reqs.findIndex((r) => PAYMENT_REQUIREMENTS.has(r));
+      const firstAccess = reqs.findIndex((r) => ACCESS_REQUIREMENTS.has(r));
+      // Нет платного гейта ИЛИ нет гейта доступа (напр. `trip/create`
+      // `['trip_quota']` — нового трипа ещё нет, течь нечему) → инвариант неприменим.
+      if (firstPayment === -1 || firstAccess === -1) continue;
+      assert(
+        firstAccess < firstPayment,
+        `${resource.name}/${name}: requires ${JSON.stringify(reqs)} — 402 (${reqs[firstPayment]}) стоит раньше 403 (${reqs[firstAccess]}); посторонний узнает Pro-детали`,
+      );
+      checked++;
+    }
+  }
+  assert(checked > 0, 'ни одного действия с двумя гейтами — тест зелёный ни о чём');
+});
+
+Deno.test('★ каждое tripId-scoped rpc-действие несёт ПРОВЕРЕННЫЙ scopeValue (IDOR)', () => {
+  // У table-DML скоуп внедряет `buildPlan` (тест «ни одно действие … без скоупа»).
+  // У `op:'rpc'` аргументы кладёт `buildArgs` — здесь трип обязан приехать из
+  // `ctx.scopeValue` (значение, которое проверил `_can_edit_trip`), а НЕ из
+  // клиентского `values`. Зовём с ПУСТЫМ `values`: если бы `buildArgs` брал трип
+  // из тела, аргумент был бы `undefined` и `scopeValue` в плане не появился бы →
+  // тест краснеет. actor-scoped ресурсы (`trip/create`, `account`, `inbox`)
+  // держатся на инъекции `p_actor`, им `scopeValue` не нужен — потому только
+  // `from:'tripId'`.
+  const TARGET = 'target-uuid';
+  let checked = 0;
+  for (const resource of Object.values(REGISTRY)) {
+    if (resource.scope.from !== 'tripId') continue;
+    for (const [name, action] of Object.entries(resource.actions)) {
+      if (action.op !== 'rpc') continue;
+      const plan = buildPlan(resource, action, {
+        actor: ACTOR,
+        scopeValue: TRIP,
+        targetId: TARGET,
+        values: {},
+      });
+      assert(plan.op === 'rpc');
+      assertEquals(
+        plan.args.p_actor,
+        ACTOR,
+        `${resource.name}/${name}: p_actor обязан инъектиться швом, не клиентом`,
+      );
+      assert(
+        Object.values(plan.args).includes(TRIP),
+        `${resource.name}/${name}: RPC не получил проверенный scopeValue — трип берётся из клиента? IDOR`,
+      );
+      checked++;
+    }
+  }
+  assert(checked > 0, 'ни одного tripId-scoped rpc-действия — тест зелёный ни о чём');
+});
+
 // ── trip-chat / inbox: контракт RPC-аргументов (TRIP-408) ────────────────────
 
 Deno.test('★ trip-chat/send: p_trip из скоупа, p_actor от шва, тело буквенно', () => {
@@ -886,7 +976,7 @@ Deno.test('★ invite: mapOutcome переводит дискриминант в
   const self = map({ outcome: 'self' });
   assert('status' in self && self.status === 400 && self.code === 'INVITE_SELF');
   const owner = map({ outcome: 'owner' });
-  assert('status' in owner && owner.status === 400 && owner.code === 'invite_owner');
+  assert('status' in owner && owner.status === 400 && owner.code === 'INVITE_OWNER');
   // Успех: created/reactivated → { data: member } (не Refusal).
   const ok = map({ outcome: 'created', member: { id: 'm1' } });
   assert(!('status' in ok) && (ok as { data: unknown }).data && ((ok as { data: { id: string } }).data).id === 'm1');

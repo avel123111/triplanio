@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog as UIDialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Icon } from './icons';
 import { Tile } from './Tile';
+import { Tooltip } from './Tooltip';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useKeyboardOpen } from '@/lib/keyboardOpen';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -52,9 +53,12 @@ export { Donut } from './Donut';
 // точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
 export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
 export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
+export { Tooltip, TOOLTIP_SIDES } from './Tooltip';
+export { Cover } from './Cover';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
+export { NotifRow } from './NotifRow';
 export { Swatch, SWATCH_VARIANTS } from './Swatch';
 import { IconBtn } from './IconBtn';   // крестик <Dialog> ниже — свой же примитив
 
@@ -82,8 +86,8 @@ const AI_ROBOT = (
     <path d="M19 32 Q24 35.5 29 32" stroke="var(--ai)" strokeWidth="2.6" strokeLinecap="round" fill="none" />
   </svg>
 );
-/** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, className?: string, style?: any }} p */
-export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
+/** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, seed?: string, className?: string, style?: any }} p */
+export const Avatar = ({ name = "?", size, kind, photo, deleted, seed, className = "", style: styleProp }) => {
   const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (deleted) {
@@ -95,9 +99,13 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
   }
+  // Colour is keyed by `seed` (a stable identity id from resolveAuthor), NOT the
+  // display name — the same person must keep one colour whatever their current
+  // label is. Falls back to the name only when no seed was handed in (e.g. the
+  // /kit demos, which have ids for nobody).
   const style = photo
     ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center", ...styleProp }
-    : { background: avatarGradient(name), ...styleProp };
+    : { background: avatarGradient(seed || name), ...styleProp };
   return (
     <div className={`avatar ${size ? "avatar--" + size : ""} ${className}`} style={style}>
       {!photo && initials}
@@ -112,7 +120,7 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
 /** @param {{ people?: any[], max?: number, size?: string, className?: string }} p */
 export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
   <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
-    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
+    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} seed={p.seed} size={size} />)}
     {/* border у «+N» не пишем: он дословно дублировал .avatar, а инлайн-дубль
         переживает правку класса и молча расходится с соседями по стопке. */}
     {people.length > max && (
@@ -122,6 +130,36 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
     )}
   </div>
 );
+
+// ----- Person -----
+// The ONE way to render a human as a list row: avatar + name + a secondary line,
+// all fed from a single resolveAuthor() identity (`who`). Screens used to hand-
+// assemble this trio — <Avatar> here, a name label there, a "show the email?"
+// decision reinvented each time — and that is exactly how one branch shipped
+// without a photo and another printed a raw address (TRIP-334 follow-up). Bind a
+// person to <Person> and none of those three can drift: the avatar gets the
+// stable colour `seed`, the name is already the resolved label, and the sub line
+// is the resolver's decision (email only next to a real name) unless a caller
+// overrides it with a membership state ("Ожидает"/"Оффлайн").
+// Layout is the shared `.mrow` (app.css) — no new namespace.
+// `size` is left undefined by default → the base `.avatar` (28px). There is no
+// `.avatar--md` rule, so naming a "md" default would emit a class that exists
+// nowhere and "work" only by silently falling back — the exact non-existent-class
+// trap the design system warns about. Callers pass "sm"/"lg" when they want them.
+/** @param {{ who?: any, size?: string, sub?: any, trailing?: any, className?: string, style?: any }} p */
+export const Person = ({ who = {}, size, sub, trailing, className = "", style }) => {
+  const secondary = sub !== undefined ? sub : who.email;
+  return (
+    <div className={className ? `mrow ${className}` : "mrow"} style={style}>
+      <Avatar name={who.name} photo={who.photo || ""} deleted={who.deleted} kind={who.kind} seed={who.seed} size={size} />
+      <div className="fl1">
+        <div className="mn trunc">{who.name}</div>
+        {secondary ? <div className="me trunc">{secondary}</div> : null}
+      </div>
+      {trailing}
+    </div>
+  );
+};
 
 // ----- Severity message -----
 // Значок по умолчанию свой у каждого тона. Раньше здесь стояла вилка, знавшая
@@ -204,23 +242,10 @@ export const FileRow = ({ name, href, size, tone, action, fallback }) => {
   );
 };
 
-// ----- ReadOnlyBanner ----- (TRIP-225)
-// Единый баннер роли наблюдателя (viewer read-only), раньше копипастился в
-// DocsLens / BudgetLens / SettingsLens одинаковым <Severity level="info" …>.
-// Заголовок — канонический (settings.readonly_banner_title); описание — per-lens
-// через children. Обёртка `.readonly-banner` несёт консистентный отступ там, где
-// контейнер не раскладывает детей через gap (см. app.css).
-/** @param {{ children?: any, title?: any }} p */
-export const ReadOnlyBanner = ({ children, title }) => {
-  const t = useT();
-  return (
-    <div className="readonly-banner">
-      <Severity level="info" title={title || t('settings.readonly_banner_title')}>
-        {children}
-      </Severity>
-    </div>
-  );
-};
+// Баннер роли наблюдателя — это обычный `<Severity level="info" title=…>` прямо на
+// экране (TRIP-225 → упрощён по просьбе Pavel: отдельная обёртка `.readonly-banner`
+// снята, «только просмотр» = штатный info-severity; отступ там, где контейнер без
+// gap, даёт правило `.dl-root > .sev` в app.css).
 
 // ----- Form Field -----
 // Подпись + обёртка поля. Состояние валидации сюда НЕ приходит: единственный
@@ -307,9 +332,20 @@ export const BTN_VARIANTS = ["primary", "secondary", "soft", "quiet", "link", "d
  * @param {{ variant: BtnVariant, size?: 'sm', icon?: string, iconRight?: string,
  *   tile?: boolean, sub?: any, block?: boolean, disabled?: boolean, loading?: boolean,
  *   children?: any, onClick?: any, className?: string, ariaLabel?: string,
- *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any }} p
+ *   title?: string, ariaPressed?: boolean, ariaDisabled?: boolean, style?: any,
+ *   locked?: boolean, lockedHint?: any }} p
  */
-export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style }) => (
+export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, ariaDisabled, style, locked, lockedHint }) => {
+  // `locked` — действие недоступно текущей роли (наблюдателю). Не плодит класс:
+  // приглушённый вид даёт существующий `.btn[aria-disabled]`, справа — замок,
+  // клик подавлен, а причина висит тултипом. Один кирпич на все «viewer'у нельзя»
+  // по всему приложению (TRIP-274 Ф2.2).
+  // Правая иконка считается ЗДЕСЬ через if/else, а НЕ тернарником: `<Icon/> : …`
+  // (элемент рядом с `:`) i18n-гард принимает за JSX-текст (ложное срабатывание).
+  let rightIcon = null;
+  if (locked) rightIcon = <Icon name="lock" size={14} />;
+  else if (iconRight && !loading) rightIcon = <Icon name={iconRight} size={16} />;
+  const btn = (
   <button
     // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
     // в <form>, отправлял бы её в довесок к своему onClick. Соседний Toggle
@@ -320,15 +356,16 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
     // их сырые <button type="submit">, а не Btn. Проверено грепом по всему src.
     type="button"
     className={`btn btn--${variant} ${size ? `btn--${size}` : ""} ${block ? "btn--block" : ""} ${className}`}
-    onClick={onClick}
+    onClick={locked ? undefined : onClick}
     disabled={disabled || loading}
     aria-busy={loading || undefined}
     aria-label={ariaLabel}
     aria-pressed={ariaPressed}
     // Полу-disabled: примитив выглядит приглушённым (`.btn[aria-disabled]`), но
     // НЕ получает атрибут `disabled` — остаётся кликабельным (клик раскрывает
-    // валидацию). Заменяет инлайн `opacity` у вызывателя (TRIP-344).
-    aria-disabled={ariaDisabled || undefined}
+    // валидацию). Заменяет инлайн `opacity` у вызывателя (TRIP-344). `locked`
+    // тоже сюда: приглушён, но hover жив — иначе тултип-причина не всплыл бы.
+    aria-disabled={ariaDisabled || locked || undefined}
     title={title}
     style={style}
   >
@@ -343,9 +380,11 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
         плитка, а не только когда есть вторая строка: иначе форма с плиткой и
         однострочной подписью («Добавить активность») схлопнулась бы в центр. */}
     {(tile || sub) ? <span className="gt"><b>{children}</b>{sub && <span>{sub}</span>}</span> : children}
-    {iconRight && !loading && <Icon name={iconRight} size={16} />}
+    {rightIcon}
   </button>
-);
+  );
+  return locked && lockedHint ? <Tooltip content={lockedHint}>{btn}</Tooltip> : btn;
+};
 
 // ----- Badge -----
 /** @param {{ variant?: string, size?: string, icon?: string, children?: any, style?: any }} p */
@@ -361,14 +400,16 @@ export const Badge = ({ variant = "", size, icon, children, style }) => (
 // по-своему: список участников — цветными <Badge>, «Кто едет» в Обзоре —
 // руками собранными классами, чат — простой текстовой строкой, карточки
 // трипов — то quiet+eye, то голым <Badge>. Канон — облик списка участников:
-// owner=warning, admin=brand, viewer=outline+eye. `viewer` — единственная явная
+// owner=warning, admin=brand, viewer=outline (без иконки — TRIP-409, глаз снят по
+// просьбе Pavel: у остальных ролей иконки нет, у Наблюдателя тоже). `viewer` — единственная явная
 // ветка; всё остальное (admin и несуществующая в схеме роль `member`) читается
 // как admin, повторяя прежний fallback карточек трипов.
 /** @param {{ role?: string }} p */
 export const RoleBadge = ({ role }) => {
   const t = useT();
-  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>;
-  if (role === "viewer") return <Badge variant="outline" icon="eye">{t("trips.role_viewer")}</Badge>;
+  // RoleBadge рисует ЯРЛЫК роли — это показ, не гейт права редактирования.
+  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>; // role-gate-exempt: показ
+  if (role === "viewer") return <Badge variant="outline">{t("trips.role_viewer")}</Badge>; // role-gate-exempt: показ
   return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
 };
 
@@ -395,18 +436,20 @@ export const RoleBadge = ({ role }) => {
 // обязан быть в `CARD_VARIANTS` - полное, единообразное покрытие, без немой
 // дыры «булев модификатор эмитится литералом и выпадает из-под суда».
 //
-// ★ radius = ОСЬ lg|md ТОЛЬКО (решение Pavel). `sm`(10) НЕ значение оси, а
-// СЛЕДСТВИЕ `tone=ai`: его несёт сам `.card--tone-ai` в CSS, отдельного
-// `.card--r-sm` нет, и в оси радиуса он не открыт (иначе Р14 - ось снова
-// распахнута). `compact` не заведён (YAGNI): проп в контракте есть, но CSS-
-// правило и значение появятся с первым живым вызывателем, не впрок.
+// ★ radius = ОСЬ lg|md|card + btn (10, контрол). `btn` открыт по апруву Pavel
+// (TRIP-337 visual-fixes): вложенные form-контейнеры (аккордеоны/строки полей
+// event-dialog) должны нести радиус ИНПУТА (--r-btn 10), а не секции (16), чтобы
+// не выглядеть чужеродно рядом с полями. Раньше 10 был только СЛЕДСТВИЕМ
+// `tone=ai` (его нёс сам `.card--tone-ai`); теперь есть явный `.card--r-btn`.
+// `compact` не заведён (YAGNI): проп в контракте есть, но CSS-правило и значение
+// появятся с первым живым вызывателем, не впрок.
 /**
- * @typedef {'lg'|'md'|'card'} CardRadius
+ * @typedef {'lg'|'md'|'card'|'btn'} CardRadius
  * @typedef {'brand'|'ai'} CardTone
  */
 /** @type {readonly string[]} */
 export const CARD_VARIANTS = [
-  "r-lg", "r-md", "r-card", "interactive", "flush", "featured", "raised",
+  "r-lg", "r-md", "r-card", "r-btn", "interactive", "flush", "featured", "raised",
   "tone-brand", "tone-ai", "add", "recessed", "locked", "parsed", "danger",
 ];
 
