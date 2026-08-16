@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, IconBtn, Seg, Severity, SearchSelect, Tile, useToast,
+  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -22,13 +22,7 @@ import AppHeader from '@/components/AppHeader';
 import Accordion from '@/components/common/Accordion';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
-import { coverGradientCss } from '@/lib/trip-gradients';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
-
-// Cover background for a linked-trip thumbnail: the photo wins (rendered as an
-// <img> over a null background); otherwise the trip's stored gradient (always
-// one of the built-in set, default-backed). Mirrors coverBg() on the Trips page.
-const coverBg = (a) => (a.cover_image_url ? null : coverGradientCss(a.cover_gradient));
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -299,32 +293,24 @@ function ReminderChannels() {
               title={'Telegram'/* i18n-ignore: имя бренда, не переводится */}
               subtitle={t('telegram.account_section_subtitle')}
               badge={<Badge variant="success" size="tiny">{t('telegram.connected')}</Badge>}
-              defaultOpen
             >
               <Col gap="g2">
                 {items.map((a) => (
                   <Row gap="g2" key={a.id}>
-                    {/* Трип = его канонная строка `.tr` (обложка + название + ТГ-логин)
-                        как <Card radius="btn"> (радиус 10, ховер) — вся строка ведёт
-                        в трип. Отвязка — иконка справа по центру строки (sibling, т.к.
-                        кнопку в кнопку вкладывать нельзя).
-                        `grow--fit` (flex:1 + min-width:0), НЕ `grow`: без min-width:0
-                        карточка не ужимается ниже min-content, длинное название её
-                        распирает и иконка отвязки уезжает вправо (замерено: 292 vs 317px,
-                        икона на разных x). С fit все карточки равной ширины → иконки
-                        строго выровнены. */}
-                    <Card as="button" radius="btn" interactive className="tr grow--fit" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
-                      {/* Разметка КАНОННОЙ строки трипа (как в Trips): блочные .tr__title/
-                          .tr__sub — иначе text-overflow:ellipsis не режет (инлайн-span не
-                          обрезается), и длинное название наезжало на иконку отвязки. */}
-                      <div className="tr__thumb" style={{ background: coverBg(a) || undefined }}>
-                        {a.cover_image_url && <img className="tc__img" src={a.cover_image_url} alt="" />}
-                        <div className="tc__blob" />
-                      </div>
-                      <div className="tr__main">
-                        <div className="tr__title">{a.trip_title}</div>
-                        <div className="tr__sub">{nick(a)}</div>
-                      </div>
+                    {/* Строка трипа собрана из ПРИМИТИВОВ ДС (Card/Row/Grow/Cover/каноны),
+                        без triage-классов и инлайна: обложка — <Cover> (градиент классами
+                        по data-cover, фото через <img>), название/логин — каноны .t-*.
+                        Вся строка ведёт в трип; отвязка — <IconBtn> справа (sibling, т.к.
+                        кнопку в кнопку нельзя). `grow--fit` даёт всем карточкам равную
+                        ширину → иконки строго выровнены, длинное название truncate'ится. */}
+                    <Card as="button" radius="btn" interactive className="grow--fit" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
+                      <Row gap="g4">
+                        <Cover gradient={a.cover_gradient} image={a.cover_image_url} />
+                        <Grow fit>
+                          <Trunc className="t-strong">{a.trip_title}</Trunc>
+                          <div className="t-meta muted">{nick(a)}</div>
+                        </Grow>
+                      </Row>
                     </Card>
                     <IconBtn icon="unlink" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
                   </Row>

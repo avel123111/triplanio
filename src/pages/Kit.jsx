@@ -34,7 +34,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut, Cover,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
@@ -62,7 +62,7 @@ const TX = {
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
-    'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон',
+    'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон', 'cover': 'Обложка',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -88,6 +88,7 @@ const TX = {
     'skeleton': 'Плейсхолдер загрузки, разной ширины.',
     'dialog': 'Диалог и шит — оверлеи (открываются кнопкой).',
     'accordion': 'Раскрывашка: шапка-кнопка (иконка · заголовок · статус) + вложенное тело; шеврон вправо→вниз.',
+    'cover': 'Обложка трипа: градиент из конечного набора (16, классами по data-cover) ИЛИ фото поверх.',
     'tile': 'Квадрат под значок: тон · размер · форма · залитая.',
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
@@ -616,6 +617,17 @@ const RECIPES = {
         </Accordion>, true),
     ],
   }],
+
+  cover: () => [
+    {
+      label: 'градиент трипа (data-cover, конечный набор из 16)',
+      items: ['gradient_1', 'gradient_5', 'gradient_9', 'gradient_14', 'gradient_16']
+        .map((g) => it(`gradient="${g}"`, <Cover gradient={g} />)),
+    },
+    {
+      items: [it('image (фото поверх градиента)', <Cover gradient="gradient_5" image="/flags/es.svg" />)],
+    },
+  ],
 
 
   // Строка уведомления — один компонент на все типы и обе поверхности. Показана

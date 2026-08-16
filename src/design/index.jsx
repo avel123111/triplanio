@@ -52,6 +52,7 @@ export { Donut } from './Donut';
 // точка входа в ДС одна (витрина `/kit` берёт и облик, и карту из '@/design').
 export { IconBtn, ICON_BTN_TONES, ICON_BTN_SIZES } from './IconBtn';
 export { Tile, TILE_SIZES, TILE_TONES } from './Tile';
+export { Cover } from './Cover';
 export { Stepper, STEPPER_VARIANTS } from './Stepper';
 export { Seg, SEG_VARIANTS } from './Seg';
 export { Chip, CHIP_VARIANTS } from './Chip';
