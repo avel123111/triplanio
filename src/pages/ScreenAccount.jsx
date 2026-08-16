@@ -18,6 +18,7 @@ import { invokeFn } from '@/lib/invokeFn';
 import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
 import { openConsentBanner } from '@/lib/consent';
+import { useFeedback } from '@/components/support/FeedbackProvider';
 import AppHeader from '@/components/AppHeader';
 import Accordion from '@/components/common/Accordion';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -358,6 +359,7 @@ export default function ScreenAccount() {
   const { t } = useI18nFormat();
   const { lang, setLang, units, setUnits } = useI18n();
   const { theme, setTheme } = useTheme();
+  const { open: openFeedback } = useFeedback();
   const nav = useNavigate();
 
   // In-app notifications — the card needs ONE number, so it asks for one number
@@ -888,6 +890,14 @@ export default function ScreenAccount() {
           <section id="acct-help">
             <Row as="h2" className="acct-sectitle">{t('account.nav_help')}</Row>
             <div className="card">
+              <Row gap="g7" className="row--div">
+                <span className="tile tile--lg tile--brand"><Icon name="headset" size={18} /></span>
+                <Grow>
+                  <div className="row__t">{t('support.row_title')}</div>
+                  <div className="row__s">{t('support.row_sub')}</div>
+                </Grow>
+                <Btn variant="secondary" icon="headset" onClick={() => openFeedback('settings')}>{t('support.row_cta')}</Btn>
+              </Row>
               <Row gap="g7" className="row--div">
                 <span className="tile tile--lg tile--brand"><Icon name="chat" size={18} /></span>
                 <Grow>
