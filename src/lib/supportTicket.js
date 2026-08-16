@@ -45,7 +45,7 @@ export async function uploadSupportFiles(files) {
     const { error } = await supabase.storage
       .from(SUPPORT_BUCKET)
       .upload(path, file, { contentType: file.type || undefined });
-    if (error) { errors.push({ file, message: error.message }); continue; }
+    if (error) { errors.push({ file }); continue; }
     uploaded.push({ path, name: file.name, size: file.size, mime: file.type });
   }
   return { uploaded, errors };
