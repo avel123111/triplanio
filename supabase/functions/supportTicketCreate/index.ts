@@ -34,10 +34,11 @@ function parseFiles(raw: unknown): FileEntry[] {
   if (!Array.isArray(raw)) throw new HttpError(400, 'files must be an array', 'INVALID_INPUT');
   if (raw.length > MAX_FILES) throw new HttpError(400, `At most ${MAX_FILES} files`, 'INVALID_INPUT');
   return raw.map((f) => {
-    const path = typeof (f as FileEntry)?.path === 'string' ? (f as FileEntry).path.trim() : '';
-    const name = typeof (f as FileEntry)?.name === 'string' ? (f as FileEntry).name.slice(0, 256) : '';
-    const size = Number((f as FileEntry)?.size) || 0;
-    const mime = typeof (f as FileEntry)?.mime === 'string' ? (f as FileEntry).mime : '';
+    const o = (f ?? {}) as Partial<FileEntry>;
+    const path = typeof o.path === 'string' ? o.path.trim() : '';
+    const name = typeof o.name === 'string' ? o.name.slice(0, 256) : '';
+    const size = Number(o.size) || 0;
+    const mime = typeof o.mime === 'string' ? o.mime : '';
     if (!path || path.length > 512) throw new HttpError(400, 'Bad file path', 'INVALID_INPUT');
     if (!ALLOWED_MIME.has(mime)) throw new HttpError(400, 'Unsupported file type', 'INVALID_INPUT');
     if (size > MAX_FILE_BYTES) throw new HttpError(400, 'File too large', 'INVALID_INPUT');

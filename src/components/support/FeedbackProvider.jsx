@@ -6,9 +6,10 @@ import { invokeFn } from '@/lib/invokeFn';
 import { successToast } from '@/lib/successToast';
 import { track } from '@/lib/analytics';
 import {
-  uploadSupportFiles, removeSupportFiles, buildFeedbackMeta, isAllowedSupportFile, formatBytes,
+  uploadSupportFiles, removeSupportFiles, buildFeedbackMeta, isAllowedSupportFile,
   SUPPORT_MAX_FILES, SUPPORT_MAX_FILE_MB, SUPPORT_MAX_TEXT, SUPPORT_ACCEPT,
 } from '@/lib/supportTicket';
+import { formatBytes } from '@/lib/formatBytes';
 
 /**
  * Обратная связь / «Нашли баг? Сообщите нам!» (TRIP-232).
@@ -52,10 +53,9 @@ function FeedbackDialog({ source, onClose }) {
     const list = Array.from(incoming || []);
     if (!list.length) return;
     setFiles((prev) => {
-      const space = SUPPORT_MAX_FILES - prev.length;
       const next = [...prev];
       for (const f of list) {
-        if (next.length - prev.length >= space) { setFileError(t('support.max_files', { max: SUPPORT_MAX_FILES })); break; }
+        if (next.length >= SUPPORT_MAX_FILES) { setFileError(t('support.max_files', { max: SUPPORT_MAX_FILES })); break; }
         if (!isAllowedSupportFile(f)) { setFileError(t('support.bad_type')); continue; }
         if (f.size > SUPPORT_MAX_FILE_MB * MB) { setFileError(t('support.file_too_large', { name: f.name, mb: SUPPORT_MAX_FILE_MB })); continue; }
         next.push(f);

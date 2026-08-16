@@ -23,13 +23,6 @@ export function isAllowedSupportFile(file) {
   return Boolean(file) && ALLOWED_MIME.has(file.type);
 }
 
-/** Компактный размер файла для строки: «412 KB» / «2.1 MB». */
-export function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
 /**
  * Загрузить локальные File[] в приватный бакет `support`. Возвращает и успешные
  * дескрипторы `{ path, name, size, mime }` (их путь едет в edge → колонку files),
