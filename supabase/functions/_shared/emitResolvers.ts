@@ -30,6 +30,9 @@ export type EmitData = {
    *  доставки — сам чат, не пользователь, поэтому едет полем конверта, а не в
    *  `recipients`. Остальные события его не заполняют. */
   chat_id?: string | null;
+  /** Язык сообщения в чат (trip_telegram_unlinked): язык владельца трипа,
+   *  резолвится вызывателем. n8n читает 0 таблиц. */
+  locale?: string | null;
 };
 
 /** Пустой конверт — когда резолвера нет (неизвестное событие) или нет `db`. */
@@ -186,5 +189,6 @@ export const RESOLVERS: Record<string, Resolver> = {
     member: null,
     recipients: [],
     chat_id: typeof ids.chat_id === 'string' && ids.chat_id ? ids.chat_id : null,
+    locale: typeof ids.locale === 'string' && ids.locale ? ids.locale : null,
   }),
 };

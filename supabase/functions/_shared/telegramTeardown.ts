@@ -57,12 +57,21 @@ export async function disconnectTripTelegram(
 
   if (chatIds.length) {
     // Трип читаем ОДИН раз и отдаём резолверу снимком (иначе каждый notify
-    // перечитывал бы ту же строку). external-only trip_telegram_unlinked: notify
-    // fail-open (сам ловит сбои) — прощальное сообщение не роняет ни teardown, ни
-    // действие вызывателя. Чаты независимы → шлём параллельно.
+    // перечитывал бы ту же строку). Язык прощального сообщения = язык владельца
+    // трипа (у чата своего языка нет) — тоже один раз на всю пачку чатов.
+    // external-only trip_telegram_unlinked: notify fail-open (сам ловит сбои) —
+    // сообщение не роняет ни teardown, ни действие вызывателя. Чаты независимы →
+    // шлём параллельно.
     const { data: trip } = await admin.from('trips').select('*').eq('id', tripId).maybeSingle();
+    let locale: string | undefined;
+    const ownerId = (trip as { created_by?: unknown } | null)?.created_by;
+    if (typeof ownerId === 'string' && ownerId) {
+      const { data: owner } = await admin.from('users').select('language').eq('id', ownerId).maybeSingle();
+      const lang = (owner as { language?: unknown } | null)?.language;
+      if (typeof lang === 'string' && lang) locale = lang;
+    }
     await Promise.all(chatIds.map((chatId) =>
-      notify('trip_telegram_unlinked', { trip_id: tripId, chat_id: chatId }, { db: admin, snapshot: trip ?? undefined })
+      notify('trip_telegram_unlinked', { trip_id: tripId, chat_id: chatId, locale }, { db: admin, snapshot: trip ?? undefined })
     ));
   }
   return removed.length;

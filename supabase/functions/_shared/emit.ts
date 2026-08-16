@@ -58,6 +58,10 @@ export type EmitIds = {
    *  row is already deleted by resolve time, so the chat id rides the id slot,
    *  not a DB read. */
   chat_id?: string;
+  /** Locale for a chat-addressed message (trip_telegram_unlinked): the chat has
+   *  no language of its own, so the caller resolves the trip owner's language
+   *  once and passes it — n8n reads 0 tables. */
+  locale?: string;
 };
 
 /** Resolve context: the caller's service_role client + the pre-write `member`
