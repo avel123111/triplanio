@@ -20,6 +20,7 @@ import ShareDialog from '@/components/trips/ShareDialog';
 import { Icon } from '../design/icons';
 import { Btn, Card, Dialog, EmptyState, IconBtn, Skeleton, Tile, fmtDate, weekdayLong, StreamEventRow, useToast } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
+import { TripAccessProvider } from '@/components/trips/TripAccessContext';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -1193,6 +1194,10 @@ export default function TripView() {
   );
 
   return (
+    // Единый доступ к праву для всего поддерева трипа: линзы, шит, диалоги
+    // читают `useTripAccess()` вместо пропов права (TRIP-274 Ф2.2). Ступень
+    // считается один раз в самом провайдере.
+    <TripAccessProvider members={members} trip={trip} user={user}>
     <TripShell
       tripId={tripId}
       trip={trip}
@@ -1441,5 +1446,6 @@ export default function TripView() {
           )}
           </ErrorBoundary>
     </TripShell>
+    </TripAccessProvider>
   );
 }
