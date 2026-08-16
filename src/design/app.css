@@ -8324,7 +8324,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    prefix-exempt: tt — новый примитив ДС «тултип», глобальный текст-хинт, апрув Pavel TRIP-274
    floor-exempt: namespaces +1 — новая канон-семья ДС tt (тултип), общий примитив, апрув Pavel TRIP-274
    floor-exempt: classes +5 — .tt · .tt__b · .tt__b--top · .tt__b--bottom · .tt--block, примитив ДС, апрув Pavel TRIP-274
-   floor-exempt: layout +2 — .tt и .tt--block несут свою раскладку (inline-flex/block, обёртка блочного триггера), канон-кубик ДС, апрув Pavel TRIP-274
+   floor-exempt: layout +1 — семья tt (тултип) несёт свою раскладку (inline-flex/relative/block-обёртка), канон-кубик ДС, апрув Pavel TRIP-274
    floor-exempt: inline +1 — динамическая позиция тултип-пузыря в портале (getBoundingClientRect), классом невыразима, апрув Pavel TRIP-274 */
 .tt { position: relative; display: inline-flex; }
 /* Обёртка блочного триггера (full-width карточка): не ужимать по контенту. */
