@@ -30,11 +30,24 @@ afterWrite = no-op, каскад успел раньше), удаление ак
 отвязка «трип жив, привязку сорвали» (+ farewell); БД = целостность при уничтожении
 родителя (сильнее best-effort edge). Farewell там не шлём — трипа/аккаунта уже нет.
 
-Событие `trip_telegram_unlinked`: `EmitIds.chat_id` (строка привязки к моменту emit
-удалена → chat_id едет id-слотом, не читается из БД), резолвер в `emitResolvers.ts`
-(грузит `trip` ради названия + прокидывает `chat_id`), EXTERNAL-only в `notifyRules.ts`
-(в `INAPP` спеки нет — адресат Telegram-чат, не пользователь; in-app-строку не пишем).
-Требует n8n-ветку `notify/trip_telegram_unlinked` (вне репо).
+Событие `trip_telegram_unlinked`: `EmitIds.chat_id`+`locale` (строка привязки к моменту
+emit удалена → едут id-слотами, не из БД; `locale` = язык владельца трипа, шов читает
+его ОДИН раз на пачку чатов), резолвер в `emitResolvers.ts` (трип из snapshot + прокид
+`chat_id`/`locale`), EXTERNAL-only в `notifyRules.ts` (в `INAPP` спеки нет — адресат
+Telegram-чат, не пользователь; in-app-строку не пишем).
+
+Доставка (n8n, инстанс `n8n.triplanio.com` == railway `n8n-production-d1214`, один и
+тот же): текст в **Tolgee** ns `n8n`, ключ `trip_telegram_unlinked.text` (1 ключ на
+эвент, название трипа n8n подставляет ПЕРЕД текстом отдельной строкой — без вставки в
+середину); зеркало в repo `src/lib/i18n/locales/*/n8n.json`. Tolgee→n8n синкает флоу
+«tolgee» (namespace `n8n`, ключи `<event>.<key>`, Flatten по первой точке) в n8n
+**Data Table** `notify_translations` (id `dGmdnXlqVgfVfrM8`, колонки event/key/lang/
+translation). Ветка в активном флоу **«Communications (per-event)»** (id
+`oHzdeXZ1hP67gaRW`): webhook `notify/trip_telegram_unlinked` (jwtAuth) → dataTable get
+(event=trip_telegram_unlinked) → Set «Map» c `executeOnce:true` (свернуть N строк
+переводов в 1 t[lang][key]) → Set сборки текста `«{title}»\n{t[lang].text}` (fallback
+lang→en) → Telegram send (cred «Triplanio Bot»). Ловушка: `executeOnce:true` на Map
+обязателен — иначе N строк переводов → N сообщений.
 
 Связано: [[triplanio-pro-rollback-addons]] (SQL revoke_*_pro_addons гасит флаг),
 [[triplanio-tg-connected-accounts]] (секция подключённых аккаунтов + `TelegramUnlinkDialog`),
