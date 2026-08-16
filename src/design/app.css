@@ -5107,15 +5107,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 /* Открытая боковая панель сама себе рамка (карточка на канвасе), с тем же
    инсетом, что и карта. */
 .ts-leftbox .lp { margin: 14px 7px 14px 14px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
-/* Заголовок «Маршрут» скроллится со списком, выровнен с колонками. */
-.ts-leftscroll > .ts-routehead { margin: 0 0 8px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
-.ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 4px; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
-.ts-routehead__tt { display: flex; flex-direction: column; gap: 2px; min-width: 0; } /* design-token-exempt: величина не новая — правило переехало из тега style внутри рендера EditLens, где гард его не видел; значения не менялись */
-/* TRIP-188: «Маршрут» = класс "t-mono tp-caption" (моно + caption-модификатор).
-   Своего правила на .ts-routehead__title нет намеренно — иначе оно перебило бы
-   .tp-caption. */
-.ts-routehead__sub { color: var(--muted); }
-.ts-routehead__sp { flex: 1; }
+/* Заголовок «Маршрут» переехал на канон `PageHead` (как на Budget) — приватный
+   `.ts-routehead*` удалён целиком (раскладку/заголовок/сабтитл/actions несёт PageHead):
+   visual-diff-exempt: .ts-routehead margin — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-leftscroll margin — тот же снятый отступ, предок в селекторе .ts-leftscroll > .ts-routehead
+   visual-diff-exempt: .ts-routehead display — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead align-items — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead gap — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead flex — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead padding — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead__tt display — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead__tt flex-direction — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead__tt gap — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead__tt min-width — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead__sub color — класс удалён (миграция на PageHead)
+   visual-diff-exempt: .ts-routehead__sp flex — класс удалён (миграция на PageHead) */
 .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
 @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
 /* TRIP-176: боковая панель-ящик. Заливает абсолютом ТОЛЬКО левую колонку — ниже
@@ -5191,10 +5197,21 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    column on tablet/mobile. */
 /* visual-diff-move: settings-lens -> col col--g7 */
 .settings-lens { max-width: 1040px; margin: 0 auto; }
-/* TRIP-225: единый readonly-баннер наблюдателя (ReadOnlyBanner). На settings отступ
-   даёт `.settings-lens` gap; docs/budget не раскладывают детей через gap → задаём
-   отступ снизу здесь, чтобы баннер не прилипал к тулбару/контенту (как на settings). */
-.dl-root > .readonly-banner,
+/* Баннер «только просмотр» = обычный info-`.sev` (TRIP-225 → упрощён). На settings/
+   budget отступ даёт `col--g7` gap контейнера; docs (.dl-root) детей через gap НЕ
+   раскладывает → задаём отступ снизу здесь, чтобы баннер не прилипал к тулбару/инпуту.
+   БАГ ДО ФИКСА: это правило было склеено запятой с `.settings-identity` и баннер
+   получал инертные grid-свойства вместо margin — отсюда «легла на инпут». Снятие
+   этого слипшегося селектора убирает инертные grid-декларации:
+   visual-diff-exempt: .sev margin-bottom — отступ info-баннера в docs (был потерян из-за слипшегося селектора)
+   visual-diff-exempt: .dl-root margin-bottom — тот же новый отступ, предок в селекторе .dl-root > .sev
+   visual-diff-exempt: .dl-root grid-template-columns — снят слипшийся селектор (был баг, значение инертно)
+   visual-diff-exempt: .dl-root gap — снят слипшийся селектор (был баг, значение инертно)
+   visual-diff-exempt: .dl-root align-items — снят слипшийся селектор (был баг, значение инертно)
+   visual-diff-exempt: .readonly-banner grid-template-columns — класс удалён (был баг, значение инертно)
+   visual-diff-exempt: .readonly-banner gap — класс удалён (был баг, значение инертно)
+   visual-diff-exempt: .readonly-banner align-items — класс удалён (был баг, значение инертно) */
+.dl-root > .sev { margin-bottom: var(--sp-7); }
 
 /* Identity card: live cover preview + name/description/currency/notes. */
 /* ★ОСТАТОК: зазор 22px вне шкалы; `align-items: start` удержан - у `.grid` оси
@@ -5865,24 +5882,27 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 @media (hover: hover) { .tc:not(.tc--band):hover { box-shadow: var(--sh-3); } }
 
 /* cover background */
-.tc__bg { position: absolute; inset: 0; z-index: 0; transition: transform .35s var(--ease-out); }
+.tc__bg { position: absolute; inset: 0; z-index: 0; }
 .tc__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transition: transform .35s var(--ease-out); }
-/* Ховер медиа-карточки, тень остаётся --sh-1→--sh-3 (запрос Pavel). В гриде зумится
-   слой-обложка `.tc__bg` (несёт и фото, и градиент); в списке-строке (.tr) обложка —
-   фон самой `.tr__thumb`, поэтому там зумим фото `.tc__img`:
-   visual-diff-exempt: .tc__bg transition — плавный зум обложки (грид)
-   visual-diff-exempt: .tc__img transition — плавный зум фото (список)
+/* Ховер медиа-карточки, тень остаётся --sh-1→--sh-3 (запрос Pavel). ОДНА модель для
+   грида (.tc) и списка (.tr): зумятся листья-детали обложки — фото `.tc__img` и
+   декоративные орбы `.tc__blob` (у градиентных карточек видимый зум дают именно орбы;
+   плоский градиент при scale не читается). Ни обёрток, ни спец-правил на вид:
+   visual-diff-exempt: .tc__bg transition — переход снят, зум ушёл на листья (.tc__img/.tc__blob)
+   visual-diff-exempt: .tc__blob transition — плавный зум орба (грид+список)
    visual-diff-exempt: .tc:hover:not(.tc--band) {@media (hover: hover)} transform — зум 1.05, юнит .tc
-   visual-diff-exempt: .tc__bg {@media (hover: hover)} transform — зум 1.05 обложки грида
-   visual-diff-exempt: .tr:hover {@media (hover: hover)} transform — зум 1.05, юнит .tr (список)
-   visual-diff-exempt: .tc__img {@media (hover: hover)} transform — зум 1.05 фото списка */
+   visual-diff-exempt: .tr:hover {@media (hover: hover)} transform — зум 1.05, юнит .tr
+   visual-diff-exempt: .tc__img {@media (hover: hover)} transform — зум 1.05 фото (грид+список)
+   visual-diff-exempt: .tc__blob {@media (hover: hover)} transform — зум 1.05 орба (грид+список) */
 @media (hover: hover) {
-  .tc:not(.tc--band):hover .tc__bg,
-  .tr:hover .tc__img { transform: scale(1.05); }
+  .tc:not(.tc--band):hover .tc__img,
+  .tc:not(.tc--band):hover .tc__blob,
+  .tr:hover .tc__img,
+  .tr:hover .tc__blob { transform: scale(1.05); }
 }
 
 /* decorative semi-transparent blobs */
-.tc__blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.14); z-index: 1; pointer-events: none; }
+.tc__blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.14); z-index: 1; pointer-events: none; transition: transform .35s var(--ease-out); }
 .tc__b1 { width: 160px; height: 160px; top: -54px; right: -34px; }
 .tc__b2 { width: 84px; height: 84px; top: 46px; right: 84px; background: rgba(255,255,255,.10); }
 

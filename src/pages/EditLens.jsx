@@ -102,18 +102,6 @@
  * visual-diff-exempt: .ts-pdrawer position — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-pdrawer z-index — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-pdrawer {@media (prefers-reduced-motion: reduce)} animation — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead align-items — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead gap — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead margin — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead padding — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__sp flex — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__sub color — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt display — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt flex-direction — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt gap — правило перенесено из тега style внутри рендера в app.css, значения не менялись
- * visual-diff-exempt: .ts-routehead__tt min-width — правило перенесено из тега style внутри рендера в app.css, значения не менялись
  * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} background — вторая оболочка редактора снесена, off-canvas держит .trip-shell
  * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} border — вторая оболочка редактора снесена, off-canvas держит .trip-shell
  * visual-diff-exempt: .ts-screen {@media (max-width: 760px)} box-shadow — вторая оболочка редактора снесена, off-canvas держит .trip-shell
@@ -182,7 +170,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { formatTripRange, formatDateRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Badge, Btn, IconBtn, Chip, Card, Tile, useToast } from '../design/index';
+import { Badge, Btn, IconBtn, Chip, Card, Tile, PageHead, useToast } from '../design/index';
 import { Row, Grid, Trunc, Grow } from '../design/Layout';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
@@ -969,26 +957,19 @@ export default function EditLens({ tripId, shell, content }) {
               panel opens as a Radix bottom-sheet (rendered below). */}
           {(!isSheet && !useDrawer && leftPanelEl) || (<>
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'transparent' }}>
-          {/* "Маршрут" container header — scrolls WITH the list (not sticky), the
-              same as on mobile. A left panel replaces this whole column. */}
-          <div className="ts-routehead">
-            <span className="ts-routehead__tt">
-              <span className="ts-routehead__title t-label tp-caption">{t('planner.step_cities')}</span>
-              {/* TRIP-186: сводка маршрута под заголовком — реюз уже посчитанных
-                  totalNights / cityCount / dateRange (никакой новой логики). */}
-              {(totalNights != null || cityCount > 0 || (dateRange && dateRange !== '-')) && (
-                <span className="ts-routehead__sub t-meta">
-                  {[
-                    totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
-                    cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
-                    dateRange && dateRange !== '-' ? dateRange : null,
-                  ].filter(Boolean).join(' · ')}
-                </span>
-              )}
-            </span>
-            <span className="ts-routehead__sp" />
-            {startDateControl}
-          </div>
+          {/* Container header — канон `PageHead` (как на Budget): заголовок «Маршрут»
+              + сводка маршрута сабтитлом (реюз totalNights/cityCount/dateRange, без
+              новой логики), степпер старта трипа — в слот actions вместо кнопок.
+              Скроллится ВМЕСТЕ со списком (не sticky); левая панель заменяет колонку. */}
+          <PageHead
+            title={t('planner.step_cities')}
+            subtitle={[
+              totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
+              cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
+              dateRange && dateRange !== '-' ? dateRange : null,
+            ].filter(Boolean).join(' · ') || undefined}
+            actions={startDateControl}
+          />
           <Grid className="te-thead" style={{ padding: '0 4px 6px' }}>
             <Trunc as="span" className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</Trunc>
             <Trunc as="span" className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</Trunc>

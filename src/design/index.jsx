@@ -204,23 +204,10 @@ export const FileRow = ({ name, href, size, tone, action, fallback }) => {
   );
 };
 
-// ----- ReadOnlyBanner ----- (TRIP-225)
-// Единый баннер роли наблюдателя (viewer read-only), раньше копипастился в
-// DocsLens / BudgetLens / SettingsLens одинаковым <Severity level="info" …>.
-// Заголовок — канонический (settings.readonly_banner_title); описание — per-lens
-// через children. Обёртка `.readonly-banner` несёт консистентный отступ там, где
-// контейнер не раскладывает детей через gap (см. app.css).
-/** @param {{ children?: any, title?: any }} p */
-export const ReadOnlyBanner = ({ children, title }) => {
-  const t = useT();
-  return (
-    <div className="readonly-banner">
-      <Severity level="info" title={title || t('settings.readonly_banner_title')}>
-        {children}
-      </Severity>
-    </div>
-  );
-};
+// Баннер роли наблюдателя — это обычный `<Severity level="info" title=…>` прямо на
+// экране (TRIP-225 → упрощён по просьбе Pavel: отдельная обёртка `.readonly-banner`
+// снята, «только просмотр» = штатный info-severity; отступ там, где контейнер без
+// gap, даёт правило `.dl-root > .sev` в app.css).
 
 // ----- Form Field -----
 // Подпись + обёртка поля. Состояние валидации сюда НЕ приходит: единственный
