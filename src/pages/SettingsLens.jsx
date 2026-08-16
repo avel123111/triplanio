@@ -673,6 +673,18 @@ export default function SettingsLens({ tripId, trip, members = [], isOwner = fal
       return;
     }
     const newVal = !features[id];
+    // TRIP-415: выключение Telegram-аддона снимает ВСЕ привязки чата на сервере
+    // (teardown в шве trip-settings/settings). Если живые привязки есть — просим
+    // подтверждение из канона ДС (тот же useConfirm, что у выхода из трипа), чтобы
+    // отвязка не случилась молча. Проверяем ровно на пути выключения.
+    if (feat.addon === 'telegram_assistant' && !newVal) {
+      const { data } = await invokeFn('telegramGetIntegration', { body: { tripId } });
+      if ((data?.integrations?.length ?? 0) > 0 && !(await confirm({
+        title: t('settings.tg_addon_off_confirm_title'),
+        description: t('settings.tg_addon_off_confirm_body'),
+        variant: 'destructive',
+      }))) return;
+    }
     const prevAddons = trip?.details?.addons || {};
     const nextAddons = { ...prevAddons, [feat.addon]: newVal };
     setBusyToggle(id);

@@ -19,6 +19,7 @@
   "invite_created.email_signup_link": "Sign up here",
   "invite_created.email_subject": "Invitation to trip",
   "invite_resent.email_subject": "Reminder: invitation to trip",
+  "trip_telegram_unlinked.text": "The Telegram assistant has been disconnected from this trip - reminders will no longer be sent.",
   "welcome.email_cta": "Plan your first trip",
   "welcome.email_eyebrow": "Your personal travel planner",
   "welcome.email_feat1_desc": "Cities, hotels, transfers and activities - arranged automatically by dates and time zones.",

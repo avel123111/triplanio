@@ -19,6 +19,7 @@
   "invite_created.email_signup_link": "Зарегистрируйся здесь",
   "invite_created.email_subject": "Приглашение в путешествие",
   "invite_resent.email_subject": "Напоминание: приглашение в путешествие",
+  "trip_telegram_unlinked.text": "Telegram-ассистент отключён от этого путешествия - напоминания больше приходить не будут.",
   "welcome.email_cta": "Спланировать первую поездку",
   "welcome.email_eyebrow": "Личный планировщик путешествий",
   "welcome.email_feat1_desc": "Города, отели, трансферы и активности - автоматически по датам и часовым поясам.",

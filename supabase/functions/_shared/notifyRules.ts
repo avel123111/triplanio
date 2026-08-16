@@ -157,8 +157,11 @@ export const INAPP: Record<string, (d: NotifyData) => InAppSpec | null> = {
  *   • invite_resent  — повторная отправка приглашения (только письмо).
  * (welcome-письмо на регистрацию живёт на PG-триггере в n8n, не на этом шве.)
  * Добавится Telegram/новый канал — событие дописывается сюда.
+ *   • trip_telegram_unlinked — привязка Telegram снята: прощальное сообщение в
+ *     сам чат (external-only, in-app-спеки в INAPP нет намеренно — событие не
+ *     проецируется в наш инбокс, адресат — Telegram-чат, а не пользователь).
  */
-export const EXTERNAL: ReadonlySet<string> = new Set(['invite_created', 'invite_resent']);
+export const EXTERNAL: ReadonlySet<string> = new Set(['invite_created', 'invite_resent', 'trip_telegram_unlinked']);
 
 /** Собрать готовые строки для вставки: общий spec × получатели. Получатель без
  *  `id` (офлайн/битый) отбрасывается; нет спеки или нет получателей → []. */
