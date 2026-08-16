@@ -140,7 +140,17 @@ async function writeInApp(event: string, data: EmitData, db: EmitCtx['db']): Pro
  * каждой функции) и n8n-ветке write-inapp: одна запись, одно место.
  */
 export async function notify(event: string, ids: EmitIds = {}, ctx?: EmitCtx): Promise<void> {
-  const data = await resolveData(event, ids, ctx);
+  // Резолв фактов огорожен: контракт notify — ПОЛНОСТЬЮ fail-open, но резолвер
+  // читает БД и мог бы бросить сетевым исключением (не просто вернуть `.error`).
+  // Действие вызывателя (напр. отвязка, уже закоммиченная до notify) не должно из-за
+  // этого получить 500. Не резолвнули факты → тихо выходим (оба стока пропускаем).
+  let data: EmitData;
+  try {
+    data = await resolveData(event, ids, ctx);
+  } catch (e) {
+    await captureEdgeError(e, 'notify', { event });
+    return;
+  }
   if (ctx?.db) await writeInApp(event, data, ctx.db);
   if (EXTERNAL.has(event)) runInBackground(postExternal(event, data));
 }

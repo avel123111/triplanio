@@ -14,6 +14,11 @@
  * аккаунта (атомарный SQL `anonymize_my_account`). Привязка там тоже уходит, но
  * прощального сообщения нет намеренно — трипа/аккаунта уже не существует.
  *
+ * ⚠️ Из-за emit модуль тянет `emit.ts` → `sentry`/`analytics`, читающие `Deno.env`
+ * на загрузке. Значит он env-coupled (как `mutateEffects.ts`) и НЕ импортируется
+ * из чистых `deno test` без `--allow-env` — юнит-тест скоупинга держать на чистом
+ * хелпере, не на этом файле.
+ *
  * Идентичность привязки = (trip_id, telegram_chat_id); user_id — только «кто
  * привязал». Удаление скоупится по trip_id, поэтому общий чат, привязанный к
  * нескольким трипам, сохраняет остальные привязки. Это та же DELETE-семантика,
@@ -42,16 +47,23 @@ export async function disconnectTripTelegram(
   if (userId) q = q.eq('user_id', userId);
 
   // Забираем telegram_chat_id снятых строк — по нему адресуется прощальный emit.
-  const { data, error } = await q.select('id, telegram_chat_id');
+  const { data, error } = await q.select('telegram_chat_id');
   if (error) throw error;
 
   const removed = data ?? [];
-  for (const row of removed) {
-    const chatId = (row as { telegram_chat_id?: unknown }).telegram_chat_id;
-    if (typeof chatId !== 'string' || !chatId) continue;
-    // external-only trip_telegram_unlinked: notify уходит в фон и ловит свои
-    // сбои (fail-open) — прощальное сообщение не роняет ни teardown, ни действие.
-    await notify('trip_telegram_unlinked', { trip_id: tripId, chat_id: chatId }, { db: admin });
+  const chatIds = removed
+    .map((r) => (r as { telegram_chat_id?: unknown }).telegram_chat_id)
+    .filter((id): id is string => typeof id === 'string' && !!id);
+
+  if (chatIds.length) {
+    // Трип читаем ОДИН раз и отдаём резолверу снимком (иначе каждый notify
+    // перечитывал бы ту же строку). external-only trip_telegram_unlinked: notify
+    // fail-open (сам ловит сбои) — прощальное сообщение не роняет ни teardown, ни
+    // действие вызывателя. Чаты независимы → шлём параллельно.
+    const { data: trip } = await admin.from('trips').select('*').eq('id', tripId).maybeSingle();
+    await Promise.all(chatIds.map((chatId) =>
+      notify('trip_telegram_unlinked', { trip_id: tripId, chat_id: chatId }, { db: admin, snapshot: trip ?? undefined })
+    ));
   }
   return removed.length;
 }

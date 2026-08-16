@@ -177,10 +177,11 @@ export const RESOLVERS: Record<string, Resolver> = {
   // Telegram-привязка снята (ручная отвязка / потеря Pro / выход-удаление
   // участника / выключение аддона telegram_assistant). Адресат — сам чат
   // (`chat_id` из id-слота: строка привязки к этому моменту уже удалена).
-  // Трип читаем ради названия/ссылки в тексте; получателей-пользователей нет
-  // (external-only, in-app-строку не пишем — нет спеки в notifyRules).
-  trip_telegram_unlinked: async (db, ids) => ({
-    trip: await loadTrip(db, ids.trip_id),
+  // Трип нужен ради названия в тексте: берём из снимка (шов читает трип один раз
+  // на пачку чатов), иначе дочитываем. Получателей-пользователей нет (external-only,
+  // in-app-строку не пишем — нет спеки в notifyRules).
+  trip_telegram_unlinked: async (db, ids, snapshot) => ({
+    trip: snapshot ?? await loadTrip(db, ids.trip_id),
     actor: null,
     member: null,
     recipients: [],
