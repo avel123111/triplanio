@@ -34,7 +34,7 @@ import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
   FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet,
-  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut,
+  Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, Tooltip, PageHead, Stat, ListRow, Donut,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
@@ -317,6 +317,15 @@ const RECIPES = {
         it('size="sm" icon+iconRight', <Btn variant="dashed" size="sm" icon="bed" iconRight="plus" ariaLabel="Добавить" />),
         // btn--brand — аддитивный класс тени под заливку --bg (партнёрская кнопка).
         it('btn--brand', <Btn variant="secondary" className="btn--brand" block style={{ '--bg': 'var(--brand)', '--fg': 'var(--primary-fg)' }}><span className="btn__brandlogo" />{TX.brandName}</Btn>, true), // inline-style-exempt: заливка партнёра каналом --bg из данных, тон ЕСТЬ содержимое
+        // locked — действие недоступно роли: приглушён + замок + тултип-причина (TRIP-274 Ф2.2).
+        it('locked (замок+тултип)', <Btn variant="secondary" locked lockedHint={TX.lockmsg}>{TX.save}</Btn>, true),
+      ],
+    },
+    {
+      family: 'tt',
+      items: [
+        // Tooltip — глобальный текст-хинт на ховере/фокусе (наведи на триггер).
+        it('content (ховер/фокус)', <Tooltip content={TX.lockmsg}><Btn variant="secondary">{TX.save}</Btn></Tooltip>, true),
       ],
     },
     {
