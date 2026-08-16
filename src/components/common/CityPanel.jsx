@@ -11,7 +11,7 @@ import React from 'react';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
-import { Btn, IconBtn, Stepper, Tile } from '@/design/index';
+import { Btn, IconBtn, ListRow, Stepper, Tile } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 import { transferKind } from '@/lib/transport';
 import { formatDateRange } from '@/lib/trip-dates';
@@ -27,33 +27,40 @@ function SectionLabel({ children, color, action }) {
     </div>
   );
 }
-// Пунктирный плейсхолдер «добавить» — форма примитива (`Btn variant="dashed"`
-// с плиткой). Своего класса у него больше нет: `.gadd` был третьим именем для
-// той же кнопки. Акцент ховера приходит контекстной переменной `--a`, поэтому
-// строка стиля тут — объявление ТОНА, а не оформление кнопки.
+// Пунктирный плейсхолдер «добавить» — тот же примитив `<ListRow>`, что и заполненный
+// ряд (variant="add"), поэтому встаёт РОВНО в высоту карточки наличия (TRIP-337).
+// Акцент ховера приходит контекстной переменной `--a` (объявление ТОНА, не оформление).
 function GhostAdd({ icon, label, sub, accent, onClick }) {
   const a = accent || 'var(--brand)';
   return (
-    <Btn variant="dashed" block tile icon={icon || 'plus'} sub={sub} onClick={onClick} style={{ '--a': a }}>
-      {label}
-    </Btn>
+    <ListRow
+      variant="add"
+      lead={<Tile tone="quiet" icon={icon || 'plus'} />}
+      title={label}
+      sub={sub}
+      trail={<Icon name="plus" size={16} />}
+      onClick={onClick}
+      style={{ '--a': a }}
+    />
   );
 }
-// Lumo booking row (.bookrow): tinted icon + bt(title/mono-sub) + chevron.
+// Booking row — канон <ListRow variant="raised">: тонированная плитка (тон эвента)
+// + заголовок/подпись + опциональный warn + шеврон.
 function BookRow({ tone = 'hotel', icon, title, sub, warn, onClick }) {
-  const bg = warn ? 'var(--warning-soft)' : `var(--ev-${tone}-soft)`;
-  const fg = warn ? 'var(--warning-ink)' : `var(--ev-${tone}-ink)`;
-  // TRIP-391 объект 1 → объект 6: .bookrow — clickable РЯД брони (.row), не кнопка-примитив.
   return (
-    <button className="row bookrow" onClick={onClick}>
-      <span className="bi" style={{ background: bg, color: fg }}><Icon name={icon} size={18} /></span>
-      <div className="bt">
-        <b>{title}</b>
-        {sub && <span>{sub}</span>}
-      </div>
-      {warn && <Icon name="warning" size={15} style={{ color: 'var(--warning-ink)', flexShrink: 0 }} />}
-      <Icon name="chev" size={16} className="chev" style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
-    </button>
+    <ListRow
+      variant="raised"
+      lead={<Tile tone={warn ? 'warning' : tone} icon={icon} />}
+      title={title}
+      sub={sub || undefined}
+      trail={(
+        <>
+          {warn && <Icon name="warning" size={15} style={{ color: 'var(--warning-ink)', flexShrink: 0 }} />}
+          <Icon name="chev" size={16} className="chev" />
+        </>
+      )}
+      onClick={onClick}
+    />
   );
 }
 function FlightLine({ transfer, dir, warn, onClick, t }) {

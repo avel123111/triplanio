@@ -90,7 +90,7 @@ const TX = {
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
     'sheet-row': 'Действие во всю ширину; danger — деструктивное.',
-    'ai-blk': 'Распознавание брони, состояние «доступно» = кликабельная пилюля.',
+    'ai-blk': 'Распознавание брони. Шапка статична; тело раскрывается/скрывается анимацией (grid-rows).',
     'time': 'Вылет сверху, прибытие снизу (в ленте у события-переезда).',
     'row': 'Флекс-ряд: зазор (ступени --sp-N) и оси выравнивания/потока.',
     'col': 'Флекс-колонка: зазор и оси.',
@@ -136,6 +136,7 @@ const TX = {
   toastDemoDelFail: 'Не удалось удалить', toastDemoDraft: 'Черновик обновлён',
   sheetNormal: 'Обычное действие', sheetDanger: 'Удалить',
   aiTitle: 'Распознать бронь', aiSub: 'Вставьте текст письма',
+  aiFill: 'Заполнить через ИИ', aiUpload: 'PDF / скриншот', aiPh: 'Вставьте текст письма с подтверждением, номер брони, ссылку…',
   dialogTitle: 'Диалог', sheetTitle: 'Шит', dialogBody: 'Содержимое диалога.',
 };
 
@@ -291,7 +292,7 @@ const RECIPES = {
     { items: [it('segments + center', <Donut total={100} center="₽724,9т" label={TX.donutTotal} segments={[{ id: 'a', color: 'var(--brand)', value: 55 }, { id: 'b', color: 'var(--ev-transfer)', value: 25 }, { id: 'c', color: 'var(--muted-2)', value: 20 }]} />, true)] },
   ],
   'list-row': () => [
-    { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={<Tile size="xl" icon="bed" />} title={TX.rowTitle} sub={TX.rowSub} trail={<span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' ? () => {} : undefined} />, true)) },
+    { label: 'variant (карта LISTROW_VARIANTS)', items: LISTROW_VARIANTS.map((v) => it(`variant="${v}"`, <ListRow variant={v} lead={v === 'add' ? <Tile tone="quiet" icon="plus" /> : <Tile size="xl" icon="bed" />} title={v === 'add' ? TX.chipAdd : TX.rowTitle} sub={TX.rowSub} trail={v === 'add' ? <Icon name="plus" size={16} /> : <span className="t-strong">₽1 234</span>} onClick={v === 'raised' || v === 'select' || v === 'add' ? () => {} : undefined} />, true)) },
     { items: [it('selected (on)', <ListRow variant="select" selected lead={<Tile size="xl" icon="bed" />} title={TX.rowTitle} sub={TX.rowSub} trail={<span className="t-strong">₽1 234</span>} onClick={() => {}} />, true)] },
   ],
   btn: () => [
@@ -427,7 +428,7 @@ const RECIPES = {
     // её ↔ живой CSS в обе стороны). radius/tone эмитятся своими пропами; булевы
     // формы - одноимённым пропом; danger - `danger`; до-края - `pad="none"`.
     const P = {
-      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' }, 'r-card': { radius: 'card' }, featured: { featured: true }, raised: { raised: true },
+      'r-lg': { radius: 'lg' }, 'r-md': { radius: 'md' }, 'r-card': { radius: 'card' }, 'r-btn': { radius: 'btn' }, featured: { featured: true }, raised: { raised: true },
       interactive: { as: 'button', radius: 'md', interactive: true },
       'tone-brand': { tone: 'brand', radius: 'md' },
       'tone-ai': { tone: 'ai' },
@@ -686,16 +687,41 @@ const RECIPES = {
     ],
   }],
 
-  'ai-blk': (ctx) => [{
+  'ai-blk': () => {
     // TRIP-343 объект 2 (F): скин ai-блока живёт на <Card tone="ai"> (как в проде
     // EventAiBlock). Витрина рисует ЧЕРЕЗ Card, а не сырым <button> — иначе образец
     // показывал бы ai-blk без его поверхности (ровно класс дыры, что был у трансфера).
-    items: ctx.declared.filter((c) => c.startsWith('ai-blk')).map((c) => it(c, (
-      <Card as="button" tone="ai" className={`ai-blk ${c}`}>
-        <div className="ai-blk-hd"><span className="ai-blk-ti"><b>{TX.aiTitle}</b><span>{TX.aiSub}</span></span></div>
-      </Card>
-    ), true)),
-  }],
+    // TRIP-337 visual-fixes: шапка структурно НЕИЗМЕННА между свёрнутым и развёрнутым
+    // (плитка + заголовок + шеврон стоят всегда), тело едет обёрткой `.ai-blk__reveal`.
+    const head = (
+      <div className="ai-blk-hd">
+        <Tile tone="ai" solid size="sm"><Icon name="sparkles" size={15} /></Tile>
+        <div className="ai-blk-ti"><b>{TX.aiFill}</b><span>{TX.aiSub}</span></div>
+        <span className="ai-blk-x" aria-hidden="true"><Icon name="chevU" size={14} /></span>
+      </div>
+    );
+    const body = (
+      <div className="ai-blk__reveal">
+        <div className="ai-blk-body">
+          <InputGroup className="ai-input">
+            <Textarea rows={2} placeholder={TX.aiPh} readOnly />
+            <div className="ai-input-row">
+              <Btn variant="secondary" icon="upload">{TX.aiUpload}</Btn>
+              <div className="grow" />
+              <Btn variant="ai" icon="sparkles">{TX.aiTitle}</Btn>
+            </div>
+          </InputGroup>
+        </div>
+      </div>
+    );
+    return [{
+      label: 'свёрнуто · развёрнуто (шапка статична; тело раскрывается анимацией grid-rows)',
+      items: [
+        it('ai-blk (свёрнуто)', <Card tone="ai" className="ai-blk">{head}{body}</Card>, true),
+        it('ai-blk ai-blk--open (развёрнуто)', <Card tone="ai" className="ai-blk ai-blk--open">{head}{body}</Card>, true),
+      ],
+    }];
+  },
 
   time: (ctx) => [{
     items: ctx.declared.filter((c) => c.startsWith('time')).map((c) => it(c, (

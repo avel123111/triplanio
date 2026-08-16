@@ -455,7 +455,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
    ниже, вместе с панелью: оболочка формы одна и та же) */
 .dlg, .toast, .dock-panel, .bell-dd-pop, .chat-mention, .consent,
 /* строки-списки и ряды */
-.nrow, .mbrow, .bookrow, .doc-row, .te-table .te-row,
+.nrow, .mbrow, .doc-row, .te-table .te-row,
 .te-row.te-row--plan, .acct-tgrow,
 /* держали эту пару своей копией, а не именем в роли */
 .ncal-wdc,
@@ -516,8 +516,23 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
 .lrow--compact { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); transition: background .15s; }
 .lrow--compact:hover { background: var(--wash); }
 .lrow--on { background: var(--brand-soft); border-color: var(--brand-soft-12); }
+/* add — пунктирный add-плейсхолдер «создать ещё»: та же форма/высота, что у
+   заполненного ряда (одна высота по построению), скин как у канона .card--add,
+   тон ховера — канал --a (по виду сервиса/эвента), как у прежнего dashed-Btn.
+   Свёл приватный .bookrow-плейсхолдер (`<Btn variant="dashed" tile>`) сюда.
+   floor-exempt: classes +1 — .lrow--add (add-вариант строки списка) для «добавить сервис/эвент» той же высоты, что карточка наличия; апрув Pavel TRIP-337
+   visual-diff-exempt: .lrow--add border — пунктир --line-strong (канон add-аффорданса)
+   visual-diff-exempt: .lrow--add background — transparent (канон add)
+   visual-diff-exempt: .lrow--add color — приглушённая подпись --muted (канон add)
+   visual-diff-exempt: .lrow--add:hover {@media (hover: hover) and (pointer: fine)} border-color — add-ховер: тон --a
+   visual-diff-exempt: .lrow--add:hover {@media (hover: hover) and (pointer: fine)} background — add-ховер: --a 8%
+   visual-diff-exempt: .lrow--add:hover {@media (hover: hover) and (pointer: fine)} color — add-ховер: тон --a */
+.lrow--add { border: 1px dashed var(--line-strong); background: transparent; color: var(--muted); transition: border-color .15s, background .15s, color .15s; }
 @media (hover: hover) {
   .lrow--raised.lrow--clickable:hover { box-shadow: var(--sh-2); border-color: var(--line-hover); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .lrow--add:hover { border-color: var(--a, var(--brand)); background: color-mix(in srgb, var(--a, var(--brand)) 8%, transparent); color: var(--a, var(--brand)); }
 }
 
 /* ── Donut: кольцевая диаграмма — сегменты по долям + центр, запертый в дырке
@@ -752,7 +767,6 @@ h4,
 .ts-cal__title,
 .chat-mention__row b,
 .te-row__num,
-.bt b,
 .gt b,
 .mrow .mn,
 .tl3-card .meta,
@@ -1045,7 +1059,7 @@ h4,
 .ncal-ev .tm, .ncal-ev .t,
 .ncal-aev .atm, .ncal-aev .atl,
 /* TRIP-410 V2: времена/даты уехали сюда из .t-mono — это ЧИСЛА, не коды: Geologica tabular, не JetBrains */
-.te-dts, .bt span, .tl3-ev .time, .tl3-ev--tr .time--tr span,
+.te-dts, .tl3-ev .time, .tl3-ev--tr .time--tr span,
 .ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; font-variant-numeric: tabular-nums; }   /* TRIP-410 V1: .t-meta — Geologica 12.5/500/1.4, tabular (де-моно) */
 /* ★Подписи ПОЛЕЙ тут больше нет ни в каком виде. `.ev-dlg .field__label` и
    `.lp .field__label` держали её на мелком капслоке в JetBrains, а тот же
@@ -1746,9 +1760,12 @@ button.app-side__item:hover { background: var(--wash); }
    visual-diff-exempt: .card--add:hover {@media (hover: hover) and (pointer: fine)} border-color — add-ховер: brand, без лифта
    visual-diff-exempt: .card--add:hover {@media (hover: hover) and (pointer: fine)} background — add-ховер: --brand-soft, без лифта
    visual-diff-exempt: .card--add:hover {@media (hover: hover) and (pointer: fine)} color — add-ховер: --brand
-   visual-diff-exempt: .card--recessed background — утопленная --surface-3, из .notes/.addr */
+   visual-diff-exempt: .card--recessed background — утопленная --surface-3, из .notes/.addr
+   visual-diff-exempt: .card--r-btn border-radius — тир радиуса контрола (10), паритет с инпутами для вложенных form-контейнеров, апрув Pavel */
 .card--r-lg { border-radius: var(--r-xl); }   /* 20 - роли/оболочки */
 .card--r-md { border-radius: var(--r-md); }   /* 16 - секции/вложенные */
+/* floor-exempt: classes +1 — тир Card .card--r-btn (радиус --r-btn 10, = радиус инпута) для вложенных form-контейнеров (аккордеоны/строки полей event-dialog); апрув Pavel */
+.card--r-btn { border-radius: var(--r-btn); }  /* 10 - контрол/вложенное поле (паритет с .input) */
 /* 24 - контент-карточка (тариф Pro, пустой маршрут, pro-плашка). Проводка пропа
    `radius="card"` к СУЩЕСТВУЮЩЕМУ токену --r-card (TRIP-337 объект 2 дозжиг скина
    до layout-only): радиус уходит с приватного класса на канон, значение то же 24. */
@@ -2606,7 +2623,18 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
 /* Выбранная плитка под фокусом с клавиатуры — оба кольца, а не одно вместо другого. */
 .swatch[aria-pressed="true"]:focus-visible { box-shadow: 0 0 0 2px var(--surface) inset, 0 0 0 3px var(--primary-ring); }
-.swatch--round { border-radius: var(--r-pill); }
+/* Круглая обложка: градиент доходит до самого края круга, а обрамление несёт
+   box-shadow (следует радиусу одним проходом, без шва). Прозрачный 2px-бордюр
+   базы на border-radius:999px давал полосы сглаживания по бокам круга — здесь
+   он снят (border:0). TRIP-337 visual-fixes, апрув Pavel.
+   visual-diff-exempt: .swatch--round border — снят прозрачный 2px-бордюр (шов по бокам круга), обрамление на box-shadow
+   visual-diff-exempt: .swatch--round:hover box-shadow — ховер-кольцо вместо border-color прозрачного бордюра
+   visual-diff-exempt: .swatch--round[aria-pressed="true"] box-shadow — выбор: ink-кольцо + surface-инсет (был ink-border + surface-inset)
+   visual-diff-exempt: .swatch--round[aria-pressed="true"]:focus-visible box-shadow — выбор+фокус: ink-кольцо + surface-инсет + primary-ring */
+.swatch--round { border-radius: var(--r-pill); border: 0; }
+.swatch--round:hover { box-shadow: 0 0 0 2px var(--line-hover); }
+.swatch--round[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--surface); }
+.swatch--round[aria-pressed="true"]:focus-visible { box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-ring); }
 /* Иконочная плитка: рамка-контейнер, тон появляется брендовым ховером; в
    выбранном состоянии тон берётся из канала `--sw` (умолчание — бренд), который
    оболочка ставит по цвету категории. */
@@ -4597,19 +4625,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    Обе точки вызова (CityPanel, «добавить отель» / «добавить активность»)
    пересажены в этом же PR, осиротевшего правила не остаётся. */
 
-/* ★ОСТАТОК: зазор 11px вне шкалы (--sp даёт 10 и 12) - удержан приватным.
-   visual-diff-move: bookrow -> row */
-.bookrow { gap: 11px; padding: 9px 13px; border-radius: var(--r-btn); box-shadow: var(--sh-1); cursor: pointer; transition: box-shadow .2s, border-color .2s; text-align: left; font-family: var(--font-ui); width: 100%; }
-/* TRIP-343 объект 2: движение снято — `.bookrow` это карточка-строка (несёт
-   скин роли `.card`). Наведение = подсветка рамки + тень, без лифта/сжатия.
-   visual-diff-exempt: .bookrow transition — transform-переход снят вместе с лифтом — объект 2
-   visual-diff-exempt: .bookrow:hover transform — лифт снят, карточка без движения (канон) — объект 2
-   visual-diff-exempt: .bookrow:active transform — нажатие без движения (канон) — объект 2 */
-.bookrow:hover { box-shadow: var(--sh-2); border-color: var(--line-hover); }
-.bi { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
-.bt { flex: 1; min-width: 0; }
-.bt b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bt span { color: var(--muted); }
+/* `.bookrow` / `.bi` / `.bt` УДАЛЕНЫ (TRIP-337 visual-fixes): ряды сервисов/броней
+   (ServicesCard, CityPanel) пересажены на канон `<ListRow variant="raised">`, а
+   пунктирный add-плейсхолдер — на `<ListRow variant="add">`. Обе точки правлены в
+   этом же PR, осиротевшего правила не остаётся. `.chev` живёт — им пользуются
+   SiteChrome и лендинг. */
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
 /* `.gadd` УДАЛЁН — вместе с `.gadd--center` до него это было третье имя для
@@ -4950,12 +4970,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .settings-lens > :nth-child(3) { animation-delay: 110ms; }
 .settings-lens > :nth-child(4) { animation-delay: 165ms; }
 
-/* ---- loading skeleton ---- */
-.ov-bar { background: var(--surface-2); border-radius: var(--r-sm); animation: ovSkel 1.3s ease-in-out infinite; }
-@keyframes ovSkel { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
-
+/* `.ov-bar` / `@keyframes ovSkel` УДАЛЕНЫ (TRIP-337 visual-fixes): скелетоны
+   Обзора (OverviewLens + BudgetSummaryCard + MembersSummaryCard) сведены на
+   канон <Skeleton> (шиммер ДС) — единый облик заглушки во всём приложении. */
 @media (prefers-reduced-motion: reduce) {
-  .ov-anim, .ov-bar,
+  .ov-anim,
   .settings-lens > .card, .settings-lens > .settings-grid { animation: none; }
   .wdg:hover { transform: none; }
 }
@@ -6295,7 +6314,12 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    visual-diff-exempt: .ai-blk border — рамка → .card + .card--tone-ai (тот же 1px --ai-line)
    visual-diff-exempt: .ai-blk border-radius — радиус → .card--tone-ai (r-btn 10) */
 .ai-blk{overflow:hidden;margin-bottom:14px;flex:none;}
-.ai-blk-hd{display:flex;align-items:center;gap:10px;padding:11px 13px;}
+/* Паддинги блока сведены к шкале токенов (были 11/13 · 0/13/12 · 10 · 8 —
+   четыре несогласованных значения). Шапка и тело теперь на одном --sp-6 (12),
+   поэтому тело выровнено под шапку по горизонтали. TRIP-337 visual-fixes.
+   visual-diff-exempt: .ai-blk-hd padding — координация на токен --sp-6 (12), было 11/13
+   visual-diff-exempt: .ai-blk-body padding — координация на токен --sp-6 (12) по горизонтали/низу, было 13/12 */
+.ai-blk-hd{display:flex;align-items:center;gap:var(--sp-5);padding:var(--sp-6);}
 /* .ai-blk-ic УДАЛЁН (TRIP-391 объект 3): значок-плитка AI-блока = <Tile tone="ai"
    solid size="sm"> (солид-ai градиент + белый значок, канон .tile--solid.tile--ai).
    Сторона 30→ступень sm 28 (кегль 15→--tile-ic sm 15 точь-в-точь), принято глазом
@@ -6327,17 +6351,22 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    Схождение размеров 26 → 32 остаётся за пересадкой шапки на общий ряд. */
 .ai-blk-x{width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:var(--r-sm);flex:none;}
 .ai-blk-x:hover{background:var(--ai-soft);color:var(--ai-ink);}
-.ai-blk-body{padding:0 13px 12px;display:flex;flex-direction:column;gap:8px;}
-/* available state — кликабельный pill. TRIP-343 PR-2: скин+ховер на `<Card as="button"
-   tone="ai" interactive>`; прежний лифт+glow сняты (канон интерактива: подсветка рамки
-   без движения). `.ai-blk--pill` остаётся раскладочным остатком (cursor).
-   visual-diff-exempt: .ai-blk--pill transition — interactive несёт свой (без transform)
-   visual-diff-exempt: .ai-blk--pill:hover transform — лифт снят (канон без движения, апрув /kit)
-   visual-diff-exempt: .ai-blk--pill:hover box-shadow — glow снят (канон покой плоский)
-   visual-diff-exempt: .ai-blk--pill:hover border-color — рамка-ховер → канон .card--tone-ai.card--interactive:hover (--ai)
-   visual-diff-exempt: .ai-blk--pill:active transform — нажатие без движения (канон)
-   visual-diff-exempt: .ai-blk--pill:active box-shadow — нажатие без тени (канон) */
-.ai-blk--pill{cursor:pointer;}
+.ai-blk-body{padding:0 var(--sp-6) var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-4);}
+/* Раскрытие/скрытие тела блока: шапка структурно НЕИЗМЕННА между свёрнутым
+   (`available`) и развёрнутым (`idle`/`uploaded`) — плитка + заголовок + шеврон
+   стоят всегда, поэтому при open/close ничего не «дёргается». Тело едет обёрткой
+   `.ai-blk__reveal` через grid-template-rows 0fr→1fr (анимируется в обе стороны,
+   без max-height-магии). Шеврон в свёрнутом смотрит вниз (rotate 180). TRIP-337.
+   `.ai-blk--pill` УДАЛЁН: свёрнутое состояние больше не отдельный кликабельный
+   pill (`<Card as="button">`), а та же оболочка со свёрнутым телом — клик держит
+   шапка (`role="button"`), как в развёрнутом.
+   floor-exempt: classes +1 — нетто: +.ai-blk--open +.ai-blk__reveal −.ai-blk--pill; статичная шапка + анимация раскрытия AI-блока, апрув Pavel */
+.ai-blk__reveal{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease-out);}
+.ai-blk--open .ai-blk__reveal{grid-template-rows:1fr;}
+.ai-blk__reveal > .ai-blk-body{overflow:hidden;min-height:0;}
+.ai-blk-x svg{transition:transform .2s var(--ease-out);}
+.ai-blk:not(.ai-blk--open) .ai-blk-x svg{transform:rotate(180deg);}
+@media (prefers-reduced-motion: reduce){.ai-blk__reveal{transition:none;}.ai-blk-x svg{transition:none;}}
 /* Строка вложения переехала на общий `.doc-row` + `--ai` (TRIP-321 Ф14.5).
    Прежний комментарий здесь утверждал ровно обратное - «AI-tinted, distinct
    from generic .doc-row»; эта «осознанная разница» на замере оказалась 1px по
@@ -6348,9 +6377,9 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    вместо её 6px - зазор до разделителя держит `margin-top` у `.ai-input-row`),
    AI-тон рамки, свой радиус и отступ. Кольца фокуса у блока не было вообще ни
    одного правила - теперь канонное, как у любого поля. */
-.ai-input{flex-direction:column;align-items:stretch;gap:0;border-color:var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:10px;}
+.ai-input{flex-direction:column;align-items:stretch;gap:0;border-color:var(--ai-soft-2);border-radius:var(--r-sm);background:var(--surface);padding:var(--sp-5);}
 .ai-input .textarea{min-height:64px;resize:none;}
-.ai-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
+.ai-input-row{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line);}
 .ai-blk-hint{ color:var(--muted-2); }
 /* .ai-spin УДАЛЁН (TRIP-321): шестое кольцо, 14px мимо лестницы. Обе точки
    вызова - флекс-дети (.ai-blk-hd и .ai-blk-ti b), поэтому display им не нужен,
@@ -7074,7 +7103,6 @@ a.doc-row__n:hover{ color: var(--brand); }
 .statbar .tile { --tile: 42px; --tile-ic: 20px; --tile-r: var(--r-btn); }
 /* Loading chip borrows the real .tile so it tracks the same size the container
    rules give it — otherwise the row height pops when the data lands.
-   visual-diff-exempt: .ov-bar --hl-soft — приобретение (фон skeleton через канал); фон тот же surface-2 — рендер
    ── Остаток семьи .ic (объект 3), все проверены рендером тронутых экранов: ──
    PublicTrip делит класс .ic (.pt-center .ic, ПЕРИМЕТР, своя ДС — не мигрируем);
    снос app.css-контекстов .ic сдвигает победителя плоской карты юнита .ic на
@@ -7091,7 +7119,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .sfig color — color .ic всплыл как muted подписи .sfig .k
    visual-diff-exempt: .statbar background — bg .ic всплыл на .statbar .s::before (--line)
    visual-diff-exempt: .statbar color — color .ic всплыл как muted .statbar .k */
-.statbar .tile.ov-bar { --hl-soft: var(--surface-2); }
 .statbar .s.c-city .tile { --hl-soft: var(--ev-activity-soft); --hl-ink: var(--ev-activity-ink); }
 .statbar .s.c-trip .tile { --hl-soft: var(--ev-car-soft); --hl-ink: var(--ev-car-ink); }
 .statbar .s.c-transfer .tile { --hl-soft: var(--info-soft); --hl-ink: var(--info-ink); }

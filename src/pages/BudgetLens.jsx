@@ -625,11 +625,52 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   const expensesPlural = (n) => n === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many');
 
-  // Skeleton
+  // Skeleton — геометрия повторяет реальный экран (шапка + summary-band с донатом
+  // и легендой + список трат), а не три одинаковые полосы. TRIP-337 visual-fixes.
   if (isLoading) {
     return (
-      <div className="col col--g6">
-        {[1, 2, 3].map(i => <Skeleton key={i} h={80} r="var(--r-sm)" />)}
+      <div className="col col--g7 ov-anim" aria-busy="true">
+        {/* header: заголовок + действия (как PageHead) */}
+        <div className="row row--j-between">
+          <Skeleton w={180} h={28} r={8} />
+          {!isMobile && (
+            <div className="row row--g3">
+              <Skeleton w={116} h={40} r="var(--r-btn)" />
+              <Skeleton w={140} h={40} r="var(--r-btn)" />
+            </div>
+          )}
+        </div>
+        {/* summary band: донат-карточка + вторая карточка */}
+        <div className="grid grid--split grid--g7">
+          <Card>
+            <div className="col col--g6">
+              <Skeleton w="45%" h={18} r={6} />
+              <div className={isMobile ? 'col col--g6' : 'row row--g8 row--wrap'}>
+                <Skeleton w={150} h={150} r="50%" style={{ flex: 'none' }} />
+                <div className="grow col col--g4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="row row--j-between">
+                      <Skeleton w="45%" h={13} r={5} />
+                      <Skeleton w={56} h={13} r={5} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card>
+            <div className="col col--g6">
+              <Skeleton w="50%" h={18} r={6} />
+              <div className="col col--g4">
+                {[0, 1, 2].map((i) => <Skeleton key={i} w="100%" h={44} r="var(--r-btn)" />)}
+              </div>
+            </div>
+          </Card>
+        </div>
+        {/* список трат */}
+        <div className="col col--g4">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} w="100%" h={56} r="var(--r-btn)" />)}
+        </div>
       </div>
     );
   }

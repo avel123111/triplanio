@@ -383,18 +383,20 @@ export const RoleBadge = ({ role }) => {
 // обязан быть в `CARD_VARIANTS` - полное, единообразное покрытие, без немой
 // дыры «булев модификатор эмитится литералом и выпадает из-под суда».
 //
-// ★ radius = ОСЬ lg|md ТОЛЬКО (решение Pavel). `sm`(10) НЕ значение оси, а
-// СЛЕДСТВИЕ `tone=ai`: его несёт сам `.card--tone-ai` в CSS, отдельного
-// `.card--r-sm` нет, и в оси радиуса он не открыт (иначе Р14 - ось снова
-// распахнута). `compact` не заведён (YAGNI): проп в контракте есть, но CSS-
-// правило и значение появятся с первым живым вызывателем, не впрок.
+// ★ radius = ОСЬ lg|md|card + btn (10, контрол). `btn` открыт по апруву Pavel
+// (TRIP-337 visual-fixes): вложенные form-контейнеры (аккордеоны/строки полей
+// event-dialog) должны нести радиус ИНПУТА (--r-btn 10), а не секции (16), чтобы
+// не выглядеть чужеродно рядом с полями. Раньше 10 был только СЛЕДСТВИЕМ
+// `tone=ai` (его нёс сам `.card--tone-ai`); теперь есть явный `.card--r-btn`.
+// `compact` не заведён (YAGNI): проп в контракте есть, но CSS-правило и значение
+// появятся с первым живым вызывателем, не впрок.
 /**
- * @typedef {'lg'|'md'|'card'} CardRadius
+ * @typedef {'lg'|'md'|'card'|'btn'} CardRadius
  * @typedef {'brand'|'ai'} CardTone
  */
 /** @type {readonly string[]} */
 export const CARD_VARIANTS = [
-  "r-lg", "r-md", "r-card", "interactive", "flush", "featured", "raised",
+  "r-lg", "r-md", "r-card", "r-btn", "interactive", "flush", "featured", "raised",
   "tone-brand", "tone-ai", "add", "recessed", "locked", "parsed", "danger",
 ];
 

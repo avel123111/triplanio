@@ -222,20 +222,6 @@ export default function EventAiBlock({
     );
   }
 
-  if (state === 'available') {
-    return (
-      <Card as="button" tone="ai" interactive className="ai-blk ai-blk--pill" onClick={() => setState('idle')} style={{ width: '100%', textAlign: 'left' }}>
-        <div className="ai-blk-hd">
-          <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
-          <div className="ai-blk-ti">
-            <b>{t('event.ai_fill_title')}</b>
-            <span>{t('event.ai_available_hint')}</span>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
   if (state === 'parsing') {
     return (
       <Card tone="ai" className="ai-blk">
@@ -277,10 +263,23 @@ export default function EventAiBlock({
     );
   }
 
-  // idle / uploaded — same shell; textarea and files are independent and combine.
+  // available / idle / uploaded — ОДНА оболочка. Шапка структурно неизменна во
+  // всех трёх (плитка + заголовок + шеврон), поэтому при раскрытии/скрытии ничего
+  // не «дёргается»; тело едет обёрткой `.ai-blk__reveal` (анимация grid-rows).
+  // `available` = свёрнуто (тело скрыто), idle/uploaded = развёрнуто.
+  const open = state !== 'available';
+  const toggle = () => setState(open ? 'available' : 'idle');
   return (
-    <Card tone="ai" className="ai-blk">
-      <div className="ai-blk-hd" role="button" tabIndex={0} onClick={() => setState('available')} style={{ cursor: 'pointer' }}>
+    <Card tone="ai" className={'ai-blk' + (open ? ' ai-blk--open' : '')}>
+      <div
+        className="ai-blk-hd"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={toggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
+        style={{ cursor: 'pointer' }}
+      >
         <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
         <div className="ai-blk-ti">
           <b>{t('event.ai_fill_title')}</b>
@@ -291,67 +290,69 @@ export default function EventAiBlock({
         <span className="ai-blk-x" aria-hidden="true"><ChevronUp size={14} /></span>
       </div>
 
-      <div className="ai-blk-body"
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-      >
-        {files.length > 0 && (
-          <div className="col col--g3">
-            {files.map((f, i) => (
-              <FileRow
-                key={i}
-                name={f.name}
-                tone="ai"
-                size={f.file?.size ? formatSize(f.file.size) : null}
-                action={(
-                  <IconBtn
-                    icon="close"
-                    tone="danger"
-                    size="sm"
-                    onClick={() => removeFile(i)}
-                    ariaLabel={t('event.ai_remove_file')}
-                  />
-                )}
-              />
-            ))}
-          </div>
-        )}
+      <div className="ai-blk__reveal">
+        <div className="ai-blk-body"
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+        >
+          {files.length > 0 && (
+            <div className="col col--g3">
+              {files.map((f, i) => (
+                <FileRow
+                  key={i}
+                  name={f.name}
+                  tone="ai"
+                  size={f.file?.size ? formatSize(f.file.size) : null}
+                  action={(
+                    <IconBtn
+                      icon="close"
+                      tone="danger"
+                      size="sm"
+                      onClick={() => removeFile(i)}
+                      ariaLabel={t('event.ai_remove_file')}
+                    />
+                  )}
+                />
+              ))}
+            </div>
+          )}
 
-        {/* Поле + ряд действий в общей рамке: вертикальный вариант группы (TRIP-333). */}
-        <InputGroup className="ai-input">
-          <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
+          {/* Поле + ряд действий в общей рамке: вертикальный вариант группы (TRIP-333). */}
+          <InputGroup className="ai-input">
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
+            />
+            <div className="ai-input-row">
+              <Btn variant="secondary" icon="upload" onClick={() => inputRef.current?.click()}>
+                {t('event.ai_pdf_screenshot')}
+              </Btn>
+              <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
+              <div className="grow" />
+              <Btn variant="ai" onClick={runParse} disabled={!text.trim() && files.length === 0}>
+                <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
+              </Btn>
+            </div>
+          </InputGroup>
+
+          {error && (
+            <div className="err" style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <X style={{ width: 13, height: 13, marginTop: 1, flexShrink: 0 }} />{error}
+            </div>
+          )}
+
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            style={{ display: 'none' }}
+            accept={PARSER_ACCEPT}
+            onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
           />
-          <div className="ai-input-row">
-            <Btn variant="secondary" icon="upload" onClick={() => inputRef.current?.click()}>
-              {t('event.ai_pdf_screenshot')}
-            </Btn>
-            <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
-            <div className="grow" />
-            <Btn variant="ai" onClick={runParse} disabled={!text.trim() && files.length === 0}>
-              <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
-            </Btn>
-          </div>
-        </InputGroup>
-
-        {error && (
-          <div className="err" style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-            <X style={{ width: 13, height: 13, marginTop: 1, flexShrink: 0 }} />{error}
-          </div>
-        )}
+        </div>
       </div>
-
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        style={{ display: 'none' }}
-        accept={PARSER_ACCEPT}
-        onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
-      />
     </Card>
   );
 }

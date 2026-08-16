@@ -243,8 +243,12 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 function LoadingBody({ section = DEFAULT_SECTION }) {
   if (section === 'overview') return <OverviewLens isLoading />;
   if (section === 'chat') return <ChatLensSkeleton />;
+  // ★ Тот же контейнер, что у реального таймлайна (фаза 2): `.tl-twocol`
+  // (max-width 1040 + центрирование) + `.ov-anim`. Без класса фаза-1 скелетон
+  // растягивался на всю ширину и «прилипал к меню», а при приходе content
+  // прыгал в центрированную колонку — TRIP-337 visual-fixes (двойная загрузка).
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+    <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
       <SkeletonTimeline />
       <RightRailSkeleton />
     </div>
