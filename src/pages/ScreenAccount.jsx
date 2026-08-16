@@ -307,8 +307,13 @@ function ReminderChannels() {
                     {/* Трип = его канонная строка `.tr` (обложка + название + ТГ-логин)
                         как <Card radius="btn"> (радиус 10, ховер) — вся строка ведёт
                         в трип. Отвязка — иконка справа по центру строки (sibling, т.к.
-                        кнопку в кнопку вкладывать нельзя). */}
-                    <Card as="button" radius="btn" interactive className="tr grow" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
+                        кнопку в кнопку вкладывать нельзя).
+                        `grow--fit` (flex:1 + min-width:0), НЕ `grow`: без min-width:0
+                        карточка не ужимается ниже min-content, длинное название её
+                        распирает и иконка отвязки уезжает вправо (замерено: 292 vs 317px,
+                        икона на разных x). С fit все карточки равной ширины → иконки
+                        строго выровнены. */}
+                    <Card as="button" radius="btn" interactive className="tr grow--fit" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
                       <span className="tr__thumb" style={{ background: coverBg(a) || undefined }}>
                         {a.cover_image_url && <img className="tc__img" src={a.cover_image_url} alt="" />}
                         <span className="tc__blob" />
