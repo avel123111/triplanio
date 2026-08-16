@@ -8323,10 +8323,12 @@ a.doc-row__n:hover{ color: var(--brand); }
    --sh-3), а не стеклянная чёрно-белая инверсия. Переиспользуемый примитив ДС.
    prefix-exempt: tt — новый примитив ДС «тултип», глобальный текст-хинт, апрув Pavel TRIP-274
    floor-exempt: namespaces +1 — новая канон-семья ДС tt (тултип), общий примитив, апрув Pavel TRIP-274
-   floor-exempt: classes +4 — .tt · .tt__b · .tt__b--top · .tt__b--bottom, примитив ДС, апрув Pavel TRIP-274
-   floor-exempt: layout +1 — .tt несёт свою раскладку (inline-flex/relative), канон-кубик ДС, апрув Pavel TRIP-274
+   floor-exempt: classes +5 — .tt · .tt__b · .tt__b--top · .tt__b--bottom · .tt--block, примитив ДС, апрув Pavel TRIP-274
+   floor-exempt: layout +2 — .tt и .tt--block несут свою раскладку (inline-flex/block, обёртка блочного триггера), канон-кубик ДС, апрув Pavel TRIP-274
    floor-exempt: inline +1 — динамическая позиция тултип-пузыря в портале (getBoundingClientRect), классом невыразима, апрув Pavel TRIP-274 */
 .tt { position: relative; display: inline-flex; }
+/* Обёртка блочного триггера (full-width карточка): не ужимать по контенту. */
+.tt--block { display: block; width: 100%; }
 .tt__b {
   position: fixed;
   z-index: var(--z-menu);
@@ -8358,5 +8360,7 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .tt__b white-space — примитив тултип ДС, апрув Pavel TRIP-274
    visual-diff-exempt: .tt__b z-index — примитив тултип ДС, апрув Pavel TRIP-274
    visual-diff-exempt: .tt display — примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt--block display — примитив тултип ДС (обёртка блочного триггера), апрув Pavel TRIP-274
+   visual-diff-exempt: .tt--block width — примитив тултип ДС (обёртка блочного триггера), апрув Pavel TRIP-274
    visual-diff-exempt: .tt position — примитив тултип ДС, апрув Pavel TRIP-274
  */

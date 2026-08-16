@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Search, FileText, BedDouble, Plane, Ticket } from 'lucide-react';
+import { Search, FileText, BedDouble, Plane, Ticket, Lock } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { IconBtn, Seg, Tile } from '@/design/index';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { eventHeader } from '@/components/common/EventViewBody';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -39,7 +40,12 @@ export default function AddBookingPanel({
   onClose,
 }) {
   const { t, lang } = useI18nFormat();
-  const [tab, setTab] = useState(initialTab === 'manual' ? 'manual' : 'find');
+  // Вкладка «Найти» (fork, партнёрские витрины) открыта всем. Вкладка «у меня
+  // есть бронь» — это ВХОД В CREATE: наблюдателю недоступна (замьючена + замок),
+  // и наблюдатель не может на ней оказаться даже при initialTab='manual'
+  // (TRIP-274 Ф2.2 — «открыть fork, заблокировать вход в create»).
+  const { canEdit } = useTripAccess();
+  const [tab, setTab] = useState(initialTab === 'manual' && canEdit ? 'manual' : 'find');
   const meta = KIND_META[kind] || KIND_META.hotel;
   const HeaderIcon = meta.Icon;
 
@@ -75,7 +81,12 @@ export default function AddBookingPanel({
           onChange={setTab}
           options={[
             { value: 'find', label: <><Search size={14} />{t(meta.findKey)}</> },
-            { value: 'manual', label: <><FileText size={14} />{t('fork.tab_have_booking')}</> },
+            {
+              value: 'manual',
+              disabled: !canEdit,
+              title: canEdit ? undefined : t('trip.viewer_locked'),
+              label: <><FileText size={14} />{t('fork.tab_have_booking')}{!canEdit && <Lock size={12} />}</>,
+            },
           ]}
         />
       </div>

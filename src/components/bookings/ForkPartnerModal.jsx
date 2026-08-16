@@ -195,7 +195,7 @@ export default function ForkPartnerModal({
             карточку (приглушена + замок + тултип-причина), а не placeholder: fork
             (партнёрские витрины ниже) при этом открыт (TRIP-274 Ф2.2). */}
         {!embedded && (
-        <Tooltip content={canEdit ? '' : t('trip.viewer_locked')}>
+        <Tooltip block content={canEdit ? '' : t('trip.viewer_locked')}>
         <Card
           as="button"
           radius="md"

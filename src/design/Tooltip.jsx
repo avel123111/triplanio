@@ -16,11 +16,12 @@ import { createPortal } from 'react-dom';
  * @param {{
  *   content?: any,
  *   side?: 'top'|'bottom',
+ *   block?: boolean,
  *   children?: any,
  *   className?: string,
  * }} p
  */
-export const Tooltip = ({ content, side = 'top', children, className = '' }) => {
+export const Tooltip = ({ content, side = 'top', block = false, children, className = '' }) => {
   const id = useId();
   const ref = useRef(/** @type {HTMLSpanElement|null} */(null));
   const [pos, setPos] = useState(/** @type {{top:number,left:number}|null} */(null));
@@ -41,7 +42,7 @@ export const Tooltip = ({ content, side = 'top', children, className = '' }) => 
   return (
     <span
       ref={ref}
-      className={['tt', className].filter(Boolean).join(' ')}
+      className={['tt', block && 'tt--block', className].filter(Boolean).join(' ')}
       aria-describedby={pos ? id : undefined}
       onMouseEnter={show}
       onMouseLeave={hide}
