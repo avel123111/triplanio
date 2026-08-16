@@ -8359,4 +8359,6 @@ a.doc-row__n:hover{ color: var(--brand); }
    visual-diff-exempt: .tt__b z-index — новый примитив тултип ДС, апрув Pavel TRIP-274
    visual-diff-exempt: .tt display — новый примитив тултип ДС, апрув Pavel TRIP-274
    visual-diff-exempt: .tt position — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt:focus-within opacity — новый примитив тултип ДС, апрув Pavel TRIP-274
+   visual-diff-exempt: .tt:hover opacity — новый примитив тултип ДС, апрув Pavel TRIP-274
  */
