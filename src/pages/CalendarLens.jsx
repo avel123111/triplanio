@@ -302,6 +302,21 @@ function Legend({ visits }) {
 
 // ─── CalendarLens (main export) ───────────────────────────────────────────────
 
+// Скелетон календаря — PURE (панель управления + большое поле сетки). Один
+// источник для обеих фаз загрузки (shell в TripView.LoadingBody и content). TRIP-337.
+export function CalendarSkeleton() {
+  return (
+    <div className="col col--g6 ov-anim" aria-busy="true">
+      <div className="row row--g4">
+        <Skeleton w={200} h={32} r={'var(--r-sm)'} />
+        <Grow />
+        <Skeleton w={220} h={32} r={'var(--r-xl)'} />
+      </div>
+      <Skeleton w="100%" h={500} r={'var(--r-md)'} />
+    </div>
+  );
+}
+
 export default function CalendarLens({ stream, visits, isLoading, onOpenEvent }) {
   const { t, lang } = useI18n();
   const MONTH_NAMES = useMemo(() => monthNames(lang),   [lang]);
@@ -479,18 +494,7 @@ export default function CalendarLens({ stream, visits, isLoading, onOpenEvent })
   };
 
   // ── Loading ──────────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
-          <Skeleton w={200} h={32} r={'var(--r-sm)'} />
-          <Grow />
-          <Skeleton w={220} h={32} r={'var(--r-xl)'} />
-        </div>
-        <Skeleton w="100%" h={500} r={'var(--r-md)'} />
-      </div>
-    );
-  }
+  if (isLoading) return <CalendarSkeleton />;
 
   // ── No dates ─────────────────────────────────────────────────────────────
   if (!baseDate) {

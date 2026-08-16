@@ -268,6 +268,26 @@ function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange })
 
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
+// Скелетон участников — PURE, зеркалит реальный layout: `.mlist` со строками
+// `.mbrow` (аватар + имя/роль + действие), а не три генерик-полосы. Один источник
+// для обеих фаз загрузки (shell в TripView.LoadingBody и content). TRIP-337.
+export function MembersSkeleton() {
+  return (
+    <div className="mlist col col--g4 ov-anim" aria-busy="true">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="mbrow">
+          <Skeleton w={38} h={38} r="50%" style={{ flex: 'none' }} />
+          <div className="grow col col--g2">
+            <Skeleton w="45%" h={14} r={5} />
+            <Skeleton w="30%" h={11} r={5} />
+          </div>
+          <Skeleton w={72} h={26} r="var(--r-pill)" style={{ flex: 'none' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -348,13 +368,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // member list), so the removed per-screen bar's invite button — which merely
   // duplicated it — needed no replacement.
 
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[1,2,3].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 'var(--r-sm)' }} />)}
-      </div>
-    );
-  }
+  if (isLoading) return <MembersSkeleton />;
 
   // Shared owner rule (withOwnerRow): the creator is never a real trip_members
   // row — ownership lives in trips.created_by. Drop any stray member row for the

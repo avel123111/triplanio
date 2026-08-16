@@ -451,6 +451,27 @@ function ApproverRow({ member, profiles, locked }) {
 
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
+// Скелетон настроек — PURE: сетка карточек-настроек (как реальный экран), а не
+// голый текст «Загрузка…». Один источник для обеих фаз загрузки (shell в
+// TripView.LoadingBody и content). TRIP-337 visual-fixes.
+export function SettingsSkeleton() {
+  return (
+    <Col gap="g7" className="settings-lens" aria-busy="true">
+      <Grid cols="2" gap="g7" className="settings-grid">
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i}>
+            <div className="col col--g4">
+              <Skeleton w="45%" h={18} r={6} />
+              <Skeleton w="100%" h={40} r={'var(--r-btn)'} />
+              <Skeleton w="70%" h={14} r={5} />
+            </div>
+          </Card>
+        ))}
+      </Grid>
+    </Col>
+  );
+}
+
 export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
   // Profiles ride in the trip content bundle (getTripDetails), handed down by
   // TripView — no separate profile-fetch hop for the approver list.
@@ -751,25 +772,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const approvers    = members.filter(m => ['owner', 'admin'].includes(m.role) && m.status === 'active');
   const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
 
-  // Скелетон настроек — сетка карточек-настроек (как реальный экран), а не
-  // голый текст «Загрузка…». TRIP-337 visual-fixes.
-  if (isLoading) {
-    return (
-      <Col gap="g7" className="settings-lens" aria-busy="true">
-        <Grid cols="2" gap="g7" className="settings-grid">
-          {[0, 1, 2, 3].map((i) => (
-            <Card key={i}>
-              <div className="col col--g4">
-                <Skeleton w="45%" h={18} r={6} />
-                <Skeleton w="100%" h={40} r={'var(--r-btn)'} />
-                <Skeleton w="70%" h={14} r={5} />
-              </div>
-            </Card>
-          ))}
-        </Grid>
-      </Col>
-    );
-  }
+  if (isLoading) return <SettingsSkeleton />;
 
   return (
     <Col gap="g7" className="settings-lens">

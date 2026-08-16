@@ -31,12 +31,12 @@ import { useStay22Bundle } from '@/lib/stay22';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useMobileNav } from '@/components/MobileBottomNav';
-import OverviewLens from './OverviewLens';
-import BudgetLens, { AddExpenseDialog, AddCategoryDialog } from './BudgetLens';
-import MembersLens, { InviteDialog } from './MembersLens';
-import CalendarLens from './CalendarLens';
-import DocsLens, { AddDocDialog } from './DocsLens';
-import SettingsLens from './SettingsLens';
+import OverviewLens, { OverviewSkeleton } from './OverviewLens';
+import BudgetLens, { AddExpenseDialog, AddCategoryDialog, BudgetSkeleton } from './BudgetLens';
+import MembersLens, { InviteDialog, MembersSkeleton } from './MembersLens';
+import CalendarLens, { CalendarSkeleton } from './CalendarLens';
+import DocsLens, { AddDocDialog, DocsSkeleton } from './DocsLens';
+import SettingsLens, { SettingsSkeleton } from './SettingsLens';
 import EditLens from './EditLens';
 import ChatLens, { ChatLensSkeleton } from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
@@ -240,19 +240,31 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 //
 // Скелетон ЗНАЕТ СЕКЦИЮ: у обзора и чата свои заглушки, иначе на их месте
 // мигала бы лента (плюс правый рейл, которого у чата нет вовсе).
+// ★ ФАЗА 1 (грузится shell, секция ещё не смонтирована) рисует скелетон ТОЙ ЖЕ
+// секции, что и фаза 2 — ОДИН и тот же компонент (`<BudgetSkeleton/>` и т.д.),
+// экспортированный самой секцией. Раньше здесь была централизованная угадайка,
+// которая для всего, кроме overview/chat, показывала скелетон ТАЙМЛАЙНА, а потом
+// фаза 2 показывала скелетон экрана — отсюда «таймлайн → экран» на всех экранах.
+// Теперь фаза 1 и фаза 2 идентичны по построению (TRIP-337, двойная загрузка).
 function LoadingBody({ section = DEFAULT_SECTION }) {
-  if (section === 'overview') return <OverviewLens isLoading />;
-  if (section === 'chat') return <ChatLensSkeleton />;
-  // ★ Тот же контейнер, что у реального таймлайна (фаза 2): `.tl-twocol`
-  // (max-width 1040 + центрирование) + `.ov-anim`. Без класса фаза-1 скелетон
-  // растягивался на всю ширину и «прилипал к меню», а при приходе content
-  // прыгал в центрированную колонку — TRIP-337 visual-fixes (двойная загрузка).
-  return (
-    <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-      <SkeletonTimeline />
-      <RightRailSkeleton />
-    </div>
-  );
+  switch (section) {
+    case 'overview': return <OverviewSkeleton />;
+    case 'chat': return <ChatLensSkeleton />;
+    case 'budget': return <BudgetSkeleton />;
+    case 'members': return <MembersSkeleton />;
+    case 'calendar': return <CalendarSkeleton />;
+    case 'docs': return <DocsSkeleton />;
+    case 'settings': return <SettingsSkeleton />;
+    case 'edit': return <EditSkeleton />;
+    default: return (
+      // timeline — тот же контейнер `.tl-twocol` (max-width + центрирование), что и
+      // реальный таймлайн, чтобы скелетон не «прилипал к меню» и не прыгал.
+      <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+        <SkeletonTimeline />
+        <RightRailSkeleton />
+      </div>
+    );
+  }
 }
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
@@ -296,22 +308,30 @@ function RightRailSkeleton() {
   );
 }
 
-// Скелетон структурного редактора: левая колонка маршрута = вертикальный список
-// карточек-городов (плитка + название + степпер ночей), а не карточки ленты —
-// иначе форма заглушки не совпадала с реальным экраном (TRIP-337 visual-fixes).
-function SkeletonEditor() {
+// Скелетон структурного редактора — PURE, зеркалит ОБЕ колонки `.ts-grid`:
+// СЛЕВА маршрут (шапка «Маршрут» + карточки-города), СПРАВА КАРТА. Раньше
+// заглушка рисовала только левую колонку — карта не учитывалась (TRIP-337).
+// Один источник для обеих фаз загрузки (shell в LoadingBody и content в editGate).
+function EditSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {[1, 2, 3, 4].map((i) => (
-        <Card key={i} radius="lg" pad="none" style={{ padding: 14, display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Skeleton w={40} h={40} r={'var(--r-sm)'} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Skeleton w="55%" h={15} r={5} />
-            <Skeleton w="35%" h={12} r={5} />
-          </div>
-          <Skeleton w={96} h={32} r={'var(--r-pill)'} />
-        </Card>
-      ))}
+    <div className="ts-grid">
+      <div className="ts-leftscroll" style={{ padding: '12px 12px 18px', overflow: 'hidden' }}>
+        <Skeleton w={160} h={26} r={6} style={{ marginBottom: 12 }} />
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} radius="lg" pad="none" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
+            <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Skeleton w="50%" h={14} r={5} />
+              <Skeleton w="30%" h={11} r={5} />
+            </div>
+            <Skeleton w={90} h={30} r={'var(--r-pill)'} />
+          </Card>
+        ))}
+      </div>
+      {/* правая колонка — карта */}
+      <div style={{ position: 'relative', margin: 14, marginLeft: 7, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--line)' }}>
+        <Skeleton w="100%" h="100%" r={0} style={{ position: 'absolute', inset: 0 }} />
+      </div>
     </div>
   );
 }
@@ -1382,11 +1402,9 @@ export default function TripView() {
               render an empty editor». */}
           {shownLens === 'edit' && (
             editGate === 'loading'
-              // Скелетон в геометрии самой секции (`.ts-grid` — левая колонка
-              // маршрута, правая под карту), а не общий: тело секции flush, и
-              // padded-заглушка прыгнула бы при резолве. Форма — карточки-города
-              // редактора (SkeletonEditor), а не карточки ленты (TRIP-337).
-              ? <div className="ts-grid"><div className="ts-leftscroll"><SkeletonEditor /></div></div>
+              // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же и в
+              // фазе shell (LoadingBody edit), и здесь в фазе content — TRIP-337.
+              ? <EditSkeleton />
               : editGate === 'ok'
                 ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
                 : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
