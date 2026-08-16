@@ -54,6 +54,10 @@ export type EmitIds = {
   actor_id?: string;
   /** `trip_members` row id — the resolver reads the member row by it. */
   member_id?: string;
+  /** Telegram chat the event addresses (trip_telegram_unlinked) — the binding
+   *  row is already deleted by resolve time, so the chat id rides the id slot,
+   *  not a DB read. */
+  chat_id?: string;
 };
 
 /** Resolve context: the caller's service_role client + the pre-write `member`

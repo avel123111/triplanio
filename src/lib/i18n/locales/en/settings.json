@@ -52,6 +52,8 @@
   "tg_linked": "Telegram linked",
   "tg_not_connected_badge": "Not connected",
   "tg_open_again": "Open the bot again",
+  "tg_addon_off_confirm_body": "The trip has connected Telegram chats. Turning the assistant off will unlink them all, and the bot will stop sending reminders.",
+  "tg_addon_off_confirm_title": "Turn the Telegram assistant off?",
   "tg_press_below": "Tap the button below to open the bot via this link and press Start",
   "tg_pressed_start": "I pressed Start",
   "tg_section_empty_desc": "Link an account to get notifications about check-ins and transfers",

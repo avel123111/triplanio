@@ -101,12 +101,21 @@ Deno.test('buildInAppRows: нет получателей → []', () => {
 
 // ── внешний канал (email) ─────────────────────────────────────────────────────
 
-Deno.test('EXTERNAL: письмо шлют только invite_created / invite_resent', () => {
+Deno.test('EXTERNAL: внешний канал у invite_created / invite_resent / trip_telegram_unlinked', () => {
   assertEquals(EXTERNAL.has('invite_created'), true);
   assertEquals(EXTERNAL.has('invite_resent'), true);
+  assertEquals(EXTERNAL.has('trip_telegram_unlinked'), true);
   // In-app-only события в n8n не ходят (их ветки удалены) — POST дал бы 404.
   for (const e of ['trip_member_joined', 'trip_invite_declined', 'trip_member_left',
     'trip_member_removed', 'trip_role_changed', 'invite_linked', 'pro_activated', 'pro_payment_failed']) {
     assertEquals(EXTERNAL.has(e), false, `${e} не должно ходить в n8n`);
   }
+});
+
+// trip_telegram_unlinked — external-ONLY: внешний канал есть, а in-app-строки нет
+// (в INAPP спеки нет намеренно — адресат Telegram-чат, не пользователь).
+Deno.test('trip_telegram_unlinked: external-only, in-app-строку не пишет', () => {
+  assertEquals(EXTERNAL.has('trip_telegram_unlinked'), true);
+  assertEquals('trip_telegram_unlinked' in INAPP, false);
+  assertEquals(buildInAppRows('trip_telegram_unlinked', data()), []);
 });

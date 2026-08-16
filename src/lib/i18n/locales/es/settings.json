@@ -52,6 +52,8 @@
   "tg_linked": "Telegram vinculado",
   "tg_not_connected_badge": "Sin conectar",
   "tg_open_again": "Abrir el bot de nuevo",
+  "tg_addon_off_confirm_body": "El viaje tiene chats de Telegram conectados. Al desactivar el asistente se desvincularán todos y el bot dejará de enviar recordatorios.",
+  "tg_addon_off_confirm_title": "¿Desactivar el asistente de Telegram?",
   "tg_press_below": "Pulsa el botón de abajo para abrir el bot con este enlace y pulsar Start",
   "tg_pressed_start": "Ya pulsé Start",
   "tg_section_empty_desc": "Vincula una cuenta para recibir notificaciones de entradas y traslados",

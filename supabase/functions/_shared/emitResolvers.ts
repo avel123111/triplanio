@@ -26,6 +26,10 @@ export type EmitData = {
   actor: Row;
   member: Row;
   recipients: Record<string, unknown>[];
+  /** Telegram-чат отвязки (только `trip_telegram_unlinked`): адресат внешней
+   *  доставки — сам чат, не пользователь, поэтому едет полем конверта, а не в
+   *  `recipients`. Остальные события его не заполняют. */
+  chat_id?: string | null;
 };
 
 /** Пустой конверт — когда резолвера нет (неизвестное событие) или нет `db`. */
@@ -169,4 +173,17 @@ export const RESOLVERS: Record<string, Resolver> = {
   trip_invite_declined: respondResolver,
   pro_activated: proResolver,
   pro_payment_failed: proResolver,
+
+  // Telegram-привязка снята (ручная отвязка / потеря Pro / выход-удаление
+  // участника / выключение аддона telegram_assistant). Адресат — сам чат
+  // (`chat_id` из id-слота: строка привязки к этому моменту уже удалена).
+  // Трип читаем ради названия/ссылки в тексте; получателей-пользователей нет
+  // (external-only, in-app-строку не пишем — нет спеки в notifyRules).
+  trip_telegram_unlinked: async (db, ids) => ({
+    trip: await loadTrip(db, ids.trip_id),
+    actor: null,
+    member: null,
+    recipients: [],
+    chat_id: typeof ids.chat_id === 'string' && ids.chat_id ? ids.chat_id : null,
+  }),
 };
