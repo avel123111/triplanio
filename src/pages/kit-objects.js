@@ -82,12 +82,20 @@ export const KIT_OBJECTS = [
   { id: 'doc-row', family: 'doc', group: 'components', css: true },
   { id: 'skeleton', family: 'skeleton', group: 'components', css: false },
   { id: 'dialog', family: 'dlg', group: 'components', css: true },
+  // Аккордеон-раскрывашка (<Accordion>, семья .acc): шапка-кнопка + вложенное
+  // тело, шеврон вправо→вниз. Источник — рецепт (css:false), т.к. у семьи нет
+  // `--`-вариантов (только `__`-элементы и состояние .is-open).
+  { id: 'accordion', family: 'acc', group: 'components', css: false, interactive: true },
+  // Обложка трипа (<Cover>, семья .cover): градиент из конечного набора (16) —
+  // классами по data-cover, фото — <img>. Источник — рецепт (css:false): вариантов
+  // `.cover--*` у семьи нет (различие по data-атрибуту, не по классу).
+  { id: 'cover', family: 'cover', group: 'components', css: false },
   { id: 'readonly-banner', family: 'readonly', group: 'components', css: false },
   // Плитка-иконка - двухосный объект (размер × тон) + булевы round/solid и тон
   // warm (только залитый). Источник оси - карты, экспортированные примитивом
   // <Tile> (TILE_SIZES/TILE_TONES), не CSS-скан: страница рисует по ним, тест
   // дрейфа сверяет их ↔ живой CSS в обе стороны (TRIP-391 объект 3).
-  { id: 'tile', family: 'tile', group: 'components', prefix: 'tile', maps: ['TILE_SIZES', 'TILE_TONES'], extras: ['round', 'solid', 'warm'] },
+  { id: 'tile', family: 'tile', group: 'components', prefix: 'tile', maps: ['TILE_SIZES', 'TILE_TONES'], extras: ['round', 'solid', 'warm', 'pro'] },
   { id: 'spin', family: 'spin', group: 'components', css: true },
   { id: 'toast', family: 'toast', group: 'components', css: true },
   { id: 'sheet-row', family: 'sheet', group: 'components', css: true },
