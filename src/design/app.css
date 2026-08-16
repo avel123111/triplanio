@@ -4489,6 +4489,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
     /* visual-diff-move: te-th -> trunc */
     .te-th { color: var(--muted); min-width: 0; }
     .te-th--c { text-align: center; }
+    /* Заголовки ЖИЛЬЁ/АКТИВНОСТЬ прижаты к общей границе своих колонок — ровно
+       ТУДА же, куда `justify-self` ставит иконки (отель к правому краю, активность
+       к левому). Так заголовок стоит над своей иконкой, а пара «жильё+активность»
+       читается вместе. Колонки при этом НЕ трогаем (просьба Pavel). */
+    .te-th--e { text-align: right; }
+    .te-th--s { text-align: left; }
 
     /* ---- list rows ---- */
     /* ★`align-items: center` ОСТАЁТСЯ приватным, и это не недоделка: у `.grid` оси
