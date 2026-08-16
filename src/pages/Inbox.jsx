@@ -8,7 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton, EmptyState, Chip, Tile } from '../design/index';
 import AppHeader from '@/components/AppHeader';
-import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
+import { buildNotifView } from '@/components/notifications/notifView';
 import { useQueryGate } from '@/lib/useQueryGate';
 import { gateStubProps } from '@/lib/loadStateClassify';
 import { SystemStub } from '@/lib/PageNotFound';
@@ -203,23 +203,14 @@ function InboxEmpty({ onCollection }) {
 }
 
 function InboxRow({ n, t, fmtRelative, pending, onRespond, onMarkRead }) {
-  const isInvite = n.type === 'trip_invite' && n.trip_member_id;
   // Invite status comes with the row now (getInbox joins trip_members) — no
   // per-row `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
 
   const time = fmtRelative(n.created_at);
-  const renderParams = (params = {}) => {
-    const r = { ...params };
-    if (r.role_key) { r.role = t(r.role_key); delete r.role_key; }
-    return r;
-  };
-  const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
-  const messageText = n.i18n_message_key ? t(n.i18n_message_key, renderParams(n.i18n_params)) : n.message;
-  const ip = n.i18n_params || {};
-  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */, color: 'var(--brand)' } }]) : titleText;
-  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } }]) : messageText;
-  const meta = notifMeta(n.type);
+  // Единый резолвер строки (общий с попапом колокольчика): живое имя автора из
+  // sender, локализация текста, узлы заголовка/сообщения.
+  const { meta, isInvite, titleNode, messageText, messageNode } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
   const showPending = isInvite && memberStatus === 'pending';
 
   return (

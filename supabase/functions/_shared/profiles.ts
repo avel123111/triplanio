@@ -13,6 +13,11 @@
 
 export const PROFILE_COLUMNS = 'id, full_name, avatar_url, email, deleted_at';
 
+// Sender = идентичность АВТОРА события (нотификации), без e-mail: получателю
+// уведомления адрес автора не показываем (в отличие от участника трипа, где
+// e-mail — часть карточки). Не тянем даже колонку, которую не отдаём.
+export const SENDER_COLUMNS = 'id, full_name, avatar_url, deleted_at';
+
 export interface UserRow {
   id: string;
   full_name: string | null;
@@ -26,6 +31,16 @@ export interface Profile {
   full_name: string;
   avatar_url: string;
   email: string;
+  is_deleted: boolean;
+}
+
+/** Форма автора события, уезжающая в инбокс: имя + аватар + флаг удаления.
+ *  Тот же приговор приватности, что у toProfile (удалённый аккаунт не отдаёт
+ *  ни имени, ни аватара), но БЕЗ e-mail. */
+export interface Sender {
+  id: string;
+  full_name: string;
+  avatar_url: string;
   is_deleted: boolean;
 }
 
@@ -48,6 +63,39 @@ export function toProfile(u: UserRow, live = true): Profile {
     email: live && !u.deleted_at ? (u.email || '') : '',
     is_deleted: !!u.deleted_at,
   };
+}
+
+/**
+ * Автор события → Sender. Один приговор удаления, что и toProfile: анонимный
+ * аккаунт не отдаёт ни имени, ни аватара (клиент подпишет строку «Удалённый
+ * аккаунт» по is_deleted). E-mail не отдаём никогда — его тут и не запрашиваем.
+ */
+export function toSender(u: UserRow): Sender {
+  const deleted = !!u.deleted_at;
+  return {
+    id: u.id,
+    full_name: deleted ? '' : (u.full_name || ''),
+    avatar_url: deleted ? '' : (u.avatar_url || ''),
+    is_deleted: deleted,
+  };
+}
+
+/**
+ * Батч-резолв авторов по id (notifications.created_by): один запрос, возвращает
+ * карту id→Sender для стичинга на строки инбокса. Пустые/повторяющиеся id
+ * отбрасываются; ненайденный автор просто отсутствует в карте (строка получит
+ * sender:null). Читается edge getInbox под service_role.
+ */
+export async function fetchSenders(
+  db: { from: (table: string) => any },
+  ids: (string | null | undefined)[],
+): Promise<Record<string, Sender>> {
+  const uniq = [...new Set(ids.filter((x): x is string => typeof x === 'string' && !!x))];
+  if (uniq.length === 0) return {};
+  const { data } = await db.from('users').select(SENDER_COLUMNS).in('id', uniq);
+  const out: Record<string, Sender> = {};
+  for (const u of (data ?? []) as UserRow[]) out[u.id] = toSender(u);
+  return out;
 }
 
 /**
