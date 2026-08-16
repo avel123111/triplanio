@@ -78,5 +78,6 @@
   "tl_transfer": "Traslado",
   "to_my_trips": "A mis viajes",
   "update": "Actualizar viaje",
-  "who_goes": "Quién viaja"
+  "who_goes": "Quién viaja",
+  "viewer_locked": "Los observadores no pueden editar el viaje"
 }
