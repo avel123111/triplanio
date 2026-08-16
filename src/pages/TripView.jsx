@@ -1297,7 +1297,6 @@ export default function TripView() {
               user={user}
               contentLoading={shellLoading || loadingContent}
               active={shownLens === 'overview'}
-              canManage={canEditMode}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
               onOpenMap={() => setLens('map')}
               onOpenBudget={() => setLens('budget')}

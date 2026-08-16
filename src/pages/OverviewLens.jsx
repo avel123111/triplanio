@@ -6,6 +6,7 @@ import TripStatRow from '@/components/trips/TripStatRow';
 import BudgetSummaryCard from '@/components/trips/BudgetSummaryCard';
 import MembersSummaryCard from '@/components/trips/MembersSummaryCard';
 import ServicesCard from '@/components/trips/ServicesCard';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // Скелетон Обзора — PURE, канон <Skeleton>, геометрия повторяет реальный layout
 // (карта + статбар · бюджет + участники). Один источник для обеих фаз загрузки
@@ -78,7 +79,6 @@ export default function OverviewLens({
   isLoading = false,
   contentLoading = false,
   active = true,
-  canManage = false,
   budgetEnabled = false,
   onOpenMap,
   onOpenBudget,
@@ -87,6 +87,9 @@ export default function OverviewLens({
   onOpenService,
   onBudgetLocked,
 }) {
+  // Право управления (editor) — из единого контекста доступа (TRIP-274 Ф2.2),
+  // раздаётся подкартам (бюджет/участники) как булев проп.
+  const { canEdit: canManage } = useTripAccess();
   const orderedVisits = useMemo(() => sortVisits(visits), [visits]);
 
   if (isLoading) return <OverviewSkeleton />;
