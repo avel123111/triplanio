@@ -199,6 +199,33 @@ export function listBinding(qc, key, { addTo = 'end' } = {}) {
   };
 }
 
+// ── Shared lifecycle steps (used by BOTH withOptimism and runOptimism, so the two
+//    entry points can never drift on cancel/snapshot/patch/reconcile/rollback) ──
+
+// Cancel in-flight refetches BEFORE patching, then snapshot every touched key.
+// Cancelling first is the load-bearing step: without it a getTripDetails refetch
+// can resolve after the optimistic patch and clobber it — the flicker.
+async function cancelAndSnapshot({ qc, keys }) {
+  await Promise.all(keys.map((queryKey) => qc.cancelQueries({ queryKey })));
+  return keys.map((queryKey) => [queryKey, qc.getQueryData(queryKey)]);
+}
+function applyOptimistic(binding, op, vars) {
+  if (op === 'remove') binding.remove(vars.id);
+  else if (op === 'update') binding.update(vars.row);
+  else binding.add(vars.row);
+}
+function reconcileFromRow(binding, op, data, vars) {
+  if (op === 'remove') return;
+  // writeRows returns an array of affected rows; rpc/invoke may return one flat.
+  const realRow = Array.isArray(data) ? data[0] : data;
+  if (!realRow) return;
+  if (op === 'add') binding.swap(vars.row.id, realRow);
+  else binding.update(realRow);
+}
+function restoreSnapshot({ qc }, snapshot) {
+  for (const [queryKey, prev] of snapshot ?? []) qc.setQueryData(queryKey, prev);
+}
+
 /**
  * The canonical optimistic-mutation lifecycle, spread into `useMutation`. It
  * bakes in the exact sequence every booking/doc/member CRUD used to hand-roll —
@@ -233,35 +260,50 @@ export function listBinding(qc, key, { addTo = 'end' } = {}) {
  *
  * @param {{ qc: any, keys: any[], add: Function, update: Function, remove: Function, swap: Function }} binding
  * @param {{ op: 'add'|'update'|'remove', reconcile?: boolean,
- *           onSuccess?: (data:any, vars:any)=>void, onError?: (err:any, vars:any)=>void }} opts
+ *           onSuccess?: (data:any, vars:any)=>void, onError?: (err:any, vars:any)=>void }} [opts]
  */
 export function withOptimism(binding, { op, reconcile = true, onSuccess, onError } = {}) {
-  const { qc, keys } = binding;
   return {
     onMutate: async (vars) => {
-      // Stop in-flight refetches BEFORE patching, so none can resolve later and
-      // clobber the optimistic row. This is the fix for the flicker (see above).
-      await Promise.all(keys.map((queryKey) => qc.cancelQueries({ queryKey })));
-      const snapshot = keys.map((queryKey) => [queryKey, qc.getQueryData(queryKey)]);
-      if (op === 'remove') binding.remove(vars.id);
-      else if (op === 'update') binding.update(vars.row);
-      else binding.add(vars.row);
+      const snapshot = await cancelAndSnapshot(binding);
+      applyOptimistic(binding, op, vars);
       return { snapshot };
     },
     onSuccess: (data, vars) => {
-      if (reconcile && op !== 'remove') {
-        // writeRows returns an array of affected rows; rpc/invoke may return one.
-        const realRow = Array.isArray(data) ? data[0] : data;
-        if (realRow) {
-          if (op === 'add') binding.swap(vars.row.id, realRow);
-          else binding.update(realRow);
-        }
-      }
+      if (reconcile) reconcileFromRow(binding, op, data, vars);
       onSuccess?.(data, vars);
     },
     onError: (err, vars, ctx) => {
-      for (const [queryKey, prev] of ctx?.snapshot ?? []) qc.setQueryData(queryKey, prev);
+      restoreSnapshot(binding, ctx?.snapshot);
       onError?.(err, vars);
     },
   };
+}
+
+/**
+ * Imperative counterpart to {@link withOptimism} for the case React Query can't
+ * own: a create/delete whose trigger UI (dialog / panel) UNMOUNTS at T0, before
+ * the write resolves — a `useMutation`'s onSuccess/onError would never fire (its
+ * observer is gone). Same lifecycle, driven by hand off the app-level query
+ * client: cancel → snapshot → patch → await run() → reconcile-from-row (or
+ * rollback). Fire-and-forget from the call site; it closes the UI and this keeps
+ * running. Resolves to the write result; rejects (after rollback) on failure.
+ *
+ * @param {{ qc:any, keys:any[], add:Function, update:Function, remove:Function, swap:Function }} binding
+ * @param {{ op:'add'|'update'|'remove', run:()=>Promise<any>, vars:any,
+ *           reconcile?:boolean, onSuccess?:(data:any,vars:any)=>void, onError?:(err:any,vars:any)=>void }} opts
+ */
+export async function runOptimism(binding, { op, run, vars, reconcile = true, onSuccess, onError } = {}) {
+  const snapshot = await cancelAndSnapshot(binding);
+  applyOptimistic(binding, op, vars);
+  try {
+    const data = await run();
+    if (reconcile) reconcileFromRow(binding, op, data, vars);
+    onSuccess?.(data, vars);
+    return data;
+  } catch (err) {
+    restoreSnapshot(binding, snapshot);
+    onError?.(err, vars);
+    throw err;
+  }
 }

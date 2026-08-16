@@ -9,7 +9,7 @@
  */
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, runOptimism } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { Btn, Severity, Skeleton, useToast } from '@/design/index';
@@ -99,23 +99,23 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
     // actually gone, never on rollback (TRIP-117).
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
     // Optimistic: drop it from the content cache + close immediately, then delete
-    // in the DB in the background and reconcile (rollback on error).
+    // in the background and reconcile through the seam — no full-trip refetch. The
+    // panel unmounts on close, so this runs imperatively (runOptimism) off the
+    // app-level qc; on refusal/already-gone it rolls the row back.
     if (tripId && cacheKind) {
-      const prev = qc.getQueryData(TRIP_CONTENT_KEY(tripId));
-      optimisticContentUpdate(qc, tripId, cacheKind, 'remove', { id: data.id });
       onClose?.();
-      (async () => {
-        const { error, deleted, code } = await deleteSourceEntity(kind, data.id, tripId, orphanPaths);
-        // error OR 0-row reject (deleted:false) → undo the optimistic removal so
-        // the entity doesn't vanish on a write that never happened.
-        if (error || !deleted) {
-          if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
-          toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' });
-        } else {
-          successToast(t, 'booking_deleted');
-        }
-        invalidate();
-      })();
+      runOptimism(tripContentBinding(qc, tripId, cacheKind), {
+        op: 'remove',
+        vars: { id: data.id },
+        run: async () => {
+          const { error, deleted, code } = await deleteSourceEntity(kind, data.id, tripId, orphanPaths);
+          if (error) throw Object.assign(new Error('delete_failed'), { code });
+          // deleted:false = already gone / RLS hid it — surface so the row rolls back.
+          if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
+        },
+        onSuccess: () => successToast(t, 'booking_deleted'),
+        onError: (err) => toast({ description: err?.code ? errorText(t, err.code) : t('event.delete_failed'), variant: 'destructive' }),
+      }).catch(() => {}); // onError already surfaced it; swallow the re-throw
       return;
     }
     setDeleting(true);
