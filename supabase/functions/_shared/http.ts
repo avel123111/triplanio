@@ -96,7 +96,7 @@ const _edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): v
 /**
  * Run background work that finishes AFTER the response is sent, via Supabase
  * edge's `EdgeRuntime.waitUntil` (fire-and-forget fallback in local dev). Shared
- * so callers here (Sentry reporting) and `emit()` (`_shared/emit.ts`) reuse ONE
+ * so callers here (Sentry reporting) and `notify()` (`_shared/emit.ts`) reuse ONE
  * runtime check and never add a network hop to the user's response.
  */
 export function runInBackground(p: Promise<unknown>): void {

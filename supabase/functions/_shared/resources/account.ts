@@ -29,7 +29,7 @@
  * СЕРВЕРЕ (trust boundary уехала с клиента). `requires:['self']` (гомогенен с
  * `profile`, инвариант №7 не применяется). Контракт `{ created, profile, linked }`:
  * `created` — ДАННЫЕ (оба исхода успех), фронт по нему решает `user_signed_up`;
- * `linked` = связанные pending-инвайты → `emit('invite_linked')` в afterWrite.
+ * `linked` = связанные pending-инвайты → `notify('invite_linked')` в afterWrite.
  *
  * Кэпы/enum ниже — зеркало CHECK живой схемы (сверено live dev 2026-08-10):
  *   full_name    ≤300, nullable
