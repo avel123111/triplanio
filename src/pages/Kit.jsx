@@ -39,6 +39,7 @@ import {
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
 } from '@/design/index';
 import { Icon } from '@/design/icons';
+import Accordion from '@/components/common/Accordion';
 import { KIT_OBJECTS, KIT_GROUPS, kitObjectById } from './kit-objects';
 // Витринный слой: только force-state зеркала под `data-force` (см. Kit.css).
 import './Kit.css';
@@ -61,7 +62,7 @@ const TX = {
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
-    'skeleton': 'Скелет', 'dialog': 'Оверлеи',
+    'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'accordion': 'Аккордеон',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -86,6 +87,7 @@ const TX = {
     'doc-row': 'Имя, размер, тон (обычный / ai).',
     'skeleton': 'Плейсхолдер загрузки, разной ширины.',
     'dialog': 'Диалог и шит — оверлеи (открываются кнопкой).',
+    'accordion': 'Раскрывашка: шапка-кнопка (иконка · заголовок · статус) + вложенное тело; шеврон вправо→вниз.',
     'tile': 'Квадрат под значок: тон · размер · форма · залитая.',
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
@@ -598,6 +600,23 @@ const RECIPES = {
     ],
   }],
 
+  accordion: () => [{
+    items: [
+      it('icon + subtitle + badge-нода (статус) · раскрыт',
+        <Accordion icon="telegram" tone="info" title={'Telegram'} subtitle={'Аккаунты для уведомлений по путешествиям'} badge={<Badge variant="success" size="tiny">{'подключён'}</Badge>} defaultOpen>{/* i18n-ignore: витрина /kit, dev-only */}
+          <div className="t-meta muted">{'Вложенное тело: любой контент (строки, поля, список).'/* i18n-ignore: витрина /kit */}</div>
+        </Accordion>, true),
+      it('title + count badge (число)',
+        <Accordion title={'Детали брони'} subtitle={'рейс · отель · трансфер'} badge={3}>{/* i18n-ignore: витрина /kit, dev-only */}
+          <div className="t-meta muted">{'Поля брони…'/* i18n-ignore: витрина /kit */}</div>
+        </Accordion>, true),
+      it('свёрнут (шеврон вправо), без иконки',
+        <Accordion title={'Документы и заметки'/* i18n-ignore: витрина /kit */}>
+          <div className="t-meta muted">{'…'}</div>
+        </Accordion>, true),
+    ],
+  }],
+
 
   // Строка уведомления — один компонент на все типы и обе поверхности. Показана
   // КАК В ПРИЛОЖЕНИИ: строки стопкой на реалистичной ширине, с теми же кнопками
@@ -699,13 +718,14 @@ const RECIPES = {
       items: TILE_TONES.map((t) => it(`tone="${t}"`, <Tile icon="sparkles" tone={t} />)),
     },
     {
-      label: 'форма и залитая (тон warm — только залитый, канон)',
+      label: 'форма и залитая (тоны warm/pro — только залитые, канон)',
       items: [
         it('round', <Tile icon="star" tone="brand" round />),
         it('solid (+brand)', <Tile icon="star" tone="brand" solid />),
         it('solid (+ai)', <Tile icon="sparkles" tone="ai" solid />),
         it('solid (+success)', <Tile icon="check" tone="success" solid />),
         it('solid (+warm)', <Tile icon="star" tone="warm" solid />),
+        it('solid (+pro, фирменный --pro-gradient)', <Tile icon="pro" tone="pro" solid />),
         it('children (число вместо иконки)', <Tile tone="quiet" round>3</Tile>),
       ],
     },

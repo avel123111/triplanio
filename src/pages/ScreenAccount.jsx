@@ -19,6 +19,7 @@ import { errorText } from '@/lib/errorText';
 import { track } from '@/lib/analytics';
 import { openConsentBanner } from '@/lib/consent';
 import AppHeader from '@/components/AppHeader';
+import Accordion from '@/components/common/Accordion';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { coverGradientCss } from '@/lib/trip-gradients';
@@ -230,7 +231,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
 /** @param {{ icon: string, tone: import('../design/Tile').TileTone, name: any, desc: any, titleBadge?: any, trailing?: any }} p */
 function ChannelCard({ icon, tone, name, desc, titleBadge, trailing }) {
   return (
-    <Card radius="md">
+    <Card radius="btn">
       <Row gap="g6" wrap>
         <Tile size="lg" tone={tone} icon={icon} />
         <Grow fit>
@@ -255,7 +256,6 @@ function ReminderChannels() {
   const { t } = useI18n();
   const nav = useNavigate();
   const [items, setItems] = useState(null); // null = loading
-  const [open, setOpen] = useState(false); // Telegram block collapsed by default
   const [unlinkState, setUnlinkState] = useState(null); // null | { account }
 
   const load = React.useCallback(async () => {
@@ -290,46 +290,40 @@ function ReminderChannels() {
           {items === null ? (
             <div className="t-body muted">{t('common.loading')}</div>
           ) : connected ? (
-            <>
-              <ChannelCard
-                icon="telegram" tone="info" name="Telegram"
-                desc={t('telegram.account_section_subtitle')}
-                titleBadge={<Badge variant="success" size="tiny">{t('telegram.connected')}</Badge>}
-                trailing={(
-                  <IconBtn
-                    icon={open ? 'chevU' : 'chevD'}
-                    ariaLabel={t('telegram.linked_trips')}
-                    ariaExpanded={open}
-                    onClick={() => setOpen(v => !v)}
-                  />
-                )}
-              />
-              {open && (
-                <Col gap="g2">
-                  <div className="eyebrow">{t('telegram.linked_trips')}</div>
-                  {/* Привязанный трип = его НАСТОЯЩАЯ строка списка `.tr` (обложка-
-                      миниатюра + название + ТГ-логин получателя), та же, что рисует
-                      список путешествий. Вся строка — ссылка в трип; отвязка — одна
-                      тихая иконка рядом (sibling, а не вложенная в кнопку). */}
-                  {items.map((a) => (
-                    <Row gap="g2" key={a.id}>
-                      <Card as="button" radius="lg" interactive className="tr grow" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
-                        <span className="tr__thumb" style={{ background: coverBg(a) || undefined }}>
-                          {a.cover_image_url && <img className="tc__img" src={a.cover_image_url} alt="" />}
-                          <span className="tc__blob" />
-                        </span>
-                        <span className="tr__main">
-                          <span className="tr__title">{a.trip_title}</span>
-                          <span className="tr__sub"><Trunc as="span">{nick(a)}</Trunc></span>
-                        </span>
-                      </Card>
-                      <IconBtn icon="unlink" tone="danger" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
-                    </Row>
-                  ))}
-                  <Row gap="g4" align="a-start"><Icon name="info" size={13} className="muted" /><span className="t-meta muted">{t('telegram.account_hint')}</span></Row>
-                </Col>
-              )}
-            </>
+            /* Канал Telegram — раскрывашка <Accordion> (радиус 10, кликабельная
+               шапка с ховером, шеврон вправо→вниз): привязанные трипы ВЛОЖЕНЫ в
+               тело канала. Каждый трип = его КАНОННАЯ строка `.tr` (обложка +
+               название + ТГ-логин получателя), отвязка — иконка справа по центру. */
+            <Accordion
+              icon="telegram" tone="info"
+              title={'Telegram'/* i18n-ignore: имя бренда, не переводится */}
+              subtitle={t('telegram.account_section_subtitle')}
+              badge={<Badge variant="success" size="tiny">{t('telegram.connected')}</Badge>}
+              defaultOpen
+            >
+              <Col gap="g2">
+                {items.map((a) => (
+                  <Row gap="g2" key={a.id}>
+                    {/* Трип = его канонная строка `.tr` (обложка + название + ТГ-логин)
+                        как <Card radius="btn"> (радиус 10, ховер) — вся строка ведёт
+                        в трип. Отвязка — иконка справа по центру строки (sibling, т.к.
+                        кнопку в кнопку вкладывать нельзя). */}
+                    <Card as="button" radius="btn" interactive className="tr grow" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
+                      <span className="tr__thumb" style={{ background: coverBg(a) || undefined }}>
+                        {a.cover_image_url && <img className="tc__img" src={a.cover_image_url} alt="" />}
+                        <span className="tc__blob" />
+                      </span>
+                      <span className="tr__main">
+                        <span className="tr__title">{a.trip_title}</span>
+                        <span className="tr__sub"><Trunc as="span">{nick(a)}</Trunc></span>
+                      </span>
+                    </Card>
+                    <IconBtn icon="unlink" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
+                  </Row>
+                ))}
+                <Row gap="g4" align="a-start"><Icon name="info" size={13} className="muted" /><span className="t-meta muted">{t('telegram.account_hint')}</span></Row>
+              </Col>
+            </Accordion>
           ) : (
             <ChannelCard
               icon="telegram" tone="info" name="Telegram"

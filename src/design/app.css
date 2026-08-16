@@ -1888,8 +1888,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
 .acc__title { color: var(--ink); }
 .acc__sub { color: var(--muted); }
 .acc__badge { flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); display: inline-flex; align-items: center; justify-content: center; }
-.acc__chev { flex: none; display: inline-flex; color: var(--muted); transform: rotate(90deg); transition: transform .18s var(--ease-out); }
-.acc.is-open .acc__chev { transform: rotate(-90deg); }
+/* Шеврон-раскрывашка: вправо (свёрнут) → вниз (раскрыт), плавно (TRIP-337, апрув
+   Pavel). Иконка `chevron` (ChevronRight) смотрит вправо в покое, поворот на 90°
+   вниз при раскрытии. Прежний вниз/вверх (rotate 90→-90) заменён во ВСЕХ
+   аккордеонах — консистентный жест раскрытия во всём приложении.
+   Жест раскрытия аккордеона: вправо→вниз вместо вниз/вверх (апрув Pavel). Гард 2p
+   атрибутирует поворот правила `.acc.is-open .acc__chev` на классы-предки .acc/.is-open:
+   visual-diff-exempt: .acc__chev transform — базовый поворот шеврона 90deg→0deg (вправо в покое)
+   visual-diff-exempt: .acc transform — поворот из правила .acc.is-open .acc__chev (-90deg→90deg, вниз при раскрытии)
+   visual-diff-exempt: .is-open transform — тот же поворот, атрибутирован на класс-предок .is-open */
+.acc__chev { flex: none; display: inline-flex; color: var(--muted); transform: rotate(0deg); transition: transform .18s var(--ease-out); }
+.acc.is-open .acc__chev { transform: rotate(90deg); }
 .acc__body { padding: 14px; border-top: 1px solid var(--line); }
 /* Lumo DS inputs: типографику держит канон `.t-body` (co-selector выше по
    файлу), форму - рамка `--line-strong` и кольцо фокуса `--primary-ring`.
