@@ -113,3 +113,97 @@ export function optimisticContentUpdate(qc, tripId, kind, op, record) {
     });
   }
 }
+
+// The cache keys a write of `kind` touches. Every entity lives in trip-content;
+// cityVisits ALSO lives in the shell (header/skeleton), so a city write must
+// cancel/snapshot/patch BOTH — else the shell keeps a stale city list.
+function affectedKeys(tripId, kind) {
+  return kind === 'cityVisits'
+    ? [TRIP_CONTENT_KEY(tripId), TRIP_SHELL_KEY(tripId)]
+    : [TRIP_CONTENT_KEY(tripId)];
+}
+
+/**
+ * Reconcile an optimistic row with the row the write actually returned: replace
+ * the tmp row (matched by `tmpId`) with `realRow` in place — same position, real
+ * id. This is the happy-path reconciliation that REPLACES a full `getTripDetails`
+ * refetch (TRIP-*, optimism epic): `writeRows(...).select()` already returns the
+ * committed row, so there is no reason to round-trip the edge read just to learn
+ * an id. If the tmp row is gone (a refetch slipped in and clobbered it) the real
+ * row is appended so the entity is never lost, and never duplicated if it is
+ * already present.
+ */
+export function swapOptimisticRow(qc, tripId, kind, tmpId, realRow) {
+  const apply = (old) => {
+    if (!old) return old;
+    const list = old[kind] || [];
+    let next;
+    if (list.some(r => r.id === tmpId)) next = list.map(r => (r.id === tmpId ? realRow : r));
+    // tmp row already clobbered by a refetch — append the real row, but never duplicate it.
+    else if (list.some(r => r.id === realRow.id)) next = list;
+    else next = [...list, realRow];
+    return { ...old, [kind]: next };
+  };
+  for (const key of affectedKeys(tripId, kind)) qc.setQueryData(key, apply);
+}
+
+/**
+ * The canonical optimistic-mutation lifecycle, spread into `useMutation`. It
+ * bakes in the exact sequence every booking/doc/member CRUD used to hand-roll —
+ * and got subtly wrong six different ways (see the optimism audit):
+ *
+ *   onMutate:  cancelQueries → snapshot → apply the optimistic patch
+ *   onSuccess: reconcile the optimistic row with the row the write RETURNED
+ *              (swap tmp→real on add; authoritative merge on update) — NO refetch
+ *   onError:   restore the snapshot, then hand the error to the caller's toast
+ *
+ * The call site keeps ONLY its `mutationFn` (the real write, whose return value
+ * is the reconcile source) and its own error toast; it re-implements none of the
+ * cache choreography. Variables passed to `.mutate()` carry the row:
+ *   add    → mutate({ row })   row.id is a tmp id (e.g. 'tmp-abc')
+ *   update → mutate({ row })   row.id is the real id; row may be a partial patch
+ *   remove → mutate({ id })
+ *
+ * WHY cancelQueries is the load-bearing line: `query-client` has no default for
+ * it, and nothing in the app called it. Without it, an in-flight `getTripDetails`
+ * refetch (staleTime expiry, tab refocus, a sibling invalidate) resolves AFTER
+ * the optimistic patch and overwrites it with server data that doesn't yet carry
+ * the new row — the "appeared → vanished → (toast) → came back" flicker. Cancel
+ * first, and the optimistic state owns the cache until the write reconciles it.
+ *
+ * onSettled is deliberately absent: the happy path reconciles from the write's
+ * own returned row, so there is no background refetch to wait on or flicker
+ * through. An entity whose raw row lacks a server-derived field can opt into a
+ * narrow backstop invalidate at its call site — it is NOT the default, so one
+ * edit never re-pulls (and re-renders) the whole trip.
+ *
+ * @param {import('@tanstack/react-query').QueryClient} qc
+ * @param {{ tripId: string, kind: string, op: 'add'|'update'|'remove',
+ *           reconcile?: boolean, onError?: (err:any)=>void }} opts
+ */
+export function withOptimism(qc, { tripId, kind, op, reconcile = true, onError } = {}) {
+  const keys = affectedKeys(tripId, kind);
+  return {
+    onMutate: async (vars) => {
+      // Stop in-flight refetches BEFORE patching, so none can resolve later and
+      // clobber the optimistic row. This is the fix for the flicker (see above).
+      await Promise.all(keys.map((queryKey) => qc.cancelQueries({ queryKey })));
+      const snapshot = keys.map((queryKey) => [queryKey, qc.getQueryData(queryKey)]);
+      if (op === 'remove') optimisticContentUpdate(qc, tripId, kind, 'remove', { id: vars.id });
+      else optimisticContentUpdate(qc, tripId, kind, op, vars.row);
+      return { snapshot };
+    },
+    onSuccess: (data, vars) => {
+      if (!reconcile || op === 'remove') return;
+      // writeRows returns an array of affected rows; rpc/invoke may return one.
+      const realRow = Array.isArray(data) ? data[0] : data;
+      if (!realRow) return;
+      if (op === 'add') swapOptimisticRow(qc, tripId, kind, vars.row.id, realRow);
+      else optimisticContentUpdate(qc, tripId, kind, 'update', realRow);
+    },
+    onError: (err, _vars, ctx) => {
+      for (const [queryKey, prev] of ctx?.snapshot ?? []) qc.setQueryData(queryKey, prev);
+      onError?.(err);
+    },
+  };
+}
