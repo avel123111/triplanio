@@ -62,7 +62,7 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
     // Fallback (stale deploy with no is_pro field): the client predicate — own
     // trips only (is_pro_trip OR I'm the owner with an active sub) — so it degrades
     // gracefully instead of dropping all badges.
-    pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)),
+    pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)), // role-gate-exempt: pro-бейдж карточки (показ)
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
     isShared:  participants.length >= 2,

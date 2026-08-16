@@ -13,13 +13,14 @@
 // иначе он потянул бы за собой импорт всех линз и стал бы вторым App.jsx.
 // Импорт ОТНОСИТЕЛЬНЫЙ, не через alias `@/`: реестр покрыт тестом на чистых
 // функциях, а `node --test` алиас не резолвит (тот же приём, что в resolveAuthor).
-import { roleCanEdit } from './members.js';
+import { clearsStep } from './tripStep.js';
 
 // Поля секции:
 //   id        — значение `?lens=`; `overview` в адрес не пишется (дефолт)
 //   group     — 'lens' (разделы трипа) | 'manage' (управление)
 //   addon     — секция видна, только если аддон трипа включён явно
-//   canAccess — ролевой гейт (уже разрешённая роль из resolveMyRole)
+//   canAccess — гейт по СТУПЕНИ доступа (`resolveMyStep`), единый словарь с
+//               сервером; принимает step ('owner'|'editor'|'participant'|null)
 //   event     — имя события аналитики при открытии (TRIP-213 Ф2c)
 //   flush     — секция сама владеет своим скроллом: тело без паддинга и без
 //               скролла (`.trip-screen-body--flush`), поверхность в край
@@ -40,10 +41,10 @@ export const SECTIONS = [
   // Структурный редактор. Секция как любая другая — до TRIP-349 это был
   // отдельный роут со СВОЕЙ оболочкой, и именно из этого дубля выросло всё
   // остальное. Гейт тот же, что пускал в роут (зеркалит _can_edit_trip).
-  { id: 'edit', group: 'manage', labelKey: 'trip.edit_structure', icon: 'edit', event: 'trip_editor_opened', canAccess: roleCanEdit, flush: true, hidesDock: 'pending-layout' },
+  { id: 'edit', group: 'manage', labelKey: 'trip.edit_structure', icon: 'edit', event: 'trip_editor_opened', canAccess: (step) => clearsStep(step, 'editor'), flush: true, hidesDock: 'pending-layout' },
   // Наблюдатель видит Настройки (read-only — чтобы выйти из трипа), но не
-  // Участников (TRIP-137).
-  { id: 'members', group: 'manage', labelKey: 'trip.sidebar_members', icon: 'users', event: 'members_opened', canAccess: (role) => role !== 'viewer' },
+  // Участников (TRIP-137). Управление участниками — ступень editor.
+  { id: 'members', group: 'manage', labelKey: 'trip.sidebar_members', icon: 'users', event: 'members_opened', canAccess: (step) => clearsStep(step, 'editor') },
   { id: 'settings', group: 'manage', labelKey: 'nav.settings', icon: 'settings', event: 'settings_opened' },
 ];
 
@@ -72,24 +73,24 @@ export function sectionById(id) {
 
 // Доступна ли секция В ЭТОМ трипе ЭТОЙ роли. Незнакомый id недоступен всегда —
 // именно это чинит `?lens=` с опечаткой (см. resolveSection).
-export function isSectionAvailable(id, trip, myRole) {
+export function isSectionAvailable(id, trip, myStep) {
   const s = BY_ID.get(id);
   if (!s) return false;
   if (s.addon && trip?.details?.addons?.[s.addon] !== true) return false;
-  if (s.canAccess && !s.canAccess(myRole)) return false;
+  if (s.canAccess && !s.canAccess(myStep)) return false;
   return true;
 }
 
-// Секции группы, доступные в этом трипе этой роли, В ПОРЯДКЕ РЕЕСТРА.
-export function availableSections(trip, myRole, group = null) {
-  return SECTIONS.filter((s) => (group === null || s.group === group) && isSectionAvailable(s.id, trip, myRole));
+// Секции группы, доступные в этом трипе этой ступени, В ПОРЯДКЕ РЕЕСТРА.
+export function availableSections(trip, myStep, group = null) {
+  return SECTIONS.filter((s) => (group === null || s.group === group) && isSectionAvailable(s.id, trip, myStep));
 }
 
 // Что реально показать по значению из адреса. Недоступная секция (выключенный
 // аддон, роль без права) и НЕСУЩЕСТВУЮЩАЯ (`?lens=опечатка`) одинаково падают
 // на дефолт. До реестра незнакомый id проходил гейт насквозь и не совпадал ни с
 // одной веткой рендера — экран оставался ПУСТЫМ.
-export function resolveSection(id, trip, myRole) {
-  return isSectionAvailable(id, trip, myRole) ? id : DEFAULT_SECTION;
+export function resolveSection(id, trip, myStep) {
+  return isSectionAvailable(id, trip, myStep) ? id : DEFAULT_SECTION;
 }
 

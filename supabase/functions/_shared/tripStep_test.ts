@@ -55,9 +55,9 @@ Deno.test('нет трипа или нет пользователя — не н�
   assertEquals(stepFromFacts(null, null, { role: 'admin' }), null);
 });
 
-// ★ Гейт БЕЛЫЙ, а не чёрный. Фронтовый roleCanEdit — чёрный (`!== 'viewer'`), и
-// это расхождение чинит Ф2.1; серверная половина обязана оставаться белой:
-// незнакомая или пустая роль проваливается в «нельзя», а не в «можно».
+// ★ Гейт БЕЛЫЙ, а не чёрный: незнакомая или пустая роль проваливается в
+// «нельзя», а не в «можно». С TRIP-274 Ф2.1 фронт — тоже белый список (зеркало
+// `EDITOR_ROLES` в src/lib/tripStep.js), так что обе половины совпадают.
 Deno.test('незнакомая роль НЕ даёт editor (белый список, TRIP-120)', () => {
   for (const role of ['', 'Admin', 'ADMIN', 'editor', 'guest', 'member', 'null']) {
     assertEquals(stepFromFacts(OWNER, OTHER, { role: role }), 'participant', `роль ${role}`);

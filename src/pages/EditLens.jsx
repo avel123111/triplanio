@@ -291,7 +291,7 @@ function buildDraft(shell, transfers = [], lang) {
 //   shell   — тот же ответ TRIP_SHELL_KEY, что у TripView (trip + cityVisits)
 //   content — тот же ответ TRIP_CONTENT_KEY (hotels/activities/transfers/members)
 // Роль сюда НЕ передаётся: право на редактор проверяет реестр секций
-// (canAccess: roleCanEdit), а resolveSection подменяет недоступную секцию
+// (canAccess: clearsStep(step,'editor')), а resolveSection подменяет недоступную секцию
 // дефолтной — то есть по прямому адресу `?lens=edit` наблюдатель просто не
 // попадёт. Своего ролевого гарда здесь нет намеренно, второй такой проверки
 // быть не должно.
@@ -720,7 +720,7 @@ export default function EditLens({ tripId, shell, content }) {
   // Ни шапки, ни гейтов, ни ролевого гарда тут больше нет:
   //   шапку и меню держит TripShell (раньше это была вторая, своя копия);
    //   гейты shell/content отработал TripView до того, как отрисовать секцию;
-  //   право на редактор проверил реестр секций (canAccess: roleCanEdit), и
+  //   право на редактор проверил реестр секций (canAccess: clearsStep(step,'editor')), и
   //   он же не пускает сюда по прямому адресу - resolveSection подменит
   //   недоступную секцию дефолтной.
   // Осталась ОДНА собственная проверка: без content драфт не построить.

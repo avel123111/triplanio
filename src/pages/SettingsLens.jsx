@@ -6,7 +6,8 @@
  *   tripId      - string
  *   trip        - trip object
  *   members     - array of trip member rows
- *   myRole      - 'owner' | 'admin' | 'viewer'
+ *   isOwner     - boolean (ступень owner лестницы, из TripView)
+ *   canEdit     - boolean (ступень editor лестницы, из TripView)
  *   isPro       - boolean
  *   queryClient - react-query QueryClient (for invalidation)
  */
@@ -515,7 +516,7 @@ export function SettingsSkeleton() {
   );
 }
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
+export default function SettingsLens({ tripId, trip, members = [], isOwner = false, canEdit = false, isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
   // Profiles ride in the trip content bundle (getTripDetails), handed down by
   // TripView — no separate profile-fetch hop for the approver list.
   const { t } = useI18n();
@@ -540,11 +541,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const { toast } = useToast();
 
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
-  const isOwner = myRole === 'owner';
+  // isOwner — ступень owner лестницы (строго created_by), решено в TripView.
+  // Гейтит owner-only управление (удалить трип) и режим апселла (upgrade/info).
   // Viewers get Settings in read-only mode: identity fields muted, management
   // cards hidden, only "Leave trip" stays active (TRIP-137). NOTE: this is a UI
   // guard only — server-side write protection is TRIP-136 (RLS), not this.
-  const readOnly = myRole === 'viewer';
+  // Право — единая лестница доступа (ступень editor), решено выше в TripView.
+  const readOnly = !canEdit;
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
@@ -1029,7 +1032,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* ── Danger zone (full width) ── */}
       <Card style={{ borderColor: 'var(--danger-soft)' }}>
         <CardHeader title={t('settings.danger_zone')} />
-        {myRole !== 'owner' && (
+        {!isOwner && (
           <Row gap="g7" className="row--flush">
             <span className="tile tile--lg tile--danger"><Icon name="arrow" size={18} /></span>
             <Grow>
@@ -1039,7 +1042,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
           </Row>
         )}
-        {myRole === 'owner' && (
+        {isOwner && (
           <>
             {/* Линейку между строками несёт сама строка (.row--div), поэтому
                 отдельный <hr> больше не нужен - его сброс был ещё одним инлайном. */}
