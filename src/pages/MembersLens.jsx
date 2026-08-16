@@ -25,6 +25,7 @@ import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
@@ -288,7 +289,7 @@ export function MembersSkeleton() {
   );
 }
 
-export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, canManage = false, isLoading, queryClient }) {
+export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -298,7 +299,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   const [promoteState, setPromoteState] = useState(null); // null | { member }
   const [roleState, setRoleState] = useState(null); // null | { member }
 
-  // Управление участниками — ступень editor, решено выше в TripView (clearsStep).
+  // Управление участниками — ступень editor из единого контекста (TRIP-274 Ф2.2).
+  const { canEdit: canManage } = useTripAccess();
 
   function refresh() {
     // B5: invalidate both content (members list) and shell (header avatar row)

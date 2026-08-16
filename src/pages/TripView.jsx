@@ -1353,8 +1353,6 @@ export default function TripView() {
               cityVisits={visits}
               isLoading={shellLoading || loadingContent}
               isPro={tripIsPro}
-              canEdit={canEditMode}
-              isOwner={isOwner}
               queryClient={qc}
               onOpenSource={(kind, id) => setEventView({ open: true, kind, id, warning: null })}
             />
@@ -1366,7 +1364,6 @@ export default function TripView() {
               profiles={memberProfiles}
               trip={trip}
               user={user}
-              canManage={canEditMode}
               isLoading={shellLoading || loadingContent}
               queryClient={qc}
             />
@@ -1385,7 +1382,6 @@ export default function TripView() {
               isLoading={shellLoading || loadingContent}
               members={members}
               profiles={memberProfiles}
-              canEdit={canEditMode}
             />
           )}
           {/* Структурный редактор. До TRIP-349 — отдельный роут /trip/:id/edit со
@@ -1414,8 +1410,6 @@ export default function TripView() {
               trip={trip}
               members={members}
               profiles={memberProfiles}
-              isOwner={isOwner}
-              canEdit={canEditMode}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
               proResolved={tripProResolved}
