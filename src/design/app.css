@@ -5848,14 +5848,21 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 @media (hover: hover) { .tc:not(.tc--band):hover { box-shadow: var(--sh-3); } }
 
 /* cover background */
-.tc__bg { position: absolute; inset: 0; z-index: 0; }
+.tc__bg { position: absolute; inset: 0; z-index: 0; transition: transform .35s var(--ease-out); }
 .tc__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transition: transform .35s var(--ease-out); }
-/* Ховер медиа-карточки: картинка внутри чуть зумится (тень остаётся --sh-1→--sh-3);
-   переиспользуемый приём для фото-карточек (запрос Pavel):
-   visual-diff-exempt: .tc__img transition — плавный зум картинки
-   visual-diff-exempt: .tc__img {@media (hover: hover)} transform — зум 1.05 на ховере
-   visual-diff-exempt: .tc:hover:not(.tc--band) {@media (hover: hover)} transform — тот же зум, второй юнит правила */
-@media (hover: hover) { .tc:not(.tc--band):hover .tc__img { transform: scale(1.05); } }
+/* Ховер медиа-карточки, тень остаётся --sh-1→--sh-3 (запрос Pavel). В гриде зумится
+   слой-обложка `.tc__bg` (несёт и фото, и градиент); в списке-строке (.tr) обложка —
+   фон самой `.tr__thumb`, поэтому там зумим фото `.tc__img`:
+   visual-diff-exempt: .tc__bg transition — плавный зум обложки (грид)
+   visual-diff-exempt: .tc__img transition — плавный зум фото (список)
+   visual-diff-exempt: .tc:hover:not(.tc--band) {@media (hover: hover)} transform — зум 1.05, юнит .tc
+   visual-diff-exempt: .tc__bg {@media (hover: hover)} transform — зум 1.05 обложки грида
+   visual-diff-exempt: .tr:hover {@media (hover: hover)} transform — зум 1.05, юнит .tr (список)
+   visual-diff-exempt: .tc__img {@media (hover: hover)} transform — зум 1.05 фото списка */
+@media (hover: hover) {
+  .tc:not(.tc--band):hover .tc__bg,
+  .tr:hover .tc__img { transform: scale(1.05); }
+}
 
 /* decorative semi-transparent blobs */
 .tc__blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.14); z-index: 1; pointer-events: none; }
@@ -5993,18 +6000,19 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 
 /* List-view "add trip" placeholder — mirrors the grid .tc-add language but as a
    row, reusing .tr / .tr__main. Placed after .tr so it wins on equal specificity. */
-.tr--add {
-  border: 1px dashed var(--line-strong);
-  background: transparent;
-  box-shadow: none;
-  color: var(--muted);
-}
-.tr--add:hover {
-  border-color: var(--brand); color: var(--brand);
-  background: var(--brand-soft);
-  transform: translateY(-2px); box-shadow: none;
-}
-.tr--add:active { transform: translateY(0) scale(.995); }
+/* Скин плейсхолдера сведён на канон `<Card variant="add">` (.card--add): пунктир
+   --line-strong / transparent / --muted и ховер brand несёт канон. Движение снято —
+   канон add без лифта (как в гриде .tc-add), это и просил Pavel:
+   visual-diff-exempt: .tr--add border — на канон .card--add (1px dashed --line-strong, тождественно)
+   visual-diff-exempt: .tr--add background — на канон .card--add (transparent, тождественно)
+   visual-diff-exempt: .tr--add color — на канон .card--add (--muted, тождественно)
+   visual-diff-exempt: .tr--add box-shadow — базовый .card без тени, none был избыточен
+   visual-diff-exempt: .tr--add:hover border-color — ховер на канон .card--add:hover (--brand)
+   visual-diff-exempt: .tr--add:hover color — ховер на канон .card--add:hover (--brand)
+   visual-diff-exempt: .tr--add:hover background — ховер на канон .card--add:hover (--brand-soft)
+   visual-diff-exempt: .tr--add:hover box-shadow — none был избыточен (без тени)
+   visual-diff-exempt: .tr--add:hover transform — лифт translateY снят (канон add без движения)
+   visual-diff-exempt: .tr--add:active transform — нажатие без движения (канон) */
 .tr__addic {
   width: 46px; height: 46px; border-radius: var(--r-sm); flex: none;
   background: var(--brand-soft); color: var(--brand);

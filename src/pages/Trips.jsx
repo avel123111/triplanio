@@ -244,12 +244,13 @@ const TripRow = ({ trip, onClick }) => {
       onClick={onClick}
       className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
     >
-      {/* thumbnail */}
+      {/* thumbnail — фото переиспользует канон-класс .tc__img (убирает инлайн-стили),
+          чтобы ховер-зум был как в гриде; градиент остаётся фоном .tr__thumb */}
       <div className="tr__thumb" style={{ background: bg || undefined }}>
         {trip.cover_image_url && (
-          <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img className="tc__img" src={trip.cover_image_url} alt="" />
         )}
-        <div className="tc__blob" style={{ width: 54, height: 54, top: -18, right: -14 }} />
+        <div className="tc__blob" />
         {trip.isShared && (
           <span className="tr__shared"><Icon name="users" /></span>
         )}
@@ -762,7 +763,7 @@ export default function Trips() {
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <Card as="button" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
+                  <Card as="button" variant="add" radius="lg" className="tr tr--add" onClick={() => openChoice()}>
                     <span className="tr__addic"><Icon name="plus" size={20} /></span>
                     <span className="tr__main">
                       <b>{t('trips.add_trip')}</b>

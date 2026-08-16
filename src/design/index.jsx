@@ -361,14 +361,15 @@ export const Badge = ({ variant = "", size, icon, children, style }) => (
 // по-своему: список участников — цветными <Badge>, «Кто едет» в Обзоре —
 // руками собранными классами, чат — простой текстовой строкой, карточки
 // трипов — то quiet+eye, то голым <Badge>. Канон — облик списка участников:
-// owner=warning, admin=brand, viewer=outline+eye. `viewer` — единственная явная
+// owner=warning, admin=brand, viewer=outline (без иконки — TRIP-409, глаз снят по
+// просьбе Pavel: у остальных ролей иконки нет, у Наблюдателя тоже). `viewer` — единственная явная
 // ветка; всё остальное (admin и несуществующая в схеме роль `member`) читается
 // как admin, повторяя прежний fallback карточек трипов.
 /** @param {{ role?: string }} p */
 export const RoleBadge = ({ role }) => {
   const t = useT();
   if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>;
-  if (role === "viewer") return <Badge variant="outline" icon="eye">{t("trips.role_viewer")}</Badge>;
+  if (role === "viewer") return <Badge variant="outline">{t("trips.role_viewer")}</Badge>;
   return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
 };
 
