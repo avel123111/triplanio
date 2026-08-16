@@ -29,12 +29,12 @@ import { chatParticipants, pluralPeople, useChatId, useChatRows, useChatMessages
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
 
-function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
+function ChatMember({ name, role, ai, avatarUrl, isDeleted, seed }) {
   return (
     <div className="row chat-member">
       {ai
         ? <Avatar kind="ai" />
-        : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} />}
+        : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} seed={seed} />}
       <div className="grow--fit">
         <div className="chat-member__nm trunc">{name}</div>
         <div className="chat-member__rl">{role}</div>
@@ -240,6 +240,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId, profil
           name={p.name}
           avatarUrl={p.photo}
           isDeleted={p.deleted}
+          seed={p.seed}
           role={<RoleBadge role={p.role} />}
         />
       ))}

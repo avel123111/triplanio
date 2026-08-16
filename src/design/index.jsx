@@ -83,8 +83,8 @@ const AI_ROBOT = (
     <path d="M19 32 Q24 35.5 29 32" stroke="var(--ai)" strokeWidth="2.6" strokeLinecap="round" fill="none" />
   </svg>
 );
-/** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, className?: string, style?: any }} p */
-export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "", style: styleProp }) => {
+/** @param {{ name?: string, size?: string, kind?: string, photo?: string, deleted?: boolean, seed?: string, className?: string, style?: any }} p */
+export const Avatar = ({ name = "?", size, kind, photo, deleted, seed, className = "", style: styleProp }) => {
   const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (deleted) {
@@ -96,9 +96,13 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
   }
+  // Colour is keyed by `seed` (a stable identity id from resolveAuthor), NOT the
+  // display name — the same person must keep one colour whatever their current
+  // label is. Falls back to the name only when no seed was handed in (e.g. the
+  // /kit demos, which have ids for nobody).
   const style = photo
     ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center", ...styleProp }
-    : { background: avatarGradient(name), ...styleProp };
+    : { background: avatarGradient(seed || name), ...styleProp };
   return (
     <div className={`avatar ${size ? "avatar--" + size : ""} ${className}`} style={style}>
       {!photo && initials}
@@ -113,7 +117,7 @@ export const Avatar = ({ name = "?", size, kind, photo, deleted, className = "",
 /** @param {{ people?: any[], max?: number, size?: string, className?: string }} p */
 export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" }) => (
   <div className={className ? `avatar-stack ${className}` : "avatar-stack"}>
-    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} size={size} />)}
+    {people.slice(0, max).map((p, i) => <Avatar key={i} name={p.name} photo={p.photo} deleted={p.deleted} kind={p.kind} seed={p.seed} size={size} />)}
     {/* border у «+N» не пишем: он дословно дублировал .avatar, а инлайн-дубль
         переживает правку класса и молча расходится с соседями по стопке. */}
     {people.length > max && (
@@ -123,6 +127,36 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
     )}
   </div>
 );
+
+// ----- Person -----
+// The ONE way to render a human as a list row: avatar + name + a secondary line,
+// all fed from a single resolveAuthor() identity (`who`). Screens used to hand-
+// assemble this trio — <Avatar> here, a name label there, a "show the email?"
+// decision reinvented each time — and that is exactly how one branch shipped
+// without a photo and another printed a raw address (TRIP-334 follow-up). Bind a
+// person to <Person> and none of those three can drift: the avatar gets the
+// stable colour `seed`, the name is already the resolved label, and the sub line
+// is the resolver's decision (email only next to a real name) unless a caller
+// overrides it with a membership state ("Ожидает"/"Оффлайн").
+// Layout is the shared `.mrow` (app.css) — no new namespace.
+// `size` is left undefined by default → the base `.avatar` (28px). There is no
+// `.avatar--md` rule, so naming a "md" default would emit a class that exists
+// nowhere and "work" only by silently falling back — the exact non-existent-class
+// trap the design system warns about. Callers pass "sm"/"lg" when they want them.
+/** @param {{ who?: any, size?: string, sub?: any, trailing?: any, className?: string, style?: any }} p */
+export const Person = ({ who = {}, size, sub, trailing, className = "", style }) => {
+  const secondary = sub !== undefined ? sub : who.email;
+  return (
+    <div className={className ? `mrow ${className}` : "mrow"} style={style}>
+      <Avatar name={who.name} photo={who.photo || ""} deleted={who.deleted} kind={who.kind} seed={who.seed} size={size} />
+      <div className="fl1">
+        <div className="mn trunc">{who.name}</div>
+        {secondary ? <div className="me trunc">{secondary}</div> : null}
+      </div>
+      {trailing}
+    </div>
+  );
+};
 
 // ----- Severity message -----
 // Значок по умолчанию свой у каждого тона. Раньше здесь стояла вилка, знавшая
@@ -356,8 +390,9 @@ export const Badge = ({ variant = "", size, icon, children, style }) => (
 /** @param {{ role?: string }} p */
 export const RoleBadge = ({ role }) => {
   const t = useT();
-  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>;
-  if (role === "viewer") return <Badge variant="outline">{t("trips.role_viewer")}</Badge>;
+  // RoleBadge рисует ЯРЛЫК роли — это показ, не гейт права редактирования.
+  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>; // role-gate-exempt: показ
+  if (role === "viewer") return <Badge variant="outline">{t("trips.role_viewer")}</Badge>; // role-gate-exempt: показ
   return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
 };
 

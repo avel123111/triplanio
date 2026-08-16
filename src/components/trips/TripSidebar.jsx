@@ -3,7 +3,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Avatar, Badge, Btn, Card, Sheet } from '@/design/index';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
-import { canShareTrip } from '@/lib/members';
+import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
 
@@ -20,21 +20,21 @@ import { useUnreadChatCount } from '@/lib/chat';
 // гасил подсветку у ВСЕХ остальных пунктов.
 function SidebarBody({
   tripId, trip, lens, onNavigate,
-  isPro, proResolved = true, isOwner, myRole,
+  isPro, proResolved = true, isOwner, myStep,
   onUpgrade, onProInfo, onShare,
 }) {
   const { t } = useI18n();
   // Состав обеих групп — из реестра секций: и аддон-гейт, и ролевой (наблюдатель
   // видит Настройки, но не Участников — TRIP-137) живут там одним предикатом.
-  const lensItems = availableSections(trip, myRole, 'lens');
-  const mgmtItems = availableSections(trip, myRole, 'manage');
-  const canShare = canShareTrip(myRole);
+  const lensItems = availableSections(trip, myStep, 'lens');
+  const mgmtItems = availableSections(trip, myStep, 'manage');
+  const canShare = clearsStep(myStep, 'participant');
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro;
   // Only subscribe/count when the chat lens exists for this trip (TRIP-208 Ф2-2b):
   // the badge only renders under a visible chat item, so a chat-off trip holds
   // zero realtime subscriptions instead of a live one that can never show.
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myRole) });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
   return (
     <>
       <div className="app-side__group">
@@ -108,14 +108,14 @@ function UpgradeCard({ isOwner, onUpgrade, onProInfo }) {
 // включая структурный редактор, переключаются одним и тем же onNavigate.
 export default function TripSidebar({
   tripId, trip, lens, onNavigate,
-  isPro, proResolved = true, isOwner, myRole,
+  isPro, proResolved = true, isOwner, myStep,
   onUpgrade, onProInfo, onShare,
 }) {
   return (
     <aside className="app-side">
       <SidebarBody
         tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
-        isPro={isPro} proResolved={proResolved} isOwner={isOwner} myRole={myRole}
+        isPro={isPro} proResolved={proResolved} isOwner={isOwner} myStep={myStep}
         onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare}
       />
     </aside>
@@ -128,15 +128,15 @@ export default function TripSidebar({
 // and an account row (moved out of the bottom nav) at the foot.
 function SidebarSheetBody({
   tripId, trip, lens, onNavigate,
-  isPro, proResolved = true, isOwner, myRole,
+  isPro, proResolved = true, isOwner, myStep,
   onUpgrade, onProInfo, onShare, user, onAccount,
 }) {
   const { t } = useI18n();
-  const lensItems = availableSections(trip, myRole, 'lens');
-  const mgmtItems = availableSections(trip, myRole, 'manage');
-  const canShare = canShareTrip(myRole);
+  const lensItems = availableSections(trip, myStep, 'lens');
+  const mgmtItems = availableSections(trip, myStep, 'manage');
+  const canShare = clearsStep(myStep, 'participant');
   const showUpgrade = proResolved && !isPro;
-  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myRole) });
+  const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
   const accountName = displayName(user?.email, user?.full_name);
 
   // Ряды управления: секции группы 'manage' + «Поделиться».
@@ -183,7 +183,7 @@ function SidebarSheetBody({
       {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
       {onAccount && (
         <Card as="button" radius="lg" className="tm-account" onClick={onAccount}>
-          <Avatar name={accountName} photo={user?.avatar_url} size="sm" />
+          <Avatar name={accountName} photo={user?.avatar_url} seed={user?.id} size="sm" />
           <span className="tm-account__txt">
             <span className="tm-account__name t-label">{t('nav.account')}</span>
             <span className="tm-account__sub t-meta">{accountName}</span>

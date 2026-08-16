@@ -189,6 +189,9 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-orphan-css.mjs
+      - name: 2u — person avatars carry a stable colour seed
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-avatar-seed.mjs
       # 2r — табло эпика «единая дверь в данные» (TRIP-376, Ф0.4 эпика TRIP-374).
       # Живёт ЗДЕСЬ, а не рядом с 2o/2p: гард обходится стандартной библиотекой
       # (гашение комментариев + регулярка по всему файлу вместо парсера — в его
@@ -214,6 +217,14 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-ts-check.mjs
+      # 2z — гейт права на фронте ТОЛЬКО через лестницу доступа src/lib/tripStep.js
+      # (TRIP-274 Ф2.1). Абсолютный инвариант (HEAD-only, не храповик, BASE_REF не
+      # нужен), только стандартная библиотека — инвариант джобы «без `npm ci`» цел.
+      # Ловит рукописный гейт (`myRole === 'admin'` / `x === trip.created_by`) мимо
+      # `clearsStep`; показ роли (ярлык/бейдж) помечается `// role-gate-exempt`.
+      - name: 2z — role gate (право только через лестницу clearsStep)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-role-gate.mjs
       # 2u — целостность CSS-комментариев (TRIP-344). HEAD-only, абсолютный
       # инвариант (не храповик, BASE_REF не нужен), только стандартная библиотека —
       # инвариант джобы `guards` цел. Ловит осиротевший/лишний терминатор и

@@ -6,7 +6,8 @@
  *   tripId      - string
  *   trip        - trip object
  *   members     - array of trip member rows
- *   myRole      - 'owner' | 'admin' | 'viewer'
+ *   isOwner     - boolean (ступень owner лестницы, из TripView)
+ *   canEdit     - boolean (ступень editor лестницы, из TripView)
  *   isPro       - boolean
  *   queryClient - react-query QueryClient (for invalidation)
  */
@@ -20,10 +21,10 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
-import { resolveAuthor, resolveOwnerName } from '@/lib/resolveAuthor';
+import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -38,21 +39,13 @@ import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 // for the gateable lenses: budget / chat).
 
 // Pro flags MUST match the backend definition (lib/tripAddons.js PRO_ONLY_ADDONS):
-// pro = budget, chat, telegram_assistant. hotels_selection is "coming soon"
-// (locked). There is no personal-AI addon. docs and calendar are core lenses
-// (always visible), not optional addons, so they're not listed here.
+// pro = budget, chat, telegram_assistant. There is no personal-AI addon. docs and
+// calendar are core lenses (always visible), not optional addons, so not listed.
 const FEATURES = [
   { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', labelKey: 'settings.feat_budget_title', descKey: 'settings.feat_budget_desc',             pro: true  },
   { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      labelKey: 'chat.group_title',          descKey: 'settings.feat_chat_desc',              pro: true  },
   { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: tgBrand.fg,        labelKey: 'settings.feat_tg_title',    descKey: 'settings.feat_tg_desc',                pro: true  },
-  { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    labelKey: 'settings.feat_hotels_title', descKey: 'settings.feat_hotels_desc',           locked: true },
 ];
-
-// Hotel-voting / collaborative hotel-selection is hidden from the UI for now
-// (feature parked). Flip to `true` to bring back the "Совместный выбор отелей"
-// addon row and the "Аппруверы голосования за отели" card. The logic, i18n keys
-// and the `hotels_selection` addon are intentionally left intact behind this gate.
-const SHOW_HOTEL_VOTING = false;
 
 // Тон плитки Telegram. Цвет обязан приходить из ЕДИНСТВЕННОГО реестра брендов
 // (src/lib/externalBrands.js, TRIP-321 Ф2) - CSS-токенов у брендов нет намеренно,
@@ -418,37 +411,6 @@ function TelegramSection({ tripId }) {
   );
 }
 
-// ─── ApproverRow ──────────────────────────────────────────────────────────────
-
-function ApproverRow({ member, profiles, locked }) {
-  const { t } = useI18n();
-  const [on, setOn] = useState(false);
-  // Shared identity resolver (TRIP-334): name, avatar and the "anonymized
-  // account" label all come from the one ladder.
-  const who = resolveAuthor({
-    userId: member.user_id,
-    nameSnapshot: member.user_full_name,
-    member,
-    profiles,
-    deletedLabel: t('common.deleted_user'),
-    fallback: t('common.deleted_user'),
-  });
-  const roleLabel = member.role === 'owner' ? t('trips.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
-
-  return (
-    <Row>
-      <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
-      <Grow>
-        <div className="t-subheading">{who.name}</div>
-        <div className="muted t-meta">{roleLabel}</div>
-      </Grow>
-      {locked
-        ? <span className="muted t-meta">{t('settings.approver_by_role')}</span>
-        : <Toggle on={on} onChange={() => setOn(v => !v)} />}
-    </Row>
-  );
-}
-
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
 // Скелетон настроек — PURE, зеркалит РЕАЛЬНУЮ разметку экрана теми же классами:
@@ -515,9 +477,9 @@ export function SettingsSkeleton() {
   );
 }
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
+export default function SettingsLens({ tripId, trip, members = [], isOwner = false, canEdit = false, isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
   // Profiles ride in the trip content bundle (getTripDetails), handed down by
-  // TripView — no separate profile-fetch hop for the approver list.
+  // TripView — no separate profile-fetch hop for the owner name.
   const { t } = useI18n();
   const confirm = useConfirm();
   const { user } = useAuth();
@@ -540,11 +502,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const { toast } = useToast();
 
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
-  const isOwner = myRole === 'owner';
+  // isOwner — ступень owner лестницы (строго created_by), решено в TripView.
+  // Гейтит owner-only управление (удалить трип) и режим апселла (upgrade/info).
   // Viewers get Settings in read-only mode: identity fields muted, management
   // cards hidden, only "Leave trip" stays active (TRIP-137). NOTE: this is a UI
   // guard only — server-side write protection is TRIP-136 (RLS), not this.
-  const readOnly = myRole === 'viewer';
+  // Право — единая лестница доступа (ступень editor), решено выше в TripView.
+  const readOnly = !canEdit;
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
@@ -812,9 +776,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     }
   }
 
-  const approvers    = members.filter(m => ['owner', 'admin'].includes(m.role) && m.status === 'active');
-  const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
-
   if (isLoading) return <SettingsSkeleton />;
 
   return (
@@ -873,7 +834,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </fieldset>
       </Card>
 
-      {/* Management cards (features, integrations, warnings, approvers) stay
+      {/* Management cards (features, integrations, warnings) stay
           VISIBLE for a read-only viewer (TRIP-63 №5) but disabled: a native
           <fieldset disabled> switches off every control inside (toggles, inputs,
           file pickers and buttons are all native), and opacity + pointer-events
@@ -917,7 +878,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </div>
         <Grid className="addon-grid">
           {FEATURES
-            .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')
             .map(f => (
               <FeatureCard key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
                 busy={busyToggle === f.id}
@@ -983,20 +943,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <TelegramSection tripId={tripId} />
             </Card>
           )}
-
-          {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
-          {SHOW_HOTEL_VOTING && (
-            <Card>
-              <CardHeader title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} />
-              <Col gap="g4">
-                {approvers.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked />)}
-                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profiles={profiles} locked={false} />)}
-                {members.length === 0 && (
-                  <div className="muted t-body">{t('settings.members_loading')}</div>
-                )}
-              </Col>
-            </Card>
-          )}
         </Col>
       </Grid>
       </Col>
@@ -1029,7 +975,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* ── Danger zone (full width) ── */}
       <Card style={{ borderColor: 'var(--danger-soft)' }}>
         <CardHeader title={t('settings.danger_zone')} />
-        {myRole !== 'owner' && (
+        {!isOwner && (
           <Row gap="g7" className="row--flush">
             <span className="tile tile--lg tile--danger"><Icon name="arrow" size={18} /></span>
             <Grow>
@@ -1039,7 +985,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
           </Row>
         )}
-        {myRole === 'owner' && (
+        {isOwner && (
           <>
             {/* Линейку между строками несёт сама строка (.row--div), поэтому
                 отдельный <hr> больше не нужен - его сброс был ещё одним инлайном. */}

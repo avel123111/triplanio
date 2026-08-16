@@ -47,7 +47,7 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
         onClick={() => nav('/settings')}
         type="button"
       >
-        <Avatar className="app-header__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} size="sm" />
+        <Avatar className="app-header__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} seed={user?.id} size="sm" />
         {isPro && <span className="app-header__pro">PRO</span>}
       </button>
     </div>

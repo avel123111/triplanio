@@ -22,7 +22,7 @@ import { Icon } from './icons.jsx';
 
 // Дескриптор глифа из `notifView.notifGlyph`. `mode` держим строкой (в JS-спеке
 // под `@ts-check` литерал не выводится); сужаем по значению при рендере ниже.
-/** @typedef {{ mode: string, name?: string, photo?: string, deleted?: boolean, icon?: string, tone?: string }} NotifGlyph */
+/** @typedef {{ mode: string, name?: string, photo?: string, deleted?: boolean, seed?: string, icon?: string, tone?: string }} NotifGlyph */
 
 // Размер глифа берём ступенями самих примитивов (не переопределяя их): обычная
 // строка — аватар `lg` (36) / плитка дефолт (34); компакт-поповер — аватар дефолт
@@ -31,7 +31,7 @@ import { Icon } from './icons.jsx';
 function NotifGlyphEl({ glyph, compact }) {
   if (!glyph) return null;
   if (glyph.mode === 'avatar') {
-    return <Avatar size={compact ? undefined : 'lg'} name={glyph.name} photo={glyph.photo} deleted={glyph.deleted} className="notif__ava" />;
+    return <Avatar size={compact ? undefined : 'lg'} name={glyph.name} photo={glyph.photo} deleted={glyph.deleted} seed={glyph.seed} className="notif__ava" />;
   }
   if (glyph.mode === 'pro') {
     return <span className="notif__ava notif__ava--pro"><Icon name="star" size={compact ? 16 : 18} /></span>;
