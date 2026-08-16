@@ -28,26 +28,26 @@ const ALLOWED_SOURCE = new Set(['settings']);
 
 type FileEntry = { path: string; name: string; size: number; mime: string };
 
-/** Валидация массива files из тела — форма, лимиты, mime. Бросает HttpError(400). */
+/** Валидация массива files из тела — форма, лимиты, mime. Бросает HttpError(400,'INVALID_INPUT'). */
 function parseFiles(raw: unknown): FileEntry[] {
   if (raw == null) return [];
-  if (!Array.isArray(raw)) throw new HttpError(400, 'files must be an array', 'BAD_FILES');
-  if (raw.length > MAX_FILES) throw new HttpError(400, `At most ${MAX_FILES} files`, 'TOO_MANY_FILES');
+  if (!Array.isArray(raw)) throw new HttpError(400, 'files must be an array', 'INVALID_INPUT');
+  if (raw.length > MAX_FILES) throw new HttpError(400, `At most ${MAX_FILES} files`, 'INVALID_INPUT');
   return raw.map((f) => {
     const path = typeof (f as FileEntry)?.path === 'string' ? (f as FileEntry).path.trim() : '';
     const name = typeof (f as FileEntry)?.name === 'string' ? (f as FileEntry).name.slice(0, 256) : '';
     const size = Number((f as FileEntry)?.size) || 0;
     const mime = typeof (f as FileEntry)?.mime === 'string' ? (f as FileEntry).mime : '';
-    if (!path || path.length > 512) throw new HttpError(400, 'Bad file path', 'BAD_FILES');
-    if (!ALLOWED_MIME.has(mime)) throw new HttpError(400, 'Unsupported file type', 'BAD_FILE_TYPE');
-    if (size > MAX_FILE_BYTES) throw new HttpError(400, 'File too large', 'FILE_TOO_LARGE');
+    if (!path || path.length > 512) throw new HttpError(400, 'Bad file path', 'INVALID_INPUT');
+    if (!ALLOWED_MIME.has(mime)) throw new HttpError(400, 'Unsupported file type', 'INVALID_INPUT');
+    if (size > MAX_FILE_BYTES) throw new HttpError(400, 'File too large', 'INVALID_INPUT');
     return { path, name, size, mime };
   });
 }
 
 Deno.serve(withHandler('supportTicketCreate', async (req, corsHeaders) => {
   const user = await getRequestUser(req);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+  if (!user) throw new HttpError(401, 'Unauthorized', 'UNAUTHORIZED');
 
   const body = await readJson(req);
 
@@ -56,7 +56,7 @@ Deno.serve(withHandler('supportTicketCreate', async (req, corsHeaders) => {
 
   // Тот же инвариант, что и CHECK support_tickets_text_or_files.
   if (!text && files.length === 0) {
-    throw new HttpError(400, 'Provide a message or at least one screenshot', 'EMPTY');
+    throw new HttpError(400, 'Provide a message or at least one screenshot', 'INVALID_INPUT');
   }
 
   const source = typeof body.source === 'string' && ALLOWED_SOURCE.has(body.source) ? body.source : 'settings';
