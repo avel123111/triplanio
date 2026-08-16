@@ -102,7 +102,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
         <div style={{ padding: 20, overflowY: 'auto', maxHeight: 'calc(90vh - 32px)', WebkitOverflowScrolling: 'touch' }}>
           {/* Hero */}
           <div style={{ position: 'relative', borderRadius: 'var(--r-btn)', overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
-            background: 'linear-gradient(110deg, var(--brand-ink) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 55%, white) 120%)', color: 'white' }}>
+            background: 'var(--pro-hero-grad)', color: 'white' }}>
             <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>PRO</Badge>
             <DialogTitle asChild>
               <div className="t-heading" style={{ marginBottom: 6 }}>

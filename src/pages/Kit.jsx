@@ -33,7 +33,7 @@ import { useParams, Link } from 'react-router-dom';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
-  FileRow, IconBtn, Input, InputGroup, ReadOnlyBanner, Seg, Severity, Sheet,
+  FileRow, IconBtn, Input, InputGroup, Seg, Severity, Sheet,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
@@ -61,7 +61,7 @@ const TX = {
     'badge': 'Бейдж', 'card': 'Карточка', 'field': 'Поле ввода', 'input': 'Декорации поля',
     'avatar': 'Аватар', 'sev': 'Плашка сообщения', 'empty-state': 'Пустое состояние',
     'checkbox': 'Чекбокс', 'switch': 'Тумблер', 'doc-row': 'Строка документа',
-    'skeleton': 'Скелет', 'dialog': 'Оверлеи', 'readonly-banner': 'Плашка «только чтение»',
+    'skeleton': 'Скелет', 'dialog': 'Оверлеи',
     'tile': 'Плитка-иконка', 'spin': 'Кольцо загрузки', 'toast': 'Тост',
     'sheet-row': 'Строка меню/шита', 'ai-blk': 'AI-блок', 'time': 'Колонка времени',
     'row': 'Ряд (.row)', 'col': 'Колонка (.col)', 'grid': 'Сетка (.grid)',
@@ -86,7 +86,6 @@ const TX = {
     'doc-row': 'Имя, размер, тон (обычный / ai).',
     'skeleton': 'Плейсхолдер загрузки, разной ширины.',
     'dialog': 'Диалог и шит — оверлеи (открываются кнопкой).',
-    'readonly-banner': 'Режим просмотра трипа.',
     'tile': 'Квадрат под значок: тон · размер · форма · залитая.',
     'spin': 'Ступени размера (lg/xl) и тон головки (ink/onscrim).',
     'toast': 'Уведомление; тон по уровню важности красит иконный квадрат.',
@@ -598,7 +597,6 @@ const RECIPES = {
     ],
   }],
 
-  'readonly-banner': () => [{ items: [it('base', <div className="grow"><ReadOnlyBanner>{TX.readonly}</ReadOnlyBanner></div>, true)] }],
 
   // TRIP-391 объект 3: витрина рисует ЧЕРЕЗ <Tile>, а не сырым `.tile`, и
   // итерирует карты примитива (TILE_SIZES/TILE_TONES) — полнота по построению,
@@ -803,7 +801,7 @@ function SpacingSection({ ctx }) {
   );
 }
 
-const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-meta', 't-micro', 't-mono'];
+const TYPE_CANONS = ['t-display', 't-title', 't-heading', 't-subheading', 't-label', 't-body', 't-support', 't-meta', 't-micro', 't-tiny', 't-tiny-caps', 't-mono'];
 /* Санкционированные орто-модификаторы канона (TRIP-410): комбинируются с любым
    каноном, НЕ каноны сами по себе. Прежний sans-оверлей удалён (мета-ярус — Geologica).
    `base` — канон, на котором эффект модификатора виден нагляднее. */

@@ -39,7 +39,7 @@ import { budgetCategoryOptions, categoryDisplayName } from '@/lib/budget/constan
 import { getActiveLocale, fmtMoneyActive } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, ReadOnlyBanner, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
+import { Badge, Btn, Card, CardHeader, Dialog, Field, EmptyState, Input, InputGroup, Seg, Sheet, Skeleton, Severity, Swatch, Textarea, fmtDate, CurrencyCombobox, PageHead, Stat, ListRow, Donut } from '../design/index';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import { FieldError, IssuesPanel, fieldState, useHybridValidation } from '@/components/common/ValidationUI';
 
@@ -639,7 +639,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   return (
     <div className="col col--g7 ov-anim">
       {readOnly && (
-        <ReadOnlyBanner>{t('budget.readonly_banner_desc')}</ReadOnlyBanner>
+        <Severity level="info" title={t('settings.readonly_banner_title')}>{t('budget.readonly_banner_desc')}</Severity>
       )}
       {/* ░ HEADER: screen title + primary actions relocated from the removed
           per-screen bar. On phones the buttons hide (see BudgetLens.css): "add
@@ -723,8 +723,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </Severity>
       )}
 
-      {/* ░ NO-EXPENSES HERO ░ */}
-      {noExpenses && (
+      {/* ░ NO-EXPENSES HERO ░ — не показываем наблюдателю: плита зовёт добавить
+          расход, а у него нет такой возможности (гейт всей плашки, не только кнопки) */}
+      {noExpenses && !readOnly && (
         // inline-style-exempt: отступ сверху зависит от того, стоит ли выше
         // плашка «нет курса» — это состояние данных, а не вёрстка.
         <Card tone="brand" radius="md" className="empty-note row row--g7 row--wrap" style={{ marginTop: missingCurrencies.length > 0 ? 16 : 4 }}>
