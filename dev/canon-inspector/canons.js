@@ -31,6 +31,7 @@ export const CANONS = [
   { id: 9,  cls: 't-tiny',       name: 'Tiny',       role: 'Субтитл/подпись мельче .t-meta · Geologica 10/500 tabular · НЕ-капс' },
   { id: 10, cls: 't-tiny-caps',  name: 'Tiny Caps',  role: 'Капс micro-стиля на кегль ниже (ink, плотный трекинг) · Geologica 10/700 UPPER' },
   { id: 11, cls: 't-mono',       name: 'Mono',       role: 'Коды/брони/рейсы/полисы/email/kbd · JetBrains Mono 13/500' },
+  { id: 12, cls: 't-support',    name: 'Support',    role: 'Вторичная строка ПРИ титле: обычный вес на кегле label (иерархия весом+цветом, не размером) · Geologica 13/400' },
 ];
 
 // TRIP-410 · РОВНО три санкционированных орто-модификатора канона (из ТЗ).
