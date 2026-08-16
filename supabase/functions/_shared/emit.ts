@@ -36,7 +36,7 @@ import { runInBackground } from './http.ts';
 import { signN8nJwt } from './n8nAuth.ts';
 import { captureEdgeError } from './sentry.ts';
 import { RESOLVERS, EMPTY_DATA, type EmitData } from './emitResolvers.ts';
-import { buildInAppRows } from './notifyRules.ts';
+import { buildInAppRows, EXTERNAL } from './notifyRules.ts';
 
 // n8n receiver base for backend communication events; the event name is the
 // last path segment, e.g. .../webhook/notify/invite_created (§1). One webhook
@@ -128,14 +128,15 @@ async function writeInApp(event: string, data: EmitData, db: EmitCtx['db']): Pro
 }
 
 /**
- * Единая дверь коммуникации события: резолвит факты ОДИН раз и раздаёт в два
- * стока — durable in-app (await) + внешние каналы email/TG (fire-and-forget).
- * Полностью fail-open (ни in-app, ни внешняя доставка не бросают). Пришло на
- * смену прямым `INSERT notifications` (до TRIP-356 копия в каждой функции) и
- * n8n-ветке write-inapp: одна запись, одно место.
+ * Единая дверь коммуникации события: резолвит факты ОДИН раз и раздаёт в стоки —
+ * durable in-app (await) + внешний канал n8n/email (fire-and-forget) ТОЛЬКО для
+ * событий из `EXTERNAL`. Событие без внешнего канала (большинство) в n8n не
+ * ходит вовсе — его in-app-ветка там удалена, POST дал бы 404. Полностью
+ * fail-open. Пришло на смену прямым `INSERT notifications` (до TRIP-356 копия в
+ * каждой функции) и n8n-ветке write-inapp: одна запись, одно место.
  */
 export async function notify(event: string, ids: EmitIds = {}, ctx?: EmitCtx): Promise<void> {
   const data = await resolveData(event, ids, ctx);
   if (ctx?.db) await writeInApp(event, data, ctx.db);
-  runInBackground(postExternal(event, data));
+  if (EXTERNAL.has(event)) runInBackground(postExternal(event, data));
 }

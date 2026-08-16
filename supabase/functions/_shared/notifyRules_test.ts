@@ -10,7 +10,7 @@
  */
 
 import { assertEquals } from 'jsr:@std/assert@^1.0.8';
-import { buildInAppRows, INAPP, type NotifyData } from './notifyRules.ts';
+import { buildInAppRows, EXTERNAL, INAPP, type NotifyData } from './notifyRules.ts';
 
 const TRIP = { id: 'trip-1', title: 'Токио, весна' };
 
@@ -97,4 +97,16 @@ Deno.test('buildInAppRows: событие без in-app-канала (invite_res
 
 Deno.test('buildInAppRows: нет получателей → []', () => {
   assertEquals(buildInAppRows('trip_member_left', data({ actor: { id: 'x' } })), []);
+});
+
+// ── внешний канал (email) ─────────────────────────────────────────────────────
+
+Deno.test('EXTERNAL: письмо шлют только invite_created / invite_resent', () => {
+  assertEquals(EXTERNAL.has('invite_created'), true);
+  assertEquals(EXTERNAL.has('invite_resent'), true);
+  // In-app-only события в n8n не ходят (их ветки удалены) — POST дал бы 404.
+  for (const e of ['trip_member_joined', 'trip_invite_declined', 'trip_member_left',
+    'trip_member_removed', 'trip_role_changed', 'invite_linked', 'pro_activated', 'pro_payment_failed']) {
+    assertEquals(EXTERNAL.has(e), false, `${e} не должно ходить в n8n`);
+  }
 });
