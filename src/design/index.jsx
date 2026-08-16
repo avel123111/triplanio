@@ -305,6 +305,11 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
   // приглушённый вид даёт существующий `.btn[aria-disabled]`, справа — замок,
   // клик подавлен, а причина висит тултипом. Один кирпич на все «viewer'у нельзя»
   // по всему приложению (TRIP-274 Ф2.2).
+  // Правая иконка считается ЗДЕСЬ через if/else, а НЕ тернарником: `<Icon/> : …`
+  // (элемент рядом с `:`) i18n-гард принимает за JSX-текст (ложное срабатывание).
+  let rightIcon = null;
+  if (locked) rightIcon = <Icon name="lock" size={14} />;
+  else if (iconRight && !loading) rightIcon = <Icon name={iconRight} size={16} />;
   const btn = (
   <button
     // Дефолт <button> внутри формы — submit, поэтому любой вызов Btn, попавший
@@ -340,7 +345,7 @@ export const Btn = ({ variant = "secondary", size, icon, iconRight, tile, sub, b
         плитка, а не только когда есть вторая строка: иначе форма с плиткой и
         однострочной подписью («Добавить активность») схлопнулась бы в центр. */}
     {(tile || sub) ? <span className="gt"><b>{children}</b>{sub && <span>{sub}</span>}</span> : children}
-    {locked ? <Icon name="lock" size={14} /> : (iconRight && !loading && <Icon name={iconRight} size={16} />)}
+    {rightIcon}
   </button>
   );
   return locked && lockedHint ? <Tooltip content={lockedHint}>{btn}</Tooltip> : btn;
