@@ -12,6 +12,7 @@ import {
 } from '@/components/bookings/buildBookingPlatforms';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 import Stay22HotelList from '@/components/bookings/Stay22HotelList';
 import ViatorActivityList from '@/components/bookings/ViatorActivityList';
@@ -140,6 +141,9 @@ export default function ForkPartnerModal({
   stay22,
 }) {
   const { t, lang } = useI18nFormat();
+  // Витрина партнёров открыта всем; ручное добавление (create) — только editor.
+  // Наблюдатель видит fork, но CTA замьючена замком+тултипом (TRIP-274 Ф2.2).
+  const { canEdit } = useTripAccess();
   const logClick = usePartnerLogger(tripId);
   const meta = TYPE_META[type] || TYPE_META.hotel;
   const tripCurrency = trip?.details?.main_currency || 'EUR';
@@ -187,7 +191,7 @@ export default function ForkPartnerModal({
       <div className="fork-addzone">
         {/* Manual add — redesigned horizontal CTA, ev-colored. Dropped in
             embedded (tab) mode: the "I have a booking" tab replaces it. */}
-        {!embedded && (
+        {!embedded && (canEdit ? (
         <Card
           as="button"
           radius="md"
@@ -203,7 +207,13 @@ export default function ForkPartnerModal({
           </span>
           <ChevronRight size={16} className="fork-manual__chev" />
         </Card>
-        )}
+        ) : (
+          // Наблюдателю ручное добавление недоступно: тот же кирпич-замок, что и
+          // на Save движка записи — видимый замок + тултип, без своего CSS.
+          <Btn variant="dashed" block locked lockedHint={t('trip.viewer_locked')}>
+            {t('fork.manual_add')}
+          </Btn>
+        ))}
 
         {count > 0 && (
           <>

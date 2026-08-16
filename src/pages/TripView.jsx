@@ -352,7 +352,7 @@ function StreamAnchor({ label, sub, color, icon }) {
 
 // ─── MissingTransferWarning ───────────────────────────────────────────────────
 
-function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
+function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd, locked = false }) {
   const { t } = useI18n();
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
@@ -367,7 +367,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       <div className="t-label grow">
         {t('trip.no_transfer', { from, to })}
       </div>
-      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
+      <Btn variant="primary" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)} locked={locked} lockedHint={t('trip.viewer_locked')}>{t('trip.add_transfer')}</Btn>
       <IconBtn icon="close" size="sm" ariaLabel={t('common.close')} onClick={() => setHidden(true)} />
     </div>
   );
@@ -398,7 +398,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // toggle is on (default on) AND (b) the current user can act on them. Viewers
   // (Зрители) never see them - they can't add bookings, so it's just noise that
   // exposes planning gaps.
-  const showBookingWarnings = !isViewer && trip?.details?.display?.booking_warnings !== false;
+  // Варнинги «нет переезда» показываем ВСЕМ, включая наблюдателя (TRIP-274 Ф2.2):
+  // не прячем контент по роли, а блокируем ДЕЙСТВИЕ (кнопка добавления замьючена).
+  const showBookingWarnings = trip?.details?.display?.booking_warnings !== false;
 
   if (!visits.length) {
     return (
@@ -479,7 +481,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
           <MissingTransferWarning
             from={prev.city_name} to={city.city_name}
-            fromVisit={prev} toVisit={city} onAdd={onAddTransfer}
+            fromVisit={prev} toVisit={city} onAdd={onAddTransfer} locked={isViewer}
           />
         </div>
       );
@@ -658,7 +660,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         <div key="mt-end" style={{ marginBottom: 8 }}>
           <MissingTransferWarning
             from={prevCity.city_name} to={endVisit.city_name}
-            fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer}
+            fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer} locked={isViewer}
           />
         </div>
       );
