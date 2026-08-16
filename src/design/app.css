@@ -1120,6 +1120,7 @@ h4,
 .t-tiny-caps,
 .statbar .k,   /* TRIP-175 инсп.: стат-подпись statbar Meta→Tiny Caps (мелкий серый капс) */
 .sfig .k,      /* TRIP-175 инсп.: стат-подпись сводки (flights/cities) Meta→Tiny Caps */
+.badge--tiny,  /* TRIP-337: третья ступень пилюли — статус/тариф-чипы плашки на кегль ниже (.t-micro→.t-tiny-caps), апрув Pavel */
 .cdu span { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 700; line-height: 1.3; letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175 инсп.: подпись таймера Micro→Tiny Caps */
 /* Моно — ОДИН источник (JetBrains Mono, --font-mono): коды/брони/рейсы/полисы/
    share-URL/email/kbd/code. Числа/даты/времена НЕ моно — их держит Geologica с
@@ -2314,6 +2315,19 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    во всём приложении, а не на отдельных экранах». */
 .badge--sm { padding: 4px 9px; gap: 5px; }
 .badge--xs { padding: 2px 8px; gap: 4px; }
+/* --tiny: третья ступень (TRIP-337, апрув Pavel) — та же форма пилюли, но текст на
+   кегль ниже (канон .t-tiny-caps 10px, co-selector выше). Статус/тариф-чипы плашки
+   были громоздкими на .t-micro (11px + галка); tiny + без иконки садит их ровно в
+   ряд с заголовком. Только паддинг/зазор — типографику несёт канон.
+   visual-diff-exempt: .badge--tiny padding — новая ступень пилюли (плашка подписки)
+   visual-diff-exempt: .badge--tiny gap — новая ступень пилюли (плашка подписки)
+   visual-diff-exempt: .badge--tiny font-family — типографика из канона .t-tiny-caps
+   visual-diff-exempt: .badge--tiny font-size — типографика из канона .t-tiny-caps
+   visual-diff-exempt: .badge--tiny font-weight — типографика из канона .t-tiny-caps
+   visual-diff-exempt: .badge--tiny line-height — типографика из канона .t-tiny-caps
+   visual-diff-exempt: .badge--tiny letter-spacing — типографика из канона .t-tiny-caps
+   visual-diff-exempt: .badge--tiny text-transform — типографика из канона .t-tiny-caps */
+.badge--tiny { padding: var(--sp-1) var(--sp-4); gap: var(--sp-2); }
 /* Иконка и точка ВНУТРИ бейджа - тоже часть пилюли, а не дело каждого экрана.
    До этого размер иконки объявлялся трижды (.nextcard__tag svg 12, .tv-chip svg
    12, `size={10}` инлайном в чипе брони) плюс четвёртый раз пропом в самом
@@ -5580,10 +5594,13 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 }
 /* List rows (.row--div / .row--flush: preferences, help & legal, delete/logout)
    wrap on phones so the trailing button(s) drop to their own line instead of
-   overflowing or squeezing the text. */
+   overflowing or squeezing the text. The subscription plaque (#acct-plan) and the
+   reminder-channels cards (#acct-notify) share the SAME full-width-on-phone rule —
+   one declaration, not an 11th private `> .btn` copy of the pattern (TRIP-337). */
 @media (max-width: 640px) {
   .row--div, .row--flush { flex-wrap: wrap; row-gap: 12px; }
-  .row--div > .btn, .row--flush > .btn { flex: 1 1 100%; width: 100%; }
+  .row--div > .btn, .row--flush > .btn,
+  #acct-plan .btn, #acct-notify .btn { flex: 1 1 100%; width: 100%; }
   .acct-prefctl { flex: 1 1 100%; }
   .acct-prefctl .input { width: 100%; min-width: 0; }
   .acct-prefctl .seg { display: flex; width: 100%; }

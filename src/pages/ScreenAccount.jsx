@@ -21,7 +21,13 @@ import { openConsentBanner } from '@/lib/consent';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
+import { coverGradientCss } from '@/lib/trip-gradients';
 import { isAllowedUpload, ALLOWED_IMAGE_EXTENSIONS, IMAGE_ACCEPT } from '@/lib/fileType';
+
+// Cover background for a linked-trip thumbnail: the photo wins (rendered as an
+// <img> over a null background); otherwise the trip's stored gradient (always
+// one of the built-in set, default-backed). Mirrors coverBg() on the Trips page.
+const coverBg = (a) => (a.cover_image_url ? null : coverGradientCss(a.cover_gradient));
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -59,10 +65,14 @@ function fmtDate(iso, locale) {
   });
 }
 
-// floor-exempt: dsshare +4 — плашка и каналы вынесены в общие <Plaque>/<ChannelCard>
-// (DRY, rule #6): DS-элементы внутри общего компонента считаются ОДИН раз, а не N по
-// числу состояний/каналов, поэтому доля просела на 4bp при чистой пересадке на ДС
-// (handoff TRIP-337: своя композиция вне знаменателя, декомпозиция опускает долю).
+// floor-exempt: dsshare +23 — две причины, обе — правильный реюз (rule #6), не долг:
+// (1) плашка/каналы вынесены в общие <Plaque>/<ChannelCard> — DS-элементы считаются
+//     ОДИН раз, а не N по числу состояний/каналов (handoff: своя композиция вне
+//     знаменателя, декомпозиция опускает долю);
+// (2) привязанные трипы рисуются КАНОННОЙ строкой трипа `.tr` (та же, что список
+//     путешествий) — она span-based по построению, поэтому реюз реальной строки
+//     вместо самодельных DS-карточек (их Pavel отклонил как «уёбищные») опускает
+//     долю. Апрув Pavel на дизайн-направление ТГ-канала.
 
 // ─── Subscription plaque («Плитка», TRIP-337) ─────────────────────────────────
 // Одна строка внутри карточки: плитка тарифа (цвет живёт ТОЛЬКО здесь и в точке
@@ -133,7 +143,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
       <Plaque
         tile={<Tile size="xl" tone="quiet" icon="lock" />}
         name="Free"
-        badge={<Badge variant="quiet">{t('account.free_tariff')}</Badge>}
+        badge={<Badge variant="quiet" size="tiny">{t('account.free_tariff')}</Badge>}
         sub={t('account.free_desc')}
         price={money(0, 'usd')}
         action={(
@@ -153,7 +163,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
       <Plaque
         tile={proTile}
         name="Pro"
-        badge={<Badge variant="success" icon="check">{t('account.active')}</Badge>}
+        badge={<Badge variant="success" size="tiny">{t('account.active')}</Badge>}
         sub={detailsError ? t('account.details_unavailable') : null}
         action={detailsError
           ? (
@@ -171,7 +181,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
       <Plaque
         tile={proTile}
         name="Pro"
-        badge={<Badge variant="success" icon="check">{t('account.active')}</Badge>}
+        badge={<Badge variant="success" size="tiny">{t('account.active')}</Badge>}
         sub={plan?.subscriptionEnd ? <>{t('account.next_charge')} {dateB(plan.subscriptionEnd)}</> : null}
         price={actualMoney || monthlyPrice}
         per={t('account.per_month_short')}
@@ -185,7 +195,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
       <Plaque
         tile={proTile}
         name="Pro"
-        badge={<Badge variant="success" icon="check">{t('account.active')}</Badge>}
+        badge={<Badge variant="success" size="tiny">{t('account.active')}</Badge>}
         sub={plan?.subscriptionEnd ? <>{t('account.renews')} {dateB(plan.subscriptionEnd)}</> : null}
         price={actualMoney || yearlyPrice}
         per={t('account.per_year_short')}
@@ -199,7 +209,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
     <Plaque
       tile={<Tile size="xl" tone="warning" icon="pro" />}
       name="Pro"
-      badge={<Badge variant="warning">{t('account.cancelled_sub')}</Badge>}
+      badge={<Badge variant="warning" size="tiny">{t('account.cancelled_sub')}</Badge>}
       sub={plan?.subscriptionEnd ? t('account.access_until', { date: fmtDate(plan.subscriptionEnd, locale) }) : null}
       price={actualMoney || monthlyPrice}
       per={t('account.per_month_short')}
@@ -284,7 +294,7 @@ function ReminderChannels() {
               <ChannelCard
                 icon="telegram" tone="info" name="Telegram"
                 desc={t('telegram.account_section_subtitle')}
-                titleBadge={<Badge variant="success" icon="check">{t('telegram.connected')}</Badge>}
+                titleBadge={<Badge variant="success" size="tiny">{t('telegram.connected')}</Badge>}
                 trailing={(
                   <IconBtn
                     icon={open ? 'chevU' : 'chevD'}
@@ -295,27 +305,26 @@ function ReminderChannels() {
                 )}
               />
               {open && (
-                <Col gap="g3">
+                <Col gap="g2">
                   <div className="eyebrow">{t('telegram.linked_trips')}</div>
+                  {/* Привязанный трип = его НАСТОЯЩАЯ строка списка `.tr` (обложка-
+                      миниатюра + название + ТГ-логин получателя), та же, что рисует
+                      список путешествий. Вся строка — ссылка в трип; отвязка — одна
+                      тихая иконка рядом (sibling, а не вложенная в кнопку). */}
                   {items.map((a) => (
-                    <Card radius="md" key={a.id}>
-                      <Col gap="g4">
-                        <Row gap="g6">
-                          <Tile size="lg" tone="brand" icon="map" />
-                          <Grow fit>
-                            <Row gap="g4" wrap>
-                              <Trunc as="span" className="t-label">{a.trip_title}</Trunc>
-                              <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
-                            </Row>
-                            <div className="t-mono muted">{nick(a)}</div>
-                          </Grow>
-                        </Row>
-                        <Row gap="g3" wrap>
-                          <Btn variant="secondary" iconRight="arrowR" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
-                          <Btn variant="secondary" icon="unlink" onClick={() => unlink(a)}>{t('telegram.unlink')}</Btn>
-                        </Row>
-                      </Col>
-                    </Card>
+                    <Row gap="g2" key={a.id}>
+                      <Card as="button" radius="lg" interactive className="tr grow" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
+                        <span className="tr__thumb" style={{ background: coverBg(a) || undefined }}>
+                          {a.cover_image_url && <img className="tc__img" src={a.cover_image_url} alt="" />}
+                          <span className="tc__blob" />
+                        </span>
+                        <span className="tr__main">
+                          <span className="tr__title">{a.trip_title}</span>
+                          <span className="tr__sub"><Trunc as="span">{nick(a)}</Trunc></span>
+                        </span>
+                      </Card>
+                      <IconBtn icon="unlink" tone="danger" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
+                    </Row>
                   ))}
                   <Row gap="g4" align="a-start"><Icon name="info" size={13} className="muted" /><span className="t-meta muted">{t('telegram.account_hint')}</span></Row>
                 </Col>
@@ -332,12 +341,12 @@ function ReminderChannels() {
           <ChannelCard
             icon="whatsapp" tone="success" name="WhatsApp"
             desc={t('account.channel_whatsapp_desc')}
-            trailing={<Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>}
+            trailing={<Badge variant="quiet" size="tiny">{t('trip.addon_coming_soon')}</Badge>}
           />
           <ChannelCard
             icon="bell" tone="ai" name={t('account.channel_push')}
             desc={t('account.channel_push_desc')}
-            trailing={<Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>}
+            trailing={<Badge variant="quiet" size="tiny">{t('trip.addon_coming_soon')}</Badge>}
           />
         </Col>
 
