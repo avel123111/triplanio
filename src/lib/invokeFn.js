@@ -39,7 +39,7 @@ import { createEdgeTransport } from '@/lib/edgeTransport';
 // also bypasses its global-fetch 401→refresh→replay (TRIP-56); wrapping keeps
 // that recovery for edge calls. `getToken` supplies the per-user bearer; the
 // `apikey` (public anon key) rides along in the request just as the SDK sent it.
-// The `/api/*` → Supabase hop is the Vercel serverless function `api/[...path].js`
+// The `/api/*` → Supabase hop is the Vercel serverless function `api/proxy.js`
 // (a managed CDN rewrite drops the Authorization bearer cross-host). Drop-in:
 // returns the SAME `{ data, error }` (`.context` = raw Response).
 const edgeInvoke = createEdgeTransport({
