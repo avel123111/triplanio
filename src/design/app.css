@@ -4477,8 +4477,12 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    ==================================================================== */
     /* ---- table header ---- */
     /* ★`row-gap: 0` - не новое значение, а прежнее под своим именем: у сетки начальный зазор 0, а `.grid` несёт дефолтные 10px по ОБЕИМ осям, тогда как правило задаёт только `column-gap`. Без этой строки между строками появились бы 10px, которых не было. Тот же приём, что `gap: 0` у флекса в зоне 1.
-     visual-diff-move: te-thead -> grid */
-    .te-thead { grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; row-gap: 0; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
+       ★Колонки ЖИЛЬЁ/АКТИВНОСТЬ сужены 96→56 СИНХРОННО со строкой `.te-row` ниже —
+       иначе шапка и строки разъезжаются. Замер: иконки отель↔активность 70→30px,
+       иконка остаётся ровно под своим заголовком.
+     visual-diff-move: te-thead -> grid
+     visual-diff-exempt: .te-thead grid-template-columns — колонки жильё/активность 96→56 синхронно с .te-row (просьба Pavel, TRIP-337) */
+    .te-thead { grid-template-columns: 16px 28px minmax(0,1fr) 96px 56px 56px; row-gap: 0; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
     /* visual-diff-move: te-th -> trunc */
     .te-th { color: var(--muted); min-width: 0; }
     .te-th--c { text-align: center; }

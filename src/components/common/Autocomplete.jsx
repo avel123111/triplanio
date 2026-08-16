@@ -13,29 +13,19 @@ import GeoAttribution from '@/components/common/GeoAttribution';
  * Design decisions (why this shape):
  *  • Dropdown chrome reuses the canonical action-menu (`.menu` / `.mi`) — which
  *    already carries the primary/accent hover (`var(--accent)/--accent-ink`).
- *  • The list is a PLAIN overflow:auto div portaled into the nearest scroll
- *    parent and positioned ABSOLUTELY within its scrolled content. That gives,
- *    at once: (a) native touch/iOS scroll (no Radix popover quirks), (b) never
- *    clipped by a card/dialog `overflow:hidden`, (c) moves pixel-for-pixel WITH
- *    the input on scroll — no position:fixed, no per-frame recompute, no lag.
+ *  • The list is a PLAIN overflow:auto div portaled to <body> with position:FIXED
+ *    and z-index above the modal layer, so it OVERLAYS everything (dialog body,
+ *    footer, dialog edge) and is NEVER clipped by an ancestor's overflow — the fix
+ *    for a short dialog body cropping the list under its footer (TRIP-337). It is
+ *    re-positioned from the input's viewport rect on any scroll (capture:true, so
+ *    an inner scroller like the dialog body counts) and on resize, and FLIPS above
+ *    the input when there's no room below (bottom-anchored via CSS `bottom`).
  *  • overscroll-behavior:contain + -webkit-overflow-scrolling:touch keep the
  *    gesture inside the list on phones (same hardening as .vp-b / .ss-list).
  *
  * The engine is data-agnostic: callers pass `search`, `getKey`, `renderRow`,
  * `onPick`, so the city/address contracts live in the facades, not here.
  */
-
-// First scrollable ancestor — the dropdown portals here so it tracks the input
-// on scroll and is never clipped by an ancestor's overflow:hidden.
-function getScrollParent(el) {
-  let n = el?.parentElement;
-  while (n && n !== document.body) {
-    const oy = getComputedStyle(n).overflowY;
-    if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') return n;
-    n = n.parentElement;
-  }
-  return document.scrollingElement || document.body;
-}
 
 export default function Autocomplete({
   inputValue = '',
@@ -60,7 +50,6 @@ export default function Autocomplete({
   const [loading, setLoading] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const [box, setBox] = useState(null);
-  const [flipTop, setFlipTop] = useState(null);
   const timerRef = useRef(null);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
@@ -69,83 +58,50 @@ export default function Autocomplete({
   const langRef = useRef(lang);
   useEffect(() => { langRef.current = lang; }, [lang]);
 
-  // Position the portaled list once on open / results change, and re-derive only
-  // when the viewport itself changes (resize / mobile keyboard show-hide).
+  // Position the portaled list. It is portaled to <body> with position:FIXED and a
+  // z-index above the modal layer (--z-popover 250 > --z-modal 200), so it OVERLAYS
+  // everything — a dialog body, its footer, the dialog edge — and is NEVER clipped
+  // by an ancestor's overflow. (The old absolute-in-scroller kept the list inside
+  // the dialog body, so a short body cropped it under the footer — TRIP-337.) Fixed
+  // coords come straight from the input's viewport rect; we re-derive on ANY scroll
+  // (capture:true catches inner scrollers like the dialog body) and on resize, so
+  // the list tracks the input. When there's no room below, FLIP above the input —
+  // with fixed positioning the list's BOTTOM anchors to the input top via CSS
+  // `bottom`, so no height measurement / second pass is needed.
   useLayoutEffect(() => {
     if (!open || results.length === 0) { setBox(null); return undefined; }
-    let mutatedSp = null; // scroll parent we relativized — restore on cleanup
     const compute = () => {
       const el = wrapRef.current;
       if (!el) return;
-      const sp = getScrollParent(el);
       const r = el.getBoundingClientRect();
       const gap = 4;
-      const width = Math.round(r.width);
-      const isEl = sp !== document.body && sp !== document.scrollingElement;
-      // Drop any stale flip correction before we reposition (avoids a one-frame
-      // jump when results change while the list is open).
-      setFlipTop(null);
-      if (isEl) {
-        // Absolute-in-scroller: the list lives in the scrolled content and tracks
-        // the input with zero lag. Requires the scroller to be a positioning
-        // context — relativize it if it is still static (e.g. a dialog body),
-        // and restore it on cleanup so we leave no permanent inline style.
-        if (getComputedStyle(sp).position === 'static') {
-          sp.style.position = 'relative';
-          mutatedSp = sp;
-        }
-        const spRect = sp.getBoundingClientRect();
-        // Room is measured inside the SCROLLER's own viewport, not the window: the
-        // list is clipped by `sp`'s overflow, so a dialog footer (a sibling below
-        // the scroll body) is the real bottom bound. When the input sits low and
-        // there's no room below, FLIP the list above the input instead of letting
-        // it disappear under the footer (the bug this fixes — TRIP-337).
-        const spaceBelow = spRect.bottom - r.bottom - gap;
-        const spaceAbove = r.top - spRect.top - gap;
-        const flipUp = spaceBelow < 168 && spaceAbove > spaceBelow;
-        const maxH = Math.round(Math.max(120, Math.min(300, flipUp ? spaceAbove : spaceBelow)));
-        const left = Math.round(r.left - spRect.left + sp.scrollLeft);
-        const belowTop = Math.round(r.bottom - spRect.top + sp.scrollTop + gap);
-        // For a flip, the list BOTTOM must sit at the input top; the exact `top`
-        // needs the rendered height and is corrected in the measure effect below.
-        const anchorBottom = Math.round(r.top - spRect.top + sp.scrollTop - gap);
-        setBox({ target: sp, left, width, maxH, flipUp, anchorBottom, top: flipUp ? anchorBottom - maxH : belowTop });
-      } else {
-        // Page-level scroll: portal to <body>, position in document space, and use
-        // the window viewport as the clip bound (same flip rule).
-        const vh = window.visualViewport?.height || window.innerHeight;
-        const spaceBelow = vh - r.bottom - 12;
-        const spaceAbove = r.top - 12;
-        const flipUp = spaceBelow < 168 && spaceAbove > spaceBelow;
-        const maxH = Math.round(Math.max(120, Math.min(300, flipUp ? spaceAbove : spaceBelow)));
-        const left = Math.round(r.left + window.scrollX);
-        const belowTop = Math.round(r.bottom + window.scrollY + gap);
-        const anchorBottom = Math.round(r.top + window.scrollY - gap);
-        setBox({ target: document.body, left, width, maxH, flipUp, anchorBottom, top: flipUp ? anchorBottom - maxH : belowTop });
-      }
+      const vh = window.visualViewport?.height || window.innerHeight;
+      const spaceBelow = vh - r.bottom - 8;
+      const spaceAbove = r.top - 8;
+      const flipUp = spaceBelow < 200 && spaceAbove > spaceBelow;
+      const maxH = Math.round(Math.max(140, Math.min(320, flipUp ? spaceAbove : spaceBelow)));
+      setBox({
+        left: Math.round(r.left),
+        width: Math.round(r.width),
+        maxH, flipUp,
+        top: flipUp ? undefined : Math.round(r.bottom + gap),
+        bottom: flipUp ? Math.round(vh - r.top + gap) : undefined,
+      });
     };
     compute();
-    const onR = () => compute();
-    window.addEventListener('resize', onR);
-    window.visualViewport?.addEventListener('resize', onR);
+    const onMove = () => compute();
+    // capture:true so a scroll INSIDE the dialog body (not just the window) fires.
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
+    window.visualViewport?.addEventListener('resize', onMove);
+    window.visualViewport?.addEventListener('scroll', onMove);
     return () => {
-      window.removeEventListener('resize', onR);
-      window.visualViewport?.removeEventListener('resize', onR);
-      if (mutatedSp) mutatedSp.style.position = '';
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
+      window.visualViewport?.removeEventListener('resize', onMove);
+      window.visualViewport?.removeEventListener('scroll', onMove);
     };
   }, [open, results]);
-
-  // Flip correction: when opening ABOVE the input, anchor the list's BOTTOM to the
-  // input top. The final `top` depends on the rendered height (≤ maxH), so measure
-  // once the list is in the DOM — otherwise a short list would float away from the
-  // input by the reserved maxH. Runs only on flip; converges in one frame (box
-  // unchanged → effect doesn't re-fire when flipTop updates), no layout thrash.
-  useLayoutEffect(() => {
-    if (!box?.flipUp || !listRef.current) { return; }
-    const h = listRef.current.offsetHeight;
-    const t = box.anchorBottom - h;
-    setFlipTop((prev) => (prev === t ? prev : t));
-  }, [box]);
 
   const runSearch = (query) => {
     clearTimeout(timerRef.current);
@@ -255,8 +211,8 @@ export default function Autocomplete({
           onWheel={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
           style={{
-            position: 'absolute', left: box.left,
-            top: box.flipUp && flipTop != null ? flipTop : box.top,
+            position: 'fixed', left: box.left,
+            top: box.top, bottom: box.bottom,
             width: box.width, zIndex: 'var(--z-popover)',
             maxHeight: box.maxH, overflowX: 'hidden', overflowY: 'auto',
             overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
@@ -287,7 +243,7 @@ export default function Autocomplete({
           ))}
           {attribution && <GeoAttribution />}
         </div>,
-        box.target,
+        document.body,
       )}
     </div>
   );
