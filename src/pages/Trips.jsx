@@ -328,10 +328,13 @@ function HomeSkeleton({ viewMode }) {
     <>
       <div className="head">
         <div className="head__row">
-          <Skeleton w={60} h={60} r={'var(--r-md)'} />
+          {/* аватар = круг (как реальный .head__av 60×60 border-radius:50%), а не квадрат */}
+          <Skeleton w={60} h={60} r="50%" />
           <div className="grow">
-            <Skeleton w={220} h={32} r={'var(--r-sm)'} style={{ marginBottom: 10 }} />
-            <Skeleton w={260} h={15} r={6} />
+            {/* eyebrow + заголовок + подзаголовок — как компонент Greeting (marginBottom 6 / sub margin-top 8) */}
+            <Skeleton w={90} h={12} r={5} style={{ marginBottom: 6 }} />
+            <Skeleton w={240} h={38} r={'var(--r-sm)'} style={{ marginBottom: 8 }} />
+            <Skeleton w={200} h={15} r={6} />
           </div>
         </div>
       </div>
