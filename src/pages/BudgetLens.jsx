@@ -529,7 +529,7 @@ export function BudgetSkeleton() {
   );
 }
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, canEdit = false, queryClient, onOpenSource }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, canEdit = false, isOwner = false, queryClient, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   const isMobile = useIsMobile();
@@ -543,7 +543,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const { user } = useAuth();
   const nav = useNavigate();
   const { openProUpsell } = useProUpsell();
-  const isOwner = !!user?.id && user.id === trip?.created_by;
+  // isOwner — ступень owner лестницы (строго created_by), решено в TripView.
   const ownerName = resolveOwnerName({ trip, members, selfUser: user, deletedLabel: t('common.deleted_user') });
   const onProRefusal = () => openProUpsell({
     mode: isOwner ? 'upgrade' : 'info',

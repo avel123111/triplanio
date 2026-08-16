@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { EDITOR_ROLES, stepFromFacts, resolveMyStep, clearsStep } from './tripStep.js';
+import { resolveMyRole } from './members.js';
 
 const OWNER = 'owner-uuid';
 const trip = { id: 't1', created_by: OWNER };
@@ -76,6 +77,45 @@ test('clearsStep: null clears nothing (fail-closed)', () => {
   assert.equal(clearsStep(null, 'participant'), false);
   assert.equal(clearsStep(null, 'editor'), false);
   assert.equal(clearsStep(null, 'owner'), false);
+});
+
+// ── owner-ось: равенство old↔new по матрице ролей (TRIP-274 Ф2.1, правило #13) ──
+// Ф2.1 заменила рукописный владелец-гейт `resolveMyRole(...) === 'owner'` (питал
+// удаление трипа и режим Pro-апселла upgrade/info) на `clearsStep(resolveMyStep,
+// 'owner')`. На денежном контуре смену поведения нельзя проводить молча — этот
+// тест пинит, что новое выражение РАВНО старому во всех случаях, КРОМЕ одного
+// намеренного: не-создатель с залётной строкой членства role='owner'.
+
+const CREATOR = 'creator-uuid';
+const T = { id: 't', created_by: CREATOR };
+const oldIsOwner = (members, trip, user) => resolveMyRole(members, trip, user) === 'owner';
+const newIsOwner = (members, trip, user) => clearsStep(resolveMyStep(members, trip, user), 'owner');
+
+test('owner old↔new совпадают: создатель / admin / viewer / посторонний', () => {
+  const cases = [
+    [[], { id: CREATOR }],                                              // создатель без строки
+    [[{ user_id: CREATOR, role: 'viewer', status: 'active' }], { id: CREATOR }], // создатель + залётная viewer-строка
+    [[{ user_id: 'u2', role: 'admin', status: 'active' }], { id: 'u2' }],        // активный admin
+    [[{ user_id: 'u3', role: 'viewer', status: 'active' }], { id: 'u3' }],       // активный viewer
+    [[], { id: 'stranger' }],                                           // не на трипе
+  ];
+  for (const [members, user] of cases) {
+    assert.equal(newIsOwner(members, T, user), oldIsOwner(members, T, user),
+      `расхождение на ${JSON.stringify({ members, user })}`);
+  }
+});
+
+test('owner: ЕДИНСТВЕННАЯ намеренная дельта — не-создатель с ролью owner', () => {
+  // Залётная строка role='owner' у НЕ-создателя: старое правило звало его
+  // владельцем (resolveMyRole вернул бы 'owner'), новое — нет (владение это только
+  // trips.created_by, TRIP-143). Он теряет кнопку «Удалить трип» (её сервер и так
+  // 403-ил бы) и получает режим апселла info вместо upgrade. Это фикс эскалации.
+  const stray = [{ user_id: 'u9', role: 'owner', status: 'active' }];
+  const user = { id: 'u9' };
+  assert.equal(oldIsOwner(stray, T, user), true, 'старое (баг): звало владельцем');
+  assert.equal(newIsOwner(stray, T, user), false, 'новое (фикс): не владелец');
+  // Он остаётся редактором (owner-роль в EDITOR_ROLES), но не владельцем.
+  assert.equal(clearsStep(resolveMyStep(stray, T, user), 'editor'), true);
 });
 
 // ── ПАРИТЕТ с сервером — тот же приём, что viralLink.js ↔ _shared/viralLink.ts ─

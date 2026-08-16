@@ -889,7 +889,11 @@ export default function TripView() {
     [t, hotels, activities, transfers, visits, services],
   );
 
-  const isOwner = myRole === 'owner';
+  // Владелец = ступень owner лестницы (строго `trips.created_by`, TRIP-143).
+  // Питает owner-only управление (удалить трип) и РЕЖИМ апселла (владелец видит
+  // «Улучшить», остальные — «подключает владелец»). Показ Pro-контента этим НЕ
+  // гейтится — за него отвечает isPro/isProTrip (энтайтлмент), отдельная ось.
+  const isOwner = clearsStep(myStep, 'owner');
 
   // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
   // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
@@ -1345,6 +1349,7 @@ export default function TripView() {
               isLoading={shellLoading || loadingContent}
               isPro={tripIsPro}
               canEdit={canEditMode}
+              isOwner={isOwner}
               queryClient={qc}
               onOpenSource={(kind, id) => setEventView({ open: true, kind, id, warning: null })}
             />
@@ -1404,7 +1409,7 @@ export default function TripView() {
               trip={trip}
               members={members}
               profiles={memberProfiles}
-              myRole={myRole}
+              isOwner={isOwner}
               canEdit={canEditMode}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
