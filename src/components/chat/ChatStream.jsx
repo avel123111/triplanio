@@ -147,7 +147,7 @@ function ChatStream({ messages = [], selfUser, profiles, members, withDateDivide
       <div key={'run-' + first.id} className={'row row--a-start row--g6 chat-run' + (isMe ? ' chat-run--me' : '')}>
         {!isMe && (
           <div className="chat-run__av">
-            <Avatar name={author.name} photo={author.photo || ''} deleted={author.deleted} kind={author.kind} />
+            <Avatar name={author.name} photo={author.photo || ''} deleted={author.deleted} kind={author.kind} seed={author.seed} />
           </div>
         )}
         <div className="col col--g2 chat-run__col">

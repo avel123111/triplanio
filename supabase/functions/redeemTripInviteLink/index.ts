@@ -26,6 +26,7 @@ import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { emitTripReached2 } from '../_shared/analytics.ts';
 import { notify } from '../_shared/emit.ts';
 import { resolveRedeemRole } from './redeemRole.ts';
+import { displayName } from '../_shared/displayName.ts';
 
 Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     const user = await getRequestUser(req);
@@ -59,7 +60,12 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
 
     const { data: callerUsers } = await supabaseAdmin
       .from('users').select('full_name').eq('id', user.id).limit(1);
-    const callerName = callerUsers?.[0]?.full_name || user.email!;
+    // Snapshot the DISPLAY name (full_name → e-mail local-part), never the raw
+    // address: this string is written to trip_members.user_full_name and read
+    // back verbatim by resolveAuthor after the member leaves, so storing the bare
+    // "test8@…" made them read as a full e-mail there while everywhere else the
+    // same person is "Test8". One displayName ladder on the write side too.
+    const callerName = displayName(user.email, callerUsers?.[0]?.full_name);
 
     // Find an existing membership row: first by user_id, then by pending email invite.
     const { data: byUser } = await supabaseAdmin

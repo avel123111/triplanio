@@ -22,6 +22,7 @@
     "report:exemptions": "node scripts/ci/report-exemptions.mjs",
     "check:door": "node scripts/ci/check-data-door.mjs",
     "check:tscheck": "node scripts/ci/check-ts-check.mjs",
+    "check:avatar": "node scripts/ci/check-avatar-seed.mjs",
     "check:invoke": "node scripts/ci/check-invoke-discriminant.mjs",
     "check:css-comments": "node scripts/ci/check-css-comments.mjs",
     "check:shadow-style": "node scripts/ci/check-shadow-style-skin.mjs",

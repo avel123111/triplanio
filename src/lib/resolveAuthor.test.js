@@ -62,6 +62,39 @@ test('a deleted profile wins over the name snapshot on the row', () => {
   assert.equal(who.name, DELETED);
 });
 
+// ── colour seed is STABLE per identity, never the display name ────────────────
+
+test('seed is the account id, not the name — one colour across naming states', () => {
+  // Same person, three different labels they might render under. The avatar
+  // colour must not change, so the seed must be the same for all three.
+  const named = resolveAuthor({
+    userId: 'u1', profiles: { u1: { id: 'u1', full_name: 'Pavel', email: 'p@e.com', is_deleted: false } }, ...opts,
+  });
+  const noName = resolveAuthor({
+    userId: 'u1', profiles: { u1: { id: 'u1', full_name: '', email: 'p@e.com', is_deleted: false } }, ...opts,
+  });
+  assert.equal(named.seed, 'u1');
+  assert.equal(noName.seed, 'u1');
+  assert.equal(named.seed, noName.seed);
+  // The names themselves differ — proving the seed is decoupled from the label.
+  assert.notEqual(named.name, noName.name);
+});
+
+test('deleted account keeps the account id as its seed', () => {
+  const who = resolveAuthor({
+    userId: 'u1',
+    profiles: { u1: { id: 'u1', full_name: '', avatar_url: '', email: '', is_deleted: true } },
+    ...opts,
+  });
+  assert.equal(who.seed, 'u1');
+});
+
+test('an unregistered invite seeds off the membership row, not the label', () => {
+  const m = { id: 'm7', user_id: null, status: 'pending', user_full_name: '', invite_email: 'newcomer@example.com' };
+  const who = resolveAuthor({ userId: null, nameSnapshot: '', member: m, profiles: {}, members: [m], ...opts });
+  assert.equal(who.seed, 'm7');
+});
+
 // ── the ordinary rungs still resolve as before ───────────────────────────────
 
 test('live profile wins: name from the account, email underneath', () => {
