@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Avatar, Btn, Card, IconBtn, RoleBadge, Skeleton } from '@/design/index';
+import { Person, Btn, Card, IconBtn, RoleBadge, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -99,25 +99,21 @@ export default function MembersSummaryCard({
             });
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending';
-            // Line under the name: the invite state when there is one, else the
-            // address the resolver decided is worth showing.
-            const sub = isPending ? t('trip.member_pending') : who.email;
 
             return (
-              <div className="mrow" key={m.id || i} style={{ opacity: isPending || isOffline ? 0.7 : 1 }}>
-                <Avatar
-                  name={who.name}
-                  photo={who.photo || ''}
-                  deleted={who.deleted}
-                  kind={isPending ? 'placeholder' : undefined}
-                />
-                <div className="fl1">
-                  <div className="mn trunc">{who.name}</div>
-                  {sub && <div className="me trunc">{sub}</div>}
-                </div>
-                {/* Invite STATE (pending/offline) is not a role — it keeps the quiet
-                    status chip; an actual role goes through the shared RoleBadge. */}
-                {isPending || isOffline
+              <Person
+                key={m.id || i}
+                // Pending invites keep the initials placeholder (no gradient); the
+                // identity is otherwise the shared resolver's, colour seed and all.
+                who={isPending ? { ...who, kind: 'placeholder' } : who}
+                // Line under the name: the invite state when pending; otherwise
+                // Person falls back to who.email (the address the resolver already
+                // decided is worth showing) — the sub decision lives in one place.
+                sub={isPending ? t('trip.member_pending') : undefined}
+                style={{ opacity: isPending || isOffline ? 0.7 : 1 }}
+                // Invite STATE (pending/offline) is not a role — it keeps the quiet
+                // status chip; an actual role goes through the shared RoleBadge.
+                trailing={isPending || isOffline
                   ? (
                     <span className="badge badge--quiet">
                       {isPending && <span className="dot" style={{ background: 'var(--warning)' }} />}
@@ -125,7 +121,7 @@ export default function MembersSummaryCard({
                     </span>
                   )
                   : <RoleBadge role={m.role} />}
-              </div>
+              />
             );
           })}
         </div>

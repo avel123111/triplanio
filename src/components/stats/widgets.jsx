@@ -9,13 +9,13 @@ import { Icon } from '@/design/icons';
 
 // Greeting hero — highlights the name inside the localized greeting string
 // (every locale places {name} last, so we slice before its last occurrence).
-export function Greeting({ greeting, name, avatarName, photo, sub, eyebrow }) {
+export function Greeting({ greeting, name, avatarName, photo, seed, sub, eyebrow }) {
   const at = name ? greeting.lastIndexOf(name) : -1;
   const prefix = at >= 0 ? greeting.slice(0, at) : greeting;
   return (
     <div className="head">
       <div className="head__row">
-        <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
+        <Avatar name={avatarName || name || '?'} photo={photo} seed={seed} className="head__av" />
         <div className="grow">
           {eyebrow && <div className="t-label tp-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>

@@ -11,12 +11,15 @@
  * TRIP-334 happened: see tripProfileScope below.
  */
 
+import { displayName } from './displayName.ts';
+
 export const PROFILE_COLUMNS = 'id, full_name, avatar_url, email, deleted_at';
 
-// Sender = идентичность АВТОРА события (нотификации), без e-mail: получателю
-// уведомления адрес автора не показываем (в отличие от участника трипа, где
-// e-mail — часть карточки). Не тянем даже колонку, которую не отдаём.
-export const SENDER_COLUMNS = 'id, full_name, avatar_url, deleted_at';
+// Sender = идентичность АВТОРА события (нотификации). E-mail автора получателю НЕ
+// показываем — но `email` В ЗАПРОС ВХОДИТ, чтобы resolve имя автора той же
+// лестницей `displayName` (нет full_name → «Test8» из local-part, как на экранах
+// трипа), а НАРУЖУ уезжает только уже готовое имя, не адрес (см. toSender).
+export const SENDER_COLUMNS = 'id, full_name, avatar_url, email, deleted_at';
 
 export interface UserRow {
   id: string;
@@ -34,12 +37,14 @@ export interface Profile {
   is_deleted: boolean;
 }
 
-/** Форма автора события, уезжающая в инбокс: имя + аватар + флаг удаления.
- *  Тот же приговор приватности, что у toProfile (удалённый аккаунт не отдаёт
- *  ни имени, ни аватара), но БЕЗ e-mail. */
+/** Форма автора события, уезжающая в инбокс: УЖЕ РЕЗОЛВНУТОЕ имя + аватар + флаг
+ *  удаления. `name` — итоговая подпись (full_name → local-part e-mail → «-»),
+ *  посчитанная на сервере; сырой e-mail автора наружу не уходит вовсе. Тот же
+ *  приговор приватности, что у toProfile (удалённый аккаунт не отдаёт ни имени,
+ *  ни аватара). */
 export interface Sender {
   id: string;
-  full_name: string;
+  name: string;
   avatar_url: string;
   is_deleted: boolean;
 }
@@ -68,13 +73,16 @@ export function toProfile(u: UserRow, live = true): Profile {
 /**
  * Автор события → Sender. Один приговор удаления, что и toProfile: анонимный
  * аккаунт не отдаёт ни имени, ни аватара (клиент подпишет строку «Удалённый
- * аккаунт» по is_deleted). E-mail не отдаём никогда — его тут и не запрашиваем.
+ * аккаунт» по is_deleted). Имя РЕЗОЛВИТСЯ здесь той же лестницей `displayName`,
+ * что и на экранах трипа, поэтому автор без full_name читается одинаково всюду
+ * («Test8» из local-part, а не «?» в инбоксе и «Test8» в трипе). Сырой e-mail
+ * при этом наружу НЕ уходит — уезжает только готовое имя.
  */
 export function toSender(u: UserRow): Sender {
   const deleted = !!u.deleted_at;
   return {
     id: u.id,
-    full_name: deleted ? '' : (u.full_name || ''),
+    name: deleted ? '' : displayName(u.email, u.full_name),
     avatar_url: deleted ? '' : (u.avatar_url || ''),
     is_deleted: deleted,
   };

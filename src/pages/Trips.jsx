@@ -646,7 +646,7 @@ export default function Trips() {
             first-load skeleton is up). */}
         {!(isLoadingData && allTrips.length === 0) && (
           <>
-            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} eyebrow={t('trips.brand_eyebrow')} />
+            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} seed={user?.id} sub={subText} eyebrow={t('trips.brand_eyebrow')} />
             <StatHero
               points={statsPoints}
               home={home}

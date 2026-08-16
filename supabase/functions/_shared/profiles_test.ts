@@ -127,19 +127,28 @@ Deno.test('охват шире, чем право на живой аккаунт
 
 Deno.test('sender живого автора: имя + аватар, без e-mail в форме', () => {
   const s = toSender(row({ id: 'a', full_name: 'Женя', avatar_url: 'a.png', email: 'zhenya@example.com' }));
-  assertEquals(s, { id: 'a', full_name: 'Женя', avatar_url: 'a.png', is_deleted: false });
+  assertEquals(s, { id: 'a', name: 'Женя', avatar_url: 'a.png', is_deleted: false });
   // e-mail не поле Sender вовсе — форма не может его пронести.
+  assertEquals('email' in s, false);
+});
+
+Deno.test('sender автора БЕЗ имени: local-part e-mail, а не «?» и не сырой адрес', () => {
+  // Ровно расхождение из задачи: без full_name автор события читался «?»/целой
+  // почтой в инбоксе, тогда как на экранах трипа — «Test8». Теперь имя резолвит
+  // ОДНА лестница displayName и здесь: local-part, но НЕ весь адрес наружу.
+  const s = toSender(row({ id: 'a', full_name: null, avatar_url: null, email: 'test8@example.com' }));
+  assertEquals(s.name, 'Test8');
   assertEquals('email' in s, false);
 });
 
 Deno.test('sender удалённого автора: пусто, флаг is_deleted', () => {
   const s = toSender(row({ id: 'a', full_name: 'Женя', avatar_url: 'a.png', deleted_at: '2026-07-22T00:00:00Z' }));
-  assertEquals(s, { id: 'a', full_name: '', avatar_url: '', is_deleted: true });
+  assertEquals(s, { id: 'a', name: '', avatar_url: '', is_deleted: true });
 });
 
-Deno.test('sender без имени/аватара не роняет форму', () => {
+Deno.test('sender без имени/аватара/почты не роняет форму', () => {
   const s = toSender(row({ id: 'a' }));
-  assertEquals(s, { id: 'a', full_name: '', avatar_url: '', is_deleted: false });
+  assertEquals(s, { id: 'a', name: '-', avatar_url: '', is_deleted: false });
 });
 
 Deno.test('fetchSenders: дедуп id, карта id→Sender, пустые отброшены', async () => {
@@ -161,8 +170,8 @@ Deno.test('fetchSenders: дедуп id, карта id→Sender, пустые о�
   };
   const map = await fetchSenders(db, ['a', 'a', 'b', null, undefined, '']);
   assertEquals(seen, [['a', 'b']]); // дубли и пустые не доехали до запроса
-  assertEquals(map['a'], { id: 'a', full_name: 'Женя', avatar_url: 'a.png', is_deleted: false });
-  assertEquals(map['b'], { id: 'b', full_name: '', avatar_url: '', is_deleted: true });
+  assertEquals(map['a'], { id: 'a', name: 'Женя', avatar_url: 'a.png', is_deleted: false });
+  assertEquals(map['b'], { id: 'b', name: '', avatar_url: '', is_deleted: true });
 });
 
 Deno.test('fetchSenders: нет id → нет запроса, пустая карта', async () => {
