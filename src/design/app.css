@@ -6353,17 +6353,20 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
 .ai-blk-body{padding:0 var(--sp-5) var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);}
 /* Раскрытие/скрытие тела блока: шапка структурно НЕИЗМЕННА между свёрнутым
    (`available`) и развёрнутым (`idle`/`uploaded`) — плитка + заголовок + шеврон
-   стоят всегда, поэтому при open/close ничего не «дёргается». Тело рендерится
-   ТОЛЬКО в открытом состоянии (в свёрнутом его в DOM нет — ничего не «торчит»),
-   появляется лёгкой анимацией `.ai-blk-body--in`. Шеврон в свёрнутом смотрит вниз
-   (rotate 180). `.ai-blk--pill` УДАЛЁН: свёрнутое состояние больше не отдельный
-   кликабельный pill (`<Card as="button">`), а та же оболочка без тела — клик
-   держит шапка (`role="button"`), как в развёрнутом. TRIP-337.
-   floor-exempt: classes +1 — нетто: +.ai-blk--open +.ai-blk-body--in −.ai-blk--pill; статичная шапка + условный рендер тела AI-блока, апрув Pavel */
-.ai-blk-body--in{animation:fadeUp .18s var(--ease-out);}
+   стоят всегда, поэтому при open/close ничего не «дёргается». Тело ВСЕГДА в DOM
+   (иначе нет анимации скрытия), высота едет grid-template-rows 0fr→1fr — ПЛАВНО в
+   обе стороны. `.ai-blk__reveal-inner` (overflow:hidden + min-height:0) клипует
+   паддинговое тело досуха в свёрнутом (проверено фикстурой: closed height = 0),
+   поэтому ничего не «торчит». Шеврон в свёрнутом смотрит вниз (rotate 180).
+   `.ai-blk--pill` УДАЛЁН: свёрнутое состояние больше не отдельный кликабельный pill,
+   а та же оболочка со схлопнутым телом — клик держит шапка (`role="button"`). TRIP-337.
+   floor-exempt: classes +2 — нетто: +.ai-blk--open +.ai-blk__reveal +.ai-blk__reveal-inner −.ai-blk--pill; статичная шапка + плавное раскрытие/скрытие тела AI-блока (grid-rows), апрув Pavel */
+.ai-blk__reveal{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease-out);}
+.ai-blk--open .ai-blk__reveal{grid-template-rows:1fr;}
+.ai-blk__reveal-inner{overflow:hidden;min-height:0;}
 .ai-blk-x svg{transition:transform .2s var(--ease-out);}
 .ai-blk:not(.ai-blk--open) .ai-blk-x svg{transform:rotate(180deg);}
-@media (prefers-reduced-motion: reduce){.ai-blk-body--in{animation:none;}.ai-blk-x svg{transition:none;}}
+@media (prefers-reduced-motion: reduce){.ai-blk__reveal{transition:none;}.ai-blk-x svg{transition:none;}}
 /* Строка вложения переехала на общий `.doc-row` + `--ai` (TRIP-321 Ф14.5).
    Прежний комментарий здесь утверждал ровно обратное - «AI-tinted, distinct
    from generic .doc-row»; эта «осознанная разница» на замере оказалась 1px по

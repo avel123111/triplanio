@@ -290,12 +290,17 @@ export default function EventAiBlock({
         <span className="ai-blk-x" aria-hidden="true"><ChevronUp size={14} /></span>
       </div>
 
-      {open && (
-        <div className="ai-blk-body ai-blk-body--in"
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-        >
+      {/* Тело ВСЕГДА в DOM (иначе анимации скрытия нет) — но в свёрнутом схлопнуто
+          в ноль: grid-template-rows 0fr→1fr, а `.ai-blk__reveal-inner` (overflow
+          + min-height:0) клипует паддинговое тело досуха (проверено фикстурой:
+          closed=0px). Раскрытие/скрытие плавное в обе стороны, ничего не «торчит». */}
+      <div className="ai-blk__reveal">
+        <div className="ai-blk__reveal-inner">
+          <div className="ai-blk-body"
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+          >
           {files.length > 0 && (
             <div className="col col--g3">
               {files.map((f, i) => (
@@ -351,8 +356,9 @@ export default function EventAiBlock({
             accept={PARSER_ACCEPT}
             onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
           />
+          </div>
         </div>
-      )}
+      </div>
     </Card>
   );
 }
