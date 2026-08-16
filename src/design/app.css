@@ -100,6 +100,11 @@
   --pro-ink:   #E11D6A;
   --pro-fg:    #fff;
   --pro-gradient: linear-gradient(135deg,#FF7A59 0%,#FF2D78 100%);
+  /* Hero-градиент диалога лимита трипов: фикс-стопы (не через --brand-ink, который в
+     тёмной теме светлый) — одинаково тёмно-синий в обеих темах, под белый текст.
+     floor-exempt: tokens +1 — hero-градиент апселла, апрув Pavel
+     visual-diff-exempt: :root --pro-hero-grad — новый токен градиента (было инлайном в TripLimitDialog) */
+  --pro-hero-grad: linear-gradient(110deg, #16294A 0%, #2173C8 55%, color-mix(in srgb, #2173C8 55%, white) 120%);
 
   /* Рейтинг (★ отелей/активностей) — своё золото, отвязано от --pro (TRIP-187) */
   --rating:    #E6A21E;
