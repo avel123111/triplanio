@@ -630,6 +630,7 @@ h1 em, h2 em { color: var(--brand); font-style: normal; }
      .t-subheading  Geologica  16 (--fs-h3)                · 600 · 1.3
      .t-label       Geologica  13 (--fs-meta)              · 600 · 1.4   (единственный утилити-канон: подписи/кнопки/статусы)
      .t-body        Geologica  15 (--fs-base)              · 400 · 1.55
+     .t-support     Geologica  13 (--fs-meta)              · 400 · 1.45   (вторичная строка ПРИ титле: обычный вес на кегле label; иерархия весом+цветом, не размером)
      .t-meta        Geologica  12.5 (--fs-micro)           · 500 · 1.4 · tabular   (де-моно; +времена/даты)
      .t-micro       Geologica  11 (--fs-nano)              · 700 · 1.3 · UPPER/--track-caps
      .t-tiny        Geologica  10 (--fs-tiny)              · 500 · 1.3 · tabular   (субтитл/подпись мельче .t-meta; НЕ-капс)
@@ -837,8 +838,6 @@ h4,
 .deep__highlights li,
 .trust__item,
 .langdd__item,
-.brow__msg,        /* TRIP-175 инсп.: Meta→Body (текст уведомления в колокольчике) */
-.nrow__msg,        /* TRIP-175 инсп.: Meta→Body (текст строки уведомлений) */
 /* ★ТО, ЧТО ЧЕЛОВЕК НАБИРАЕТ, - это текст, а не подпись кнопки. Поле лежало в
    `.t-label` строкой рядом с `.btn`, то есть печатаемое значение было оформлено
    как надпись НА кнопке (канон .t-label, плотный/жирнее). Стало .t-body (обычный текст). Высоту это не трогает -
@@ -849,6 +848,24 @@ h4,
 .auth, .auth-input, /* TRIP-410: база логина → Body (были локальные --font-body/--fs-base) */
 .ptrip, .pt-cstop__num, /* TRIP-410: база публичного трипа → Body (была локальная --font-ui/500/1.6) */
 .ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-410 V1: .t-body — Geologica 15/400/1.55 (основной текст, щедрее ритм) */
+/* .t-support — обычный вес (400) на кегле label (13): вторичная строка ПРИ титле,
+   где иерархию несут вес+цвет, а не размер. Закрывает дыру шкалы «мелкий+обычный»
+   (см. апрув Pavel): раньше пояснение при 13/600-титле было вынуждено быть либо
+   крупным body(15), либо жирным meta(12.5/500). Цвет — на компоненте (.muted), как
+   у остальных канонов. Первые носители — сообщения уведомлений (инбокс + колокольчик).
+   floor-exempt: classes +1 — новый текст-канон t-support, апрув Pavel
+   visual-diff-exempt: .t-support font-family — новый канон
+   visual-diff-exempt: .t-support font-size — новый канон (13, --fs-meta)
+   visual-diff-exempt: .t-support font-weight — новый канон (400)
+   visual-diff-exempt: .t-support line-height — новый канон (1.45)
+   visual-diff-exempt: .t-support letter-spacing — новый канон (0)
+   visual-diff-exempt: .brow__msg font-size — пояснение уведомления на канон t-support (A): 15 → 13
+   visual-diff-exempt: .brow__msg line-height — то же: 1.55 → 1.45
+   visual-diff-exempt: .nrow__msg font-size — пояснение уведомления на канон t-support (A): 15 → 13
+   visual-diff-exempt: .nrow__msg line-height — то же: 1.55 → 1.45 */
+.t-support,
+.brow__msg,        /* текст уведомления в колокольчике → t-support (A) */
+.nrow__msg { font-family: var(--font-ui);      font-size: var(--fs-meta);  font-weight: 400; line-height: 1.45;  letter-spacing: 0; }   /* .t-support — Geologica 13/400/1.45 (вторичная строка при титле) */
 .t-meta,
 .field__hint,
 .app-header__trip-meta,
