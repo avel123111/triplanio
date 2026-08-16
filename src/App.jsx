@@ -29,6 +29,7 @@ import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
 import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav';
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
+import { FeedbackProvider } from '@/components/support/FeedbackProvider';
 import { ProUpsellProvider } from '@/components/common/ProUpsellProvider';
 
 // Витрина дизайн-системы (TRIP-340). Вне прода и БЕЗ логина: геометрия - чистый
@@ -159,6 +160,7 @@ const AuthenticatedApp = () => {
     <MobileNavProvider>
      <CreateTripProvider>
       <ProUpsellProvider>
+      <FeedbackProvider>
       {/* One global Stripe-return handler for the whole logged-in app - shows the
           success/fail modal regardless of which screen Stripe came back to. */}
       <StripeReturnModals />
@@ -192,6 +194,7 @@ const AuthenticatedApp = () => {
       {/* Custom mobile bottom nav (≤640px); hides itself on planner / create /
           landing / login routes. */}
       <MobileBottomNav />
+      </FeedbackProvider>
       </ProUpsellProvider>
      </CreateTripProvider>
     </MobileNavProvider>
