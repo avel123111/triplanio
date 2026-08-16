@@ -1,5 +1,5 @@
 // Vercel Serverless Function — same-origin API façade for edge functions
-// (Ф1 эпика «FE↔backend транспортная развязка»).
+// (TRIP-432, Ф1 «FE↔backend транспортная развязка»).
 //
 // The browser calls `/<host>/api/<fn>` (see src/lib/edgeTransport.js); this
 // function forwards it to `<supabase>/functions/v1/<fn>`. Why a function and NOT

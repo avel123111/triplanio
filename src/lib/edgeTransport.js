@@ -1,5 +1,5 @@
 // Browser transport for edge functions — same-origin `/api/*` instead of the
-// Supabase SDK's `functions.invoke` (Ф1 эпика «FE↔backend транспортная развязка»).
+// Supabase SDK's `functions.invoke` (TRIP-432, Ф1 «FE↔backend транспортная развязка»).
 //
 // Why this exists: `functions.invoke` hard-codes the vendor URL
 // (`<ref>.supabase.co/functions/v1/…`). Routing edge calls through our own

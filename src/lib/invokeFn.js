@@ -34,7 +34,7 @@ import { Sentry } from '@/lib/sentry';
 import { createAuthRetryFetch } from '@/lib/createAuthRetryFetch';
 import { createEdgeTransport } from '@/lib/edgeTransport';
 
-// Same-origin `/api/*` transport (Ф1) instead of `supabase.functions.invoke`.
+// Same-origin `/api/*` transport (TRIP-432, Ф1) instead of `supabase.functions.invoke`.
 // `createAuthRetryFetch` re-wraps window.fetch here because bypassing the SDK
 // also bypasses its global-fetch 401→refresh→replay (TRIP-56); wrapping keeps
 // that recovery for edge calls. `getToken` supplies the per-user bearer; the
