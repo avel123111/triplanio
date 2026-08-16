@@ -113,24 +113,46 @@ export const TRIP_MEMBER: ResourceSpec = {
         row.role === 'owner' ? forbid(400, 'OWNER_IMMUTABLE', 'Cannot change owner role') : null,
     },
 
-    // ── Удалить участника (delete + блок-лист АТОМАРНО в RPC) ──────────────────
-    // remove_trip_member(p_member, p_trip, p_actor): DELETE строки + INSERT блока
-    // (только если у строки был user_id). loadTarget+table — чтобы afterWrite
-    // получил loadedRow (user_id/trip_id для teardown). Блок пишется в RPC, НЕ в
-    // afterWrite: security-контроль (rule #13), best-effort проглотил бы сбой.
+    // ── Удалить участника (delete + опциональный бан АТОМАРНО в RPC) ───────────
+    // remove_trip_member(p_member, p_trip, p_actor, p_block): DELETE строки +
+    // (если p_block) INSERT блока (только при user_id). Бан — ЯВНОЕ намерение
+    // админа («Удалить и заблокировать»), не побочка: обычное «Удалить» и «Отменить
+    // приглашение» шлют block=false и бан не пишут (TRIP-412). loadTarget+table —
+    // чтобы afterWrite получил loadedRow (user_id/trip_id для teardown). Бан пишется
+    // в RPC, НЕ в afterWrite: security-контроль (rule #13), best-effort проглотил бы сбой.
     remove: {
       op: 'rpc',
       rpc: 'remove_trip_member',
       table: 'trip_members',
       requires: ['editor'],
       loadTarget: true,
-      buildArgs: (_values, ctx) => ({ p_member: ctx.targetId, p_trip: ctx.scopeValue }),
+      // `block` опционален (умолчание false в RPC): true только для «Удалить и
+      // заблокировать» с фронта. Валидатор держит тип строго (не коэрция '1'/1).
+      fields: { block: { type: 'boolean' } },
+      buildArgs: (values, ctx) => ({
+        p_member: ctx.targetId,
+        p_trip: ctx.scopeValue,
+        p_block: values.block === true,
+      }),
       // Владельца не удалить; себя — через `trip-member-self/leave`, не здесь.
       guardRow: (row, actor) => {
         if (row.role === 'owner') return forbid(400, 'OWNER_IMMUTABLE', 'Cannot remove owner');
         if (row.user_id === actor.id) return forbid(400, 'REMOVE_SELF', 'Use leave to remove yourself');
         return null;
       },
+    },
+
+    // ── Разблокировать (снять бан) ────────────────────────────────────────────
+    // unblock_trip_member(p_trip, p_user, p_actor): DELETE строки блок-листа.
+    // Адресуется по user_id (у забаненного строки членства нет — targetId/id тут не
+    // при чём), поэтому НЕ loadTarget: цель не в trip_members. Скоуп p_trip вшит в
+    // тело RPC (IDOR, тест по-действию). Разбан ≠ восстановление членства.
+    unblock: {
+      op: 'rpc',
+      rpc: 'unblock_trip_member',
+      requires: ['editor'],
+      fields: { user_id: { type: 'uuid', required: true } },
+      buildArgs: (values, ctx) => ({ p_trip: ctx.scopeValue, p_user: values.user_id }),
     },
   },
 };

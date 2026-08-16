@@ -133,6 +133,18 @@ Deno.serve(withHandler('redeemTripInviteLink', async (req, corsHeaders) => {
     await supabaseAdmin.from('trip_member_blocks')
       .delete().eq('trip_id', trip.id).eq('user_id', user.id);
 
+    // Помечаем инвайт-нотификацию прочитанной — тем же ключом, что `respond`
+    // (`user_id`+`trip_member_id`). Без этого принятие ПО ССЫЛКЕ оставляло в
+    // колокольчике уже отвеченное приглашение с кнопками accept/decline, а бейдж
+    // непрочитанного был завышен (TRIP-412 баг 3). Только для существовавшей строки
+    // (у свежей вставки по ссылке прежнего инвайта нет). Best-effort: косметический
+    // сбой не должен ронять успешный вход (5xx) — как best-effort mark-read у respond.
+    if (existing) {
+      const { error: readErr } = await supabaseAdmin.from('notifications')
+        .update({ read: true }).eq('user_id', user.id).eq('trip_member_id', existing.id);
+      if (readErr) console.error('redeemTripInviteLink: mark invite notification read failed', readErr);
+    }
+
     // North Star: did this join make the trip collaborative (owner + 1st member = 2)?
     await emitTripReached2(supabaseAdmin, trip.id, user.id);
 

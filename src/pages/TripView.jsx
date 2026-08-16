@@ -856,6 +856,10 @@ export default function TripView() {
   const activities       = contentData?.activities   || [];
   const transfers        = contentData?.transfers    || [];
   const members          = contentData?.members      || [];
+  // Blocked list (кто забанен) едет в том же бандле, но ТОЛЬКО редактору
+  // (getTripDetails гейтит по editor-ступени) — источник раздела «Заблокированные»
+  // в MembersLens (TRIP-412). У viewer'а поля нет → `|| []`.
+  const blockedMembers   = contentData?.blocked      || [];
   // Names + avatars arrive WITH the members (TRIP-230), so every surface that
   // lists people paints in one go instead of after a separate profile hop.
   const memberProfiles   = useProfileMap(contentData?.profiles);
@@ -1363,6 +1367,7 @@ export default function TripView() {
             <MembersLens
               tripId={tripId}
               members={members}
+              blocked={blockedMembers}
               profiles={memberProfiles}
               trip={trip}
               user={user}
