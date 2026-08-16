@@ -183,7 +183,7 @@ function SidebarSheetBody({
       {showUpgrade && <UpgradeCard isOwner={isOwner} onUpgrade={onUpgrade} onProInfo={onProInfo} />}
       {onAccount && (
         <Card as="button" radius="lg" className="tm-account" onClick={onAccount}>
-          <Avatar name={accountName} photo={user?.avatar_url} size="sm" />
+          <Avatar name={accountName} photo={user?.avatar_url} seed={user?.id} size="sm" />
           <span className="tm-account__txt">
             <span className="tm-account__name t-label">{t('nav.account')}</span>
             <span className="tm-account__sub t-meta">{accountName}</span>

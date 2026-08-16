@@ -437,7 +437,7 @@ function ApproverRow({ member, profiles, locked }) {
 
   return (
     <Row>
-      <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="sm" />
+      <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} seed={who.seed} size="sm" />
       <Grow>
         <div className="t-subheading">{who.name}</div>
         <div className="muted t-meta">{roleLabel}</div>

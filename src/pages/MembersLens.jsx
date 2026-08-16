@@ -414,7 +414,7 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
 
           return (
             <div key={m.id || i} className={`mbrow${isRemoving ? ' mbrow--busy' : ''}`}>
-              <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} size="lg" />
+              <Avatar name={who.name} photo={who.photo || ''} deleted={who.deleted} seed={who.seed} size="lg" />
               <div className="mbrow__id">
                 <div className="mbrow__name row row--g4">
                   {who.name}

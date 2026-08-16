@@ -398,9 +398,12 @@ export default function ScreenAccount() {
   // on Save (checkUserAuth then refreshes `user`).
   const avatarName = displayName(user?.email, user?.full_name);
   const avatarInitials = avatarName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+  // Colour by the stable account id (not the name), so this hero matches the
+  // header/nav avatar for the same user across every naming state — the same rule
+  // <Avatar seed> follows. Falls back to the name only for a not-yet-loaded user.
   const avatarBgStyle = avatarUrl
     ? { backgroundImage: `url(${avatarUrl})` }
-    : { background: avatarGradient(avatarName) };
+    : { background: avatarGradient(user?.id || avatarName) };
 
   // Save stays disabled until something actually changed (mirrors trip Settings).
   // Avatar is deliberately NOT part of this: upload/remove persist immediately

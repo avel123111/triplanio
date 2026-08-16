@@ -47,9 +47,12 @@ export function notifGlyph(type, sender) {
     || tp.includes('declined') || tp.includes('left') || tp.includes('booking')) {
     return {
       mode: 'avatar',
-      name: sender?.full_name || undefined,
+      name: sender?.name || undefined,
       photo: sender?.avatar_url || undefined,
       deleted: !!sender?.is_deleted,
+      // Stable colour key = the author's id, so their notification avatar matches
+      // their colour on the member list (never the mutable display name).
+      seed: sender?.id || undefined,
     };
   }
   return { mode: 'tile', icon: 'bell', tone: 'quiet' };
@@ -64,7 +67,11 @@ export function notifGlyph(type, sender) {
 function senderName(sender, deletedLabel) {
   if (!sender) return undefined;
   if (sender.is_deleted) return deletedLabel || undefined;
-  return sender.full_name || undefined;
+  // `sender.name` is ALREADY the resolved display name (full_name → e-mail
+  // local-part) decided by the backend's one displayName ladder — so an author
+  // without a full_name reads "Test8" here exactly as on the trip screens, not
+  // "?" nor the raw address the old i18n_params snapshot carried.
+  return sender.name || undefined;
 }
 
 /**

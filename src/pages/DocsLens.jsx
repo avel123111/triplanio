@@ -30,7 +30,6 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, IconBtn, Field, Input, Textarea, Severity, Skeleton, Seg, Tile, DialogRoot as Dialog, DialogContent, DialogTitle, useToast, FileRow } from '../design/index';
 import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { resolveAuthor } from '@/lib/resolveAuthor';
-import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
@@ -462,20 +461,21 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   const more     = files.length - shown.length;
   const isShared = scope !== 'personal';
 
-  // Uploader info via the shared resolver (same mechanism as chat): falls back
-  // to the created_by_name snapshot so a doc whose author has LEFT the trip
-  // still shows their name + gradient-initials avatar instead of "?".
-  const uploader = useMemo(() => {
-    if (!isShared) return { name: null, photo: null, deleted: false }; // personal → "Только вы"
-    return resolveAuthor({
-      userId: doc.created_by,
-      nameSnapshot: doc.created_by_name,
-      profiles,
-      members,
-      selfUser: user,
-      deletedLabel: t('common.deleted_user'),
-    });
-  }, [doc.created_by, doc.created_by_name, profiles, members, isShared, user, t]);
+  // Uploader identity via the shared resolver (same mechanism as chat) for BOTH
+  // scopes: falls back to the created_by_name snapshot so a doc whose author has
+  // LEFT the trip still shows their name + gradient-initials avatar instead of
+  // "?". Personal docs are always the viewer's own, so this resolves to their
+  // live profile (photo + stable colour seed) — the personal card used to hand-
+  // build an <Avatar> with no `photo`, so it drew initials while the same user's
+  // shared docs showed their picture (the visible split this collapses).
+  const uploader = useMemo(() => resolveAuthor({
+    userId: doc.created_by,
+    nameSnapshot: doc.created_by_name,
+    profiles,
+    members,
+    selfUser: user,
+    deletedLabel: t('common.deleted_user'),
+  }), [doc.created_by, doc.created_by_name, profiles, members, user, t]);
 
   return (
     <Card
@@ -526,19 +526,12 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
         </Row>
       )}
 
-      {/* Footer: avatar + name + date */}
+      {/* Footer: avatar + name + date. One <Avatar> path for both scopes; only
+          the LABEL differs (a shared doc names its author, a personal one reads
+          "Только вы"). The avatar itself is always the real uploader identity. */}
       <Row className="dl-card__foot">
-        {isShared ? (
-          <>
-            <Avatar name={uploader.name} photo={uploader.photo} deleted={uploader.deleted} size="sm" />
-            <Grow as="span" fit className="trunc dl-card__foot-who">{uploader.name}</Grow>
-          </>
-        ) : (
-          <>
-            <Avatar name={displayName(user?.email, user?.full_name)} size="sm" />
-            <Grow as="span" fit className="trunc dl-card__foot-who">{t('doc.only_you')}</Grow>
-          </>
-        )}
+        <Avatar name={uploader.name} photo={uploader.photo || ''} deleted={uploader.deleted} seed={uploader.seed} size="sm" />
+        <Grow as="span" fit className="trunc dl-card__foot-who">{isShared ? uploader.name : t('doc.only_you')}</Grow>
         <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
       </Row>
     </Card>

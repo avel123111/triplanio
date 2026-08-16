@@ -142,7 +142,7 @@ export default function MobileBottomNav() {
   if (hidden) return null;
 
   const avatarEl = (
-    <Avatar className="mbnav__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} size="sm" />
+    <Avatar className="mbnav__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} seed={user?.id} size="sm" />
   );
 
   if (tripNav) {

@@ -17,11 +17,13 @@
 //   4) the viewer themselves
 //   5) generic fallback
 //
-// Returns { name, email, photo, deleted } — the exact shape <Avatar> + name
-// labels consume across screens. `photo` is null whenever we only have a name,
-// so the Avatar component renders initials over a deterministic gradient.
+// Returns { name, email, photo, deleted, seed } — the exact shape <Avatar> +
+// name labels consume across screens. `photo` is null whenever we only have a
+// name, so the Avatar component renders initials over a deterministic gradient.
 // `email` is the address to print UNDER the name, already blanked when there
-// is nothing extra to say (see identity() below).
+// is nothing extra to say (see identity() below). `seed` is the STABLE colour
+// key (id, not name) so one person keeps one colour across every screen and
+// every naming state — feed it to <Avatar seed>.
 // Relative, not '@/lib/…': this module is unit-tested and `node --test` does
 // not resolve the Vite alias (same convention as geo.js → ./geo-cities.js).
 import { displayName } from './displayName.js';
@@ -98,14 +100,14 @@ export function resolveAuthor({
   //    <Avatar> to draw the branded robot instead of initials. The id is passed
   //    in (not imported) so this module stays env-free for `node --test`.
   if (botId && userId === botId) {
-    return { name: botName || fallback, email: '', photo: null, deleted: false, kind: 'ai' };
+    return { name: botName || fallback, email: '', photo: null, deleted: false, kind: 'ai', seed: botId };
   }
 
   // 1) Live profile — reflects the current name/photo, and the anonymized state.
   //    An anonymized account has no name and no address to show: the scrubbed
   //    columns must NOT fall through to a stale snapshot further down.
   const p = userId ? profiles?.[userId] : null;
-  if (p?.is_deleted) return { name: deletedLabel || fallback, email: '', photo: null, deleted: true };
+  if (p?.is_deleted) return { name: deletedLabel || fallback, email: '', photo: null, deleted: true, seed: userId };
 
   // Membership row. Callers that ARE a member list hand theirs over directly
   // (`member`): an invite to an address with no account is written with
@@ -113,6 +115,14 @@ export function resolveAuthor({
   // would skip it and drop the row to `fallback`. Content callers (chat, docs)
   // only have an author id, so they still search.
   const m = member || (userId ? members?.find((mm) => mm.user_id === userId) : null);
+
+  // Colour SEED = a STABLE identity key, never the (mutable) display name. Seeding
+  // the avatar gradient by the name made the SAME person change colour the moment
+  // their name switched between full_name ↔ email-local-part ↔ "deleted" — the same
+  // human looked like three people across screens (TRIP-334 follow-up). The key is
+  // the account/membership id when we have one, an address otherwise, and only as a
+  // last resort the name — so the colour is a property of WHO, not of the label.
+  const seed = userId || m?.id || m?.invite_email || p?.email || undefined;
 
   // The resolved identity. `email` is the address printed UNDER the name, and
   // it is only ever shown next to a REAL name: with nothing but an address,
@@ -124,6 +134,7 @@ export function resolveAuthor({
     email: hasRealName ? String(m?.invite_email || p?.email || '').trim() : '',
     photo: photo || null,
     deleted: false,
+    seed: seed || name || fallback,
   });
 
   if (p && (p.full_name || p.avatar_url || p.email)) {
@@ -145,5 +156,5 @@ export function resolveAuthor({
   }
 
   // 5) Nothing resolvable.
-  return { name: fallback, email: '', photo: null, deleted: false };
+  return { name: fallback, email: '', photo: null, deleted: false, seed: seed || fallback };
 }
