@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight, Lock } from 'lucide-react';
-import { CardSim } from '@/design/icons';
+import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
+import { CardSim, Icon } from '@/design/icons';
 import { Btn, IconBtn, Card, Tile, Tooltip, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
 import {
   hotelPlatforms,
@@ -201,13 +201,10 @@ export default function ForkPartnerModal({
           radius="md"
           pad="none"
           className="fork-manual"
+          locked={!canEdit}
           onClick={canEdit ? handleManual : undefined}
           aria-disabled={canEdit ? undefined : true}
-          style={{
-            '--fk': canEdit ? meta.color : 'var(--muted)',
-            '--fk-soft': canEdit ? meta.colorSoft : 'var(--surface-2)',
-            ...(canEdit ? null : { opacity: 0.55, cursor: 'not-allowed' }),
-          }}
+          style={{ '--fk': canEdit ? meta.color : 'var(--muted)', '--fk-soft': canEdit ? meta.colorSoft : 'var(--surface-2)' }}
         >
           <span className="fork-manual__ic"><ManualIcon size={20} /></span>
           <span className="fork-manual__tx">
@@ -215,7 +212,7 @@ export default function ForkPartnerModal({
             <span>{t(meta.manualSubKey)}</span>
           </span>
           {canEdit && <ChevronRight size={16} className="fork-manual__chev" />}
-          {!canEdit && <Lock size={16} className="fork-manual__chev" />}
+          {!canEdit && <Icon name="lock" size={16} className="fork-manual__chev" />}
         </Card>
         </Tooltip>
         )}

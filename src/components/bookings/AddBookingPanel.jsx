@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Search, FileText, BedDouble, Plane, Ticket, Lock } from 'lucide-react';
+import { Search, FileText, BedDouble, Plane, Ticket } from 'lucide-react';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { IconBtn, Seg, Tile } from '@/design/index';
+import { Icon } from '@/design/icons';
 import { useTripAccess } from '@/components/trips/TripAccessContext';
 import { eventHeader } from '@/components/common/EventViewBody';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
@@ -85,7 +86,7 @@ export default function AddBookingPanel({
               value: 'manual',
               disabled: !canEdit,
               title: canEdit ? undefined : t('trip.viewer_locked'),
-              label: <><FileText size={14} />{t('fork.tab_have_booking')}{!canEdit && <Lock size={12} />}</>,
+              label: <><FileText size={14} />{t('fork.tab_have_booking')}{!canEdit && <Icon name="lock" size={12} />}</>,
             },
           ]}
         />
