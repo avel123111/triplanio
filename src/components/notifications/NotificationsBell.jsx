@@ -1,11 +1,11 @@
 // @ts-check
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useNotificationList, useUnreadNotificationCount, useNotificationActions, BELL_ROWS } from '@/lib/useNotifications';
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Btn, EmptyState, IconBtn, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
+import { Badge, Btn, EmptyState, IconBtn, NotifRow, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
 import { buildNotifView } from '@/components/notifications/notifView';
 
 // ★TRIP-344: проп `triggerClassName` удалён. Его единственный вызыватель
@@ -65,10 +65,11 @@ export default function NotificationsBell() {
             <EmptyState icon="bell" title={t('notif.all_read')} body={t('notif.all_read_desc')} />
           ) : (
             notifications.map(n => (
-              <NotifRow
+              <PopoverRow
                 key={n.id}
                 n={n}
                 t={t}
+                nav={nav}
                 fmtRelative={fmtRelative}
                 pending={respondInvite.isPending}
                 onRespond={(action) => {
@@ -95,46 +96,44 @@ export default function NotificationsBell() {
   );
 }
 
-function NotifRow({ n, t, fmtRelative, pending, onRespond, onMarkRead, onOpenTrip }) {
+// Поповер-строка = канон `<NotifRow compact>` + слоты действий. Резолв (глиф из
+// sender, живое имя, i18n-текст) — общий `buildNotifView`, тот же, что у экрана.
+function PopoverRow({ n, t, nav, fmtRelative, pending, onRespond, onMarkRead, onOpenTrip }) {
   // Invite status rides the row now (getInbox joins trip_members) — no per-row
   // `.from('trip_members')` waterfall (TRIP-408).
   const memberStatus = n.member_status;
-
-  const time = fmtRelative(n.created_at);
-  // Единый резолвер строки (общий с экраном инбокса): живое имя автора из sender,
-  // локализация текста, узлы заголовка/сообщения.
-  const { meta, isInvite, titleNode, messageText, messageNode } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
+  const { glyph, isInvite, titleNode, messageText, messageNode } = buildNotifView(n, t, { deletedLabel: t('common.deleted_user') });
   const showPending = isInvite && memberStatus === 'pending';
+  const showLink = n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite');
+  const hasActions = showPending || (isInvite && memberStatus === 'active') || showLink;
+
+  const actions = hasActions ? (
+    <>
+      {showPending && (
+        <>
+          <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+          <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+        </>
+      )}
+      {isInvite && memberStatus === 'active' && (
+        <Badge variant="success" icon="check">{t('notif.accepted')}</Badge>
+      )}
+      {showLink && (
+        <Btn variant="link" icon="pin" onClick={() => { onOpenTrip?.(); nav(`/trip/${n.trip_id}`); }}>{t('notif.view_trip')}</Btn>
+      )}
+    </>
+  ) : null;
 
   return (
-    <div
-      className={`brow${n.read ? '' : ' brow--unread'}`}
+    <NotifRow
+      compact
+      glyph={glyph}
+      unread={!n.read}
+      title={titleNode}
+      message={messageText ? messageNode : null}
+      time={fmtRelative(n.created_at)}
+      actions={actions}
       onClick={() => { if (!n.read) onMarkRead?.(); }}
-    >
-      <div className="n-ic n-ic--sm" style={{ '--ic': meta.color }}>
-        <Icon name={meta.icon} size={14} />
-      </div>
-      <div className="brow__body">
-        <div className="brow__title">{titleNode}</div>
-        {messageText && <div className="brow__msg">{messageNode}</div>}
-        <div className="brow__time">{time}</div>
-
-        {showPending && (
-          <div className="brow__acts">
-            <Btn variant="primary" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
-            <Btn variant="secondary" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
-          </div>
-        )}
-        {isInvite && memberStatus === 'active' && (
-          <div className="brow__ok">✓ {t('notif.accepted')}</div>
-        )}
-
-        {n.trip_id && (memberStatus === 'active' || n.type !== 'trip_invite') && (
-          <Link to={`/trip/${n.trip_id}`} onClick={onOpenTrip} className="brow__link">
-            <Icon name="pin" size={12} />{t('notif.view_trip')}
-          </Link>
-        )}
-      </div>
-    </div>
+    />
   );
 }

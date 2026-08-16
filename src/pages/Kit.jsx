@@ -33,7 +33,7 @@ import { useParams, Link } from 'react-router-dom';
 import catalog from '@/design/catalog.json';
 import {
   Avatar, AvatarStack, Badge, Btn, Card, CardHeader, Checkbox, Chip, Dialog, EmptyState, Field,
-  FileRow, IconBtn, Input, InputGroup, Seg, Severity, Sheet,
+  FileRow, IconBtn, Input, InputGroup, NotifRow, Seg, Severity, Sheet,
   Skeleton, Stepper, Swatch, Textarea, Tile, Toggle, PageHead, Stat, ListRow, Donut,
   BTN_VARIANTS, CARD_VARIANTS, ICON_BTN_TONES, ICON_BTN_SIZES, SEG_VARIANTS, STEPPER_VARIANTS,
   TILE_SIZES, TILE_TONES, STAT_TONES, LISTROW_VARIANTS, toast,
@@ -597,6 +597,88 @@ const RECIPES = {
     ],
   }],
 
+
+  // Строка уведомления — один компонент на все типы и обе поверхности. Показана
+  // КАК В ПРИЛОЖЕНИИ: строки стопкой на реалистичной ширине, с теми же кнопками
+  // (accept/decline, «Открыть трип», бейджи) — статикой, без интерактива. Глиф по
+  // ТИПУ события: аватар (человек) · плитка (аккаунт/доступ/оплата) · pro.
+  notif: () => {
+    // Демо-контент витрины (dev-only, НЕ UI-строки): как `TX`, живёт в ДАННЫХ, а
+    // не JSX-литералами — i18n-гард 2d не считает это хардкодом (флагает JSX-props/
+    // текст, не свойства объектов). Ярлыки кнопок/бейджей — JSX-константы, помечены
+    // `// i18n-ignore` (демо-подписи /kit, показывают слоты действий строки).
+    const link = <Btn variant="link" icon="pin">Открыть трип</Btn>; // i18n-ignore: демо-подпись витрины /kit
+    const inviteActs = <><Btn variant="primary" icon="check">Принять</Btn><Btn variant="secondary">Отклонить</Btn></>; // i18n-ignore: демо-подписи витрины /kit
+    const acceptedActs = <><Badge variant="success" icon="check">Ты в путешествии</Badge>{link}</>; // i18n-ignore: демо-подпись витрины /kit
+    const declinedActs = <Badge variant="quiet">Отклонил</Badge>; // i18n-ignore: демо-подпись витрины /kit
+    const goTrips = <Btn variant="primary" icon="plus" block>Перейти к путешествиям</Btn>; // i18n-ignore: демо-подпись витрины /kit
+    const inbox = [
+      { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна · роль наблюдателя', time: '5 мин', actions: inviteActs },
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
+      { glyph: { mode: 'tile', icon: 'shield', tone: 'brand' }, title: 'Теперь ты администратор', message: 'Лиссабон · можно менять маршрут и бюджет', time: '2 дн', actions: link },
+      { glyph: { mode: 'avatar', name: 'Ира Волкова' }, title: 'Ира Волкова зовёт в путешествие', message: 'Токио, весна', time: '2 дн', actions: acceptedActs },
+      { glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Костя Марков не поедет', message: 'Грузия, октябрь · приглашение отклонено', time: 'вчера', actions: declinedActs },
+      { glyph: { mode: 'tile', icon: 'lock', tone: 'danger' }, title: 'Ты больше не участник', message: 'Исландия · доступ закрыт', time: '1 мес', actions: link },
+      { glyph: { mode: 'avatar', deleted: true }, title: 'Участник больше не в путешествии', message: 'Грузия, октябрь', time: '6 дн', actions: link },
+      { glyph: { mode: 'pro' }, title: 'Pro активирован', message: 'Все функции уже доступны', time: '14 дн' },
+      { glyph: { mode: 'tile', icon: 'card', tone: 'danger' }, title: 'Оплата Pro не прошла', message: 'Обнови способ оплаты, чтобы сохранить Pro', time: '3 ч' },
+    ];
+    const popover = [
+      { unread: true, glyph: { mode: 'avatar', name: 'Женя Соколов' }, title: 'Женя Соколов зовёт в путешествие', message: 'Токио, весна', time: '5 мин', actions: inviteActs },
+      { unread: true, glyph: { mode: 'avatar', name: 'Костя Марков' }, title: 'Новая бронь: отель', message: 'Токио, весна · Костя Марков', time: '2 ч', actions: link },
+      { glyph: { mode: 'avatar', name: 'Марк Лебедев' }, title: 'Марк Лебедев теперь в путешествии', message: 'Токио, весна', time: '4 ч', actions: link },
+      { glyph: { mode: 'tile', icon: 'card', tone: 'danger' }, title: 'Оплата Pro не прошла', message: 'Обнови способ оплаты', time: '3 ч' },
+    ];
+    const emptyRows = [
+      { icon: 'users', title: 'Приглашения', sub: 'Когда тебя позовут в путешествие' },
+      { icon: 'refresh', title: 'Обновления', sub: 'Изменения в общих планах' },
+      { icon: 'file', title: 'Что нового', sub: 'Новые функции Triplanio' },
+    ];
+    const emptyTitle = 'Пока пусто'; // i18n-ignore: демо-заголовок витрины /kit
+    const emptyBody = 'Здесь появятся приглашения и обновления по твоим путешествиям.'; // i18n-ignore: демо-текст витрины /kit
+    return [
+      {
+        label: 'экран «Входящие» — как в приложении (реалистичная ширина, стопкой)',
+        items: [it('inbox', (
+          <div style={{ maxWidth: 640, width: '100%' }}>
+            {/* inline-style-exempt: витрина — ширина инбокса как в приложении; kit по конвенции своих классов не заводит (Kit.css: только force-state) */}
+            {inbox.map((n, i) => <NotifRow key={i} {...n} />)}
+          </div>
+        ), true)],
+      },
+      {
+        label: 'вариант --compact — поповер колокольчика (уже, плотнее)',
+        items: [it('popover', (
+          <div style={{ maxWidth: 384, width: '100%' }}>
+            {/* inline-style-exempt: витрина — ширина поповера колокольчика как в приложении; kit своих классов не заводит */}
+            {popover.map((n, i) => <NotifRow key={i} compact {...n} />)}
+          </div>
+        ), true)],
+      },
+      {
+        label: 'пустое состояние — что появится (EmptyState + ListRow variant divider)',
+        items: [it('empty', (
+          <div style={{ maxWidth: 640, width: '100%' }}>
+            {/* inline-style-exempt: витрина — ширина инбокса как в приложении; kit своих классов не заводит */}
+            <EmptyState
+              icon="bell"
+              title={emptyTitle}
+              body={emptyBody}
+              action={(
+                <div className="col col--g6 grow--fit">
+                  <div>
+                    {emptyRows.map((r) => <ListRow key={r.icon} variant="divider" lead={<Tile icon={r.icon} />} title={r.title} sub={r.sub} />)}
+                  </div>
+                  {goTrips}
+                </div>
+              )}
+            />
+          </div>
+        ), true)],
+      },
+    ];
+  },
 
   // TRIP-391 объект 3: витрина рисует ЧЕРЕЗ <Tile>, а не сырым `.tile`, и
   // итерирует карты примитива (TILE_SIZES/TILE_TONES) — полнота по построению,

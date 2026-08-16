@@ -7,19 +7,21 @@
 // `sender`. Снапшот в `i18n_params` (у строк-триггеров) остаётся тихим фолбэком.
 import React from 'react';
 
-// Render `text` but wrap occurrences of given values in styled <span>s.
-// Used to bold the inviter name and emphasize the trip name in invite rows.
-export function emphasize(text, parts = []) {
+// Render `text`, wrapping each given value in an <em> so the canon owns the look:
+// `.notif__title em` (бренд+жирный) и `.notif__msg em` (жирный) — стиль на классе
+// родителя, у самого выделения ни инлайна, ни своего имени. Используется, чтобы
+// подсветить название трипа в заголовке и имя пригласившего в сообщении.
+export function emphasize(text, values = []) {
   if (text == null) return text;
   let nodes = [String(text)];
-  parts.filter(p => p && p.value).forEach((p, pi) => {
+  values.filter(Boolean).forEach((value, vi) => {
     nodes = nodes.flatMap((node, ni) => {
       if (typeof node !== 'string') return [node];
-      const segs = node.split(p.value);
+      const segs = node.split(value);
       const out = [];
       segs.forEach((s, si) => {
         if (s) out.push(s);
-        if (si < segs.length - 1) out.push(<span key={`e${pi}-${ni}-${si}`} style={p.style}>{p.value}</span>);
+        if (si < segs.length - 1) out.push(<em key={`e${vi}-${ni}-${si}`}>{value}</em>);
       });
       return out;
     });
@@ -27,24 +29,30 @@ export function emphasize(text, parts = []) {
   return nodes;
 }
 
-// Icon + accent colour for a notification, by type. Системные строки (роль,
-// доступ, оплата) остаются плиткой; строки с человеком-автором редизайн заменит
-// на аватар из `sender` — но НЕ здесь (это подготовка, не сам визуал).
-export function notifMeta(type = '') {
+// Глиф строки по ТИПУ события (матрица аватар/плитка, апрув Pavel):
+//   • человек сделал соц-действие (invite/joined/declined/left/booking) → АВАТАР
+//     автора из `sender` — рисуется примитивом <Avatar> ровно как везде (нет
+//     фото → инициалы+градиент, удалённый → «Удалённый аккаунт»);
+//   • про твой аккаунт/доступ/оплату (role/removed/payment) → тинт-ПЛИТКА <Tile>;
+//   • подписка активирована → PRO-глиф (золотой градиент).
+// Возвращает ДЕСКРИПТОР (данные), не JSX: рендерит его NotifRow (примитивами ДС).
+/** @param {string} type @param {any} [sender] */
+export function notifGlyph(type, sender) {
   const tp = String(type).toLowerCase();
-  // Specific member/booking events first — they'd otherwise be swallowed by the
-  // broader 'invite' / 'member' substring matches below.
-  if (tp.includes('declined')) return { icon: 'user', color: 'var(--muted)' };
-  if (tp.includes('removed')) return { icon: 'user', color: 'var(--danger)' };
-  if (tp.includes('left')) return { icon: 'user', color: 'var(--warm)' };
-  if (tp.includes('role')) return { icon: 'shield', color: 'var(--brand)' };
-  if (tp.includes('booking')) return { icon: 'bed', color: 'var(--ai)' };
-  if (tp.includes('invite')) return { icon: 'users', color: 'var(--brand)' };
-  if (tp.includes('vote') || tp.includes('hotel')) return { icon: 'vote', color: 'var(--ai)' };
-  if (tp.includes('pro') || tp.includes('subscription') || tp.includes('payment')) return { icon: 'pro', color: 'var(--pro)' };
-  if (tp.includes('join') || tp.includes('member')) return { icon: 'user', color: 'var(--success)' };
-  if (tp.includes('activity') || tp.includes('update') || tp.includes('edit')) return { icon: 'edit', color: 'var(--warm)' };
-  return { icon: 'bell', color: 'var(--brand)' };
+  if (tp.includes('pro_activated')) return { mode: 'pro' };
+  if (tp.includes('payment')) return { mode: 'tile', icon: 'card', tone: 'danger' };
+  if (tp.includes('removed')) return { mode: 'tile', icon: 'lock', tone: 'danger' };
+  if (tp.includes('role')) return { mode: 'tile', icon: 'shield', tone: 'brand' };
+  if (tp.includes('invite') || tp.includes('join') || tp.includes('member')
+    || tp.includes('declined') || tp.includes('left') || tp.includes('booking')) {
+    return {
+      mode: 'avatar',
+      name: sender?.full_name || undefined,
+      photo: sender?.avatar_url || undefined,
+      deleted: !!sender?.is_deleted,
+    };
+  }
+  return { mode: 'tile', icon: 'bell', tone: 'quiet' };
 }
 
 /**
@@ -68,7 +76,14 @@ function senderName(sender, deletedLabel) {
  */
 export function buildNotifView(n, t, { deletedLabel } = {}) {
   const params = { ...(n.i18n_params || {}) };
-  if (params.role_key) { params.role = t(params.role_key); delete params.role_key; }
+  // Роль — ЕДИНЫЙ канон `trips.role_*` (тот же лейбл, что <RoleBadge>), а не своя
+  // копия `notif.role_*`. `role_key` приходит из БД как 'notif.role_admin'/
+  // '..._viewer' (указатель) — берём из него код и резолвим канон-ключом.
+  if (params.role_key) {
+    const roleCode = String(params.role_key).includes('admin') ? 'admin' : 'viewer';
+    params.role = t(`trips.role_${roleCode}`);
+    delete params.role_key;
+  }
   // Booking notifications carry `kind` as a code (hotel/transfer/service) — localize it.
   if (params.kind) params.kind = t('notif.booking_kind_' + params.kind);
   // Автор события — из sender (живое), снапшот params.name/inviter остаётся
@@ -80,12 +95,14 @@ export function buildNotifView(n, t, { deletedLabel } = {}) {
   const isInvite = n.type === 'trip_invite' && !!n.trip_member_id;
   const titleText = n.i18n_title_key ? t(n.i18n_title_key, params) : n.title;
   const messageText = n.i18n_message_key ? t(n.i18n_message_key, params) : n.message;
-  const titleNode = isInvite
-    ? emphasize(titleText, [{ value: params.trip, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */, color: 'var(--brand)' } }])
-    : titleText;
-  const messageNode = isInvite
-    ? emphasize(messageText, [{ value: params.inviter, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } }])
-    : messageText;
+  const titleNode = isInvite ? emphasize(titleText, [params.trip]) : titleText;
+  const messageNode = isInvite ? emphasize(messageText, [params.inviter]) : messageText;
 
-  return { meta: notifMeta(n.type), isInvite, titleNode, messageText, messageNode };
+  return {
+    glyph: notifGlyph(n.type, n.sender),
+    isInvite,
+    titleNode,
+    messageText,
+    messageNode,
+  };
 }

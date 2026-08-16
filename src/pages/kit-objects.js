@@ -61,6 +61,9 @@ export const KIT_OBJECTS = [
   { id: 'icon-btn', family: 'icon', group: 'components', prefix: 'icon-btn', maps: ['ICON_BTN_TONES', 'ICON_BTN_SIZES'], extras: ['round'], interactive: true },
   { id: 'chip', family: 'fpill', group: 'components', prefix: 'fpill', maps: ['CHIP_VARIANTS'], extras: ['square', 'sm', 'avatars'], interactive: true },
   { id: 'seg', family: 'seg', group: 'components', prefix: 'seg', maps: ['SEG_VARIANTS'] },
+  // Строка уведомления — источник оси CSS-производный: обличья = объявленные
+  // `.notif--*` (`--unread`/`--compact`/`--link`), витрина рисует через <NotifRow>.
+  { id: 'notif', family: 'notif', group: 'components', prefix: 'notif', css: true, interactive: true },
   { id: 'stepper', family: 'stepper', group: 'components', prefix: 'stepper', maps: ['STEPPER_VARIANTS'] },
   { id: 'swatch', family: 'swatch', group: 'components', prefix: 'swatch', maps: ['SWATCH_VARIANTS'] },
   { id: 'badge', family: 'badge', group: 'components', css: true },
