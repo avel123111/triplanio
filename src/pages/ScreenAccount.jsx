@@ -314,14 +314,17 @@ function ReminderChannels() {
                         икона на разных x). С fit все карточки равной ширины → иконки
                         строго выровнены. */}
                     <Card as="button" radius="btn" interactive className="tr grow--fit" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>
-                      <span className="tr__thumb" style={{ background: coverBg(a) || undefined }}>
+                      {/* Разметка КАНОННОЙ строки трипа (как в Trips): блочные .tr__title/
+                          .tr__sub — иначе text-overflow:ellipsis не режет (инлайн-span не
+                          обрезается), и длинное название наезжало на иконку отвязки. */}
+                      <div className="tr__thumb" style={{ background: coverBg(a) || undefined }}>
                         {a.cover_image_url && <img className="tc__img" src={a.cover_image_url} alt="" />}
-                        <span className="tc__blob" />
-                      </span>
-                      <span className="tr__main">
-                        <span className="tr__title">{a.trip_title}</span>
-                        <span className="tr__sub"><Trunc as="span">{nick(a)}</Trunc></span>
-                      </span>
+                        <div className="tc__blob" />
+                      </div>
+                      <div className="tr__main">
+                        <div className="tr__title">{a.trip_title}</div>
+                        <div className="tr__sub">{nick(a)}</div>
+                      </div>
                     </Card>
                     <IconBtn icon="unlink" tone="danger" size="sm" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
                   </Row>
