@@ -31,6 +31,21 @@ import { supabase } from '@/api/supabaseClient';
 import { parseEdgeError } from '@/lib/edgeError';
 import { edgeRegionHeaders } from '@/lib/edgeRegion';
 import { Sentry } from '@/lib/sentry';
+import { createAuthRetryFetch } from '@/lib/createAuthRetryFetch';
+import { createEdgeTransport } from '@/lib/edgeTransport';
+
+// Same-origin `/api/*` transport (Ф1) instead of `supabase.functions.invoke`.
+// `createAuthRetryFetch` re-wraps window.fetch here because bypassing the SDK
+// also bypasses its global-fetch 401→refresh→replay (TRIP-56); wrapping keeps
+// that recovery for edge calls. `getToken` supplies the per-user bearer; the
+// `apikey` (public anon key) rides along in the request just as the SDK sent it.
+// The `/api/*` → Supabase hop is the Vercel serverless function `api/[...path].js`
+// (a managed CDN rewrite drops the Authorization bearer cross-host). Drop-in:
+// returns the SAME `{ data, error }` (`.context` = raw Response).
+const edgeInvoke = createEdgeTransport({
+  doFetch: createAuthRetryFetch((...args) => fetch(...args), () => supabase),
+  getToken: async () => (await supabase.auth.getSession()).data?.session?.access_token ?? null,
+});
 
 /**
  * Единственная точка вызова edge из браузера. Дискриминант ОТКАЗА — только в
@@ -50,7 +65,7 @@ export async function invokeFn(name, options = {}) {
   // cross-region hop (TRIP-374, Этап 5). edgeRegionHeaders() is {} when the
   // region is unknown, and a caller-supplied header still wins.
   const opts = { ...options, headers: { ...edgeRegionHeaders(), ...options.headers } };
-  const { data, error } = await supabase.functions.invoke(name, opts);
+  const { data, error } = await edgeInvoke(name, opts);
 
   const failed = Boolean(error) || Boolean(data && data.error);
   if (!failed) return { data, error: null, code: null, message: null };
