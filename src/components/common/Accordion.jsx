@@ -11,7 +11,7 @@ import { Icon } from '@/design/icons';
 export default function Accordion({ title, subtitle, badge = 0, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <Card radius="md" pad="none" className={'acc' + (open ? ' is-open' : '')}>
+    <Card radius="btn" pad="none" className={'acc' + (open ? ' is-open' : '')}>
       {/* TRIP-391 объект 1 → объект 6: .acc__head — ЗАГОЛОВОК аккордеона (full-bleed,
           раскрывашка), не примитив-кнопка. */}
       <button type="button" className="acc__head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>

@@ -12,10 +12,13 @@ import React from 'react';
 //
 // ★ СКИНЫ (`variant`): raised — приподнятая карточка (траты, hover-подъём);
 // select — плоская выбираемая (категории, состояние on); divider — с нижней
-// границей (курсы); compact — тесная (легенда). Дефолт — без скина (голая строка).
+// границей (курсы); compact — тесная (легенда); add — пунктирный add-плейсхолдер
+// «создать ещё» (та же форма и высота, что у заполненного ряда, поэтому «добавить
+// сервис/эвент» встаёт РОВНО в высоту карточки наличия — TRIP-337 visual-fixes;
+// тон ховера — канал `--a`). Дефолт — без скина (голая строка).
 //
 // ★ ЗАГОЛОВОК/ПОДПИСЬ — канон текста (.t-strong/.t-meta + .muted), не свои классы.
-/** @typedef {'raised'|'select'|'divider'|'compact'} ListRowVariant */
+/** @typedef {'raised'|'select'|'divider'|'compact'|'add'} ListRowVariant */
 export const ListRow = React.forwardRef(
   /**
    * @param {{
@@ -54,4 +57,4 @@ export const ListRow = React.forwardRef(
 ListRow.displayName = "ListRow";
 
 /** @type {readonly ListRowVariant[]} */
-export const LISTROW_VARIANTS = ["raised", "select", "divider", "compact"];
+export const LISTROW_VARIANTS = ["raised", "select", "divider", "compact", "add"];

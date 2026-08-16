@@ -596,6 +596,18 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, can
 
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
+// Скелетон документов — PURE (строка поиска + карточки-доки). Один источник для
+// обеих фаз загрузки (shell в TripView.LoadingBody и content). TRIP-337.
+export function DocsSkeleton() {
+  return (
+    <div className="col col--g7 ov-anim" aria-busy="true">
+      <Skeleton w="100%" h={44} r={'var(--r-xl)'} />
+      <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
+      <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
+    </div>
+  );
+}
+
 export default function DocsLens({ tripId, isLoading: parentLoading, members = [], myRole, profiles = {} }) {
   const { t }    = useI18n();
   const { user } = useAuth();
@@ -645,15 +657,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   // shows a DocEmpty CTA (when empty) or a DocsGrid add-card (`dl-addcard`), so
   // the removed per-screen bar didn't need a replacement button.
 
-  if (isLoading || parentLoading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Skeleton w="100%" h={44} r={'var(--r-xl)'} />
-        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
-        <Skeleton w="100%" h={180} r={'var(--r-sm)'} />
-      </div>
-    );
-  }
+  if (isLoading || parentLoading) return <DocsSkeleton />;
 
   if (error) {
     return (

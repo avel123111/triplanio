@@ -74,7 +74,7 @@ function Textarea({ className = '', ...p }) {
 function SwitchRow({ on, onChange, title, hint, children }) {
   const flip = () => onChange(!on);
   return (
-    <Card radius="md" className="eed-fcbox">
+    <Card radius="btn" className="eed-fcbox">
       <div className="row row--a-start row--g4 eed-fclabel">
         <Toggle on={on} onChange={onChange} label={title} />
         <div className="eed-fcbody">

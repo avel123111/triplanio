@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Card, IconBtn } from '@/design/index';
+import { Card, IconBtn, Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
@@ -74,11 +74,11 @@ export default function BudgetSummaryCard({
       <div className="wdg-b">
         {isLoading ? (
           <>
-            <div className="ov-bar" style={{ width: '55%', height: 26, borderRadius: 'var(--r-sm)' }} />
-            <div className="ov-bar" style={{ width: '100%', height: 11, borderRadius: 'var(--r-pill)', marginTop: 14 }} />
-            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 'var(--r-sm)', marginTop: 12 }} />
-            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 'var(--r-sm)', marginTop: 8 }} />
-            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 'var(--r-sm)', marginTop: 8 }} />
+            <Skeleton w="55%" h={26} r="var(--r-sm)" />
+            <Skeleton w="100%" h={11} r="var(--r-pill)" style={{ marginTop: 14 }} />
+            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 12 }} />
+            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 8 }} />
+            <Skeleton w="100%" h={14} r="var(--r-sm)" style={{ marginTop: 8 }} />
           </>
         ) : budget ? (
           <>

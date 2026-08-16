@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { Avatar, Btn, Card, IconBtn, RoleBadge } from '@/design/index';
+import { Avatar, Btn, Card, IconBtn, RoleBadge, Skeleton } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { withOwnerRow } from '@/lib/members';
@@ -74,10 +74,10 @@ export default function MembersSummaryCard({
           <div className="col col--g4">
             {[0, 1, 2].map((i) => (
               <div className="mrow" key={i}>
-                <span className="ov-bar" style={{ width: 34, height: 34, borderRadius: '50%', flex: 'none' }} />
+                <Skeleton w={34} h={34} r="50%" style={{ flex: 'none' }} />
                 <div className="fl1">
-                  <div className="ov-bar" style={{ width: '55%', height: 13, borderRadius: 5 }} />
-                  <div className="ov-bar" style={{ width: '40%', height: 11, borderRadius: 5, marginTop: 6 }} />
+                  <Skeleton w="55%" h={13} r={5} />
+                  <Skeleton w="40%" h={11} r={5} style={{ marginTop: 6 }} />
                 </div>
               </div>
             ))}

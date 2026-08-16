@@ -30,9 +30,13 @@ export default function TimezoneHint({ tz, variant = 'under' }) {
     );
   }
 
+  // <div>, НЕ <p>: co-селектор `.card p` (Body-канон) перебивает `.t-meta` по
+  // специфичности (0,1,1 > 0,1,0), когда подсказка живёт внутри <Card> (напр.
+  // «Есть бесплатная отмена» в event-dialog) — тогда таймзона рисовалась Body
+  // вместо Meta. На <div> контекстный `.card p` не матчит, канон .t-meta берёт своё.
   return (
-    <p className="t-meta" style={{ marginTop: 4, color: 'var(--muted)' }}>
+    <div className="t-meta" style={{ marginTop: 4, color: 'var(--muted)' }}>
       {t('common.tz_detected', { tz })}
-    </p>
+    </div>
   );
 }
