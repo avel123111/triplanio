@@ -33,7 +33,10 @@ Deno.serve(withHandler('getInbox', async (req, corsHeaders) => {
   // строк, где событие сделал человек. Приватность (удалённый аккаунт → пусто,
   // никогда e-mail) держит toSender — тот же единственный дом правила, что у
   // профилей трипа. Системные строки (created_by null: pro/оплата) → sender:null.
-  const inbox = (data ?? { list: [], unreadCount: 0 }) as { list: any[]; unreadCount: number };
+  const inbox = (data ?? { list: [], unreadCount: 0 }) as {
+    list: Array<{ created_by?: string | null } & Record<string, unknown>>;
+    unreadCount: number;
+  };
   const rows = inbox.list ?? [];
   const senders = await fetchSenders(supabaseAdmin, rows.map((r) => r?.created_by));
   const list = rows.map((r) => ({ ...r, sender: r?.created_by ? (senders[r.created_by] ?? null) : null }));

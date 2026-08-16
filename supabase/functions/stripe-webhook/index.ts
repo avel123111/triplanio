@@ -20,7 +20,7 @@
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
-import { emit } from '../_shared/emit.ts';
+import { notify } from '../_shared/emit.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { isFullyRefunded } from '../_shared/payments/refund.ts';
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
                 transaction_id: session.id,
               });
               // TRIP-356: announce the event; n8n resolves text and delivers the notification.
-              emit('pro_activated', { recipient_id: user_id }, { db: supabaseAdmin });
+              await notify('pro_activated', { recipient_id: user_id }, { db: supabaseAdmin });
             }
           }
         }
@@ -330,7 +330,7 @@ Deno.serve(async (req) => {
           }), { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
         // TRIP-356: announce the event; n8n resolves text and delivers the notification.
-        emit('pro_payment_failed', { recipient_id: resolved.userId }, { db: supabaseAdmin });
+        await notify('pro_payment_failed', { recipient_id: resolved.userId }, { db: supabaseAdmin });
         break;
       }
 

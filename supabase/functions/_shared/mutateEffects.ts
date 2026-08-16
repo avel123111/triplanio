@@ -14,7 +14,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Actor } from './mutateRules.ts';
-import { emit } from './emit.ts';
+import { notify } from './emit.ts';
 import { purgePrivateDocsForMember } from './personalDocsTeardown.ts';
 import { disconnectTripTelegram } from './telegramTeardown.ts';
 import { purgeTripBucket } from './tripStoragePurge.ts';
@@ -86,20 +86,20 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const linked = Array.isArray(data.linked) ? data.linked : [];
     for (const inv of linked) {
       const m = asRow(inv);
-      emit('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id }, { db });
+      await notify('invite_linked', { trip_id: m.trip_id as string, member_id: m.id as string, recipient_id: actor.id }, { db });
     }
   },
 
   // Приглашение создано/реактивировано (declined→pending) — n8n шлёт нотиф+email.
   'trip-member/invite': async ({ result, scopeValue, actor, db }) => {
     const member = asRow(result);
-    emit('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
+    await notify('invite_created', { trip_id: scopeValue, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Приглашение переслано (записи не было — re-emit по загруженной строке).
   'trip-member/resend': async ({ loadedRow, actor, db }) => {
     const member = asRow(loadedRow);
-    emit('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
+    await notify('invite_resent', { trip_id: member.trip_id as string, actor_id: actor.id, member_id: member.id as string }, { db, snapshot: member });
   },
 
   // Роль изменена — уведомляем участника ТОЛЬКО при реальной смене и для юзера с
@@ -109,7 +109,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const after = asRow(result);
     if (roleChangeNotifies(before.role, after.role, before.user_id)) {
       // Снимок = полная строка (before) с НОВОЙ ролью (after) — резолвер отдаёт member с актуальной ролью.
-      emit('trip_role_changed', {
+      await notify('trip_role_changed', {
         trip_id: before.trip_id as string,
         recipient_id: before.user_id as string,
         actor_id: actor.id,
@@ -125,7 +125,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     await teardownMember(db, member.trip_id, member.user_id);
     if (member.user_id) {
       // Строка членства уже удалена → member ТОЛЬКО из снимка (дочитать нечего).
-      emit('trip_member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
+      await notify('trip_member_removed', { trip_id: member.trip_id as string, recipient_id: member.user_id as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 
@@ -135,7 +135,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     const member = asRow(loadedRow);
     await teardownMember(db, member.trip_id, member.user_id);
     // Строка членства уже удалена → member ТОЛЬКО из снимка.
-    if (member.user_id) emit('trip_member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
+    if (member.user_id) await notify('trip_member_left', { trip_id: member.trip_id as string, actor_id: member.user_id as string }, { db, snapshot: member });
   },
 
   // Ответ на приглашение. По исходу RPC: accept → North-Star + уведомить пригласившего;
@@ -149,7 +149,7 @@ export const AFTER_WRITE: Record<string, AfterWrite> = {
     // North Star: сделал ли accept трип коллаборативным (владелец + 1-й участник = 2)?
     if (plan.reached2) await emitTripReached2(db, scopeValue, actor.id);
     if (plan.emit && member.invited_by) {
-      emit(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id }, { db, snapshot: member });
+      await notify(plan.emit, { trip_id: scopeValue, recipient_id: member.invited_by as string, actor_id: actor.id }, { db, snapshot: member });
     }
   },
 };
