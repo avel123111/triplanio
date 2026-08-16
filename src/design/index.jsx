@@ -139,8 +139,12 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm", className = "" 
 // is the resolver's decision (email only next to a real name) unless a caller
 // overrides it with a membership state ("Ожидает"/"Оффлайн").
 // Layout is the shared `.mrow` (app.css) — no new namespace.
+// `size` is left undefined by default → the base `.avatar` (28px). There is no
+// `.avatar--md` rule, so naming a "md" default would emit a class that exists
+// nowhere and "work" only by silently falling back — the exact non-existent-class
+// trap the design system warns about. Callers pass "sm"/"lg" when they want them.
 /** @param {{ who?: any, size?: string, sub?: any, trailing?: any, className?: string, style?: any }} p */
-export const Person = ({ who = {}, size = "md", sub, trailing, className = "", style }) => {
+export const Person = ({ who = {}, size, sub, trailing, className = "", style }) => {
   const secondary = sub !== undefined ? sub : who.email;
   return (
     <div className={className ? `mrow ${className}` : "mrow"} style={style}>

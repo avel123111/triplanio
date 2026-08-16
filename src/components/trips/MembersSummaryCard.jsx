@@ -99,9 +99,6 @@ export default function MembersSummaryCard({
             });
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending';
-            // Line under the name: the invite state when there is one, else the
-            // address the resolver decided is worth showing.
-            const sub = isPending ? t('trip.member_pending') : who.email;
 
             return (
               <Person
@@ -109,7 +106,10 @@ export default function MembersSummaryCard({
                 // Pending invites keep the initials placeholder (no gradient); the
                 // identity is otherwise the shared resolver's, colour seed and all.
                 who={isPending ? { ...who, kind: 'placeholder' } : who}
-                sub={sub}
+                // Line under the name: the invite state when pending; otherwise
+                // Person falls back to who.email (the address the resolver already
+                // decided is worth showing) — the sub decision lives in one place.
+                sub={isPending ? t('trip.member_pending') : undefined}
                 style={{ opacity: isPending || isOffline ? 0.7 : 1 }}
                 // Invite STATE (pending/offline) is not a role — it keeps the quiet
                 // status chip; an actual role goes through the shared RoleBadge.
