@@ -23,7 +23,7 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { resolveAuthor, resolveOwnerName } from '@/lib/resolveAuthor';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, Severity, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
+import { Avatar, Badge, Btn, Card, CardHeader, Dialog, EmptyState, Field, Severity, Skeleton, Textarea, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useProUpsell } from '@/components/common/ProUpsellProvider';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -451,7 +451,71 @@ function ApproverRow({ member, profiles, locked }) {
 
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, canEdit = false, isPro, isProTrip, proResolved = true, queryClient, profiles = {} }) {
+// Скелетон настроек — PURE, зеркалит РЕАЛЬНУЮ разметку экрана теми же классами:
+// (1) карточка «General» = CardHeader + `.settings-identity` (обложка `__cover`
+// слева | форма `__fields` справа), (2) «Optional features» = `.addon-grid` из
+// тоггл-карточек, (3) `.settings-grid` в 2 колонки. Не сетка одинаковых карточек
+// (то был «выдуманный» layout). Один источник для обеих фаз загрузки. TRIP-337.
+export function SettingsSkeleton() {
+  return (
+    <Col gap="g7" className="settings-lens" aria-busy="true">
+      {/* 1. General: заголовок + Save + identity-grid (обложка | форма) */}
+      <Card>
+        <CardHeader title={<Skeleton w={120} h={22} r={6} />} action={<Skeleton w={130} h={40} r={'var(--r-btn)'} />} />
+        <Grid className="settings-identity">
+          <div className="settings-identity__cover">
+            <Skeleton w="100%" h={150} r={'var(--r-md)'} />
+            <div className="row row--g4 row--wrap" style={{ marginTop: 12 }}>
+              {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} w={32} h={32} r="50%" />)}
+            </div>
+          </div>
+          <Col gap="g7" className="settings-identity__fields">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="col col--g3">
+                <Skeleton w="35%" h={13} r={5} />
+                <Skeleton w="100%" h={i === 3 ? 120 : 44} r={'var(--r-btn)'} />
+              </div>
+            ))}
+          </Col>
+        </Grid>
+      </Card>
+      {/* 2. Optional features: заголовок + addon-grid (3 тоггл-карточки в ряд) */}
+      <Card>
+        <div className="card-h"><Skeleton w={190} h={22} r={6} /></div>
+        <Grid className="addon-grid">
+          {[0, 1, 2].map((i) => (
+            <Card key={i}>
+              <div className="col col--g4">
+                <div className="row row--j-between">
+                  <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+                  <Skeleton w={44} h={24} r={'var(--r-pill)'} />
+                </div>
+                <Skeleton w="60%" h={16} r={5} />
+                <Skeleton w="90%" h={12} r={5} />
+              </div>
+            </Card>
+          ))}
+        </Grid>
+      </Card>
+      {/* 3. settings-grid: 2 колонки настроек */}
+      <Grid cols="2" gap="g7" className="settings-grid">
+        {[0, 1].map((c) => (
+          <Col key={c} gap="g7" className="settings-col">
+            <Card>
+              <CardHeader title={<Skeleton w="45%" h={18} r={6} />} />
+              <div className="row row--j-between" style={{ marginTop: 8 }}>
+                <div className="col col--g2 grow"><Skeleton w="50%" h={13} r={5} /><Skeleton w="70%" h={11} r={5} /></div>
+                <Skeleton w={44} h={24} r={'var(--r-pill)'} style={{ flex: 'none' }} />
+              </div>
+            </Card>
+          </Col>
+        ))}
+      </Grid>
+    </Col>
+  );
+}
+
+export default function SettingsLens({ tripId, trip, members = [], myRole, canEdit = false, isPro, isProTrip, proResolved = true, queryClient, profiles = {}, isLoading = false }) {
   // Profiles ride in the trip content bundle (getTripDetails), handed down by
   // TripView — no separate profile-fetch hop for the approver list.
   const { t } = useI18n();
@@ -751,6 +815,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, canEd
 
   const approvers    = members.filter(m => ['owner', 'admin'].includes(m.role) && m.status === 'active');
   const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
+
+  if (isLoading) return <SettingsSkeleton />;
 
   return (
     <Col gap="g7" className="settings-lens">

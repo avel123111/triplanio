@@ -1,25 +1,30 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, Card } from '@/design/index';
+import { Btn, Card, ListRow, Tile } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
 // trip_services rows carry a `kind` (esim | car_rental | insurance). Booked
-// services render as Lumo .bookrow; not-yet-added ones as the dashed
-// placeholder (`Btn variant="dashed" tile`). Colours come from the shared SERVICE_KINDS source so the
-// widget matches the service view/edit dialogs (each kind its own colour).
+// services render as the canon <ListRow variant="raised">; not-yet-added ones as
+// <ListRow variant="add"> (пунктирный плейсхолдер той же формы/высоты — TRIP-337).
+// Colours come from the shared SERVICE_KINDS source so the widget matches the
+// service view/edit dialogs (each kind its own colour).
 const SERVICE_KIND_META = SERVICE_KINDS;
 
-// Пунктирный ряд «добавить сервис» — та же форма примитива, что у панели города
-// (`Btn variant="dashed"` с плиткой). `--a` объявляет акцент ховера по виду
-// сервиса. Плюс справа больше не красится СВОИМ цветом постоянно: он берёт
-// `--fg` кнопки, то есть в покое серый, а на наведении уезжает в акцент вместе
-// с рамкой и плиткой — один язык на весь плейсхолдер.
+// Пунктирный ряд «добавить сервис» — тот же примитив `<ListRow>`, что и заполненный
+// ряд (variant="add"), поэтому плейсхолдер встаёт РОВНО в высоту карточки наличия.
+// `--a` объявляет акцент ховера по виду сервиса (рамка/подпись/плюс уезжают в тон).
 function AddRow({ icon, label, hint, color, onClick }) {
   return (
-    <Btn variant="dashed" block tile icon={icon} sub={hint} iconRight="plus" style={{ '--a': color }} onClick={onClick}>
-      {label}
-    </Btn>
+    <ListRow
+      variant="add"
+      lead={<Tile tone="quiet" icon={icon} />}
+      title={label}
+      sub={hint}
+      trail={<Icon name="plus" size={16} />}
+      onClick={onClick}
+      style={{ '--a': color }}
+    />
   );
 }
 
@@ -43,22 +48,20 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
         <h4>{t('trip.sidebar_services')}</h4>
       </div>
       <div className="wdg-b">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Booked services — Lumo .bookrow */}
+        <div className="col col--g4">
+          {/* Booked services — канон <ListRow variant="raised"> */}
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
-            // TRIP-391 объект 1 → объект 6: .bookrow — clickable РЯД сервиса (.row), не кнопка-примитив.
             return (
-              <button key={s.id} className="row bookrow" onClick={() => onOpenService?.(s)}>
-                <span className="bi" style={{ background: meta?.soft || 'var(--brand-soft)', color: meta?.color || 'var(--brand)' }}>
-                  <Icon name={meta?.icon || 'ticket'} size={18} />
-                </span>
-                <div className="bt">
-                  <b>{meta ? t(meta.labelKey) : s.name}</b>
-                  {s.name && <span>{s.name}</span>}
-                </div>
-                <Icon name="chev" size={16} className="chev" style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
-              </button>
+              <ListRow
+                key={s.id}
+                variant="raised"
+                lead={<Tile icon={meta?.icon || 'ticket'} style={{ '--hl-soft': meta?.soft || 'var(--brand-soft)', '--hl-ink': meta?.color || 'var(--brand)' }} />}
+                title={meta ? t(meta.labelKey) : s.name}
+                sub={s.name || undefined}
+                trail={<Icon name="chev" size={16} className="chev" />}
+                onClick={() => onOpenService?.(s)}
+              />
             );
           })}
 

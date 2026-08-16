@@ -38,7 +38,7 @@ import CalendarLens from './CalendarLens';
 import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
 import EditLens from './EditLens';
-import ChatLens, { ChatLensSkeleton } from './ChatLens';
+import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole } from '@/lib/members';
@@ -241,16 +241,15 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 //
 // Скелетон ЗНАЕТ СЕКЦИЮ: у обзора и чата свои заглушки, иначе на их месте
 // мигала бы лента (плюс правый рейл, которого у чата нет вовсе).
-function LoadingBody({ section = DEFAULT_SECTION }) {
-  if (section === 'overview') return <OverviewLens isLoading />;
-  if (section === 'chat') return <ChatLensSkeleton />;
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-      <SkeletonTimeline />
-      <RightRailSkeleton />
-    </div>
-  );
-}
+// ★ ЕДИНЫЙ ПУТЬ РЕНДЕРА (TRIP-337, двойная загрузка). Прежде был отдельный
+// РАННИЙ return для фазы shell (`<TripShell loading><LoadingBody/></TripShell>`),
+// а основной return — для фазы content. В позиции тела ТИП компонента менялся
+// (LoadingBody → секция), поэтому React РАЗМОНТИРОВАЛ поддерево и МОНТИРОВАЛ
+// заново — скелетон перезапускался, а меню менялось skeleton→real, отсюда прыжок
+// «2 раза». `LoadingBody` УДАЛЁН: теперь секция монтируется ОДИН раз в основном
+// рендере и живёт через все фазы, только `isLoading` идёт true→false НА МЕСТЕ —
+// без размонтирования, без прыжка. Скелетон каждой секции — её собственный
+// экспорт (`<BudgetSkeleton/>` и т.д.), тот же компонент до и после загрузки.
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
@@ -289,6 +288,34 @@ function RightRailSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <Skeleton w="100%" h={150} r={'var(--r-btn)'} />
+    </div>
+  );
+}
+
+// Скелетон структурного редактора — PURE, зеркалит ОБЕ колонки `.ts-grid`:
+// СЛЕВА маршрут (шапка «Маршрут» + карточки-города), СПРАВА КАРТА. Раньше
+// заглушка рисовала только левую колонку — карта не учитывалась (TRIP-337).
+// Один источник для обеих фаз загрузки (shell в LoadingBody и content в editGate).
+function EditSkeleton() {
+  return (
+    <div className="ts-grid">
+      <div className="ts-leftscroll" style={{ padding: '12px 12px 18px', overflow: 'hidden' }}>
+        <Skeleton w={160} h={26} r={6} style={{ marginBottom: 12 }} />
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} radius="lg" pad="none" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
+            <Skeleton w={36} h={36} r={'var(--r-sm)'} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Skeleton w="50%" h={14} r={5} />
+              <Skeleton w="30%" h={11} r={5} />
+            </div>
+            <Skeleton w={90} h={30} r={'var(--r-pill)'} />
+          </Card>
+        ))}
+      </div>
+      {/* правая колонка — карта */}
+      <div style={{ position: 'relative', margin: 14, marginLeft: 7, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--line)' }}>
+        <Skeleton w="100%" h="100%" r={0} style={{ position: 'absolute', inset: 0 }} />
+      </div>
     </div>
   );
 }
@@ -908,7 +935,11 @@ export default function TripView() {
   // Что реально показать: недоступная секция (выключенный аддон, роль без права)
   // и несуществующая (`?lens=` с опечаткой) одинаково падают на дефолт. Правило
   // живёт в реестре секций — тут только его применение.
-  const shownLens = resolveSection(lens, trip, myStep);
+  // ★ В фазе shell (`trip` ещё не загружен) resolveSection не знает аддонов/роли и
+  // свалил бы `?lens=chat/budget` на дефолт-обзор — тогда в загрузке мигал бы НЕ
+  // тот скелетон. Пока trip нет — берём СЫРОЙ `lens` из адреса (как делал прежний
+  // LoadingBody), а как приедет shell — резолвим по-настоящему (TRIP-337).
+  const shownLens = trip ? resolveSection(lens, trip, myStep) : lens;
 
   // «+»-меню трипа: дескрипторы действий, которые собирает экран. Гейт единый —
   // ступень editor (+ аддон бюджета для траты/категории); «Категория» — только на
@@ -991,16 +1022,11 @@ export default function TripView() {
   // Секция берётся СЫРОЙ из адреса, а не через resolveSection: аддоны приезжают
   // тем же shell-запросом, которого мы ждём, поэтому `?lens=chat` до ответа
   // выглядел бы недоступным и мигнул бы скелетоном обзора вместо чата.
-  if (shellGate === 'loading' || shellGate === 'auth') {
-    return (
-      // onNavigate нужен и тут: раньше мост к доку висел ВЫШЕ этого раннего
-      // возврата, поэтому пункты дока работали и на грузящемся экране - тап по
-      // «Календарю» менял адрес сразу, и по приходу данных открывался календарь.
-      <TripShell tripId={tripId} section={lens} onNavigate={setLens} loading>
-        <LoadingBody section={lens} />
-      </TripShell>
-    );
-  }
+  // ★ Никакого раннего return для загрузки: единый путь рендера (см. коммент у
+  // удалённого LoadingBody). shell-загрузка/auth → `shellLoading`: TripShell
+  // покажет скелетон меню, а секция — свой скелетон, ВСЁ в том же дереве, что и
+  // после загрузки, поэтому ничего не размонтируется и не прыгает (TRIP-337).
+  const shellLoading = shellGate === 'loading' || shellGate === 'auth';
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // not_found = no such trip / broken-or-typo'd id (404). Show the neutral "doesn't
   // exist" page, NOT the accusatory "no access". Split from 'access' in TRIP-208.
@@ -1180,6 +1206,7 @@ export default function TripView() {
       bodyRef={screenBodyRef}
       drawer={eventDrawer}
       overlays={overlays}
+      loading={shellLoading}
     >
           {/* TRIP-195: hotel / activity / transfer create moved to the global
               add-booking DRAWER (see EventDrawerHost below). Only services keep
@@ -1257,7 +1284,7 @@ export default function TripView() {
               memberProfiles={memberProfiles}
               services={services}
               user={user}
-              contentLoading={loadingContent}
+              contentLoading={shellLoading || loadingContent}
               active={shownLens === 'overview'}
               canManage={canEditMode}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
@@ -1278,7 +1305,7 @@ export default function TripView() {
                   transfers={transfers}
                   trip={trip}
                   isViewer={!canEditMode}
-                  isLoading={loadingContent}
+                  isLoading={shellLoading || loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setBookingCreate({ open: true, kind: 'transfer', visit: null, fromVisit, toVisit, initialTab: 'find', defaultStart: null })
                   }
@@ -1300,7 +1327,9 @@ export default function TripView() {
                     }
                   }}
                 />
-                <CityRail visits={visits ?? []} scrollRef={screenBodyRef} />
+                {/* пока города не приехали (фаза shell) — скелетон рейла, потом
+                    живой CityRail НА МЕСТЕ (тело таймлайна не размонтируется) */}
+                {visits.length ? <CityRail visits={visits} scrollRef={screenBodyRef} /> : <RightRailSkeleton />}
               </div>
             </>
           )}
@@ -1313,7 +1342,7 @@ export default function TripView() {
               budgetExpenses={budgetExpenses}
               members={members}
               cityVisits={visits}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               isPro={tripIsPro}
               canEdit={canEditMode}
               queryClient={qc}
@@ -1328,7 +1357,7 @@ export default function TripView() {
               trip={trip}
               user={user}
               canManage={canEditMode}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               queryClient={qc}
             />
           )}
@@ -1336,14 +1365,14 @@ export default function TripView() {
             <CalendarLens
               stream={stream}
               visits={visits}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               onOpenEvent={openEventView}
             />
           )}
           {shownLens === 'docs' && (
             <DocsLens
               tripId={tripId}
-              isLoading={loadingContent}
+              isLoading={shellLoading || loadingContent}
               members={members}
               profiles={memberProfiles}
               canEdit={canEditMode}
@@ -1361,11 +1390,10 @@ export default function TripView() {
               навсегда. Формулировка из TRIP-220: «gate to retry rather than
               render an empty editor». */}
           {shownLens === 'edit' && (
-            editGate === 'loading'
-              // Скелетон в геометрии самой секции (`.ts-grid` — левая колонка
-              // маршрута, правая под карту), а не общий: тело секции flush, и
-              // padded-заглушка прыгнула бы при резолве.
-              ? <div className="ts-grid"><div className="ts-leftscroll"><SkeletonTimeline /></div></div>
+            (shellLoading || editGate === 'loading')
+              // ОДИН скелетон редактора (обе колонки: маршрут + карта), тот же в
+              // фазе shell и в фазе content — не размонтируется, не прыгает (TRIP-337).
+              ? <EditSkeleton />
               : editGate === 'ok'
                 ? <EditLens tripId={tripId} shell={shellData} content={contentData} />
                 : <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav(`/trip/${tripId}`)} />
@@ -1382,6 +1410,7 @@ export default function TripView() {
               isProTrip={!!trip?.is_pro_trip}
               proResolved={tripProResolved}
               queryClient={qc}
+              isLoading={shellLoading || loadingContent}
             />
           )}
           {shownLens === 'chat' && (
