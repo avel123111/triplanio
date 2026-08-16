@@ -1,41 +1,36 @@
 // Vercel Serverless Function — same-origin API façade for edge functions
 // (TRIP-432, Ф1 «FE↔backend транспортная развязка»).
 //
-// The browser calls `/<host>/api/<fn>` (see src/lib/edgeTransport.js); this
-// function forwards it to `<supabase>/functions/v1/<fn>`. Why a function and NOT
-// a Vercel CDN Routing Rule / vercel.json rewrite: a managed rewrite to an
-// EXTERNAL host does not carry the caller's `Authorization: Bearer <jwt>` — the
-// browser token never reaches Supabase, so every authenticated edge call fails
-// `UNAUTHORIZED_ASYMMETRIC_JWT` (Supabase then only sees the anon `apikey`).
-// A function receives the browser request same-origin (nothing stripped) and
-// re-sends the headers itself via `fetch`, so the user token survives. Vercel's
-// own docs forward auth tokens through a function for exactly this reason.
+// The browser calls `/<host>/api/<fn>` (see src/lib/edgeTransport.js); a
+// vercel.json rewrite `/api/:path(.*)` → `/api/proxy?path=:path` sends it here,
+// and this function forwards to `<supabase>/functions/v1/<fn>`. The explicit
+// rewrite (the SAME mechanism as the working `/ingest` proxy) is used instead of
+// a filesystem catch-all (`api/[...path].js`) because that catch-all did not
+// match MULTI-SEGMENT subpaths (`/api/trip-chat/send` → 404) on this project,
+// while a `:path(.*)` rewrite matches any depth.
 //
-// It does THREE things and nothing more:
-//   1. Per-environment routing — upstream origin from `VITE_SUPABASE_URL`
-//      (`triplanio.com/api` → prod project, `dev.triplanio.com/api` → dev).
-//   2. Real client-IP forwarding — drop any client-supplied forwarding headers,
-//      set one clean `x-forwarded-for` from Vercel's trusted IP, so Supabase's
-//      IP rate-limit (`_shared/rateLimit.ts`) neither collapses nor is spoofable.
+// Why a function and NOT a managed CDN rewrite straight to Supabase: a managed
+// rewrite to an external host does not carry the caller's `Authorization: Bearer
+// <jwt>` — the token never reaches Supabase (getMe → UNAUTHORIZED_ASYMMETRIC_JWT).
+// A function receives the request same-origin (nothing stripped) and re-sends
+// the headers itself, so the user token survives. It does THREE things:
+//   1. Per-env routing — upstream origin from `VITE_SUPABASE_URL` (the same env
+//      the frontend build uses → same project as auth, no cross-env mismatch).
+//   2. Real client-IP forwarding — drop client-supplied forwarding headers, set
+//      one clean `x-forwarded-for` from Vercel's trusted IP (rate-limit safe).
 //   3. NO apikey injection — the browser sends the public anon key just as the
 //      SDK did; both `apikey` and `Authorization` are forwarded untouched.
 //
-// Node runtime (NOT edge) on purpose: `maxDuration` covers slow AI functions
-// (parseBookingWithAi / planTripWithAi / callTriplanioAi go through n8n→LLM).
-// On Fluid Compute the time awaiting Supabase is I/O wait, not billed CPU.
+// Node runtime + `maxDuration` covers slow AI functions (parseBookingWithAi /
+// planTripWithAi / callTriplanioAi via n8n→LLM). On Fluid Compute the time spent
+// awaiting Supabase is I/O wait, not billed CPU.
 
 export const config = { maxDuration: 60 };
 
-// Headers we must not copy onward: host/content-length break the upstream
-// request; cookie carries app state Supabase never needs; the forwarding
-// headers are rebuilt from a trusted source below so a client can't forge them.
-// NB: `authorization` and `apikey` are deliberately NOT here — they must pass.
 const STRIP_REQUEST = new Set([
   'host', 'connection', 'content-length', 'cookie',
   'x-forwarded-for', 'x-real-ip', 'x-forwarded-host', 'forwarded',
 ]);
-// fetch() already decompressed the body, so a stale content-encoding/length
-// would corrupt it; Node recomputes length for the buffer we send.
 const STRIP_RESPONSE = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection']);
 
 /** Trusted client IP set by Vercel's proxy (not the client-supplied value). */
@@ -54,8 +49,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  // `/api/trip-route/city/add?x=1` → `trip-route/city/add?x=1` (subpaths kept).
-  const tail = req.url.replace(/^\/api\//, '');
+  // The `?path=<fn>` the vercel.json rewrite captured (`account/profile`,
+  // `trip-chat/send`, `getMe` — any depth). Array form guards against a repeated
+  // param; join preserves subpath slashes.
+  const raw = req.query?.path;
+  const tail = Array.isArray(raw) ? raw.join('/') : (raw || '');
   const upstream = `${origin.replace(/\/$/, '')}/functions/v1/${tail}`;
 
   const headers = {};
@@ -67,8 +65,7 @@ export default async function handler(req, res) {
   if (ip) { headers['x-forwarded-for'] = ip; headers['x-real-ip'] = ip; }
 
   // The transport only ever sends JSON, so re-serialising the parsed body is
-  // faithful and avoids depending on raw-stream availability under Vercel's
-  // body parsing.
+  // faithful and avoids depending on raw-stream availability under Vercel.
   const method = req.method || 'POST';
   let body;
   if (method !== 'GET' && method !== 'HEAD' && req.body != null) {
@@ -79,8 +76,6 @@ export default async function handler(req, res) {
   try {
     upstreamRes = await fetch(upstream, { method, headers, body, redirect: 'manual' });
   } catch {
-    // Never reached Supabase — surface a canonical error so parseEdgeError and
-    // Sentry treat it like any relay failure, not a mystery HTML 500.
     res.status(502).json({ error: 'api_proxy_upstream', code: 'api_proxy_upstream' });
     return;
   }

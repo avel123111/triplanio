@@ -5,9 +5,10 @@
 // (`<ref>.supabase.co/functions/v1/…`). Routing edge calls through our own
 // same-origin `/api/<fn>` gives us the `triplanio.com/api` surface, WITHOUT the
 // FE ever importing a vendor URL. The `/api/<fn>` → `<supabase>/functions/v1/<fn>`
-// hop is a Vercel serverless function (`api/[...path].js`) — NOT a managed CDN
-// rewrite, which silently drops the caller's `Authorization` on a cross-host
-// proxy and breaks every authenticated call; the function forwards it.
+// hop is a Vercel serverless function (`api/proxy.js`, reached via a
+// vercel.json `/api/:path(.*)` rewrite) — NOT a managed CDN rewrite, which
+// silently drops the caller's `Authorization` on a cross-host proxy and breaks
+// every authenticated call; the function forwards it.
 //
 // It faithfully mirrors what the SDK put on the wire — `apikey` + `Authorization`
 // — so nothing downstream changes. `apikey` is the ANON key: public by design,
