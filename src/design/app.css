@@ -5090,6 +5090,11 @@ fieldset:disabled .field__label { color: var(--muted-2); }
    visual-diff-exempt: .tl3-card:hover {@media (hover: hover)} transform — лифт снят (канон без движения, апрув /kit)
    visual-diff-exempt: .tl3-card:hover {@media (hover: hover)} box-shadow — лифт снят (был --sh-2, покой плоский) */
 .tl3-card { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 13px 16px; cursor: pointer; text-align: left; font: inherit; }
+/* Optimistic pending booking (create write in flight): dim + non-interactive until
+   the seam reconciles the row. Keyed on aria-busy so no new class family.
+   visual-diff-exempt: .tl3-card[aria-busy=true] opacity — приглушение pending-брони оптимизма
+   visual-diff-exempt: .tl3-card[aria-busy=true] pointer-events — pending-бронь не кликабельна до реконсиляции */
+.tl3-card[aria-busy="true"] { opacity: .55; pointer-events: none; }
 /* Единственный экземпляр семейства, существовавший до примитива: геометрия
    больше не переобъявляется, остались три ручки и тон по типу события.
    44/20px - ВНЕ ступеней (ближайшая --xl это 46/21); переезд на ступень меняет

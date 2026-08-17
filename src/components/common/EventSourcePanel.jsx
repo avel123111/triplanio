@@ -5,11 +5,11 @@
  *   - load by id (useEntitySource)
  *   - view   -> PanelShell (chrome) + EventViewSections (canonical shared body)
  *   - edit   -> EventEditDialog variant="panel"
- *   - delete -> inline confirm -> delete row -> invalidate -> onClose()
+ *   - delete -> inline confirm -> optimistic dim -> drop on success -> onClose()
  */
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib/trip-data';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, withOptimism } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
 import { Btn, Severity, Skeleton, useToast } from '@/design/index';
@@ -22,6 +22,7 @@ import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 import { errorText } from '@/lib/errorText';
 import { cityLabel } from '@/lib/trip-cities';
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };
+const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
 
 export default function EventSourcePanel({ tripId, kind, id, canEdit = false, warning = null, autoEdit = false, onClose }) {
   const { t, lang } = useI18n();
@@ -29,7 +30,6 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(autoEdit);
   const [confirmDel, setConfirmDel] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   // Reset view/edit state when a different entity is opened. Skip the first run
   // so an autoEdit intent (edit-from-timeline) isn't immediately cleared.
@@ -44,6 +44,32 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
   const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { tripId, open: true, onError: () => onClose?.() });
   // Docs state for the shared view body (read-only here — no upload in view mode).
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, data, canEdit);
+
+  // Delete: same optimistic dim-then-drop as EventEditDialog / documents. The panel
+  // stays open with the button in its loading state (`deleteMut.isPending`) — no
+  // early close, so no survive-unmount engine — the row greys out (`_pending`) while
+  // the write runs, then drops on success or un-dims on refusal. Defined as a hook
+  // (before the early returns); the id + orphan file keys travel via mutate vars, so
+  // it needs no `data` from the render closure.
+  const delBinding = tripContentBinding(qc, tripId, CACHE_KIND[kind]);
+  const deleteMut = useMutation({
+    mutationFn: async ({ id: rowId, orphanPaths }) => {
+      const { error, deleted, code } = await deleteSourceEntity(kind, rowId, tripId, orphanPaths);
+      if (error) throw Object.assign(new Error('delete_failed'), { code });
+      // deleted:false = already gone / RLS hid it — surface so the row rolls back.
+      if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
+    },
+    ...withOptimism(delBinding, {
+      op: 'update',     // dim the row (`_pending`), don't yank it yet
+      reconcile: false, // delete returns nothing — no row to reconcile from
+      onSuccess: (_d, { id: rowId }) => {
+        delBinding.remove(rowId); // now drop the dimmed row
+        successToast(t, 'booking_deleted');
+        onClose?.();
+      },
+      onError: (err) => toast({ description: err?.code ? errorText(t, err.code) : t('event.delete_failed'), variant: 'destructive' }),
+    }),
+  });
 
   const invalidate = () => {
     const tripId = data?.trip_id;
@@ -90,41 +116,14 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
   const title = isSvc ? (data.name || themeLabel) : (hdr.title || themeLabel);
   const sub = isSvc ? (visitCity || '') : hdr.sub;
 
-  const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
-  const doDelete = async () => {
+  const startDelete = () => {
     if (!ENTITY_TABLE_BY_KIND[kind]) return;
-    const cacheKind = CACHE_KIND[kind];
-    // Entity gone → its attachments are orphaned. Capture their object keys
-    // before delete; deleteSourceEntity sweeps best-effort only once the row is
-    // actually gone, never on rollback (TRIP-117).
+    // Entity gone → its attachments are orphaned. Capture their object keys before
+    // delete; deleteSourceEntity sweeps best-effort only once the row is actually
+    // gone, never on rollback (TRIP-117). The mutation owns the optimistic dim,
+    // the write and the reconcile.
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
-    // Optimistic: drop it from the content cache + close immediately, then delete
-    // in the DB in the background and reconcile (rollback on error).
-    if (tripId && cacheKind) {
-      const prev = qc.getQueryData(TRIP_CONTENT_KEY(tripId));
-      optimisticContentUpdate(qc, tripId, cacheKind, 'remove', { id: data.id });
-      onClose?.();
-      (async () => {
-        const { error, deleted, code } = await deleteSourceEntity(kind, data.id, tripId, orphanPaths);
-        // error OR 0-row reject (deleted:false) → undo the optimistic removal so
-        // the entity doesn't vanish on a write that never happened.
-        if (error || !deleted) {
-          if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
-          toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' });
-        } else {
-          successToast(t, 'booking_deleted');
-        }
-        invalidate();
-      })();
-      return;
-    }
-    setDeleting(true);
-    const { error, deleted, code } = await deleteSourceEntity(kind, data.id, tripId, orphanPaths);
-    setDeleting(false);
-    if (error || !deleted) { toast({ description: error ? errorText(t, code) : t('event.delete_failed'), variant: 'destructive' }); return; }
-    successToast(t, 'booking_deleted');
-    invalidate();
-    onClose?.();
+    deleteMut.mutate({ id: data.id, orphanPaths, row: { id: data.id, _pending: true } });
   };
 
   return (
@@ -138,8 +137,8 @@ export default function EventSourcePanel({ tripId, kind, id, canEdit = false, wa
       footClass={confirmDel ? '' : 'lp-f--ratio'}
       foot={confirmDel ? (
         <>
-          <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>{t('common.cancel')}</Btn>
-          <Btn variant="danger-solid" icon="trash" onClick={doDelete} disabled={deleting}>{deleting ? t('event.deleting') : t('common.delete')}</Btn>
+          <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>{t('common.cancel')}</Btn>
+          <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={startDelete}>{t('common.delete')}</Btn>
         </>
       ) : (
         <>
