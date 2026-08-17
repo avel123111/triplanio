@@ -4420,8 +4420,10 @@ fieldset:disabled .field__label { color: var(--muted-2); }
   animation: popIn .14s var(--ease-out);
 }
 @keyframes popIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
-/* Flush variant — list-style popovers that own their padding (SearchSelect). */
-.pop-flush { padding: 0; }
+/* Flush variant — list-style popovers that own their padding (SearchSelect +
+   Autocomplete: города/адреса/язык/валюта). TRIP-337: радиус контейнера сведён к
+   --r-btn (10) — в один радиус с полем-триггером `.input`; база .pop = --r-card (24). */
+.pop-flush { padding: 0; border-radius: var(--r-btn); }
 
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
 /* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */

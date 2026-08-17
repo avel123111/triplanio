@@ -2,8 +2,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, IconBtn } from '@/design/index';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
 
 /**
@@ -24,6 +26,7 @@ import { displayName } from '@/lib/displayName';
 export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
   const t = useT();
   const nav = useNavigate();
+  const { logout } = useAuth();
   return (
     <div className="row row--g4">
       {/* ★TRIP-344: сторону этим двум кнопкам задаёт не ступень, а контекстное
@@ -40,16 +43,28 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
         onClick={onToggleTheme}
       />
       <NotificationsBell />
-      <button
-        className="app-header__account"
-        title={user?.email ? displayName(user.email, user.full_name) : t('nav.account')}
-        aria-label={user?.email ? displayName(user.email, user.full_name) : t('nav.account')}
-        onClick={() => nav('/settings')}
-        type="button"
-      >
-        <Avatar className="app-header__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} seed={user?.id} size="sm" />
-        {isPro && <span className="app-header__pro">PRO</span>}
-      </button>
+      {/* Клик по профилю → канон-меню (ActionMenu): «Профиль» ведёт на аккаунт-экран
+          (тот же адрес, что раньше открывал аватар), «Выйти» — logout из AuthContext
+          (прямое действие, без confirm — как кнопка выхода в ScreenAccount). */}
+      <ActionMenu
+        align="end"
+        title={t('nav.account')}
+        trigger={(
+          <button
+            className="app-header__account"
+            title={user?.email ? displayName(user.email, user.full_name) : t('nav.account')}
+            aria-label={user?.email ? displayName(user.email, user.full_name) : t('nav.account')}
+            type="button"
+          >
+            <Avatar className="app-header__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} seed={user?.id} size="sm" />
+            {isPro && <span className="app-header__pro">PRO</span>}
+          </button>
+        )}
+        items={[
+          { icon: 'user', label: t('nav.profile'), onSelect: () => nav('/settings') },
+          { icon: 'arrow', label: t('auth.logout'), onSelect: () => logout() },
+        ]}
+      />
     </div>
   );
 }
