@@ -1183,7 +1183,6 @@ export default function TripView() {
         open
         onOpenChange={(o) => { if (!o) setAddModal(null); }}
         tripId={tripId}
-        onSaved={() => { qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); qc.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) }); }}
       />
     )}
   
@@ -1381,7 +1380,6 @@ export default function TripView() {
               trip={trip}
               user={user}
               isLoading={shellLoading || loadingContent}
-              queryClient={qc}
             />
           )}
           {shownLens === 'calendar' && (
