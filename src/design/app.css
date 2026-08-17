@@ -1846,7 +1846,11 @@ button.app-side__item:hover { background: var(--wash); }
 .field { display: flex; flex-direction: column; gap: 7px; }
 /* Подпись поля - ink-2, чтобы не спорить с самим значением. Размер/вес тут НЕ
    объявлены: их держит канон .t-label (Geologica 13/600), см. co-selector выше. */
-.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-label (co-selector, TRIP-165) */
+/* flex-wrap: без него лейбл и хинт в узком поле сжимаются до min-content и текст
+   ломается ВНУТРИ («Что»/«случилось?»); с ним длинный хинт уходит на строку ниже
+   ЦЕЛИКОМ, а короткий лейбл остаётся одной строкой (норм-приложения, TRIP-337).
+   visual-diff-exempt: .field__label flex-wrap — длинный хинт переносится строкой ниже, лейбл не рвётся посреди слова (апрув Pavel) */
+.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }   /* тип — канон .t-label (co-selector, TRIP-165) */
 /* Звёздочка обязательного поля - одна на всё приложение (TRIP-333). Знак и цвет
    объявлены здесь; КОМУ ставить `data-required`, отвечает валидатор
    (`isFieldRequired`), а не автор лейбла.
