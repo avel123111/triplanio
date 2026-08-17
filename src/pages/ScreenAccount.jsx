@@ -862,11 +862,14 @@ export default function ScreenAccount() {
             <Row as="h2" className="acct-sectitle">{t('account.email_notifs')}</Row>
 
             {/* In-app notifications — quick link to the inbox with unread count.
-                Same row grammar as every other navigational row on this screen
-                (Privacy / Terms / cookie settings below): a .card holding
-                .row--div, not a bespoke card-shaped button. */}
+                ЕДИНСТВЕННАЯ строка в карточке → канон `.row--flush` (TRIP-354): рамку
+                целиком задаёт `.card` (18px), поэтому у строки своей вертикальной
+                отбивки быть не должно. `.row--div` (13px сверху/снизу) стекался с
+                паддингом карточки и раздувал контейнер. Списковые карточки ниже
+                (Privacy / Terms) остаются на `.row--div` — там строк несколько и
+                разделители между ними нужны. */}
             <div className="card" style={{ marginBottom: 16 }}>
-              <button type="button" className="row--div row row--g7" onClick={() => nav('/inbox')}>
+              <button type="button" className="row--flush row row--g7" onClick={() => nav('/inbox')}>
                 <span className="tile tile--lg tile--brand"><Icon name="bell" size={18} /></span>
                 <Grow>
                   <div className="row__t">{t('account.inbox_title')}</div>
