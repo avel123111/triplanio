@@ -2,7 +2,7 @@
 /**
  * MembersLens - members tab inside TripView.
  *
- * Props: tripId, members, profiles, trip, user, canManage, isLoading, queryClient
+ * Props: tripId, members, profiles, trip, user, isLoading
  *
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
@@ -10,12 +10,14 @@
  *   land with the rows; covers the owner, who has no trip_members row (TRIP-230)
  */
 import React, { useState, useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { withViralMarks } from '@/lib/viralLink';
 import { classifyError } from '@/lib/errorText';
 import { invokeFn } from '@/lib/invokeFn';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { tripContentBinding, formWrite, reconcileWriteRow, withOptimism } from '@/lib/trip-data';
+import { refusalError } from '@/lib/refusalError';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, IconBtn, EmptyState, Field, Input, RoleBadge, Seg, Severity, Skeleton, Textarea, ActionMenu, Tile, useToast } from '../design/index';
@@ -49,8 +51,8 @@ const ROLES = [
   { value: 'viewer', labelKey: 'member.role_viewer_desc' },
 ];
 
-/** @param {{ tripId: any, onSaved?: any, promoteMember?: any, open: boolean, onOpenChange?: any }} p */
-export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
+/** @param {{ tripId: any, promoteMember?: any, open: boolean, onOpenChange?: any }} p */
+export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -63,10 +65,49 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
   const [email, setEmail] = useState('');
   const [offlineName, setOfflineName] = useState('');
   const [message, setMessage] = useState('');
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
   const st = (f) => fieldState(v.displayIssues, f);
+
+  const qc = useQueryClient();
+  const membersBinding = tripContentBinding(qc, tripId, 'members');
+  // Both writes route a member refusal (code) to the same inline field text.
+  const showErr = (/** @type {any} */ e) => setErr(classifyError(t, e?.code).text);
+  // Invite / add-offline on the shared form path: button spinner, close on success,
+  // reconcile the returned member row into the members slice (invite unwraps the
+  // .member row; a reactivated declined invite upserts in place). Member refusals
+  // (ALREADY_MEMBER / INVITE_SELF / INVITE_OWNER …) arrive as codes → inline text.
+  const inviteMut = useMutation({
+    mutationFn: async () => {
+      setErr('');
+      const { data, error, code } = await invokeFn('trip-member/invite', { body: { trip_id: tripId, email: email.trim().toLowerCase(), role } });
+      if (error || data?.error) throw refusalError(code);
+      // Promoting an offline placeholder → drop it now that a real invite exists.
+      if (promoteMember?.id) await invokeFn('trip-member/remove', { body: { id: promoteMember.id, trip_id: tripId } });
+      return data; // the invited / reactivated member row
+    },
+    ...formWrite({
+      reconcile: (/** @type {any} */ data) => {
+        reconcileWriteRow(membersBinding, 'add', data);
+        if (promoteMember?.id) membersBinding.remove(promoteMember.id);
+      },
+      onDone: () => { track('email_invited', { role, trip_id: tripId }); successToast(t, 'invite_sent'); close(); },
+      onFail: showErr,
+    }),
+  });
+  const offlineMut = useMutation({
+    mutationFn: async () => {
+      setErr('');
+      const { data, error, code } = await invokeFn('trip-member/add-offline', { body: { trip_id: tripId, user_full_name: offlineName.trim() } });
+      if (error || data?.error) throw refusalError(code);
+      return data;
+    },
+    ...formWrite({
+      reconcile: (/** @type {any} */ data) => reconcileWriteRow(membersBinding, 'add', data),
+      onDone: () => { track('member_invited', { role: 'offline', trip_id: tripId }); successToast(t, 'member_added'); close(); },
+      onFail: showErr,
+    }),
+  });
 
   // Generate (or reuse) a real invite link when the "link" tab is active.
   // The role is bound to the token server-side, so switching role re-fetches.
@@ -99,50 +140,12 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     });
   }
 
-  async function inviteByEmail() {
-    const trimmed = email.trim().toLowerCase();
-    setSaving(true);
-    setErr('');
-    const { data, error, code } = await invokeFn('trip-member/invite', {
-      body: { trip_id: tripId, email: trimmed, role },
-    });
-    setSaving(false);
-    if (error || data?.error) {
-      // Единая дверь трактовки кода (TRIP-400/419): `INVITE_OWNER` и прочие
-      // member-отказы → локализованный `err.*`, серверная проза не показывается.
-      setErr(classifyError(t, code).text);
-      return;
-    }
-    // Promoting an offline placeholder → remove it now that a real invite exists.
-    if (promoteMember?.id) {
-      await invokeFn('trip-member/remove', { body: { id: promoteMember.id, trip_id: tripId } });
-    }
-    track('email_invited', { role, trip_id: tripId });
-    successToast(t, 'invite_sent');
-    onSaved?.();
-    close();
-  }
-
-  async function addOffline() {
-    const name = offlineName.trim();
-    setSaving(true);
-    setErr('');
-    const { data, error, code } = await invokeFn('trip-member/add-offline', {
-      body: { trip_id: tripId, user_full_name: name },
-    });
-    setSaving(false);
-    if (error || data?.error) { setErr(classifyError(t, code).text); return; }
-    track('member_invited', { role: 'offline', trip_id: tripId });
-    onSaved?.();
-    close();
-  }
-
   return (
     <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
         <Btn variant="secondary" onClick={close}>{t('common.close')}</Btn>
-        {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
-        {tab === 'offline' && <Btn variant="primary" icon="user" loading={saving} onClick={() => v.attemptSubmit(addOffline)} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
+        {tab === 'email' && <Btn variant="primary" icon="send" loading={inviteMut.isPending} onClick={() => v.attemptSubmit(() => inviteMut.mutate())} aria-disabled={!v.canSubmit}>{t('members.send_invite')}</Btn>}
+        {tab === 'offline' && <Btn variant="primary" icon="user" loading={offlineMut.isPending} onClick={() => v.attemptSubmit(() => offlineMut.mutate())} aria-disabled={!v.canSubmit}>{t('members.add')}</Btn>}
       </>}>
       <Seg
         variant="fill"
@@ -228,31 +231,34 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
 // `name` is the identity ALREADY resolved for the row this dialog was opened
 // from; the dialog must not re-derive it (TRIP-334).
-function ChangeRoleDialog({ member, name, tripId, onSaved, open, onOpenChange }) {
+function ChangeRoleDialog({ member, name, tripId, open, onOpenChange }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const [role, setRole] = useState(member.role || 'viewer');
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
-  async function save() {
-    setSaving(true);
-    setErr('');
-    const { data, error, code } = await invokeFn('trip-member/role', {
-      body: { id: member.id, trip_id: tripId, role },
-    });
-    setSaving(false);
-    if (error || data?.error) { setErr(classifyError(t, code).text); return; }
-    successToast(t, 'role_updated');
-    onSaved?.();
-    close();
-  }
+  const qc = useQueryClient();
+  // Same form path: button spinner, close on success, reconcile the returned member
+  // row (its new role) into the members slice — no full-trip refetch.
+  const roleMut = useMutation({
+    mutationFn: async () => {
+      setErr('');
+      const { data, error, code } = await invokeFn('trip-member/role', { body: { id: member.id, trip_id: tripId, role } });
+      if (error || data?.error) throw refusalError(code);
+      return data;
+    },
+    ...formWrite({
+      reconcile: (/** @type {any} */ data) => reconcileWriteRow(tripContentBinding(qc, tripId, 'members'), 'update', data),
+      onDone: () => { successToast(t, 'role_updated'); close(); },
+      onFail: (/** @type {any} */ e) => setErr(classifyError(t, e?.code).text),
+    }),
+  });
 
   return (
     <Dialog title={t('members.change_role')} icon="edit" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" loading={saving} onClick={save}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
+        <Btn variant="secondary" onClick={close} disabled={roleMut.isPending}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="primary" loading={roleMut.isPending} onClick={() => roleMut.mutate()}>{t('trip.form_save')}</Btn>
       </>}>
       <div className="t-body" style={{ marginBottom: 14, color: 'var(--muted)' }}>
         {name}
@@ -289,11 +295,12 @@ export function MembersSkeleton() {
   );
 }
 
-export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, isLoading, queryClient }) {
+export default function MembersLens({ tripId, members = [], profiles = {}, trip, user, isLoading }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const [removing, setRemoving] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [promoteState, setPromoteState] = useState(null); // null | { member }
@@ -302,11 +309,26 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // Управление участниками — ступень editor из единого контекста (TRIP-274 Ф2.2).
   const { canEdit: canManage } = useTripAccess();
 
-  function refresh() {
-    // B5: invalidate both content (members list) and shell (header avatar row)
-    queryClient?.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) });
-    queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
-  }
+  // Members live only in the CONTENT cache (header avatars / chat / access all read
+  // contentData.members) — one slice, so one binding, like budget/documents.
+  const membersBinding = tripContentBinding(qc, tripId, 'members');
+
+  // Remove — INSTANT (MembersLens stays mounted, so onError can roll back): the row
+  // DROPS and the success toast fire TOGETHER at T0 (onOptimistic), in sync with the
+  // vanish — not an instant vanish with a toast trailing 2s later. On refusal the seam
+  // restores the row and an error toast supersedes. pending row = an invite being
+  // cancelled; anything else = a member removed.
+  const removeMut = useMutation({
+    mutationFn: async (/** @type {any} */ { id }) => {
+      const { error, code } = await invokeFn('trip-member/remove', { body: { id, trip_id: tripId } });
+      if (error) throw refusalError(code);
+    },
+    ...withOptimism(membersBinding, {
+      op: 'remove',
+      onOptimistic: (/** @type {any} */ { status }) => successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed'),
+      onError: (/** @type {any} */ e) => toast({ description: classifyError(t, e?.code).text, variant: 'destructive' }),
+    }),
+  });
 
   // Resend fires from the row's "…" menu, which closes on select — a menu item
   // can't host a spinner, so the row shows the busy state (mbrow--busy) instead.
@@ -328,24 +350,19 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
     });
     setRemoving(null);
     if (error || data?.error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+    // The declined row is reactivated to pending — upsert the returned member row in
+    // place (swap dedups by id), no full-trip refetch.
+    reconcileWriteRow(membersBinding, 'add', data);
     successToast(t, 'invite_resent');
-    refresh();
   }
 
-  // Confirmed via the async confirm so the dialog's button spins while
-  // the remove action (trip-member/remove) runs (the kebab menu can't host a
-  // spinner; the dialog can).
-  async function removeMember(memberId, status) {
-    await confirm({
+  // Confirm gates the yes/no; on confirm the optimistic remove fires (removeMut) —
+  // the row drops instantly and rolls back on refusal.
+  function removeMember(memberId, status) {
+    confirm({
       title: t('member.remove_confirm'),
       variant: 'destructive',
-      onConfirm: async () => {
-        const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
-        if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
-        // pending row = an invite being cancelled; anything else = a member removed.
-        successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed');
-        refresh();
-      },
+      onConfirm: () => removeMut.mutate({ id: memberId, status }),
     });
   }
 
@@ -398,6 +415,8 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
           // "Leave trip"; other rows get state-appropriate management actions
           // when you're an owner/admin.
           const canActOnRow = !isOwner && (isSelf || canManage);
+          // Busy row = a resend/reinvite in flight (`removing`) → mbrow--busy skin.
+          // (Remove is instant: the row is gone at T0, so it needs no busy state.)
           const isRemoving = removing === m.id;
           // Identity (name / email line / avatar / anonymized label) comes from
           // the SHARED resolver chat and documents already use (TRIP-334). The
@@ -494,9 +513,9 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
         </div>
       )}
 
-      <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} tripId={tripId} onSaved={refresh} />
-      {promoteState && <InviteDialog open={!!promoteState} onOpenChange={(o) => { if (!o) setPromoteState(null); }} tripId={tripId} promoteMember={promoteState.member} onSaved={refresh} />}
-      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} name={roleState.name} tripId={tripId} onSaved={refresh} />}
+      <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} tripId={tripId} />
+      {promoteState && <InviteDialog open={!!promoteState} onOpenChange={(o) => { if (!o) setPromoteState(null); }} tripId={tripId} promoteMember={promoteState.member} />}
+      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} name={roleState.name} tripId={tripId} />}
     </>
   );
 }

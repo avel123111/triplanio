@@ -21,9 +21,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Icon } from '@/design/icons';
-import { Avatar, IconBtn } from '@/design/index';
+import { Avatar, IconBtn, UnreadBadge } from '@/design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { displayName } from '@/lib/displayName';
+import { useUnreadNotificationCount } from '@/lib/useNotifications';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { ActionMenu } from '@/components/ui/ActionMenu';
@@ -58,8 +59,8 @@ export const useMobileNav = () => useContext(MobileNavContext);
 // деструктуризации и делает КАЖДЫЙ проп без дефолта обязательным - вызов
 // «иконка без аватара» и вызов «аватар без иконки» краснели оба, хотя оба
 // законны и оба живые.
-/** @param {{ icon?: string, label: string, active: boolean, onClick: () => any, avatar?: any }} p */
-function NavItem({ icon, label, active, onClick, avatar }) {
+/** @param {{ icon?: string, label: string, active: boolean, onClick: () => any, avatar?: any, badge?: number }} p */
+function NavItem({ icon, label, active, onClick, avatar, badge = 0 }) {
   return (
     <button
       type="button"
@@ -68,7 +69,9 @@ function NavItem({ icon, label, active, onClick, avatar }) {
       aria-label={label}
       aria-current={active ? 'page' : undefined}
     >
-      <span className="mbnav__ico">{avatar || <Icon name={icon} size={21} />}</span>
+      {/* Бейдж непрочитанного — внутри иконки: ко-селектор `.mbnav__ico >
+          .badge--unread` сажает его оверлеем в угол (TRIP-354). */}
+      <span className="mbnav__ico">{avatar || <Icon name={icon} size={21} />}<UnreadBadge count={badge} /></span>
       <span className="mbnav__lbl">{label}</span>
     </button>
   );
@@ -82,6 +85,10 @@ export default function MobileBottomNav() {
   const { user } = useAuth();
   const { tripNav, addActions } = useMobileNav();
   const { openChoice } = useCreateTrip();
+  // Вне трипа бейдж «Профиль» = только непрочитанные inapp-уведомления (глобально).
+  // Внутри трипа бейдж «Ещё» = СУММА чат+inapp, её считает TripShell и кладёт в
+  // `tripNav.moreBadge` (там на руках tripId). TRIP-354.
+  const inappUnread = useUnreadNotificationCount();
   const path = loc.pathname;
 
   // Один аффорданс «+»: если экран объявил `addActions`, «+» = триггер ActionMenu
@@ -166,7 +173,7 @@ export default function MobileBottomNav() {
             {addMenu(t('common.add'))}
           </span>
           {sectionItems(DOCK_SECTIONS.right)}
-          <NavItem icon="more" label={t('common.more')} active={false} onClick={() => tripNav.openMenu?.()} />
+          <NavItem icon="more" label={t('common.more')} active={false} badge={tripNav.moreBadge || 0} onClick={() => tripNav.openMenu?.()} />
         </div>
       </nav>
     );
@@ -180,7 +187,7 @@ export default function MobileBottomNav() {
         <span className="mbnav__center">
           {addMenu(t('trips.new'))}
         </span>
-        <NavItem label={t('nav.account')} active={path.startsWith('/settings')} avatar={avatarEl} onClick={() => nav('/settings')} />
+        <NavItem label={t('nav.account')} active={path.startsWith('/settings')} avatar={avatarEl} badge={inappUnread} onClick={() => nav('/settings')} />
       </div>
     </nav>
   );

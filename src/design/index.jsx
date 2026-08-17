@@ -395,6 +395,19 @@ export const Badge = ({ variant = "", size, icon, children, style }) => (
   </span>
 );
 
+// ----- UnreadBadge ----- (TRIP-354, апрув Pavel)
+// ОДИН красный бейдж непрочитанного на всё приложение. До него счётчик рисовали
+// пятью способами: точка колокольчика (`icon-btn__dot`, --danger, БЕЗ числа),
+// чат-бейджи сайдбара/шита/виджета (--warm, 18/22px, свой класс каждый) и счёт
+// аккаунта (`badge--count`, --brand). Теперь один облик — красный `badge--unread`
+// с числом, свыше 99 → «99+», ноль → ничего. Позиционирование (оверлей на
+// кнопке-иконке / пункте дока / плитке шита) даёт ко-селектор владельца, как у
+// `.icon-btn > .badge--count`; сам бейдж только рисует пилюлю. Нейтральный
+// `badge--count` (синий) остаётся для счётчиков фильтров/деталей.
+/** @param {{ count?: number }} p */
+export const UnreadBadge = ({ count = 0 }) =>
+  count > 0 ? <Badge variant="unread">{count > 99 ? "99+" : count}</Badge> : null;
+
 // ----- RoleBadge ----- (TRIP-409, апрув Pavel)
 // ОДИН перевод роли участника → бейдж. До него пять поверхностей рисовали его
 // по-своему: список участников — цветными <Badge>, «Кто едет» в Обзоре —
@@ -643,8 +656,8 @@ export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 // iconTone swaps the header-icon tint to an existing tile tone (default = brand).
 // Whitelist the tones the header supports — an unknown value falls back to brand.
 const DLG_ICON_TONES = { activity: 'activity' };
-/** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any }} p */
-export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
+/** @param {{ title?: any, subtitle?: any, icon?: string, iconTone?: string, onClose?: any, size?: string, children?: any, foot?: any, open?: boolean, onOpenChange?: any, busy?: boolean }} p */
+export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange, busy }) => {
   const t = useT();
   // The dialog OWNS its footer: on mobile it hides it while the keyboard is up
   // (it would otherwise rise above the keyboard and cover the autofill bar).
@@ -679,7 +692,9 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
           {/* Крестик диалога — тот самый «канон» из разбора облика: тон quiet,
               сторона --ctl-h. Он же был безымянным для скринридера, пока
               `ariaLabel` не стал обязательным пропом примитива. */}
-          <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} />
+          {/* `busy` блокирует крест на время необратимой операции (напр. создание
+              документа): та же защита, что раньше вешали на хендролл-крест. */}
+          <IconBtn icon="close" onClick={handleClose} ariaLabel={t('common.close')} disabled={busy} />
         </div>
         <div className="dlg__body">{children}</div>
         {foot && !kbOpen && <div className="dlg__foot">{foot}</div>}
@@ -870,7 +885,7 @@ export function StreamEventRow({ e, onClick }) {
             Была сырым <button>, из-за чего скин (переехавший с `.tl3-card` на Card)
             её не касался — карточка облезала до прозрачного текста. `.tl3-card--tr`
             остаётся раскладкой коннектора (город→режим→город). */}
-        <Card as="button" radius="lg" interactive className="tl3-card tl3-card--tr" onClick={onClick}>
+        <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card tl3-card--tr" onClick={onClick}>
           <div className="rv-end">
             <b>{e.from || "—"}</b>
             {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
@@ -897,7 +912,7 @@ export function StreamEventRow({ e, onClick }) {
   return (
     <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-      <Card as="button" radius="lg" interactive className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
+      <Card as="button" radius="lg" interactive ariaBusy={e._pending || undefined} className="tl3-card" style={{ "--hl-soft": tok.s, "--hl-ink": tok.i }} onClick={onClick}>
         <span className="tile"><Icon name={meta.icon} size={20} /></span>
         <div className="body">
           <b>{e.title}</b>

@@ -5,7 +5,7 @@ import { useNotificationList, useUnreadNotificationCount, useNotificationActions
 import { useT, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
-import { Badge, Btn, EmptyState, IconBtn, NotifRow, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
+import { Badge, Btn, EmptyState, IconBtn, NotifRow, Popover, PopoverContent, PopoverTrigger, UnreadBadge } from '@/design/index';
 import { buildNotifView } from '@/components/notifications/notifView';
 
 // ★TRIP-344: проп `triggerClassName` удалён. Его единственный вызыватель
@@ -31,18 +31,13 @@ export default function NotificationsBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        {/* Метка непрочитанных — РЕБЁНОК кнопки: она позиционируется от неё, а
-            не от строки. Имя `icon-btn__dot`, а не приклеенное `dot`, — апрув
-            Pavel: правило вида `.icon-btn .dot` заводит ключ и на ПРЕДКА (2p,
-            решение TRIP-363), поэтому объявления метки становились победителем
-            базового ключа `.icon-btn` и ЛЮБОЙ перенос на примитив читался как
-            «смена значения» — 44 ложных отказа. Односоставное имя снимает это
-            структурно и совпадает с направлением каталога: имя без префикса
-            внутри компонента ДС схлопывается в <владелец>__<имя>.
-            Класс `relative` тоже ушёл: правила у него нет НИГДЕ (наследство
-            Tailwind), а `position: relative` база `.icon-btn` объявляет сама. */}
+        {/* Метка непрочитанных — РЕБЁНОК кнопки: позиционируется от неё
+            ко-селектором `.icon-btn > .badge--unread`. Канон непрочитанного
+            (TRIP-354): красный `<UnreadBadge>` С ЧИСЛОМ вместо прежней точки
+            `.icon-btn__dot`. Число озвучивается как часть доступного имени
+            кнопки. */}
         <IconBtn icon="bell" ariaLabel={t('notif.title')}>
-          {unread > 0 && <span aria-hidden className="icon-btn__dot" />}
+          <UnreadBadge count={unread} />
         </IconBtn>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">

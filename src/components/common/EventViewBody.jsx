@@ -20,7 +20,7 @@ import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { optimisticContentUpdate, invalidateTripData, TRIP_CONTENT_KEY, TRIP_SHELL_KEY } from '@/lib/trip-data';
+import { optimisticContentUpdate, TRIP_CONTENT_KEY, TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { uploadTripFiles, uploadErrorText, persistEntityDocuments } from '@/lib/documentMutations';
 import { removeTripFiles } from '@/lib/storageCleanup';
 import { faviconUrl, hostnameFromUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
@@ -796,6 +796,9 @@ export function useEntityDocs(kind, entity, canEdit) {
       const prevDocs = docs;
       const next = [...docs, ...uploaded];
 
+      // Cancel any in-flight trip refetch first, so it can't resolve later and
+      // clobber the optimistic docs (the seam's flicker guard, applied here too).
+      if (entity.trip_id) await qc.cancelQueries({ queryKey: TRIP_CONTENT_KEY(entity.trip_id) });
       // Optimistic: local state AND the trip-content cache. Both must roll back
       // together on failure, else they diverge (this is the whole risk here).
       setDocs(next);
@@ -823,7 +826,8 @@ export function useEntityDocs(kind, entity, canEdit) {
         toast({ description: t('doc.attach_failed'), variant: 'destructive' });
         return;
       }
-      if (entity.trip_id) invalidateTripData(qc, entity.trip_id);
+      // No refetch: the optimistic cache patch above IS the final state (persist
+      // succeeded), so re-pulling the whole trip would only cause a flicker.
     } finally {
       setUploading(false);
     }

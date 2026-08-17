@@ -36,6 +36,11 @@
    visual-diff-exempt: .dl-card:focus-visible box-shadow — фокус-кольцо → .card--interactive:focus-visible
    visual-diff-exempt: .dl-card:focus-visible outline — фокус → .card--interactive:focus-visible */
 .dl-card { font: inherit; padding: 16px; cursor: pointer; text-align: left; width: 100%; }
+/* Optimistic pending state (create/delete write in flight): dim + non-interactive
+   until the seam reconciles the cache. Keyed on aria-busy so no new class family.
+   visual-diff-exempt: .dl-card[aria-busy=true] opacity — приглушение pending-карточки оптимизма
+   visual-diff-exempt: .dl-card[aria-busy=true] pointer-events — pending-карточка не кликабельна до реконсиляции */
+.dl-card[aria-busy="true"] { opacity: .55; pointer-events: none; }
 
 /* ★ОСТАТОК: зазор 11px вне шкалы - удержан.
    visual-diff-move: dl-card__top -> row row--a-start */
