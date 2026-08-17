@@ -75,8 +75,6 @@
     "pro-hero-eyebrow": { "object": "badge", "reason": "надзаголовок Pro-героя — объект «бейдж»" },
     "chat-composer__hint": { "object": "badge", "reason": "подсказка композера чата — объект «чип»" },
     "cr-dot": { "object": "badge", "reason": "точка-маркер — объект «точка/бейдж»" },
-    "dock__count": { "object": "badge", "reason": "счётчик на доке — объект «бейдж»" },
-    "icon-btn__dot": { "object": "badge", "reason": "точка-индикатор на icon-btn — объект «бейдж»" },
 
     "mapwrap": { "object": "map", "reason": "обёртка карты — объект «карта»" },
     "map-route__item": { "object": "map", "reason": "элемент маршрута на карте — объект «карта»" },
