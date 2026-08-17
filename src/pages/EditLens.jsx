@@ -363,10 +363,15 @@ export default function EditLens({ tripId, shell, content }) {
   //   okKey: a success toast for the discrete actions; the frequent ones stay silent.
   const runAction = (rpcFn, onResult, refetchOpts, okKey) => withRecompute(seqRef, {
     run: rpcFn,
-    reconcile: onResult,
+    // Confirm the action the MOMENT the RPC lands — reconcile the real uuid (un-mute)
+    // AND fire the success toast here, not in commit. commit runs after the confirm-
+    // refetch (a second round-trip); gating the toast on it made it trail the action
+    // by ~a full extra RPC. The refetch stays as a background cache-sync only.
+    reconcile: (result) => { onResult?.(result); if (okKey) successToast(t, okKey); },
     refetch: () => refetchTrip(qc, tripId, refetchOpts),
-    // Rebuild the draft from fresh server state on the next render (buildDraft).
-    commit: () => { setDraft(null); if (okKey) successToast(t, okKey); },
+    // Rebuild the draft from fresh server state on the next render (buildDraft); the
+    // client already re-laid the chain, so this is an invisible confirm, not a jump.
+    commit: () => { setDraft(null); },
     // RPC failed → drop the optimistic patch by rebuilding from the last good cache
     // state (only if a newer action hasn't already taken ownership — the seam gates it).
     rollback: () => setDraft(null),
