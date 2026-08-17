@@ -76,6 +76,9 @@ export default function StripeReturnModals() {
     qc.invalidateQueries({ queryKey: ['my-pro-status'] });
     qc.invalidateQueries({ queryKey: ['me'] });
     qc.invalidateQueries({ queryKey: ['trips'] });
+    // After buying Trip Pro the owner-Pro cache (useTripProStatus, staleTime 5 min)
+    // must refetch too, else the AI-block lock in EventEditDialog lingers up to 5 min.
+    qc.invalidateQueries({ queryKey: ['trip-owner-pro'] });
 
     let cancelled = false;
     (async () => {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { track } from '@/lib/analytics';
 import { invokeFn } from '@/lib/invokeFn';
 import { refusalError } from '@/lib/refusalError';
+import { goPro } from '@/lib/goPro';
 import { errorText } from '@/lib/errorText';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1138,7 +1139,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             action={(
               <>
                 <Btn variant="secondary" onClick={() => nav('/trips')}>{t('planner.to_trips')}</Btn>
-                <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit')}>{t('sub.go_pro')}</Btn>
+                <Btn variant="primary" onClick={() => goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' })}>{t('sub.go_pro')}</Btn>
               </>
             )}
           />

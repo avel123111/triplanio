@@ -6,6 +6,7 @@ import { Badge, Btn, Card, DialogRoot as Dialog, DialogContent, DialogTitle } fr
 import { invokeFn } from '@/lib/invokeFn';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isActiveTripCapReached } from '@/lib/limits';
+import { goPro } from '@/lib/goPro';
 
 /**
  * Trip-limit modal (Variant D) - shown for the IN-APP "new trip" action when a
@@ -25,7 +26,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     : { status: 'idle', activeCount: 0, isPro: false }
   );
   const nav = useNavigate();
-  const openUpgrade = () => { onOpenChange?.(false); nav('/pro?hidePerTrip=1&from=paywall&feature=trip_limit'); };
+  const openUpgrade = () => { onOpenChange?.(false); goPro(nav, { hidePerTrip: true, from: 'paywall', feature: 'trip_limit' }); };
   const proceededRef = useRef(false);
 
   useEffect(() => {

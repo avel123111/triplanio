@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, TRIP_SHELL_INCLUDE, TRIP_CONTENT_INCLUDE, invalidateTripData } from '@/lib/trip-data';
 import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { goPro } from '@/lib/goPro';
 import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
 import PageNotFound from '@/lib/PageNotFound';
@@ -798,7 +799,7 @@ export default function TripView() {
   // replacing the old ForkPartnerModal → EventEditDialog modal chain.
   const [bookingCreate, setBookingCreate] = useState({ open: false, kind: null, visit: null, fromVisit: null, toVisit: null, initialTab: 'find', defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
-  const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
+  const openUpgrade = () => goPro(nav, { tripId });
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
