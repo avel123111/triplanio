@@ -408,9 +408,12 @@ export const Badge = ({ variant = "", size, icon, children, style }) => (
 export const RoleBadge = ({ role }) => {
   const t = useT();
   // RoleBadge рисует ЯРЛЫК роли — это показ, не гейт права редактирования.
-  if (role === "owner")  return <Badge variant="warning">{t("trips.role_owner")}</Badge>; // role-gate-exempt: показ
-  if (role === "viewer") return <Badge variant="outline">{t("trips.role_viewer")}</Badge>; // role-gate-exempt: показ
-  return <Badge variant="brand">{t("trips.role_admin")}</Badge>;
+  // Ступень `tiny` (TRIP-337, апрув Pavel): ярлык роли — самый мелкий чип, на
+  // кегль ниже статуса; та же ступень, что у тариф-плашек. Один проп на канон —
+  // все площадки (Trips · Chat · Members · Overview) садятся ровно.
+  if (role === "owner")  return <Badge variant="warning" size="tiny">{t("trips.role_owner")}</Badge>; // role-gate-exempt: показ
+  if (role === "viewer") return <Badge variant="outline" size="tiny">{t("trips.role_viewer")}</Badge>; // role-gate-exempt: показ
+  return <Badge variant="brand" size="tiny">{t("trips.role_admin")}</Badge>;
 };
 
 // ----- Card -----

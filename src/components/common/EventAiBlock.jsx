@@ -279,7 +279,6 @@ export default function EventAiBlock({
         aria-expanded={open}
         onClick={toggle}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
-        style={{ cursor: 'pointer' }}
       >
         <Tile tone="ai" solid size="sm"><Sparkles size={15} /></Tile>
         <div className="ai-blk-ti">
