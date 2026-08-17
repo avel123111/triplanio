@@ -33,6 +33,7 @@ import { classifyError } from '@/lib/errorText';
 import { resolveOwnerName } from '@/lib/resolveAuthor';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { successToast } from '@/lib/successToast';
+import { goPro } from '@/lib/goPro';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur } from '@/lib/budget/money';
@@ -573,7 +574,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     mode: isOwner ? 'upgrade' : 'info',
     feature: t('budget.title'),
     ownerName,
-    onUpgrade: () => nav(`/pro?tripId=${tripId}`),
+    onUpgrade: () => goPro(nav, { tripId }),
   });
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);

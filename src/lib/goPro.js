@@ -1,15 +1,19 @@
 // @ts-check
 // Единственный источник навигации на страницу апгрейда /pro.
 //
-// Семь рукописных nav('/pro?...') (EventEditDialog · TripLimitDialog · SettingsLens ·
-// ScreenAccount · TripView · Trips · ManualPlanner) различались ТОЛЬКО query-параметрами —
-// сборка строки собрана здесь. ProUpsellProvider (TRIP-225) дедуплил МОДАЛКУ, а не
-// навигацию; эти call-sites — прямой переход на /pro, не апселл-модаль.
+// Восемь рукописных nav('/pro?...') (EventEditDialog · TripLimitDialog · SettingsLens ·
+// ScreenAccount · TripView · Trips · ManualPlanner · BudgetLens) различались ТОЛЬКО
+// query-параметрами — сборка строки собрана здесь. ProUpsellProvider (TRIP-225) дедуплил
+// МОДАЛКУ, а не навигацию; эти call-sites — прямой переход на /pro, не апселл-модаль.
 //
 // Страница /pro (src/pages/Pro.jsx) читает параметры через searchParams и трактует
 // пустое и отсутствующее одинаково: `get('tripId') || null`, `get('from') || null`,
 // `hidePerTrip === '1'`. Поэтому опускание falsy-значений даёт поведение 1:1 с прежними
 // строками (`tripId=` пустой ≡ отсутствие tripId).
+//
+// НАМЕРЕННОЕ исключение: StripeReturnModals собирает `/pro?tripId=` в state (retryTo —
+// retry-адрес после неуспеха), а НЕ через nav(). Под сигнатуру goPro(nav, …) не ложится
+// 1:1, поэтому не переведён — это не пропуск.
 
 /**
  * @param {(to: string) => void} nav  navigate из react-router (useNavigate())
