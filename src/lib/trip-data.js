@@ -327,3 +327,49 @@ export function formWrite({ reconcile, onDone, onFail } = {}) {
     },
   };
 }
+
+/**
+ * The sequence-guarded SERVER-RECOMPUTE lifecycle (the E pattern) — the third seam
+ * member, for a write whose SERVER reshapes many rows (recompute_trip: the date chain
+ * cascades, waypoint cities appear). Two things make it neither {@link withOptimism}
+ * nor {@link formWrite}: the optimistic state is a whole-view client re-derivation the
+ * CALLER owns (a "draft"), and reconciliation is a TARGETED REFETCH, not a returned
+ * row. A monotonic `seq` drops stale reconciles when actions fire faster than the
+ * server answers (nights stepper, DnD reorder), so the UI never snaps back to an
+ * intermediate state.
+ *
+ * The caller keeps its draft (the optimistic patch is applied BEFORE calling) and
+ * supplies the phases; this owns ONLY the ordering + the seq barriers:
+ *   run       the RPC (its result flows to reconcile); omit for a bare resync
+ *   reconcile on success, BEFORE the refetch, only if still latest — a best-effort
+ *             side effect (tmp→real id fixup, file cleanup); a throw here is swallowed
+ *             so it can't abort the commit
+ *   refetch   pull fresh server state (targeted)
+ *   commit    adopt server truth (e.g. clear the draft) + success toast, only if still latest
+ *   rollback  drop the optimistic patch (only if still latest), on RPC failure
+ *   onError   surface the refusal (always, even if superseded)
+ *
+ * Offline note: a failed refetch is swallowed and the commit still runs — the draft
+ * is dropped and the view rebuilds from cache until a later action reconciles, exactly
+ * as the hand-rolled editor did.
+ *
+ * @param {{ current: number }} seqRef  shared monotonic counter (one per editor instance)
+ * @param {{ run?: ()=>Promise<any>, reconcile?: (result:any)=>void, refetch?: ()=>Promise<any>,
+ *           commit?: ()=>void, rollback?: ()=>void, onError?: (err:any)=>void }} [phases]
+ */
+export async function withRecompute(seqRef, { run, reconcile, refetch, commit, rollback, onError } = {}) {
+  const mySeq = ++seqRef.current;
+  let result;
+  try {
+    result = await run?.();
+  } catch (err) {
+    if (mySeq === seqRef.current) rollback?.(); // a newer action owns the state → leave it
+    onError?.(err);
+    return;
+  }
+  if (mySeq !== seqRef.current) return;          // superseded before reconcile → keep optimistic
+  if (reconcile) { try { reconcile(result); } catch { /* best-effort side effect */ } }
+  try { await refetch?.(); } catch { /* offline: commit from cache, as before */ }
+  if (mySeq !== seqRef.current) return;          // a newer action started during the refetch
+  commit?.();
+}

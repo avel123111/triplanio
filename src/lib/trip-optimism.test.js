@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import {
   withOptimism,
   formWrite,
+  withRecompute,
   reconcileWriteRow,
   tripContentBinding,
   listBinding,
@@ -231,4 +232,80 @@ test('formWrite error: onFail fires and onDone does NOT — the dialog stays ope
   });
   life.onError(new Error('refused'), {});
   assert.deepEqual(order, ['fail'], 'no reconcile, no close on failure');
+});
+
+// ─── withRecompute (server-recompute / seq-guarded E path) ────────────────────
+
+// Phase recorder: every phase pushes its name so a test asserts the exact order
+// AND that superseded phases never ran. refetch/run may bump the seq to simulate a
+// newer action landing mid-flight.
+function recorder(seqRef, { bumpOn } = {}) {
+  const order = [];
+  const mk = (name) => async () => { order.push(name); if (bumpOn === name) seqRef.current++; };
+  return {
+    order,
+    run: mk('run'), refetch: mk('refetch'),
+    reconcile: () => order.push('reconcile'),
+    commit: () => order.push('commit'),
+    rollback: () => order.push('rollback'),
+    onError: () => order.push('error'),
+  };
+}
+
+test('withRecompute happy path: run → reconcile → refetch → commit, in order', async () => {
+  const seqRef = { current: 0 };
+  const r = recorder(seqRef);
+  await withRecompute(seqRef, r);
+  assert.deepEqual(r.order, ['run', 'reconcile', 'refetch', 'commit'], 'phases ran in lifecycle order');
+});
+
+test('withRecompute superseded DURING run: reconcile/refetch/commit all skipped', async () => {
+  const seqRef = { current: 0 };
+  const r = recorder(seqRef, { bumpOn: 'run' }); // a newer action lands while the rpc is in flight
+  await withRecompute(seqRef, r);
+  assert.deepEqual(r.order, ['run'], 'kept the optimistic draft — no stale reconcile/commit');
+});
+
+test('withRecompute superseded DURING refetch: commit is dropped (the flicker guard)', async () => {
+  const seqRef = { current: 0 };
+  const r = recorder(seqRef, { bumpOn: 'refetch' }); // newer action starts during the refetch
+  await withRecompute(seqRef, r);
+  assert.deepEqual(r.order, ['run', 'reconcile', 'refetch'], 'no commit → newer action owns the view');
+});
+
+test('withRecompute rpc failure: rollback (still latest) + onError, nothing downstream', async () => {
+  const seqRef = { current: 0 };
+  const order = [];
+  await withRecompute(seqRef, {
+    run: async () => { throw Object.assign(new Error('refused'), { code: 'X' }); },
+    reconcile: () => order.push('reconcile'),
+    refetch: async () => order.push('refetch'),
+    commit: () => order.push('commit'),
+    rollback: () => order.push('rollback'),
+    onError: () => order.push('error'),
+  });
+  assert.deepEqual(order, ['rollback', 'error'], 'rolled the optimistic patch back and surfaced the refusal');
+});
+
+test('withRecompute failure but superseded: NO rollback (a newer action owns state), onError still fires', async () => {
+  const seqRef = { current: 0 };
+  const order = [];
+  await withRecompute(seqRef, {
+    run: async () => { seqRef.current++; throw new Error('refused'); }, // newer action landed before the throw
+    rollback: () => order.push('rollback'),
+    onError: () => order.push('error'),
+  });
+  assert.deepEqual(order, ['error'], 'did not clobber the newer action’s optimistic state');
+});
+
+test('withRecompute reconcile throw is swallowed — commit still runs', async () => {
+  const seqRef = { current: 0 };
+  const order = [];
+  await withRecompute(seqRef, {
+    run: async () => 'r',
+    reconcile: () => { throw new Error('file cleanup blew up'); },
+    refetch: async () => order.push('refetch'),
+    commit: () => order.push('commit'),
+  });
+  assert.deepEqual(order, ['refetch', 'commit'], 'a best-effort reconcile side effect cannot abort the commit');
 });

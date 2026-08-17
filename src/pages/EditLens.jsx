@@ -159,6 +159,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
+import { withRecompute } from '@/lib/trip-data';
 import { errorText } from '@/lib/errorText';
 import { layoutDates } from '@/lib/tripDates';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
@@ -353,43 +354,38 @@ export default function EditLens({ tripId, shell, content }) {
   // okKey: optional `toast` subtitle key fired ONLY on real success. Passed by the
   // discrete actions (start date / add city / remove city); the frequent ones
   // (nights, reorder) leave it undefined so they stay silent and don't spam.
-  const runAction = async (rpcFn, onResult, refetchOpts, okKey) => {
-    const mySeq = ++seqRef.current;
-    let result;
-    try { result = await rpcFn(); }
-    catch (e) {
-      // Honest refusal: the seam carries a generic `code` → localized line via
-      // errorText (never raw server prose, TRIP-378). A client-side throw without
-      // a code falls back to the generic save-failed copy.
-      const desc = e && 'code' in e ? errorText(t, e.code) : t('tse.err_save');
-      toast({ description: desc, variant: 'destructive' });
-      // RPC failed → drop the optimistic patch RIGHT AWAY by rebuilding from the last
-      // good server state (cache-backed buildDraft). Don't gate the rollback on a
-      // refetch that would also fail offline. If a newer action superseded us it owns
-      // the state, so leave it alone.
-      if (mySeq === seqRef.current) setDraft(null);
-      return;
-    }
-    if (mySeq !== seqRef.current) return;           // superseded by a newer action → keep optimistic state
-    if (onResult) { try { onResult(result); } catch { /* ignore */ } }
-    // refetchOpts lets date-only actions (nights/start/reorder) skip the CONTENT half
-    // (hotels/activities/transfers unchanged) → less work, less flicker. Default: both.
-    try { await refetchTrip(qc, tripId, refetchOpts); } catch { /* ignore */ }
-    if (mySeq !== seqRef.current) return;           // a newer action started during the refetch
-    setDraft(null); // rebuild from fresh server state on next render (buildDraft)
-    if (okKey) successToast(t, okKey);
-  };
+  // The E-write lifecycle (seq-guard + ordered barriers) lives in the seam as
+  // withRecompute; this only declares the editor's phases. Signature is unchanged,
+  // so the five action call sites below stay exactly as they were.
+  //   onResult runs BEFORE the refetch (addCity reconciles the real uuid, removeCity
+  //     sweeps files) — a best-effort side effect (throws are swallowed by the seam).
+  //   refetchOpts lets date-only actions (nights/start/reorder) skip the CONTENT half.
+  //   okKey: a success toast for the discrete actions; the frequent ones stay silent.
+  const runAction = (rpcFn, onResult, refetchOpts, okKey) => withRecompute(seqRef, {
+    run: rpcFn,
+    reconcile: onResult,
+    refetch: () => refetchTrip(qc, tripId, refetchOpts),
+    // Rebuild the draft from fresh server state on the next render (buildDraft).
+    commit: () => { setDraft(null); if (okKey) successToast(t, okKey); },
+    // RPC failed → drop the optimistic patch by rebuilding from the last good cache
+    // state (only if a newer action hasn't already taken ownership — the seam gates it).
+    rollback: () => setDraft(null),
+    // Honest refusal: a generic `code` → localized line (never raw server prose,
+    // TRIP-378); a client-side throw without a code falls back to the generic copy.
+    onError: (e) => toast({ description: e && 'code' in e ? errorText(t, e.code) : t('tse.err_save'), variant: 'destructive' }),
+  });
   // Any panel that may have WRITTEN transfers/bookings (create/event) closes through
   // here: pull fresh server state and rebuild the draft from it. The server already
   // recomputed the date chain (incl. overnight day_change, Ф2 trigger) and added any
-  // layover cities to the shell, so the rebuild reflects them with no client-side
-  // gap mirror or manual shell merge. seq-guard so a concurrent runAction wins.
-  const closePanelAndSync = async () => {
+  // layover cities to the shell, so the rebuild reflects them with no client-side gap
+  // mirror or manual shell merge. A bare resync (no rpc) through the same seq-guard,
+  // so a concurrent runAction wins.
+  const closePanelAndSync = () => {
     closeLeftPanel();
-    const mySeq = ++seqRef.current;
-    try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
-    if (mySeq !== seqRef.current) return;
-    setDraft(null);
+    return withRecompute(seqRef, {
+      refetch: () => refetchTrip(qc, tripId),
+      commit: () => setDraft(null),
+    });
   };
   // Coalesced/debounced server commit for the nights stepper (one RPC after the burst).
   const nightsCommit = useRef(new Map());   // cityId -> timeout handle
