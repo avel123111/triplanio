@@ -5835,7 +5835,7 @@ a.row--flush, button.row--flush { width: 100%; background: none; border: 0; text
    C5 · ActionMenu (Lumo .menu) — canonical dropdown/action menu.
    Used by the shared <ActionMenu> component (Radix dropdown-menu).
    ============================================================ */
-.menu { width: 236px; background: var(--popover); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-3); padding: 6px; z-index: var(--z-menu); }
+.menu { width: 236px; background: var(--popover); border: 1px solid var(--line); border-radius: var(--r-btn); box-shadow: var(--sh-3); padding: 6px; z-index: var(--z-menu); }
 .menu .mi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; background: transparent; border-radius: var(--r-sm); font: inherit; color: var(--ink-2); cursor: pointer; text-align: left; outline: none; transition: background .14s, color .14s; }
 .menu .mi svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 .menu .mi:hover, .menu .mi[data-highlighted] { background: var(--accent); color: var(--accent-ink); }

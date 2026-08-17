@@ -62,7 +62,7 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
         )}
         items={[
           { icon: 'user', label: t('nav.profile'), onSelect: () => nav('/settings') },
-          { icon: 'arrow', label: t('auth.logout'), onSelect: () => logout() },
+          { icon: 'logout', label: t('auth.logout'), onSelect: () => logout() },
         ]}
       />
     </div>

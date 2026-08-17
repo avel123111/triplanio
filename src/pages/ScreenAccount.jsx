@@ -907,7 +907,7 @@ export default function ScreenAccount() {
                     <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a> · {t('account.support_reply')}
                   </div>
                 </Grow>
-                <Btn variant="secondary" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
+                <Btn variant="secondary" icon="mail" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </Row>
               <a className="row--div row row--g7" href="/privacy" target="_blank" rel="noreferrer noopener">
                 <span className="tile tile--lg tile--quiet"><Icon name="shield" size={18} /></span>
@@ -989,12 +989,12 @@ export default function ScreenAccount() {
                   .card), как в карточке «Удалить» выше. row--div тут докидывал бы
                   свои 13px сверху/снизу — вариант строки СПИСКА, не одиночного ряда. */}
               <Row gap="g7" className="row--flush">
-                <span className="tile tile--lg tile--quiet"><Icon name="arrow" size={18} /></span>
+                <span className="tile tile--lg tile--quiet"><Icon name="logout" size={18} /></span>
                 <Grow>
                   <div className="row__t">{t('account.logout_title')}</div>
                   <div className="row__s">{t('account.logout_desc')}</div>
                 </Grow>
-                <Btn variant="secondary" icon="arrow" onClick={logout}>{t('auth.logout')}</Btn>
+                <Btn variant="secondary" icon="logout" onClick={logout}>{t('auth.logout')}</Btn>
               </Row>
             </div>
           </section>

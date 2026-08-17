@@ -199,6 +199,7 @@
  * visual-diff-exempt: .map-route__head margin-bottom — гашу margin канона PageHead в панели маршрута
  * visual-diff-exempt: .tile {@media (hover: hover) and (pointer: fine)} color — иконка плейсхолдера красится в тон ховера --a
  * visual-diff-exempt: .pop-flush border-radius — контейнер search/select (города/адреса/язык/валюта) на радиус поля --r-btn (10); был --r-card (24) от базы .pop
+ * visual-diff-exempt: .menu border-radius — канон action-меню на --r-btn (10, попап аккаунта и все меню); был --r-md (16)
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
