@@ -71,6 +71,8 @@ export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
 
   const qc = useQueryClient();
   const membersBinding = tripContentBinding(qc, tripId, 'members');
+  // Both writes route a member refusal (code) to the same inline field text.
+  const showErr = (/** @type {any} */ e) => setErr(classifyError(t, e?.code).text);
   // Invite / add-offline on the shared form path: button spinner, close on success,
   // reconcile the returned member row into the members slice (invite unwraps the
   // .member row; a reactivated declined invite upserts in place). Member refusals
@@ -90,7 +92,7 @@ export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
         if (promoteMember?.id) membersBinding.remove(promoteMember.id);
       },
       onDone: () => { track('email_invited', { role, trip_id: tripId }); successToast(t, 'invite_sent'); close(); },
-      onFail: (/** @type {any} */ e) => setErr(classifyError(t, e?.code).text),
+      onFail: showErr,
     }),
   });
   const offlineMut = useMutation({
@@ -103,7 +105,7 @@ export function InviteDialog({ tripId, promoteMember, open, onOpenChange }) {
     ...formWrite({
       reconcile: (/** @type {any} */ data) => reconcileWriteRow(membersBinding, 'add', data),
       onDone: () => { track('member_invited', { role: 'offline', trip_id: tripId }); close(); },
-      onFail: (/** @type {any} */ e) => setErr(classifyError(t, e?.code).text),
+      onFail: showErr,
     }),
   });
 
