@@ -822,7 +822,7 @@ export default function EventEditDialog({
     }
     // A valid CREATE of a real booking (services are opened, not "booked").
     // One distinct event per booking type so it's clear what was added. Fired at
-    // submit — the create commits optimistically below.
+    // submit — the write runs through the awaited saveMut below.
     if (!entity) {
       if (currentKind === 'transfer') track('transfer_added', { trip_id: tripId });
       else if (currentKind === 'hotel') track('hotel_added', { trip_id: tripId });

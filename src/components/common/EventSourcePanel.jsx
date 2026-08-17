@@ -5,7 +5,7 @@
  *   - load by id (useEntitySource)
  *   - view   -> PanelShell (chrome) + EventViewSections (canonical shared body)
  *   - edit   -> EventEditDialog variant="panel"
- *   - delete -> inline confirm -> delete row -> invalidate -> onClose()
+ *   - delete -> inline confirm -> optimistic dim -> drop on success -> onClose()
  */
 import React, { useState } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
