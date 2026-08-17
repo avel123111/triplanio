@@ -160,10 +160,13 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
       : (cities.find((c) => c.id === cityVisitId)?.city_name || null),
   });
 
+  // Refusal routing shared by save + delete: inline text, except the Pro-refusal
+  // (402) which closes the dialog and opens the upsell (handleBudgetWriteError).
+  const onWriteError = (/** @type {any} */ e) => handleBudgetWriteError(t, e?.code, { setErr, close, onProRefusal });
+
   // Create/edit on the shared form path: button spinner, close on success,
   // reconcile the returned row into the budgetExpenses slice (the client-side
-  // totals recompute from it — no full-trip refetch), keep open on refusal. The
-  // Pro-refusal (402) is the one error that closes: it hands off to the upsell.
+  // totals recompute from it — no full-trip refetch), keep open on refusal.
   const saveMut = useMutation({
     mutationFn: async () => {
       setErr('');
@@ -179,7 +182,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
         successToast(t, isEdit ? 'expense_updated' : 'expense_added');
         close();
       },
-      onFail: (/** @type {any} */ e) => handleBudgetWriteError(t, e?.code, { setErr, close, onProRefusal }),
+      onFail: onWriteError,
     }),
   });
 
@@ -193,7 +196,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
     ...withOptimism(expenseBinding, {
       op: 'remove',
       onSuccess: () => { successToast(t, 'expense_deleted'); close(); },
-      onError: (/** @type {any} */ e) => handleBudgetWriteError(t, e?.code, { setErr, close, onProRefusal }),
+      onError: onWriteError,
     }),
   });
 

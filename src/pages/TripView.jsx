@@ -1370,7 +1370,6 @@ export default function TripView() {
               cityVisits={visits}
               isLoading={shellLoading || loadingContent}
               isPro={tripIsPro}
-              queryClient={qc}
               onOpenSource={(kind, id) => setEventView({ open: true, kind, id, warning: null })}
             />
           )}
