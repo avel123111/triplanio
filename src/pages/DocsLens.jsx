@@ -55,7 +55,7 @@ function formatDate(iso) {
 
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
-export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange, onSubmit }) {
+export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   // Files are uploaded to Storage as they're picked, before the row is saved.
@@ -81,6 +81,28 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   const v    = useHybridValidation('document', { title });
   const st   = (f) => fieldState(v.displayIssues, f);
 
+  const qc = useQueryClient();
+  // This dialog owns its own write and stays mounted until it resolves: the Save
+  // button shows the in-flight spinner (the established `<Btn loading>` primitive),
+  // the dialog closes ONLY on success, and a failure keeps it open with an inline
+  // error so the user never loses what they typed. On success we reconcile FROM the
+  // returned row — insert it into the docs cache in place (newest-first), never a
+  // full getTripDetails refetch — so the card appears already-solid. Being
+  // self-contained, it works from EVERY call site (DocsLens AND the bottom-nav "+"
+  // in TripView) with no parent wiring to forget.
+  const createMut = useMutation({
+    mutationFn: (/** @type {any} */ body) => insertTripDocument(body),
+    onSuccess: (/** @type {any} */ row) => {
+      if (row) listBinding(qc, DOCS_KEY(tripId), { addTo: 'start' }).add(row);
+      successToast(t, 'document_saved');
+      savedRef.current = true; // files are now owned by the persisted row
+      close();
+    },
+    // Keep the dialog open and the input intact; the staged files stay referenced
+    // by the form (NOT swept here — the dismiss-without-save path still sweeps them).
+    onError: (/** @type {any} */ err) => setErr(errorText(t, err?.code)),
+  });
+
   async function uploadFiles(files) {
     if (!files?.length) return;
     setUploading(true); setErr('');
@@ -94,11 +116,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     }
   }
 
-  // Collect the form into a write body and hand it to the parent, which owns the
-  // optimistic insert + the write + reconcile. This dialog unmounts on close, so
-  // it can't reliably run a mutation's success/error callbacks (the RQ observer
-  // is gone) — the persistent list screen does. We only mark the staged files as
-  // owned so the close-sweep leaves them for the row about to reference them.
+  // Collect the form into a write body and fire the dialog's own create mutation.
+  // No close/sweep here — createMut.onSuccess closes (and marks the files owned),
+  // createMut.onError keeps the dialog open with an inline error.
   function save() {
     const body = {
       tripId,
@@ -123,9 +143,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       file_kind: kinds.length > 1 ? 'mixed' : (kinds[0] || 'none'),
       has_link: !!linkUrl.trim(),
     });
-    savedRef.current = true; // files are now owned by the row the parent creates
-    onSubmit?.(body);
-    close();
+    createMut.mutate(body);
   }
 
   const visOpts = [
@@ -155,7 +173,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
             <Icon name="file" size={17} />
           </Tile>
           <h2>{t('doc.dialog_new')}</h2>
-          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} />
+          <IconBtn icon="close" onClick={close} ariaLabel={t('common.close')} disabled={createMut.isPending} />
         </div>
 
         {/* ── Body ── */}
@@ -309,10 +327,11 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
         {/* ── Footer ── */}
         <div className="dlg__foot">
-          <Btn variant="secondary" onClick={close}>{t('trip.form_cancel')}</Btn>
+          <Btn variant="secondary" onClick={close} disabled={createMut.isPending}>{t('trip.form_cancel')}</Btn>
           <Btn
             variant="primary"
-            disabled={uploading}
+            loading={createMut.isPending}
+            disabled={uploading || createMut.isPending}
             aria-disabled={!v.canSubmit}
             onClick={() => v.attemptSubmit(save)}>
             {t('trip.form_save')}
@@ -596,23 +615,12 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  // Optimistic doc mutations live HERE (the list screen is always mounted, the
-  // dialogs are not — see AddDocDialog/DocDetailDialog). The edge write door
-  // RETURNS the row, so we reconcile from it — never a getTripDetails refetch.
+  // Delete is the only optimistic doc mutation that lives HERE: it acts on the
+  // list where the user's eyes are (dim → drop), the list screen is always
+  // mounted, and there is no typed input to lose. CREATE is owned by AddDocDialog
+  // itself (button-spinner + close-on-success), so it works from every entry
+  // point without parent wiring — including the bottom-nav "+".
   const docsBinding = listBinding(qc, DOCS_KEY(tripId), { addTo: 'start' });
-
-  const addDoc = useMutation({
-    mutationFn: ({ body }) => insertTripDocument(body),
-    ...withOptimism(docsBinding, {
-      op: 'add',
-      onSuccess: () => successToast(t, 'document_saved'),
-      onError: (err, vars) => {
-        // Row never created → the files staged for it are orphaned. Sweep them.
-        removeTripFiles(collectDocPaths(vars.body.documents));
-        toast({ description: errorText(t, err?.code), variant: 'destructive' });
-      },
-    }),
-  });
 
   const deleteDoc = useMutation({
     mutationFn: ({ doc }) => deleteTripDocument(tripId, doc.id).then((deleted) => {
@@ -636,20 +644,6 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
         toast({ description: errorText(t, err?.code), variant: 'destructive' });
       },
     }),
-  });
-
-  const createDoc = (body) => addDoc.mutate({
-    body,
-    row: {
-      id: 'tmp-' + Math.random().toString(36).slice(2),
-      trip_id: tripId,
-      created_by: user?.id,
-      created_at: new Date().toISOString(),
-      _pending: true,
-      title: body.title, notes: body.notes, link_url: body.link_url,
-      documents: body.documents, visibility: body.visibility,
-      created_by_name: body.created_by_name,
-    },
   });
 
   const removeDoc = (doc) => deleteDoc.mutate({ doc, row: { id: doc.id, _pending: true } });
@@ -782,7 +776,6 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           onOpenChange={o => { if (!o) setAddDocVis(null); }}
           tripId={tripId}
           defaultVisibility={addDocVis.defaultVisibility}
-          onSubmit={createDoc}
         />
       )}
       {detailDoc && (

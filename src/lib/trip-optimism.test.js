@@ -14,7 +14,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   withOptimism,
-  runOptimism,
   tripContentBinding,
   listBinding,
   swapOptimisticRow,
@@ -69,7 +68,7 @@ test('cancelQueries runs BEFORE the optimistic patch (flicker guard)', async () 
   const cancelIdx = qc.events.indexOf(`cancel:${k(CONTENT)}`);
   const setIdx = qc.events.indexOf(`set:${k(CONTENT)}`);
   assert.ok(cancelIdx >= 0, 'cancelQueries was called for the content key');
-  assert.ok(setIdx >= 0 && cancelIdx < setIdx, 'cancel happens before the cache is patched');
+  assert.ok(setIdx >= 0 && setIdx > cancelIdx, 'cancel happens before the cache is patched');
 });
 
 test('trip-content add: onError restores the snapshot and calls the caller toast', async () => {
@@ -177,51 +176,6 @@ test('list binding never patches a not-yet-loaded cache (old === undefined)', as
 });
 
 // ─── swapOptimisticRow direct (trip-content) ──────────────────────────────────
-
-// ─── runOptimism (imperative path, for survive-unmount create/delete) ─────────
-
-test('runOptimism add: cancel→patch→run→reconcile, resolves the write result', async () => {
-  const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } });
-  let confirmed = false;
-  const data = await runOptimism(tripContentBinding(qc, TRIP, 'hotels'), {
-    op: 'add',
-    vars: { row: { id: 'tmp-x', name: 'Hilton' } },
-    run: async () => ({ id: 'real-9', name: 'Hilton' }),
-    onSuccess: () => { confirmed = true; },
-  });
-  assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1', 'real-9'], 'tmp swapped for the returned row');
-  assert.deepEqual(data, { id: 'real-9', name: 'Hilton' }, 'resolves the write result');
-  assert.ok(confirmed, 'onSuccess fired');
-  const cancelIdx = qc.events.indexOf(`cancel:${k(CONTENT)}`);
-  const setIdx = qc.events.indexOf(`set:${k(CONTENT)}`);
-  assert.ok(cancelIdx >= 0 && cancelIdx < setIdx, 'cancel ran before the optimistic patch');
-});
-
-test('runOptimism add: run rejects → rollback + onError, and re-throws', async () => {
-  const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } });
-  let caught = null;
-  await assert.rejects(
-    runOptimism(tripContentBinding(qc, TRIP, 'hotels'), {
-      op: 'add',
-      vars: { row: { id: 'tmp-x' } },
-      run: async () => { throw new Error('refused'); },
-      onError: (e) => { caught = e; },
-    }),
-    /refused/,
-  );
-  assert.deepEqual(qc.get(CONTENT).hotels.map(r => r.id), ['h1'], 'optimistic row rolled back');
-  assert.equal(caught?.message, 'refused', 'onError saw the error');
-});
-
-test('runOptimism remove: patches out on run, no reconcile on success', async () => {
-  const qc = makeQC({ [k(CONTENT)]: { transfers: [{ id: 't1' }, { id: 't2' }] } });
-  await runOptimism(tripContentBinding(qc, TRIP, 'transfers'), {
-    op: 'remove',
-    vars: { id: 't1' },
-    run: async () => undefined, // delete returns nothing
-  });
-  assert.deepEqual(qc.get(CONTENT).transfers.map(r => r.id), ['t2'], 'row removed and stays removed');
-});
 
 test('swapOptimisticRow: appends the real row if the tmp row was already clobbered', () => {
   const qc = makeQC({ [k(CONTENT)]: { hotels: [{ id: 'h1' }] } }); // tmp-x already gone

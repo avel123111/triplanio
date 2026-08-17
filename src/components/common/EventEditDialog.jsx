@@ -142,7 +142,7 @@ import { collectDocPaths, removeTripFiles, removeOrphanedFiles } from '@/lib/sto
 import { aiField } from '@/lib/ai-values';
 import { deleteSourceEntity } from '@/lib/trip-entities';
 import { track } from '@/lib/analytics';
-import { invalidateTripData, tripContentBinding, runOptimism, withOptimism } from '@/lib/trip-data';
+import { invalidateTripData, tripContentBinding, withOptimism } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
@@ -818,13 +818,6 @@ export default function EventEditDialog({
     () => issuesToShow(issues, { isEdit, submitted, aiParsed }),
     [issues, isEdit, submitted, aiParsed],
   );
-  // Build the DB payload for the current single entity (mirrors saveMut's branches).
-  const buildCurrentPayload = () => {
-    if (currentKind === 'hotel') return buildHotelPayload(form, visit, tz);
-    if (currentKind === 'activity') return buildActivityPayload(form, visit, tz);
-    if (currentKind === 'transfer') return buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz);
-    return buildServicePayload(form, tripId, t);
-  };
   const OPT_CACHE = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   // A create that touches several rows/cities (layover chain or AI extra segments)
   // can't be cleanly mirrored optimistically — keep the awaited path for those.
@@ -846,37 +839,12 @@ export default function EventEditDialog({
       else if (currentKind === 'hotel') track('hotel_added', { trip_id: tripId });
       else if (currentKind === 'activity') track('activity_added', { trip_id: tripId });
     }
-    // Optimistic CREATE of a single booking: show it immediately, close the panel,
-    // write in the background and reconcile from the row the write RETURNS — no
-    // full getTripDetails refetch. The dialog unmounts on close, so this runs
-    // through runOptimism off the app-level qc (a useMutation's callbacks would
-    // never fire post-unmount). Edits + complex transfer creates keep the awaited
-    // mutation (avoids the view-panel read race / multi-row).
-    const optimistic = !entity && tripId && OPT_CACHE[currentKind] && !isComplexTransferCreate;
-    if (!optimistic) { saveMut.mutate(); return; }
-    const cacheKind = OPT_CACHE[currentKind];
-    const payload = buildCurrentPayload();
-    const tempId = 'tmp-' + Math.random().toString(36).slice(2);
-    const row = { id: tempId, trip_id: tripId, created_by: user?.id, _pending: true, ...payload };
-    // Committing optimistically and the dialog unmounts now — mark it so the
-    // unmount sweep won't delete the staged files this create references (TRIP-117);
-    // on failure runOptimism's onError sweeps them explicitly.
-    committedRef.current = true;
-    onOpenChange(false);
-    runOptimism(tripContentBinding(qc, tripId, cacheKind), {
-      op: 'add',
-      vars: { row },
-      run: () => upsert(currentKind, null, payload, tripId), // single door, returns the row
-      onSuccess: () => {
-        removeOrphanedFiles(seenDocPaths.current, form.documents);
-        successToast(t, 'booking_added');
-      },
-      onError: (err) => {
-        removeTripFiles(collectDocPaths(form.documents));
-        // Honest refusal: generic code → localized line, never raw server text (TRIP-378).
-        toast({ title: t('event.save_failed'), description: errorText(t, err?.code), variant: 'destructive' });
-      },
-    }).catch(() => {}); // onError already surfaced it; swallow the re-throw
+    // Create and edit alike go through the awaited saveMut: the dialog stays open
+    // with the Save button in its loading state (the in-flight signal lives on the
+    // button the user just clicked), then closes on success and reconciles the row
+    // FROM the write's return value — no early close, so no survive-unmount engine,
+    // and a failure keeps the dialog open with the input intact.
+    saveMut.mutate();
   };
 
   // ── Save mutation ──────────────────────────────────────────────────────
@@ -912,12 +880,17 @@ export default function EventEditDialog({
       // unmount sweep skips a successful save by design (TRIP-277).
       committedRef.current = true;
       removeOrphanedFiles(seenDocPaths.current, form.documents);
-      // Single-row edit → reconcile that row from the write's return value (no
-      // full-trip refetch). Create-fallback / layover (multi-row, or the row
-      // isn't in cache yet) fall back to invalidate.
+      // Single-row write (create OR edit) → reconcile that row from the write's
+      // return value, no full-trip refetch: edit replaces it, create upserts it
+      // (swap dedups if a background refetch already brought the row). A layover /
+      // complex transfer create writes several rows across cities (saveLayoverChain)
+      // and reshapes the whole timeline — only the server knows the new shape, so
+      // that path (E) takes a targeted refetch.
       const cacheKind = OPT_CACHE[currentKind];
-      if (entity && cacheKind && data?.id) tripContentBinding(qc, tripId, cacheKind).update(data);
-      else if (tripId) invalidateTripData(qc, tripId);
+      const singleRow = !!cacheKind && !!data?.id && !isComplexTransferCreate;
+      if (singleRow && entity)       tripContentBinding(qc, tripId, cacheKind).update(data);
+      else if (singleRow && !entity) tripContentBinding(qc, tripId, cacheKind).swap(data.id, data);
+      else if (tripId)               invalidateTripData(qc, tripId);
       successToast(t, entity ? 'booking_updated' : 'booking_added');
       onOpenChange(false);
     },
@@ -934,8 +907,12 @@ export default function EventEditDialog({
   });
 
   // ── Delete mutation ────────────────────────────────────────────────────
-  // Optimistic remove: the row drops from the cache on mutate, the write runs,
-  // and on refusal/already-gone the seam rolls it back — no full-trip refetch.
+  // Optimistic dim-then-drop: the row is marked `_pending` on mutate (its timeline
+  // card greys out — the same feedback as a document delete) while the write runs;
+  // on success it drops, on refusal/already-gone the seam rolls the dim back. No
+  // full-trip refetch, and the dialog stays open with the button in its loading
+  // state (`deleteMut.isPending`) until it resolves.
+  const delBinding = tripContentBinding(qc, tripId, OPT_CACHE[currentKind]);
   const deleteMut = useMutation({
     mutationFn: async () => {
       // Entity gone → every file it referenced (originals + any staged this
@@ -947,10 +924,12 @@ export default function EventEditDialog({
       // (rollback restores the row), don't close as a phantom success.
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
     },
-    ...withOptimism(tripContentBinding(qc, tripId, OPT_CACHE[currentKind]), {
-      op: 'remove',
+    ...withOptimism(delBinding, {
+      op: 'update',     // dim the row (`_pending`), don't yank it yet
+      reconcile: false, // delete returns nothing — no row to reconcile from
       onSuccess: () => {
         committedRef.current = true;
+        delBinding.remove(entity.id); // now drop the dimmed row
         successToast(t, 'booking_deleted');
         onOpenChange(false);
       },
@@ -1371,7 +1350,7 @@ export default function EventEditDialog({
             {confirmDel ? (
               <>
                 <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>{t('common.cancel')}</Btn>
-                <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={() => deleteMut.mutate({ id: entity.id })}>{t('common.delete')}</Btn>
+                <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={() => deleteMut.mutate({ id: entity.id, row: { id: entity.id, _pending: true } })}>{t('common.delete')}</Btn>
               </>
             ) : (
               <>

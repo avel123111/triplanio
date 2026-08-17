@@ -199,8 +199,8 @@ export function listBinding(qc, key, { addTo = 'end' } = {}) {
   };
 }
 
-// ── Shared lifecycle steps (used by BOTH withOptimism and runOptimism, so the two
-//    entry points can never drift on cancel/snapshot/patch/reconcile/rollback) ──
+// ── Shared lifecycle steps for withOptimism (cancel/snapshot/patch/reconcile/
+//    rollback), factored out so the phases stay named and testable in isolation ──
 
 // Cancel in-flight refetches BEFORE patching, then snapshot every touched key.
 // Cancelling first is the load-bearing step: without it a getTripDetails refetch
@@ -278,32 +278,4 @@ export function withOptimism(binding, { op, reconcile = true, onSuccess, onError
       onError?.(err, vars);
     },
   };
-}
-
-/**
- * Imperative counterpart to {@link withOptimism} for the case React Query can't
- * own: a create/delete whose trigger UI (dialog / panel) UNMOUNTS at T0, before
- * the write resolves — a `useMutation`'s onSuccess/onError would never fire (its
- * observer is gone). Same lifecycle, driven by hand off the app-level query
- * client: cancel → snapshot → patch → await run() → reconcile-from-row (or
- * rollback). Fire-and-forget from the call site; it closes the UI and this keeps
- * running. Resolves to the write result; rejects (after rollback) on failure.
- *
- * @param {{ qc:any, keys:any[], add:Function, update:Function, remove:Function, swap:Function }} binding
- * @param {{ op:'add'|'update'|'remove', run:()=>Promise<any>, vars:any,
- *           reconcile?:boolean, onSuccess?:(data:any,vars:any)=>void, onError?:(err:any,vars:any)=>void }} opts
- */
-export async function runOptimism(binding, { op, run, vars, reconcile = true, onSuccess, onError } = {}) {
-  const snapshot = await cancelAndSnapshot(binding);
-  applyOptimistic(binding, op, vars);
-  try {
-    const data = await run();
-    if (reconcile) reconcileFromRow(binding, op, data, vars);
-    onSuccess?.(data, vars);
-    return data;
-  } catch (err) {
-    restoreSnapshot(binding, snapshot);
-    onError?.(err, vars);
-    throw err;
-  }
 }
