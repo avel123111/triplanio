@@ -270,7 +270,7 @@ export const Field = ({ label, hint, sub, children, required = false }) => (
             сразу за подписью, а не за подсказкой, и не попадает под `gap`
             флекс-лейбла (см. `[data-required]` в app.css). */}
         <span data-required={required || undefined}>{label}</span>
-        {hint && <span className="muted t-meta" style={{ marginLeft: 4 }}>· {hint}</span>}
+        {hint && <span className="muted t-meta">{hint}</span>}
       </label>
     )}
     <FieldRequired value={required}>{children}</FieldRequired>
