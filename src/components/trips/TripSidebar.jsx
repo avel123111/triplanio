@@ -1,11 +1,12 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Avatar, Badge, Btn, Card, Sheet } from '@/design/index';
+import { Avatar, Badge, Btn, Card, Sheet, UnreadBadge } from '@/design/index';
 import { availableSections, isSectionAvailable } from '@/lib/tripMenu';
 import { clearsStep } from '@/lib/tripStep';
 import { displayName } from '@/lib/displayName';
 import { useUnreadChatCount } from '@/lib/chat';
+import { useUnreadNotificationCount } from '@/lib/useNotifications';
 
 // Общее ТЕЛО меню (группы + карточка апгрейда). Одинаково рисуется двумя
 // оболочками пункта меню:
@@ -48,11 +49,7 @@ function SidebarBody({
           >
             <Icon name={item.icon} size={15} />
             <span className="app-side__label">{t(item.labelKey)}</span>
-            {item.id === 'chat' && chatUnread > 0 && (
-              <span className="app-side__item-badge t-meta" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 'var(--r-pill)', minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
-                {chatUnread > 99 ? '99+' : chatUnread}
-              </span>
-            )}
+            {item.id === 'chat' && <UnreadBadge count={chatUnread} />}
           </button>
         ))}
       </div>
@@ -137,6 +134,9 @@ function SidebarSheetBody({
   const canShare = clearsStep(myStep, 'participant');
   const showUpgrade = proResolved && !isPro;
   const chatUnread = useUnreadChatCount(tripId, { enabled: isSectionAvailable('chat', trip, myStep) });
+  // Плашка «Аккаунт» ведёт во «Входящие» — на ней бейдж непрочитанных inapp-
+  // уведомлений (глобальный счётчик, не про этот трип). TRIP-354.
+  const inappUnread = useUnreadNotificationCount();
   const accountName = displayName(user?.email, user?.full_name);
 
   // Ряды управления: секции группы 'manage' + «Поделиться».
@@ -159,9 +159,7 @@ function SidebarSheetBody({
           >
             <span className="tm-cell__ico"><Icon name={item.icon} size={18} /></span>
             <span className="tm-cell__lbl t-label">{t(item.labelKey)}</span>
-            {item.id === 'chat' && chatUnread > 0 && (
-              <span className="tm-cell__badge t-meta">{chatUnread > 99 ? '99+' : chatUnread}</span>
-            )}
+            {item.id === 'chat' && <UnreadBadge count={chatUnread} />}
           </Card>
         ))}
       </div>
@@ -188,6 +186,7 @@ function SidebarSheetBody({
             <span className="tm-account__name t-label">{t('nav.account')}</span>
             <span className="tm-account__sub t-meta">{accountName}</span>
           </span>
+          <UnreadBadge count={inappUnread} />
           <Icon name="chevron" size={16} className="tm-manage__chev" />
         </Card>
       )}

@@ -4,7 +4,7 @@ import { Row, Col, Grid, Trunc, Grow } from '../design/Layout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, useToast,
+  Badge, Btn, Card, Cover, IconBtn, Seg, Severity, SearchSelect, Tile, UnreadBadge, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -862,11 +862,14 @@ export default function ScreenAccount() {
             <Row as="h2" className="acct-sectitle">{t('account.email_notifs')}</Row>
 
             {/* In-app notifications — quick link to the inbox with unread count.
-                Same row grammar as every other navigational row on this screen
-                (Privacy / Terms / cookie settings below): a .card holding
-                .row--div, not a bespoke card-shaped button. */}
+                ЕДИНСТВЕННАЯ строка в карточке → канон `.row--flush` (TRIP-354): рамку
+                целиком задаёт `.card` (18px), поэтому у строки своей вертикальной
+                отбивки быть не должно. `.row--div` (13px сверху/снизу) стекался с
+                паддингом карточки и раздувал контейнер. Списковые карточки ниже
+                (Privacy / Terms) остаются на `.row--div` — там строк несколько и
+                разделители между ними нужны. */}
             <div className="card" style={{ marginBottom: 16 }}>
-              <button type="button" className="row--div row row--g7" onClick={() => nav('/inbox')}>
+              <button type="button" className="row--flush row row--g7" onClick={() => nav('/inbox')}>
                 <span className="tile tile--lg tile--brand"><Icon name="bell" size={18} /></span>
                 <Grow>
                   <div className="row__t">{t('account.inbox_title')}</div>
@@ -876,9 +879,7 @@ export default function ScreenAccount() {
                     count is spoken as part of the row. (The old markup carried an
                     aria-label on a bare <span> — a generic role takes no
                     name-from-author, so it was never announced.) */}
-                {unreadCount > 0 && (
-                  <Badge variant="count">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
-                )}
+                <UnreadBadge count={unreadCount} />
                 <Icon name="arrowR" size={16} className="muted-2" />
               </button>
             </div>
