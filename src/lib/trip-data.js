@@ -368,7 +368,7 @@ export async function withRecompute(seqRef, { run, reconcile, refetch, commit, r
     return;
   }
   if (mySeq !== seqRef.current) return;          // superseded before reconcile → keep optimistic
-  if (reconcile) { try { reconcile(result); } catch { /* best-effort side effect */ } }
+  try { reconcile?.(result); } catch { /* best-effort side effect */ }
   try { await refetch?.(); } catch { /* offline: commit from cache, as before */ }
   if (mySeq !== seqRef.current) return;          // a newer action started during the refetch
   commit?.();

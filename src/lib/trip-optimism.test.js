@@ -309,3 +309,16 @@ test('withRecompute reconcile throw is swallowed — commit still runs', async (
   });
   assert.deepEqual(order, ['refetch', 'commit'], 'a best-effort reconcile side effect cannot abort the commit');
 });
+
+test('withRecompute offline: a failed refetch is swallowed and commit still runs (no rollback)', async () => {
+  const seqRef = { current: 0 };
+  const order = [];
+  await withRecompute(seqRef, {
+    run: async () => 'r',
+    reconcile: () => order.push('reconcile'),
+    refetch: async () => { throw new Error('offline'); },
+    commit: () => order.push('commit'),
+    rollback: () => order.push('rollback'),
+  });
+  assert.deepEqual(order, ['reconcile', 'commit'], 'refetch failure neither blocks the commit nor rolls back');
+});
