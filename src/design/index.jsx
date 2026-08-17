@@ -411,14 +411,15 @@ export const RoleBadge = ({ role, glass }) => {
   // Ступень `tiny` (TRIP-337, апрув Pavel): ярлык роли — самый мелкий чип, на
   // кегль ниже статуса; та же ступень, что у тариф-плашек. Один проп на канон —
   // все площадки (Trips · Chat · Members · Overview) садятся ровно.
-  const label = role === "owner" ? t("trips.role_owner") // role-gate-exempt: показ
-    : role === "viewer" ? t("trips.role_viewer") // role-gate-exempt: показ
-    : t("trips.role_admin");
+  // Одна ветвь по роли на пару (ярлык + тон), чтобы они не разъезжались.
+  let label, variant;
+  if (role === "owner")       { label = t("trips.role_owner");  variant = "warning"; } // role-gate-exempt: показ
+  else if (role === "viewer") { label = t("trips.role_viewer"); variant = "outline"; } // role-gate-exempt: показ
+  else                        { label = t("trips.role_admin");  variant = "brand"; }
   // `glass` — роль НА ОБЛОЖКЕ трипа (над фото): soft-тон (warning/brand/outline)
   // на изображении не читался, поэтому там роль эмитится тем же «стеклянным»
   // чипом `.tc__glass`, что и «Совместный» рядом (решение Pavel, TRIP-337).
   if (glass) return <span className="tc__glass">{label}</span>;
-  const variant = role === "owner" ? "warning" : role === "viewer" ? "outline" : "brand";
   return <Badge variant={variant} size="tiny">{label}</Badge>;
 };
 
