@@ -562,16 +562,18 @@ export default function EditLens({ tripId, shell, content }) {
     const next = Math.max(0, Math.min(60, base + delta));
     if (next === base) return;
     nightsTarget.current.set(id, next);
-    // partial optimism: instantly reflect ONLY the touched city (its nights + its own
-    // end_date). Downstream dates are NOT recomputed on the client — they come from the
-    // server (recompute_trip) on refetch. No second date engine in the editor.
-    editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => {
-      if (n.id !== id) return n;
-      const end = next > 0 && n.start_date ? toDT(n.start_date).plus({ days: next }).toISODate() : n.start_date;
-      return next === 0
-        ? { ...n, kind: 'waypoint', nights: 0, end_date: n.start_date }
-        : { ...n, kind: 'transit', nights: next, end_date: end };
-    }) }));
+    // Full optimism: set the touched city's nights/kind, then re-lay the WHOLE chain
+    // downstream with the SAME engine reorder uses (recompute = server-mirror
+    // layoutDates) so the cities AFTER it shift instantly — no waiting for the server
+    // refetch to un-jank them. The refetch still confirms authoritatively, invisibly.
+    editDraft((d) => {
+      const nodes = d.nodes.map((n) => (
+        n.id !== id ? n
+          : next === 0 ? { ...n, kind: 'waypoint', nights: 0 }
+                       : { ...n, kind: 'transit', nights: next }
+      ));
+      return { ...d, nodes: recompute(applyAdjacencyGaps(nodes, liveTransfers), d.startDate) };
+    });
     if (String(id).startsWith('tmp-')) return;
     // debounce: send ONE set_city_nights with the FINAL value ~350ms after the last click
     const timers = nightsCommit.current;
@@ -617,14 +619,14 @@ export default function EditLens({ tripId, shell, content }) {
     });
     if (ok) doRemoveCity(id);
   };
-  // partial optimism: drop the node from the list now; downstream dates are NOT
-  // recomputed on the client — the server (remove_city → recompute_trip) reflows
-  // the chain and runAction refetches it. (removed-tray push stays until the
-  // draft/tray teardown slice.)
+  // Full optimism: drop the node AND re-lay the chain now (recompute = server-mirror),
+  // so the cities after it close the gap instantly instead of jumping when the server
+  // (remove_city → recompute_trip) refetch lands. The refetch still confirms.
   const doRemoveCity = (id) => {
     editDraft((d) => {
       const node = d.nodes.find((n) => n.id === id); if (!node) return d;
-      return { ...d, nodes: d.nodes.filter((n) => n.id !== id) };
+      const nodes = d.nodes.filter((n) => n.id !== id);
+      return { ...d, nodes: recompute(applyAdjacencyGaps(nodes, liveTransfers), d.startDate) };
     });
     if (String(id).startsWith('tmp-')) return; // never persisted → no server rows / files
     // remove_city cascade-deletes this city's hotels/activities/transfers server-side, but
@@ -644,38 +646,27 @@ export default function EditLens({ tripId, shell, content }) {
       toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
       return;
     }
-    // Optimistic placement: a new transit city must render at the END of the
-    // route immediately. sortVisits orders by start_date, so a null-date node
-    // would sort to the FRONT and then snap to the end once add_city →
-    // recompute_trip returns real dates (the "jumps to the end" glitch). Seed it
-    // with the trip's last known date (+ its nights) and a trailing position so it
-    // lands in its final slot right away; it stays muted (tmp- id) until the
-    // refetch swaps in real dates. 'start'/'end' are anchors ordered by rank, so
-    // their dates don't affect placement.
+    // Full optimism: build the tmp node with its nights, splice it into place, then
+    // re-lay the chain (recompute = server-mirror). It lands in its final slot WITH
+    // correct dates immediately — no null-date node sorting to the front and snapping
+    // back when add_city → recompute_trip refetches. Stays muted (tmp- id) until the
+    // RPC returns the real uuid.
     const provNights = kind === 'transit' ? 2 : null;
-    const lastDate = draft.nodes.reduce((m, n) => { const e = n.end_date || n.start_date; return e && (!m || e > m) ? e : m; }, null);
-    const maxPos = draft.nodes.reduce((m, n) => (Number.isFinite(n.position) && n.position > m ? n.position : m), -1);
-    const provStart = kind === 'start' ? null : lastDate;
-    const provEnd = provStart && kind === 'transit' ? toDT(provStart).plus({ days: provNights }).toISODate() : provStart;
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
       city_name: city.city_name, country_code: city.country_code || null,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
-      nights: provNights, gap: 0, start_date: provStart, end_date: provEnd,
-      position: kind === 'start' ? -1 : maxPos + 1,
+      nights: provNights, gap: 0, start_date: null, end_date: null,
     };
     let insertIdx = null;
-    // partial optimism: splice the tmp node into place; its dates stay null until
-    // the server (add_city → recompute_trip) lays them and runAction refetches.
-    // No client recompute — existing cities keep their dates.
     editDraft((d) => {
       const arr = d.nodes.slice();
       if (kind === 'start') { arr.unshift(node); insertIdx = 0; }
       else if (kind === 'end') { arr.push(node); insertIdx = null; }
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); insertIdx = endIdx === -1 ? null : endIdx; arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-      return { ...d, nodes: arr };
+      return { ...d, nodes: recompute(applyAdjacencyGaps(arr, liveTransfers), d.startDate) };
     });
     const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
