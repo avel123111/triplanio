@@ -186,16 +186,19 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
     }),
   });
 
-  // Delete: optimistic remove from the budgetExpenses slice (the total drops at
-  // once), button spinner, close on success; the seam rolls it back on refusal.
+  // Delete (canon): the dialog stays open with the button spinner until the write
+  // lands (it unmounts on close, so onSuccess must fire while mounted), then the row
+  // drops + toast + close TOGETHER. Dim (op:update), NOT an instant op:remove that
+  // would yank the row at T0 behind the still-open dialog while the toast trails 2s.
   const delMut = useMutation({
     mutationFn: async () => {
       const { error, code } = await budgetMutate('expense/delete', { tripId, id: existing.id });
       if (error) throw refusalError(code);
     },
     ...withOptimism(expenseBinding, {
-      op: 'remove',
-      onSuccess: () => { successToast(t, 'expense_deleted'); close(); },
+      op: 'update',
+      reconcile: false,
+      onSuccess: (/** @type {any} */ _d, /** @type {any} */ { id }) => { expenseBinding.remove(id); successToast(t, 'expense_deleted'); close(); },
       onError: onWriteError,
     }),
   });
@@ -206,7 +209,7 @@ export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = []
     <Dialog title={isEdit ? t('budget.edit_expense') : t('budget.manual_expense')} icon="wallet" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
         {isEdit && (
-          <Btn variant="danger" icon="trash" loading={delMut.isPending} onClick={() => delMut.mutate({ id: existing.id })} disabled={busy}>{t('trip.delete')}</Btn>
+          <Btn variant="danger" icon="trash" loading={delMut.isPending} onClick={() => delMut.mutate({ id: existing.id, row: { id: existing.id, _pending: true } })} disabled={busy}>{t('trip.delete')}</Btn>
         )}
         <div className="grow" />
         <Btn variant="secondary" onClick={close} disabled={busy}>{t('trip.form_cancel')}</Btn>
