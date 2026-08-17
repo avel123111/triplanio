@@ -3787,7 +3787,17 @@ fieldset:disabled .field__label { color: var(--muted-2); }
      панелей редактора `.lp-f`. Футер шита `.dlg__foot` — канон-примитив, и его
      прячет САМ компонент <Dialog> через useKeyboardOpen (реагировать снаружи на
      канон-примитив = reach, гард 2o). */
+  /* Футер `.lp-f` скрывается на клавиатуре ВЕЗДЕ, где живёт: мобильный шит
+     редактора (`.lp-sheet`) И модальная оболочка event view/edit (`.dlg-modal`).
+     Единая логика для всех модалок (TRIP-337): канон `.dlg__foot` прячет сам
+     <Dialog> хуком, а не-канон `.lp-f` — этим правилом по одному сигналу
+     `[data-keyboard]`. Раньше цеплялся только `.lp-sheet`, и футер event-view/edit
+     на клавиатуре не скрывался.
+     Первая строка (`.lp-sheet .lp-f`) оставлена как есть — селектор с двумя
+     классами держит ключ `.lp-sheet` неизменным; вторая (широкая, один класс
+     `.lp-f`) накрывает ОСТАЛЬНЫЕ оболочки, `display:none` у `.lp-f` тот же. */
   [data-keyboard] .lp-sheet .lp-f { display: none; }
+  [data-keyboard] .lp-f { display: none; }
   [data-keyboard] .mbnav { display: none; }
 
 
@@ -7628,7 +7638,11 @@ a.doc-row__n:hover{ color: var(--brand); }
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
 .vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: var(--z-panel); }
-.vpanel { position: fixed; z-index: calc(var(--z-panel) + 10); background: var(--bg); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }  /* TRIP-176: фон драйвера = фон приложения */
+/* Фон драйвера сведён к канон-поверхности модалок `--surface` (как `.dlg`/`.lp`/
+   `.sheet`) — единый фон оверлеев (решение Pavel, TRIP-337: `--bg` был
+   единственным расхождением поверхности среди всех оверлеев).
+   visual-diff-exempt: .vpanel background — фон драйвера --bg → --surface, унификация поверхности оверлеев с .dlg/.lp/.sheet, апрув Pavel */
+.vpanel { position: fixed; z-index: calc(var(--z-panel) + 10); background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 /* ≤640 the panel is a vaul Drawer (see VisitPanel.jsx) — vaul owns the slide-up
    and drag transform, so no `animation` here (it would fight vaul). */

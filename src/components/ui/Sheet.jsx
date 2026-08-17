@@ -47,7 +47,7 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
                   обработчики на САМУ кнопку, а не на лишнюю обёртку. Ховера у
                   него не было вовсе - теперь приходит с тоном. */}
               <Drawer.Close asChild>
-                <IconBtn icon="close" tone="soft" ariaLabel={t('common.close')} />
+                <IconBtn icon="close" ariaLabel={t('common.close')} />
               </Drawer.Close>
             </div>
           ) : (

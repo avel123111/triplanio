@@ -176,7 +176,7 @@ export default function VisitPanel({
           <div className="s">{sub}</div>
         </div>
         <Dialog.Close asChild>
-          <IconBtn icon="close" tone="soft" ariaLabel={t('common.close') || 'Close'} />
+          <IconBtn icon="close" ariaLabel={t('common.close') || 'Close'} />
         </Dialog.Close>
       </div>
       <div className="vp-b">

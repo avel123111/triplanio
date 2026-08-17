@@ -70,7 +70,7 @@ export default function AddBookingPanel({
             {subtitle && <span className="t-meta">{subtitle}</span>}
           </div>
         </div>
-        <IconBtn icon="close" tone="soft" round onClick={close} ariaLabel={t('fork.cancel')} title={t('fork.cancel')} />
+        <IconBtn icon="close" onClick={close} ariaLabel={t('fork.cancel')} title={t('fork.cancel')} />
       </div>
 
       {/* Segmented tabs (reuses the design-system .seg + shared .seg--fill). */}

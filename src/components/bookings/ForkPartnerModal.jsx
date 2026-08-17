@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ChevronRight } from 'lucide-react';
 import { CardSim, Icon } from '@/design/icons';
-import { Btn, IconBtn, Card, Tile, Tooltip, DialogRoot as Dialog, DialogContent, DialogTitle } from '@/design/index';
+import { Btn, IconBtn, Card, Tile, Tooltip, Dialog as DSDialog } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -26,6 +26,7 @@ const TYPE_META = {
     manualKey: 'hotel.choice_manual',
     manualSubKey: 'fork.manual_sub_hotel',
     Icon: BedDouble,
+    iconName: 'bed',
     color: 'var(--ev-hotel)',
     colorSoft: 'var(--ev-hotel-soft)',
   },
@@ -34,6 +35,7 @@ const TYPE_META = {
     manualKey: 'transfer.manual_short',
     manualSubKey: 'fork.manual_sub_transfer',
     Icon: Plane,
+    iconName: 'plane',
     color: 'var(--ev-transfer)',
     colorSoft: 'var(--ev-transfer-soft)',
   },
@@ -42,6 +44,7 @@ const TYPE_META = {
     manualKey: 'service.car_choice_manual',
     manualSubKey: 'fork.manual_sub_car',
     Icon: Car,
+    iconName: 'car',
     color: SERVICE_KINDS.car_rental.color,
     colorSoft: SERVICE_KINDS.car_rental.soft,
   },
@@ -50,6 +53,7 @@ const TYPE_META = {
     manualKey: 'service.esim_choice_manual',
     manualSubKey: 'fork.manual_sub_esim',
     Icon: CardSim,
+    iconName: 'esim',
     color: SERVICE_KINDS.esim.color,
     colorSoft: SERVICE_KINDS.esim.soft,
   },
@@ -58,6 +62,7 @@ const TYPE_META = {
     manualKey: 'service.insurance_choice_manual',
     manualSubKey: 'fork.manual_sub_insurance',
     Icon: ShieldCheck,
+    iconName: 'shield',
     color: SERVICE_KINDS.insurance.color,
     colorSoft: SERVICE_KINDS.insurance.soft,
   },
@@ -66,6 +71,7 @@ const TYPE_META = {
     manualKey: 'activity.choice_manual',
     manualSubKey: 'fork.manual_sub_activity',
     Icon: Ticket,
+    iconName: 'ticket',
     color: 'var(--ev-activity)',
     colorSoft: 'var(--ev-activity-soft)',
   },
@@ -322,21 +328,20 @@ export default function ForkPartnerModal({
     );
   }
 
+  // Standalone (сервисы esim/авто/страховка + не-embedded отель/трансфер/активность):
+  // канон DS <Dialog> — крест `IconBtn icon="close"`, фон `.dlg`, авто-скрытие
+  // футера на клавиатуре (useKeyboardOpen). Раньше эта ветка хендроллила
+  // DialogContent и теряла И крест, И скрытие футера (TRIP-337, унификация модалок).
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        <div className="dlg__head">
-          <Tile as="span" style={{ '--tile': '36px', '--hl-soft': meta.colorSoft, '--hl-ink': meta.color }}>
-            <ManualIcon style={{ width: 17, height: 17 }} />
-          </Tile>
-          <DialogTitle asChild><h2>{t(meta.titleKey)}</h2></DialogTitle>
-        </div>
-        <div className="dlg__body">{body}</div>
-        <div className="dlg__foot">
-          <Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>
-        </div>
-        {styleTag}
-      </DialogContent>
-    </Dialog>
+    <DSDialog
+      title={t(meta.titleKey)}
+      icon={meta.iconName}
+      open={open}
+      onOpenChange={onOpenChange}
+      foot={<Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>}
+    >
+      {body}
+      {styleTag}
+    </DSDialog>
   );
 }

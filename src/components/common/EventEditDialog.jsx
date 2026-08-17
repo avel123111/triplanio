@@ -1216,8 +1216,6 @@ export default function EventEditDialog({
               </div>
               <IconBtn
                 icon="close"
-                tone="soft"
-                round
                 onClick={() => onOpenChange?.(false)}
                 title={isPanel ? t('common.back') : undefined}
                 ariaLabel={isPanel ? t('common.back') : t('common.cancel')}
