@@ -16,7 +16,7 @@ import { track } from '@/lib/analytics';
 import { withViralMarks } from '@/lib/viralLink';
 import { classifyError } from '@/lib/errorText';
 import { invokeFn } from '@/lib/invokeFn';
-import { tripContentBinding, formWrite, reconcileWriteRow, withOptimism } from '@/lib/trip-data';
+import { tripContentBinding, formWrite, reconcileWriteRow } from '@/lib/trip-data';
 import { refusalError } from '@/lib/refusalError';
 import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Icon } from '../design/icons';
@@ -313,23 +313,6 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
   // contentData.members) — one slice, so one binding, like budget/documents.
   const membersBinding = tripContentBinding(qc, tripId, 'members');
 
-  // Remove — INSTANT (MembersLens stays mounted, so onError can roll back): the row
-  // DROPS and the success toast fire TOGETHER at T0 (onOptimistic), in sync with the
-  // vanish — not an instant vanish with a toast trailing 2s later. On refusal the seam
-  // restores the row and an error toast supersedes. pending row = an invite being
-  // cancelled; anything else = a member removed.
-  const removeMut = useMutation({
-    mutationFn: async (/** @type {any} */ { id }) => {
-      const { error, code } = await invokeFn('trip-member/remove', { body: { id, trip_id: tripId } });
-      if (error) throw refusalError(code);
-    },
-    ...withOptimism(membersBinding, {
-      op: 'remove',
-      onOptimistic: (/** @type {any} */ { status }) => successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed'),
-      onError: (/** @type {any} */ e) => toast({ description: classifyError(t, e?.code).text, variant: 'destructive' }),
-    }),
-  });
-
   // Resend fires from the row's "…" menu, which closes on select — a menu item
   // can't host a spinner, so the row shows the busy state (mbrow--busy) instead.
   async function resend(memberId) {
@@ -356,13 +339,21 @@ export default function MembersLens({ tripId, members = [], profiles = {}, trip,
     successToast(t, 'invite_resent');
   }
 
-  // Confirm gates the yes/no; on confirm the optimistic remove fires (removeMut) —
-  // the row drops instantly and rolls back on refusal.
+  // Remove — PESSIMISTIC (async-confirm, same shape as leaveTrip below): the confirm
+  // button spins while trip-member/remove runs, and only ON THE RESPONSE does the row
+  // drop from the cache and the toast fire — together. Removing a member is a real
+  // server teardown (personal-docs + FK cleanup), so the UI confirms once it landed,
+  // not at T0. On refusal: error toast, the row stays.
   function removeMember(memberId, status) {
     confirm({
       title: t('member.remove_confirm'),
       variant: 'destructive',
-      onConfirm: () => removeMut.mutate({ id: memberId, status }),
+      onConfirm: async () => {
+        const { error, code } = await invokeFn('trip-member/remove', { body: { id: memberId, trip_id: tripId } });
+        if (error) { toast({ description: classifyError(t, code).text, variant: 'destructive' }); return; }
+        membersBinding.remove(memberId);
+        successToast(t, status === 'pending' ? 'invite_revoked' : 'member_removed');
+      },
     });
   }
 

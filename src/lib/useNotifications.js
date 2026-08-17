@@ -178,18 +178,19 @@ export function useNotificationActions() {
       // global MutationCache.onError seam doesn't capture it twice.
       if (error || data?.error) throw error || new Error(data?.error || 'Failed');
     },
-    // Optimistically flip the row: accept→active (accepted badge), decline→declined,
-    // and mark it read — the deterministic server outcome, so no inbox refetch. The
-    // toast fires HERE too (T0), in sync with the row flip the user sees — not on the
-    // server round-trip 2s later. Shared success title + accept/decline subtitle.
-    onMutate: ({ memberId, action }) => {
-      const ctx = begin((inbox) => respondInList(inbox, memberId, action === 'accept' ? 'active' : 'declined'));
+    // PESSIMISTIC (not optimistic): responding to an invite is a real server state
+    // change (member.user_id set, inviter notified, row marked read), so the UI confirms
+    // only on the server response — the button carries the in-flight state
+    // (respondInvite.isPending → <Btn loading>). On success we flip the row
+    // (accept→active/accepted badge, decline→declined), mark it read, and fire the toast
+    // together. No onMutate patch → onError needs no local rollback; the refusal surfaces
+    // through the global MutationCache.onError seam.
+    onSuccess: (_d, { memberId, action }) => {
+      qc.setQueryData(key, (/** @type {any} */ old) => (old ? respondInList(old, memberId, action === 'accept' ? 'active' : 'declined') : old));
       successToast(t, action === 'accept' ? 'invite_accepted' : 'invite_declined');
-      return ctx;
+      // Accepting joins the trip → the trips list gains it (a different cache).
+      if (action === 'accept') qc.invalidateQueries({ queryKey: ['trips'] });
     },
-    onError: (_e, _v, ctx) => rollback(ctx),
-    // Accepting joins the trip → the trips list gains it (a different cache).
-    onSuccess: (_d, { action }) => { if (action === 'accept') qc.invalidateQueries({ queryKey: ['trips'] }); },
   });
 
   return { markAllRead, markOneRead, respondInvite };

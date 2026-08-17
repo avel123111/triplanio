@@ -11,7 +11,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding, withOptimism } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, tripContentBinding } from '@/lib/trip-data';
 import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
@@ -40,10 +40,11 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
     tripId, open, onError: () => onOpenChange(false),
   });
 
-  // Delete on the seam — INSTANT (SourceViewLoader stays mounted, so onError can roll
-  // back): the row drops, the modal closes and the success toast fire TOGETHER at T0
-  // (onOptimistic). On the rare refusal the seam restores the row and an error toast
-  // supersedes. No dim-that-never-renders, no lingering card, no lagging toast.
+  // Delete on the seam — PESSIMISTIC: EventModal's confirm button spins (its `deleting`
+  // state, which awaits `onDelete()`) while deleteSourceEntity runs, and only ON THE
+  // RESPONSE does the row drop, the toast fire and the modal close — together. A service
+  // delete is a real server teardown, so the UI confirms once it landed, not at T0. On
+  // refusal: error toast, the row stays, the modal stays open.
   // Defined before the early return; id + orphan keys travel via mutate vars.
   const delBinding = tripContentBinding(qc, tripId, CACHE_KIND[kind]);
   const deleteMut = useMutation({
@@ -52,11 +53,12 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
       if (error) throw refusalError(code);
       if (!deleted) throw Object.assign(new Error('write_rejected'), { code: 'NOT_FOUND' });
     },
-    ...withOptimism(delBinding, {
-      op: 'remove',
-      onOptimistic: () => { onOpenChange(false); successToast(t, 'booking_deleted'); },
-      onError: (/** @type {any} */ e) => toast({ description: e?.code ? errorText(t, e.code) : t('event.delete_failed'), variant: 'destructive' }),
-    }),
+    onSuccess: (/** @type {any} */ _d, /** @type {any} */ { id: rowId }) => {
+      delBinding.remove(rowId);
+      successToast(t, 'booking_deleted');
+      onOpenChange(false);
+    },
+    onError: (/** @type {any} */ e) => toast({ description: e?.code ? errorText(t, e.code) : t('event.delete_failed'), variant: 'destructive' }),
   });
 
   if (!open || !data) return null;
@@ -108,7 +110,9 @@ export default function SourceViewLoader({ tripId, kind, id, open, onOpenChange,
     // Capture attachment object keys before delete; deleteSourceEntity sweeps
     // best-effort only after the row is actually gone (TRIP-117).
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
-    deleteMut.mutate({ id: data.id, tripId: data.trip_id, orphanPaths });
+    // Return the promise so EventModal's confirm button can await it (spinner) — and
+    // swallow the rejection (onError already toasted) so the awaited handler doesn't throw.
+    return deleteMut.mutateAsync({ id: data.id, tripId: data.trip_id, orphanPaths }).catch(() => {});
   };
 
   // All kinds edit inline via EventEditDialog (live-edit model, TRIP-126).
